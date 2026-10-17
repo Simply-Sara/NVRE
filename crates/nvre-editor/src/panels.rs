@@ -13,17 +13,28 @@
 //!
 //! Immediate mode throughout: each frame reads [`crate::session::Session`] and
 //! queues the changes it implies. Nothing here holds state across frames except
-//! the filter strings, which are the only things a user types into.
+//! the filter strings and the worldspace dropdown, which are the only things a
+//! user types into or picks.
 
+use crate::session::CellScope;
 use bevy::prelude::*;
 use bevy_egui::egui;
 use nvre_edit::encode::sub_views;
 
 /// Filter text for the cell browser and the place palette.
+///
+/// The cell browser's worldspace dropdown lives here too: it is the other thing
+/// the cell window's user types into or picks, and it has to survive the frames
+/// in between for the list to stay filtered.
 #[derive(Resource, Default)]
 pub struct Filters {
     pub cell: String,
     pub place: String,
+    /// Which cells the browser lists: the interiors, or one worldspace's.
+    ///
+    /// Defaults to [`CellScope::Interiors`], which is what GECK's Cell View
+    /// opens with.
+    pub cell_scope: CellScope,
 }
 
 /// The root [`egui::Ui`] covering a whole window.
@@ -85,6 +96,11 @@ pub fn main_window(
 }
 
 /// The cell browser: which cell is open, and what else there is.
+///
+/// The worldspace dropdown is the one GECK's Cell View leads with: it selects
+/// either the interiors or one worldspace, and the list below it holds only that
+/// scope's cells. It opens on the interiors, the way GECK does, so the browser
+/// starts on interior cells rather than on 30,000 exterior ones.
 pub fn cells(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<0>>>,
     mut session: ResMut<crate::session::Session>,
@@ -92,33 +108,84 @@ pub fn cells(
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "cells"), |ui| {
         ui.heading("Cells");
+        let worlds = session.worldspaces();
+        let scope = filters.cell_scope;
+        egui::ComboBox::from_id_salt("cell_scope")
+            .selected_text(scope.label(&worlds))
+            .width(ui.available_width())
+            .show_ui(ui, |ui| {
+                // Both write the scope straight into the resource, which is what
+                // `selectable_value` is for: the list below reads it next frame.
+                ui.selectable_value(&mut filters.cell_scope, CellScope::Interiors, "Interiors");
+                for w in &worlds {
+                    ui.selectable_value(
+                        &mut filters.cell_scope,
+                        CellScope::Worldspace(w.form_id),
+                        &w.label,
+                    );
+                }
+            });
         let filter = filters.cell.to_lowercase();
+        let scope = filters.cell_scope;
+        let cells = session.cells(scope);
+        // Filtered here rather than in the session: the session's list is what
+        // the dropdown counts, and the count has to say what the scope holds
+        // rather than what the filter leaves.
+        let rows: Vec<&crate::session::CellRow> = cells
+            .iter()
+            .filter(|c| {
+                filter.is_empty()
+                    || c.editor_id().to_lowercase().contains(&filter)
+                    || c.name
+                        .as_deref()
+                        .is_some_and(|n| n.to_lowercase().contains(&filter))
+            })
+            .collect();
+        let shown = cells.len();
+        let matched = rows.len();
+        // A header row, then one row per cell, both in the same grid so the
+        // columns line up. Clicking a row opens that cell, as the list did.
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for c in session.cells() {
-                let label = c
-                    .edid
-                    .clone()
-                    .unwrap_or_else(|| format!("{:08X}", c.form_id));
-                if !filter.is_empty() && !label.to_lowercase().contains(&filter) {
-                    continue;
-                }
-                let kind = if c.interior {
-                    "interior"
-                } else if c.world {
-                    "world"
-                } else {
-                    "cell"
-                };
-                let text = format!("{label} [{kind}] ({})", c.refs);
-                if ui
-                    .selectable_label(session.cell == Some(c.form_id), text)
-                    .clicked()
-                {
-                    session.open_cell(c.form_id);
-                }
-            }
+            egui::Grid::new("cells_table")
+                .num_columns(4)
+                .striped(true)
+                .min_col_width(60.0)
+                .show(ui, |ui| {
+                    ui.strong("Editor ID");
+                    ui.strong("Form ID");
+                    ui.strong("Name");
+                    ui.strong("Location");
+                    ui.end_row();
+                    for c in &rows {
+                        let open = session.cell == Some(c.form_id);
+                        // The Editor ID cell is the clickable one, so a row is
+                        // opened the way the old list was: click the name.
+                        if ui
+                            .selectable_label(open, c.editor_id())
+                            .on_hover_text(format!("open {} ({} refs)", c.editor_id(), c.refs))
+                            .clicked()
+                        {
+                            session.open_cell(c.form_id);
+                        }
+                        // The fixed-width columns are monospace, so the Form IDs
+                        // and the grid coordinates line up down the column.
+                        ui.label(egui::RichText::new(format!("{:08X}", c.form_id)).monospace());
+                        ui.label(c.name.as_deref().unwrap_or(""));
+                        ui.label(egui::RichText::new(c.location()).monospace());
+                        ui.end_row();
+                    }
+                });
         });
         ui.separator();
+        ui.label(format!(
+            "{shown} cells in {}{}",
+            scope.label(&worlds),
+            if matched == shown {
+                String::new()
+            } else {
+                format!(" ({matched} match)")
+            }
+        ));
         ui.label("filter");
         ui.text_edit_singleline(&mut filters.cell);
     });

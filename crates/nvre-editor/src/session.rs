@@ -191,18 +191,53 @@ impl Session {
         self.palette.clone()
     }
 
-    /// Every cell in the load order, as (FormID, editor ID, interior?).
-    pub fn cells(&self) -> Vec<CellRow> {
+    /// The worldspaces in the load order, as browser rows.
+    ///
+    /// This is the cell browser's dropdown: GECK's Cell View lists every
+    /// worldspace and an "Interior" entry, and the list below it is filtered by
+    /// whichever one is chosen.
+    pub fn worldspaces(&self) -> Vec<WorldspaceRow> {
+        let mut out: Vec<WorldspaceRow> = self
+            .index
+            .worldspaces
+            .values()
+            .map(|w| WorldspaceRow {
+                form_id: w.form_id,
+                label: w
+                    .edid
+                    .clone()
+                    .or_else(|| w.name.clone())
+                    .unwrap_or_else(|| format!("{:08X}", w.form_id)),
+                name: w.name.clone(),
+            })
+            .collect();
+        out.sort_by(|a, b| a.label.cmp(&b.label).then(a.form_id.cmp(&b.form_id)));
+        out
+    }
+
+    /// The cells the browser lists under one scope, as browser rows.
+    ///
+    /// A scope is either the interiors or one worldspace's exterior cells. The
+    /// `worldspace` filter matches the world a CELL record sits under, which is
+    /// what the game loads: a worldspace's own persistent cell is in it too, so
+    /// it appears in that worldspace's list rather than in the interiors'.
+    pub fn cells(&self, scope: CellScope) -> Vec<CellRow> {
         let mut out: Vec<CellRow> = self
             .index
             .cells
             .values()
+            .filter(|c| match scope {
+                CellScope::Interiors => c.world.is_none(),
+                CellScope::Worldspace(w) => c.world == Some(w),
+            })
             .map(|c| CellRow {
                 form_id: c.form_id,
                 edid: c.edid.clone(),
+                name: c.name.clone(),
                 interior: c.is_interior(),
                 refs: c.refs.len(),
                 world: c.world.is_some(),
+                grid: c.grid,
             })
             .collect();
         out.sort_by(|a, b| a.edid.cmp(&b.edid).then(a.form_id.cmp(&b.form_id)));
@@ -422,14 +457,78 @@ impl Session {
     }
 }
 
-/// A cell, for the browser list.
+/// A cell, for the browser table.
 #[derive(Debug, Clone)]
 pub struct CellRow {
     pub form_id: u32,
     pub edid: Option<String>,
+    /// The cell's display name (CELL FULL), when it has one.
+    pub name: Option<String>,
     pub interior: bool,
     pub refs: usize,
     pub world: bool,
+    /// The cell's grid coordinate (CELL XCLC) for an exterior cell; `None` for
+    /// an interior.
+    pub grid: Option<(i32, i32)>,
+}
+
+impl CellRow {
+    /// The row's Editor ID column: the EDID, or the FormID without one.
+    pub fn editor_id(&self) -> String {
+        self.edid
+            .clone()
+            .unwrap_or_else(|| format!("{:08X}", self.form_id))
+    }
+
+    /// The row's Location column.
+    ///
+    /// An exterior cell's place in the world is its grid square, which is what
+    /// GECK shows; an interior belongs to no world, so it says so rather than
+    /// leaving the column blank.
+    pub fn location(&self) -> String {
+        match self.grid {
+            Some((x, y)) => format!("{x}, {y}"),
+            None => "interior".to_string(),
+        }
+    }
+}
+
+/// A worldspace, for the cell browser's dropdown.
+#[derive(Debug, Clone)]
+pub struct WorldspaceRow {
+    pub form_id: u32,
+    /// What the dropdown shows: the Editor ID, or the display name without one.
+    pub label: String,
+    /// The in-game name (CELL FULL), when the worldspace has one.
+    pub name: Option<String>,
+}
+
+/// Which cells the browser lists: the interiors, or one worldspace's cells.
+///
+/// This is the cell window's dropdown state, in the same shape GECK's Cell View
+/// uses — "Interior" plus one entry per worldspace, with the list below it
+/// filtered to whichever is chosen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CellScope {
+    /// Cells that belong to no worldspace: every interior.
+    #[default]
+    Interiors,
+    /// One worldspace's exterior cells, by WRLD FormID.
+    Worldspace(u32),
+}
+
+impl CellScope {
+    /// The dropdown's label for this scope.
+    pub fn label(self, worldspaces: &[WorldspaceRow]) -> String {
+        match self {
+            CellScope::Interiors => "Interiors".to_string(),
+            CellScope::Worldspace(w) => worldspaces
+                .iter()
+                .find(|r| r.form_id == w)
+                .map(|r| r.label.clone())
+                .unwrap_or_else(|| format!("{w:08X}")),
+        }
+    }
 }
 
 /// A placed reference, for the browser list and the viewport.
