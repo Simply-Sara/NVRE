@@ -7,6 +7,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Bevy's debug binaries link gigabytes with debuginfo, which exhausts the
+  # runner's memory and crashes the linker (lld bus error). CI does not need
+  # debuginfo, so turn it off rather than fight the OOM.
+  CARGO_PROFILE_DEV_DEBUG: "0"
 
 jobs:
   test:
