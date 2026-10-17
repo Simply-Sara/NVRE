@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = ["crates/nvre-edit", "crates/nvre-editor"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+# NVForever's format crates, by path. The editor is read-write where those are
+# read-only; nothing is patched into NVForever itself.
+fnv-util = { path = "NVForever/crates/fnv-util" }
+fnv-inflate = { path = "NVForever/crates/fnv-inflate" }
+fnv-esm = { path = "NVForever/crates/fnv-esm" }
+fnv-vfs = { path = "NVForever/crates/fnv-vfs" }
+fnv-world = { path = "NVForever/crates/fnv-world" }
+# NVForever's Bevy asset layer lives in its own engine workspace, so its
+# workspace-inherited deps have to be declared here too.
+fnv-nif = { path = "NVForever/crates/fnv-nif" }
+fnv-dds = { path = "NVForever/crates/fnv-dds" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+bytes = "1.9"
+tracing = "0.1"
+
+# Editor GUI. bevy_egui 0.42 is the newest release that still takes Bevy 0.19
+# (0.43+ requires Bevy 0.20); verified to build against bevy =0.19.1.
+# pbr_specular_textures is what NVForever's own engine workspace enables, and
+# its nvf-assets layer needs it (normal-map alpha as the specular mask).
+bevy = { version = "=0.19.1", features = ["pbr_specular_textures"] }
+bevy_egui = "=0.42.0"
+clap = { version = "4", features = ["derive", "env"] }
+
+[profile.release]
+debug = 1

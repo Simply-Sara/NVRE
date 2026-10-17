@@ -1,0 +1,32 @@
+# Rust build artifacts
+/target/
+target/
+**/target/
+
+# Editor output (mods written by examples/tests)
+*.esp
+
+# Private ground truth and game data are never committed.
+*.esm
+*.bsa
+*.nif
+*.dds
+*.kf
+*.egm
+*.egt
+*.tri
+*.lip
+*.ogg
+*.wav
+*.mp3
+
+# Local config
+lab.local.json
+baseline.json
+
+# Scratch notes
+IDEA.md
+
+# Editor / OS cruft
+.DS_Store
+*.swp
