@@ -6,6 +6,11 @@
 //! it draws into its own window and nothing else — that is what keeps the
 //! panels' widget state, focus and scroll position separate.
 //!
+//! Each panel's contents go in a [`egui::CentralPanel`], which is that panel's
+//! Bevy window rather than an egui window nested inside it: the OS window is
+//! already the frame, and a second one inside it only adds a title bar and a
+//! drag handle.
+//!
 //! Immediate mode throughout: each frame reads [`crate::session::Session`] and
 //! queues the changes it implies. Nothing here holds state across frames except
 //! the filter strings, which are the only things a user types into.
@@ -21,6 +26,27 @@ pub struct Filters {
     pub place: String,
 }
 
+/// The root [`egui::Ui`] covering a whole window.
+///
+/// Every panel draws into a [`egui::CentralPanel`], which *is* its Bevy window
+/// rather than a window floating inside it. `CentralPanel::show` takes a
+/// `&mut Ui` where `Window::show` took the context, so the root `Ui` is built
+/// first — over the full viewport rect, on the background layer, which is what
+/// `egui`'s own top-level pass does.
+///
+/// The id is per-panel: each panel has its own context anyway, but a distinct
+/// id keeps the widget ids unambiguous. It is `&'static str` because an
+/// [`egui::Id`] outlives the frame that made it.
+pub fn root_ui(ctx: &egui::Context, id: &'static str) -> egui::Ui {
+    egui::Ui::new(
+        ctx.clone(),
+        id.into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    )
+}
+
 /// The main window: the editor's front door.
 ///
 /// The viewport and every panel own a window of their own, so this one holds only
@@ -30,7 +56,7 @@ pub fn main_window(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<bevy_egui::PrimaryEguiContext>>,
     mut session: ResMut<crate::session::Session>,
 ) {
-    egui::Window::new(crate::windows::MAIN_TITLE).show(ctx.get_mut(), |ui| {
+    egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "main"), |ui| {
         ui.heading("New Vegas Rust Editor");
         ui.label(format!("plugin  {}", session.doc.name()));
         ui.label(format!("masters {:?}", session.masters));
@@ -64,7 +90,7 @@ pub fn cells(
     mut session: ResMut<crate::session::Session>,
     mut filters: ResMut<Filters>,
 ) {
-    egui::Window::new("Cells").show(ctx.get_mut(), |ui| {
+    egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "cells"), |ui| {
         ui.heading("Cells");
         let filter = filters.cell.to_lowercase();
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -105,7 +131,7 @@ pub fn references(
     mut clicks: Local<crate::viewport::ClickState>,
     mut frame: MessageWriter<crate::FrameRequested>,
 ) {
-    egui::Window::new("References").show(ctx.get_mut(), |ui| {
+    egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "references"), |ui| {
         ui.heading("References");
         let Some(cell) = session.cell else {
             ui.label("no cell open");
@@ -167,7 +193,7 @@ pub fn properties(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<2>>>,
     mut session: ResMut<crate::session::Session>,
 ) {
-    egui::Window::new("Properties").show(ctx.get_mut(), |ui| {
+    egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "properties"), |ui| {
         let Some(fid) = session.selected else {
             ui.label("nothing selected");
             return;
@@ -233,7 +259,7 @@ pub fn place(
     mut session: ResMut<crate::session::Session>,
     mut filters: ResMut<Filters>,
 ) {
-    egui::Window::new("Place").show(ctx.get_mut(), |ui| {
+    egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "place"), |ui| {
         ui.label("Base object");
         ui.text_edit_singleline(&mut filters.place);
         ui.separator();
@@ -262,7 +288,7 @@ pub fn status(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<4>>>,
     mut session: ResMut<crate::session::Session>,
 ) {
-    egui::Window::new("Status").show(ctx.get_mut(), |ui| {
+    egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "status"), |ui| {
         ui.horizontal(|ui| {
             ui.label(&session.status);
             ui.separator();
@@ -304,7 +330,7 @@ pub fn debug(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<5>>>,
     mut orbit: ResMut<crate::viewport::Orbit>,
 ) {
-    egui::Window::new("Debug").show(ctx.get_mut(), |ui| {
+    egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "debug"), |ui| {
         ui.heading("Camera");
         egui::Grid::new("orbit").num_columns(2).show(ui, |ui| {
             // The target is where the camera looks, in Bevy space. A cell sits

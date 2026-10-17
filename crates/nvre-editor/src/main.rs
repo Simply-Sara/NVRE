@@ -138,7 +138,9 @@ fn main() {
             // are spawned after that and depend on it existing.
             primary_window: Some(Window {
                 title: windows::MAIN_TITLE.into(),
-                resolution: (420, 320).into(),
+                // The launcher fills this window, so it is sized for the
+                // launcher's contents rather than for a panel.
+                resolution: (560, 440).into(),
                 position: WindowPosition::new(IVec2::new(40, 40)),
                 ..default()
             }),

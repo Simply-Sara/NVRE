@@ -58,11 +58,11 @@ fn list_plugins(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
 /// Draw the launcher in the main window.
 ///
 /// The window is the whole app until a file is chosen: the editor's systems do
-/// not run until then, so there is nothing behind it to interact with.
-/// Draw the launcher in the main window.
-///
-/// The window is the whole app until a file is chosen: the editor's systems do
-/// not run until then, so there is nothing behind it to interact with.
+/// not run until then, so there is nothing behind it to interact with. The
+/// contents therefore go in a [`egui::CentralPanel`], which is the window
+/// itself, rather than an [`egui::Window`] drawn inside it — a window in a
+/// window gives a second title bar, its own margin and a drag handle, all
+/// framing the same OS frame again.
 pub fn ui(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<bevy_egui::PrimaryEguiContext>>,
     mut launcher: ResMut<Launcher>,
@@ -70,8 +70,8 @@ pub fn ui(
     mut open: MessageWriter<crate::OpenRequested>,
     failed: Option<Res<crate::OpenFailed>>,
 ) {
-    // The main window is the frame, so the contents fill it: one window with no
-    // title bar, rather than a window inside the window.
+    // The main window is the frame, so the contents fill it: the window itself
+    // rather than a window inside the window.
     let ctx = ctx.get_mut();
 
     // The plugins in the Data folder, listed by name. Reading the folder is
@@ -85,100 +85,96 @@ pub fn ui(
     // change the selection.
     let listing = launcher.listing.clone();
 
-    egui::Window::new("launcher")
-        .title_bar(false)
-        .resizable(true)
-        .default_size([560.0, 440.0])
-        .show(ctx, |ui| {
-            ui.heading("New Vegas Rust Editor");
-            ui.label("Pick the file to edit. Its masters are loaded automatically.");
-            ui.separator();
+    egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "launcher"), |ui| {
+        ui.heading("New Vegas Rust Editor");
+        ui.label("Pick the file to edit. Its masters are loaded automatically.");
+        ui.separator();
 
-            ui.columns(2, |cols| {
-                // The files, on the left.
-                cols[0].label("Files");
-                egui::ScrollArea::vertical()
-                    .id_salt("files")
-                    .max_height(250.0)
-                    .show(&mut cols[0], |ui| {
-                        for p in &listing {
-                            let name = p
-                                .file_name()
-                                .map(|n| n.to_string_lossy().into_owned())
-                                .unwrap_or_default();
-                            let selected = launcher.active.as_deref() == Some(p.as_path());
-                            if ui.selectable_label(selected, &name).clicked() {
-                                launcher.active = Some(p.clone());
-                                launcher.error = None;
-                                // The file's own masters, read as soon as it is
-                                // picked: the user is not asked for them.
-                                launcher.required = read_masters_for(p);
-                                launcher.masters = launcher.required.clone();
-                            }
+        ui.columns(2, |cols| {
+            // The files, on the left.
+            cols[0].label("Files");
+            egui::ScrollArea::vertical()
+                .id_salt("files")
+                .max_height(250.0)
+                .show(&mut cols[0], |ui| {
+                    for p in &listing {
+                        let name = p
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default();
+                        let selected = launcher.active.as_deref() == Some(p.as_path());
+                        if ui.selectable_label(selected, &name).clicked() {
+                            launcher.active = Some(p.clone());
+                            launcher.error = None;
+                            // The file's own masters, read as soon as it is
+                            // picked: the user is not asked for them.
+                            launcher.required = read_masters_for(p);
+                            launcher.masters = launcher.required.clone();
                         }
-                    });
-
-                // The masters, on the right.
-                cols[1].label("Masters");
-                if launcher.required.is_empty() {
-                    cols[1].label("this file names no masters");
-                }
-                // The required masters are shown as they are: removing one would
-                // change what the file means, so the list is fixed and additions
-                // go after it.
-                for m in &launcher.required {
-                    cols[1].label(format!("{m} (from the file)"));
-                }
-                // The count is read out first, to avoid borrowing twice.
-                let required_count = launcher.required.len();
-                let extra: Vec<String> = launcher
-                    .masters
-                    .iter()
-                    .skip(required_count)
-                    .cloned()
-                    .collect();
-                for (i, m) in extra.iter().enumerate() {
-                    cols[1].horizontal(|ui| {
-                        ui.label(m);
-                        if ui.small_button("remove").clicked() {
-                            launcher.masters.remove(required_count + i);
-                        }
-                    });
-                }
-                cols[1].horizontal(|ui| {
-                    let resp = ui.add(
-                        egui::TextEdit::singleline(&mut launcher.adding).hint_text("add a master"),
-                    );
-                    let add = ui.button("Add").clicked()
-                        || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
-                    if add && !launcher.adding.trim().is_empty() {
-                        let name = launcher.adding.trim().to_string();
-                        if !launcher.masters.iter().any(|m| m == &name) {
-                            launcher.masters.push(name);
-                        }
-                        launcher.adding.clear();
                     }
                 });
-            });
 
-            if let Some(e) = &launcher.error {
-                ui.colored_label(egui::Color32::RED, e);
+            // The masters, on the right.
+            cols[1].label("Masters");
+            if launcher.required.is_empty() {
+                cols[1].label("this file names no masters");
             }
-            if let Some(f) = &failed {
-                ui.colored_label(egui::Color32::RED, &f.0);
+            // The required masters are shown as they are: removing one would
+            // change what the file means, so the list is fixed and additions
+            // go after it.
+            for m in &launcher.required {
+                cols[1].label(format!("{m} (from the file)"));
             }
-
-            ui.separator();
-            let ready = launcher.active.is_some();
-            ui.add_enabled_ui(ready, |ui| {
-                if ui.button("Open").clicked() {
-                    // The session is built by `open_selected` in response to
-                    // this; doing it here would mean holding a borrow of the
-                    // world open across a file read.
-                    open.write(crate::OpenRequested);
+            // The count is read out first, to avoid borrowing twice.
+            let required_count = launcher.required.len();
+            let extra: Vec<String> = launcher
+                .masters
+                .iter()
+                .skip(required_count)
+                .cloned()
+                .collect();
+            for (i, m) in extra.iter().enumerate() {
+                cols[1].horizontal(|ui| {
+                    ui.label(m);
+                    if ui.small_button("remove").clicked() {
+                        launcher.masters.remove(required_count + i);
+                    }
+                });
+            }
+            cols[1].horizontal(|ui| {
+                let resp = ui.add(
+                    egui::TextEdit::singleline(&mut launcher.adding).hint_text("add a master"),
+                );
+                let add = ui.button("Add").clicked()
+                    || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+                if add && !launcher.adding.trim().is_empty() {
+                    let name = launcher.adding.trim().to_string();
+                    if !launcher.masters.iter().any(|m| m == &name) {
+                        launcher.masters.push(name);
+                    }
+                    launcher.adding.clear();
                 }
             });
         });
+
+        if let Some(e) = &launcher.error {
+            ui.colored_label(egui::Color32::RED, e);
+        }
+        if let Some(f) = &failed {
+            ui.colored_label(egui::Color32::RED, &f.0);
+        }
+
+        ui.separator();
+        let ready = launcher.active.is_some();
+        ui.add_enabled_ui(ready, |ui| {
+            if ui.button("Open").clicked() {
+                // The session is built by `open_selected` in response to
+                // this; doing it here would mean holding a borrow of the
+                // world open across a file read.
+                open.write(crate::OpenRequested);
+            }
+        });
+    });
 }
 
 /// The masters a plugin's own header names.
