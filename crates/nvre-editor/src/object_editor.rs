@@ -251,6 +251,28 @@ pub struct ObjectEditorState {
     pub watr_reflective: bool,
     pub watr_effect: Option<u32>,
     pub watr_sound: Option<u32>,
+
+    // GLOB & GMST fields
+    pub glob_type: u8,
+    pub glob_val: f32,
+    pub gmst_val_str: String,
+    pub gmst_val_num: f32,
+
+    // RACE & CLMT fields
+    pub race_male_height: f32,
+    pub race_female_height: f32,
+    pub race_male_weight: f32,
+    pub race_female_weight: f32,
+    pub race_playable: bool,
+    pub race_child: bool,
+    pub race_desc: String,
+    pub clmt_sunrise_begin: u8,
+    pub clmt_sunrise_end: u8,
+    pub clmt_sunset_begin: u8,
+    pub clmt_sunset_end: u8,
+    pub clmt_volatility: u8,
+    pub clmt_sun_texture: String,
+    pub clmt_sun_glare_texture: String,
 }
 
 impl ObjectEditorState {
@@ -328,6 +350,10 @@ impl ObjectEditorState {
             b"MGEF" => self.load_mgef(),
             b"WTHR" => self.load_wthr(),
             b"WATR" => self.load_watr(),
+            b"GLOB" => self.load_glob(),
+            b"GMST" => self.load_gmst(),
+            b"RACE" => self.load_race(),
+            b"CLMT" => self.load_clmt(),
             _ => self.load_misc(),
         }
     }
@@ -741,6 +767,52 @@ impl ObjectEditorState {
         self.watr_sound = self.get_fid(b"SNAM");
     }
 
+    fn load_glob(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"FNAM") {
+            self.glob_type = b.first().copied().unwrap_or(b'f');
+        }
+        if let Some(b) = self.raw_subs.get(b"FLTV").filter(|b| b.len() >= 4) {
+            self.glob_val = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+        }
+    }
+
+    fn load_gmst(&mut self) {
+        if self.edid.starts_with('s') || self.edid.starts_with('S') {
+            self.gmst_val_str = self.get_string(b"DATA");
+        } else if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 4) {
+            if self.edid.starts_with('i') || self.edid.starts_with('b') {
+                self.gmst_val_num = i32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f32;
+            } else {
+                self.gmst_val_num = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            }
+        }
+    }
+
+    fn load_race(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 36) {
+            self.race_male_height = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.race_female_height = f32::from_le_bytes([b[20], b[21], b[22], b[23]]);
+            self.race_male_weight = f32::from_le_bytes([b[24], b[25], b[26], b[27]]);
+            self.race_female_weight = f32::from_le_bytes([b[28], b[29], b[30], b[31]]);
+            let f = u32::from_le_bytes([b[32], b[33], b[34], b[35]]);
+            self.race_playable = (f & 1) != 0;
+            self.race_child = (f & 4) != 0;
+        }
+        self.race_desc = self.get_string(b"DESC");
+    }
+
+    fn load_clmt(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"TNAM").filter(|b| b.len() >= 5) {
+            self.clmt_sunrise_begin = b[0];
+            self.clmt_sunrise_end = b[1];
+            self.clmt_sunset_begin = b[2];
+            self.clmt_sunset_end = b[3];
+            self.clmt_volatility = b[4];
+        }
+        self.clmt_sun_texture = self.get_string(b"FNAM");
+        self.clmt_sun_glare_texture = self.get_string(b"GNAM");
+    }
+
     /// Save the current state back to session as uncommitted edits.
     pub fn save_to_session(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
@@ -790,6 +862,10 @@ impl ObjectEditorState {
             b"MGEF" => self.save_mgef(session),
             b"WTHR" => self.save_wthr(session),
             b"WATR" => self.save_watr(session),
+            b"GLOB" => self.save_glob(session),
+            b"GMST" => self.save_gmst(session),
+            b"RACE" => self.save_race(session),
+            b"CLMT" => self.save_clmt(session),
             _ => self.save_misc(session),
         }
 
@@ -1528,6 +1604,83 @@ impl ObjectEditorState {
             session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
         }
     }
+
+    fn save_glob(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session.doc.set_sub(fid, b"FNAM", vec![self.glob_type]);
+        session
+            .doc
+            .set_sub(fid, b"FLTV", self.glob_val.to_le_bytes().to_vec());
+    }
+
+    fn save_gmst(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let data = if self.edid.starts_with('s') || self.edid.starts_with('S') {
+            encode_zstring(&self.gmst_val_str)
+        } else if self.edid.starts_with('i') || self.edid.starts_with('b') {
+            (self.gmst_val_num as i32).to_le_bytes().to_vec()
+        } else {
+            self.gmst_val_num.to_le_bytes().to_vec()
+        };
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    fn save_race(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 36]);
+        if d.len() < 36 {
+            d.resize(36, 0);
+        }
+        d[16..20].copy_from_slice(&self.race_male_height.to_le_bytes());
+        d[20..24].copy_from_slice(&self.race_female_height.to_le_bytes());
+        d[24..28].copy_from_slice(&self.race_male_weight.to_le_bytes());
+        d[28..32].copy_from_slice(&self.race_female_weight.to_le_bytes());
+        let mut f = u32::from_le_bytes([d[32], d[33], d[34], d[35]]);
+        if self.race_playable {
+            f |= 1;
+        } else {
+            f &= !1;
+        }
+        if self.race_child {
+            f |= 4;
+        } else {
+            f &= !4;
+        }
+        d[32..36].copy_from_slice(&f.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", d);
+        if !self.race_desc.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"DESC", encode_zstring(&self.race_desc));
+        }
+    }
+
+    fn save_clmt(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let tnam = vec![
+            self.clmt_sunrise_begin,
+            self.clmt_sunrise_end,
+            self.clmt_sunset_begin,
+            self.clmt_sunset_end,
+            self.clmt_volatility,
+            1, // Moon phase length
+        ];
+        session.doc.set_sub(fid, b"TNAM", tnam);
+        if !self.clmt_sun_texture.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"FNAM", encode_zstring(&self.clmt_sun_texture));
+        }
+        if !self.clmt_sun_glare_texture.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"GNAM", encode_zstring(&self.clmt_sun_glare_texture));
+        }
+    }
 }
 
 fn encode_zstring(s: &str) -> Vec<u8> {
@@ -1714,6 +1867,10 @@ pub fn ui(
                 b"MGEF" => draw_mgef_ui(ui, &mut state),
                 b"WTHR" => draw_wthr_ui(ui, &mut state),
                 b"WATR" => draw_watr_ui(ui, &mut state),
+                b"GLOB" => draw_glob_ui(ui, &mut state),
+                b"GMST" => draw_gmst_ui(ui, &mut state),
+                b"RACE" => draw_race_ui(ui, &mut state),
+                b"CLMT" => draw_clmt_ui(ui, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
 
@@ -2691,6 +2848,138 @@ fn draw_watr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             formid_field(ui, "watr_eff", &mut state.watr_effect);
             ui.label("Sound:");
             formid_field(ui, "watr_snd", &mut state.watr_sound);
+        });
+    });
+}
+
+const GLOB_TYPES: [(u8, &str); 3] = [
+    (115, "Short (Integer 16)"),
+    (108, "Long (Integer 32)"),
+    (102, "Float"),
+];
+
+fn draw_glob_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Global Variable Configuration");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            let cur_lbl = GLOB_TYPES
+                .iter()
+                .find(|(val, _)| *val == state.glob_type)
+                .map(|(_, name)| *name)
+                .unwrap_or("Float");
+            egui::ComboBox::from_id_salt("glob_type")
+                .selected_text(cur_lbl)
+                .show_ui(ui, |ui| {
+                    for &(val, name) in &GLOB_TYPES {
+                        ui.selectable_value(&mut state.glob_type, val, name);
+                    }
+                });
+            ui.label("Current Value:");
+            ui.add(egui::DragValue::new(&mut state.glob_val).speed(0.1));
+        });
+    });
+}
+
+fn draw_gmst_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Game Setting Value");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            if state.edid.starts_with('s') || state.edid.starts_with('S') {
+                ui.label("String Setting:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut state.gmst_val_str)
+                        .desired_width(ui.available_width() - 20.0),
+                );
+            } else if state.edid.starts_with('i') || state.edid.starts_with('b') {
+                ui.label("Integer / Flag Value:");
+                ui.add(egui::DragValue::new(&mut state.gmst_val_num).speed(1.0));
+            } else {
+                ui.label("Float Setting:");
+                ui.add(egui::DragValue::new(&mut state.gmst_val_num).speed(0.1));
+            }
+        });
+    });
+}
+
+fn draw_race_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Race Physical Dimensions & Flags");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Male Height:");
+            ui.add(
+                egui::DragValue::new(&mut state.race_male_height)
+                    .speed(0.01)
+                    .range(0.1..=10.0),
+            );
+            ui.label("Female Height:");
+            ui.add(
+                egui::DragValue::new(&mut state.race_female_height)
+                    .speed(0.01)
+                    .range(0.1..=10.0),
+            );
+            ui.label("Male Weight:");
+            ui.add(
+                egui::DragValue::new(&mut state.race_male_weight)
+                    .speed(0.01)
+                    .range(0.1..=10.0),
+            );
+            ui.label("Female Weight:");
+            ui.add(
+                egui::DragValue::new(&mut state.race_female_weight)
+                    .speed(0.01)
+                    .range(0.1..=10.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut state.race_playable, "Playable");
+            ui.checkbox(&mut state.race_child, "Child");
+        });
+        ui.add_space(4.0);
+        ui.label("Race Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.race_desc)
+                .desired_rows(4)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+}
+
+fn draw_clmt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Climate Day/Night Cycle & Sky");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Sunrise Begin:");
+            ui.add(egui::DragValue::new(&mut state.clmt_sunrise_begin).range(0..=24));
+            ui.label("Sunrise End:");
+            ui.add(egui::DragValue::new(&mut state.clmt_sunrise_end).range(0..=24));
+            ui.label("Sunset Begin:");
+            ui.add(egui::DragValue::new(&mut state.clmt_sunset_begin).range(0..=24));
+            ui.label("Sunset End:");
+            ui.add(egui::DragValue::new(&mut state.clmt_sunset_end).range(0..=24));
+            ui.label("Volatility:");
+            ui.add(egui::DragValue::new(&mut state.clmt_volatility).range(0..=100));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Sun Texture:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.clmt_sun_texture)
+                    .desired_width(ui.available_width() - 20.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Sun Glare Texture:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.clmt_sun_glare_texture)
+                    .desired_width(ui.available_width() - 20.0),
+            );
         });
     });
 }

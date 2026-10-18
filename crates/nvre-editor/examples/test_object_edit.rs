@@ -172,5 +172,38 @@ fn main() {
     );
     assert_eq!(wthr_state.edid, "NVWastelandClearEast");
 
+    // Test 12: Global Variable (GLOB) 0x00179B16
+    let glob_fid = 0x00179B16;
+    let mut glob_state = ObjectEditorState::default();
+    glob_state.load_from_session(&session, glob_fid, *b"GLOB");
+    println!(
+        "Loaded GLOB 0x{:08X}: EDID='{}', Type={}, Val={}",
+        glob_state.form_id, glob_state.edid, glob_state.glob_type as char, glob_state.glob_val
+    );
+    assert_eq!(glob_state.edid, "EuclidPointerRange");
+
+    // Test 13: Game Setting (GMST) 0x0017B37C
+    let gmst_fid = 0x0017B37C;
+    let mut gmst_state = ObjectEditorState::default();
+    gmst_state.load_from_session(&session, gmst_fid, *b"GMST");
+    println!(
+        "Loaded GMST 0x{:08X}: EDID='{}', StrVal='{}'",
+        gmst_state.form_id, gmst_state.edid, gmst_state.gmst_val_str
+    );
+    assert_eq!(gmst_state.edid, "sPoisonNoWeaponMessage");
+
+    // Test 14: Race (RACE) 0x000987DF
+    let race_fid = 0x000987DF;
+    let mut race_state = ObjectEditorState::default();
+    race_state.load_from_session(&session, race_fid, *b"RACE");
+    println!(
+        "Loaded RACE 0x{:08X}: EDID='{}', MaleH={}, FemaleH={}",
+        race_state.form_id,
+        race_state.edid,
+        race_state.race_male_height,
+        race_state.race_female_height
+    );
+    assert_eq!(race_state.edid, "CaucasianOldAged");
+
     println!("All object editor tests passed successfully!");
 }
