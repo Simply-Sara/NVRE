@@ -409,9 +409,21 @@ fn row_matches(
 }
 
 /// The property grid for the selected reference.
+///
+/// Every subrecord of the selected record is listed, and every field inside it
+/// that has a scalar editor — a number, a string, a flag, an enum — is editable
+/// in place. That is the whole point of the panel: what the schema describes,
+/// the game accepts, and the encoder can write back is editable, so nothing is
+/// hidden behind a raw JSON blob.
+///
+/// A subrecord whose layout cannot round-trip (a repeated struct field, an
+/// unknown signature) is shown read-only with the reason, rather than being
+/// dropped: knowing a field exists and cannot be written is itself the answer
+/// to "why can I not edit this".
 pub fn properties(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<2>>>,
     mut session: ResMut<crate::session::Session>,
+    mut edit: Local<FieldEdit>,
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "properties"), |ui| {
         let Some(fid) = session.selected else {
@@ -420,15 +432,34 @@ pub fn properties(
         };
         // Everything the grid shows is read out before the mutable calls below,
         // so the record's borrow ends here.
-        let Some(rec) = session.selected_record() else {
+        let Some(staged) = session.selected_record() else {
             ui.label(format!("{fid:08X} not found"));
             return;
         };
-        let rec = rec.record();
+        let rec = staged.record();
         let sig_label = rec.sig_str();
+        let rec_sig = rec.header.sig;
         let pos = crate::session::position_of(rec);
         let views = sub_views(&session.schema, rec).unwrap_or_default();
+        // A pending edit is not applied to the record in the document, so the
+        // grid reads the queued bytes to show what the field will become.
+        let pending: std::collections::HashMap<[u8; 4], Vec<u8>> = session
+            .doc
+            .edits_for(fid)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|e| match e {
+                nvre_edit::document::Edit::SetSub { sig, data } => Some((*sig, data.clone())),
+                _ => None,
+            })
+            .collect();
         ui.label(format!("{:08X} {}", fid, sig_label));
+        if session.pending_edits() > 0 {
+            ui.colored_label(
+                egui::Color32::YELLOW,
+                format!("{} unsaved", session.pending_edits()),
+            );
+        }
         ui.separator();
         // Move the selection in game units. The viewport's gizmo will drive the
         // same call once it can drag.
@@ -451,26 +482,249 @@ pub fn properties(
             ui.separator();
         }
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for s in views {
+            for s in &views {
+                // A subrecord's signature is a `String` in the view, and a
+                // `[u8; 4]` everywhere the schema and the document want it. It
+                // is parsed once here and used for every lookup below.
+                let sig = sig4(&s.sig);
+                // The value the grid edits: the queued bytes when a field of this
+                // subrecord is pending, else the record's own.
+                let shown = match pending.get(&sig) {
+                    Some(bytes) => nvre_edit::encode::decoded(
+                        &session.schema,
+                        &rec_sig,
+                        &fnv_esm::Subrecord {
+                            sig,
+                            data: bytes.clone(),
+                            extended: false,
+                        },
+                    )
+                    .unwrap_or_else(|| s.value.clone()),
+                    None => s.value.clone(),
+                };
                 ui.horizontal(|ui| {
-                    ui.label(format!("{} ({})", s.name, s.sig));
-                    if !s.writable {
+                    ui.strong(&s.name);
+                    ui.monospace(&s.sig);
+                    if pending.contains_key(&sig) {
+                        ui.colored_label(egui::Color32::LIGHT_BLUE, "edited");
+                    } else if !s.writable {
                         ui.colored_label(egui::Color32::YELLOW, "read-only");
                     }
                 });
-                let mut text = serde_json::to_string_pretty(&s.value).unwrap_or_default();
-                ui.add(
-                    egui::TextEdit::multiline(&mut text)
-                        .font(egui::TextStyle::Monospace)
-                        .desired_rows(2)
-                        .desired_width(f32::INFINITY),
-                );
-                if let Some(p) = s.problem {
+                if let Some(p) = &s.problem {
                     ui.colored_label(egui::Color32::RED, p);
                 }
+                // One row per field, walked out of the decoded value.
+                let fields = nvre_edit::encode::field_names(&session.schema, &rec_sig, &sig);
+                if fields.is_empty() {
+                    ui.label("(no fields)");
+                }
+                egui::Grid::new(("fields", &s.sig))
+                    .num_columns(2)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        for path in &fields {
+                            let Some(current) = get_path(&shown, path) else {
+                                continue;
+                            };
+                            // A bare scalar subrecord is addressed by the empty
+                            // path, so its row says what the value is rather
+                            // than showing an empty field name.
+                            ui.label(if path.is_empty() { "value" } else { path });
+                            field_editor(ui, &mut session, &mut edit, s, &rec_sig, path, current);
+                            ui.end_row();
+                        }
+                    });
+                ui.add_space(4.0);
             }
         });
     });
+}
+
+/// The value at a dotted path inside a decoded subrecord.
+fn get_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a serde_json::Value> {
+    let mut at = value;
+    for part in path.split('.') {
+        at = at.as_object()?.get(part)?;
+    }
+    Some(at)
+}
+
+/// A subrecord signature as the `[u8; 4]` the schema and the document want.
+///
+/// The property view carries it as a `String`, because that is what the grid
+/// shows. A signature that is not four bytes cannot name a subrecord, so it
+/// decodes to zeros and every lookup below misses — which is the correct
+/// outcome for a value that should never occur.
+fn sig4(s: &str) -> [u8; 4] {
+    let b = s.as_bytes();
+    [
+        b.first().copied().unwrap_or(0),
+        b.get(1).copied().unwrap_or(0),
+        b.get(2).copied().unwrap_or(0),
+        b.get(3).copied().unwrap_or(0),
+    ]
+}
+
+/// One editable field: the widget that fits its value, wired to the session.
+///
+/// The widget is chosen by the JSON type the decoder produced, which is the
+/// schema's own answer: a `f32` decodes to a number, an enum to a string, a
+/// flags object to a map of bit → bool. Editing goes through
+/// [`crate::session::Session::set_selected_field`], which re-encodes the whole
+/// subrecord; a refusal is shown in place and nothing is written.
+fn field_editor(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    edit: &mut FieldEdit,
+    view: &nvre_edit::encode::SubView,
+    rec_sig: &[u8; 4],
+    path: &str,
+    current: &serde_json::Value,
+) {
+    // A field of a read-only subrecord is not editable either: the bytes cannot
+    // be written back, so offering a widget would only mislead.
+    if !view.writable {
+        ui.colored_label(egui::Color32::YELLOW, "read-only");
+        return;
+    }
+    let sig = sig4(&view.sig);
+    let mut changed: Option<serde_json::Value> = None;
+    match current {
+        serde_json::Value::Number(n) => {
+            let mut v = n.as_f64().unwrap_or(0.0);
+            let is_int = n.is_i64() || n.is_u64();
+            let drag = egui::DragValue::new(&mut v).speed(if is_int { 1.0 } else { 0.1 });
+            if ui.add(drag).changed() {
+                changed = Some(if is_int {
+                    serde_json::json!(v.round() as i64)
+                } else {
+                    serde_json::json!(v)
+                });
+            }
+        }
+        serde_json::Value::String(s) => {
+            let mut text = s.clone();
+            if ui
+                .add(egui::TextEdit::singleline(&mut text).desired_width(120.0))
+                .changed()
+            {
+                changed = Some(serde_json::json!(text));
+            }
+        }
+        // A flags field decodes to `{"value": n, "set": [names], "unknown_bits":
+        // hex}`: the raw number, the names of the bits that are on, and any bit
+        // the schema does not name. Each named bit becomes a checkbox, and the
+        // bits the schema does not name are carried through untouched — a field
+        // the editor cannot explain still round-trips byte-exact.
+        serde_json::Value::Object(o) => {
+            let bits = flag_bits(&session.schema, rec_sig, &view.sig);
+            if !bits.is_empty() {
+                let raw = o.get("value").and_then(|v| v.as_u64()).unwrap_or(0);
+                let unknown = o
+                    .get("unknown_bits")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string);
+                let mut next = raw;
+                let mut touched = false;
+                for (bit, name) in &bits {
+                    let on = next & (1 << bit) != 0;
+                    let mut want = on;
+                    if ui.checkbox(&mut want, name).changed() {
+                        touched = true;
+                        if want {
+                            next |= 1 << bit;
+                        } else {
+                            next &= !(1 << bit);
+                        }
+                    }
+                }
+                // The named bits are re-derived from the number, so the set list
+                // cannot disagree with it. A bit that is on but unnamed is not
+                // lost: it is preserved in `unknown_bits`.
+                if touched {
+                    let set: Vec<&str> = bits
+                        .iter()
+                        .filter(|(bit, _)| next & (1 << bit) != 0)
+                        .map(|(_, name)| name.as_str())
+                        .collect();
+                    let named_mask: u64 = bits.iter().fold(0, |m, (bit, _)| m | (1 << bit));
+                    let unexplained = next & !named_mask;
+                    let mut obj = serde_json::Map::new();
+                    obj.insert("value".into(), serde_json::json!(next));
+                    obj.insert("set".into(), serde_json::json!(set));
+                    if unexplained != 0 {
+                        obj.insert(
+                            "unknown_bits".into(),
+                            serde_json::json!(format!("{unexplained:X}")),
+                        );
+                    } else if unknown.is_some() {
+                        // Every bit is now explained: the unknown-bits entry would
+                        // be stale, so it is dropped rather than re-encoded.
+                        obj.insert("unknown_bits".into(), serde_json::json!("0x0"));
+                    }
+                    changed = Some(serde_json::Value::Object(obj));
+                }
+            } else {
+                ui.monospace("(object)");
+            }
+        }
+        serde_json::Value::Bool(b) => {
+            let mut next = *b;
+            if ui.checkbox(&mut next, "").changed() {
+                changed = Some(serde_json::json!(next));
+            }
+        }
+        // Arrays and null have no single-value widget: an array's length is
+        // part of its encoding, so editing one element in place would silently
+        // drop the rest. Shown as text, and the subrecord's raw JSON stays
+        // available in the value below.
+        other => {
+            ui.monospace(match other {
+                serde_json::Value::Array(_) => "(list)",
+                serde_json::Value::Null => "(none)",
+                _ => "",
+            });
+        }
+    }
+    if let Some(value) = changed {
+        edit.last = Some((sig, path.to_string()));
+        match session.set_selected_field(&sig, path, value) {
+            Ok(()) => {}
+            Err(e) => edit.error = Some(e),
+        }
+    }
+}
+
+/// The bits a subrecord's schema names, as `(bit, name)` in bit order.
+///
+/// The decoder emits a flags field as `{"value": n, "set": [names], ...}` and
+/// drops the bit numbers, so the only place they exist is the schema's
+/// `{"flags": prim, "bits": {...}}` table. Reading them back from there is what
+/// makes a checkbox write the right bit: guessing a bit from a name's position
+/// would silently corrupt every flags field whose bits are not declared in
+/// ascending order from zero.
+fn flag_bits(schema: &fnv_esm::Schema, rec_sig: &[u8; 4], sub_sig: &str) -> Vec<(u32, String)> {
+    let Some(def) = schema.lookup(rec_sig, &sig4(sub_sig)) else {
+        return Vec::new();
+    };
+    match schema.resolve(&def.ty) {
+        fnv_esm::schema::TypeDef::Flags { bits, .. } => bits.clone(),
+        _ => Vec::new(),
+    }
+}
+
+/// The property grid's own state: the last field touched, and why it failed.
+///
+/// A `Local` rather than a resource because it belongs to one panel's window:
+/// the grid is the only thing that writes it, and a per-panel `Local` is what
+/// keeps the panels' widget state apart. Public because a `Local<T>` parameter
+/// makes `T` part of the system's signature, which the app registering the
+/// system has to name (the same reason [`crate::viewport::ClickState`] is).
+#[derive(Default)]
+pub struct FieldEdit {
+    last: Option<([u8; 4], String)>,
+    error: Option<String>,
 }
 
 /// The place palette: pick a base object and put it in the open cell.

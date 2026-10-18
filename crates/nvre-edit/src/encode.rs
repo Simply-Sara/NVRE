@@ -654,36 +654,57 @@ pub fn roundtrips(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) 
 }
 
 /// Names of the fields of a subrecord's layout, for the property grid.
+///
+/// A struct contributes its own field names; a bare scalar contributes the empty
+/// string, which is the path of the subrecord's own value. Without that, a
+/// scalar subrecord — `XOWN` (owner), `XSCL` (scale), `XRDS` (radius) — has no
+/// rows at all, and the one field it has cannot be edited.
+///
+/// A nested struct contributes its **path**: `position.x`, not `x`. Flattening a
+/// nested struct into bare names would leave the paths unaddressable — a
+/// reference's position and rotation are the most-edited fields in the editor,
+/// and `DATA`'s are two structs deep.
 pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec<String> {
     let Some(def) = schema.lookup(rec_sig, sub_sig) else {
         return Vec::new();
     };
-    fn walk(schema: &Schema, t: &TypeDef, out: &mut Vec<String>) {
+    fn walk(schema: &Schema, t: &TypeDef, prefix: &str, out: &mut Vec<String>) {
         match schema.resolve(t) {
             TypeDef::Struct(fields) => {
                 for f in fields {
-                    out.push(f.name.clone());
-                    walk(schema, &f.ty, out);
+                    let path = if prefix.is_empty() {
+                        f.name.clone()
+                    } else {
+                        format!("{prefix}.{}", f.name)
+                    };
+                    out.push(path.clone());
+                    walk(schema, &f.ty, &path, out);
                 }
             }
-            TypeDef::Array { elem, .. } => walk(schema, elem, out),
+            TypeDef::Array { elem, .. } => walk(schema, elem, prefix, out),
             TypeDef::Union(variants) => {
                 for (_, vt) in variants {
-                    walk(schema, vt, out);
+                    walk(schema, vt, prefix, out);
                 }
             }
             TypeDef::ValueUnion { variants, .. } => {
                 for vt in variants {
-                    walk(schema, vt, out);
+                    walk(schema, vt, prefix, out);
                 }
             }
             _ => {}
         }
     }
     let mut out = Vec::new();
-    walk(schema, &def.ty, &mut out);
+    walk(schema, &def.ty, "", &mut out);
     out.sort();
     out.dedup();
+    // A bare scalar (or an opaque `bytes`) has no inner fields, so the whole
+    // subrecord is the field. The empty path addresses the value itself, which
+    // `set_path` and the encoder both treat as the whole subrecord.
+    if out.is_empty() {
+        out.push(String::new());
+    }
     out
 }
 

@@ -430,6 +430,61 @@ impl Session {
         }
     }
 
+    /// Set one field of one subrecord on the selected reference.
+    ///
+    /// `path` is the decoded field's path within the subrecord — `"level"` for a
+    /// struct's own field, `"position.x"` for a nested one, and the empty string
+    /// for a bare scalar subrecord whose value *is* the field. Those are the
+    /// paths [`nvre_edit::encode::field_names`] returns, which is what the
+    /// property grid addresses a row by.
+    ///
+    /// The whole subrecord is decoded, the field is replaced, and the result is
+    /// re-encoded. That is the only safe route: a subrecord is a byte layout,
+    /// and writing one field in place means re-deriving every other byte from
+    /// the same decode, so the encoder — not the editor — decides what the
+    /// field's neighbours look like.
+    ///
+    /// Returns `Err` with what went wrong rather than writing anything: a value
+    /// the layout rejects (a `300` in a `u8`, a flag the schema does not name)
+    /// is reported, and the queued edit is left alone.
+    pub fn set_selected_field(
+        &mut self,
+        sig: &[u8; 4],
+        path: &str,
+        value: serde_json::Value,
+    ) -> Result<(), String> {
+        let Some(fid) = self.selected else {
+            return Err("nothing selected".into());
+        };
+        // A staged record is not in the plugin yet, so its subrecords are read
+        // from the pending copy rather than from the document.
+        let rec_sig = {
+            let Some(rec) = self.selected_record() else {
+                return Err(format!("{fid:08X} not found"));
+            };
+            rec.record().header.sig
+        };
+        let subs = {
+            let Some(rec) = self.selected_record() else {
+                return Err(format!("{fid:08X} not found"));
+            };
+            rec.record().subrecords().map_err(|e| e.to_string())?
+        };
+        let Some(sub) = subs.iter().find(|s| &s.sig == sig) else {
+            return Err(format!("{fid:08X} has no {}", fnv_util::tag_str(sig)));
+        };
+        let mut decoded = nvre_edit::encode::decoded(&self.schema, &rec_sig, sub)
+            .ok_or_else(|| format!("{} does not decode", fnv_util::tag_str(sig)))?;
+        set_path(&mut decoded, path, value)?;
+        let bytes = nvre_edit::encode::encode_sub(&self.schema, &rec_sig, sig, &decoded)
+            .map_err(|e| e.to_string())?;
+        // A staged record has FormID 0 until the save; the edit has to reach the
+        // staged copy, which is addressed by that same placeholder.
+        self.doc.set_sub(fid, sig, bytes);
+        self.status = format!("set {}.{} on {fid:08X}", fnv_util::tag_str(sig), path);
+        Ok(())
+    }
+
     /// Queue the selected reference for deletion.
     pub fn delete_selected(&mut self) {
         if let Some(fid) = self.selected.take() {
@@ -729,6 +784,49 @@ impl RefDetails {
 /// no columns to resolve either.
 static EMPTY_DETAILS: std::sync::LazyLock<RefDetails> =
     std::sync::LazyLock::new(RefDetails::default);
+
+/// Set the field at `path` inside a decoded subrecord value, in place.
+///
+/// `path` is dot-separated (`"position.x"`) and indexes into the decoded JSON
+/// object, so it works for any nesting the schema produces. The empty path
+/// replaces the whole value, which is how a bare scalar subrecord — `XOWN`,
+/// `XSCL` — is addressed: it has no inner fields, so the subrecord *is* the
+/// field.
+///
+/// A path that names no existing field is refused: creating one would add a key
+/// the layout does not declare, which the encoder rejects anyway — better to say
+/// so here, where the message can name the field.
+fn set_path(
+    value: &mut serde_json::Value,
+    path: &str,
+    new: serde_json::Value,
+) -> Result<(), String> {
+    // A bare scalar subrecord is addressed by the empty path: it has no inner
+    // fields, so the subrecord's own value is the field.
+    if path.is_empty() {
+        *value = new;
+        return Ok(());
+    }
+    let mut at = value;
+    let mut parts = path.split('.').peekable();
+    while let Some(part) = parts.next() {
+        let last = parts.peek().is_none();
+        let obj = at
+            .as_object_mut()
+            .ok_or_else(|| format!("{part} is not a field"))?;
+        if last {
+            if !obj.contains_key(part) {
+                return Err(format!("no field {part:?} in this subrecord"));
+            }
+            obj.insert(part.to_string(), new);
+            return Ok(());
+        }
+        at = obj
+            .get_mut(part)
+            .ok_or_else(|| format!("no field {part:?} in this subrecord"))?;
+    }
+    Err("empty field path".into())
+}
 
 /// A reference's position and rotation from its DATA subrecord.
 ///
