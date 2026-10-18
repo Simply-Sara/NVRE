@@ -156,14 +156,25 @@ pub fn cells(
         if filters.cell_scope != CellScope::Interiors {
             ui.horizontal(|ui| {
                 ui.label("Objects:");
-                for (r, label) in [(0, "1x1"), (1, "3x3"), (2, "5x5 (Zone)"), (3, "7x7")] {
-                    if ui
-                        .selectable_label(filters.exterior_radius == r, label)
-                        .clicked()
-                    {
-                        filters.exterior_radius = r;
-                    }
-                }
+                let label = match filters.exterior_radius {
+                    0 => "1x1 (Cell only)",
+                    1 => "3x3",
+                    2 => "5x5 (Zone)",
+                    3 => "7x7",
+                    4 => "9x9",
+                    -1 => "All (Worldspace)",
+                    _ => "Custom",
+                };
+                egui::ComboBox::from_id_salt("objects_radius")
+                    .selected_text(label)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut filters.exterior_radius, 0, "1x1 (Cell only)");
+                        ui.selectable_value(&mut filters.exterior_radius, 1, "3x3");
+                        ui.selectable_value(&mut filters.exterior_radius, 2, "5x5 (Zone)");
+                        ui.selectable_value(&mut filters.exterior_radius, 3, "7x7");
+                        ui.selectable_value(&mut filters.exterior_radius, 4, "9x9");
+                        ui.selectable_value(&mut filters.exterior_radius, -1, "All (Worldspace)");
+                    });
                 ui.separator();
                 ui.checkbox(&mut filters.full_terrain, "Full landscape");
             });

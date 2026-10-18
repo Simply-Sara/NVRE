@@ -104,7 +104,7 @@ pub fn spawn_viewport(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
         Projection::Perspective(PerspectiveProjection {
-            far: 400_000.0,
+            far: 1_500_000.0,
             near: 1.0,
             ..default()
         }),

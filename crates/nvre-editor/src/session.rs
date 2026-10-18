@@ -34,6 +34,9 @@ pub struct Session {
     /// The cached reference list, and the cell it was built for.
     refs: Vec<RefRow>,
     refs_cell: Option<u32>,
+    /// Cached exterior grid references, and (cell, radius) they were built for.
+    exterior_refs: Vec<RefRow>,
+    exterior_refs_key: Option<(u32, i32)>,
     /// Base FormID → model path, resolved once per base object.
     models: HashMap<u32, Option<String>>,
     /// The references table's resolved columns, and the cell they were built for.
@@ -106,6 +109,8 @@ impl Session {
             placed_index: 0,
             refs: Vec::new(),
             refs_cell: None,
+            exterior_refs: Vec::new(),
+            exterior_refs_key: None,
             models: HashMap::new(),
             details: RefDetails::default(),
             details_cell: None,
@@ -339,37 +344,54 @@ impl Session {
     }
 
     /// Collect references for the active cell and its exterior grid neighbors within `radius`.
-    pub fn exterior_grid_refs(&mut self, radius: i32) -> Vec<RefRow> {
+    pub fn exterior_grid_refs(&mut self, radius: i32) -> &[RefRow] {
         let Some(cell) = self.cell else {
-            return Vec::new();
+            return &[];
         };
+        if self.exterior_refs_key == Some((cell, radius)) {
+            return &self.exterior_refs;
+        }
+
         let Some(c) = self.index.cells.get(&cell) else {
-            return Vec::new();
+            return &[];
         };
         let (Some(w), Some(g)) = (c.world, c.grid) else {
-            return self.cell_refs().to_vec();
+            return self.cell_refs();
         };
-        if radius <= 0 {
-            return self.cell_refs().to_vec();
+        if radius == 0 {
+            return self.cell_refs();
         }
         let Some(ws) = self.index.worldspaces.get(&w).cloned() else {
-            return self.cell_refs().to_vec();
+            return self.cell_refs();
         };
 
         let mut all_rows = Vec::new();
-        for dx in -radius..=radius {
-            for dy in -radius..=radius {
-                let coord = (g.0 + dx, g.1 + dy);
-                if let Some(&cid) = ws.grid.get(&coord) {
-                    if cid == cell {
-                        all_rows.extend(self.cell_refs().iter().cloned());
-                    } else {
-                        all_rows.extend(self.build_cell_refs(cid));
+        if radius < 0 {
+            // "All" / Whole Worldspace: load references for all cells in the worldspace.
+            for &cid in ws.grid.values() {
+                if cid == cell {
+                    all_rows.extend(self.cell_refs().iter().cloned());
+                } else {
+                    all_rows.extend(self.build_cell_refs(cid));
+                }
+            }
+        } else {
+            for dx in -radius..=radius {
+                for dy in -radius..=radius {
+                    let coord = (g.0 + dx, g.1 + dy);
+                    if let Some(&cid) = ws.grid.get(&coord) {
+                        if cid == cell {
+                            all_rows.extend(self.cell_refs().iter().cloned());
+                        } else {
+                            all_rows.extend(self.build_cell_refs(cid));
+                        }
                     }
                 }
             }
         }
-        all_rows
+        self.exterior_refs = all_rows;
+        self.exterior_refs_key = Some((cell, radius));
+        &self.exterior_refs
     }
 
     /// The references table's resolved columns, for the open cell.
@@ -513,6 +535,8 @@ impl Session {
     pub fn open_cell(&mut self, cell: u32) {
         self.refs.clear();
         self.refs_cell = None;
+        self.exterior_refs.clear();
+        self.exterior_refs_key = None;
         // The table's resolved columns are per-cell too: a different cell's
         // owners are different records, so the old answers do not apply.
         self.details = RefDetails::default();
@@ -636,6 +660,7 @@ impl Session {
             self.doc.delete_record(fid);
             self.status = format!("queued {fid:08X} for deletion");
             self.refs_cell = None;
+            self.exterior_refs_key = None;
         }
     }
 
@@ -686,6 +711,7 @@ impl Session {
         self.selected = Some(next);
         self.status = format!("placed {base:08X} at {position:?}");
         self.refs_cell = None;
+        self.exterior_refs_key = None;
     }
 
     /// Move the selected reference to a game position.

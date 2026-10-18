@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (active_refs, dur_grid) = if is_exterior && radius > 0 {
         let t_grid = Instant::now();
-        let grid_refs = session.exterior_grid_refs(radius);
+        let grid_refs = session.exterior_grid_refs(radius).to_vec();
         (grid_refs, t_grid.elapsed())
     } else {
         (cell_refs.clone(), std::time::Duration::ZERO)

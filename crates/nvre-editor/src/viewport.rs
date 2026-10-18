@@ -103,6 +103,8 @@ pub struct Spawned {
     pub full_terrain: bool,
     pub cell: Option<u32>,
     pub radius: i32,
+    /// Whether base object model paths have been batch-resolved for the current cell/radius.
+    pub bases_resolved: bool,
     /// Cached base FormID -> model path for the current cell / zone.
     pub model_paths: HashMap<u32, Option<String>>,
     /// Models that have been loaded into ModelCtx.
@@ -170,7 +172,7 @@ pub fn orbit_input(
         orbit.pitch = (orbit.pitch - move_by.y * 0.005).clamp(-1.55, 1.55);
     }
     for w in wheel.read() {
-        orbit.distance = (orbit.distance * (1.0 - w.y * 0.1)).clamp(20.0, 200_000.0);
+        orbit.distance = (orbit.distance * (1.0 - w.y * 0.1)).clamp(20.0, 1_500_000.0);
     }
 }
 
@@ -195,7 +197,11 @@ pub fn draw_cell(
         )
     };
     let radius = if is_exterior {
-        filters.exterior_radius.clamp(0, 5)
+        if filters.exterior_radius < 0 {
+            -1
+        } else {
+            filters.exterior_radius.clamp(0, 10)
+        }
     } else {
         0
     };
@@ -207,6 +213,7 @@ pub fn draw_cell(
         }
         spawned.failed.clear();
         spawned.model_paths.clear();
+        spawned.bases_resolved = false;
         spawned.cell = Some(cell);
         spawned.radius = radius;
         // And look at the new cell: the camera's target stays where it was, so
@@ -220,6 +227,7 @@ pub fn draw_cell(
                     1 => 3500.0,
                     2 => 5500.0,
                     3 => 8000.0,
+                    -1 => 25000.0,
                     _ => 12000.0,
                 };
                 (d, -0.5)
@@ -238,10 +246,14 @@ pub fn draw_cell(
     // Terrain management:
     // Terrain is persistent across cells within the same worldspace.
     // It only rebuilds when switching worldspaces, when full_terrain toggles,
-    // or when switching between interior and exterior.
+    // when radius changes in local mode, or when switching between interior and exterior.
     let needs_terrain_rebuild = match (world_opt, spawned.terrain_world) {
         (None, Some(_)) => true, // moved to interior: clear terrain
-        (Some(w), Some(tw)) => w != tw || spawned.full_terrain != filters.full_terrain,
+        (Some(w), Some(tw)) => {
+            w != tw
+                || spawned.full_terrain != filters.full_terrain
+                || (!filters.full_terrain && spawned.radius != radius)
+        }
         (Some(_), None) => true, // opened exterior cell: spawn terrain
         (None, None) => false,
     };
@@ -267,90 +279,90 @@ pub fn draw_cell(
         }
     }
     let mut counts = SkipCounts::default();
-    // Models are loaded in batches up to 100 ms per frame.
-    const FRAME_BUDGET: std::time::Duration = std::time::Duration::from_millis(100);
+    // Models are loaded in batches up to the frame budget.
+    let frame_budget = if radius < 0 {
+        std::time::Duration::from_millis(250)
+    } else {
+        std::time::Duration::from_millis(100)
+    };
     let t = std::time::Instant::now();
     let mut spawned_now = 0usize;
     let trace = std::env::var("NVRE_TRACE").is_ok();
-    let refs = if is_exterior && radius > 0 {
-        session.exterior_grid_refs(radius)
+    let refs = if is_exterior && radius != 0 {
+        session.exterior_grid_refs(radius).to_vec()
     } else {
         session.cell_refs().to_vec()
     };
     // Resolve missing base objects' model paths in one batch.
     // Cached in `spawned.model_paths` so subsequent frames don't re-resolve them.
-    let mut missing_bases: Vec<u32> = refs
-        .iter()
-        .filter(|r| {
-            !spawned.refs.contains_key(&r.form_id)
-                && !spawned.failed.contains(&r.form_id)
-                && r.position.is_some()
-        })
-        .filter_map(|r| r.base.as_deref().and_then(parse_formid))
-        .filter(|base| !spawned.model_paths.contains_key(base))
-        .collect();
-    missing_bases.sort_unstable();
-    missing_bases.dedup();
-
-    if !missing_bases.is_empty() {
-        let t_paths = std::time::Instant::now();
-        let paths = session.model_paths_for(&missing_bases);
-        if trace {
-            bevy::log::info!(
-                "draw_cell: resolved {} unique base model paths in {:?}",
-                missing_bases.len(),
-                t_paths.elapsed()
-            );
-        }
-        for (base, path) in missing_bases.iter().zip(paths) {
-            spawned.model_paths.insert(*base, path);
-        }
-
-        // Multithreaded prefetch: kick off background tasks on AsyncComputeTaskPool
-        // across all CPU worker threads to decompress archives in parallel.
-        let to_prefetch: Vec<String> = spawned
-            .model_paths
-            .values()
-            .flatten()
-            .filter(|p| !spawned.loaded_models.contains(&fnv_vfs::normalize(p)))
-            .cloned()
+    if !spawned.bases_resolved {
+        let mut missing_bases: Vec<u32> = refs
+            .iter()
+            .filter(|r| r.position.is_some())
+            .filter_map(|r| r.base.as_deref().and_then(parse_formid))
+            .filter(|base| !spawned.model_paths.contains_key(base))
             .collect();
-        if !to_prefetch.is_empty() {
-            let pool = AsyncComputeTaskPool::get();
-            let chunk_size = (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
-            for chunk in to_prefetch.chunks(chunk_size) {
-                let chunk = chunk.to_vec();
-                let game_data = models.data.clone();
-                pool.spawn(async move {
-                    for p in chunk {
-                        let _ = game_data.read(&p);
-                    }
-                })
-                .detach();
+        missing_bases.sort_unstable();
+        missing_bases.dedup();
+
+        if !missing_bases.is_empty() {
+            let t_paths = std::time::Instant::now();
+            let paths = session.model_paths_for(&missing_bases);
+            if trace {
+                bevy::log::info!(
+                    "draw_cell: resolved {} unique base model paths in {:?}",
+                    missing_bases.len(),
+                    t_paths.elapsed()
+                );
+            }
+            for (base, path) in missing_bases.iter().zip(paths) {
+                spawned.model_paths.insert(*base, path);
+            }
+
+            // Multithreaded prefetch: kick off background tasks on AsyncComputeTaskPool
+            // across all CPU worker threads to decompress archives in parallel.
+            let to_prefetch: Vec<String> = spawned
+                .model_paths
+                .values()
+                .flatten()
+                .filter(|p| !spawned.loaded_models.contains(&fnv_vfs::normalize(p)))
+                .cloned()
+                .collect();
+            if !to_prefetch.is_empty() {
+                let pool = AsyncComputeTaskPool::get();
+                let chunk_size =
+                    (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
+                for chunk in to_prefetch.chunks(chunk_size) {
+                    let chunk = chunk.to_vec();
+                    let game_data = models.data.clone();
+                    pool.spawn(async move {
+                        for p in chunk {
+                            let _ = game_data.read(&p);
+                        }
+                    })
+                    .detach();
+                }
             }
         }
+        spawned.bases_resolved = true;
     }
 
     // Identify unique models that still need to be loaded into ModelCache.
+    // Query directly from unique model_paths with O(1) set check instead of scanning all refs.
     let mut missing_models: Vec<String> = Vec::new();
-    for r in &refs {
-        if spawned.refs.contains_key(&r.form_id) || spawned.failed.contains(&r.form_id) {
-            continue;
-        }
-        let Some(base_fid) = r.base.as_deref().and_then(parse_formid) else {
-            continue;
-        };
-        if let Some(Some(path)) = spawned.model_paths.get(&base_fid) {
-            let key = fnv_vfs::normalize(path);
-            if !spawned.loaded_models.contains(&key) && !missing_models.contains(path) {
-                missing_models.push(path.clone());
-            }
+    let mut seen_models: HashSet<&str> = HashSet::new();
+    for path in spawned.model_paths.values().flatten() {
+        let key = fnv_vfs::normalize(path);
+        if !spawned.loaded_models.contains(&key) && seen_models.insert(path.as_str()) {
+            missing_models.push(path.clone());
         }
     }
 
-    // Load models in batches up to the frame budget.
+    // Load models in batches up to the frame budget. Always load at least 1 model per frame.
+    let t_models = std::time::Instant::now();
+    let mut loaded_any = false;
     for path in missing_models {
-        if t.elapsed() >= FRAME_BUDGET {
+        if loaded_any && t_models.elapsed() >= frame_budget {
             break;
         }
         let key = fnv_vfs::normalize(&path);
@@ -364,6 +376,7 @@ pub fn draw_cell(
             // Record failure so it's not repeatedly attempted
             spawned.loaded_models.insert(key);
         }
+        loaded_any = true;
     }
 
     // Spawn all references whose model is now in cache.
@@ -699,7 +712,7 @@ fn spawn_worldspace_terrain(
     let mut mat_cache: HashMap<String, Handle<nvf_assets::nif_material::NifMaterial>> =
         HashMap::new();
 
-    let cells_to_load: Vec<((i32, i32), u32)> = if full_terrain {
+    let cells_to_load: Vec<((i32, i32), u32)> = if full_terrain || local_radius < 0 {
         // Load the landscape for the whole worldspace.
         ws.grid
             .iter()
