@@ -16,7 +16,9 @@ pub struct Session {
     /// The plugin being edited.
     pub doc: Document,
     /// The load order the plugin was opened in (masters first).
-    pub plugins: Vec<fnv_esm::Plugin>,
+    pub plugins: &'static [fnv_esm::Plugin],
+    /// The load order index, built once at startup.
+    pub lo: LoadOrder<'static>,
     /// The ESM record schema.
     pub schema: Schema,
     /// The world index: which reference is in which cell.
@@ -48,6 +50,7 @@ pub struct Session {
     deleted: Vec<u32>,
     /// Status line for the UI.
     pub status: String,
+    persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>>,
 }
 
 impl Session {
@@ -73,12 +76,28 @@ impl Session {
         if !plugins.iter().any(|p| p.name.eq_ignore_ascii_case(&own)) {
             plugins.push(fnv_esm::Plugin::open(path).map_err(|e| format!("{own}: {e}"))?);
         }
-        let lo = LoadOrder::new(&plugins).map_err(|e| e.to_string())?;
+        let leaked_plugins: &'static [fnv_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
+        let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
         let index = fnv_world::WorldIndex::build(&lo, &schema);
+
+        let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
+        for (&w_fid, ws) in &index.worldspaces {
+            if let Some(pc_id) = ws.persistent_cell {
+                if let Some(pc) = index.cells.get(&pc_id) {
+                    for &r in &pc.refs {
+                        if let Some(p) = fnv_world::placed::placement(&lo, &schema, r) {
+                            let g = fnv_world::cell_of(p.position[0], p.position[1]);
+                            persistent_by_grid.entry((w_fid, g)).or_default().push(r);
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(Session {
             doc,
-            plugins,
+            plugins: leaked_plugins,
+            lo,
             schema,
             index,
             masters,
@@ -94,6 +113,7 @@ impl Session {
             palette_filter: String::new(),
             deleted: Vec::new(),
             status: String::new(),
+            persistent_by_grid,
         })
     }
 
@@ -102,9 +122,9 @@ impl Session {
         self.doc.plugin()
     }
 
-    /// The load order, rebuilt on demand (cheap enough for a UI's frame budget).
-    pub fn load_order(&self) -> Result<LoadOrder<'_>, String> {
-        LoadOrder::new(&self.plugins).map_err(|e| e.to_string())
+    /// The load order, pre-built at session startup (zero cost lookup).
+    pub fn load_order(&self) -> Result<&LoadOrder<'static>, String> {
+        Ok(&self.lo)
     }
 
     /// The model a base object's reference is drawn with, cached.
@@ -142,7 +162,7 @@ impl Session {
                     missing
                         .iter()
                         .map(|&b| {
-                            fnv_world::placed::base_object(&lo, &self.schema, b)
+                            fnv_world::placed::base_object(lo, &self.schema, b)
                                 .and_then(|o| o.world_model_path().or_else(|| o.model_path()))
                         })
                         .collect::<Vec<_>>(),
@@ -169,7 +189,7 @@ impl Session {
     /// A base object's model path, with no caching.
     fn resolve_model_path(&mut self, base: u32) -> Option<String> {
         let lo = self.load_order().ok()?;
-        let b = fnv_world::placed::base_object(&lo, &self.schema, base)?;
+        let b = fnv_world::placed::base_object(lo, &self.schema, base)?;
         b.world_model_path().or_else(|| b.model_path())
     }
 
@@ -189,7 +209,7 @@ impl Session {
         if self.palette_filter != filter || self.palette_groups.is_empty() {
             let found = (|| {
                 let lo = self.load_order().ok()?;
-                let objects = load_order_objects(&lo, filter);
+                let objects = load_order_objects(lo, filter);
                 // Grouped by the record type, which is the category. One
                 // load-order lookup per distinct type rather than per object.
                 let mut types: HashMap<[u8; 4], (String, String)> = HashMap::new();
@@ -318,6 +338,40 @@ impl Session {
         self.build_cell_refs(cell)
     }
 
+    /// Collect references for the active cell and its exterior grid neighbors within `radius`.
+    pub fn exterior_grid_refs(&mut self, radius: i32) -> Vec<RefRow> {
+        let Some(cell) = self.cell else {
+            return Vec::new();
+        };
+        let Some(c) = self.index.cells.get(&cell) else {
+            return Vec::new();
+        };
+        let (Some(w), Some(g)) = (c.world, c.grid) else {
+            return self.cell_refs().to_vec();
+        };
+        if radius <= 0 {
+            return self.cell_refs().to_vec();
+        }
+        let Some(ws) = self.index.worldspaces.get(&w).cloned() else {
+            return self.cell_refs().to_vec();
+        };
+
+        let mut all_rows = Vec::new();
+        for dx in -radius..=radius {
+            for dy in -radius..=radius {
+                let coord = (g.0 + dx, g.1 + dy);
+                if let Some(&cid) = ws.grid.get(&coord) {
+                    if cid == cell {
+                        all_rows.extend(self.cell_refs().iter().cloned());
+                    } else {
+                        all_rows.extend(self.build_cell_refs(cid));
+                    }
+                }
+            }
+        }
+        all_rows
+    }
+
     /// The references table's resolved columns, for the open cell.
     ///
     /// An owner and a base object's type both need the load order, which costs
@@ -348,7 +402,7 @@ impl Session {
         for r in &rows {
             if let Some(owner) = r.owner {
                 owners.entry(owner).or_insert_with(|| {
-                    fnv_world::fields::winner(&lo, owner)
+                    fnv_world::fields::winner(lo, owner)
                         .and_then(|(_, rec)| nvre_edit::document::edid_of(rec))
                         .unwrap_or_else(|| format!("{owner:08X}"))
                 });
@@ -365,29 +419,22 @@ impl Session {
                 .as_deref()
                 .and_then(|b| u32::from_str_radix(b.strip_prefix("0x")?, 16).ok())
             {
-                types.entry(base).or_insert_with(|| {
-                    fnv_world::fields::winner(&lo, base)
-                        .and_then(|(_, rec)| {
-                            self.schema
-                                .records
-                                .get(&rec.header.sig)
-                                .map(|d| d.name.clone())
-                        })
-                        .unwrap_or_else(|| {
-                            fnv_world::fields::winner(&lo, base)
-                                .map(|(_, rec)| rec.sig_str())
-                                .unwrap_or_default()
-                        })
-                });
-                // And the base's Editor ID, which is what a placed object is
-                // called: a reference's own EDID is set on 5,011 of
-                // FalloutNV's 307,710 REFRs [observed: fnvtool esm survey], so
-                // naming a row by its own would leave 98% of them unnamed.
-                bases.entry(base).or_insert_with(|| {
-                    fnv_world::fields::winner(&lo, base)
-                        .and_then(|(_, rec)| nvre_edit::document::edid_of(rec))
-                        .unwrap_or_else(|| format!("{base:08X}"))
-                });
+                if let Some((_, rec)) = fnv_world::fields::winner(lo, base) {
+                    types.entry(base).or_insert_with(|| {
+                        self.schema
+                            .records
+                            .get(&rec.header.sig)
+                            .map(|d| d.name.clone())
+                            .unwrap_or_else(|| rec.sig_str())
+                    });
+                    // And the base's Editor ID, which is what a placed object is
+                    // called: a reference's own EDID is set on 5,011 of
+                    // FalloutNV's 307,710 REFRs [observed: fnvtool esm survey], so
+                    // naming a row by its own would leave 98% of them unnamed.
+                    bases.entry(base).or_insert_with(|| {
+                        nvre_edit::document::edid_of(rec).unwrap_or_else(|| format!("{base:08X}"))
+                    });
+                }
             }
         }
         RefDetails {
@@ -401,34 +448,65 @@ impl Session {
         let Some(c) = self.index.cells.get(&cell) else {
             return Vec::new();
         };
-        c.refs
+        let mut ref_ids: Vec<u32> = c.refs.clone();
+        if let (Some(w), Some(g)) = (c.world, c.grid) {
+            if let Some(p) = self.persistent_by_grid.get(&(w, g)) {
+                ref_ids.extend(p);
+            }
+        }
+        ref_ids.retain(|fid| !self.deleted.contains(fid));
+
+        let mut rows: Vec<RefRow> = ref_ids
             .iter()
             .filter_map(|&fid| {
-                let e = self.index.refs.get(&fid)?;
-                let rec = self.doc.record(fid)?;
-                // The subrecords are parsed once here and shared by every
-                // column: each reader takes them already parsed, so a row costs
-                // one parse rather than one per field read.
+                let rec = if let Some(r) = self.doc.record(fid) {
+                    r
+                } else if let Ok(lo) = self.load_order() {
+                    let (_, r) = fnv_world::fields::winner(lo, fid)?;
+                    r
+                } else {
+                    return None;
+                };
                 let subs = rec.subrecords().ok()?;
-                // Read once, for both the position and the rotation.
                 let placement = placement_in(&subs);
                 Some(RefRow {
                     form_id: fid,
-                    sig: String::from_utf8_lossy(&e.sig).to_string(),
+                    sig: rec.sig_str(),
                     edid: nvre_edit::document::edid_of(rec),
                     base: nvre_edit::document::value_of(&self.schema, rec, b"NAME")
                         .and_then(|v| v.as_str().map(str::to_string)),
-                    persistent: e.persistent,
+                    persistent: self.index.refs.get(&fid).is_some_and(|e| e.persistent),
                     position: placement.map(|(p, _)| p),
                     rotation: placement.map(|(_, r)| r),
-                    // Both read from the raw subrecords rather than through the
-                    // schema: an owner and a lock are a table column, and the
-                    // load order is not built while the rows are.
+                    scale: scale_in(&subs),
                     owner: formid_in(&subs, b"XOWN"),
                     lock: lock_in(&subs),
                 })
             })
-            .collect()
+            .collect();
+
+        for p in self.doc.inserted() {
+            if p.cell == cell {
+                let rec = &p.record;
+                if let Ok(subs) = rec.subrecords() {
+                    let placement = placement_in(&subs);
+                    rows.push(RefRow {
+                        form_id: 0,
+                        sig: rec.sig_str(),
+                        edid: nvre_edit::document::edid_of(rec),
+                        base: nvre_edit::document::value_of(&self.schema, rec, b"NAME")
+                            .and_then(|v| v.as_str().map(str::to_string)),
+                        persistent: false,
+                        position: placement.map(|(p, _)| p),
+                        rotation: placement.map(|(_, r)| r),
+                        scale: scale_in(&subs),
+                        owner: formid_in(&subs, b"XOWN"),
+                        lock: lock_in(&subs),
+                    });
+                }
+            }
+        }
+        rows
     }
 
     /// Open a cell for editing.
@@ -470,7 +548,7 @@ impl Session {
             return Some(StagedRecord::Saved(r));
         }
         let lo = self.load_order().ok()?;
-        let (_, r) = fnv_world::fields::winner(&lo, fid)?;
+        let (_, r) = fnv_world::fields::winner(lo, fid)?;
         Some(StagedRecord::Saved(r))
     }
 
@@ -480,7 +558,7 @@ impl Session {
             return Some(r.header.sig);
         }
         let lo = self.load_order().ok()?;
-        let (_, r) = fnv_world::fields::winner(&lo, form_id)?;
+        let (_, r) = fnv_world::fields::winner(lo, form_id)?;
         Some(r.header.sig)
     }
 
@@ -557,6 +635,7 @@ impl Session {
             }
             self.doc.delete_record(fid);
             self.status = format!("queued {fid:08X} for deletion");
+            self.refs_cell = None;
         }
     }
 
@@ -606,6 +685,7 @@ impl Session {
             .insert(nvre_edit::document::PendingRecord { cell, record: rec });
         self.selected = Some(next);
         self.status = format!("placed {base:08X} at {position:?}");
+        self.refs_cell = None;
     }
 
     /// Move the selected reference to a game position.
@@ -768,6 +848,8 @@ pub struct RefRow {
     /// rotated object — a door, a piece of furniture, a road — is drawn
     /// axis-aligned, which is most of what "positioned wrong" looks like.
     pub rotation: Option<[f32; 3]>,
+    /// The reference's scale from its XSCL subrecord, when present (default 1.0).
+    pub scale: Option<f32>,
     /// XOWN: who the reference belongs to, as a load-order FormID.
     ///
     /// The FormID rather than a resolved name: the table resolves it once per
@@ -943,6 +1025,15 @@ fn formid_in(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Option<u32> {
         .ok()
         .map(u32::from_le_bytes)?;
     (local != 0).then_some(local)
+}
+
+/// A reference's scale, from its XSCL subrecord.
+///
+/// Defaults to 1.0 when XSCL is absent. When present, XSCL is a 4-byte little-endian float.
+fn scale_in(subs: &[fnv_esm::Subrecord]) -> Option<f32> {
+    let s = subs.iter().find(|s| &s.sig == b"XSCL")?;
+    let bytes: [u8; 4] = s.data.get(..4)?.try_into().ok()?;
+    Some(f32::from_le_bytes(bytes))
 }
 
 /// A reference's lock, from its XLOC subrecord.

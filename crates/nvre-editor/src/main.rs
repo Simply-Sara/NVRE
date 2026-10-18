@@ -59,6 +59,9 @@ struct Args {
     /// appear, the NIF material or its textures are what is failing.
     #[arg(long)]
     flat_material: bool,
+    /// Exterior grid view radius (0 = 1x1, 1 = 3x3, 2 = 5x5 zone, 3 = 7x7).
+    #[arg(long, default_value_t = 2)]
+    radius: i32,
 }
 
 /// Report what the session loaded, without opening a window.
@@ -153,7 +156,10 @@ fn main() {
         .insert_resource(args.clone())
         .insert_resource(nvre_editor::DataDir(args.data.clone()))
         .init_resource::<launcher::Launcher>()
-        .init_resource::<panels::Filters>()
+        .insert_resource(panels::Filters {
+            exterior_radius: args.radius,
+            ..default()
+        })
         .init_resource::<viewport::Spawned>()
         // Inserted at startup, not in `viewport::setup`: the debug panel draws
         // into its own schedule, which can run before that system has inserted

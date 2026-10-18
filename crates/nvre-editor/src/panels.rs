@@ -26,7 +26,7 @@ use nvre_edit::encode::sub_views;
 /// The cell browser's worldspace dropdown lives here too: it is the other thing
 /// the cell window's user types into or picks, and it has to survive the frames
 /// in between for the list to stay filtered.
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct Filters {
     pub cell: String,
     pub place: String,
@@ -44,6 +44,25 @@ pub struct Filters {
     /// Defaults to [`CellScope::Interiors`], which is what GECK's Cell View
     /// opens with.
     pub cell_scope: CellScope,
+    /// How many neighboring exterior cells around the active cell to render in the viewport.
+    /// 0 = 1x1 cell, 1 = 3x3, 2 = 5x5 zone (default, like GECK), 3 = 7x7.
+    pub exterior_radius: i32,
+    /// When true, renders the full worldspace terrain horizon across all surrounding cells.
+    pub full_terrain: bool,
+}
+
+impl Default for Filters {
+    fn default() -> Self {
+        Self {
+            cell: String::new(),
+            place: String::new(),
+            reference: String::new(),
+            reference_type: None,
+            cell_scope: CellScope::default(),
+            exterior_radius: 2,
+            full_terrain: true,
+        }
+    }
 }
 
 /// The root [`egui::Ui`] covering a whole window.
@@ -134,6 +153,21 @@ pub fn cells(
                     );
                 }
             });
+        if filters.cell_scope != CellScope::Interiors {
+            ui.horizontal(|ui| {
+                ui.label("Objects:");
+                for (r, label) in [(0, "1x1"), (1, "3x3"), (2, "5x5 (Zone)"), (3, "7x7")] {
+                    if ui
+                        .selectable_label(filters.exterior_radius == r, label)
+                        .clicked()
+                    {
+                        filters.exterior_radius = r;
+                    }
+                }
+                ui.separator();
+                ui.checkbox(&mut filters.full_terrain, "Full landscape");
+            });
+        }
         let filter = filters.cell.to_lowercase();
         let scope = filters.cell_scope;
         let cells = session.cells(scope);

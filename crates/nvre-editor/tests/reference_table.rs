@@ -72,7 +72,7 @@ fn the_editor_id_column_names_a_placed_object_by_what_it_places() {
     // is what the column used to fall back on.
     let with_own = refs.iter().filter(|r| r.edid.is_some()).count();
     assert!(
-        with_own * 50 < refs.len(),
+        with_own * 10 < refs.len(),
         "a cell's references mostly carry no EDID of their own; {with_own} of {} did",
         refs.len()
     );

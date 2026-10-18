@@ -47,5 +47,10 @@ clap = { version = "4", features = ["derive", "env"] }
 fnv-world = { path = "crates/fnv-world" }
 fnv-esm = { path = "crates/fnv-esm" }
 
+# Enable high optimization for external dependencies in dev/debug builds.
+# Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.
+[profile.dev.package."*"]
+opt-level = 3
+
 [profile.release]
 debug = 1

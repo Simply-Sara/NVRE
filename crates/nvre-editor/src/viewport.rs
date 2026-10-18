@@ -13,11 +13,17 @@
 //! carries the NIF's Z-up-to-Bevin-Y-up rotation; the reference's transform is
 //! composed onto that rather than replacing it.
 
+use bevy::asset::RenderAssetUsages;
 use bevy::ecs::message::MessageReader;
 use bevy::input::mouse::MouseWheel;
+use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
+use bevy::tasks::AsyncComputeTaskPool;
+use fnv_world::land::{
+    land_texture, load_land, Land, LandParts, DEFAULT_DIFFUSE, QUAD_SIDE, SIDE, SPACING,
+};
 use fnv_world::transform::ref_rotation;
-use nvf_assets::SpawnCtx;
+use nvf_assets::model::ModelCtx;
 use std::collections::{HashMap, HashSet};
 
 /// Marks the viewport's orbit camera.
@@ -48,7 +54,7 @@ pub fn bevy_to_game(p: Vec3) -> Vec3 {
 pub fn ref_transform(position: [f32; 3], rotation: [f32; 3], scale: f32) -> Transform {
     let m = Mat3::from_cols_array(&ref_rotation(rotation)).transpose();
     Transform {
-        translation: Vec3::new(position[0], -position[1], position[2]),
+        translation: Vec3::from_array(position),
         rotation: Quat::from_mat3(&m),
         scale: Vec3::splat(scale),
     }
@@ -87,16 +93,25 @@ impl Default for Orbit {
     }
 }
 
-/// Which models have been spawned, so a frame does not respawn them.
+/// Which models and terrain have been spawned, so a frame does not respawn them.
 #[derive(Resource, Default)]
 pub struct Spawned {
     pub refs: HashMap<u32, Entity>,
+    pub terrain: Vec<Entity>,
+    /// Which worldspace the currently spawned terrain belongs to.
+    pub terrain_world: Option<u32>,
+    pub full_terrain: bool,
     pub cell: Option<u32>,
+    pub radius: i32,
+    /// Cached base FormID -> model path for the current cell / zone.
+    pub model_paths: HashMap<u32, Option<String>>,
+    /// Models that have been loaded into ModelCtx.
+    pub loaded_models: HashSet<String>,
     /// References that could not be drawn, so they are not retried every frame.
     failed: HashSet<u32>,
 }
 
-/// Spawn the viewport's light and orbit state.
+/// Spawn the viewport's light, ambient light and orbit state.
 ///
 /// The camera itself is spawned by [`crate::windows::spawn_windows`], which is
 /// what ties it to the viewport window. Spawning a second camera here would
@@ -105,12 +120,17 @@ pub struct Spawned {
 pub fn setup(mut commands: Commands) {
     commands.spawn((
         DirectionalLight {
-            illuminance: 8000.0,
+            illuminance: 12000.0,
             shadow_maps_enabled: false,
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(EulerRot::YXZ, 0.8, -0.9, 0.0)),
     ));
+    commands.insert_resource(GlobalAmbientLight {
+        color: Color::srgb(0.7, 0.75, 0.8),
+        brightness: 800.0,
+        ..default()
+    });
 }
 
 /// Keep the camera where the orbit state says it is.
@@ -159,47 +179,107 @@ pub fn orbit_input(
 /// Only the cell the session has open is drawn; a mod is edited one cell at a
 /// time, and a whole worldspace is far more entities than an editor frame needs.
 pub fn draw_cell(
+    mut commands: Commands,
     mut session: ResMut<crate::session::Session>,
     mut spawned: ResMut<Spawned>,
-    mut models: SpawnCtx,
+    mut models: ModelCtx,
+    filters: Res<crate::panels::Filters>,
 ) {
     let Some(cell) = session.cell else { return };
-    if spawned.cell != Some(cell) {
-        // A different cell: drop what was drawn, and start its failures over.
+    let (is_exterior, world_opt, grid_opt) = {
+        let cell_entry = session.index.cells.get(&cell);
+        (
+            cell_entry.is_some_and(|c| c.grid.is_some()),
+            cell_entry.and_then(|c| c.world),
+            cell_entry.and_then(|c| c.grid),
+        )
+    };
+    let radius = if is_exterior {
+        filters.exterior_radius.clamp(0, 5)
+    } else {
+        0
+    };
+
+    if spawned.cell != Some(cell) || spawned.radius != radius {
+        // A different cell or view radius: drop spawned references.
         for (_, e) in spawned.refs.drain() {
-            models.commands.entity(e).despawn();
+            commands.entity(e).despawn();
         }
         spawned.failed.clear();
+        spawned.model_paths.clear();
         spawned.cell = Some(cell);
+        spawned.radius = radius;
         // And look at the new cell: the camera's target stays where it was, so
         // without this it looks at the last cell's centre and the new one is off
         // screen.
         let refs = session.cell_refs().to_vec();
         if let Some(centre) = cell_centre(&refs) {
-            models.commands.insert_resource(Orbit {
+            let (dist, pitch) = if is_exterior {
+                let d = match radius {
+                    0 => 2000.0,
+                    1 => 3500.0,
+                    2 => 5500.0,
+                    3 => 8000.0,
+                    _ => 12000.0,
+                };
+                (d, -0.5)
+            } else {
+                (Orbit::DEFAULT_DISTANCE, 0.0)
+            };
+            commands.insert_resource(Orbit {
                 target: centre,
-                ..Orbit::default()
+                distance: dist,
+                pitch,
+                yaw: 0.0,
             });
         }
     }
+
+    // Terrain management:
+    // Terrain is persistent across cells within the same worldspace.
+    // It only rebuilds when switching worldspaces, when full_terrain toggles,
+    // or when switching between interior and exterior.
+    let needs_terrain_rebuild = match (world_opt, spawned.terrain_world) {
+        (None, Some(_)) => true, // moved to interior: clear terrain
+        (Some(w), Some(tw)) => w != tw || spawned.full_terrain != filters.full_terrain,
+        (Some(_), None) => true, // opened exterior cell: spawn terrain
+        (None, None) => false,
+    };
+
+    if needs_terrain_rebuild {
+        for e in spawned.terrain.drain(..) {
+            commands.entity(e).despawn();
+        }
+        spawned.terrain_world = world_opt;
+        spawned.full_terrain = filters.full_terrain;
+
+        if let Some(w) = world_opt {
+            spawn_worldspace_terrain(
+                &session,
+                &mut commands,
+                &mut models,
+                &mut spawned,
+                w,
+                grid_opt,
+                filters.full_terrain,
+                radius,
+            );
+        }
+    }
     let mut counts = SkipCounts::default();
-    // Models are loaded a few per frame, not all at once: reading a model out of
-    // a BSA and building its mesh takes tens of milliseconds, so a cell's 155 of
-    // them in one frame blocks the event loop for the better part of a minute —
-    // which is what froze the whole editor, windows included.
-    //
-    // The budget is a time, not a count: one frame loads models until it has
-    // spent this long, so a cell of cheap models fills in a few frames and a cell
-    // of expensive ones still keeps the editor responsive.
-    const FRAME_BUDGET: std::time::Duration = std::time::Duration::from_millis(12);
+    // Models are loaded in batches up to 100 ms per frame.
+    const FRAME_BUDGET: std::time::Duration = std::time::Duration::from_millis(100);
     let t = std::time::Instant::now();
     let mut spawned_now = 0usize;
     let trace = std::env::var("NVRE_TRACE").is_ok();
-    let refs = session.cell_refs().to_vec();
-    // Resolve the whole cell's model paths in one batch, so the load order is
-    // built once rather than once per base object. Only the references still to
-    // be drawn are asked for: the rest are already spawned or have failed.
-    let wanted: Vec<u32> = refs
+    let refs = if is_exterior && radius > 0 {
+        session.exterior_grid_refs(radius)
+    } else {
+        session.cell_refs().to_vec()
+    };
+    // Resolve missing base objects' model paths in one batch.
+    // Cached in `spawned.model_paths` so subsequent frames don't re-resolve them.
+    let mut missing_bases: Vec<u32> = refs
         .iter()
         .filter(|r| {
             !spawned.refs.contains_key(&r.form_id)
@@ -207,27 +287,86 @@ pub fn draw_cell(
                 && r.position.is_some()
         })
         .filter_map(|r| r.base.as_deref().and_then(parse_formid))
+        .filter(|base| !spawned.model_paths.contains_key(base))
         .collect();
-    let t_paths = std::time::Instant::now();
-    let paths = session.model_paths_for(&wanted);
-    if trace {
-        bevy::log::info!(
-            "draw_cell: resolved {} model paths in {:?}",
-            wanted.len(),
-            t_paths.elapsed()
-        );
-    }
-    let mut resolved: HashMap<u32, String> = HashMap::new();
-    for (base, path) in wanted.iter().zip(paths) {
-        if let Some(p) = path {
-            resolved.insert(*base, p);
+    missing_bases.sort_unstable();
+    missing_bases.dedup();
+
+    if !missing_bases.is_empty() {
+        let t_paths = std::time::Instant::now();
+        let paths = session.model_paths_for(&missing_bases);
+        if trace {
+            bevy::log::info!(
+                "draw_cell: resolved {} unique base model paths in {:?}",
+                missing_bases.len(),
+                t_paths.elapsed()
+            );
+        }
+        for (base, path) in missing_bases.iter().zip(paths) {
+            spawned.model_paths.insert(*base, path);
+        }
+
+        // Multithreaded prefetch: kick off background tasks on AsyncComputeTaskPool
+        // across all CPU worker threads to decompress archives in parallel.
+        let to_prefetch: Vec<String> = spawned
+            .model_paths
+            .values()
+            .flatten()
+            .filter(|p| !spawned.loaded_models.contains(&fnv_vfs::normalize(p)))
+            .cloned()
+            .collect();
+        if !to_prefetch.is_empty() {
+            let pool = AsyncComputeTaskPool::get();
+            let chunk_size = (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
+            for chunk in to_prefetch.chunks(chunk_size) {
+                let chunk = chunk.to_vec();
+                let game_data = models.data.clone();
+                pool.spawn(async move {
+                    for p in chunk {
+                        let _ = game_data.read(&p);
+                    }
+                })
+                .detach();
+            }
         }
     }
-    // `spawn_nif` reads and parses the file every time it is called, and a cell
-    // reuses the same handful of models across dozens of references. So each
-    // distinct model is spawned once and its entity cloned for the rest, which
-    // shares the mesh and material assets rather than rebuilding them.
-    let mut spawned_models: HashMap<String, Entity> = HashMap::new();
+
+    // Identify unique models that still need to be loaded into ModelCache.
+    let mut missing_models: Vec<String> = Vec::new();
+    for r in &refs {
+        if spawned.refs.contains_key(&r.form_id) || spawned.failed.contains(&r.form_id) {
+            continue;
+        }
+        let Some(base_fid) = r.base.as_deref().and_then(parse_formid) else {
+            continue;
+        };
+        if let Some(Some(path)) = spawned.model_paths.get(&base_fid) {
+            let key = fnv_vfs::normalize(path);
+            if !spawned.loaded_models.contains(&key) && !missing_models.contains(path) {
+                missing_models.push(path.clone());
+            }
+        }
+    }
+
+    // Load models in batches up to the frame budget.
+    for path in missing_models {
+        if t.elapsed() >= FRAME_BUDGET {
+            break;
+        }
+        let key = fnv_vfs::normalize(&path);
+        let t_model = std::time::Instant::now();
+        if models.model(&path).is_some() {
+            spawned.loaded_models.insert(key);
+            if trace {
+                bevy::log::info!("draw_cell: loaded {} in {:?}", path, t_model.elapsed());
+            }
+        } else {
+            // Record failure so it's not repeatedly attempted
+            spawned.loaded_models.insert(key);
+        }
+    }
+
+    // Spawn all references whose model is now in cache.
     for r in &refs {
         if spawned.refs.contains_key(&r.form_id) {
             continue;
@@ -238,13 +377,6 @@ pub fn draw_cell(
         // does.
         if spawned.failed.contains(&r.form_id) {
             continue;
-        }
-        spawned_now += 1;
-        // Stop once the frame has spent its budget. The first model of a frame is
-        // always allowed through, so a cell with one expensive model still starts
-        // filling in.
-        if spawned_now > 1 && t.elapsed() >= FRAME_BUDGET {
-            break;
         }
         let Some(position) = r.position else {
             counts.no_position += 1;
@@ -262,60 +394,56 @@ pub fn draw_cell(
             spawned.failed.insert(r.form_id);
             continue;
         };
-        let Some(model_path) = resolved.get(&base_fid).cloned() else {
+        let Some(Some(model_path)) = spawned.model_paths.get(&base_fid).cloned() else {
             counts.no_model += 1;
             spawned.failed.insert(r.form_id);
             continue;
         };
-        let t_model = std::time::Instant::now();
-        // One entity per distinct model. A reference whose model is already up
-        // gets a clone of that entity, which shares its mesh and material assets.
-        let root = match spawned_models.get(&model_path) {
-            Some(&existing) => {
-                // Copy the model's components onto a new entity: `clone_and_spawn`
-                // walks the source's components, which is what shares the mesh and
-                // material assets rather than rebuilding them.
-                let clone = models.commands.entity(existing).clone_and_spawn().id();
-                clone
-            }
-            None => {
-                let Ok(report) = models.spawn_nif(&model_path, None) else {
-                    counts.spawn_failed += 1;
-                    spawned.failed.insert(r.form_id);
-                    continue;
-                };
-                let Some(root) = report.root else {
-                    counts.no_root += 1;
-                    spawned.failed.insert(r.form_id);
-                    continue;
-                };
-                if trace {
-                    bevy::log::info!("draw_cell: {model_path} took {:?}", t_model.elapsed());
-                }
-                spawned_models.insert(model_path.clone(), root);
-                root
-            }
+
+        let key = fnv_vfs::normalize(&model_path);
+        // Only spawn if the model has already been loaded into ModelCache.
+        if !spawned.loaded_models.contains(&key) {
+            continue;
+        }
+
+        let Some(model) = models.model(&model_path) else {
+            counts.no_model += 1;
+            spawned.failed.insert(r.form_id);
+            continue;
         };
+
+        spawned_now += 1;
+
         // Composed with the game's own Z-up to Y-up rotation, the way the game's
         // viewer places a reference under its world root. The reference's own
         // rotation goes in too: a door or a road is not axis-aligned in the file,
         // and drawing it as if it were is most of "positioned wrong".
         let rotation = r.rotation.unwrap_or([0.0, 0.0, 0.0]);
-        let t = game_to_bevy() * ref_transform(position, rotation, 1.0);
-        // Queued on the asset layer's own `Commands`: `spawn_nif` spawns the root
-        // through those, so the entity does not exist yet in this system's own
-        // queue and inserting through a separate `Commands` would fail with
-        // "Entity not yet spawned".
-        models.commands.entity(root).insert((
-            Name::new(
-                r.edid
-                    .clone()
-                    .unwrap_or_else(|| format!("{:08X}", r.form_id)),
-            ),
-            RefEntity { form_id: r.form_id },
-            t,
-            Visibility::default(),
-        ));
+        let scale = r.scale.unwrap_or(1.0);
+        let tr = game_to_bevy() * ref_transform(position, rotation, scale);
+        let root = commands
+            .spawn((
+                Name::new(
+                    r.edid
+                        .clone()
+                        .unwrap_or_else(|| format!("{:08X}", r.form_id)),
+                ),
+                RefEntity { form_id: r.form_id },
+                tr,
+                Visibility::default(),
+            ))
+            .id();
+
+        for s in &model.shapes {
+            let m = Mat4::from(s.transform);
+            commands.entity(root).with_child((
+                Mesh3d(s.mesh.clone()),
+                MeshMaterial3d(s.material.clone()),
+                Transform::from_matrix(m),
+                Visibility::default(),
+            ));
+        }
+
         spawned.refs.insert(r.form_id, root);
     }
     // How long a frame spends loading models, and how many it managed. A frame
@@ -537,24 +665,245 @@ fn parse_formid(s: &str) -> Option<u32> {
 /// `ref_transform` applies, so a camera target here lines up with the models
 /// drawn from those positions. A cell's references can be spread widely, so this
 /// is their mean, which puts the camera inside the cell rather than at a corner.
-/// The centre of a cell's references, in Bevy space.
-///
-/// The same swap [`ref_transform`] applies to a model's position, so the camera
-/// looks where the models are drawn: `orbit_camera` works in Bevy space.
-/// The centre of a cell's references, in the space the models are in.
-///
-/// A model is placed as `game_to_bevy() * ref_transform(position)`, which lands a
-/// game position `(x, y, z)` at Bevy `(x, z, y)`. The camera has to target that
-/// same space, or it looks at empty air: a plain `(x, -y, z)` swap here put the
-/// target thousands of units from the models and rotated one axis relative to
-/// them, which is what made a horizontal drag feel mirrored.
+/// The centre of a cell's references, in the space the models are in (Bevy space).
 fn cell_centre(refs: &[crate::session::RefRow]) -> Option<Vec3> {
     let mut sum = Vec3::ZERO;
     let mut n = 0.0;
     for r in refs {
         let Some(p) = r.position else { continue };
-        sum += Vec3::new(p[0], p[2], p[1]);
+        sum += (game_to_bevy() * ref_transform(p, [0.0; 3], 1.0)).translation;
         n += 1.0;
     }
     (n > 0.0).then(|| sum / n)
+}
+
+/// Spawn landscape terrain for the entire worldspace (or wide horizon) around the active cell.
+#[allow(clippy::too_many_arguments)]
+fn spawn_worldspace_terrain(
+    session: &crate::session::Session,
+    commands: &mut Commands,
+    models: &mut ModelCtx,
+    spawned: &mut Spawned,
+    world_id: u32,
+    centre_grid: Option<(i32, i32)>,
+    full_terrain: bool,
+    local_radius: i32,
+) {
+    let Ok(lo) = session.load_order() else {
+        return;
+    };
+    let Some(ws) = session.index.worldspaces.get(&world_id).cloned() else {
+        return;
+    };
+
+    let mut mat_cache: HashMap<String, Handle<nvf_assets::nif_material::NifMaterial>> =
+        HashMap::new();
+
+    let cells_to_load: Vec<((i32, i32), u32)> = if full_terrain {
+        // Load the landscape for the whole worldspace.
+        ws.grid
+            .iter()
+            .filter_map(|(&coord, &cid)| {
+                let land_id = session.index.cells.get(&cid)?.land?;
+                Some((coord, land_id))
+            })
+            .collect()
+    } else {
+        let (cx, cy) = centre_grid.unwrap_or((0, 0));
+        let mut list = Vec::new();
+        for dx in -local_radius..=local_radius {
+            for dy in -local_radius..=local_radius {
+                let coord = (cx + dx, cy + dy);
+                if let Some(&cid) = ws.grid.get(&coord) {
+                    if let Some(c) = session.index.cells.get(&cid) {
+                        if let Some(land_id) = c.land {
+                            list.push((coord, land_id));
+                        }
+                    }
+                }
+            }
+        }
+        list
+    };
+
+    for (coord, land_id) in cells_to_load {
+        spawn_single_cell_terrain(
+            lo,
+            &session.schema,
+            commands,
+            models,
+            spawned,
+            &mut mat_cache,
+            land_id,
+            coord,
+        );
+    }
+}
+
+/// Spawn the 4 terrain quadrant meshes for a single exterior cell using a shared material cache.
+#[allow(clippy::too_many_arguments)]
+fn spawn_single_cell_terrain(
+    lo: &fnv_esm::LoadOrder,
+    schema: &fnv_esm::schema::Schema,
+    commands: &mut Commands,
+    models: &mut ModelCtx,
+    spawned: &mut Spawned,
+    mat_cache: &mut HashMap<String, Handle<nvf_assets::nif_material::NifMaterial>>,
+    land_id: u32,
+    grid: (i32, i32),
+) {
+    let Some(land) = load_land(lo, schema, land_id, LandParts::ALL) else {
+        return;
+    };
+    let Some(heights) = land.heights.as_ref() else {
+        return;
+    };
+
+    let cell_origin = Vec2::new(
+        grid.0 as f32 * fnv_world::CELL_SIZE,
+        grid.1 as f32 * fnv_world::CELL_SIZE,
+    );
+
+    for q in 0..4u8 {
+        let base_layer = land.layers.iter().rev().find(|l| l.base && l.quadrant == q);
+        let tex_path = base_layer
+            .and_then(|l| l.texture)
+            .and_then(|t| land_texture(lo, schema, t))
+            .and_then(|t| t.diffuse)
+            .unwrap_or_else(|| DEFAULT_DIFFUSE.to_string());
+
+        let tex_rel = tex_path.replace('/', "\\").to_ascii_lowercase();
+        let tex_file = if tex_rel.starts_with("textures\\") {
+            tex_rel
+        } else {
+            format!("textures\\{tex_rel}")
+        };
+
+        let mat_handle = match mat_cache.get(&tex_file) {
+            Some(h) => h.clone(),
+            None => {
+                let img_handle = models.textures.get(
+                    &tex_file,
+                    true,
+                    &models.data,
+                    &mut models.images,
+                    models.formats.as_deref(),
+                );
+                let mat = StandardMaterial {
+                    base_color: if img_handle.is_some() {
+                        Color::WHITE
+                    } else {
+                        Color::srgb(0.55, 0.50, 0.42)
+                    },
+                    base_color_texture: img_handle,
+                    perceptual_roughness: 0.95,
+                    reflectance: 0.2,
+                    cull_mode: None,
+                    ..default()
+                };
+                let h = models.materials.add(nvf_assets::nif_material(mat));
+                mat_cache.insert(tex_file, h.clone());
+                h
+            }
+        };
+
+        if let Some(mesh) = terrain_quadrant_mesh(&land, heights, q, cell_origin) {
+            let mesh_handle = models.meshes.add(mesh);
+            let e = commands
+                .spawn((
+                    Name::new(format!("Terrain Q{q}")),
+                    Mesh3d(mesh_handle),
+                    MeshMaterial3d(mat_handle),
+                    Transform::IDENTITY,
+                    Visibility::default(),
+                ))
+                .id();
+            spawned.terrain.push(e);
+        }
+    }
+}
+
+/// Generate a Bevy mesh for one 17x17 terrain quadrant.
+fn terrain_quadrant_mesh(land: &Land, heights: &[f32], q: u8, cell_origin: Vec2) -> Option<Mesh> {
+    let qx = (q % 2) as usize * (QUAD_SIDE - 1);
+    let qy = (q / 2) as usize * (QUAD_SIDE - 1);
+    let n = QUAD_SIDE * QUAD_SIDE;
+
+    let mut pos = Vec::with_capacity(n);
+    let mut nor = Vec::with_capacity(n);
+    let mut uv = Vec::with_capacity(n);
+    let mut tan = Vec::with_capacity(n);
+
+    let g2b = game_to_bevy();
+    let tile = 256.0_f32;
+
+    for r in 0..QUAD_SIDE {
+        for c in 0..QUAD_SIDE {
+            let (gr, gc) = (qy + r, qx + c);
+            let i = gr * SIDE + gc;
+            let local_x = gc as f32 * SPACING;
+            let local_y = gr as f32 * SPACING;
+            let world_x = cell_origin.x + local_x;
+            let world_y = cell_origin.y + local_y;
+            let world_z = heights[i];
+
+            let p_game = Vec3::new(world_x, world_y, world_z);
+            let p_bevy = g2b.transform_point(p_game);
+            pos.push(p_bevy.to_array());
+
+            let normal_game = land
+                .normals
+                .as_ref()
+                .map(|v| {
+                    Vec3::new(v[i][0] as f32, v[i][1] as f32, v[i][2] as f32).normalize_or(Vec3::Z)
+                })
+                .unwrap_or(Vec3::Z);
+            let normal_bevy = g2b.rotation * normal_game;
+            nor.push(normal_bevy.to_array());
+
+            let east_game = (Vec3::X - normal_game * normal_game.x).normalize_or(Vec3::X);
+            let east_bevy = g2b.rotation * east_game;
+            tan.push([east_bevy.x, east_bevy.y, east_bevy.z, -1.0]);
+
+            uv.push([world_x / tile, world_y / tile]);
+        }
+    }
+
+    let mut idx = Vec::with_capacity((QUAD_SIDE - 1) * (QUAD_SIDE - 1) * 6);
+    for r in 0..QUAD_SIDE - 1 {
+        for c in 0..QUAD_SIDE - 1 {
+            let i = (r * QUAD_SIDE + c) as u32;
+            let (e, nn, ne) = (i + 1, i + QUAD_SIDE as u32, i + QUAD_SIDE as u32 + 1);
+            idx.extend_from_slice(&[i, e, ne, i, ne, nn]);
+        }
+    }
+
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, nor);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tan);
+
+    if let Some(colors) = &land.colors {
+        let mut col = Vec::with_capacity(n);
+        for r in 0..QUAD_SIDE {
+            for c in 0..QUAD_SIDE {
+                let i = (qy + r) * SIDE + (qx + c);
+                let rgb = colors[i];
+                col.push([
+                    rgb[0] as f32 / 255.0,
+                    rgb[1] as f32 / 255.0,
+                    rgb[2] as f32 / 255.0,
+                    1.0,
+                ]);
+            }
+        }
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, col);
+    }
+
+    mesh.insert_indices(Indices::U32(idx));
+    Some(mesh)
 }

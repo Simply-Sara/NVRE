@@ -1,10 +1,9 @@
 //! Landscape (LAND): a 33 x 33 vertex grid per exterior cell with heights, normals,
 //! vertex colours and texture layers. Facts and tags: docs/spec-notes/world.md §3.
 
-use crate::fields::{formid_of, global, num, winner, Fields};
+use crate::fields::{global, winner, Fields};
 use crate::CELL_SIZE;
 use fnv_esm::{LoadOrder, Schema};
-use serde_json::Value;
 
 /// Vertices per cell edge.
 pub const SIDE: usize = 33;
@@ -72,31 +71,6 @@ pub fn heights_from_vhgt(offset: f32, steps: &[i8]) -> Vec<f32> {
     out
 }
 
-fn grid<T>(v: &Value, f: impl Fn(&Value) -> Option<T>) -> Option<Vec<T>> {
-    let rows = v.as_array()?;
-    if rows.len() != SIDE {
-        return None;
-    }
-    let mut out = Vec::with_capacity(SIDE * SIDE);
-    for r in rows {
-        let r = r.as_array()?;
-        if r.len() != SIDE {
-            return None;
-        }
-        for c in r {
-            out.push(f(c)?);
-        }
-    }
-    Some(out)
-}
-
-fn quadrant(v: &Value) -> Option<u8> {
-    match v {
-        Value::String(s) => QUADRANTS.iter().position(|q| q == s).map(|i| i as u8),
-        v => v.as_u64().map(|q| q as u8),
-    }
-}
-
 /// Which parts of LAND to decode (normals, colours and layers are large).
 #[derive(Debug, Clone, Copy)]
 pub struct LandParts {
@@ -107,54 +81,100 @@ pub struct LandParts {
 }
 
 impl LandParts {
-    pub const ALL: LandParts = LandParts { heights: true, normals: true, colors: true, layers: true };
-    pub const HEIGHTS: LandParts = LandParts { heights: true, normals: false, colors: false, layers: false };
+    pub const ALL: LandParts = LandParts {
+        heights: true,
+        normals: true,
+        colors: true,
+        layers: true,
+    };
+    pub const HEIGHTS: LandParts = LandParts {
+        heights: true,
+        normals: false,
+        colors: false,
+        layers: false,
+    };
 }
 
-pub fn load_land(lo: &LoadOrder, schema: &Schema, fid: u32, parts: LandParts) -> Option<Land> {
+pub fn load_land(lo: &LoadOrder, _schema: &Schema, fid: u32, parts: LandParts) -> Option<Land> {
     let (pi, r) = winner(lo, fid)?;
-    let f = Fields::new(r, pi, schema).ok()?;
+    let subs = r.subrecords().ok()?;
+
+    let flags = subs
+        .iter()
+        .find(|s| &s.sig == b"DATA")
+        .and_then(|s| s.data.get(..4))
+        .and_then(|b| b.try_into().ok())
+        .map(u32::from_le_bytes)
+        .unwrap_or(0);
+
     let mut land = Land {
         form_id: fid,
-        flags: f.get(b"DATA").and_then(|v| num(&v, "value")).map_or(0, |v| v as u32),
+        flags,
         ..Default::default()
     };
     if parts.heights {
-        land.heights = f.get(b"VHGT").and_then(|v| {
-            let steps = grid(v.get("height_data")?, |c| c.as_i64().map(|x| x as i8))?;
-            Some(heights_from_vhgt(num(&v, "offset")? as f32, &steps))
-        });
+        if let Some(s) = subs.iter().find(|s| &s.sig == b"VHGT") {
+            if s.data.len() >= 4 + SIDE * SIDE {
+                let offset = f32::from_le_bytes(s.data[0..4].try_into().ok()?);
+                let steps: Vec<i8> = s.data[4..4 + SIDE * SIDE]
+                    .iter()
+                    .map(|&b| b as i8)
+                    .collect();
+                land.heights = Some(heights_from_vhgt(offset, &steps));
+            }
+        }
     }
     if parts.normals {
-        // The schema reads the components as u8; they are signed [observed: world.md §3].
-        land.normals = f.get(b"VNML").and_then(|v| {
-            grid(&v, |c| Some([num(c, "x")? as u8 as i8, num(c, "y")? as u8 as i8, num(c, "z")? as u8 as i8]))
-        });
+        if let Some(s) = subs.iter().find(|s| &s.sig == b"VNML") {
+            if s.data.len() >= SIDE * SIDE * 3 {
+                let raw: Vec<[i8; 3]> = s.data[..SIDE * SIDE * 3]
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
+                    .map(|c| [c[0] as i8, c[1] as i8, c[2] as i8])
+                    .collect();
+                land.normals = Some(raw);
+            }
+        }
     }
     if parts.colors {
-        land.colors = f
-            .get(b"VCLR")
-            .and_then(|v| grid(&v, |c| Some([num(c, "red")? as u8, num(c, "green")? as u8, num(c, "blue")? as u8])));
+        if let Some(s) = subs.iter().find(|s| &s.sig == b"VCLR") {
+            if s.data.len() >= SIDE * SIDE * 3 {
+                let raw: Vec<[u8; 3]> = s.data[..SIDE * SIDE * 3]
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
+                    .map(|c| [c[0], c[1], c[2]])
+                    .collect();
+                land.colors = Some(raw);
+            }
+        }
     }
     if parts.layers {
-        for s in &f.subs {
+        for s in &subs {
             match &s.sig {
                 b"BTXT" | b"ATXT" => {
-                    let Some(v) = f.decode(s) else { continue };
-                    land.layers.push(Layer {
-                        quadrant: v.get("quadrant").and_then(quadrant).unwrap_or(0),
-                        texture: v.get("texture").and_then(formid_of).and_then(|t| global(lo, pi, t)),
-                        layer: num(&v, "layer").unwrap_or(0.0) as i16,
-                        base: &s.sig == b"BTXT",
-                        alpha: Vec::new(),
-                    });
+                    if s.data.len() >= 8 {
+                        let local_tex = u32::from_le_bytes(s.data[0..4].try_into().ok()?);
+                        let quadrant = s.data[4];
+                        let layer = i16::from_le_bytes(s.data[6..8].try_into().ok()?);
+                        land.layers.push(Layer {
+                            quadrant,
+                            texture: (local_tex != 0)
+                                .then(|| global(lo, pi, local_tex))
+                                .flatten(),
+                            layer,
+                            base: &s.sig == b"BTXT",
+                            alpha: Vec::new(),
+                        });
+                    }
                 }
                 b"VTXT" => {
-                    let Some(v) = f.decode(s) else { continue };
-                    let Some(l) = land.layers.last_mut().filter(|l| !l.base) else { continue };
-                    for cell in v.as_array().into_iter().flatten() {
-                        if let (Some(p), Some(o)) = (num(cell, "position"), num(cell, "opacity")) {
-                            l.alpha.push((p as u16, o as f32));
+                    if let Some(l) = land.layers.last_mut().filter(|l| !l.base) {
+                        for chunk in s.data.as_chunks::<4>().0 {
+                            let pos = u16::from_le_bytes([chunk[0], chunk[1]]);
+                            let opacity = chunk[3] as f32 / 255.0;
+                            l.alpha.push((pos, opacity));
                         }
                     }
                 }
@@ -178,7 +198,11 @@ pub struct LandTexture {
 pub fn land_texture(lo: &LoadOrder, schema: &Schema, ltex: u32) -> Option<LandTexture> {
     let (pi, r) = winner(lo, ltex)?;
     let f = Fields::new(r, pi, schema).ok()?;
-    let mut t = LandTexture { form_id: ltex, edid: f.string(b"EDID"), ..Default::default() };
+    let mut t = LandTexture {
+        form_id: ltex,
+        edid: f.string(b"EDID"),
+        ..Default::default()
+    };
     if let Some(ts) = f.formid(b"TNAM", lo) {
         let (tpi, tr) = winner(lo, ts)?;
         let tf = Fields::new(tr, tpi, schema).ok()?;
