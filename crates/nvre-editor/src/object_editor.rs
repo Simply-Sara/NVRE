@@ -209,6 +209,48 @@ pub struct ObjectEditorState {
     pub note_type: u8,
     pub note_text: String,
     pub note_sound: Option<u32>,
+
+    // LVLI / LVLN / LVLC fields
+    pub lvl_chance_none: u8,
+    pub lvl_all_levels: bool,
+    pub lvl_each_item: bool,
+    pub lvl_use_all: bool,
+    pub lvl_global: Option<u32>,
+
+    // IMOD & CLAS fields
+    pub imod_val: u32,
+    pub imod_weight: f32,
+    pub imod_desc: String,
+    pub clas_teaches: u8,
+    pub clas_max_train: u8,
+    pub clas_playable: bool,
+    pub clas_guard: bool,
+
+    // CSTY & MGEF fields
+    pub csty_dodge_chance: u8,
+    pub csty_lr_chance: u8,
+    pub csty_power_chance: u8,
+    pub csty_cover_radius: f32,
+    pub csty_take_cover_chance: f32,
+    pub mgef_hostile: bool,
+    pub mgef_recover: bool,
+    pub mgef_detrimental: bool,
+    pub mgef_self: bool,
+    pub mgef_touch: bool,
+    pub mgef_target: bool,
+    pub mgef_base_cost: f32,
+    pub mgef_assoc_item: Option<u32>,
+
+    // WTHR & WATR fields
+    pub wthr_wind_speed: u8,
+    pub wthr_sun_glare: u8,
+    pub wthr_sun_damage: u8,
+    pub wthr_cloud_layer0: String,
+    pub watr_opacity: u8,
+    pub watr_causes_damage: bool,
+    pub watr_reflective: bool,
+    pub watr_effect: Option<u32>,
+    pub watr_sound: Option<u32>,
 }
 
 impl ObjectEditorState {
@@ -279,6 +321,13 @@ impl ObjectEditorState {
             b"PROJ" => self.load_proj(),
             b"SOUN" => self.load_soun(),
             b"NOTE" => self.load_note(),
+            b"LVLI" | b"LVLN" | b"LVLC" => self.load_lvl(),
+            b"IMOD" => self.load_imod(),
+            b"CLAS" => self.load_clas(),
+            b"CSTY" => self.load_csty(),
+            b"MGEF" => self.load_mgef(),
+            b"WTHR" => self.load_wthr(),
+            b"WATR" => self.load_watr(),
             _ => self.load_misc(),
         }
     }
@@ -613,6 +662,85 @@ impl ObjectEditorState {
         self.note_sound = self.get_fid(b"SNAM");
     }
 
+    fn load_lvl(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"LVLD") {
+            self.lvl_chance_none = b.first().copied().unwrap_or(0);
+        }
+        if let Some(b) = self.raw_subs.get(b"LVLF") {
+            let f = b.first().copied().unwrap_or(0);
+            self.lvl_all_levels = (f & 1) != 0;
+            self.lvl_each_item = (f & 2) != 0;
+            self.lvl_use_all = (f & 4) != 0;
+        }
+        self.lvl_global = self.get_fid(b"LVLG");
+    }
+
+    fn load_imod(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
+            self.imod_val = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.imod_weight = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+        }
+        self.imod_desc = self.get_string(b"DESC");
+    }
+
+    fn load_clas(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 26) {
+            let flags = u32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.clas_playable = (flags & 1) != 0;
+            self.clas_guard = (flags & 2) != 0;
+            self.clas_teaches = b[24];
+            self.clas_max_train = b[25];
+        }
+    }
+
+    fn load_csty(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"CSTD").filter(|b| b.len() >= 25) {
+            self.csty_dodge_chance = b[0];
+            self.csty_lr_chance = b[1];
+            self.csty_power_chance = b[24];
+        }
+        if let Some(b) = self.raw_subs.get(b"CSSD").filter(|b| b.len() >= 8) {
+            self.csty_cover_radius = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.csty_take_cover_chance = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+        }
+    }
+
+    fn load_mgef(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 12) {
+            let f = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.mgef_hostile = (f & (1 << 0)) != 0;
+            self.mgef_recover = (f & (1 << 1)) != 0;
+            self.mgef_detrimental = (f & (1 << 2)) != 0;
+            self.mgef_self = (f & (1 << 4)) != 0;
+            self.mgef_touch = (f & (1 << 5)) != 0;
+            self.mgef_target = (f & (1 << 6)) != 0;
+            self.mgef_base_cost = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.mgef_assoc_item = Some(u32::from_le_bytes([b[8], b[9], b[10], b[11]]));
+        }
+    }
+
+    fn load_wthr(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 6) {
+            self.wthr_wind_speed = b[0];
+            self.wthr_sun_glare = b[4];
+            self.wthr_sun_damage = b[5];
+        }
+        self.wthr_cloud_layer0 = self.get_string(b"DNAM");
+    }
+
+    fn load_watr(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"ANAM") {
+            self.watr_opacity = b.first().copied().unwrap_or(255);
+        }
+        if let Some(b) = self.raw_subs.get(b"FNAM") {
+            let f = b.first().copied().unwrap_or(0);
+            self.watr_causes_damage = (f & 1) != 0;
+            self.watr_reflective = (f & 2) != 0;
+        }
+        self.watr_effect = self.get_fid(b"XNAM");
+        self.watr_sound = self.get_fid(b"SNAM");
+    }
+
     /// Save the current state back to session as uncommitted edits.
     pub fn save_to_session(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
@@ -655,6 +783,13 @@ impl ObjectEditorState {
             b"PROJ" => self.save_proj(session),
             b"SOUN" => self.save_soun(session),
             b"NOTE" => self.save_note(session),
+            b"LVLI" | b"LVLN" | b"LVLC" => self.save_lvl(session),
+            b"IMOD" => self.save_imod(session),
+            b"CLAS" => self.save_clas(session),
+            b"CSTY" => self.save_csty(session),
+            b"MGEF" => self.save_mgef(session),
+            b"WTHR" => self.save_wthr(session),
+            b"WATR" => self.save_watr(session),
             _ => self.save_misc(session),
         }
 
@@ -1215,6 +1350,184 @@ impl ObjectEditorState {
             session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
         }
     }
+
+    fn save_lvl(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session
+            .doc
+            .set_sub(fid, b"LVLD", vec![self.lvl_chance_none]);
+        let mut f = 0u8;
+        if self.lvl_all_levels {
+            f |= 1;
+        }
+        if self.lvl_each_item {
+            f |= 2;
+        }
+        if self.lvl_use_all {
+            f |= 4;
+        }
+        session.doc.set_sub(fid, b"LVLF", vec![f]);
+        if let Some(g) = self.lvl_global {
+            session.doc.set_sub(fid, b"LVLG", g.to_le_bytes().to_vec());
+        }
+    }
+
+    fn save_imod(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = vec![0u8; 8];
+        d[0..4].copy_from_slice(&self.imod_val.to_le_bytes());
+        d[4..8].copy_from_slice(&self.imod_weight.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", d);
+        if !self.imod_desc.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"DESC", encode_zstring(&self.imod_desc));
+        }
+    }
+
+    fn save_clas(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 26]);
+        if d.len() < 26 {
+            d.resize(26, 0);
+        }
+        let mut f = u32::from_le_bytes([d[16], d[17], d[18], d[19]]);
+        if self.clas_playable {
+            f |= 1;
+        } else {
+            f &= !1;
+        }
+        if self.clas_guard {
+            f |= 2;
+        } else {
+            f &= !2;
+        }
+        d[16..20].copy_from_slice(&f.to_le_bytes());
+        d[24] = self.clas_teaches;
+        d[25] = self.clas_max_train;
+        session.doc.set_sub(fid, b"DATA", d);
+    }
+
+    fn save_csty(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut cstd = self
+            .raw_subs
+            .get(b"CSTD")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 28]);
+        if cstd.len() < 28 {
+            cstd.resize(28, 0);
+        }
+        cstd[0] = self.csty_dodge_chance;
+        cstd[1] = self.csty_lr_chance;
+        cstd[24] = self.csty_power_chance;
+        session.doc.set_sub(fid, b"CSTD", cstd);
+
+        let mut cssd = self
+            .raw_subs
+            .get(b"CSSD")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 8]);
+        if cssd.len() < 8 {
+            cssd.resize(8, 0);
+        }
+        cssd[0..4].copy_from_slice(&self.csty_cover_radius.to_le_bytes());
+        cssd[4..8].copy_from_slice(&self.csty_take_cover_chance.to_le_bytes());
+        session.doc.set_sub(fid, b"CSSD", cssd);
+    }
+
+    fn save_mgef(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 16]);
+        if d.len() < 16 {
+            d.resize(16, 0);
+        }
+        let mut f = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
+        if self.mgef_hostile {
+            f |= 1 << 0;
+        } else {
+            f &= !(1 << 0);
+        }
+        if self.mgef_recover {
+            f |= 1 << 1;
+        } else {
+            f &= !(1 << 1);
+        }
+        if self.mgef_detrimental {
+            f |= 1 << 2;
+        } else {
+            f &= !(1 << 2);
+        }
+        if self.mgef_self {
+            f |= 1 << 4;
+        } else {
+            f &= !(1 << 4);
+        }
+        if self.mgef_touch {
+            f |= 1 << 5;
+        } else {
+            f &= !(1 << 5);
+        }
+        if self.mgef_target {
+            f |= 1 << 6;
+        } else {
+            f &= !(1 << 6);
+        }
+        d[0..4].copy_from_slice(&f.to_le_bytes());
+        d[4..8].copy_from_slice(&self.mgef_base_cost.to_le_bytes());
+        if let Some(it) = self.mgef_assoc_item {
+            d[8..12].copy_from_slice(&it.to_le_bytes());
+        }
+        session.doc.set_sub(fid, b"DATA", d);
+    }
+
+    fn save_wthr(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 8]);
+        if d.len() < 8 {
+            d.resize(8, 0);
+        }
+        d[0] = self.wthr_wind_speed;
+        d[4] = self.wthr_sun_glare;
+        d[5] = self.wthr_sun_damage;
+        session.doc.set_sub(fid, b"DATA", d);
+        if !self.wthr_cloud_layer0.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"DNAM", encode_zstring(&self.wthr_cloud_layer0));
+        }
+    }
+
+    fn save_watr(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session.doc.set_sub(fid, b"ANAM", vec![self.watr_opacity]);
+        let mut f = 0u8;
+        if self.watr_causes_damage {
+            f |= 1;
+        }
+        if self.watr_reflective {
+            f |= 2;
+        }
+        session.doc.set_sub(fid, b"FNAM", vec![f]);
+        if let Some(x) = self.watr_effect {
+            session.doc.set_sub(fid, b"XNAM", x.to_le_bytes().to_vec());
+        }
+        if let Some(s) = self.watr_sound {
+            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+        }
+    }
 }
 
 fn encode_zstring(s: &str) -> Vec<u8> {
@@ -1394,6 +1707,13 @@ pub fn ui(
                 b"PROJ" => draw_proj_ui(ui, &mut state),
                 b"SOUN" => draw_soun_ui(ui, &mut state),
                 b"NOTE" => draw_note_ui(ui, &mut state),
+                b"LVLI" | b"LVLN" | b"LVLC" => draw_lvl_ui(ui, &mut state),
+                b"IMOD" => draw_imod_ui(ui, &mut state),
+                b"CLAS" => draw_clas_ui(ui, &mut state),
+                b"CSTY" => draw_csty_ui(ui, &mut state),
+                b"MGEF" => draw_mgef_ui(ui, &mut state),
+                b"WTHR" => draw_wthr_ui(ui, &mut state),
+                b"WATR" => draw_watr_ui(ui, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
 
@@ -2204,5 +2524,173 @@ fn draw_note_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                 .desired_rows(6)
                 .desired_width(ui.available_width() - 20.0),
         );
+    });
+}
+
+fn draw_lvl_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Leveled List Settings");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Chance None %:");
+            ui.add(egui::DragValue::new(&mut state.lvl_chance_none).range(0..=100));
+            ui.label("Global:");
+            formid_field(ui, "lvl_glob", &mut state.lvl_global);
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.checkbox(
+                &mut state.lvl_all_levels,
+                "Calculate from all levels <= player's level",
+            );
+            ui.checkbox(&mut state.lvl_each_item, "Calculate for each item in count");
+            ui.checkbox(&mut state.lvl_use_all, "Use All");
+        });
+    });
+}
+
+fn draw_imod_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Weapon / Item Mod Stats");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Value (Caps):");
+            ui.add(egui::DragValue::new(&mut state.imod_val).range(0..=100000));
+            ui.label("Weight:");
+            ui.add(
+                egui::DragValue::new(&mut state.imod_weight)
+                    .speed(0.1)
+                    .range(0.0..=100.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.label("Mod Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.imod_desc)
+                .desired_rows(4)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+}
+
+fn draw_clas_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Class Configuration");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Teaches Skill:");
+            let cur_skill = (state.clas_teaches as usize).min(SKILL_NAMES.len() - 1);
+            let skill_lbl = SKILL_NAMES.get(cur_skill).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("clas_skill")
+                .selected_text(skill_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in SKILL_NAMES.iter().enumerate() {
+                        ui.selectable_value(&mut state.clas_teaches, i as u8, name);
+                    }
+                });
+            ui.label("Max Training Level:");
+            ui.add(egui::DragValue::new(&mut state.clas_max_train).range(0..=100));
+            ui.checkbox(&mut state.clas_playable, "Playable");
+            ui.checkbox(&mut state.clas_guard, "Guard");
+        });
+    });
+}
+
+fn draw_csty_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Combat Style Behavior & Chances");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Dodge Chance %:");
+            ui.add(egui::DragValue::new(&mut state.csty_dodge_chance).range(0..=100));
+            ui.label("Left/Right Dodge %:");
+            ui.add(egui::DragValue::new(&mut state.csty_lr_chance).range(0..=100));
+            ui.label("Power Attack %:");
+            ui.add(egui::DragValue::new(&mut state.csty_power_chance).range(0..=100));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Cover Search Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.csty_cover_radius)
+                    .speed(10.0)
+                    .range(0.0..=100000.0),
+            );
+            ui.label("Take Cover Chance %:");
+            ui.add(
+                egui::DragValue::new(&mut state.csty_take_cover_chance)
+                    .speed(0.05)
+                    .range(0.0..=1.0),
+            );
+        });
+    });
+}
+
+fn draw_mgef_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Magic Effect Flags & Cost");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Base Cost:");
+            ui.add(
+                egui::DragValue::new(&mut state.mgef_base_cost)
+                    .speed(1.0)
+                    .range(0.0..=100000.0),
+            );
+            ui.label("Associated Item / Spell:");
+            formid_field(ui, "mgef_assoc", &mut state.mgef_assoc_item);
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut state.mgef_hostile, "Hostile");
+            ui.checkbox(&mut state.mgef_recover, "Recover");
+            ui.checkbox(&mut state.mgef_detrimental, "Detrimental");
+            ui.checkbox(&mut state.mgef_self, "Self");
+            ui.checkbox(&mut state.mgef_touch, "Touch");
+            ui.checkbox(&mut state.mgef_target, "Target");
+        });
+    });
+}
+
+fn draw_wthr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Weather Properties");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Wind Speed:");
+            ui.add(egui::DragValue::new(&mut state.wthr_wind_speed).range(0..=255));
+            ui.label("Sun Glare %:");
+            ui.add(egui::DragValue::new(&mut state.wthr_sun_glare).range(0..=255));
+            ui.label("Sun Damage:");
+            ui.add(egui::DragValue::new(&mut state.wthr_sun_damage).range(0..=255));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Cloud Layer 0 Texture:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.wthr_cloud_layer0)
+                    .desired_width(ui.available_width() - 20.0),
+            );
+        });
+    });
+}
+
+fn draw_watr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Water Visuals & Radiation/Damage");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Opacity:");
+            ui.add(egui::DragValue::new(&mut state.watr_opacity).range(0..=255));
+            ui.checkbox(&mut state.watr_causes_damage, "Causes Damage");
+            ui.checkbox(&mut state.watr_reflective, "Reflective");
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Actor Effect (Rads/Dmg):");
+            formid_field(ui, "watr_eff", &mut state.watr_effect);
+            ui.label("Sound:");
+            formid_field(ui, "watr_snd", &mut state.watr_sound);
+        });
     });
 }

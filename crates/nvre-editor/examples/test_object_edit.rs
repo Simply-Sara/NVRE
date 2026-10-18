@@ -142,5 +142,35 @@ fn main() {
     );
     assert_eq!(note_state.edid, "vYesManBunkerNote");
 
+    // Test 9: Class (CLAS) 0x0017A636
+    let clas_fid = 0x0017A636;
+    let mut clas_state = ObjectEditorState::default();
+    clas_state.load_from_session(&session, clas_fid, *b"CLAS");
+    println!(
+        "Loaded CLAS 0x{:08X}: EDID='{}', Teaches={}, Playable={}",
+        clas_state.form_id, clas_state.edid, clas_state.clas_teaches, clas_state.clas_playable
+    );
+    assert_eq!(clas_state.edid, "LegionaryBadAss");
+
+    // Test 10: Leveled Item (LVLI) 0x0017B7E5
+    let lvli_fid = 0x0017B7E5;
+    let mut lvli_state = ObjectEditorState::default();
+    lvli_state.load_from_session(&session, lvli_fid, *b"LVLI");
+    println!(
+        "Loaded LVLI 0x{:08X}: EDID='{}', ChanceNone={}, AllLevels={}",
+        lvli_state.form_id, lvli_state.edid, lvli_state.lvl_chance_none, lvli_state.lvl_all_levels
+    );
+    assert_eq!(lvli_state.edid, "CondLegionArmorPrimeDecanusAll");
+
+    // Test 11: Weather (WTHR) 0x00176575
+    let wthr_fid = 0x00176575;
+    let mut wthr_state = ObjectEditorState::default();
+    wthr_state.load_from_session(&session, wthr_fid, *b"WTHR");
+    println!(
+        "Loaded WTHR 0x{:08X}: EDID='{}', WindSpeed={}, SunGlare={}",
+        wthr_state.form_id, wthr_state.edid, wthr_state.wthr_wind_speed, wthr_state.wthr_sun_glare
+    );
+    assert_eq!(wthr_state.edid, "NVWastelandClearEast");
+
     println!("All object editor tests passed successfully!");
 }
