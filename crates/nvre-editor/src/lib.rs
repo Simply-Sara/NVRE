@@ -5,6 +5,7 @@
 
 use bevy::prelude::*;
 
+pub mod gizmo;
 pub mod launcher;
 pub mod panels;
 pub mod session;

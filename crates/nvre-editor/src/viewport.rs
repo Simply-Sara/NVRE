@@ -34,6 +34,7 @@ pub struct ViewportCamera;
 #[derive(Component)]
 pub struct RefEntity {
     pub form_id: u32,
+    pub bounds: Option<(Vec3, Vec3)>,
 }
 
 /// Game space → Bevy space, as the game does it.
@@ -149,30 +150,76 @@ pub fn orbit_camera(mut cameras: Query<&mut Transform, With<ViewportCamera>>, or
     t.look_at(orbit.target, Vec3::Y);
 }
 
-/// Mouse drag orbits, the wheel zooms.
+/// Mouse drag orbits, MMB or Shift+RMB pans, WASD flies, and wheel zooms.
+#[allow(clippy::too_many_arguments)]
 pub fn orbit_input(
     mut orbit: ResMut<Orbit>,
     buttons: Res<ButtonInput<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut motion: MessageReader<bevy::input::mouse::MouseMotion>,
     mut wheel: MessageReader<MouseWheel>,
+    time: Res<Time>,
+    session: Res<crate::session::Session>,
+    refs: Query<(&RefEntity, &GlobalTransform)>,
 ) {
-    if buttons.pressed(MouseButton::Right) {
-        // `MouseMotion`'s delta is cumulative since the last read, so summing
-        // this frame's messages *is* the frame's movement. Subtracting a running
-        // total instead makes the camera jump backwards every other frame: the
-        // sum restarts near zero, the difference goes negative, and the view
-        // snaps back to where it started.
-        let move_by: Vec2 = motion.read().map(|m| m.delta).sum();
-        // At yaw 0 the eye is on -X looking towards +X, so the camera's own right
-        // is +Z. Dragging right swings the eye towards -Z, which is a smaller
-        // yaw; dragging up lifts the eye above the target, which is a smaller
-        // pitch. Neither sign is obvious from `eye = target - dir * distance`,
-        // and `crates/nvre-editor/tests/orbit_input.rs` pins both.
+    let move_by: Vec2 = motion.read().map(|m| m.delta).sum();
+
+    // 1. Pan with Middle Mouse Button OR Shift + Right Mouse Button
+    let is_pan = buttons.pressed(MouseButton::Middle)
+        || (buttons.pressed(MouseButton::Right)
+            && (keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight)));
+
+    if is_pan {
+        let right = Vec3::new(-orbit.yaw.sin(), 0.0, orbit.yaw.cos());
+        let up = Vec3::Y;
+        let pan_speed = orbit.distance * 0.0015;
+        orbit.target += (-right * move_by.x + up * move_by.y) * pan_speed;
+    } else if buttons.pressed(MouseButton::Right) {
+        // 2. Orbit with Right Mouse Button
         orbit.yaw -= move_by.x * 0.005;
         orbit.pitch = (orbit.pitch - move_by.y * 0.005).clamp(-1.55, 1.55);
+
+        // 3. Fly with WASD / QE when RMB is held down
+        let forward = Vec3::new(
+            orbit.yaw.cos() * orbit.pitch.cos(),
+            orbit.pitch.sin(),
+            orbit.yaw.sin() * orbit.pitch.cos(),
+        );
+        let right = Vec3::new(-orbit.yaw.sin(), 0.0, orbit.yaw.cos());
+        let up = Vec3::Y;
+        let mut fly_speed = (orbit.distance * 1.5 * time.delta_secs()).clamp(5.0, 50_000.0);
+        if keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight) {
+            fly_speed *= 3.0;
+        }
+        if keys.pressed(KeyCode::KeyW) {
+            orbit.target += forward * fly_speed;
+        }
+        if keys.pressed(KeyCode::KeyS) {
+            orbit.target -= forward * fly_speed;
+        }
+        if keys.pressed(KeyCode::KeyA) {
+            orbit.target -= right * fly_speed;
+        }
+        if keys.pressed(KeyCode::KeyD) {
+            orbit.target += right * fly_speed;
+        }
+        if keys.pressed(KeyCode::KeyQ) {
+            orbit.target -= up * fly_speed;
+        }
+        if keys.pressed(KeyCode::KeyE) {
+            orbit.target += up * fly_speed;
+        }
     }
+
     for w in wheel.read() {
         orbit.distance = (orbit.distance * (1.0 - w.y * 0.1)).clamp(20.0, 1_500_000.0);
+    }
+
+    // Hotkey F: Frame selected reference
+    if !buttons.pressed(MouseButton::Right) && keys.just_pressed(KeyCode::KeyF) {
+        if let Some(fid) = session.selected {
+            frame_reference(&mut orbit, &refs, fid);
+        }
     }
 }
 
@@ -441,7 +488,10 @@ pub fn draw_cell(
                         .clone()
                         .unwrap_or_else(|| format!("{:08X}", r.form_id)),
                 ),
-                RefEntity { form_id: r.form_id },
+                RefEntity {
+                    form_id: r.form_id,
+                    bounds: model.bounds,
+                },
                 tr,
                 Visibility::default(),
             ))
@@ -549,22 +599,28 @@ pub fn flat_material_diagnostic(
 }
 
 /// Click a reference to select it.
+#[allow(clippy::too_many_arguments)]
 pub fn pick(
     mut session: ResMut<crate::session::Session>,
+    gizmo: Res<crate::gizmo::GizmoState>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut orbit: ResMut<Orbit>,
     cameras: Query<(&Camera, &GlobalTransform), With<ViewportCamera>>,
-    windows: Query<&Window>,
+    windows: Query<&Window, With<crate::windows::ViewportWindow>>,
     refs: Query<(&RefEntity, &GlobalTransform)>,
     mut clicks: Local<ClickState>,
 ) {
     if !buttons.just_pressed(MouseButton::Left) {
         return;
     }
+    // If hovering or dragging a gizmo handle, the gizmo consumes the click!
+    if gizmo.hovered != crate::gizmo::GizmoHandle::None || gizmo.dragging.is_some() {
+        return;
+    }
     let Ok((camera, cam_t)) = cameras.single() else {
         return;
     };
-    let Some(window) = windows.iter().next() else {
+    let Ok(window) = windows.single() else {
         return;
     };
     let Some(cursor) = window.cursor_position() else {
@@ -574,31 +630,104 @@ pub fn pick(
         return;
     };
 
-    // Nearest reference whose model the ray passes near. A precise mesh raycast
-    // needs the BVH the asset layer builds; distance to the reference's origin is
-    // enough to pick in a cell, and never picks a reference behind another.
+    // Pick the reference directly under the cursor by testing ray-bounding-box intersection.
+    // The closest intersected object along the camera ray is selected.
     let mut best: Option<(f32, u32)> = None;
     for (r, t) in &refs {
-        let to = t.translation() - ray.origin;
-        let along = to.dot(*ray.direction);
-        if along <= 0.0 {
-            continue;
-        }
-        let perp = (to - *ray.direction * along).length();
-        let score = perp + along * 0.001;
-        if best.is_none_or(|(d, _)| score < d) {
-            best = Some((score, r.form_id));
-        }
-    }
-    let Some((_, fid)) = best else { return };
-    session.select(fid);
+        let inv_mat = t.to_matrix().inverse();
+        let hit_dist = if let Some((min, max)) = r.bounds {
+            ray_local_box_intersection(ray.origin, *ray.direction, inv_mat, min, max)
+        } else {
+            let to = t.translation() - ray.origin;
+            let along = to.dot(*ray.direction);
+            if along > 0.0 {
+                let perp = (to - *ray.direction * along).length();
+                if perp < 60.0 {
+                    Some(along)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
 
-    // A double-click frames the reference, the way GECK does: the camera moves to
-    // look at it. The click has to be on the same reference both times and close
-    // enough in time, so an accidental second click does not move the view.
-    if clicks.register(fid) {
-        frame_reference(&mut orbit, &refs, fid);
+        if let Some(dist) = hit_dist {
+            if dist > 0.0 && best.is_none_or(|(d, _)| dist < d) {
+                best = Some((dist, r.form_id));
+            }
+        }
     }
+    if let Some((_, fid)) = best {
+        session.select(fid);
+
+        // A double-click frames the reference, the way GECK does: the camera moves to
+        // look at it. The click has to be on the same reference both times and close
+        // enough in time, so an accidental second click does not move the view.
+        if clicks.register(fid) {
+            frame_reference(&mut orbit, &refs, fid);
+        }
+    } else {
+        session.selected = None;
+    }
+}
+
+fn ray_local_box_intersection(
+    ray_origin: Vec3,
+    ray_dir: Vec3,
+    inv_mat: Mat4,
+    min: Vec3,
+    max: Vec3,
+) -> Option<f32> {
+    let local_orig = inv_mat.transform_point3(ray_origin);
+    let local_dir = inv_mat.transform_vector3(ray_dir);
+
+    let mut tmin = (min.x - local_orig.x) / local_dir.x;
+    let mut tmax = (max.x - local_orig.x) / local_dir.x;
+    if tmin > tmax {
+        std::mem::swap(&mut tmin, &mut tmax);
+    }
+
+    let mut tymin = (min.y - local_orig.y) / local_dir.y;
+    let mut tymax = (max.y - local_orig.y) / local_dir.y;
+    if tymin > tymax {
+        std::mem::swap(&mut tymin, &mut tymax);
+    }
+
+    if tmin > tymax || tymin > tmax {
+        return None;
+    }
+    if tymin > tmin {
+        tmin = tymin;
+    }
+    if tymax < tmax {
+        tmax = tymax;
+    }
+
+    let mut tzmin = (min.z - local_orig.z) / local_dir.z;
+    let mut tzmax = (max.z - local_orig.z) / local_dir.z;
+    if tzmin > tzmax {
+        std::mem::swap(&mut tzmin, &mut tzmax);
+    }
+
+    if tmin > tzmax || tzmin > tmax {
+        return None;
+    }
+    if tzmin > tmin {
+        tmin = tzmin;
+    }
+    if tzmax < tmax {
+        tmax = tzmax;
+    }
+
+    let t = if tmin >= 0.0 { tmin } else { tmax };
+    if t < 0.0 {
+        return None;
+    }
+
+    let hit_local = local_orig + local_dir * t;
+    let hit_world = inv_mat.inverse().transform_point3(hit_local);
+    Some((hit_world - ray_origin).dot(ray_dir))
 }
 
 /// Point the camera at a reference.

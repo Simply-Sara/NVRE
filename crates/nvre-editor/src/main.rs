@@ -12,7 +12,7 @@
 //! viewport, and one window per panel. See [`nvre_editor::windows`] for why the
 //! main window is the primary one and the viewport names its own render target.
 
-use nvre_editor::{launcher, panels, session, viewport, windows};
+use nvre_editor::{gizmo, launcher, panels, session, viewport, windows};
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
@@ -145,7 +145,7 @@ fn main() {
                 title: windows::MAIN_TITLE.into(),
                 // The launcher fills this window, so it is sized for the
                 // launcher's contents rather than for a panel.
-                resolution: (560, 440).into(),
+                resolution: (640, 520).into(),
                 position: WindowPosition::new(IVec2::new(40, 40)),
                 ..default()
             }),
@@ -161,6 +161,7 @@ fn main() {
             ..default()
         })
         .init_resource::<viewport::Spawned>()
+        .init_resource::<gizmo::GizmoState>()
         // Inserted at startup, not in `viewport::setup`: the debug panel draws
         // into its own schedule, which can run before that system has inserted
         // it, and a missing resource fails the schedule and drops the pass.
@@ -235,6 +236,8 @@ fn main() {
                 viewport::apply_frame_requests,
                 viewport::orbit_input,
                 viewport::orbit_camera,
+                gizmo::gizmo_mode_hotkeys,
+                gizmo::gizmo_system,
                 viewport::pick,
                 viewport::flat_material_diagnostic,
             )
@@ -268,10 +271,37 @@ fn open_selected(
 ) {
     // The launcher's Open button raises this; the event carries what to open.
     for _ in events.read() {
-        let Some(path) = launcher.active.clone() else {
-            continue;
+        let res = match launcher.tab {
+            launcher::LauncherTab::CreateNew => {
+                let mut name = launcher.new_name.trim().to_string();
+                if !name.ends_with(".esp")
+                    && !name.ends_with(".esm")
+                    && !name.ends_with(".ESP")
+                    && !name.ends_with(".ESM")
+                {
+                    name.push_str(if launcher.new_is_master {
+                        ".esm"
+                    } else {
+                        ".esp"
+                    });
+                }
+                session::Session::create(
+                    &name,
+                    launcher.new_is_master,
+                    &args.data,
+                    &args.esm_schema,
+                    launcher.masters.clone(),
+                )
+            }
+            launcher::LauncherTab::OpenExisting => {
+                let Some(path) = launcher.active.clone() else {
+                    continue;
+                };
+                session::Session::open(&path, &args.esm_schema, launcher.masters.clone())
+            }
         };
-        match session::Session::open(&path, &args.esm_schema, launcher.masters.clone()) {
+
+        match res {
             Ok(mut session) => {
                 if let Some(cell) = &args.cell {
                     let fid = u32::from_str_radix(cell.trim_start_matches("0x"), 16)

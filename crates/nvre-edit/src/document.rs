@@ -93,6 +93,70 @@ impl Document {
         }
     }
 
+    /// Create a new, blank plugin (.esp or .esm) with the specified name and masters.
+    pub fn create_empty(
+        name: &str,
+        is_master: bool,
+        masters: &[String],
+    ) -> Result<Document, EsmError> {
+        let mut subs = Vec::new();
+        // HEDR subrecord: version (1.34), num_records (0), next_object_id (0x00000800)
+        let mut hedr = Vec::new();
+        hedr.extend_from_slice(&1.34f32.to_le_bytes());
+        hedr.extend_from_slice(&0i32.to_le_bytes());
+        hedr.extend_from_slice(&0x800u32.to_le_bytes());
+        subs.push(fnv_esm::raw::Subrecord {
+            sig: *b"HEDR",
+            data: hedr,
+            extended: false,
+        });
+
+        // CNAM author
+        subs.push(fnv_esm::raw::Subrecord {
+            sig: *b"CNAM",
+            data: b"NVRE\0".to_vec(),
+            extended: false,
+        });
+
+        for m in masters {
+            let mut n = m.as_bytes().to_vec();
+            if !n.ends_with(&[0]) {
+                n.push(0);
+            }
+            subs.push(fnv_esm::raw::Subrecord {
+                sig: *b"MAST",
+                data: n,
+                extended: false,
+            });
+            subs.push(fnv_esm::raw::Subrecord {
+                sig: *b"DATA",
+                data: vec![0u8; 8],
+                extended: false,
+            });
+        }
+
+        let payload = fnv_esm::raw::write_subrecords(&subs);
+
+        let flags = if is_master {
+            fnv_esm::raw::record_flags::MASTER
+        } else {
+            0
+        };
+
+        let mut record_bytes = Vec::new();
+        record_bytes.extend_from_slice(b"TES4");
+        record_bytes.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        record_bytes.extend_from_slice(&flags.to_le_bytes());
+        record_bytes.extend_from_slice(&0u32.to_le_bytes()); // form_id
+        record_bytes.extend_from_slice(&0u32.to_le_bytes()); // vc_info
+        record_bytes.extend_from_slice(&15u16.to_le_bytes()); // form_version
+        record_bytes.extend_from_slice(&0u16.to_le_bytes()); // vc_info2
+        record_bytes.extend_from_slice(&payload);
+
+        let plugin = Plugin::parse(&record_bytes, name.to_string())?;
+        Ok(Document::from_plugin(plugin))
+    }
+
     pub fn plugin(&self) -> &Plugin {
         &self.plugin
     }
@@ -143,10 +207,15 @@ impl Document {
 
     /// Queue a subrecord edit. `data` must be the encoded payload.
     pub fn set_sub(&mut self, form_id: u32, sig: &[u8; 4], data: Vec<u8>) {
-        self.edits
-            .entry(form_id)
-            .or_default()
-            .push(Edit::SetSub { sig: *sig, data });
+        let edits = self.edits.entry(form_id).or_default();
+        if let Some(existing) = edits
+            .iter_mut()
+            .find(|e| matches!(e, Edit::SetSub { sig: s, .. } if s == sig))
+        {
+            *existing = Edit::SetSub { sig: *sig, data };
+        } else {
+            edits.push(Edit::SetSub { sig: *sig, data });
+        }
     }
 
     /// Queue a subrecord removal.

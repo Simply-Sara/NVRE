@@ -122,6 +122,65 @@ impl Session {
         })
     }
 
+    /// Create a new, blank plugin (.esp or .esm) with the chosen masters.
+    pub fn create(
+        name: &str,
+        is_master: bool,
+        data_dir: &std::path::Path,
+        schema_dir: &std::path::Path,
+        masters: Vec<String>,
+    ) -> Result<Session, String> {
+        let schema = Schema::load_dir(schema_dir).map_err(|e| e.to_string())?;
+        let mut plugins: Vec<fnv_esm::Plugin> = Vec::new();
+        for m in &masters {
+            let p = data_dir.join(m);
+            plugins.push(fnv_esm::Plugin::open(&p).map_err(|e| format!("{m}: {e}"))?);
+        }
+        let leaked_plugins: &'static [fnv_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
+        let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
+        let index = fnv_world::WorldIndex::build(&lo, &schema);
+
+        let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
+        for (&w_fid, ws) in &index.worldspaces {
+            if let Some(pc_id) = ws.persistent_cell {
+                if let Some(pc) = index.cells.get(&pc_id) {
+                    for &r in &pc.refs {
+                        if let Some(p) = fnv_world::placed::placement(&lo, &schema, r) {
+                            let g = fnv_world::cell_of(p.position[0], p.position[1]);
+                            persistent_by_grid.entry((w_fid, g)).or_default().push(r);
+                        }
+                    }
+                }
+            }
+        }
+
+        let doc = Document::create_empty(name, is_master, &masters).map_err(|e| e.to_string())?;
+
+        Ok(Session {
+            doc,
+            plugins: leaked_plugins,
+            lo,
+            schema,
+            index,
+            masters,
+            cell: None,
+            selected: None,
+            placed_index: 0,
+            refs: Vec::new(),
+            refs_cell: None,
+            exterior_refs: Vec::new(),
+            exterior_refs_key: None,
+            models: HashMap::new(),
+            details: RefDetails::default(),
+            details_cell: None,
+            palette_groups: Vec::new(),
+            palette_filter: String::new(),
+            deleted: Vec::new(),
+            status: format!("created new plugin {name}"),
+            persistent_by_grid,
+        })
+    }
+
     /// The plugin being edited.
     pub fn plugin(&self) -> &fnv_esm::Plugin {
         self.doc.plugin()
@@ -716,24 +775,80 @@ impl Session {
 
     /// Move the selected reference to a game position.
     pub fn move_selected(&mut self, position: [f32; 3]) {
-        let _fid = self.selected;
-        let Some(rec) = self.selected_record() else {
+        let Some((_, rot, _)) = self.selected_placement() else {
             return;
         };
-        let rec = rec.record();
-        let Some(current) = nvre_edit::document::value_of(&self.schema, rec, b"DATA") else {
+        let mut data = vec![0u8; 24];
+        for i in 0..3 {
+            data[i * 4..i * 4 + 4].copy_from_slice(&position[i].to_le_bytes());
+            data[(3 + i) * 4..(3 + i) * 4 + 4].copy_from_slice(&rot[i].to_le_bytes());
+        }
+        self.edit_selected(b"DATA", data);
+        self.refs_cell = None;
+        self.exterior_refs_key = None;
+    }
+
+    /// Rotate the selected reference in game space (Euler angles [pitch, roll, yaw] in radians).
+    pub fn rotate_selected(&mut self, rotation: [f32; 3]) {
+        let Some((pos, _, _)) = self.selected_placement() else {
             return;
         };
-        let mut next = current;
-        if let Some(p) = next.get_mut("position").and_then(|p| p.as_object_mut()) {
-            p.insert("x".into(), serde_json::json!(position[0] as f64));
-            p.insert("y".into(), serde_json::json!(position[1] as f64));
-            p.insert("z".into(), serde_json::json!(position[2] as f64));
+        let mut data = vec![0u8; 24];
+        for i in 0..3 {
+            data[i * 4..i * 4 + 4].copy_from_slice(&pos[i].to_le_bytes());
+            data[(3 + i) * 4..(3 + i) * 4 + 4].copy_from_slice(&rotation[i].to_le_bytes());
         }
-        match nvre_edit::encode::encode_sub(&self.schema, b"REFR", b"DATA", &next) {
-            Ok(bytes) => self.edit_selected(b"DATA", bytes),
-            Err(e) => self.status = format!("cannot encode the move: {e}"),
+        self.edit_selected(b"DATA", data);
+        self.refs_cell = None;
+        self.exterior_refs_key = None;
+    }
+
+    /// Scale the selected reference (uniform scale).
+    pub fn scale_selected(&mut self, scale: f32) {
+        let bytes = scale.to_le_bytes().to_vec();
+        self.edit_selected(b"XSCL", bytes);
+        self.refs_cell = None;
+        self.exterior_refs_key = None;
+    }
+
+    /// The selected reference's current (position, rotation, scale) in game space.
+    pub fn selected_placement(&self) -> Option<([f32; 3], [f32; 3], f32)> {
+        let fid = self.selected?;
+        let rec = self.selected_record()?;
+        let subs = rec.record().subrecords().ok()?;
+        let (mut pos, mut rot) = placement_in(&subs)?;
+        let mut scale = scale_in(&subs).unwrap_or(1.0);
+
+        if let Some(edits) = self.doc.edits_for(fid) {
+            for e in edits {
+                match e {
+                    nvre_edit::document::Edit::SetSub { sig, data }
+                        if sig == b"DATA" && data.len() >= 24 =>
+                    {
+                        let f = |i: usize| -> Option<f32> {
+                            Some(f32::from_le_bytes(
+                                data.get(i * 4..i * 4 + 4)?.try_into().ok()?,
+                            ))
+                        };
+                        if let (Some(x), Some(y), Some(z), Some(rx), Some(ry), Some(rz)) =
+                            (f(0), f(1), f(2), f(3), f(4), f(5))
+                        {
+                            pos = [x, y, z];
+                            rot = [rx, ry, rz];
+                        }
+                    }
+                    nvre_edit::document::Edit::SetSub { sig, data }
+                        if sig == b"XSCL" && data.len() >= 4 =>
+                    {
+                        if let Ok(b) = data[..4].try_into() {
+                            scale = f32::from_le_bytes(b);
+                        }
+                    }
+                    _ => {}
+                }
+            }
         }
+        Some((pos, rot, scale))
     }
 
     /// Nudge the selected reference by a game-space offset.

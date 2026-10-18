@@ -934,9 +934,30 @@ pub fn place(
 pub fn status(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<4>>>,
     mut session: ResMut<crate::session::Session>,
+    mut gizmo: ResMut<crate::gizmo::GizmoState>,
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "status"), |ui| {
         ui.horizontal(|ui| {
+            ui.label("Tool:");
+            if ui
+                .selectable_label(gizmo.mode == crate::gizmo::GizmoMode::Translate, "W: Move")
+                .clicked()
+            {
+                gizmo.mode = crate::gizmo::GizmoMode::Translate;
+            }
+            if ui
+                .selectable_label(gizmo.mode == crate::gizmo::GizmoMode::Rotate, "E: Rotate")
+                .clicked()
+            {
+                gizmo.mode = crate::gizmo::GizmoMode::Rotate;
+            }
+            if ui
+                .selectable_label(gizmo.mode == crate::gizmo::GizmoMode::Scale, "R: Scale")
+                .clicked()
+            {
+                gizmo.mode = crate::gizmo::GizmoMode::Scale;
+            }
+            ui.separator();
             ui.label(&session.status);
             ui.separator();
             let pending = session.pending_edits();

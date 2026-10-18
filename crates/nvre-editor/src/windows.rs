@@ -92,14 +92,21 @@ pub fn setup_primary(mut commands: Commands) {
     commands.spawn((Camera2d, PrimaryEguiContext));
 }
 
+/// Marker component for the 3D viewport window.
+#[derive(Component)]
+pub struct ViewportWindow;
+
 pub fn spawn_viewport(mut commands: Commands) {
     let window = commands
-        .spawn(Window {
-            title: VIEWPORT_TITLE.into(),
-            resolution: (1280, 800).into(),
-            position: WindowPosition::new(IVec2::new(40, 200)),
-            ..default()
-        })
+        .spawn((
+            Window {
+                title: VIEWPORT_TITLE.into(),
+                resolution: (1280, 800).into(),
+                position: WindowPosition::new(IVec2::new(40, 200)),
+                ..default()
+            },
+            ViewportWindow,
+        ))
         .id();
     commands.spawn((
         Camera3d::default(),
