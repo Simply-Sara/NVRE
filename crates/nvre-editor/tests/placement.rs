@@ -18,7 +18,7 @@ fn placement_reads_position_and_rotation() {
     };
     let mut s = Session::open(
         std::path::Path::new(&format!("{data}/FalloutNV.esm")),
-        std::path::Path::new("schemas/fnv"),
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")),
         vec!["FalloutNV.esm".to_string()],
     )
     .expect("open the master");

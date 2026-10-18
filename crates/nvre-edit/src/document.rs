@@ -424,6 +424,23 @@ pub fn make_refr_flags(
     scale: Option<f32>,
     flags: u32,
 ) -> Record {
+    make_placed_record(
+        *b"REFR", form_id, base, position, rotation, edid, scale, flags,
+    )
+}
+
+/// Create a placed reference or actor record (`REFR`, `ACHR`, `ACRE`) with explicit header flags.
+#[allow(clippy::too_many_arguments)]
+pub fn make_placed_record(
+    sig: [u8; 4],
+    form_id: u32,
+    base: u32,
+    position: [f32; 3],
+    rotation: [f32; 3],
+    edid: Option<&str>,
+    scale: Option<f32>,
+    flags: u32,
+) -> Record {
     let mut subs: Vec<Subrecord> = Vec::new();
     if let Some(e) = edid {
         subs.push(Subrecord {
@@ -459,7 +476,7 @@ pub fn make_refr_flags(
     let payload = fnv_esm::raw::write_subrecords(&subs);
     Record {
         header: RecordHeader {
-            sig: *b"REFR",
+            sig,
             data_size: payload.len() as u32,
             flags,
             form_id,

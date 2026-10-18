@@ -42,7 +42,7 @@ pub struct Session {
     /// Building it walks the load order, which is the editor's most expensive
     /// query; doing it every frame is what made the editor run at half a frame
     /// per second while a cell was open.
-    palette: Vec<(u32, String)>,
+    palette_groups: Vec<ObjectGroup>,
     palette_filter: String,
     /// Records the session has queued for deletion, in the order asked.
     deleted: Vec<u32>,
@@ -90,7 +90,7 @@ impl Session {
             models: HashMap::new(),
             details: RefDetails::default(),
             details_cell: None,
-            palette: Vec::new(),
+            palette_groups: Vec::new(),
             palette_filter: String::new(),
             deleted: Vec::new(),
             status: String::new(),
@@ -173,27 +173,75 @@ impl Session {
         b.world_model_path().or_else(|| b.model_path())
     }
 
-    /// The place palette for a filter, cached until the filter changes.
+    /// The object palette, grouped into GECK's categories.
+    ///
+    /// GECK's Object Window is a category list on the left and that category's
+    /// objects on the right, so the palette is built the same way: one group per
+    /// placeable record type, named the way GECK names it ("Static",
+    /// "Container"), each holding its objects sorted by name.
     ///
     /// The query walks the load order, so it is worth hundreds of milliseconds;
-    /// the panel asks for it every frame otherwise.
-    pub fn palette(&mut self, filter: &str) -> Vec<(u32, String)> {
-        if self.palette_filter == filter && !self.palette.is_empty() {
-            return self.palette.clone();
+    /// the panel asks for it every frame otherwise, and the result is cached
+    /// until the filter changes. The filter is applied before the cap, so it
+    /// selects from the whole load order rather than only the first N
+    /// alphabetically.
+    pub fn object_groups(&mut self, filter: &str) -> &[ObjectGroup] {
+        if self.palette_filter != filter || self.palette_groups.is_empty() {
+            let found = (|| {
+                let lo = self.load_order().ok()?;
+                let objects = load_order_objects(&lo, filter);
+                // Grouped by the record type, which is the category. One
+                // load-order lookup per distinct type rather than per object.
+                let mut types: HashMap<[u8; 4], (String, String)> = HashMap::new();
+                for (_, sig, _) in &objects {
+                    types.entry(*sig).or_insert_with(|| {
+                        let group = geck_group_for_sig(sig)
+                            .unwrap_or("Miscellaneous")
+                            .to_string();
+                        let category = self
+                            .schema
+                            .records
+                            .get(sig)
+                            .map(|d| d.name.clone())
+                            .unwrap_or_else(|| String::from_utf8_lossy(sig).to_string());
+                        (group, category)
+                    });
+                }
+                let mut groups: Vec<ObjectGroup> = Vec::new();
+                for (fid, sig, label) in objects {
+                    let Some((group, category)) = types.get(&sig).cloned() else {
+                        continue;
+                    };
+                    let at = match groups.iter().position(|g| g.category == category) {
+                        Some(i) => i,
+                        None => {
+                            groups.push(ObjectGroup {
+                                group,
+                                category,
+                                sig,
+                                objects: Vec::new(),
+                            });
+                            groups.len() - 1
+                        }
+                    };
+                    groups[at].objects.push((fid, label));
+                }
+                // Categories ordered by GECK top-level group, then alphabetically by category.
+                groups.sort_by(|a, b| {
+                    group_rank(&a.group)
+                        .cmp(&group_rank(&b.group))
+                        .then_with(|| a.category.cmp(&b.category))
+                });
+                for g in &mut groups {
+                    g.objects.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
+                }
+                Some(groups)
+            })()
+            .unwrap_or_default();
+            self.palette_groups = found;
+            self.palette_filter = filter.to_string();
         }
-        let found = (|| {
-            let lo = self.load_order().ok()?;
-            Some(
-                placeable_base_objects(&lo, filter, 200)
-                    .into_iter()
-                    .map(|(f, l, _)| (f, l))
-                    .collect::<Vec<_>>(),
-            )
-        })()
-        .unwrap_or_default();
-        self.palette = found;
-        self.palette_filter = filter.to_string();
-        self.palette.clone()
+        &self.palette_groups
     }
 
     /// The worldspaces in the load order, as browser rows.
@@ -411,13 +459,29 @@ impl Session {
     ///
     /// A newly placed record is staged with FormID 0 and lives in the session's
     /// pending inserts, not in the plugin, so it is read from there.
+    /// The selected record, either staged, in the active plugin, or in the load order.
     pub fn selected_record(&self) -> Option<StagedRecord<'_>> {
         let fid = self.selected?;
         if fid == 0 {
             let p = self.doc.inserted().last()?;
             return Some(StagedRecord::Pending(&p.record));
         }
-        self.doc.record(fid).map(StagedRecord::Saved)
+        if let Some(r) = self.doc.record(fid) {
+            return Some(StagedRecord::Saved(r));
+        }
+        let lo = self.load_order().ok()?;
+        let (_, r) = fnv_world::fields::winner(&lo, fid)?;
+        Some(StagedRecord::Saved(r))
+    }
+
+    /// The signature of a record by FormID.
+    pub fn record_sig(&self, form_id: u32) -> Option<[u8; 4]> {
+        if let Some(r) = self.doc.record(form_id) {
+            return Some(r.header.sig);
+        }
+        let lo = self.load_order().ok()?;
+        let (_, r) = fnv_world::fields::winner(&lo, form_id)?;
+        Some(r.header.sig)
     }
 
     /// Queue a subrecord edit on the selected reference.
@@ -517,19 +581,27 @@ impl Session {
             .get(&cell)
             .map(|c| c.world.is_some() && c.grid.is_none())
             .unwrap_or(false);
-        let rec = if persistent {
-            nvre_edit::document::make_refr_flags(
-                next,
-                base,
-                position,
-                [0.0, 0.0, 0.0],
-                None,
-                None,
-                nvre_edit::document::REFR_PERSISTENT,
-            )
+        let flags = if persistent {
+            nvre_edit::document::REFR_PERSISTENT
         } else {
-            nvre_edit::document::make_refr(next, base, position, [0.0, 0.0, 0.0], None, None)
+            0
         };
+        let sig = self.record_sig(base).unwrap_or(*b"REFR");
+        let placed_sig = match &sig {
+            b"NPC_" => *b"ACHR",
+            b"CREA" => *b"ACRE",
+            _ => *b"REFR",
+        };
+        let rec = nvre_edit::document::make_placed_record(
+            placed_sig,
+            next,
+            base,
+            position,
+            [0.0, 0.0, 0.0],
+            None,
+            None,
+            flags,
+        );
         self.doc
             .insert(nvre_edit::document::PendingRecord { cell, record: rec });
         self.selected = Some(next);
@@ -896,11 +968,135 @@ fn lock_in(subs: &[fnv_esm::Subrecord]) -> Option<LockRow> {
     })
 }
 
-/// Base objects that can be placed, for the place-new palette.
-///
-/// Read from the load order so the palette lists what the game actually ships
-/// rather than a hardcoded set.
-/// Base objects a reference can be placed from.
+/// One category of the object window: GECK's Object Window groups records into
+/// top-level categories ("WorldObjects", "Items", "Actors", ...) and subcategories
+/// named after the record type ("Static", "Weapon", "Creature", ...).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectGroup {
+    /// Top-level GECK group: "Actors", "Items", "Magic", "Special Effects",
+    /// "WorldObjects", "Audio", "Miscellaneous".
+    pub group: String,
+    /// The category's name: "Static", "Container", "Moveable Static".
+    pub category: String,
+    /// The record signature: `*b"STAT"`, etc.
+    pub sig: [u8; 4],
+    /// The category's objects, by base FormID and name, sorted by name.
+    pub objects: Vec<(u32, String)>,
+}
+
+/// Where a top-level group sits in GECK's Object Window.
+pub fn group_rank(group: &str) -> usize {
+    const ORDER: [&str; 8] = [
+        "Actors",
+        "Actor Data",
+        "Items",
+        "Magic",
+        "Special Effects",
+        "WorldObjects",
+        "Audio",
+        "Miscellaneous",
+    ];
+    ORDER
+        .iter()
+        .position(|g| *g == group)
+        .unwrap_or(ORDER.len())
+}
+
+/// The top-level GECK group for a record signature.
+pub fn geck_group_for_sig(sig: &[u8; 4]) -> Option<&'static str> {
+    match sig {
+        b"CREA" | b"LVLC" | b"NPC_" | b"LVLN" => Some("Actors"),
+        b"BPTD" | b"CLAS" | b"CSTY" | b"EYES" | b"FACT" | b"HAIR" | b"HDPT" | b"PACK" | b"PERK"
+        | b"QUST" | b"RACE" | b"RGDL" | b"VTYP" | b"AVIF" => Some("Actor Data"),
+        b"AMMO" | b"AMEF" | b"ARMO" | b"ARMA" | b"BOOK" | b"CCRD" | b"CMNY" | b"CHIP" | b"CDCK"
+        | b"INGR" | b"KEYM" | b"LVLI" | b"MISC" | b"NOTE" | b"WEAP" | b"IMOD" => Some("Items"),
+        b"ALCH" | b"MGEF" | b"ENCH" | b"SPEL" => Some("Magic"),
+        b"ADDN" | b"DEBR" | b"EFSH" | b"EXPL" | b"IMGS" | b"IMAD" | b"IPDS" | b"IPCT" | b"PROJ" => {
+            Some("Special Effects")
+        }
+        b"ACTI" | b"CLMT" | b"CONT" | b"DOOR" | b"FURN" | b"GRAS" | b"LIGH" | b"MSTT" | b"PWAT"
+        | b"REGN" | b"STAT" | b"SCOL" | b"TACT" | b"TERM" | b"TREE" | b"WATR" | b"WTHR" => {
+            Some("WorldObjects")
+        }
+        b"ASPC" | b"ALOC" | b"MSET" | b"MUSC" | b"SOUN" => Some("Audio"),
+        _ => Some("Miscellaneous"),
+    }
+}
+
+/// Whether a record type can be placed as a reference or placed actor in a cell.
+pub fn is_placeable_sig(sig: &[u8; 4]) -> bool {
+    matches!(
+        sig,
+        b"STAT"
+            | b"SCOL"
+            | b"MSTT"
+            | b"TREE"
+            | b"FURN"
+            | b"CONT"
+            | b"ACTI"
+            | b"LIGH"
+            | b"DOOR"
+            | b"TERM"
+            | b"FLOR"
+            | b"TACT"
+            | b"PWAT"
+            | b"GRAS"
+            | b"WEAP"
+            | b"ARMO"
+            | b"AMMO"
+            | b"ALCH"
+            | b"BOOK"
+            | b"KEYM"
+            | b"MISC"
+            | b"NOTE"
+            | b"CHIP"
+            | b"CCRD"
+            | b"CMNY"
+            | b"SOUN"
+            | b"ASPC"
+            | b"NPC_"
+            | b"CREA"
+    )
+}
+
+/// Record types that are not individual objects in GECK's Object Window
+/// (cells, worldspaces, landscapes, navmeshes, dialogue responses, and placed instances).
+pub const NON_OBJECT_SIGS: [&[u8; 4]; 12] = [
+    b"REFR", b"ACHR", b"ACRE", b"PGRE", b"CELL", b"LAND", b"NAVM", b"NAVI", b"WRLD", b"LTEX",
+    b"INFO", b"DIAL",
+];
+
+/// Collect all objects across the load order, filtered by label.
+pub fn load_order_objects(lo: &LoadOrder, filter: &str) -> Vec<(u32, [u8; 4], String)> {
+    let filter = filter.to_lowercase();
+    let mut out: Vec<(u32, [u8; 4], String)> = Vec::new();
+    let mut seen: HashMap<u32, usize> = HashMap::new();
+    for (pi, _plugin) in lo.plugins.iter().enumerate() {
+        for r in &lo.records[pi] {
+            if NON_OBJECT_SIGS.contains(&&r.header.sig) {
+                continue;
+            }
+            let Some(global) = lo.to_global(pi, r.header.form_id) else {
+                continue;
+            };
+            let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
+            let label = full.or(edid).unwrap_or_else(|| format!("{global:08X}"));
+            if !filter.is_empty() && !label.to_lowercase().contains(&filter) {
+                continue;
+            }
+            match seen.get(&global) {
+                Some(&i) => out[i] = (global, r.header.sig, label),
+                None => {
+                    seen.insert(global, out.len());
+                    out.push((global, r.header.sig, label));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Base objects a reference can be placed from, for the place palette.
 ///
 /// `filter` is applied before the cap, so it selects from the whole load order
 /// rather than only the first N alphabetically — a cap applied first would make
@@ -915,7 +1111,7 @@ pub fn placeable_base_objects(
     let mut seen: HashMap<u32, usize> = HashMap::new();
     for (pi, _plugin) in lo.plugins.iter().enumerate() {
         for r in &lo.records[pi] {
-            if !PLACEABLE.contains(&&r.header.sig) {
+            if !is_placeable_sig(&r.header.sig) {
                 continue;
             }
             let Some(global) = lo.to_global(pi, r.header.form_id) else {
@@ -944,8 +1140,10 @@ pub fn placeable_base_objects(
 }
 
 /// Record types that can be placed as a reference.
-const PLACEABLE: [&[u8; 4]; 8] = [
-    b"STAT", b"SCOL", b"MSTT", b"TREE", b"FURN", b"CONT", b"ACTI", b"LIGH",
+pub const PLACEABLE: [&[u8; 4]; 27] = [
+    b"STAT", b"SCOL", b"MSTT", b"TREE", b"FURN", b"CONT", b"ACTI", b"LIGH", b"DOOR", b"TERM",
+    b"FLOR", b"TACT", b"PWAT", b"GRAS", b"WEAP", b"ARMO", b"AMMO", b"ALCH", b"BOOK", b"KEYM",
+    b"MISC", b"NOTE", b"CHIP", b"CCRD", b"CMNY", b"SOUN", b"ASPC",
 ];
 
 /// A selected record, either already in the plugin or staged for the save.

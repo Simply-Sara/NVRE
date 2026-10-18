@@ -727,33 +727,161 @@ pub struct FieldEdit {
     error: Option<String>,
 }
 
-/// The place palette: pick a base object and put it in the open cell.
+/// How wide the object palette's category column is, in points.
+///
+/// GECK's Object Window fixes its category pane at about this much, which is
+/// enough for "Non-Player Character" and the object count without swallowing the
+/// pane a modder actually picks from.
+const CATEGORY_WIDTH: f32 = 180.0;
+
+/// The gap between the palette's two columns, wide enough for a separator.
+const SEPARATOR_GAP: f32 = 8.0;
+
+/// The object palette: a category list down the left side, that category's
+/// objects on the right.
+///
+/// GECK's Object Window is laid out this way, and it is what makes all game
+/// objects navigable: a modder picks "Static" and sees statics rather than
+/// scrolling past containers and lights to find them. The categories are grouped
+/// under GECK's top-level sections ("Actors", "Items", "WorldObjects", ...), and
+/// clicking an object selects it or places it if placeable.
 pub fn place(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<3>>>,
     mut session: ResMut<crate::session::Session>,
     mut filters: ResMut<Filters>,
+    mut chosen: Local<usize>,
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "place"), |ui| {
-        ui.label("Base object");
-        ui.text_edit_singleline(&mut filters.place);
+        ui.horizontal(|ui| {
+            ui.label("filter");
+            ui.add(
+                egui::TextEdit::singleline(&mut filters.place)
+                    .hint_text("name or Editor ID")
+                    .desired_width(ui.available_width() - 60.0),
+            );
+        });
         ui.separator();
-        // The palette is cached in the session and rebuilt only when the filter
-        // changes: the query walks the load order, which costs hundreds of
-        // milliseconds, and the panel draws every frame.
-        let objects = session.palette(&filters.place);
-        let shown = objects.len();
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            for (fid, label) in objects {
-                if ui.button(&label).clicked() {
-                    // Placed at the cell's origin: the camera's target is the
-                    // better default once the viewport can report it.
-                    session.place(fid, [0.0, 0.0, 0.0]);
+        // Cached in the session and rebuilt only when the filter changes: the
+        // query walks the load order, which costs hundreds of milliseconds, and
+        // the panel draws every frame. Borrowed rather than cloned.
+        let cell_open = session.cell.is_some();
+        let selected_fid = session.selected;
+        if session.object_groups(&filters.place).is_empty() {
+            ui.label("no objects match");
+            return;
+        }
+        let groups = session.object_groups(&filters.place);
+        // Clamp the selection into range. A filter that narrows to one category
+        // selects it, so typing a name does not leave the right half of the
+        // window empty behind a category the filter emptied out. A filter that
+        // removes categories shifts the indices, so a selection past the new end
+        // lands on the last category rather than indexing out of bounds.
+        *chosen = (*chosen).min(groups.len().saturating_sub(1));
+        // Every count the footer needs is read out before the action is placed,
+        // which needs `&mut Session` while `groups` still borrows it.
+        let total: usize = groups.iter().map(|g| g.objects.len()).sum();
+        let empty = groups.iter().filter(|g| g.objects.is_empty()).count();
+        let shown = groups.len() - empty;
+
+        let cur_group = &groups[*chosen];
+        let is_placeable = crate::session::is_placeable_sig(&cur_group.sig);
+        let mut place_fid: Option<u32> = None;
+        let mut select_fid: Option<u32> = None;
+
+        // The two halves of GECK's Object Window: a category list down the LEFT
+        // side, the chosen category's objects on the right.
+        let list = egui::Rect::from_min_size(
+            ui.next_widget_position(),
+            egui::vec2(CATEGORY_WIDTH, ui.available_height()),
+        );
+        {
+            let mut ui = egui::Ui::new(
+                ui.ctx().clone(),
+                "categories".into(),
+                egui::UiBuilder::new().max_rect(list),
+            );
+            egui::ScrollArea::vertical().show(&mut ui, |ui| {
+                let mut last_group = "";
+                for (i, g) in groups.iter().enumerate() {
+                    if g.group != last_group {
+                        last_group = &g.group;
+                        let group_count: usize = groups
+                            .iter()
+                            .filter(|x| x.group == last_group)
+                            .map(|x| x.objects.len())
+                            .sum();
+                        ui.add_space(6.0);
+                        ui.strong(format!("{} ({})", last_group, group_count));
+                    }
+                    let selected = *chosen == i;
+                    let label = if g.objects.is_empty() {
+                        format!("  {}  —", g.category)
+                    } else {
+                        format!("  {}  {}", g.category, g.objects.len())
+                    };
+                    if ui.selectable_label(selected, label).clicked() {
+                        *chosen = i;
+                    }
                 }
+            });
+        }
+        // A separator down the gap between the columns, drawn as a manually
+        // positioned line so it does not take part in the layout flow.
+        ui.painter().vline(
+            list.right() + SEPARATOR_GAP / 2.0,
+            list.y_range(),
+            egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color),
+        );
+        let rest = egui::Rect::from_min_size(
+            list.right_top() + egui::vec2(SEPARATOR_GAP, 0.0),
+            egui::vec2(
+                (ui.available_width() - CATEGORY_WIDTH - SEPARATOR_GAP).max(0.0),
+                ui.available_height(),
+            ),
+        );
+        let mut ui = egui::Ui::new(
+            ui.ctx().clone(),
+            "objects".into(),
+            egui::UiBuilder::new().max_rect(rest),
+        );
+        egui::ScrollArea::vertical().show(&mut ui, |ui| {
+            for (fid, label) in &groups[*chosen].objects {
+                ui.horizontal(|ui| {
+                    if is_placeable && cell_open && ui.small_button("Place").clicked() {
+                        place_fid = Some(*fid);
+                    }
+                    let selected = selected_fid == Some(*fid);
+                    let resp = ui.selectable_label(selected, label);
+                    if resp.double_clicked() && is_placeable && cell_open {
+                        place_fid = Some(*fid);
+                    } else if resp.clicked() {
+                        select_fid = Some(*fid);
+                    }
+                });
             }
-            if shown == 200 && filters.place.is_empty() {
-                ui.label("showing 200 of 11483 — type to filter");
+            if groups[*chosen].objects.is_empty() {
+                ui.label("no objects in this category match the filter");
             }
         });
+        if let Some(fid) = place_fid {
+            // Placed at the cell's origin: the camera's target is the better
+            // default once the viewport can report it.
+            session.place(fid, [0.0, 0.0, 0.0]);
+        } else if let Some(fid) = select_fid {
+            session.select(fid);
+            session.status = format!("selected {fid:08X}");
+        }
+        ui.separator();
+        ui.label(format!(
+            "{} objects in {} categories{}",
+            total,
+            shown,
+            if empty == 0 {
+                String::new()
+            } else {
+                format!(" ({empty} empty)")
+            }
+        ));
     });
 }
 

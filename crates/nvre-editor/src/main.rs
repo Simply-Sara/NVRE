@@ -209,7 +209,7 @@ fn main() {
             panels::properties.run_if(in_state(EditorState::Editing)),
         )
         .add_systems(
-            windows::Panel::Place,
+            windows::Panel::Objects,
             panels::place.run_if(in_state(EditorState::Editing)),
         )
         .add_systems(

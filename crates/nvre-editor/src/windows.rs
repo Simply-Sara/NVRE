@@ -10,8 +10,8 @@
 //!  ┌─ Cells ─────┐ ┌─ References ──┐ ┌─ Properties ──┐
 //!  │             │ │               │ │               │
 //!  └─────────────┘ └───────────────┘ └───────────────┘
-//!  ┌─ Place ─────┐ ┌─ Status ──────┐ ╔═ Viewport ════╗
-//!  │             │ │       [Save]  │ ║   3D models   ║
+//!  ┌─ Objects ───┐ ┌─ Status ──────┐ ╔═ Viewport ════╗
+//!  │ categories  │ │       [Save]  │ ║   3D models   ║
 //!  └─────────────┘ └───────────────┘ ╚═══════════════╝
 //! ```
 //!
@@ -47,8 +47,8 @@ pub enum Panel {
     References,
     /// The property grid for the selection.
     Properties,
-    /// The base-object palette.
-    Place,
+    /// The base-object palette, grouped into GECK's categories.
+    Objects,
     /// The status line and the save button.
     Status,
     /// The camera's state, read and written while the editor runs.
@@ -129,8 +129,8 @@ pub fn spawn_windows(mut commands: Commands, mut settings: ResMut<EguiGlobalSett
     //
     // The References panel's own table carries five columns — Editor ID, Form
     // ID, Type, Owner and Lock — and needs the room for them: it sits next to
-    // the Cells panel rather than under it, and the Properties and Place panels
-    // follow it along.
+    // the Cells panel rather than under it, and the Properties and Objects
+    // panels follow it along.
     spawn_panel::<0>(&mut commands, "Cells", 40, 40, 607, 480, Panel::Cells);
     spawn_panel::<1>(
         &mut commands,
@@ -150,7 +150,15 @@ pub fn spawn_windows(mut commands: Commands, mut settings: ResMut<EguiGlobalSett
         520,
         Panel::Properties,
     );
-    spawn_panel::<3>(&mut commands, "Place", 1307, 600, 560, 380, Panel::Place);
+    spawn_panel::<3>(
+        &mut commands,
+        "Objects",
+        1307,
+        600,
+        560,
+        380,
+        Panel::Objects,
+    );
     spawn_panel::<4>(&mut commands, "Status", 40, 800, 760, 90, Panel::Status);
     spawn_panel::<5>(&mut commands, "Debug", 1877, 600, 360, 260, Panel::Debug);
     info!("spawned {} panel windows", WINDOW_COUNT);
