@@ -246,7 +246,7 @@ fn main() {
                 gizmo::gizmo_system,
                 viewport::pick,
                 viewport::flat_material_diagnostic,
-                creature::sync_window,
+                creature::manage_window,
                 handle_window_close,
             )
                 .chain()
@@ -356,7 +356,7 @@ fn handle_window_close(
     mut closed: MessageReader<bevy::window::WindowCloseRequested>,
     mut app_exit: MessageWriter<AppExit>,
     primary: Query<Entity, With<bevy::window::PrimaryWindow>>,
-    creature_win: Query<Entity, With<windows::CreatureWindow>>,
+    creature_win: Query<Entity, With<creature::CreatureWindow>>,
     mut session: Option<ResMut<session::Session>>,
 ) {
     let primary_ent = primary.iter().next();

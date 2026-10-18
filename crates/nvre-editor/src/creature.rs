@@ -486,7 +486,7 @@ const ATTACK_ANIMS: [&str; 5] = ["Any", "Left", "Right", "Forward", "Back"];
 
 /// The UI rendering system for the creature editor window.
 pub fn ui(
-    mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
+    mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
     mut session: ResMut<crate::session::Session>,
     mut state: ResMut<CreatureEditorState>,
 ) {
@@ -494,6 +494,9 @@ pub fn ui(
         return;
     }
 
+    let Some(mut ctx) = ctx.iter_mut().next() else {
+        return;
+    };
     let ctx = ctx.get_mut();
 
     // Check if creature selection changed
@@ -1112,29 +1115,78 @@ fn draw_template_tab(ui: &mut egui::Ui, data: &mut CreatureData) {
     });
 }
 
-/// Sync the Creature window visibility and title with the session state.
-pub fn sync_window(
+/// Component marking the dynamic Creature window entity.
+#[derive(Component)]
+pub struct CreatureWindow;
+
+/// Component marking the dynamic Creature camera entity.
+#[derive(Component)]
+pub struct CreatureCamera;
+
+/// Dynamically spawn or despawn the Creature window based on `session.editing_creature`.
+pub fn manage_window(
+    mut commands: Commands,
     session: Res<crate::session::Session>,
-    mut windows: Query<&mut Window, With<crate::windows::CreatureWindow>>,
+    mut win_query: Query<(Entity, &mut Window), With<CreatureWindow>>,
+    cam_query: Query<Entity, With<CreatureCamera>>,
     state: Res<CreatureEditorState>,
 ) {
-    let should_be_visible = session.editing_creature.is_some();
-    for mut window in windows.iter_mut() {
-        if window.visible != should_be_visible {
-            window.visible = should_be_visible;
-        }
+    let win_opt = win_query.iter_mut().next();
+    let cam_opt = cam_query.iter().next();
 
-        if should_be_visible {
+    if session.editing_creature.is_some() {
+        if let Some((_, mut win)) = win_opt {
+            // Window is already open, keep its title up to date
             if let Some(data) = &state.data {
                 let expected_title = if !data.full_name.trim().is_empty() {
                     format!("Creature - {} ({})", data.edid, data.full_name)
                 } else {
                     format!("Creature - {}", data.edid)
                 };
-                if window.title != expected_title {
-                    window.title = expected_title;
+                if win.title != expected_title {
+                    win.title = expected_title;
                 }
             }
+        } else {
+            // Window is NOT open -> dynamically spawn it now!
+            let title = state
+                .data
+                .as_ref()
+                .map(|d| {
+                    if !d.full_name.trim().is_empty() {
+                        format!("Creature - {} ({})", d.edid, d.full_name)
+                    } else {
+                        format!("Creature - {}", d.edid)
+                    }
+                })
+                .unwrap_or_else(|| "Creature Editor".to_string());
+
+            let window = commands
+                .spawn((
+                    Window {
+                        title,
+                        resolution: (840, 760).into(),
+                        position: WindowPosition::new(IVec2::new(500, 60)),
+                        ..default()
+                    },
+                    CreatureWindow,
+                ))
+                .id();
+
+            commands.spawn((
+                Camera2d,
+                Projection::Orthographic(OrthographicProjection::default_2d()),
+                bevy::camera::RenderTarget::Window(bevy::window::WindowRef::Entity(window)),
+                bevy_egui::EguiSchedule::new(crate::windows::Panel::Creature),
+                crate::windows::PanelContext::<6>,
+                CreatureCamera,
+            ));
+        }
+    } else if let Some((win_ent, _)) = win_opt {
+        // Editing creature is None -> despawn the window and camera immediately!
+        commands.entity(win_ent).despawn();
+        if let Some(cam_ent) = cam_opt {
+            commands.entity(cam_ent).despawn();
         }
     }
 }
