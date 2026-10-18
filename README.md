@@ -72,7 +72,7 @@ the viewport renders the game's own meshes.
 |---|---|
 | `session.rs` | The open editing session: which cell is open, what is selected, and the queued edits. Plain data, no Bevy, so it can be driven from a test. |
 | `viewport.rs` | Orbit camera, cell rendering through `nvf-assets`, click-to-select. |
-| `panels.rs` | Cell browser, reference list, property grid, place palette, status bar. |
+| `panels.rs` | Cell browser, reference table, property grid, place palette, status bar. |
 
 ```
 NVRE_DATA=<Data> cargo run -p nvre-editor -- --cell Goodsprings

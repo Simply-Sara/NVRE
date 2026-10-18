@@ -21,7 +21,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 use nvre_edit::encode::sub_views;
 
-/// Filter text for the cell browser and the place palette.
+/// Filter text for the cell browser, the place palette and the references table.
 ///
 /// The cell browser's worldspace dropdown lives here too: it is the other thing
 /// the cell window's user types into or picks, and it has to survive the frames
@@ -30,6 +30,15 @@ use nvre_edit::encode::sub_views;
 pub struct Filters {
     pub cell: String,
     pub place: String,
+    /// Text the references table matches against a row's Editor ID, FormID,
+    /// base object and owner.
+    pub reference: String,
+    /// Which record types the references table lists, by base object.
+    ///
+    /// `None` shows every type, the way GECK's reference list does; a chosen
+    /// signature narrows the cell to that kind of object, which is how a cell's
+    /// 155 references become the four doors in it.
+    pub reference_type: Option<String>,
     /// Which cells the browser lists: the interiors, or one worldspace's.
     ///
     /// Defaults to [`CellScope::Interiors`], which is what GECK's Cell View
@@ -191,10 +200,17 @@ pub fn cells(
     });
 }
 
-/// The references in the open cell, and the delete action.
+/// The references in the open cell: a table, a search box and a type filter.
+///
+/// GECK's render window lists a cell's references as a table — Editor ID, Form
+/// ID, type, owner, lock — with a filter above it. This is the same five
+/// columns: the search box narrows on any of the first four, and the dropdown
+/// narrows on the type, which is what the reference *places* — "Static",
+/// "Activator" — rather than the reference's own REFR.
 pub fn references(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<1>>>,
     mut session: ResMut<crate::session::Session>,
+    mut filters: ResMut<Filters>,
     mut clicks: Local<crate::viewport::ClickState>,
     mut frame: MessageWriter<crate::FrameRequested>,
 ) {
@@ -210,49 +226,186 @@ pub fn references(
             .get(&cell)
             .and_then(|c| c.edid.clone())
             .unwrap_or_else(|| format!("{cell:08X}"));
-        let count = session.cell_refs().len();
-        ui.label(format!("{name}: {count} refs"));
-        ui.separator();
-        let queued = session.deleted().to_vec();
-        // The list is read out before the loop, which needs `session` mutably
-        // to change the selection.
+        // The rows and the resolved columns are read out before the loop, which
+        // needs `session` mutably to change the selection.
         let refs = session.cell_refs().to_vec();
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            for r in &refs {
-                let label = r
-                    .edid
-                    .clone()
-                    .unwrap_or_else(|| format!("{} {:08X}", r.sig, r.form_id));
-                // A persistent reference is marked with a star, the way a mod
-                // list marks a master.
-                let mut text = if r.persistent {
-                    format!("{label} *")
-                } else {
-                    label
-                };
-                if queued.contains(&r.form_id) {
-                    text = format!("{text}  [deleting]");
-                }
-                if ui
-                    .selectable_label(session.selected == Some(r.form_id), text)
-                    .clicked()
-                {
-                    session.select(r.form_id);
-                    // A double-click on a list entry frames it in the viewport,
-                    // the same as double-clicking the model itself. The click
-                    // state is this panel's own, so a double-click in the
-                    // viewport and one here do not interfere.
-                    if clicks.register(r.form_id) {
-                        frame.write(crate::FrameRequested { form_id: r.form_id });
-                    }
+        let details = session.ref_details().clone();
+        let queued = session.deleted().to_vec();
+        let total = refs.len();
+
+        // The type dropdown's options are the cell's own base types, in file
+        // order: a cell holds a handful of kinds, and listing every record type
+        // in the game would bury the four that are there.
+        let mut types: Vec<String> = Vec::new();
+        for r in &refs {
+            let Some(base) = r.base.as_deref().and_then(parse_formid) else {
+                continue;
+            };
+            if let Some(t) = details.base_type(base) {
+                if !types.iter().any(|s| s == t) {
+                    types.push(t.to_string());
                 }
             }
+        }
+        let type_filter = filters.reference_type.clone();
+        let filter = filters.reference.to_lowercase();
+
+        // A row matches when the text is in any column and the dropdown either
+        // names its type or names none.
+        //
+        // A reference with no base object has no type to filter on, so a type
+        // filter hides it — but with no filter chosen it still shows: dropping
+        // rows the filter did not ask about would make the table's count lie.
+        let rows: Vec<&crate::session::RefRow> = refs
+            .iter()
+            .filter(|r| {
+                if let Some(want) = &type_filter {
+                    let base = r.base.as_deref().and_then(parse_formid);
+                    if base.and_then(|b| details.base_type(b)) != Some(want.as_str()) {
+                        return false;
+                    }
+                }
+                filter.is_empty() || row_matches(r, &details, &filter)
+            })
+            .collect();
+        let matched = rows.len();
+
+        ui.label(format!("{name}: {total} refs"));
+        ui.horizontal(|ui| {
+            ui.label("filter");
+            ui.add(egui::TextEdit::singleline(&mut filters.reference).desired_width(90.0));
+            let selected = type_filter.as_deref().unwrap_or("all types").to_string();
+            egui::ComboBox::from_id_salt("reference_type")
+                .selected_text(selected)
+                .width(ui.available_width())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut filters.reference_type, None, "all types");
+                    for t in &types {
+                        ui.selectable_value(&mut filters.reference_type, Some(t.clone()), t);
+                    }
+                });
         });
         ui.separator();
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            egui::Grid::new("references_table")
+                .num_columns(5)
+                .striped(true)
+                .min_col_width(50.0)
+                .show(ui, |ui| {
+                    ui.strong("Editor ID");
+                    ui.strong("Form ID");
+                    ui.strong("Type");
+                    ui.strong("Owner");
+                    ui.strong("Lock");
+                    ui.end_row();
+                    for r in &rows {
+                        let open = session.selected == Some(r.form_id);
+                        let base = r.base.as_deref().and_then(parse_formid);
+                        // The Editor ID cell is the clickable one, so a row is
+                        // selected the way the old list was: click the name.
+                        //
+                        // A placed object is named after what it places. Only
+                        // 5,011 of FalloutNV's 307,710 REFRs carry an EDID of
+                        // their own [observed: fnvtool esm survey], so a row
+                        // with none shows its base object's Editor ID — the
+                        // "WastelandRoadStraightLongB" GECK's render window
+                        // shows — and a reference whose base names nothing
+                        // falls back to its own signature and FormID.
+                        let edid = r
+                            .edid
+                            .clone()
+                            .or_else(|| base.and_then(|b| details.base_edid(b)).map(str::to_string))
+                            .unwrap_or_else(|| format!("{} {:08X}", r.sig, r.form_id));
+                        // A persistent reference is marked with a star, the way a
+                        // mod list marks a master.
+                        let mut text = if r.persistent {
+                            format!("{edid} *")
+                        } else {
+                            edid
+                        };
+                        if queued.contains(&r.form_id) {
+                            text = format!("{text}  [deleting]");
+                        }
+                        if ui.selectable_label(open, text).clicked() {
+                            session.select(r.form_id);
+                            // A double-click on a row frames it in the viewport,
+                            // the same as double-clicking the model itself. The
+                            // click state is this panel's own, so a double-click
+                            // in the viewport and one here do not interfere.
+                            if clicks.register(r.form_id) {
+                                frame.write(crate::FrameRequested { form_id: r.form_id });
+                            }
+                        }
+                        // The fixed-width columns are monospace, so the Form IDs
+                        // and the lock levels line up down the column.
+                        ui.label(egui::RichText::new(format!("{:08X}", r.form_id)).monospace());
+                        // The type is what the base object is, as GECK names
+                        // it — "Static", "Activator". A reference whose base is
+                        // missing has nothing to say, so the column stays empty
+                        // rather than showing the reference's own signature for
+                        // some rows and not others.
+                        let type_cell = base
+                            .and_then(|b| details.base_type(b))
+                            .unwrap_or("")
+                            .to_string();
+                        ui.label(type_cell);
+                        // The owner's name, or the FormID when the record has no
+                        // Editor ID to show.
+                        let owner_cell = r
+                            .owner
+                            .and_then(|o| details.owner(o))
+                            .unwrap_or("")
+                            .to_string();
+                        ui.label(owner_cell);
+                        let lock_cell = r.lock.map(|l| l.label()).unwrap_or_default();
+                        ui.label(egui::RichText::new(lock_cell).monospace());
+                        ui.end_row();
+                    }
+                });
+        });
+        ui.separator();
+        ui.label(format!(
+            "{total} refs in {name}{}",
+            if matched == total {
+                String::new()
+            } else {
+                format!(" ({matched} match)")
+            }
+        ));
         if ui.button("Delete selected").clicked() {
             session.delete_selected();
         }
     });
+}
+
+/// Parse the decoder's FormID text form ("0x0001EE8F").
+fn parse_formid(s: &str) -> Option<u32> {
+    u32::from_str_radix(s.strip_prefix("0x")?, 16).ok()
+}
+
+/// Whether one row's columns contain the filter text, lower-cased.
+///
+/// The Editor ID, the FormID, the base object's Editor ID and the owner's name
+/// are all searched: a cell's references mostly have no Editor ID of their own,
+/// so matching only that column would make most rows unfindable.
+fn row_matches(
+    r: &crate::session::RefRow,
+    details: &crate::session::RefDetails,
+    filter: &str,
+) -> bool {
+    let edid = r.edid.as_deref().unwrap_or("");
+    let owner = r.owner.and_then(|o| details.owner(o)).unwrap_or("");
+    let form_id = format!("{:08X}", r.form_id);
+    let base = r
+        .base
+        .as_deref()
+        .and_then(parse_formid)
+        .and_then(|b| details.base_edid(b))
+        .unwrap_or("");
+    edid.to_lowercase().contains(filter)
+        || form_id.contains(filter)
+        || base.to_lowercase().contains(filter)
+        || owner.to_lowercase().contains(filter)
 }
 
 /// The property grid for the selected reference.

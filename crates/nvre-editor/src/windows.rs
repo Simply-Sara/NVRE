@@ -126,28 +126,33 @@ pub fn spawn_windows(mut commands: Commands, mut settings: ResMut<EguiGlobalSett
     // The Cells panel's table needs the width: Editor ID, Form ID, Name and
     // Location side by side. The panels to its right start after it, so the
     // table's columns are not hidden under the References panel.
+    //
+    // The References panel's own table carries five columns — Editor ID, Form
+    // ID, Type, Owner and Lock — and needs the room for them: it sits next to
+    // the Cells panel rather than under it, and the Properties and Place panels
+    // follow it along.
     spawn_panel::<0>(&mut commands, "Cells", 40, 40, 607, 480, Panel::Cells);
     spawn_panel::<1>(
         &mut commands,
         "References",
         667,
         40,
-        380,
+        620,
         640,
         Panel::References,
     );
     spawn_panel::<2>(
         &mut commands,
         "Properties",
-        1067,
+        1307,
         40,
-        440,
+        560,
         520,
         Panel::Properties,
     );
-    spawn_panel::<3>(&mut commands, "Place", 1067, 600, 440, 380, Panel::Place);
+    spawn_panel::<3>(&mut commands, "Place", 1307, 600, 560, 380, Panel::Place);
     spawn_panel::<4>(&mut commands, "Status", 40, 800, 760, 90, Panel::Status);
-    spawn_panel::<5>(&mut commands, "Debug", 1527, 600, 360, 260, Panel::Debug);
+    spawn_panel::<5>(&mut commands, "Debug", 1877, 600, 360, 260, Panel::Debug);
     info!("spawned {} panel windows", WINDOW_COUNT);
 }
 

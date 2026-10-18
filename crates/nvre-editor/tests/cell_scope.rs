@@ -15,7 +15,7 @@ fn open_master() -> Option<Session> {
     let data = data_dir()?;
     Session::open(
         std::path::Path::new(&format!("{data}/FalloutNV.esm")),
-        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schemas/fnv")),
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")),
         vec!["FalloutNV.esm".to_string()],
     )
     .ok()

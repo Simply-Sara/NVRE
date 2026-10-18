@@ -34,6 +34,9 @@ pub struct Session {
     refs_cell: Option<u32>,
     /// Base FormID → model path, resolved once per base object.
     models: HashMap<u32, Option<String>>,
+    /// The references table's resolved columns, and the cell they were built for.
+    details: RefDetails,
+    details_cell: Option<u32>,
     /// The place palette's query result, and the filter it was built for.
     ///
     /// Building it walks the load order, which is the editor's most expensive
@@ -85,6 +88,8 @@ impl Session {
             refs: Vec::new(),
             refs_cell: None,
             models: HashMap::new(),
+            details: RefDetails::default(),
+            details_cell: None,
             palette: Vec::new(),
             palette_filter: String::new(),
             deleted: Vec::new(),
@@ -161,7 +166,7 @@ impl Session {
             .collect()
     }
 
-    /// One base object's model path, with no caching.
+    /// A base object's model path, with no caching.
     fn resolve_model_path(&mut self, base: u32) -> Option<String> {
         let lo = self.load_order().ok()?;
         let b = fnv_world::placed::base_object(&lo, &self.schema, base)?;
@@ -265,6 +270,85 @@ impl Session {
         self.build_cell_refs(cell)
     }
 
+    /// The references table's resolved columns, for the open cell.
+    ///
+    /// An owner and a base object's type both need the load order, which costs
+    /// hundreds of milliseconds to build. The panel draws every frame, so the
+    /// answers are cached per cell rather than resolved per row per frame: a
+    /// cell names a handful of owners, and one load order serves them all.
+    pub fn ref_details(&mut self) -> &RefDetails {
+        let Some(cell) = self.cell else {
+            return &EMPTY_DETAILS;
+        };
+        if self.details_cell != Some(cell) {
+            self.details = self.build_ref_details(cell);
+            self.details_cell = Some(cell);
+        }
+        &self.details
+    }
+
+    fn build_ref_details(&mut self, cell: u32) -> RefDetails {
+        // The rows are read out first: the resolution needs `&mut self`, and
+        // the rows borrow `self.refs`.
+        let rows: Vec<RefRow> = self.build_cell_refs(cell);
+        let Some(lo) = self.load_order().ok() else {
+            return RefDetails::default();
+        };
+        let mut owners: HashMap<u32, String> = HashMap::new();
+        let mut types: HashMap<u32, String> = HashMap::new();
+        let mut bases: HashMap<u32, String> = HashMap::new();
+        for r in &rows {
+            if let Some(owner) = r.owner {
+                owners.entry(owner).or_insert_with(|| {
+                    fnv_world::fields::winner(&lo, owner)
+                        .and_then(|(_, rec)| nvre_edit::document::edid_of(rec))
+                        .unwrap_or_else(|| format!("{owner:08X}"))
+                });
+            }
+            // The type column says what the reference places, not what it is:
+            // a REFR is always a placed object, so the base's record type is
+            // the interesting half.
+            //
+            // It is the schema's own name for that record — "Static", "Misc.
+            // Item" — which is what GECK shows, and which doubles as the type
+            // dropdown's identity, since no two record types share a name.
+            if let Some(base) = r
+                .base
+                .as_deref()
+                .and_then(|b| u32::from_str_radix(b.strip_prefix("0x")?, 16).ok())
+            {
+                types.entry(base).or_insert_with(|| {
+                    fnv_world::fields::winner(&lo, base)
+                        .and_then(|(_, rec)| {
+                            self.schema
+                                .records
+                                .get(&rec.header.sig)
+                                .map(|d| d.name.clone())
+                        })
+                        .unwrap_or_else(|| {
+                            fnv_world::fields::winner(&lo, base)
+                                .map(|(_, rec)| rec.sig_str())
+                                .unwrap_or_default()
+                        })
+                });
+                // And the base's Editor ID, which is what a placed object is
+                // called: a reference's own EDID is set on 5,011 of
+                // FalloutNV's 307,710 REFRs [observed: fnvtool esm survey], so
+                // naming a row by its own would leave 98% of them unnamed.
+                bases.entry(base).or_insert_with(|| {
+                    fnv_world::fields::winner(&lo, base)
+                        .and_then(|(_, rec)| nvre_edit::document::edid_of(rec))
+                        .unwrap_or_else(|| format!("{base:08X}"))
+                });
+            }
+        }
+        RefDetails {
+            owners,
+            types,
+            bases,
+        }
+    }
+
     fn build_cell_refs(&self, cell: u32) -> Vec<RefRow> {
         let Some(c) = self.index.cells.get(&cell) else {
             return Vec::new();
@@ -274,8 +358,12 @@ impl Session {
             .filter_map(|&fid| {
                 let e = self.index.refs.get(&fid)?;
                 let rec = self.doc.record(fid)?;
+                // The subrecords are parsed once here and shared by every
+                // column: each reader takes them already parsed, so a row costs
+                // one parse rather than one per field read.
+                let subs = rec.subrecords().ok()?;
                 // Read once, for both the position and the rotation.
-                let placement = placement_of(rec);
+                let placement = placement_in(&subs);
                 Some(RefRow {
                     form_id: fid,
                     sig: String::from_utf8_lossy(&e.sig).to_string(),
@@ -285,6 +373,11 @@ impl Session {
                     persistent: e.persistent,
                     position: placement.map(|(p, _)| p),
                     rotation: placement.map(|(_, r)| r),
+                    // Both read from the raw subrecords rather than through the
+                    // schema: an owner and a lock are a table column, and the
+                    // load order is not built while the rows are.
+                    owner: formid_in(&subs, b"XOWN"),
+                    lock: lock_in(&subs),
                 })
             })
             .collect()
@@ -294,6 +387,10 @@ impl Session {
     pub fn open_cell(&mut self, cell: u32) {
         self.refs.clear();
         self.refs_cell = None;
+        // The table's resolved columns are per-cell too: a different cell's
+        // owners are different records, so the old answers do not apply.
+        self.details = RefDetails::default();
+        self.details_cell = None;
         self.cell = Some(cell);
         self.selected = None;
         let name = self
@@ -544,7 +641,94 @@ pub struct RefRow {
     /// rotated object — a door, a piece of furniture, a road — is drawn
     /// axis-aligned, which is most of what "positioned wrong" looks like.
     pub rotation: Option<[f32; 3]>,
+    /// XOWN: who the reference belongs to, as a load-order FormID.
+    ///
+    /// The FormID rather than a resolved name: the table resolves it once per
+    /// owner through the session's cache, and a raw FormID is what a test can
+    /// check against the file's own bytes.
+    pub owner: Option<u32>,
+    /// XLOC: the lock on the reference, when it carries one.
+    pub lock: Option<LockRow>,
 }
+
+/// A reference's lock, from its XLOC subrecord.
+///
+/// Only doors and containers carry one in the shipped masters [observed: 426
+/// REFR XLOC in FalloutNV.esm], and the level is what the lockpick menu opens
+/// with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LockRow {
+    /// 0 Very Easy, 25 Easy, 50 Average, 75 Hard, 100 Very Hard, 255 Requires
+    /// Key [documented: GECK wiki GetLockLevel].
+    pub level: u8,
+    /// The key that opens it, as a load-order FormID, when one is named.
+    pub key: Option<u32>,
+    /// XLOC flag bit 2, "Leveled Lock": the level is chosen by the levelled
+    /// item rather than fixed [documented: xEdit REFR XLOC].
+    pub leveled: bool,
+}
+
+impl LockRow {
+    /// The lock's level as the game reports it: a number for a pickable lock,
+    /// "key" when only the key opens it.
+    pub fn label(self) -> String {
+        if self.level == 255 {
+            return "key".to_string();
+        }
+        format!("{}", self.level)
+    }
+}
+
+/// The references table's resolved columns, for one cell.
+///
+/// An owner's name and a base object's record type both live behind the load
+/// order, which is the editor's most expensive query. Both are resolved once per
+/// cell and keyed by FormID, so a row's lookups are a hash map read: the table
+/// draws every frame, and resolving per row per frame is what made the place
+/// palette cost half a frame per second (see [`Session::palette`]).
+#[derive(Debug, Clone, Default)]
+pub struct RefDetails {
+    /// Owner FormID → the name the table shows.
+    pub owners: HashMap<u32, String>,
+    /// Base FormID → what the base object is, as GECK names it: "Static",
+    /// "Activator", "Misc. Item".
+    ///
+    /// The schema's own name for the base's record type, which is what GECK's
+    /// render window shows rather than the four-letter signature. No two record
+    /// types share a name [observed: all 107 in `schemas/fnv`], so it also
+    /// serves as the type dropdown's identity.
+    pub types: HashMap<u32, String>,
+    /// Base FormID → the base object's Editor ID.
+    ///
+    /// This is what the Editor ID column shows for a placed object. A
+    /// reference's own EDID is the exception rather than the rule — 5,011 of
+    /// FalloutNV's 307,710 REFRs carry one [observed: `fnvtool esm survey`] —
+    /// so the column falls back to the name of the object being placed, which
+    /// is what GECK shows.
+    pub bases: HashMap<u32, String>,
+}
+
+impl RefDetails {
+    /// What an owner's FormID names, for one row.
+    pub fn owner(&self, owner: u32) -> Option<&str> {
+        self.owners.get(&owner).map(String::as_str)
+    }
+
+    /// What a base FormID's record type is, for one row.
+    pub fn base_type(&self, base: u32) -> Option<&str> {
+        self.types.get(&base).map(String::as_str)
+    }
+
+    /// What a base FormID's Editor ID is, for one row.
+    pub fn base_edid(&self, base: u32) -> Option<&str> {
+        self.bases.get(&base).map(String::as_str)
+    }
+}
+
+/// The details of a cell that is not open: empty, so a table with no cell has
+/// no columns to resolve either.
+static EMPTY_DETAILS: std::sync::LazyLock<RefDetails> =
+    std::sync::LazyLock::new(RefDetails::default);
 
 /// A reference's position and rotation from its DATA subrecord.
 ///
@@ -553,7 +737,11 @@ pub struct RefRow {
 /// the right direction, so it is read alongside the position rather than left
 /// for the caller to find.
 pub fn placement_of(rec: &fnv_esm::Record) -> Option<([f32; 3], [f32; 3])> {
-    let subs = rec.subrecords().ok()?;
+    placement_in(&rec.subrecords().ok()?)
+}
+
+/// [`placement_of`] over subrecords that are already parsed.
+fn placement_in(subs: &[fnv_esm::Subrecord]) -> Option<([f32; 3], [f32; 3])> {
     let data = subs.iter().find(|s| &s.sig == b"DATA")?;
     if data.data.len() < 24 {
         return None;
@@ -569,6 +757,45 @@ pub fn placement_of(rec: &fnv_esm::Record) -> Option<([f32; 3], [f32; 3])> {
 /// A reference's position from its DATA subrecord, in game units.
 pub fn position_of(rec: &fnv_esm::Record) -> Option<[f32; 3]> {
     placement_of(rec).map(|(p, _)| p)
+}
+
+/// A FormID-valued subrecord, as the file stores it.
+///
+/// The value is file-local: mapping it to the load order needs the plugin's
+/// master list, so a caller that shows the FormID resolves it once per owner
+/// rather than once per reference (see [`Session::ref_details`]).
+///
+/// 0 is the null reference and no owner at all, so it reads as `None` rather
+/// than as the master's own range.
+fn formid_in(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Option<u32> {
+    let s = subs.iter().find(|s| &s.sig == sig)?;
+    let local = <[u8; 4]>::try_from(s.data.get(..4)?)
+        .ok()
+        .map(u32::from_le_bytes)?;
+    (local != 0).then_some(local)
+}
+
+/// A reference's lock, from its XLOC subrecord.
+///
+/// XLOC is 20 bytes [observed: 420 of the 426 in FalloutNV.esm]: level u8, three
+/// unused bytes, key FormID, flags u8, three unused bytes. The six 12-byte ones
+/// carry no key [observed: same survey] — the key is read as far as the data
+/// goes, so both lengths decode.
+fn lock_in(subs: &[fnv_esm::Subrecord]) -> Option<LockRow> {
+    let d = &subs.iter().find(|s| &s.sig == b"XLOC")?.data;
+    let level = *d.first()?;
+    let key = d
+        .get(4..8)
+        .and_then(|b| <[u8; 4]>::try_from(b).ok())
+        .map(u32::from_le_bytes)
+        .filter(|&k| k != 0);
+    let flags = d.get(8).copied().unwrap_or(0);
+    Some(LockRow {
+        level,
+        key,
+        // Bit 2, "Leveled Lock" [documented: xEdit REFR XLOC].
+        leveled: flags & 0x4 != 0,
+    })
 }
 
 /// Base objects that can be placed, for the place-new palette.
