@@ -53,6 +53,8 @@ pub enum Panel {
     Status,
     /// The camera's state, read and written while the editor runs.
     Debug,
+    /// The creature editor window.
+    Creature,
 }
 
 /// Marks the egui context that belongs to one panel's window.
@@ -122,7 +124,7 @@ pub fn spawn_viewport(mut commands: Commands) {
 }
 
 /// How many panel windows `spawn_windows` opens.
-const WINDOW_COUNT: usize = 6;
+const WINDOW_COUNT: usize = 7;
 
 /// Spawn the panel windows, each with its own egui context.
 pub fn spawn_windows(mut commands: Commands, mut settings: ResMut<EguiGlobalSettings>) {
@@ -168,6 +170,15 @@ pub fn spawn_windows(mut commands: Commands, mut settings: ResMut<EguiGlobalSett
     );
     spawn_panel::<4>(&mut commands, "Status", 40, 800, 760, 90, Panel::Status);
     spawn_panel::<5>(&mut commands, "Debug", 1877, 600, 360, 260, Panel::Debug);
+    spawn_panel::<6>(
+        &mut commands,
+        "Creature",
+        450,
+        60,
+        840,
+        760,
+        Panel::Creature,
+    );
     info!("spawned {} panel windows", WINDOW_COUNT);
 }
 

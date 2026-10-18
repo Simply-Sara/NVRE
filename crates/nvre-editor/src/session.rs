@@ -54,6 +54,8 @@ pub struct Session {
     /// Status line for the UI.
     pub status: String,
     persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>>,
+    /// A creature currently open in the creature window, by FormID.
+    pub editing_creature: Option<u32>,
 }
 
 impl Session {
@@ -119,6 +121,7 @@ impl Session {
             deleted: Vec::new(),
             status: String::new(),
             persistent_by_grid,
+            editing_creature: None,
         })
     }
 
@@ -178,6 +181,7 @@ impl Session {
             deleted: Vec::new(),
             status: format!("created new plugin {name}"),
             persistent_by_grid,
+            editing_creature: None,
         })
     }
 
@@ -614,6 +618,17 @@ impl Session {
     /// Select a reference.
     pub fn select(&mut self, form_id: u32) {
         self.selected = Some(form_id);
+    }
+
+    /// Open a creature by FormID in the Creature Editor window.
+    pub fn open_creature(&mut self, form_id: u32) {
+        self.editing_creature = Some(form_id);
+        self.status = format!("opened creature {form_id:08X} in Creature window");
+    }
+
+    /// Close the Creature Editor window.
+    pub fn close_creature(&mut self) {
+        self.editing_creature = None;
     }
 
     /// The selected reference's record.

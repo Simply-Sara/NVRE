@@ -830,7 +830,9 @@ pub fn place(
 
         let cur_group = &groups[*chosen];
         let is_placeable = crate::session::is_placeable_sig(&cur_group.sig);
+        let is_crea = cur_group.sig == *b"CREA";
         let mut place_fid: Option<u32> = None;
+        let mut open_crea_fid: Option<u32> = None;
         let mut select_fid: Option<u32> = None;
 
         // The two halves of GECK's Object Window: a category list down the LEFT
@@ -892,13 +894,20 @@ pub fn place(
         egui::ScrollArea::vertical().show(&mut ui, |ui| {
             for (fid, label) in &groups[*chosen].objects {
                 ui.horizontal(|ui| {
+                    if is_crea && ui.small_button("Edit").clicked() {
+                        open_crea_fid = Some(*fid);
+                    }
                     if is_placeable && cell_open && ui.small_button("Place").clicked() {
                         place_fid = Some(*fid);
                     }
                     let selected = selected_fid == Some(*fid);
                     let resp = ui.selectable_label(selected, label);
-                    if resp.double_clicked() && is_placeable && cell_open {
-                        place_fid = Some(*fid);
+                    if resp.double_clicked() {
+                        if is_crea {
+                            open_crea_fid = Some(*fid);
+                        } else if is_placeable && cell_open {
+                            place_fid = Some(*fid);
+                        }
                     } else if resp.clicked() {
                         select_fid = Some(*fid);
                     }
@@ -908,7 +917,9 @@ pub fn place(
                 ui.label("no objects in this category match the filter");
             }
         });
-        if let Some(fid) = place_fid {
+        if let Some(fid) = open_crea_fid {
+            session.open_creature(fid);
+        } else if let Some(fid) = place_fid {
             // Placed at the cell's origin: the camera's target is the better
             // default once the viewport can report it.
             session.place(fid, [0.0, 0.0, 0.0]);
