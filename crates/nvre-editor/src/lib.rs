@@ -8,6 +8,7 @@ use bevy::prelude::*;
 pub mod creature;
 pub mod gizmo;
 pub mod launcher;
+pub mod object_editor;
 pub mod panels;
 pub mod session;
 pub mod viewport;

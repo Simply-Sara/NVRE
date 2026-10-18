@@ -12,7 +12,7 @@
 //! viewport, and one window per panel. See [`nvre_editor::windows`] for why the
 //! main window is the primary one and the viewport names its own render target.
 
-use nvre_editor::{creature, gizmo, launcher, panels, session, viewport, windows};
+use nvre_editor::{creature, gizmo, launcher, object_editor, panels, session, viewport, windows};
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
@@ -164,6 +164,7 @@ fn main() {
         .init_resource::<viewport::Spawned>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<creature::CreatureEditorState>()
+        .init_resource::<object_editor::ObjectEditorState>()
         // Inserted at startup, not in `viewport::setup`: the debug panel draws
         // into its own schedule, which can run before that system has inserted
         // it, and a missing resource fails the schedule and drops the pass.
@@ -234,6 +235,10 @@ fn main() {
             creature::ui.run_if(in_state(EditorState::Editing)),
         )
         .add_systems(
+            object_editor::ObjectEditorSchedule,
+            object_editor::ui.run_if(in_state(EditorState::Editing)),
+        )
+        .add_systems(
             Update,
             (
                 viewport::draw_cell,
@@ -247,6 +252,7 @@ fn main() {
                 viewport::pick,
                 viewport::flat_material_diagnostic,
                 creature::manage_window,
+                object_editor::manage_window,
                 handle_window_close,
             )
                 .chain()
@@ -350,17 +356,19 @@ fn open_selected(
 /// which time it is in place.
 fn spawn_session() {}
 
-/// Handle window close requests: primary window exits app, creature window hides.
+/// Handle window close requests: primary window exits app, creature and object windows close.
 fn handle_window_close(
     mut commands: Commands,
     mut closed: MessageReader<bevy::window::WindowCloseRequested>,
     mut app_exit: MessageWriter<AppExit>,
     primary: Query<Entity, With<bevy::window::PrimaryWindow>>,
     creature_win: Query<Entity, With<creature::CreatureWindow>>,
+    object_win: Query<Entity, With<object_editor::ObjectEditorWindow>>,
     mut session: Option<ResMut<session::Session>>,
 ) {
     let primary_ent = primary.iter().next();
     let crea_ent = creature_win.iter().next();
+    let obj_ent = object_win.iter().next();
 
     for ev in closed.read() {
         if Some(ev.window) == primary_ent {
@@ -368,6 +376,10 @@ fn handle_window_close(
         } else if Some(ev.window) == crea_ent {
             if let Some(s) = &mut session {
                 s.close_creature();
+            }
+        } else if Some(ev.window) == obj_ent {
+            if let Some(s) = &mut session {
+                s.close_object_editor();
             }
         } else {
             commands.entity(ev.window).despawn();
