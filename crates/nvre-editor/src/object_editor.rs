@@ -157,6 +157,58 @@ pub struct ObjectEditorState {
     pub item_weight: f32,
     pub book_teaches: u8,
     pub book_text: String,
+
+    // FACT & QUST fields
+    pub fact_hidden: bool,
+    pub fact_evil: bool,
+    pub fact_special_combat: bool,
+    pub fact_track_crime: bool,
+    pub fact_reputation: Option<u32>,
+    pub fact_rank_male: String,
+    pub fact_rank_female: String,
+    pub qust_start_enabled: bool,
+    pub qust_repeated_stages: bool,
+    pub qust_priority: u8,
+    pub qust_delay: f32,
+
+    // PERK & SPEL fields
+    pub perk_trait: bool,
+    pub perk_min_level: u8,
+    pub perk_num_ranks: u8,
+    pub perk_desc: String,
+    pub spell_type: u32,
+    pub spell_no_autocalc: bool,
+    pub spell_always_applies: bool,
+
+    // EXPL & PROJ fields
+    pub expl_force: f32,
+    pub expl_damage: f32,
+    pub expl_radius: f32,
+    pub expl_is_radius: f32,
+    pub expl_light: Option<u32>,
+    pub expl_sound1: Option<u32>,
+    pub expl_sound2: Option<u32>,
+    pub expl_rad_level: f32,
+    pub proj_speed: f32,
+    pub proj_gravity: f32,
+    pub proj_range: f32,
+    pub proj_type: u16,
+    pub proj_light: Option<u32>,
+    pub proj_sound: Option<u32>,
+    pub proj_explosion: Option<u32>,
+
+    // SOUN & NOTE fields
+    pub sound_file: String,
+    pub sound_min_dist: u8,
+    pub sound_max_dist: u8,
+    pub sound_freq_adj: i8,
+    pub sound_vol_cdb: i16,
+    pub sound_random_chance: u8,
+    pub sound_loop: bool,
+    pub sound_2d: bool,
+    pub note_type: u8,
+    pub note_text: String,
+    pub note_sound: Option<u32>,
 }
 
 impl ObjectEditorState {
@@ -219,6 +271,14 @@ impl ObjectEditorState {
             b"TERM" => self.load_term(),
             b"LIGH" => self.load_ligh(),
             b"BOOK" => self.load_book(),
+            b"FACT" => self.load_fact(),
+            b"QUST" => self.load_qust(),
+            b"PERK" => self.load_perk(),
+            b"SPEL" | b"ENCH" => self.load_spell(),
+            b"EXPL" => self.load_expl(),
+            b"PROJ" => self.load_proj(),
+            b"SOUN" => self.load_soun(),
+            b"NOTE" => self.load_note(),
             _ => self.load_misc(),
         }
     }
@@ -453,6 +513,106 @@ impl ObjectEditorState {
         }
     }
 
+    fn load_fact(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| !b.is_empty()) {
+            let f1 = b[0];
+            self.fact_hidden = (f1 & 1) != 0;
+            self.fact_evil = (f1 & 2) != 0;
+            self.fact_special_combat = (f1 & 4) != 0;
+            if b.len() > 1 {
+                self.fact_track_crime = (b[1] & 1) != 0;
+            }
+        }
+        self.fact_reputation = self.get_fid(b"WMI1");
+        self.fact_rank_male = self.get_string(b"MNAM");
+        self.fact_rank_female = self.get_string(b"FNAM");
+    }
+
+    fn load_qust(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 2) {
+            let f = b[0];
+            self.qust_start_enabled = (f & 1) != 0;
+            self.qust_repeated_stages = (f & 8) != 0;
+            self.qust_priority = b[1];
+            if b.len() >= 8 {
+                self.qust_delay = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            }
+        }
+    }
+
+    fn load_perk(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 3) {
+            self.perk_trait = b[0] != 0;
+            self.perk_min_level = b[1];
+            self.perk_num_ranks = b[2];
+        }
+        self.perk_desc = self.get_string(b"DESC");
+    }
+
+    fn load_spell(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"SPIT").filter(|b| b.len() >= 13) {
+            self.spell_type = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            let f = b[12];
+            self.spell_no_autocalc = (f & 1) != 0;
+            self.spell_always_applies = (f & 32) != 0;
+        }
+    }
+
+    fn load_expl(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 28) {
+            self.expl_force = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.expl_damage = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.expl_radius = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            self.expl_light = Some(u32::from_le_bytes([b[12], b[13], b[14], b[15]]));
+            self.expl_sound1 = Some(u32::from_le_bytes([b[16], b[17], b[18], b[19]]));
+            self.expl_is_radius = f32::from_le_bytes([b[24], b[25], b[26], b[27]]);
+            if b.len() >= 40 {
+                self.expl_sound2 = Some(u32::from_le_bytes([b[32], b[33], b[34], b[35]]));
+                self.expl_rad_level = f32::from_le_bytes([b[36], b[37], b[38], b[39]]);
+            }
+        }
+    }
+
+    fn load_proj(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 16) {
+            self.proj_type = u16::from_le_bytes([b[2], b[3]]);
+            self.proj_gravity = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.proj_speed = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            self.proj_range = f32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+            if b.len() >= 20 {
+                self.proj_light = Some(u32::from_le_bytes([b[16], b[17], b[18], b[19]]));
+            }
+            if b.len() >= 44 {
+                self.proj_explosion = Some(u32::from_le_bytes([b[36], b[37], b[38], b[39]]));
+                self.proj_sound = Some(u32::from_le_bytes([b[40], b[41], b[42], b[43]]));
+            }
+        }
+    }
+
+    fn load_soun(&mut self) {
+        self.sound_file = self.get_string(b"FNAM");
+        if let Some(b) = self.raw_subs.get(b"RNAM") {
+            self.sound_random_chance = b.first().copied().unwrap_or(100);
+        }
+        if let Some(b) = self.raw_subs.get(b"SNDD").filter(|b| b.len() >= 10) {
+            self.sound_min_dist = b[0];
+            self.sound_max_dist = b[1];
+            self.sound_freq_adj = b[2] as i8;
+            let flags = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.sound_loop = (flags & (1 << 4)) != 0;
+            self.sound_2d = (flags & (1 << 6)) != 0;
+            self.sound_vol_cdb = i16::from_le_bytes([b[8], b[9]]);
+        }
+    }
+
+    fn load_note(&mut self) {
+        if let Some(b) = self.raw_subs.get(b"DATA") {
+            self.note_type = b.first().copied().unwrap_or(1);
+        }
+        self.note_text = self.get_string(b"DESC");
+        self.note_sound = self.get_fid(b"SNAM");
+    }
+
     /// Save the current state back to session as uncommitted edits.
     pub fn save_to_session(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
@@ -487,6 +647,14 @@ impl ObjectEditorState {
             b"TERM" => self.save_term(session),
             b"LIGH" => self.save_ligh(session),
             b"BOOK" => self.save_book(session),
+            b"FACT" => self.save_fact(session),
+            b"QUST" => self.save_qust(session),
+            b"PERK" => self.save_perk(session),
+            b"SPEL" | b"ENCH" => self.save_spell(session),
+            b"EXPL" => self.save_expl(session),
+            b"PROJ" => self.save_proj(session),
+            b"SOUN" => self.save_soun(session),
+            b"NOTE" => self.save_note(session),
             _ => self.save_misc(session),
         }
 
@@ -853,6 +1021,200 @@ impl ObjectEditorState {
         d[4..8].copy_from_slice(&self.item_weight.to_le_bytes());
         session.doc.set_sub(fid, b"DATA", d);
     }
+
+    fn save_fact(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut f1 = 0u8;
+        if self.fact_hidden {
+            f1 |= 1;
+        }
+        if self.fact_evil {
+            f1 |= 2;
+        }
+        if self.fact_special_combat {
+            f1 |= 4;
+        }
+        let mut f2 = 0u8;
+        if self.fact_track_crime {
+            f2 |= 1;
+        }
+        session.doc.set_sub(fid, b"DATA", vec![f1, f2, 0, 0]);
+        if let Some(rep) = self.fact_reputation {
+            session
+                .doc
+                .set_sub(fid, b"WMI1", rep.to_le_bytes().to_vec());
+        }
+        if !self.fact_rank_male.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MNAM", encode_zstring(&self.fact_rank_male));
+        }
+        if !self.fact_rank_female.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"FNAM", encode_zstring(&self.fact_rank_female));
+        }
+    }
+
+    fn save_qust(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = vec![0u8; 8];
+        let mut f = 0u8;
+        if self.qust_start_enabled {
+            f |= 1;
+        }
+        if self.qust_repeated_stages {
+            f |= 8;
+        }
+        d[0] = f;
+        d[1] = self.qust_priority;
+        d[4..8].copy_from_slice(&self.qust_delay.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", d);
+    }
+
+    fn save_perk(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let d = vec![
+            if self.perk_trait { 1 } else { 0 },
+            self.perk_min_level,
+            self.perk_num_ranks,
+        ];
+        session.doc.set_sub(fid, b"DATA", d);
+        if !self.perk_desc.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"DESC", encode_zstring(&self.perk_desc));
+        }
+    }
+
+    fn save_spell(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut spit = self
+            .raw_subs
+            .get(b"SPIT")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 16]);
+        if spit.len() < 16 {
+            spit.resize(16, 0);
+        }
+        spit[0..4].copy_from_slice(&self.spell_type.to_le_bytes());
+        let mut f = spit[12];
+        if self.spell_no_autocalc {
+            f |= 1;
+        } else {
+            f &= !1;
+        }
+        if self.spell_always_applies {
+            f |= 32;
+        } else {
+            f &= !32;
+        }
+        spit[12] = f;
+        session.doc.set_sub(fid, b"SPIT", spit);
+    }
+
+    fn save_expl(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 48]);
+        if d.len() < 48 {
+            d.resize(48, 0);
+        }
+        d[0..4].copy_from_slice(&self.expl_force.to_le_bytes());
+        d[4..8].copy_from_slice(&self.expl_damage.to_le_bytes());
+        d[8..12].copy_from_slice(&self.expl_radius.to_le_bytes());
+        if let Some(l) = self.expl_light {
+            d[12..16].copy_from_slice(&l.to_le_bytes());
+        }
+        if let Some(s) = self.expl_sound1 {
+            d[16..20].copy_from_slice(&s.to_le_bytes());
+        }
+        d[24..28].copy_from_slice(&self.expl_is_radius.to_le_bytes());
+        if let Some(s) = self.expl_sound2 {
+            d[32..36].copy_from_slice(&s.to_le_bytes());
+        }
+        d[36..40].copy_from_slice(&self.expl_rad_level.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", d);
+    }
+
+    fn save_proj(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 44]);
+        if d.len() < 44 {
+            d.resize(44, 0);
+        }
+        d[2..4].copy_from_slice(&self.proj_type.to_le_bytes());
+        d[4..8].copy_from_slice(&self.proj_gravity.to_le_bytes());
+        d[8..12].copy_from_slice(&self.proj_speed.to_le_bytes());
+        d[12..16].copy_from_slice(&self.proj_range.to_le_bytes());
+        if let Some(l) = self.proj_light {
+            d[16..20].copy_from_slice(&l.to_le_bytes());
+        }
+        if let Some(ex) = self.proj_explosion {
+            d[36..40].copy_from_slice(&ex.to_le_bytes());
+        }
+        if let Some(s) = self.proj_sound {
+            d[40..44].copy_from_slice(&s.to_le_bytes());
+        }
+        session.doc.set_sub(fid, b"DATA", d);
+    }
+
+    fn save_soun(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        if !self.sound_file.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"FNAM", encode_zstring(&self.sound_file));
+        }
+        session
+            .doc
+            .set_sub(fid, b"RNAM", vec![self.sound_random_chance]);
+        let mut sndd = self
+            .raw_subs
+            .get(b"SNDD")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 10]);
+        if sndd.len() < 10 {
+            sndd.resize(10, 0);
+        }
+        sndd[0] = self.sound_min_dist;
+        sndd[1] = self.sound_max_dist;
+        sndd[2] = self.sound_freq_adj as u8;
+        let mut flags = u32::from_le_bytes([sndd[4], sndd[5], sndd[6], sndd[7]]);
+        if self.sound_loop {
+            flags |= 1 << 4;
+        } else {
+            flags &= !(1 << 4);
+        }
+        if self.sound_2d {
+            flags |= 1 << 6;
+        } else {
+            flags &= !(1 << 6);
+        }
+        sndd[4..8].copy_from_slice(&flags.to_le_bytes());
+        sndd[8..10].copy_from_slice(&self.sound_vol_cdb.to_le_bytes());
+        session.doc.set_sub(fid, b"SNDD", sndd);
+    }
+
+    fn save_note(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session.doc.set_sub(fid, b"DATA", vec![self.note_type]);
+        if !self.note_text.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"DESC", encode_zstring(&self.note_text));
+        }
+        if let Some(s) = self.note_sound {
+            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+        }
+    }
 }
 
 fn encode_zstring(s: &str) -> Vec<u8> {
@@ -1024,6 +1386,14 @@ pub fn ui(
                 b"TERM" => draw_term_ui(ui, &mut state),
                 b"LIGH" => draw_ligh_ui(ui, &mut state),
                 b"BOOK" => draw_book_ui(ui, &mut state),
+                b"FACT" => draw_fact_ui(ui, &mut state),
+                b"QUST" => draw_qust_ui(ui, &mut state),
+                b"PERK" => draw_perk_ui(ui, &mut state),
+                b"SPEL" | b"ENCH" => draw_spell_ui(ui, &mut state),
+                b"EXPL" => draw_expl_ui(ui, &mut state),
+                b"PROJ" => draw_proj_ui(ui, &mut state),
+                b"SOUN" => draw_soun_ui(ui, &mut state),
+                b"NOTE" => draw_note_ui(ui, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
 
@@ -1555,5 +1925,284 @@ fn draw_misc_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .range(0.0..=1000.0),
             );
         });
+    });
+}
+
+fn draw_fact_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Faction Flags & Behavior");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut state.fact_hidden, "Hidden from PC");
+            ui.checkbox(&mut state.fact_evil, "Evil");
+            ui.checkbox(&mut state.fact_special_combat, "Special Combat");
+            ui.checkbox(&mut state.fact_track_crime, "Track Crime");
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Reputation (FormID):");
+            formid_field(ui, "fact_rep", &mut state.fact_reputation);
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Rank Titles");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Male Rank Title:");
+            ui.add(egui::TextEdit::singleline(&mut state.fact_rank_male).desired_width(180.0));
+            ui.label("Female Rank Title:");
+            ui.add(egui::TextEdit::singleline(&mut state.fact_rank_female).desired_width(180.0));
+        });
+    });
+}
+
+fn draw_qust_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Quest Flags & Scheduling");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut state.qust_start_enabled, "Start Game Enabled");
+            ui.checkbox(&mut state.qust_repeated_stages, "Allow Repeated Stages");
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Priority:");
+            ui.add(egui::DragValue::new(&mut state.qust_priority).range(0..=100));
+            ui.label("Script Processing Delay (s):");
+            ui.add(
+                egui::DragValue::new(&mut state.qust_delay)
+                    .speed(0.1)
+                    .range(0.0..=60.0),
+            );
+        });
+    });
+}
+
+fn draw_perk_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Perk Requirements & Rank");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut state.perk_trait, "Is Trait");
+            ui.label("Min Level:");
+            ui.add(egui::DragValue::new(&mut state.perk_min_level).range(1..=100));
+            ui.label("Num Ranks:");
+            ui.add(egui::DragValue::new(&mut state.perk_num_ranks).range(1..=10));
+        });
+        ui.add_space(4.0);
+        ui.label("Perk Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.perk_desc)
+                .desired_rows(4)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+}
+
+const SPELL_TYPES: [(u32, &str); 7] = [
+    (0, "Actor Effect"),
+    (1, "Disease"),
+    (2, "Power"),
+    (3, "Lesser Power"),
+    (4, "Ability"),
+    (5, "Poison"),
+    (10, "Addiction"),
+];
+
+fn draw_spell_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Spell / Effect Settings");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            let cur_lbl = SPELL_TYPES
+                .iter()
+                .find(|(val, _)| *val == state.spell_type)
+                .map(|(_, name)| *name)
+                .unwrap_or("Custom");
+            egui::ComboBox::from_id_salt("spell_type")
+                .selected_text(cur_lbl)
+                .show_ui(ui, |ui| {
+                    for &(val, name) in &SPELL_TYPES {
+                        ui.selectable_value(&mut state.spell_type, val, name);
+                    }
+                });
+            ui.checkbox(&mut state.spell_no_autocalc, "No Auto-Calc");
+            ui.checkbox(&mut state.spell_always_applies, "Always Applies");
+        });
+    });
+}
+
+fn draw_expl_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Explosion Parameters");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Damage:");
+            ui.add(
+                egui::DragValue::new(&mut state.expl_damage)
+                    .speed(5.0)
+                    .range(0.0..=100000.0),
+            );
+            ui.label("Force:");
+            ui.add(
+                egui::DragValue::new(&mut state.expl_force)
+                    .speed(10.0)
+                    .range(0.0..=100000.0),
+            );
+            ui.label("Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.expl_radius)
+                    .speed(10.0)
+                    .range(0.0..=100000.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Light (FormID):");
+            formid_field(ui, "expl_light", &mut state.expl_light);
+            ui.label("Sound 1:");
+            formid_field(ui, "expl_snd1", &mut state.expl_sound1);
+            ui.label("Sound 2:");
+            formid_field(ui, "expl_snd2", &mut state.expl_sound2);
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Radiation Level:");
+            ui.add(
+                egui::DragValue::new(&mut state.expl_rad_level)
+                    .speed(1.0)
+                    .range(0.0..=10000.0),
+            );
+            ui.label("IS Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.expl_is_radius)
+                    .speed(10.0)
+                    .range(0.0..=100000.0),
+            );
+        });
+    });
+}
+
+const PROJ_TYPES: [(u16, &str); 5] = [
+    (1, "Missile"),
+    (2, "Lobber"),
+    (4, "Beam"),
+    (8, "Flame"),
+    (16, "Continuous Beam"),
+];
+
+fn draw_proj_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Projectile Ballistics & Appearance");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            let cur_lbl = PROJ_TYPES
+                .iter()
+                .find(|(val, _)| *val == state.proj_type)
+                .map(|(_, name)| *name)
+                .unwrap_or("Custom");
+            egui::ComboBox::from_id_salt("proj_type")
+                .selected_text(cur_lbl)
+                .show_ui(ui, |ui| {
+                    for &(val, name) in &PROJ_TYPES {
+                        ui.selectable_value(&mut state.proj_type, val, name);
+                    }
+                });
+            ui.label("Speed:");
+            ui.add(
+                egui::DragValue::new(&mut state.proj_speed)
+                    .speed(50.0)
+                    .range(0.0..=100000.0),
+            );
+            ui.label("Gravity:");
+            ui.add(
+                egui::DragValue::new(&mut state.proj_gravity)
+                    .speed(0.1)
+                    .range(0.0..=100.0),
+            );
+            ui.label("Range:");
+            ui.add(
+                egui::DragValue::new(&mut state.proj_range)
+                    .speed(50.0)
+                    .range(0.0..=100000.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Light:");
+            formid_field(ui, "proj_light", &mut state.proj_light);
+            ui.label("Sound:");
+            formid_field(ui, "proj_snd", &mut state.proj_sound);
+            ui.label("Explosion:");
+            formid_field(ui, "proj_expl", &mut state.proj_explosion);
+        });
+    });
+}
+
+fn draw_soun_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Sound Marker Settings");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Sound File Path:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.sound_file)
+                    .desired_width(ui.available_width() - 20.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Chance %:");
+            ui.add(egui::DragValue::new(&mut state.sound_random_chance).range(0..=100));
+            ui.label("Min Distance:");
+            ui.add(egui::DragValue::new(&mut state.sound_min_dist));
+            ui.label("Max Distance:");
+            ui.add(egui::DragValue::new(&mut state.sound_max_dist));
+            ui.label("Volume (cdB):");
+            ui.add(
+                egui::DragValue::new(&mut state.sound_vol_cdb)
+                    .speed(10.0)
+                    .range(-10000..=0),
+            );
+            ui.checkbox(&mut state.sound_loop, "Loop");
+            ui.checkbox(&mut state.sound_2d, "2D");
+        });
+    });
+}
+
+const NOTE_TYPES: [(u8, &str); 4] = [(0, "Sound"), (1, "Text"), (2, "Image"), (3, "Voice")];
+
+fn draw_note_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Note Configuration");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            let cur_lbl = NOTE_TYPES
+                .iter()
+                .find(|(val, _)| *val == state.note_type)
+                .map(|(_, name)| *name)
+                .unwrap_or("Custom");
+            egui::ComboBox::from_id_salt("note_type")
+                .selected_text(cur_lbl)
+                .show_ui(ui, |ui| {
+                    for &(val, name) in &NOTE_TYPES {
+                        ui.selectable_value(&mut state.note_type, val, name);
+                    }
+                });
+            ui.label("Sound / Voice (FormID):");
+            formid_field(ui, "note_sound", &mut state.note_sound);
+        });
+        ui.add_space(4.0);
+        ui.label("Note Text Content (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.note_text)
+                .desired_rows(6)
+                .desired_width(ui.available_width() - 20.0),
+        );
     });
 }

@@ -98,5 +98,49 @@ fn main() {
     assert_eq!(ammo_state.edid, "Ammo556mm");
     assert_eq!(ammo_state.full_name, "5.56mm Round");
 
+    // Test 5: Faction (FACT) 0x0017B76D
+    let fact_fid = 0x0017B76D;
+    let mut fact_state = ObjectEditorState::default();
+    fact_state.load_from_session(&session, fact_fid, *b"FACT");
+    println!(
+        "Loaded FACT 0x{:08X}: EDID='{}', Hidden={}, Evil={}",
+        fact_state.form_id, fact_state.edid, fact_state.fact_hidden, fact_state.fact_evil
+    );
+    assert_eq!(fact_state.edid, "OmertaBossFaction2");
+
+    // Test 6: Sound (SOUN) 0x0017AE34
+    let soun_fid = 0x0017AE34;
+    let mut soun_state = ObjectEditorState::default();
+    soun_state.load_from_session(&session, soun_fid, *b"SOUN");
+    println!(
+        "Loaded SOUN 0x{:08X}: EDID='{}', File='{}', Chance={}",
+        soun_state.form_id, soun_state.edid, soun_state.sound_file, soun_state.sound_random_chance
+    );
+    assert_eq!(soun_state.edid, "EMTCampfireInactive02");
+    assert!(!soun_state.sound_file.is_empty());
+
+    // Test 7: Projectile (PROJ) 0x0017B7B9
+    let proj_fid = 0x0017B7B9;
+    let mut proj_state = ObjectEditorState::default();
+    proj_state.load_from_session(&session, proj_fid, *b"PROJ");
+    println!(
+        "Loaded PROJ 0x{:08X}: EDID='{}', Type={}, Speed={}",
+        proj_state.form_id, proj_state.edid, proj_state.proj_type, proj_state.proj_speed
+    );
+    assert_eq!(proj_state.edid, "SecuritronGrenadeProjectile");
+
+    // Test 8: Note (NOTE) 0x00177875
+    let note_fid = 0x00177875;
+    let mut note_state = ObjectEditorState::default();
+    note_state.load_from_session(&session, note_fid, *b"NOTE");
+    println!(
+        "Loaded NOTE 0x{:08X}: EDID='{}', Type={}, TextLen={}",
+        note_state.form_id,
+        note_state.edid,
+        note_state.note_type,
+        note_state.note_text.len()
+    );
+    assert_eq!(note_state.edid, "vYesManBunkerNote");
+
     println!("All object editor tests passed successfully!");
 }
