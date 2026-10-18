@@ -98,6 +98,10 @@ pub fn setup_primary(mut commands: Commands) {
 #[derive(Component)]
 pub struct ViewportWindow;
 
+/// Marker component for the Creature editor window.
+#[derive(Component)]
+pub struct CreatureWindow;
+
 pub fn spawn_viewport(mut commands: Commands) {
     let window = commands
         .spawn((
@@ -193,14 +197,18 @@ fn spawn_panel<const P: u8>(
     h: u32,
     schedule: Panel,
 ) {
-    let window = commands
-        .spawn(Window {
-            title: title.to_owned(),
-            resolution: (w, h).into(),
-            position: WindowPosition::new(IVec2::new(x, y)),
-            ..default()
-        })
-        .id();
+    let is_creature = schedule == Panel::Creature;
+    let mut win_cmd = commands.spawn(Window {
+        title: title.to_owned(),
+        resolution: (w, h).into(),
+        position: WindowPosition::new(IVec2::new(x, y)),
+        visible: !is_creature,
+        ..default()
+    });
+    if is_creature {
+        win_cmd.insert(CreatureWindow);
+    }
+    let window = win_cmd.id();
     commands.spawn((
         Camera2d,
         // An orthographic projection, like bevy_egui's own examples give a 2D

@@ -490,6 +490,10 @@ pub fn ui(
     mut session: ResMut<crate::session::Session>,
     mut state: ResMut<CreatureEditorState>,
 ) {
+    if session.editing_creature.is_none() {
+        return;
+    }
+
     let ctx = ctx.get_mut();
 
     // Check if creature selection changed
@@ -1106,4 +1110,31 @@ fn draw_template_tab(ui: &mut egui::Ui, data: &mut CreatureData) {
             }
         });
     });
+}
+
+/// Sync the Creature window visibility and title with the session state.
+pub fn sync_window(
+    session: Res<crate::session::Session>,
+    mut windows: Query<&mut Window, With<crate::windows::CreatureWindow>>,
+    state: Res<CreatureEditorState>,
+) {
+    let should_be_visible = session.editing_creature.is_some();
+    for mut window in windows.iter_mut() {
+        if window.visible != should_be_visible {
+            window.visible = should_be_visible;
+        }
+
+        if should_be_visible {
+            if let Some(data) = &state.data {
+                let expected_title = if !data.full_name.trim().is_empty() {
+                    format!("Creature - {} ({})", data.edid, data.full_name)
+                } else {
+                    format!("Creature - {}", data.edid)
+                };
+                if window.title != expected_title {
+                    window.title = expected_title;
+                }
+            }
+        }
+    }
 }

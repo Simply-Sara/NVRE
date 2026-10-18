@@ -149,6 +149,7 @@ fn main() {
                 position: WindowPosition::new(IVec2::new(40, 40)),
                 ..default()
             }),
+            close_when_requested: false,
             ..default()
         }))
         .add_plugins(bevy_egui::EguiPlugin::default())
@@ -245,9 +246,15 @@ fn main() {
                 gizmo::gizmo_system,
                 viewport::pick,
                 viewport::flat_material_diagnostic,
+                creature::sync_window,
+                handle_window_close,
             )
                 .chain()
                 .run_if(in_state(EditorState::Editing)),
+        )
+        .add_systems(
+            Update,
+            handle_window_close.run_if(in_state(EditorState::Launching)),
         )
         .run();
 }
@@ -342,3 +349,28 @@ fn open_selected(
 /// visible to systems in the same frame; this runs on entering `Editing`, by
 /// which time it is in place.
 fn spawn_session() {}
+
+/// Handle window close requests: primary window exits app, creature window hides.
+fn handle_window_close(
+    mut commands: Commands,
+    mut closed: MessageReader<bevy::window::WindowCloseRequested>,
+    mut app_exit: MessageWriter<AppExit>,
+    primary: Query<Entity, With<bevy::window::PrimaryWindow>>,
+    creature_win: Query<Entity, With<windows::CreatureWindow>>,
+    mut session: Option<ResMut<session::Session>>,
+) {
+    let primary_ent = primary.iter().next();
+    let crea_ent = creature_win.iter().next();
+
+    for ev in closed.read() {
+        if Some(ev.window) == primary_ent {
+            app_exit.write(AppExit::Success);
+        } else if Some(ev.window) == crea_ent {
+            if let Some(s) = &mut session {
+                s.close_creature();
+            }
+        } else {
+            commands.entity(ev.window).despawn();
+        }
+    }
+}
