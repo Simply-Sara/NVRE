@@ -537,10 +537,7 @@ pub fn rows(plugin: &Plugin) -> Vec<RecordRow> {
 /// The decoded value of one subrecord, for the property grid.
 pub fn value_of(schema: &Schema, rec: &Record, sig: &[u8; 4]) -> Option<Value> {
     let sub = rec.subrecords().ok()?.into_iter().find(|s| &s.sig == sig)?;
-    let mut ctx = fnv_esm::decode::DecodeCtx {
-        schema,
-        on_formid: None,
-    };
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, rec.header.sig);
     let d = fnv_esm::decode::decode_sub(&rec.header.sig, &sub, &mut ctx);
     match d.status {
         fnv_esm::decode::SubStatus::Ok => d.value,

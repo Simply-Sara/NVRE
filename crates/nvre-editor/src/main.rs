@@ -27,16 +27,17 @@ struct Args {
     /// The game's Data folder (read-only). Defaults to $NVRE_DATA.
     #[arg(long, env = "NVRE_DATA")]
     data: PathBuf,
-    /// Record schema directory.
+    /// Record schema directory. NVRE's own: upstream's layouts plus the records
+    /// and subrecords they do not define (`schemas/README.md`).
     #[arg(
         long,
-        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../NVForever/schemas/fnv")
+        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")
     )]
     esm_schema: PathBuf,
     /// NIF schema directory, for the viewport's models.
     #[arg(
         long,
-        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../NVForever/schemas/nif")
+        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../NVForever/schemas/nif")
     )]
     nif_schema: PathBuf,
     /// The plugin to edit.

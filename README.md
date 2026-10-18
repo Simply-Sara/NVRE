@@ -1,19 +1,26 @@
 # New Vegas Rust Editor
 
 A GECK-like editor for Fallout: New Vegas, written in Rust, built on
-[NVForever](../NVForever)'s format crates.
+[NVForever](https://github.com/LootJunkieAzza/NVForever)'s format crates.
 
 The editor is **standalone**: it lives in its own cargo workspace and depends on
-NVForever by path. Nothing is patched into NVForever, and the game's files are
+NVForever by git. Nothing is patched into NVForever, and the game's files are
 only ever read — saving writes a new `.esp` wherever you ask.
 
-NVForever is included as a git submodule, so clone recursively:
+NVForever's crates are pulled by git (no pinned `rev`; `cargo update` moves
+them), so no submodule is needed:
 
 ```
-git clone --recursive <url>
-# or, if you already cloned without it:
-git submodule update --init
+git clone <url>
+cargo build
 ```
+
+Two of those crates are forked into `crates/fnv-esm` and `crates/fnv-world` and
+substituted with `[patch.crates-io]`-style `[patch]` entries. `fnv.schema/1`
+could not express count-prefixed arrays, length-prefixed strings, mid-struct
+NUL-terminated strings or value-decided unions, so the layouts in `schemas/`
+could not reach 100% coverage through the upstream schema language. Each fork's
+diff against upstream is small and documented in its `Cargo.toml` header.
 
 ## What is built
 
@@ -33,20 +40,28 @@ byte, but it cannot *change* one. This crate adds that.
 
 - An untouched document re-serialises **byte-identically** to the input.
 - Every subrecord the decoder reads as `Ok` re-encodes to the same bytes, or the
-  field is marked read-only. Measured over `FalloutNV.esm` + 4 DLC masters:
-  **2,714,930 subrecords checked**, with gaps confined to record types the editor
-  does not edit (navmesh, crafting, ragdoll, camera paths, combat style,
-  alternate textures).
+  field is marked read-only. Measured over `FalloutNV.esm` + 5 DLC masters:
+  **2,321,456 subrecords, 100.00% decoded, 0 unknown, 0 trailing, 0 errors**,
+  and every decoded subrecord re-encodes byte-identically.
 - Integers are width-checked. A `300` written into a `u8` field is an error, not
   a silent truncation.
-- A struct with repeated field names (`CSTY/CSTD`'s five `unused` fields) is
-  refused: the decoder's JSON form cannot hold both, so writing it would corrupt
-  the record.
+- Repeated struct field names (CSTY/CSTD's six `unused` fields) are
+  disambiguated at parse time (`unused`, `unused_2`, …) so the JSON holds every
+  field and the record still round-trips.
 - Deleting a record sets the Deleted flag — the way the game itself removes a
   reference — rather than dropping it from the file.
 - A record that was compressed stays compressed: the subrecords are decoded from
   the decompressed form, so writing them back plain would leave the COMPRESSED
   flag set on uncompressed bytes and make the record unreadable.
+
+### `schemas/fnv` — the record layouts
+
+106 record types plus the shared subrecord table, measured against the shipped
+masters rather than transcribed from documentation. Every entry carries a
+`confidence` and a `note` naming its source; see
+[docs/spec-notes/schema-coverage.md](docs/spec-notes/schema-coverage.md) for what
+was measured, and [schemas/README.md](schemas/README.md) for the rules a new
+entry has to follow.
 
 ### `nvre-editor` — the GUI
 
@@ -223,13 +238,31 @@ carry header flags `0x400`.
 ## Building and testing
 
 ```
-cargo build                       # both crates
-cargo test -p nvre-edit            # 24 tests; 16 need game data, skip without it
-cargo clippy -p nvre-edit -p nvre-editor --all-targets
+cargo build                       # the whole workspace
+cargo test -p fnv-esm -p nvre-edit --lib
+cargo clippy -p fnv-esm -p nvre-edit --all-targets
 ```
 
-Set `NVRE_DATA` to the game's `Data` folder to run the tests that check
-against real masters (they skip otherwise, so CI needs no game data).
+Set `NVRE_DATA` to the game's `Data` folder to run the tests that check against
+real masters (they skip otherwise, so CI needs no game data).
+
+Two headless binaries measure the schema against real plugins, and are the
+fastest way to see where coverage stands:
+
+```
+cargo run --bin coverage -- schemas/fnv "$NVRE_DATA"/FalloutNV.esm
+cargo run --bin rtcheck   -- schemas/fnv "$NVRE_DATA"/FalloutNV.esm
+```
+
+`coverage` reports decoded / unknown / trailing / error per plugin;
+`rtcheck` decodes every subrecord and re-encodes it, reporting any that do not
+come back byte-identical. Both currently report 100% and a clean round-trip
+across all six shipped masters.
+
+**Coverage is measured against the six shipped masters, which is not the same as
+"every possible ESM/ESP".** A modded plugin can carry record types and
+subrecord signatures those masters never use, and those are only discovered by
+pointing these binaries at real mods.
 
 ## Licence
 

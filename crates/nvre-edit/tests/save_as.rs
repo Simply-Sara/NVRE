@@ -17,7 +17,7 @@ fn data_dir() -> Option<std::path::PathBuf> {
 }
 
 fn schema_dir() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../NVForever/schemas/fnv")
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv")
 }
 
 /// The masters the tests build a plugin on top of.

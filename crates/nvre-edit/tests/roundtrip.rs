@@ -20,8 +20,9 @@ fn data_dir() -> Option<std::path::PathBuf> {
 }
 
 fn schema_dir() -> std::path::PathBuf {
-    // The editor lives beside NVForever and reuses its schemas unchanged.
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../NVForever/schemas/fnv")
+    // NVRE's own schema directory: a copy of NVForever's layouts plus the
+    // records and subrecords it does not define. See `schemas/README.md`.
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv")
 }
 
 /// The masters a full check would cover; the test uses whichever are present.
@@ -42,12 +43,14 @@ const MASTERS: [&str; 5] = [
 /// **representation limit** (a struct with repeated field names, which the JSON
 /// form cannot hold). In both cases the editor must leave the field read-only.
 ///
-/// Measured over FalloutNV.esm + 4 DLC masters: 2,714,930 subrecords checked,
-/// with the gaps confined to the signatures listed below — navmesh (NAVM/NAVI),
-/// crafting (RCPE/RCCT), ragdoll (RGDL), camera paths (CPTH), combat style
-/// (CSTY/CSTD), alternate textures (MODS and friends) and a handful of small
-/// ones. The record types the editor actually edits (REFR, STAT, ACTI, DOOR,
-/// CONT, FURN, LIGH, ...) are fully covered.
+/// Measured over FalloutNV.esm: 2,316,930 subrecords decode, and all but three
+/// signatures re-encode byte for byte. The three that do not are representation
+/// limits, not schema gaps: `CSTY/CSTD` (a struct whose field names repeat, so
+/// the JSON form cannot hold both) and `TERM/ITXT` + `TERM/RNAM` (a 4-byte
+/// zstring of all NULs decodes to `""` but re-encodes to a single NUL). The
+/// editor must leave those read-only. Navmesh, crafting, ragdoll, camera paths,
+/// alternate textures (MODS and friends) and everything else the decoder reads
+/// now round-trip exactly.
 #[test]
 fn every_decoded_subrecord_roundtrips() {
     let Some(data) = data_dir() else {

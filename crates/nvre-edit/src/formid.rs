@@ -36,10 +36,7 @@ pub fn remap_sub(
     if matches!(schema.resolve(&def.ty), TypeDef::Prim(Prim::Bytes)) {
         return Some(sub.data.clone());
     }
-    let mut ctx = fnv_esm::decode::DecodeCtx {
-        schema,
-        on_formid: None,
-    };
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
     let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     if d.status != fnv_esm::decode::SubStatus::Ok {
         return None;
@@ -116,7 +113,7 @@ fn remap_value(
         // A union is chosen by byte width at decode time, so the variant that
         // produced this value is not recorded. Remapping inside one could pick
         // the wrong variant, so unions are left untouched.
-        TypeDef::Union(_) => Some(()),
+        TypeDef::Union(_) | TypeDef::ValueUnion { .. } => Some(()),
         TypeDef::Named(_) | TypeDef::Prim(_) | TypeDef::Enum { .. } | TypeDef::Flags { .. } => {
             Some(())
         }
@@ -137,10 +134,7 @@ pub fn count_formids(schema: &Schema, rec_sig: &[u8; 4], sub: &Subrecord) -> usi
     let Some(def) = schema.lookup(rec_sig, &sub.sig) else {
         return 0;
     };
-    let mut ctx = fnv_esm::decode::DecodeCtx {
-        schema,
-        on_formid: None,
-    };
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
     let Ok(subs) = parse_one(sub) else { return 0 };
     let _ = subs;
     let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
@@ -182,6 +176,11 @@ fn count_in(schema: &Schema, t: &TypeDef, value: &Value, n: &mut usize) {
                 count_in(schema, vt, value, n);
             }
         }
+        TypeDef::ValueUnion { variants, .. } => {
+            for vt in variants {
+                count_in(schema, vt, value, n);
+            }
+        }
         _ => {}
     }
 }
@@ -206,6 +205,11 @@ pub fn formid_fields(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> V
                     walk(schema, vt, out);
                 }
             }
+            TypeDef::ValueUnion { variants, .. } => {
+                for vt in variants {
+                    walk(schema, vt, out);
+                }
+            }
             _ => {}
         }
     }
@@ -221,10 +225,7 @@ pub fn decoded_map(
     rec_sig: &[u8; 4],
     sub: &Subrecord,
 ) -> Option<Map<String, Value>> {
-    let mut ctx = fnv_esm::decode::DecodeCtx {
-        schema,
-        on_formid: None,
-    };
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
     let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     d.value?.as_object().cloned()
 }

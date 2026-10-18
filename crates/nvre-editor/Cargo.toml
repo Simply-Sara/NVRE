@@ -22,9 +22,9 @@ fnv-world.workspace = true
 # NVForever's Bevy asset layer, reused so the viewport renders the game's own
 # meshes with its own material and texture handling. Its workspace deps are
 # spelled out because it belongs to NVForever's own engine workspace.
-nvf-assets = { path = "../../NVForever/engine/nvf-assets" }
-fnv-nif = { path = "../../NVForever/crates/fnv-nif" }
-fnv-dds = { path = "../../NVForever/crates/fnv-dds" }
+nvf-assets = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-dds = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

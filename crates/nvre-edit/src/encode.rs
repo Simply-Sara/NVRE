@@ -126,6 +126,17 @@ pub fn encode_type(
                     msg: format!("field {dup:?} is declared more than once in this layout; the JSON form cannot hold both, so this subrecord is read-only"),
                 });
             }
+            // A value carrying fields this struct does not declare cannot be
+            // encoded by it: writing only the declared fields would drop data and
+            // silently produce the wrong bytes. This is what stops a union from
+            // picking the wrong variant, since a union's variants differ exactly
+            // by which fields they have (real case: NAVI NVMI's island branch).
+            if let Some(extra) = obj.keys().find(|k| !fields.iter().any(|f| &f.name == *k)) {
+                return Err(EncodeError::Value {
+                    path: path.to_string(),
+                    msg: format!("field {extra:?} is not part of this layout"),
+                });
+            }
             for f in fields {
                 match obj.get(&f.name) {
                     // A missing optional field simply contributes no bytes, which
@@ -143,13 +154,39 @@ pub fn encode_type(
                         } else {
                             format!("{path}.{}", f.name)
                         };
+                        // A count-field array must hold exactly as many elements as
+                        // its sibling count field says, because the count bytes are
+                        // written by that field, not by this array.
+                        if let TypeDef::Array {
+                            count_field: Some(name),
+                            ..
+                        } = schema.resolve(&f.ty)
+                        {
+                            let want = obj.get(name).and_then(Value::as_u64);
+                            match (want, v.as_array()) {
+                                (Some(n), Some(arr)) if arr.len() as u64 == n => {}
+                                _ => {
+                                    return Err(EncodeError::Value {
+                                        path: sub.clone(),
+                                        msg: format!(
+                                        "count_field {name:?} does not match this array's length"
+                                    ),
+                                    })
+                                }
+                            }
+                        }
                         encode_type(schema, &f.ty, v, out, &sub)?;
                     }
                 }
             }
             Ok(())
         }
-        TypeDef::Array { elem, count } => {
+        TypeDef::Array {
+            elem,
+            count,
+            count_prefix,
+            ..
+        } => {
             let arr = value
                 .as_array()
                 .ok_or_else(|| kind_err(path, "array", value))?;
@@ -161,6 +198,14 @@ pub fn encode_type(
                     });
                 }
             }
+            // The count came from the data at decode time, so it goes back first.
+            if let Some(p) = count_prefix {
+                write_uint(*p, arr.len() as u64, out, path)?;
+            }
+            // A count-field array reads no count of its own: the sibling integer field
+            // already written by the struct encoder is the count (xEdit's
+            // `SetCountPath`). The element count here must match it, which the struct
+            // encoder checks before writing this array.
             for (i, v) in arr.iter().enumerate() {
                 encode_type(schema, elem, v, out, &format!("{path}[{i}]"))?;
             }
@@ -268,6 +313,34 @@ pub fn encode_type(
                 }),
             }
         }
+        TypeDef::ValueUnion { variants, .. } => {
+            // A value-decided union carries no switch in the bytes, so the variant
+            // must be picked from the value alone. Each variant is tried in order
+            // and the first that encodes without error wins — same as the plain
+            // union, except the caller (record-level) already validated that the
+            // chosen variant matches the sibling switch value.
+            let mut first_err = None;
+            for (i, vt) in variants.iter().enumerate() {
+                let mut probe = Vec::new();
+                match encode_type(schema, vt, value, &mut probe, path) {
+                    Ok(()) => {
+                        out.extend_from_slice(&probe);
+                        return Ok(());
+                    }
+                    Err(e) => first_err = first_err.or(Some((i, e))),
+                }
+            }
+            match first_err {
+                Some((_, e)) => Err(EncodeError::Value {
+                    path: path.to_string(),
+                    msg: format!("no union variant matches: {e}"),
+                }),
+                None => Err(EncodeError::Value {
+                    path: path.to_string(),
+                    msg: "union has no variants".into(),
+                }),
+            }
+        }
     }
 }
 
@@ -349,11 +422,30 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
                 out.push(0);
             }
         }
+        Prim::LenString => {
+            // The inverse of the decoder: write the byte length, then the bytes.
+            // No terminator, so a re-encode of a decoded value is exact.
+            let s = value
+                .as_str()
+                .ok_or_else(|| kind_err(path, "string", value))?;
+            let b = cp1252(s, path)?;
+            write_uint(Prim::U32, b.len() as u64, out, path)?;
+            out.extend_from_slice(&b);
+        }
         Prim::String => {
             let s = value
                 .as_str()
                 .ok_or_else(|| kind_err(path, "string", value))?;
             out.extend_from_slice(&cp1252(s, path)?);
+        }
+        Prim::CString => {
+            // The inverse of the decoder: the text bytes, then one NUL terminator,
+            // leaving the following fields to encode after it.
+            let s = value
+                .as_str()
+                .ok_or_else(|| kind_err(path, "string", value))?;
+            out.extend_from_slice(&cp1252(s, path)?);
+            out.push(0);
         }
         Prim::Bytes => out.extend_from_slice(&hex_bytes(value, path)?),
     }
@@ -539,10 +631,7 @@ fn encode_probe(schema: &Schema, t: &TypeDef, value: &Value) -> Result<Vec<u8>, 
 
 /// The decoded form of a subrecord, ready to hand back to [`encode_sub`].
 pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> Option<Value> {
-    let mut ctx = fnv_esm::decode::DecodeCtx {
-        schema,
-        on_formid: None,
-    };
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
     let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     match d.status {
         fnv_esm::decode::SubStatus::Ok => d.value,
@@ -583,6 +672,11 @@ pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec
                     walk(schema, vt, out);
                 }
             }
+            TypeDef::ValueUnion { variants, .. } => {
+                for vt in variants {
+                    walk(schema, vt, out);
+                }
+            }
             _ => {}
         }
     }
@@ -611,10 +705,7 @@ pub fn sub_views(schema: &Schema, rec: &fnv_esm::Record) -> Result<Vec<SubView>,
     let subs = rec.subrecords().map_err(|e| e.to_string())?;
     let mut out = Vec::with_capacity(subs.len());
     for s in &subs {
-        let mut ctx = fnv_esm::decode::DecodeCtx {
-            schema,
-            on_formid: None,
-        };
+        let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, rec.header.sig);
         let d = fnv_esm::decode::decode_sub(&rec.header.sig, s, &mut ctx);
         let name = d.name.clone().unwrap_or_else(|| s.sig_str());
         out.push(SubView {
@@ -834,10 +925,11 @@ mod tests {
     }
 
     #[test]
-    fn struct_with_repeated_field_names_is_refused() {
-        // CSTY/CSTD declares `unused` five times. The decoder's JSON object can
-        // only hold the last one, so encoding would write the wrong bytes; the
-        // encoder must refuse rather than corrupt the record.
+    fn struct_with_repeated_field_names_roundtrips() {
+        // CSTY/CSTD declares `unused` six times. A struct's JSON form is an
+        // object, so the names are disambiguated at parse time (`unused`,
+        // `unused_2`, ...) in declaration order. The byte layout is untouched,
+        // so the value round-trips instead of being refused.
         let text = r#"{
           "format": "fnv.schema/1",
           "types": {"Dup": {"struct": [
@@ -859,18 +951,19 @@ mod tests {
             v
         })
         .unwrap();
-        let mut ctx = fnv_esm::decode::DecodeCtx {
-            schema: &s,
-            on_formid: None,
-        };
+        let mut ctx = fnv_esm::decode::DecodeCtx::new(&s, *b"TEST");
         let d = fnv_esm::decode::decode_sub(b"TEST", &subs[0], &mut ctx);
         assert_eq!(d.status, fnv_esm::decode::SubStatus::Ok);
         let value = d.value.unwrap();
-        assert!(matches!(
-            enc(&s, b"TEST", b"XABC", &value),
-            Err(EncodeError::Value { ref msg, .. }) if msg.contains("declared more than once")
-        ));
-        assert!(!roundtrips(&s, b"TEST", &subs[0]));
+        // Every declared field survives into the JSON, under a distinct key.
+        let obj = value.as_object().unwrap();
+        assert_eq!(
+            obj.keys().map(String::as_str).collect::<Vec<_>>(),
+            vec!["a", "unused", "b", "unused_2"]
+        );
+        assert_eq!(obj["unused"].as_array().unwrap().len(), 2);
+        assert_eq!(obj["unused_2"].as_array().unwrap().len(), 3);
+        assert!(roundtrips(&s, b"TEST", &subs[0]));
     }
 
     #[test]

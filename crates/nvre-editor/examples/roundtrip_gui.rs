@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "GuiRoundtrip.esp".into());
-    let schema = std::path::Path::new("NVForever/schemas/fnv");
+    let schema = std::path::Path::new("schemas/fnv");
     let master = format!("{data}/FalloutNV.esm");
 
     let mut s = Session::open(

@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(2)
         .and_then(|s| s.parse().ok())
         .unwrap_or(200);
-    let schema = std::path::Path::new("NVForever/schemas/fnv");
+    let schema = std::path::Path::new("schemas/fnv");
     let master = format!("{data}/FalloutNV.esm");
 
     let mut s = Session::open(

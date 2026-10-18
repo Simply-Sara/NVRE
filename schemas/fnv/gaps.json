@@ -1,0 +1,844 @@
+{
+ "format": "fnv.schema/1",
+ "types": {
+  "RecipeData": {
+   "struct": [
+    {
+     "name": "skill",
+     "type": "ActorValue"
+    },
+    {
+     "name": "level",
+     "type": "u32"
+    },
+    {
+     "name": "category",
+     "type": "formid"
+    },
+    {
+     "name": "sub_category",
+     "type": "formid"
+    }
+   ]
+  },
+  "RecipeItem": {
+   "struct": [
+    {
+     "name": "item",
+     "type": "formid"
+    },
+    {
+     "name": "count",
+     "type": "i32"
+    }
+   ]
+  },
+  "CameraPathLink": {
+   "struct": [
+    {
+     "name": "parent",
+     "type": "formid"
+    },
+    {
+     "name": "previous",
+     "type": "formid"
+    }
+   ]
+  },
+  "CameraShotData": {
+   "union": [
+    {
+     "size": 40,
+     "type": "CameraShotDataFull"
+    },
+    {
+     "type": "CameraShotDataShort"
+    }
+   ]
+  },
+  "ArmorAddonData": {
+   "struct": [
+    {
+     "name": "value",
+     "type": "i32"
+    },
+    {
+     "name": "max_condition",
+     "type": "i32"
+    },
+    {
+     "name": "weight",
+     "type": "f32"
+    }
+   ]
+  },
+  "AlternateTexture": {
+   "struct": [
+    {
+     "name": "model_3d_name",
+     "type": "len_string"
+    },
+    {
+     "name": "new_texture",
+     "type": "formid"
+    },
+    {
+     "name": "index_3d",
+     "type": "i32"
+    }
+   ]
+  },
+  "ArmorAddonDnam": {
+   "struct": [
+    {
+     "name": "dr",
+     "type": "i16"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u16",
+      "bits": {
+       "0": "Modulates Voice"
+      }
+     }
+    },
+    {
+     "name": "dt",
+     "type": "f32",
+     "optional": true
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 4
+     },
+     "optional": true
+    }
+   ]
+  },
+  "EncounterZoneData": {
+   "struct": [
+    {
+     "name": "owner",
+     "type": "formid"
+    },
+    {
+     "name": "rank",
+     "type": "i8"
+    },
+    {
+     "name": "minimum_level",
+     "type": "i8"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u8",
+      "bits": {
+       "0": "Never Resets",
+       "1": "Match PC Below Minimum Level"
+      }
+     }
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    }
+   ]
+  },
+  "RagdollGeneralData": {
+   "struct": [
+    {
+     "name": "dynamic_bone_count",
+     "type": "u32"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "feedback",
+     "type": "BoolU8"
+    },
+    {
+     "name": "foot_ik",
+     "type": "BoolU8"
+    },
+    {
+     "name": "look_ik",
+     "type": "BoolU8"
+    },
+    {
+     "name": "grab_ik",
+     "type": "BoolU8"
+    },
+    {
+     "name": "pose_matching",
+     "type": "BoolU8"
+    },
+    {
+     "name": "unused2",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    }
+   ]
+  },
+  "RagdollFeedbackData": {
+   "struct": [
+    {
+     "name": "dynamic_keyframe_blend_amount",
+     "type": "f32"
+    },
+    {
+     "name": "hierarchy_gain",
+     "type": "f32"
+    },
+    {
+     "name": "position_gain",
+     "type": "f32"
+    },
+    {
+     "name": "velocity_gain",
+     "type": "f32"
+    },
+    {
+     "name": "acceleration_gain",
+     "type": "f32"
+    },
+    {
+     "name": "snap_gain",
+     "type": "f32"
+    },
+    {
+     "name": "velocity_damping",
+     "type": "f32"
+    },
+    {
+     "name": "snap_max_linear_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "snap_max_angular_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "snap_max_linear_distance",
+     "type": "f32"
+    },
+    {
+     "name": "snap_max_angular_distance",
+     "type": "f32"
+    },
+    {
+     "name": "position_max_velocity_linear",
+     "type": "f32"
+    },
+    {
+     "name": "position_max_velocity_angular",
+     "type": "f32"
+    },
+    {
+     "name": "position_max_projectile",
+     "type": "i32"
+    },
+    {
+     "name": "position_max_melee",
+     "type": "i32"
+    }
+   ]
+  },
+  "RagdollPoseMatchingData": {
+   "struct": [
+    {
+     "name": "match_bones",
+     "type": {
+      "array": "u16",
+      "count": 3
+     }
+    },
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u8",
+      "bits": {
+       "0": "Disable On Move"
+      }
+     }
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    },
+    {
+     "name": "motors_strength",
+     "type": "f32"
+    },
+    {
+     "name": "pose_activation_delay_time",
+     "type": "f32"
+    },
+    {
+     "name": "match_error_allowance",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_to_disable",
+     "type": "f32"
+    }
+   ]
+  },
+  "DebrisModelData": {
+   "struct": [
+    {
+     "name": "percentage",
+     "type": "u8"
+    },
+    {
+     "name": "model_file_name",
+     "type": "string"
+    },
+    {
+     "name": "has_collision",
+     "type": "BoolU8"
+    }
+   ]
+  },
+  "CameraShotDataShort": {
+   "struct": [
+    {
+     "name": "action",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Shoot",
+       "1": "Fly",
+       "2": "Hit",
+       "3": "Zoom"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "target",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u32",
+      "bits": {
+       "0": "Position Follows Location",
+       "1": "Rotation Follows Target",
+       "2": "Don't Follow Bone",
+       "3": "First Person Camera",
+       "4": "No Tracer",
+       "5": "Start At Time Zero"
+      }
+     }
+    },
+    {
+     "name": "time_multipliers",
+     "type": {
+      "struct": [
+       {
+        "name": "player",
+        "type": "f32"
+       },
+       {
+        "name": "target",
+        "type": "f32"
+       },
+       {
+        "name": "global",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "max_time",
+     "type": "f32"
+    },
+    {
+     "name": "min_time",
+     "type": "f32"
+    }
+   ]
+  },
+  "CameraShotDataFull": {
+   "struct": [
+    {
+     "name": "action",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Shoot",
+       "1": "Fly",
+       "2": "Hit",
+       "3": "Zoom"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "target",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u32",
+      "bits": {
+       "0": "Position Follows Location",
+       "1": "Rotation Follows Target",
+       "2": "Don't Follow Bone",
+       "3": "First Person Camera",
+       "4": "No Tracer",
+       "5": "Start At Time Zero"
+      }
+     }
+    },
+    {
+     "name": "time_multipliers",
+     "type": {
+      "struct": [
+       {
+        "name": "player",
+        "type": "f32"
+       },
+       {
+        "name": "target",
+        "type": "f32"
+       },
+       {
+        "name": "global",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "max_time",
+     "type": "f32"
+    },
+    {
+     "name": "min_time",
+     "type": "f32"
+    },
+    {
+     "name": "target_percent_between_actors",
+     "type": "f32"
+    }
+   ]
+  }
+ },
+ "records": {
+  "RCPE": {
+   "name": "Recipe",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas RCPE record. DATA is a fixed 16-byte struct, which matches the single measured size of 16 across all 105 instances in FalloutNV.esm.",
+   "subrecords": {
+    "DATA": {
+     "name": "Data",
+     "type": "RecipeData",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RCPE wbStruct(DATA): Skill (ActorValue enum, itS32), Level (itU32), Category (RCCT or NULL FormID), Sub-Category (RCCT FormID)"
+    },
+    "RCIL": {
+     "name": "Item",
+     "type": "formid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbIngredient wbFormIDCk(RCIL, 'Item'); ingredient list entry, repeated per ingredient"
+    },
+    "RCQY": {
+     "name": "Quantity",
+     "type": "i32",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbIngredient/wbOutput wbInteger(RCQY, 'Quantity', itU32); stored after each RCIL/RCOD item"
+    },
+    "RCOD": {
+     "name": "Item",
+     "type": "formid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbOutput wbFormIDCk(RCOD, 'Item'); output list entry, repeated per output"
+    }
+   }
+  },
+  "CDCK": {
+   "name": "Caravan Deck",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas CDCK record; no header flags declared",
+   "subrecords": {
+    "CARD": {
+     "name": "Card",
+     "type": "formid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas CDCK wbRArrayS('Cards', wbFormIDCk(CARD, 'Card', [CCRD])); measured 572 instances all exactly 4 bytes, so formid is confirmed against real data"
+    },
+    "DATA": {
+     "name": "Count (broken)",
+     "type": "u32",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas CDCK record: wbInteger(DATA, 'Count (broken)', itU32). Verified: 13 instances across the six masters, all exactly 4 bytes"
+    }
+   }
+  },
+  "CPTH": {
+   "name": "Camera Path",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas CPTH record",
+   "subrecords": {
+    "ANAM": {
+     "name": "Camera Paths",
+     "type": "CameraPathLink",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas CPTH wbStruct(ANAM): Parent and Previous, both CPTH-or-NULL FormIDs. 418 instances all measured exactly 8 bytes."
+    },
+    "DATA": {
+     "name": "Camera Zoom",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Default",
+       "1": "Disable",
+       "2": "Shot List"
+      }
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas CPTH wbInteger(DATA, 'Camera Zoom', itU8); 418 instances all exactly 1 byte"
+    },
+    "SNAM": {
+     "name": "Camera Shot",
+     "type": "formid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas CPTH wbRArray('Camera Shots', wbFormIDCk(SNAM, 'Camera Shot', [CAMS])); 484 instances all exactly 4 bytes"
+    }
+   }
+  },
+  "CAMS": {
+   "name": "Camera Shot",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas CAMS record",
+   "subrecords": {
+    "DATA": {
+     "name": "Data",
+     "type": "CameraShotData",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas CAMS wbStruct(DATA): Action/Location/Target enums (itU32), Flags (itU32), Player/Target/Global time multipliers (f32), then Max Time, Min Time, Target % Between Actors (f32). 272 of 276 instances are 40 bytes; 4 are 36 bytes, missing only the final float, expressed here as a size-decided union so neither size errors."
+    },
+    "MNAM": {
+     "name": "Image Space Modifier",
+     "type": "formid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsCommon.pas wbGenericModel (ISMod entry); 275 instances all exactly 4 bytes"
+    }
+   }
+  },
+  "ARMA": {
+   "name": "Armor Addon",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas ARMA record",
+   "subrecords": {
+    "DATA": {
+     "name": "Data",
+     "type": "ArmorAddonData",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas ARMA wbStruct(DATA): Value, Max Condition (itS32), Weight (f32). 131 instances all exactly 12 bytes."
+    },
+    "DNAM": {
+     "name": "Data",
+     "type": "ArmorAddonDnam",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas ARMA wbStruct(DNAM) with SetOptionalFrom(2): DR (itS16), Modulates Voice flag (itU16), DT (f32), 4 unused bytes. SetOptionalFrom(2) makes everything from index 2 optional, so a 4-byte DNAM is DR+Flags only and a 12-byte one is all four fields; 115 of 131 instances are 4 bytes, 16 are 12. DT and the trailing bytes are both optional here."
+    },
+    "MODS": {
+     "name": "Alternate Textures",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbMODS = wbArrayS(MODS, 'Alternate Textures', wbAlternateTexture, -1), i.e. a u32 count then that many (len_string 3D Name, TXST FormID, i32 3D Index). Verified against real bytes on every ARMA MODS: e.g. 01000000 0b000000 'PARightHand' 00060c00 00000000 parses exactly with zero bytes left."
+    },
+    "MO2S": {
+     "name": "Alternate Textures",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbMO2S = wbArrayS(MO2S, 'Alternate Textures', wbAlternateTexture, -1); same element as MODS, applied to the World Model ([MOD2, MO2T])"
+    },
+    "MO3S": {
+     "name": "Alternate Textures",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbMO3S = wbArrayS(MO3S, 'Alternate Textures', wbAlternateTexture, -1); same element as MODS, applied to the Biped Model ([MOD3, MO3T])"
+    },
+    "MO4S": {
+     "name": "Alternate Textures",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbMO4S = wbArrayS(MO4S, 'Alternate Textures', wbAlternateTexture, -1); same element as MODS"
+    },
+    "BMDT": {
+     "name": "Biped Data",
+     "type": {
+      "struct": [
+       {
+        "name": "biped_flags",
+        "type": {
+         "flags": "u32",
+         "bits": {
+          "0": "Head",
+          "1": "Hair",
+          "2": "Upper Body",
+          "3": "Left Hand",
+          "4": "Right Hand",
+          "5": "Weapon",
+          "6": "PipBoy",
+          "7": "Backpack",
+          "8": "Necklace",
+          "9": "Headband",
+          "10": "Hat",
+          "11": "Eye Glasses",
+          "12": "Nose Ring",
+          "13": "Earrings",
+          "14": "Mask",
+          "15": "Choker",
+          "16": "Mouth Object",
+          "17": "Body AddOn 1",
+          "18": "Body AddOn 2",
+          "19": "Body AddOn 3"
+         }
+        }
+       },
+       {
+        "name": "general_flags",
+        "type": {
+         "flags": "u8",
+         "bits": {
+          "0": "unknown_0x01",
+          "1": "unknown_0x02",
+          "2": "Has Backpack",
+          "3": "Medium",
+          "4": "unknown_0x10",
+          "5": "Power Armor",
+          "6": "Non-Playable",
+          "7": "Heavy"
+         }
+        }
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       }
+      ]
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas wbBMDT helper record, used by both ARMO and ARMA (wbRecord(ARMA, ...) includes wbBMDT at line 4004). Same layout on both: [u32 biped flags][u8 general flags][3 unused]. Verified over 520 instances in the shipped masters, all exactly 8 bytes."
+    }
+   }
+  },
+  "VTYP": {
+   "name": "Voice Type",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas VTYP record",
+   "subrecords": {
+    "DNAM": {
+     "name": "Flags",
+     "type": {
+      "flags": "u8",
+      "bits": {
+       "0": "Allow Default Dialog",
+       "1": "Female"
+      }
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas VTYP wbInteger(DNAM, 'Flags', itU8); 91 instances all exactly 1 byte"
+    }
+   }
+  },
+  "AVIF": {
+   "name": "ActorValue Information",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas AVIF record",
+   "subrecords": {
+    "ANAM": {
+     "name": "Short Name",
+     "type": "zstring",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas AVIF wbStringKC(ANAM, 'Short Name', 0, cpTranslate); a plain string in every FNV use. Measured sizes vary from 4 to 12 bytes, consistent with a null-terminated string rather than a fixed-size field."
+    }
+   }
+  },
+  "ECZN": {
+   "name": "Encounter Zone",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas ECZN record",
+   "subrecords": {
+    "DATA": {
+     "name": "Data",
+     "type": "EncounterZoneData",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas ECZN wbStruct(DATA): Owner (NPC_/FACT/NULL FormID), Rank (itS8), Minimum Level (itS8), Flags (itU8: Never Resets, Match PC Below Minimum Level), 1 unused byte. 17 instances all exactly 8 bytes."
+    }
+   }
+  },
+  "DEBR": {
+   "name": "Debris",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas DEBR record: wbRArray('Models', wbDebrisModel(wbModelInfo(MODT)), cpNormal, True), i.e. a repeating (DATA, MODT) pair",
+   "subrecords": {
+    "MODT": {
+     "name": "Model Texture Hashes",
+     "type": {
+      "array": "TextureHash"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsCommon.pas wbModelInfo, passed to wbDebrisModel; same 24-byte-per-entry layout as the common MODT"
+    },
+    "DATA": {
+     "name": "Data",
+     "type": {
+      "struct": [
+       {
+        "name": "percentage",
+        "type": "u8"
+       },
+       {
+        "name": "model_file_name",
+        "type": "cstring"
+       },
+       {
+        "name": "has_collision",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "No",
+          "1": "Yes"
+         }
+        }
+       }
+      ]
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsCommon.pas wbDebrisModel: wbStruct(DATA, 'Data', [wbInteger('Percentage', itU8), wbString('Model FileName'), wbInteger('Has Collision', itU8, wbBoolEnum)]).SetRequired. The middle string is xEdit's plain wbString (NUL-terminated, not rest-of-field), which the new `cstring` primitive expresses. Verified: all 26 instances in FalloutNV.esm follow [u8][NUL-terminated name][u8] exactly (e.g. 0f 'Gore\\RoboBit01.NIF' 01)"
+    }
+   }
+  },
+  "RGDL": {
+   "name": "Ragdoll",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas RGDL record",
+   "subrecords": {
+    "NVER": {
+     "name": "Version",
+     "type": "u32",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbInteger(NVER, 'Version', itU32); 38 instances all exactly 4 bytes"
+    },
+    "DATA": {
+     "name": "General Data",
+     "type": "RagdollGeneralData",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbStruct(DATA): Dynamic Bone Count (itU32), 4 unused bytes, five bool enums (Feedback, Foot IK, Look IK, Grab IK, Pose Matching), 1 unused byte. 38 instances all exactly 14 bytes."
+    },
+    "XNAM": {
+     "name": "Actor Base",
+     "type": "formid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbFormIDCk(XNAM, 'Actor Base', [CREA, NPC_]); 31 instances all exactly 4 bytes"
+    },
+    "TNAM": {
+     "name": "Body Part Data",
+     "type": "formid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbFormIDCk(TNAM, 'Body Part Data', [BPTD]); 38 instances all exactly 4 bytes"
+    },
+    "RAFD": {
+     "name": "Feedback Data",
+     "type": "RagdollFeedbackData",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbStruct(RAFD): seven f32 gains, a 4x f32 Snap Max Settings, a 2x f32 Position Max Velocity, then Projectile and Melee (itS32, wbDiv(1000)). 38 instances all exactly 60 bytes."
+    },
+    "RAFB": {
+     "name": "Feedback Dynamic Bones",
+     "type": {
+      "array": "u16"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbArray(RAFB, 'Feedback Dynamic Bones', wbInteger('Bone', itU16)); fill-to-end, no count subrecord"
+    },
+    "RAPS": {
+     "name": "Pose Matching Data",
+     "type": "RagdollPoseMatchingData",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbStruct(RAPS): 3x Bone (itU16, wbHideFFFF), Flags (itU8: Disable On Move), 1 unused byte, then Motors Strength, Pose Activation Delay Time, Match Error Allowance, Displacement To Disable (f32). 38 instances all exactly 24 bytes."
+    },
+    "ANAM": {
+     "name": "Death Pose",
+     "type": "string",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas RGDL wbString(ANAM, 'Death Pose'); a plain string in every FNV use. Measured sizes vary (31-44 bytes), consistent with a null-terminated string."
+    }
+   }
+  }
+ }
+}

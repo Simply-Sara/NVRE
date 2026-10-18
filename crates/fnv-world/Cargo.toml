@@ -1,0 +1,27 @@
+[package]
+name = "fnv-world"
+description = "World data for Fallout: New Vegas: worldspaces, cells, placed references and landscape, across a load order"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+# NVRE's fork of NVForever's fnv-world. Upstream stays the reference
+# implementation; this copy exists so the schema-decoding layer can be
+# extended (see `src/fields.rs`). Diff against upstream before every merge.
+#
+# Status: currently a verbatim copy with no code changes. It is registered in
+# NVRE's root `[patch]` table only so that, when a change here becomes
+# necessary, the graph already resolves to this path. If it stays unused,
+# dropping it removes a fork that has to be re-diffed on every upstream pull.
+
+[dependencies]
+# By git, not path: a path dep here would resolve `fnv-esm` to a *second* copy
+# distinct from the one the rest of the graph uses, and the two `Schema` types
+# would not unify (`cargo build` fails with E0308 on `WorldIndex::build`).
+fnv-esm = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+serde_json = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-vfs = { git = "https://github.com/LootJunkieAzza/NVForever.git" }

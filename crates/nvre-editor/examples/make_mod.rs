@@ -13,8 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "MyMod.esp".into());
-    let schema_dir =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../NVForever/schemas/fnv");
+    let schema_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../schemas/fnv");
     let schema = Schema::load_dir(&schema_dir)?;
 
     // The mod depends on the base game and one DLC, in load order.

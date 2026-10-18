@@ -1,0 +1,28 @@
+[package]
+name = "fnv-esm"
+description = "TES4-family plugin (ESM/ESP) parser with schema-as-data decoding"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+# NVRE's fork of NVForever's fnv-esm. Upstream stays the reference
+# implementation; this copy exists so the schema language can express the two
+# constructs `fnv.schema/1` lacks (length-prefixed strings and count-prefixed
+# arrays), which block ~7,000 subrecord instances in the shipped masters.
+# Diff against upstream before every merge.
+
+[dependencies]
+# By git, not path: a path dep here would resolve `fnv-esm`'s own dependencies
+# (and `fnv-util`) to copies distinct from the ones the rest of the graph uses.
+fnv-util = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-inflate = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+serde_json = "1"
+serde = "1"
+thiserror = "2"
+bytes = "1.9"
+memmap2 = "0.9"
+rayon = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+proptest = "1"

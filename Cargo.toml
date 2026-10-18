@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm"]
 
 [workspace.package]
 version = "0.1.0"
@@ -8,17 +8,24 @@ edition = "2021"
 license = "GPL-3.0-or-later"
 
 [workspace.dependencies]
-# NVForever's format crates, by path. The editor is read-write where those are
-# read-only; nothing is patched into NVForever itself.
-fnv-util = { path = "NVForever/crates/fnv-util" }
-fnv-inflate = { path = "NVForever/crates/fnv-inflate" }
-fnv-esm = { path = "NVForever/crates/fnv-esm" }
-fnv-vfs = { path = "NVForever/crates/fnv-vfs" }
-fnv-world = { path = "NVForever/crates/fnv-world" }
+# NVForever's format crates, by git. The editor is read-write where those are
+# read-only; upstream stays the reference implementation and moves with
+# `cargo update`. Crates NVRE modifies are patched to a local fork below.
+#
+# `crates/fnv-world` and `crates/fnv-esm` are those forks. `fnv.schema/1`
+# cannot express count-prefixed arrays, length-prefixed strings or decided
+# unions, so the layouts in `schemas/` could not reach 100% coverage through
+# the upstream schema language; `fnv-esm` is where those constructs now live.
+# Keep each fork's diff against upstream small and documented.
+fnv-util = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-inflate = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-esm = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-vfs = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-world = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 # NVForever's Bevy asset layer lives in its own engine workspace, so its
 # workspace-inherited deps have to be declared here too.
-fnv-nif = { path = "NVForever/crates/fnv-nif" }
-fnv-dds = { path = "NVForever/crates/fnv-dds" }
+fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+fnv-dds = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -33,6 +40,12 @@ tracing = "0.1"
 bevy = { version = "=0.19.1", features = ["pbr_specular_textures"] }
 bevy_egui = "=0.42.0"
 clap = { version = "4", features = ["derive", "env"] }
+
+# NVRE's forks of upstream crates. Cargo substitutes these for every consumer
+# in the graph, including transitive ones, so nothing else needs to change.
+[patch."https://github.com/LootJunkieAzza/NVForever.git"]
+fnv-world = { path = "crates/fnv-world" }
+fnv-esm = { path = "crates/fnv-esm" }
 
 [profile.release]
 debug = 1

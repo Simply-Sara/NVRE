@@ -1,0 +1,566 @@
+{
+ "format": "fnv.schema/1",
+ "types": {
+  "NavVertex": {
+   "struct": [
+    {
+     "name": "x",
+     "type": "f32"
+    },
+    {
+     "name": "y",
+     "type": "f32"
+    },
+    {
+     "name": "z",
+     "type": "f32"
+    }
+   ]
+  },
+  "NavTriangle": {
+   "struct": [
+    {
+     "name": "vertex_0",
+     "type": "u16"
+    },
+    {
+     "name": "vertex_1",
+     "type": "u16"
+    },
+    {
+     "name": "vertex_2",
+     "type": "u16"
+    },
+    {
+     "name": "edge_0_1",
+     "type": "i16"
+    },
+    {
+     "name": "edge_1_2",
+     "type": "i16"
+    },
+    {
+     "name": "edge_2_0",
+     "type": "i16"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u16",
+      "bits": {
+       "0": "Edge 0-1 Link",
+       "1": "Edge 1-2 Link",
+       "2": "Edge 2-0 Link",
+       "3": "Deleted",
+       "4": "No Large Creatures",
+       "5": "Overlapping",
+       "6": "Preferred",
+       "9": "Water",
+       "10": "Door",
+       "11": "Found"
+      }
+     }
+    },
+    {
+     "name": "cover",
+     "type": "u16"
+    }
+   ]
+  },
+  "NavDoorLink": {
+   "struct": [
+    {
+     "name": "door",
+     "type": "formid"
+    },
+    {
+     "name": "triangle",
+     "type": "u16"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "NavEdgeLink": {
+   "struct": [
+    {
+     "name": "type",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Portal",
+       "1": "Ledge Up",
+       "2": "Ledge Down",
+       "3": "Enable/Disable Portal"
+      }
+     }
+    },
+    {
+     "name": "navmesh",
+     "type": "formid"
+    },
+    {
+     "name": "triangle",
+     "type": "u16"
+    }
+   ]
+  },
+  "NavGridCell": {
+   "struct": [
+    {
+     "name": "triangles",
+     "type": {
+      "array": "u16",
+      "count_prefix": "u16"
+     }
+    }
+   ]
+  },
+  "NavGrid": {
+   "struct": [
+    {
+     "name": "divisor",
+     "type": "u32"
+    },
+    {
+     "name": "max_x_distance",
+     "type": "f32"
+    },
+    {
+     "name": "max_y_distance",
+     "type": "f32"
+    },
+    {
+     "name": "bounds",
+     "type": {
+      "struct": [
+       {
+        "name": "min",
+        "type": {
+         "struct": [
+          {
+           "name": "x",
+           "type": "f32"
+          },
+          {
+           "name": "y",
+           "type": "f32"
+          },
+          {
+           "name": "z",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "max",
+        "type": {
+         "struct": [
+          {
+           "name": "x",
+           "type": "f32"
+          },
+          {
+           "name": "y",
+           "type": "f32"
+          },
+          {
+           "name": "z",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "cells",
+     "type": {
+      "array": "NavGridCell"
+     }
+    }
+   ]
+  },
+  "NavMeshInfo": {
+   "union": [
+    {
+     "size": 32,
+     "type": "NavMeshInfoPlain"
+    },
+    {
+     "type": "NavMeshInfoIsland"
+    }
+   ]
+  },
+  "NavMeshInfoPlain": {
+   "struct": [
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u32",
+      "bits": {
+       "4": "Initially Disabled",
+       "5": "Is Island"
+      }
+     }
+    },
+    {
+     "name": "navmesh",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "type": "formid"
+    },
+    {
+     "name": "grid_y",
+     "type": "i16"
+    },
+    {
+     "name": "grid_x",
+     "type": "i16"
+    },
+    {
+     "name": "approx_location",
+     "type": {
+      "struct": [
+       {
+        "name": "x",
+        "type": "f32"
+       },
+       {
+        "name": "y",
+        "type": "f32"
+       },
+       {
+        "name": "z",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "preferred_percent",
+     "type": "f32"
+    }
+   ]
+  },
+  "NavMeshInfoIsland": {
+   "struct": [
+    {
+     "name": "flags",
+     "type": {
+      "flags": "u32",
+      "bits": {
+       "4": "Initially Disabled",
+       "5": "Is Island"
+      }
+     }
+    },
+    {
+     "name": "navmesh",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "type": "formid"
+    },
+    {
+     "name": "grid_y",
+     "type": "i16"
+    },
+    {
+     "name": "grid_x",
+     "type": "i16"
+    },
+    {
+     "name": "approx_location",
+     "type": {
+      "struct": [
+       {
+        "name": "x",
+        "type": "f32"
+       },
+       {
+        "name": "y",
+        "type": "f32"
+       },
+       {
+        "name": "z",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "island_bounds",
+     "type": {
+      "struct": [
+       {
+        "name": "min",
+        "type": {
+         "struct": [
+          {
+           "name": "x",
+           "type": "f32"
+          },
+          {
+           "name": "y",
+           "type": "f32"
+          },
+          {
+           "name": "z",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "max",
+        "type": {
+         "struct": [
+          {
+           "name": "x",
+           "type": "f32"
+          },
+          {
+           "name": "y",
+           "type": "f32"
+          },
+          {
+           "name": "z",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "island_vertex_count",
+     "type": "u16",
+     "note": "xEdit wbInteger('Vertex Count', itU16) with .SetCountPath('Vertex Count', True): the count is a stored field, read once, and island_vertices below uses it via count_field."
+    },
+    {
+     "name": "island_triangle_count",
+     "type": "u16",
+     "note": "xEdit wbInteger('Triangle Count', itU16) with .SetCountPath('Triangle Count', True). Stored next to the vertex count, before either array."
+    },
+    {
+     "name": "island_vertices",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "x",
+         "type": "f32"
+        },
+        {
+         "name": "y",
+         "type": "f32"
+        },
+        {
+         "name": "z",
+         "type": "f32"
+        }
+       ]
+      },
+      "count_field": "island_vertex_count"
+     },
+     "note": "xEdit wbArray('Vertices', wbVec3('Vertex')).SetCountPath('Vertex Count', True): the element count is the sibling island_vertex_count field, not a prefix in the data."
+    },
+    {
+     "name": "island_triangles",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "vertex_0",
+         "type": "u16"
+        },
+        {
+         "name": "vertex_1",
+         "type": "u16"
+        },
+        {
+         "name": "vertex_2",
+         "type": "u16"
+        }
+       ]
+      },
+      "count_field": "island_triangle_count"
+     },
+     "note": "xEdit wbArray('Triangles', wbStruct('Triangle', [Vertex 0/1/2])).SetCountPath('Triangle Count', True)."
+    },
+    {
+     "name": "preferred_percent",
+     "type": "f32"
+    }
+   ]
+  },
+  "NavConnection": {
+   "struct": [
+    {
+     "name": "navmesh",
+     "type": "formid"
+    },
+    {
+     "name": "standard",
+     "type": {
+      "array": "formid",
+      "count_prefix": "u32"
+     }
+    },
+    {
+     "name": "preferred",
+     "type": {
+      "array": "formid",
+      "count_prefix": "u32"
+     }
+    },
+    {
+     "name": "door_links",
+     "type": {
+      "array": "formid",
+      "count_prefix": "u32"
+     }
+    }
+   ]
+  }
+ },
+ "records": {
+  "NAVM": {
+   "name": "Navmesh",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas NAVM record; header flags 11 Initially Disabled, 26 AutoGen (xEdit wbDefinitionsCommon.pas flags). NVGD is omitted: its per-grid-square u16 count prefix is a count-prefixed array, which fnv.schema/1 cannot express.",
+   "header_flags": {
+    "bits": {
+     "11": "Initially Disabled",
+     "26": "AutoGen"
+    },
+    "confidence": "documented",
+    "note": "xEdit wbDefinitionsFNV.pas NAVM record wbFlags"
+   },
+   "subrecords": {
+    "NVER": {
+     "name": "Version",
+     "type": "u32",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbInteger(NVER, 'Version', itU32)"
+    },
+    "DATA": {
+     "name": "Data",
+     "type": {
+      "struct": [
+       {
+        "name": "cell",
+        "type": "formid"
+       },
+       {
+        "name": "vertex_count",
+        "type": "u32"
+       },
+       {
+        "name": "triangle_count",
+        "type": "u32"
+       },
+       {
+        "name": "edge_link_count",
+        "type": "u32"
+       },
+       {
+        "name": "cover_triangle_count",
+        "type": "u32"
+       },
+       {
+        "name": "door_link_count",
+        "type": "u32"
+       }
+      ]
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbStruct(DATA): FormID Cell then five u32 counts. The counts are what the array subrecords are sized from (SetCountPathOnValue), which fnv.schema/1 cannot reference, so the arrays below fill to the end of the subrecord instead."
+    },
+    "NVVX": {
+     "name": "Vertices",
+     "type": {
+      "array": "NavVertex"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbArray(NVVX, 'Vertices', wbVec3) with count from DATA\\Vertex Count. Expressed here as fill-to-end: the subrecord holds nothing but vertices, so consuming the rest of it is equivalent."
+    },
+    "NVTR": {
+     "name": "Triangles",
+     "type": {
+      "array": "NavTriangle"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbArray(NVTR): 3x u16 vertex indices, 3x i16 edges (wbNVTREdgeToStr reads a value as an NVEX index exactly when the edge's link flag bit is set, -1 for none), u16 flags (wbNavmeshTriangleFlags), u16 cover flags. Fill-to-end; count from DATA\\Triangle Count."
+    },
+    "NVCA": {
+     "name": "Cover Triangles",
+     "type": {
+      "array": "u16"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbArray(NVCA, 'Cover Triangles', itU16) with count from DATA\\Cover Triangle Count. Fill-to-end."
+    },
+    "NVDP": {
+     "name": "Door Links",
+     "type": {
+      "array": "NavDoorLink"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbArrayS(NVDP, 'Door Links', wbStructSK([1,0])): door REFR FormID, triangle u16, 2 unused bytes. Fill-to-end; count from DATA\\Door Link Count."
+    },
+    "NVEX": {
+     "name": "Edge Links",
+     "type": {
+      "array": "NavEdgeLink"
+     },
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbArray(NVEX): u32 type (wbNavmeshEdgeLinkEnum), navmesh NAVM FormID, triangle u16. Fill-to-end; count from DATA\\Edge Link Count."
+    },
+    "NVGD": {
+     "name": "Navmesh Grid",
+     "type": "NavGrid",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVM wbStruct(NVGD, 'Navmesh Grid'): u32 Divisor, f32 Max X/Y Distance, Navmesh Bounds (Vec3 Min, Vec3 Max), then Cells. Cells is a fill-to-end array of Cell, and Cell is an array of u16 triangle indices with a u16 count prefix (xEdit passes Count = -2 = arcU16), which is now expressible. Verified against real bytes: every one of the 4,771 NVGD subrecords in FalloutNV.esm parses to exactly Divisor*Divisor cells with zero bytes left over."
+    }
+   }
+  },
+  "NAVI": {
+   "name": "Navmesh Info Map",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFNV.pas NAVI record: NVER then repeating NVMI (Navmesh Info) and NVCI (Connection) subrecords",
+   "subrecords": {
+    "NVER": {
+     "name": "Version",
+     "type": "u32",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVI wbInteger(NVER, 'Version', itU32)"
+    },
+    "NVMI": {
+     "name": "Navmesh Info",
+     "type": "NavMeshInfo",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVI wbRArrayS('Navmesh Infos', wbStructSK(NVMI, [1], 'Navmesh Info', [...])): u32 Flags, NAVM FormID, CELL/WRLD FormID Location, Grid Y/X (i16), Vec3 Approx Location, Island Data, then f32 Preferred %. The island branch is decided by wbNAVINVMIDecider reading bit 5 of Flags, which fnv.schema/1 cannot express as a value-decided union, so it is expressed here as a size-decided union instead: a plain (non-island) Navmesh Info is exactly 32 bytes, and every island one is larger. Verified against real bytes: all 4,771 NVMI subrecords in FalloutNV.esm parse exactly, 1,687 taking the island branch."
+    },
+    "NVCI": {
+     "name": "Connection",
+     "type": "NavConnection",
+     "confidence": "documented",
+     "note": "xEdit wbDefinitionsFNV.pas NAVI wbRArrayS('Navmesh Connections', wbStructSK(NVCI, [0], 'Connection', [...])): NAVM FormID, then three u32-counted FormID arrays (Standard, Preferred, Door Links), each wbArrayS(..., -1). Verified against real bytes: all 4,771 NVCI subrecords in FalloutNV.esm parse exactly with zero bytes left over."
+    }
+   }
+  }
+ }
+}

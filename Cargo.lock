@@ -2592,27 +2592,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "directories"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16f5094c54661b38d03bd7e50df373292118db60b585c08a411c6d840017fe7d"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
-dependencies = [
- "libc",
- "option-ext",
- "redox_users",
- "windows-sys 0.61.2",
-]
-
-[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2953,12 +2932,11 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 [[package]]
 name = "fnv-bsa"
 version = "0.1.0"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
 dependencies = [
  "fnv-inflate",
  "fnv-util",
- "proptest",
  "rayon",
- "tempfile",
  "thiserror 2.0.21",
  "tracing",
 ]
@@ -2966,8 +2944,8 @@ dependencies = [
 [[package]]
 name = "fnv-dds"
 version = "0.1.0"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
 dependencies = [
- "proptest",
  "thiserror 2.0.21",
 ]
 
@@ -2990,31 +2968,19 @@ dependencies = [
 [[package]]
 name = "fnv-inflate"
 version = "0.1.0"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
 dependencies = [
  "adler2",
  "flate2",
- "proptest",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "fnv-install"
-version = "0.1.0"
-dependencies = [
- "directories",
- "serde",
- "serde_json",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "fnv-nif"
 version = "0.1.0"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
 dependencies = [
- "fnv-bsa",
- "fnv-dds",
  "fnv-util",
- "proptest",
  "serde_json",
  "thiserror 2.0.21",
  "tracing",
@@ -3023,10 +2989,10 @@ dependencies = [
 [[package]]
 name = "fnv-util"
 version = "0.1.0"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
 dependencies = [
  "encoding_rs",
  "hex",
- "proptest",
  "sha2",
  "thiserror 2.0.21",
 ]
@@ -3034,9 +3000,9 @@ dependencies = [
 [[package]]
 name = "fnv-vfs"
 version = "0.1.0"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
 dependencies = [
  "fnv-bsa",
- "fnv-install",
  "thiserror 2.0.21",
 ]
 
@@ -4305,6 +4271,7 @@ dependencies = [
 [[package]]
 name = "nvf-assets"
 version = "0.1.0"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
 dependencies = [
  "bevy",
  "fnv-dds",
@@ -4739,12 +4706,6 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
-
-[[package]]
-name = "option-ext"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "orbclient"
@@ -5233,16 +5194,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "737970939a87c6fa31e7acad13307bccbb017a073b695b6089a2c484f929e20e"
 dependencies = [
  "bitflags 2.13.2",
-]
-
-[[package]]
-name = "redox_users"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60dc65c0ff1a7ae1294b0c67b9f14baf70b644404010370171787bfac1038fc0"
-dependencies = [
- "libredox",
- "thiserror 2.0.21",
 ]
 
 [[package]]
