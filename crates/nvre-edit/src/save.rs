@@ -155,7 +155,7 @@ pub fn write_plugin(
     schema: &Schema,
     out_path: &std::path::Path,
 ) -> Result<SaveReport, String> {
-    write_plugin_scoped(doc, masters, schema, out_path, Scope::OwnRecords)
+    write_plugin_with_load_order(doc, masters, schema, None, out_path, Scope::OwnRecords)
 }
 
 /// [`write_plugin`] with an explicit [`Scope`].
@@ -163,6 +163,18 @@ pub fn write_plugin_scoped(
     doc: &crate::Document,
     masters: &MasterList,
     schema: &Schema,
+    out_path: &std::path::Path,
+    scope: Scope,
+) -> Result<SaveReport, String> {
+    write_plugin_with_load_order(doc, masters, schema, None, out_path, scope)
+}
+
+/// Write `doc`'s records with an optional load order to resolve overrides from masters.
+pub fn write_plugin_with_load_order(
+    doc: &crate::Document,
+    masters: &MasterList,
+    schema: &Schema,
+    lo: Option<&fnv_esm::LoadOrder<'_>>,
     out_path: &std::path::Path,
     scope: Scope,
 ) -> Result<SaveReport, String> {
@@ -177,6 +189,11 @@ pub fn write_plugin_scoped(
     let mut nodes = doc.plugin().nodes.clone();
     rewrite_header(&mut nodes, masters, new_self)?;
 
+    let is_master_override = masters
+        .names
+        .iter()
+        .any(|n| n.eq_ignore_ascii_case(&doc.plugin().name));
+
     if scope == Scope::WholePlugin {
         let mut walk = |node: &mut Node| {
             if let Node::Record(r) = node {
@@ -187,7 +204,7 @@ pub fn write_plugin_scoped(
         for n in &mut nodes {
             walk_node(n, &mut walk);
         }
-    } else {
+    } else if is_master_override {
         // A mod carries its own records: drop the source's records and keep only
         // the group structure the new ones hang from.
         prune_records(&mut nodes);
@@ -229,10 +246,84 @@ pub fn write_plugin_scoped(
                 rec.header.flags |= record_flags::DELETED;
             }
             remap_record(&mut rec, schema, &override_map, &mut report, &mut problems);
-            let cell = cell_of_record(doc, fid);
+            let cell = cell_of_record_lo(doc, lo, fid);
             override_record(&mut nodes, cell, &rec);
             overrides.push(rec.header.form_id);
             report.records += 1;
+        }
+        if !overrides.is_empty() {
+            add_onam(&mut nodes, &overrides)?;
+        }
+    } else {
+        // Standard mod editing mode: doc is the mod itself.
+        // Keep doc's own records and apply any edits or deletes.
+        report.records = 0;
+        let mut walk = |node: &mut Node| {
+            if let Node::Record(r) = node {
+                if &r.header.sig != b"TES4" {
+                    report.records += 1;
+                    let fid = r.header.form_id;
+                    if doc.deleted().contains(&fid) {
+                        r.header.flags |= record_flags::DELETED;
+                    }
+                    if let Some(edits) = doc.edits_for(fid) {
+                        crate::document::apply_edits_pub(r, edits);
+                    }
+                    remap_record(r, schema, &map, &mut report, &mut problems);
+                }
+            }
+        };
+        for n in &mut nodes {
+            walk_node(n, &mut walk);
+        }
+
+        // Overrides of records from masters
+        let mut overrides: Vec<u32> = Vec::new();
+        let mut touched: Vec<u32> = doc.deleted().to_vec();
+        touched.extend(doc.edits().map(|(f, _)| *f));
+        touched.sort_unstable();
+        touched.dedup();
+
+        for fid in touched {
+            if find_record(doc.nodes(), fid).is_some() {
+                continue;
+            }
+
+            if let Some(lo) = lo {
+                if let Some((pi, orig)) = fnv_world::fields::winner(lo, fid) {
+                    let orig_name = &lo.plugins[pi].name;
+                    if let Some(m_idx) = masters
+                        .names
+                        .iter()
+                        .position(|n| n.eq_ignore_ascii_case(orig_name))
+                    {
+                        let target_fid = ((m_idx as u32) << 24) | (fid & 0x00FF_FFFF);
+                        let mut rec = orig.clone();
+                        rec.header.form_id = target_fid;
+                        if doc.deleted().contains(&fid) {
+                            rec.header.flags |= record_flags::DELETED;
+                        }
+                        if let Some(edits) = doc.edits_for(fid) {
+                            crate::document::apply_edits_pub(&mut rec, edits);
+                        }
+                        remap_record(&mut rec, schema, &map, &mut report, &mut problems);
+                        let cell = cell_of_record_lo(doc, Some(lo), fid);
+                        override_record(&mut nodes, cell, &rec);
+                        overrides.push(target_fid);
+                        report.records += 1;
+                    } else {
+                        problems.push(format!(
+                            "record {fid:08X} belongs to {orig_name}, which is not in the master list"
+                        ));
+                    }
+                } else {
+                    problems.push(format!("record {fid:08X} not found in load order"));
+                }
+            } else {
+                problems.push(format!(
+                    "record {fid:08X} is from a master, but no load order was provided to resolve it"
+                ));
+            }
         }
         if !overrides.is_empty() {
             add_onam(&mut nodes, &overrides)?;
@@ -459,6 +550,20 @@ fn find_record(nodes: &[Node], form_id: u32) -> Option<&Record> {
     None
 }
 
+fn cell_of_record_lo(
+    doc: &crate::Document,
+    lo: Option<&fnv_esm::LoadOrder<'_>>,
+    form_id: u32,
+) -> Option<u32> {
+    if let Some(lo) = lo {
+        let ix = fnv_world::WorldIndex::build(lo, &Schema::default());
+        if let Some(e) = ix.refs.get(&form_id) {
+            return Some(e.cell);
+        }
+    }
+    cell_of_record(doc, form_id)
+}
+
 /// The cell a record lives in, from the load order's own index.
 ///
 /// `fnv_world::WorldIndex` already maps every FormID to its cell
@@ -474,6 +579,67 @@ fn cell_of_record(doc: &crate::Document, form_id: u32) -> Option<u32> {
     ix.refs.get(&form_id).map(|e| e.cell)
 }
 
+fn ensure_cell_children_mut(nodes: &mut Vec<Node>, cell: u32) -> &mut fnv_esm::raw::Group {
+    let top_idx = match nodes.iter().position(|n| match n {
+        Node::Group(g) => {
+            g.header.group_type == fnv_esm::raw::group_type::TOP && &g.header.label == b"CELL"
+        }
+        _ => false,
+    }) {
+        Some(idx) => idx,
+        None => {
+            nodes.push(Node::Group(fnv_esm::raw::Group {
+                header: fnv_esm::raw::GroupHeader {
+                    size: 0,
+                    label: *b"CELL",
+                    group_type: fnv_esm::raw::group_type::TOP,
+                    stamp: 0,
+                    unknown1: 0,
+                    version: 0,
+                    unknown2: 0,
+                },
+                children: Vec::new(),
+                offset: 0,
+            }));
+            nodes.len() - 1
+        }
+    };
+
+    let Node::Group(top_cell) = &mut nodes[top_idx] else {
+        unreachable!()
+    };
+    let child_idx = match top_cell.children.iter().position(|n| match n {
+        Node::Group(g) => {
+            g.header.group_type == fnv_esm::raw::group_type::CELL_CHILDREN
+                && g.header.label_u32() == cell
+        }
+        _ => false,
+    }) {
+        Some(idx) => idx,
+        None => {
+            top_cell.children.push(Node::Group(fnv_esm::raw::Group {
+                header: fnv_esm::raw::GroupHeader {
+                    size: 0,
+                    label: cell.to_le_bytes(),
+                    group_type: fnv_esm::raw::group_type::CELL_CHILDREN,
+                    stamp: 0,
+                    unknown1: 0,
+                    version: 0,
+                    unknown2: 0,
+                },
+                children: Vec::new(),
+                offset: 0,
+            }));
+            top_cell.children.len() - 1
+        }
+    };
+
+    let Node::Group(cell_g) = &mut top_cell.children[child_idx] else {
+        unreachable!()
+    };
+    cell_g
+}
+
 /// Place an overriding record into the group the original record lives in.
 ///
 /// An override has to sit in the same cell-children group as the record it
@@ -483,10 +649,12 @@ fn override_record(nodes: &mut Vec<Node>, cell: Option<u32>, rec: &Record) {
     let sig = rec.header.sig;
     // A placed reference goes into its own cell's children groups.
     if let Some(cell) = cell {
-        if let Some(g) = find_cell_children_mut(nodes, cell) {
-            g.children.push(Node::Record(rec.clone()));
-            return;
-        }
+        let g = match find_cell_children_mut(nodes, cell) {
+            Some(g) => g,
+            None => ensure_cell_children_mut(nodes, cell),
+        };
+        g.children.push(Node::Record(rec.clone()));
+        return;
     }
     // Everything else keeps its own top-level group, labelled with the record
     // signature.
@@ -572,13 +740,10 @@ fn count_changed(before: &Subrecord, after: &[u8]) -> usize {
 
 /// Append `rec` to the cell's temporary-children group, creating the group tree
 /// when the master has none for that cell.
-fn insert_into_cell(nodes: &mut [Node], cell: u32, rec: Record) {
-    let Some(group) = find_cell_children_mut(nodes, cell) else {
-        tracing::warn!(
-            cell = format_args!("{cell:08X}"),
-            "no cell-children group for cell; record not inserted"
-        );
-        return;
+fn insert_into_cell(nodes: &mut Vec<Node>, cell: u32, rec: Record) {
+    let group = match find_cell_children_mut(nodes, cell) {
+        Some(g) => g,
+        None => ensure_cell_children_mut(nodes, cell),
     };
     let temp = group.children.iter_mut().find_map(|c| match c {
         Node::Group(g)

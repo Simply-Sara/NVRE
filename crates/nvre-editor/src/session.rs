@@ -888,17 +888,20 @@ impl Session {
 
     /// Where a save goes: beside the plugin being edited, as a `.esp`.
     pub fn save_target(&self) -> std::path::PathBuf {
-        let name = self.doc.name();
-        let stem = name.rsplit_once('.').map_or(name, |(s, _)| s);
-        std::path::Path::new(stem)
-            .with_extension("esp")
-            .to_path_buf()
+        std::path::PathBuf::from(self.doc.name())
     }
 
     /// Save as a new plugin.
     pub fn save(&self, out: &std::path::Path) -> Result<nvre_edit::SaveReport, String> {
         let masters = nvre_edit::MasterList::new(self.masters.clone());
-        nvre_edit::write_plugin(&self.doc, &masters, &self.schema, out)
+        nvre_edit::write_plugin_with_load_order(
+            &self.doc,
+            &masters,
+            &self.schema,
+            Some(&self.lo),
+            out,
+            nvre_edit::save::Scope::OwnRecords,
+        )
     }
 }
 

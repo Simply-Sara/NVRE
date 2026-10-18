@@ -23,4 +23,7 @@ pub mod save;
 
 pub use document::{Document, Edit, PendingRecord, RecordRow};
 pub use formid::{count_formids, formid_fields, remap_sub};
-pub use save::{empty_header, formid_map_for, write_plugin, MasterList, SaveReport};
+pub use save::{
+    empty_header, formid_map_for, write_plugin, write_plugin_scoped, write_plugin_with_load_order,
+    MasterList, SaveReport,
+};
