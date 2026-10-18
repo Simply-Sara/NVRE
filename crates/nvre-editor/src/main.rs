@@ -34,10 +34,11 @@ struct Args {
         default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")
     )]
     esm_schema: PathBuf,
-    /// NIF schema directory, for the viewport's models.
+    /// NIF schema directory, for the viewport's models. Still upstream's: NIF
+    /// layout is not NVRE's to own, and NVForever's is the reference.
     #[arg(
         long,
-        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../NVForever/schemas/nif")
+        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../NVForever/schemas/nif")
     )]
     nif_schema: PathBuf,
     /// The plugin to edit.
