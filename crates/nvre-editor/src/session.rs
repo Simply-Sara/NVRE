@@ -9,6 +9,9 @@ use bevy::prelude::*;
 use fnv_esm::{LoadOrder, Schema};
 use nvre_edit::Document;
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+
+type CachedRecordList = Arc<[(u32, String)]>;
 
 /// The open editing session.
 #[derive(Resource)]
@@ -54,8 +57,13 @@ pub struct Session {
     /// Status line for the UI.
     pub status: String,
     persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>>,
-    /// A creature currently open in the creature window, by FormID.
-    pub editing_creature: Option<u32>,
+    /// Any object record currently open in the editor window: (FormID, Record Sig).
+    pub editing_object: Option<(u32, [u8; 4])>,
+    records_cache: RwLock<HashMap<[u8; 4], CachedRecordList>>,
+    spells_cache: RwLock<Option<CachedRecordList>>,
+    items_cache: RwLock<Option<CachedRecordList>>,
+    crea_templates_cache: RwLock<Option<CachedRecordList>>,
+    npc_templates_cache: RwLock<Option<CachedRecordList>>,
 }
 
 impl Session {
@@ -121,7 +129,12 @@ impl Session {
             deleted: Vec::new(),
             status: String::new(),
             persistent_by_grid,
-            editing_creature: None,
+            editing_object: None,
+            records_cache: RwLock::new(HashMap::new()),
+            spells_cache: RwLock::new(None),
+            items_cache: RwLock::new(None),
+            crea_templates_cache: RwLock::new(None),
+            npc_templates_cache: RwLock::new(None),
         })
     }
 
@@ -181,7 +194,12 @@ impl Session {
             deleted: Vec::new(),
             status: format!("created new plugin {name}"),
             persistent_by_grid,
-            editing_creature: None,
+            editing_object: None,
+            records_cache: RwLock::new(HashMap::new()),
+            spells_cache: RwLock::new(None),
+            items_cache: RwLock::new(None),
+            crea_templates_cache: RwLock::new(None),
+            npc_templates_cache: RwLock::new(None),
         })
     }
 
@@ -332,7 +350,123 @@ impl Session {
         &self.palette_groups
     }
 
-    /// The worldspaces in the load order, as browser rows.
+    /// Return all records of a given signature in the load order, sorted by Editor ID (cached).
+    pub fn records_by_sig(&self, sig: [u8; 4]) -> Arc<[(u32, String)]> {
+        if let Ok(cache) = self.records_cache.read() {
+            if let Some(hits) = cache.get(&sig) {
+                return hits.clone();
+            }
+        }
+
+        let mut out: Vec<(u32, String)> = Vec::new();
+        let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
+        for (pi, _plugin) in self.lo.plugins.iter().enumerate() {
+            for r in &self.lo.records[pi] {
+                if r.header.sig == sig {
+                    if let Some(global) = self.lo.to_global(pi, r.header.form_id) {
+                        if seen.insert(global) {
+                            let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
+                            let name = edid.or(full).unwrap_or_else(|| format!("{:08X}", global));
+                            out.push((global, name));
+                        }
+                    }
+                }
+            }
+        }
+        out.sort_by_key(|a| a.1.to_lowercase());
+        let arc: Arc<[(u32, String)]> = out.into();
+        if let Ok(mut cache) = self.records_cache.write() {
+            cache.insert(sig, arc.clone());
+        }
+        arc
+    }
+
+    /// Return all FormList records (FLST) across the load order, sorted by Editor ID (cached).
+    pub fn form_lists(&self) -> Arc<[(u32, String)]> {
+        self.records_by_sig(*b"FLST")
+    }
+
+    /// Return all Spells and Enchantments across the load order, sorted by Editor ID (cached).
+    pub fn spells_and_enchantments(&self) -> Arc<[(u32, String)]> {
+        if let Ok(cache) = self.spells_cache.read() {
+            if let Some(hits) = cache.as_ref() {
+                return hits.clone();
+            }
+        }
+
+        let mut spells_all = self.records_by_sig(*b"SPEL").to_vec();
+        let mut enchs = self.records_by_sig(*b"ENCH").to_vec();
+        spells_all.append(&mut enchs);
+        spells_all.sort_by_key(|a| a.1.to_lowercase());
+        let arc: Arc<[(u32, String)]> = spells_all.into();
+        if let Ok(mut cache) = self.spells_cache.write() {
+            *cache = Some(arc.clone());
+        }
+        arc
+    }
+
+    /// Return all inventory items across the load order, sorted by Editor ID (cached).
+    pub fn inventory_items(&self) -> Arc<[(u32, String)]> {
+        if let Ok(cache) = self.items_cache.read() {
+            if let Some(hits) = cache.as_ref() {
+                return hits.clone();
+            }
+        }
+
+        let mut items_all = Vec::new();
+        for sig in [
+            b"WEAP", b"ARMO", b"ALCH", b"AMMO", b"BOOK", b"MISC", b"LVLI",
+        ] {
+            let sub = self.records_by_sig(*sig);
+            items_all.extend_from_slice(&sub);
+        }
+        items_all.sort_by_key(|a| a.1.to_lowercase());
+        let arc: Arc<[(u32, String)]> = items_all.into();
+        if let Ok(mut cache) = self.items_cache.write() {
+            *cache = Some(arc.clone());
+        }
+        arc
+    }
+
+    /// Return all creature templates (CREA + LVLC) across the load order, sorted by Editor ID (cached).
+    pub fn creature_templates(&self) -> Arc<[(u32, String)]> {
+        if let Ok(cache) = self.crea_templates_cache.read() {
+            if let Some(hits) = cache.as_ref() {
+                return hits.clone();
+            }
+        }
+
+        let mut c = self.records_by_sig(*b"CREA").to_vec();
+        let mut lvlc = self.records_by_sig(*b"LVLC").to_vec();
+        c.append(&mut lvlc);
+        c.sort_by_key(|a| a.1.to_lowercase());
+        let arc: Arc<[(u32, String)]> = c.into();
+        if let Ok(mut cache) = self.crea_templates_cache.write() {
+            *cache = Some(arc.clone());
+        }
+        arc
+    }
+
+    /// Return all NPC templates (NPC_ + LVLN) across the load order, sorted by Editor ID (cached).
+    pub fn npc_templates(&self) -> Arc<[(u32, String)]> {
+        if let Ok(cache) = self.npc_templates_cache.read() {
+            if let Some(hits) = cache.as_ref() {
+                return hits.clone();
+            }
+        }
+
+        let mut n = self.records_by_sig(*b"NPC_").to_vec();
+        let mut lvln = self.records_by_sig(*b"LVLN").to_vec();
+        n.append(&mut lvln);
+        n.sort_by_key(|a| a.1.to_lowercase());
+        let arc: Arc<[(u32, String)]> = n.into();
+        if let Ok(mut cache) = self.npc_templates_cache.write() {
+            *cache = Some(arc.clone());
+        }
+        arc
+    }
+
+    /// The worldspaces in the open plugin and its masters, as browser rows.
     ///
     /// This is the cell browser's dropdown: GECK's Cell View lists every
     /// worldspace and an "Interior" entry, and the list below it is filtered by
@@ -620,15 +754,29 @@ impl Session {
         self.selected = Some(form_id);
     }
 
+    /// Open any object by FormID and signature in its specialized editor window.
+    pub fn open_object(&mut self, form_id: u32, sig: [u8; 4]) {
+        self.editing_object = Some((form_id, sig));
+        self.status = format!(
+            "opened {} {:08X} in editor window",
+            fnv_util::tag_str(&sig),
+            form_id
+        );
+    }
+
+    /// Close the object editor window.
+    pub fn close_object_editor(&mut self) {
+        self.editing_object = None;
+    }
+
     /// Open a creature by FormID in the Creature Editor window.
     pub fn open_creature(&mut self, form_id: u32) {
-        self.editing_creature = Some(form_id);
-        self.status = format!("opened creature {form_id:08X} in Creature window");
+        self.open_object(form_id, *b"CREA");
     }
 
     /// Close the Creature Editor window.
     pub fn close_creature(&mut self) {
-        self.editing_creature = None;
+        self.close_object_editor();
     }
 
     /// The selected reference's record.
