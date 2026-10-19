@@ -86,6 +86,15 @@ pub struct ObjectEditorState {
     pub armo_type: u8, // 0: Light, 1: Medium, 2: Heavy, 3: Power, 4: Non-Playable
     pub armo_biped_flags: u32,
     pub armo_modulates_voice: bool,
+    /// The length of the record's `DNAM` subrecord: 4 on the 21 ARMO records
+    /// that carry only the `AR` int16 and two unused bytes, 12 on the other
+    /// 368. The length is kept so a save reproduces the record's own bytes
+    /// instead of growing a short `DNAM` into a long one.
+    pub armo_dnam_len: usize,
+    /// The `BMDT` `general` flag byte, kept whole. The armor-type enum names
+    /// only bits 3, 5 and 7; bit 6 is "Non-Playable" and is set on 34 of the
+    /// game's records, so a rebuild from the enum alone would clear it.
+    pub armo_bmdt_general: u8,
 
     // NPC_ & CREA fields
     pub actor_female: bool,
@@ -190,11 +199,19 @@ pub struct ObjectEditorState {
     pub alch_weight: f32,
     pub alch_val: i32,
     pub alch_addict_chance: f32,
-    pub alch_addict: Option<u32>,
+    /// `ENIT` Withdrawal Effect, the `SPEL` the ingestible gives when the
+    /// addiction is withdrawn. 34 of the 189 ALCH records carry one.
+    pub alch_withdrawal: Option<u32>,
+    /// `ENIT` Sound - Consume, a `SOUN` FormID.
     pub alch_sound: Option<u32>,
     pub alch_is_food: bool,
     pub alch_is_medicine: bool,
     pub alch_is_poison: bool,
+    /// The `ENIT` flag byte, kept whole. The spec names bits 1 (Food) and 2
+    /// (Medicine) and marks bit 0 "No Auto-Calc (Unused)"; 180 of the
+    /// game's 189 records set it, so a rebuild from the three checkboxes
+    /// alone would clear it on every save.
+    pub alch_enit_flags: u8,
 
     // AMMO fields
     pub ammo_val: i32,
@@ -202,7 +219,11 @@ pub struct ObjectEditorState {
     pub ammo_speed: f32,
     pub ammo_dmg_mult: f32,
     pub ammo_clip_rounds: u32,
-    pub ammo_casing: Option<u32>,
+    /// `QNAM` Abbreviation — a cstring, not a FormID. 48 of the 92 AMMO
+    /// records carry one, with 23 distinct values ("5mm", ".223", "Bag").
+    /// The spec's `RCIL` is the ammo effect, and `DAT2` holds the consumed
+    /// ammo, so there is no FormID here to read.
+    pub ammo_abbrev: String,
 
     // CONT & DOOR fields
     pub cont_weight: f32,
@@ -273,6 +294,11 @@ pub struct ObjectEditorState {
     pub qust_repeated_stages: bool,
     pub qust_priority: u8,
     pub qust_delay: f32,
+    /// The length of the record's `DATA` subrecord. 434 of the 436 QUST
+    /// records in FalloutNV.esm carry eight bytes, and 2 carry only two —
+    /// the flags byte and the priority, with no delay. The length is kept so
+    /// a save that changes nothing reproduces the record's own bytes.
+    pub qust_data_len: usize,
 
     // PERK & SPEL fields
     pub perk_trait: bool,
@@ -426,6 +452,22 @@ pub struct ObjectEditorState {
     /// hashes are kept as raw bytes: the editor cannot author a file hash, and
     /// rewriting one would corrupt the mod.
     pub hair_model: ModelData,
+
+    // HDPT fields
+    /// `DATA` Flags, the u8 flag word: Playable.
+    pub hdpt_flags: u8,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    ///
+    /// The collection is a set of subrecords that always appear together, so
+    /// it is kept as one struct rather than as loose fields. `MODT`'s texture
+    /// hashes are kept as raw bytes: the editor cannot author a file hash, and
+    /// rewriting one would corrupt the mod.
+    pub hdpt_model: ModelData,
+    /// `HNAM` Extra Parts — the FormIDs of other `HDPT` records. The subrecord
+    /// repeats: the game's records carry two or three of them.
+    pub hdpt_extra_parts: Vec<u32>,
+    /// The `HDPT` to add to the extra-parts list.
+    pub hdpt_extra_part_to_add: Option<u32>,
 
     // BPTD fields: one Body Part per entry, in file order.
     // A part is (BPTN?) BPNN BPNT BPNI BPND NAM1 NAM4 NAM5, so the optional
@@ -1269,6 +1311,8 @@ impl ObjectEditorState {
         self.fact_relations.clear();
         self.fact_ranks.clear();
         self.hair_model = ModelData::default();
+        self.hdpt_model = ModelData::default();
+        self.hdpt_extra_parts.clear();
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -1487,6 +1531,7 @@ impl ObjectEditorState {
             b"AVIF" => self.load_avif(),
             b"EYES" => self.load_eyes(),
             b"HAIR" => self.load_hair(&raw_subs),
+            b"HDPT" => self.load_hdpt(&raw_subs),
             b"BPTD" => self.load_bptd(&raw_subs),
             _ => self.load_misc(),
         }
@@ -1598,7 +1643,16 @@ impl ObjectEditorState {
             self.armo_hp = i32::from_le_bytes([b[4], b[5], b[6], b[7]]);
             self.armo_weight = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
         }
+        // `DNAM` is 12 bytes on 368 of the 389 ARMO records in FalloutNV.esm
+        // and 4 bytes on the other 21, which carry only the `AR` int16 and two
+        // unused bytes. `DT` and the `Modulates Voice` flag exist only in the
+        // long form, so the fields are reset before the read: a record opened
+        // after a long one must not still show the previous record's `DT`.
+        self.armo_dt = 0.0;
+        self.armo_modulates_voice = false;
+        self.armo_dnam_len = 0;
         if let Some(b) = self.raw_subs.get(b"DNAM").filter(|b| b.len() >= 4) {
+            self.armo_dnam_len = b.len();
             self.armo_dr = i16::from_le_bytes([b[0], b[1]]);
             if b.len() >= 8 {
                 self.armo_dt = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
@@ -1619,6 +1673,11 @@ impl ObjectEditorState {
             } else {
                 0 // Light
             };
+            // The `general` byte carries more than the three bits the type
+            // enum names — bit 6 is "Non-Playable" and is set on 34 of the
+            // game's records. The whole byte is kept so a save that changes
+            // nothing reproduces it.
+            self.armo_bmdt_general = general;
         }
         self.armo_enchant = self.get_fid(b"EITM");
         self.armo_repair_list = self.get_fid(b"REPL");
@@ -1737,14 +1796,25 @@ impl ObjectEditorState {
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 4) {
             self.alch_weight = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
         }
-        if let Some(b) = self.raw_subs.get(b"ENIT").filter(|b| b.len() >= 16) {
+        // `ENIT` is 20 bytes on every one of the 189 ALCH records. The spec's
+        // layout is: value i32 (0..4), flags u8 (4), unused (5..8), Withdrawal
+        // Effect formid (8..12), Addiction Chance f32 (12..16), Sound -
+        // Consume formid (16..20). The editor had the last two the wrong way
+        // round, so it showed a FormID where the chance was and a chance
+        // where the FormID was.
+        self.alch_withdrawal = None;
+        self.alch_sound = None;
+        self.alch_addict_chance = 0.0;
+        self.alch_enit_flags = 0;
+        if let Some(b) = self.raw_subs.get(b"ENIT").filter(|b| b.len() >= 20) {
             self.alch_val = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
-            let flags = b[4];
-            self.alch_is_food = flags & 2 != 0;
-            self.alch_is_medicine = flags & 4 != 0;
-            self.alch_is_poison = flags & 8 != 0;
-            self.alch_addict_chance = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
-            self.alch_addict = Some(u32::from_le_bytes([b[12], b[13], b[14], b[15]]));
+            self.alch_enit_flags = b[4];
+            self.alch_is_food = b[4] & 2 != 0;
+            self.alch_is_medicine = b[4] & 4 != 0;
+            self.alch_is_poison = b[4] & 8 != 0;
+            self.alch_withdrawal = Some(u32::from_le_bytes([b[8], b[9], b[10], b[11]]));
+            self.alch_addict_chance = f32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+            self.alch_sound = Some(u32::from_le_bytes([b[16], b[17], b[18], b[19]]));
         }
     }
 
@@ -1759,7 +1829,7 @@ impl ObjectEditorState {
         if let Some(b) = self.raw_subs.get(b"DAT2").filter(|b| b.len() >= 12) {
             self.ammo_weight = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
         }
-        self.ammo_casing = self.get_fid(b"QNAM");
+        self.ammo_abbrev = self.get_string(b"QNAM");
     }
 
     fn load_cont(&mut self) {
@@ -1907,7 +1977,14 @@ impl ObjectEditorState {
     }
 
     fn load_qust(&mut self) {
+        // `DATA` is eight bytes on 434 of the 436 QUST records and two bytes
+        // on the other two, which carry the flags and the priority and no
+        // delay at all. The length is kept so a save reproduces the record's
+        // own bytes instead of growing the short form to eight.
+        self.qust_data_len = 0;
+        self.qust_delay = 0.0;
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 2) {
+            self.qust_data_len = b.len();
             let f = b[0];
             self.qust_start_enabled = (f & 1) != 0;
             self.qust_repeated_stages = (f & 8) != 0;
@@ -2168,6 +2245,37 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load a `HDPT` (Head Part) record.
+    ///
+    /// The record is `EDID`, `FULL`, the model data collection (`MODL`,
+    /// `MODT`, `MODS`, and optionally `MODB` and `MODD`), a one-byte `DATA`
+    /// flag word, and a repeated `HNAM` naming other head parts. The model
+    /// collection's subrecords and the extra parts are read from the record's
+    /// own subrecord list rather than from `raw_subs`, which holds one value
+    /// per signature.
+    fn load_hdpt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.hdpt_flags = self.get_u8(b"DATA").unwrap_or(0);
+        self.hdpt_model = ModelData::default();
+        self.hdpt_extra_parts.clear();
+        for s in raw_subs {
+            match &s.sig {
+                b"MODL" => self.hdpt_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.hdpt_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.hdpt_model.modt = s.data.clone(),
+                b"MODS" => self.hdpt_model.mods = parse_mods(&s.data),
+                b"MODD" => self.hdpt_model.modd = s.data.first().copied(),
+                b"HNAM" if s.data.len() >= 4 => {
+                    self.hdpt_extra_parts.push(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn load_avif(&mut self) {
         self.avif_desc = self.get_string(b"DESC");
         self.avif_short_name = self.get_string(b"ANAM");
@@ -2336,6 +2444,7 @@ impl ObjectEditorState {
             b"AVIF" => self.save_avif(session),
             b"EYES" => self.save_eyes(session),
             b"HAIR" => self.save_hair(session),
+            b"HDPT" => self.save_hdpt(session),
             b"BPTD" => self.save_bptd(session),
             _ => self.save_misc(session),
         }
@@ -2419,21 +2528,44 @@ impl ObjectEditorState {
         d[8..12].copy_from_slice(&self.armo_weight.to_le_bytes());
         session.doc.set_sub(fid, b"DATA", d);
 
-        let mut dnam = vec![0u8; 12];
+        // `DNAM` is written back over the record's own bytes, not rebuilt from
+        // the fields the editor owns. 21 of the 389 ARMO records in
+        // FalloutNV.esm carry a 4-byte `DNAM` with no `DT` and no flags; a
+        // rebuild would grow them to 12 bytes and give them values they
+        // never had. The length the record had is kept, so a save that
+        // changes nothing is byte-identical.
+        let original_dnam = self.raw_subs.get(b"DNAM").cloned();
+        let dnam_len = if self.armo_dnam_len >= 8 { 12 } else { 4 };
+        let mut dnam = original_dnam.unwrap_or_else(|| vec![0u8; dnam_len]);
+        dnam.resize(dnam_len, 0);
         dnam[0..2].copy_from_slice(&self.armo_dr.to_le_bytes());
-        dnam[4..8].copy_from_slice(&self.armo_dt.to_le_bytes());
-        let flags: u16 = if self.armo_modulates_voice { 1 } else { 0 };
-        dnam[8..10].copy_from_slice(&flags.to_le_bytes());
+        if dnam_len >= 8 {
+            dnam[4..8].copy_from_slice(&self.armo_dt.to_le_bytes());
+        }
+        if dnam_len >= 10 {
+            let flags: u16 = if self.armo_modulates_voice { 1 } else { 0 };
+            dnam[8..10].copy_from_slice(&flags.to_le_bytes());
+        }
         session.doc.set_sub(fid, b"DNAM", dnam);
 
-        let mut bmdt = vec![0u8; 8];
+        // `BMDT` likewise: the `general` byte is written whole, with the
+        // armor-type enum's three bits written inside it, so a bit the enum
+        // does not name — "Non-Playable", set on 34 of the game's records —
+        // survives a save.
+        let original_bmdt = self.raw_subs.get(b"BMDT").cloned();
+        let mut bmdt = original_bmdt.unwrap_or_else(|| vec![0u8; 8]);
+        bmdt.resize(8, 0);
         bmdt[0..4].copy_from_slice(&self.armo_biped_flags.to_le_bytes());
-        let general: u8 = match self.armo_type {
+        let mut general = self.armo_bmdt_general;
+        let type_bit: u8 = match self.armo_type {
             1 => 1 << 3, // Medium
             2 => 1 << 7, // Heavy
             3 => 1 << 5, // Power
             _ => 0,      // Light
         };
+        // Clear the three named bits, then set the one the enum selects.
+        general &= !((1 << 3) | (1 << 5) | (1 << 7));
+        general |= type_bit;
         bmdt[4] = general;
         session.doc.set_sub(fid, b"BMDT", bmdt);
 
@@ -2777,16 +2909,15 @@ impl ObjectEditorState {
             .doc
             .set_sub(fid, b"DATA", self.alch_weight.to_le_bytes().to_vec());
 
-        let mut enit = self
-            .raw_subs
-            .get(b"ENIT")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 16]);
-        if enit.len() < 16 {
-            enit.resize(16, 0);
-        }
+        // `ENIT` is written back over the record's own bytes. The flag byte is
+        // kept whole and the three named bits are written inside it, so bit 0
+        // ("No Auto-Calc", set on 180 of the game's 189 records) survives.
+        let original_enit = self.raw_subs.get(b"ENIT").cloned();
+        let mut enit = original_enit.unwrap_or_else(|| vec![0u8; 20]);
+        enit.resize(20, 0);
         enit[0..4].copy_from_slice(&self.alch_val.to_le_bytes());
-        let mut flags = 0u8;
+        let mut flags = self.alch_enit_flags;
+        flags &= !((1 << 1) | (1 << 2) | (1 << 3));
         if self.alch_is_food {
             flags |= 2;
         }
@@ -2797,9 +2928,12 @@ impl ObjectEditorState {
             flags |= 8;
         }
         enit[4] = flags;
-        enit[8..12].copy_from_slice(&self.alch_addict_chance.to_le_bytes());
-        if let Some(add) = self.alch_addict {
-            enit[12..16].copy_from_slice(&add.to_le_bytes());
+        if let Some(w) = self.alch_withdrawal {
+            enit[8..12].copy_from_slice(&w.to_le_bytes());
+        }
+        enit[12..16].copy_from_slice(&self.alch_addict_chance.to_le_bytes());
+        if let Some(s) = self.alch_sound {
+            enit[16..20].copy_from_slice(&s.to_le_bytes());
         }
         session.doc.set_sub(fid, b"ENIT", enit);
     }
@@ -2830,8 +2964,13 @@ impl ObjectEditorState {
         dat2[8..12].copy_from_slice(&self.ammo_weight.to_le_bytes());
         session.doc.set_sub(fid, b"DAT2", dat2);
 
-        if let Some(c) = self.ammo_casing {
-            session.doc.set_sub(fid, b"QNAM", c.to_le_bytes().to_vec());
+        // `QNAM` is the ammo's abbreviation, a cstring. It used to be read as
+        // a FormID, which turned "5mm" into a number and wrote those four
+        // bytes back over the abbreviation.
+        if !self.ammo_abbrev.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"QNAM", encode_zstring(&self.ammo_abbrev));
         }
     }
 
@@ -3009,7 +3148,13 @@ impl ObjectEditorState {
 
     fn save_qust(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut d = vec![0u8; 8];
+        // `DATA` is written back over the record's own bytes. Two of the 436
+        // QUST records in FalloutNV.esm carry only two bytes, with no delay,
+        // and a rebuild would grow them to eight.
+        let original_data = self.raw_subs.get(b"DATA").cloned();
+        let data_len = if self.qust_data_len >= 8 { 8 } else { 2 };
+        let mut d = original_data.unwrap_or_else(|| vec![0u8; data_len]);
+        d.resize(data_len, 0);
         let mut f = 0u8;
         if self.qust_start_enabled {
             f |= 1;
@@ -3019,7 +3164,9 @@ impl ObjectEditorState {
         }
         d[0] = f;
         d[1] = self.qust_priority;
-        d[4..8].copy_from_slice(&self.qust_delay.to_le_bytes());
+        if data_len >= 8 {
+            d[4..8].copy_from_slice(&self.qust_delay.to_le_bytes());
+        }
         session.doc.set_sub(fid, b"DATA", d);
     }
 
@@ -3507,6 +3654,60 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", vec![self.hair_flags]);
     }
 
+    /// Save a `HDPT` (Head Part) record.
+    ///
+    /// The model data collection's subrecords are written individually, in the
+    /// order the game writes them: `MODL`, `MODB`, `MODT`, `MODS`, `MODD`.
+    /// `MODT`'s texture hashes and `MODB`'s unknown bytes are copied through
+    /// unchanged — the editor cannot author a file hash, and rewriting one
+    /// would corrupt the mod.
+    ///
+    /// `HNAM` is a repeated subrecord, so the extra parts are written as one
+    /// list: a per-subrecord edit would collapse them onto the last one.
+    fn save_hdpt(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.hdpt_model;
+        let sigs = model.instance_sigs();
+
+        // The original instance's MODL is the common "Model Path" field the
+        // header panel owns and has already written, so it is not written
+        // again here. A numbered instance's model path has no such field, so
+        // it is written from the collection.
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+
+        // DATA is a single u8 flag word. Every one of the game's 61 HDPT
+        // records carries it, so it is always written.
+        session.doc.set_sub(fid, b"DATA", vec![self.hdpt_flags]);
+
+        // HNAM is the list of extra parts, each a FormID to another HDPT.
+        let parts: Vec<Vec<u8>> = self
+            .hdpt_extra_parts
+            .iter()
+            .map(|id| id.to_le_bytes().to_vec())
+            .collect();
+        session.doc.set_sub_list(fid, b"HNAM", parts);
+    }
+
     fn save_eyes(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
         // DATA is a single u8 flag word. Every EYES record in the game's
@@ -3644,6 +3845,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"AVIF" => "Actor Value",
         b"EYES" => "Eyes",
         b"HAIR" => "Hair",
+        b"HDPT" => "Head Part",
         b"BPTD" => "Body Part Data",
         _ => fallback.as_str(),
     };
@@ -3855,6 +4057,12 @@ const HAIR_FLAGS: [(u8, &str); 4] = [
     (0x08, "Fixed"),
 ];
 
+/// `HDPT` `DATA` Flags, the u8 word from fopdoc's HDPT flag table.
+///
+/// The spec names one bit, 0x01 "Playable". The word is kept whole when
+/// saving, so a bit the spec does not name survives an edit.
+const HDPT_FLAGS: [(u8, &str); 1] = [(0x01, "Playable")];
+
 /// `MODD` FaceGen Model Flags, the u8 word from fopdoc's Model Data page.
 const MODD_FLAGS: [(u8, &str); 4] = [
     (0x01, "Head"),
@@ -3953,6 +4161,7 @@ pub fn ui(
                 b"AVIF" => draw_avif_ui(ui, &mut state),
                 b"EYES" => draw_eyes_ui(ui, &mut state),
                 b"HAIR" => draw_hair_ui(ui, &session, &mut state),
+                b"HDPT" => draw_hdpt_ui(ui, &session, &mut state),
                 b"BPTD" => draw_bptd_ui(ui, &session, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
@@ -5294,6 +5503,14 @@ fn draw_alch_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             ui.checkbox(&mut state.alch_is_medicine, "Medicine");
             ui.checkbox(&mut state.alch_is_poison, "Poison");
         });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Withdrawal Effect (SPEL):");
+            formid_field(ui, "alch_withdrawal", &mut state.alch_withdrawal);
+            ui.label("Consume Sound (SOUN):");
+            formid_field(ui, "alch_sound", &mut state.alch_sound);
+        });
     });
 }
 
@@ -5325,8 +5542,8 @@ fn draw_ammo_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         });
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Casing Item (QNAM FormID):");
-            formid_field(ui, "ammo_casing", &mut state.ammo_casing);
+            ui.label("Abbreviation (QNAM):");
+            ui.add(egui::TextEdit::singleline(&mut state.ammo_abbrev).desired_width(120.0));
         });
     });
 }
@@ -6915,6 +7132,191 @@ fn draw_hair_ui(
                 model.mods.remove(idx);
             }
         }
+    });
+}
+
+/// Draw the Head Part (HDPT) editor body.
+///
+/// The spec's `DATA` names a single flag, "Playable", but the word is kept
+/// whole and the raw byte is offered, so a bit a mod sets but the spec does
+/// not name is never silently cleared.
+fn draw_hdpt_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Flags (DATA)");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in HDPT_FLAGS {
+                let mut set = (state.hdpt_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.hdpt_flags |= bit;
+                    } else {
+                        state.hdpt_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.add_space(4.0);
+        // The raw byte, so a bit the spec does not name stays reachable.
+        ui.horizontal(|ui| {
+            ui.label("Raw flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.hdpt_flags)
+                    .range(0..=u8::MAX as i64)
+                    .speed(1.0),
+            );
+        });
+    });
+
+    // --- The model data collection ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+
+        let model = &mut state.hdpt_model;
+
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                // The original instance's model path is the header panel's
+                // "Model Path" field, so it is edited there.
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+
+        // MODT's texture hashes are file hashes the editor cannot compute or
+        // author, so it reports what is there rather than offering to change
+        // it: rewriting one would corrupt the mod.
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+
+        // MODB is four unknown bytes. They are reported, and copied through.
+        ui.horizontal(|ui| {
+            ui.label("MODB:");
+            match &model.modb {
+                Some(b) => ui.label(format!("{b:?} — preserved as-is")),
+                None => ui.label(egui::RichText::new("absent").italics()),
+            }
+        });
+
+        // MODD: the FaceGen model flags.
+        ui.horizontal(|ui| {
+            let mut has = model.modd.is_some();
+            if ui
+                .checkbox(&mut has, "Record has MODD (FaceGen flags)")
+                .changed()
+            {
+                model.modd = if has { Some(0) } else { None };
+            }
+            if let Some(modd) = model.modd.as_mut() {
+                for (bit, name) in MODD_FLAGS {
+                    let mut set = (*modd & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            *modd |= bit;
+                        } else {
+                            *modd &= !bit;
+                        }
+                    }
+                }
+            }
+        });
+
+        // MODS: the alternate textures.
+        ui.add_space(4.0);
+        ui.strong(format!("Alternate Textures (MODS) — {}", model.mods.len()));
+        ui.add_space(4.0);
+
+        if model.mods.is_empty() {
+            ui.label(egui::RichText::new("This model has no alternate textures.").italics());
+        } else {
+            let txsts = session.records_by_sig(*b"TXST");
+            let mut remove_idx = None;
+            for (idx, alt) in model.mods.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this alternate texture")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    ui.label("3D Name:");
+                    ui.add(egui::TextEdit::singleline(&mut alt.name).desired_width(180.0));
+                    ui.label("Texture (TXST):");
+                    let mut fid = Some(alt.texture);
+                    record_dropdown(ui, &format!("hdpt_alts_txst_{idx}"), &txsts, &mut fid);
+                    alt.texture = fid.unwrap_or(0);
+                    ui.label("3D Index:");
+                    ui.add(egui::DragValue::new(&mut alt.index).range(-1..=255));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                model.mods.remove(idx);
+            }
+        }
+    });
+
+    // --- HNAM: the extra parts ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Extra Parts (HNAM) — {}",
+            state.hdpt_extra_parts.len()
+        ));
+        ui.add_space(4.0);
+
+        let hdpts_all = session.records_by_sig(*b"HDPT");
+        let mut remove_idx = None;
+        for (idx, &fid) in state.hdpt_extra_parts.iter().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("✖")
+                    .on_hover_text("Remove this extra part")
+                    .clicked()
+                {
+                    remove_idx = Some(idx);
+                }
+                let name = hdpts_all
+                    .iter()
+                    .find(|(id, _)| *id == fid)
+                    .map(|(_, n)| n.as_str())
+                    .unwrap_or("Custom Head Part");
+                ui.label(format!("• {name} ({fid:08X})"));
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.hdpt_extra_parts.remove(idx);
+        }
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            record_dropdown(
+                ui,
+                "hdpt_add_extra",
+                &hdpts_all,
+                &mut state.hdpt_extra_part_to_add,
+            );
+            if ui.button("+ Add Extra Part").clicked() {
+                if let Some(fid) = state.hdpt_extra_part_to_add {
+                    if !state.hdpt_extra_parts.contains(&fid) {
+                        state.hdpt_extra_parts.push(fid);
+                    }
+                }
+            }
+        });
     });
 }
 
