@@ -236,13 +236,39 @@ pub struct ObjectEditorState {
     pub book_text: String,
 
     // FACT & QUST fields
-    pub fact_hidden: bool,
-    pub fact_evil: bool,
-    pub fact_special_combat: bool,
-    pub fact_track_crime: bool,
+    /// `DATA` Flags 1, the whole u8 word. The spec names bits 0, 1 and 2
+    /// (Hidden From PC, Evil, Special Combat); the word is kept whole so a bit
+    /// the spec does not name survives an edit.
+    pub fact_flags1: u8,
+    /// `DATA` Flags 2, the whole u8 word: bit 0 is Track Crime and bit 1 is
+    /// Allow Sell. The old editor read and wrote only bit 0, so a faction
+    /// that could be sold from lost the bit on every save.
+    pub fact_flags2: u8,
+    /// The length of the record's `DATA` subrecord: 1 or 4 in the game's own
+    /// records. 34 of the 682 FACT records in `FalloutNV.esm` have a one-byte
+    /// `DATA` — flags 1 only, no flags 2. The length is kept so a save that
+    /// changes nothing reproduces the record byte for byte, and the editor can
+    /// extend a one-byte record to the full four.
+    pub fact_data_len: usize,
+    /// `DATA` bytes 2..4, the spec's "Unused" run, carried through unchanged.
+    pub fact_data_unused: [u8; 2],
+    /// `CNAM` — an unnamed float32 the spec marks Unused. 34 of the game's
+    /// FACT records carry it, every one of them with the value 1.0.
+    pub fact_cnam: f32,
+    /// Whether the record carries a `CNAM` at all.
+    pub fact_has_cnam: bool,
+    /// `WMI1` Reputation, a `REPU` record.
     pub fact_reputation: Option<u32>,
-    pub fact_rank_male: String,
-    pub fact_rank_female: String,
+    /// `XNAM` — the faction's relations to other factions, in file order.
+    /// 1,314 of them across the game's FACT records, up to 45 in one record.
+    pub fact_relations: Vec<FactRelation>,
+    /// The rank collection, in file order: each entry is an `RNAM` and the
+    /// titles that follow it.
+    pub fact_ranks: Vec<FactRank>,
+    /// The relation the panel is about to add.
+    pub fact_relation_to_add: FactRelation,
+    /// The rank entry the panel is about to add.
+    pub fact_rank_to_add: FactRank,
     pub qust_start_enabled: bool,
     pub qust_repeated_stages: bool,
     pub qust_priority: u8,
@@ -587,6 +613,112 @@ impl BptdPart {
     pub fn label(&self) -> &str {
         self.name.as_deref().unwrap_or(&self.node)
     }
+}
+
+/// One `XNAM` (Relation) subrecord of a `FACT` record.
+///
+/// The struct is fixed-width: a `formid` to the related faction (bytes 0..4),
+/// an `int32` modifier (bytes 4..8) and a `uint32` group combat reaction
+/// (bytes 8..12). Every one of the 1,314 `XNAM` subrecords in the game's FACT
+/// records measures exactly 12 bytes, so it is read and written by slice
+/// indexing.
+#[derive(Debug, Clone, Default)]
+pub struct FactRelation {
+    /// The related `FACT` (or `RACE`) record. None means the relation names
+    /// no faction, which the game never writes but the editor can express.
+    pub faction: Option<u32>,
+    /// The modifier: how much this faction's opinion of the other is shifted.
+    /// The game's own values run from -100 to 100.
+    pub modifier: i32,
+    /// The group combat reaction: 0 Neutral, 1 Enemy, 2 Ally, 3 Friend.
+    pub group_combat_reaction: u32,
+}
+
+/// The size of an `XNAM` payload: the spec's own total, and the only size the
+/// game's masters carry.
+const XNAM_LEN: usize = 12;
+
+impl FactRelation {
+    fn from_bytes(b: &[u8]) -> Self {
+        if b.len() < XNAM_LEN {
+            return Self::default();
+        }
+        Self {
+            faction: Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]])),
+            modifier: i32::from_le_bytes([b[4], b[5], b[6], b[7]]),
+            group_combat_reaction: u32::from_le_bytes([b[8], b[9], b[10], b[11]]),
+        }
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut b = vec![0u8; XNAM_LEN];
+        b[0..4].copy_from_slice(&self.faction.unwrap_or(0).to_le_bytes());
+        b[4..8].copy_from_slice(&self.modifier.to_le_bytes());
+        b[8..12].copy_from_slice(&self.group_combat_reaction.to_le_bytes());
+        b
+    }
+}
+
+/// Read a rank collection back out of a queued subrecord sequence.
+///
+/// The sequence is the run `RNAM (MNAM)? (FNAM)? (INAM)?` repeated, so the
+/// entries are walked in order: an `RNAM` opens an entry and the titles that
+/// follow belong to it.
+fn fact_ranks_from_sequence(subs: &[([u8; 4], Vec<u8>)]) -> Vec<FactRank> {
+    let mut ranks: Vec<FactRank> = Vec::new();
+    let mut cur: Option<FactRank> = None;
+    for (sig, data) in subs {
+        if *sig == *b"RNAM" {
+            if let Some(r) = cur.take() {
+                ranks.push(r);
+            }
+            cur = Some(FactRank {
+                number: if data.len() >= 4 {
+                    i32::from_le_bytes([data[0], data[1], data[2], data[3]])
+                } else {
+                    0
+                },
+                ..Default::default()
+            });
+        } else if *sig == *b"MNAM" || *sig == *b"FNAM" || *sig == *b"INAM" {
+            if cur.is_none() {
+                cur = Some(FactRank::default());
+            }
+            let rank = cur.as_mut().expect("just opened an entry");
+            let text = String::from_utf8_lossy(data)
+                .trim_end_matches('\0')
+                .to_string();
+            match sig {
+                b"MNAM" => rank.male = text,
+                b"FNAM" => rank.female = text,
+                _ => rank.insignia = Some(text),
+            }
+        }
+    }
+    if let Some(r) = cur.take() {
+        ranks.push(r);
+    }
+    ranks
+}
+
+/// One entry of a `FACT` record's rank collection.
+///
+/// A rank is an `RNAM` (the rank number) followed by the titles that belong to
+/// it: `MNAM` (male title), `FNAM` (female title) and `INAM` (an insignia
+/// path the spec marks unused). The entries are a collection of runs, not a
+/// list of one signature, so they are walked in file order and written back as
+/// one sequence.
+#[derive(Debug, Clone, Default)]
+pub struct FactRank {
+    /// `RNAM` — the rank number.
+    pub number: i32,
+    /// `MNAM` — the male title.
+    pub male: String,
+    /// `FNAM` — the female title.
+    pub female: String,
+    /// `INAM` — the insignia path, which the spec marks unused. None of the
+    /// game's FACT records carry one, but the editor can write it.
+    pub insignia: Option<String>,
 }
 
 /// The 92-byte `CSTD` (Advanced - Standard) struct, in file order.
@@ -953,6 +1085,8 @@ impl ObjectEditorState {
         self.bptd_parts.clear();
         self.bptd_ragdoll = None;
         self.bptd_part_to_add = BptdPart::default();
+        self.fact_relations.clear();
+        self.fact_ranks.clear();
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -1111,6 +1245,32 @@ impl ObjectEditorState {
         self.model = self.get_string(b"MODL");
         self.script = self.get_fid(b"SCRI");
 
+        // The FACT relations and the rank collection, queued by the faction
+        // editor, are applied after the type loader: the loader reads them off
+        // disk, and the queued copy is what the mod will actually carry. Each
+        // is tracked on its own, so queuing one does not blank the other.
+        let mut fact_relations_overlay: Option<Vec<FactRelation>> = None;
+        let mut fact_ranks_overlay: Option<Vec<FactRank>> = None;
+        if let Some(edits) = session.doc.edits_for(form_id) {
+            for e in edits {
+                match e {
+                    nvre_edit::Edit::SetSubList {
+                        sig: [b'X', b'N', b'A', b'M'],
+                        data,
+                    } => {
+                        fact_relations_overlay =
+                            Some(data.iter().map(|d| FactRelation::from_bytes(d)).collect());
+                    }
+                    nvre_edit::Edit::SetSubrecordSequence { remove_sigs, subs }
+                        if remove_sigs.contains(b"RNAM") =>
+                    {
+                        fact_ranks_overlay = Some(fact_ranks_from_sequence(subs));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         match &sig {
             b"WEAP" => self.load_weap(),
             b"ARMO" => self.load_armo(),
@@ -1123,7 +1283,7 @@ impl ObjectEditorState {
             b"TERM" => self.load_term(),
             b"LIGH" => self.load_ligh(),
             b"BOOK" => self.load_book(),
-            b"FACT" => self.load_fact(),
+            b"FACT" => self.load_fact(&raw_subs),
             b"QUST" => self.load_qust(),
             b"PERK" => self.load_perk(),
             b"SPEL" | b"ENCH" => self.load_spell(),
@@ -1146,6 +1306,15 @@ impl ObjectEditorState {
             b"EYES" => self.load_eyes(),
             b"BPTD" => self.load_bptd(&raw_subs),
             _ => self.load_misc(),
+        }
+
+        // The queued relations and ranks win over what is on disk: the mod is
+        // what the editor is showing, not the master it was opened from.
+        if let Some(relations) = fact_relations_overlay {
+            self.fact_relations = relations;
+        }
+        if let Some(ranks) = fact_ranks_overlay {
+            self.fact_ranks = ranks;
         }
     }
 
@@ -1469,19 +1638,88 @@ impl ObjectEditorState {
         }
     }
 
-    fn load_fact(&mut self) {
-        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| !b.is_empty()) {
-            let f1 = b[0];
-            self.fact_hidden = (f1 & 1) != 0;
-            self.fact_evil = (f1 & 2) != 0;
-            self.fact_special_combat = (f1 & 4) != 0;
+    /// Load a `FACT` (Faction) record.
+    ///
+    /// The relations (`XNAM`) and the rank collection are both lists of
+    /// subrecords that repeat, so they cannot be read out of `raw_subs`, which
+    /// holds one value per signature: it would collapse every relation onto the
+    /// last one and every rank title onto the last rank's. The subrecords are
+    /// walked in file order instead.
+    fn load_fact(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        // DATA: flags 1, flags 2, then the spec's two "Unused" bytes. 34 of the
+        // 682 FACT records in FalloutNV.esm have a one-byte DATA — the game
+        // wrote only flags 1 — and those carry no flags 2 at all.
+        self.fact_data_len = 0;
+        self.fact_data_unused = [0, 0];
+        if let Some(b) = self.raw_subs.get(b"DATA") {
+            self.fact_data_len = b.len();
+            if !b.is_empty() {
+                self.fact_flags1 = b[0];
+            }
             if b.len() > 1 {
-                self.fact_track_crime = (b[1] & 1) != 0;
+                self.fact_flags2 = b[1];
+            }
+            if b.len() >= 4 {
+                self.fact_data_unused = [b[2], b[3]];
             }
         }
+
+        // CNAM is an unnamed float32 the spec marks Unused. The game writes it
+        // on 34 of the records, every one of them with the value 1.0.
+        self.fact_has_cnam = false;
+        self.fact_cnam = 0.0;
+        if let Some(b) = self.raw_subs.get(b"CNAM").filter(|b| b.len() >= 4) {
+            self.fact_has_cnam = true;
+            self.fact_cnam = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+        }
+
         self.fact_reputation = self.get_fid(b"WMI1");
-        self.fact_rank_male = self.get_string(b"MNAM");
-        self.fact_rank_female = self.get_string(b"FNAM");
+
+        // The relations and the rank collection, in file order.
+        self.fact_relations.clear();
+        self.fact_ranks.clear();
+        let mut cur_rank: Option<FactRank> = None;
+        for s in raw_subs {
+            match &s.sig {
+                b"XNAM" => {
+                    self.fact_relations.push(FactRelation::from_bytes(&s.data));
+                }
+                b"RNAM" => {
+                    if let Some(r) = cur_rank.take() {
+                        self.fact_ranks.push(r);
+                    }
+                    cur_rank = Some(FactRank {
+                        number: if s.data.len() >= 4 {
+                            i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]])
+                        } else {
+                            0
+                        },
+                        ..Default::default()
+                    });
+                }
+                b"MNAM" | b"FNAM" | b"INAM" => {
+                    // A title with no rank in front of it: the game never writes
+                    // one, but the editor can express it, so it opens an entry
+                    // of its own rather than dropping the title.
+                    if cur_rank.is_none() {
+                        cur_rank = Some(FactRank::default());
+                    }
+                    let rank = cur_rank.as_mut().expect("just opened an entry");
+                    let text = String::from_utf8_lossy(&s.data)
+                        .trim_end_matches('\0')
+                        .to_string();
+                    match &s.sig {
+                        b"MNAM" => rank.male = text,
+                        b"FNAM" => rank.female = text,
+                        _ => rank.insignia = Some(text),
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(r) = cur_rank.take() {
+            self.fact_ranks.push(r);
+        }
     }
 
     fn load_qust(&mut self) {
@@ -2489,38 +2727,72 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", d);
     }
 
+    /// Save a `FACT` (Faction) record.
+    ///
+    /// The relations and the rank collection are both runs of repeating
+    /// subrecords, so they are written with list and sequence edits rather
+    /// than one `set_sub` per signature: a per-signature edit would cluster
+    /// every relation together and every rank title together, which the engine
+    /// cannot read back.
     fn save_fact(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut f1 = 0u8;
-        if self.fact_hidden {
-            f1 |= 1;
+
+        // DATA. 648 of the game's 682 FACT records carry four bytes and 34 carry
+        // one, and the one-byte form has no flags 2 at all. The length the
+        // record had is kept, so a save that changes nothing is byte-identical.
+        let mut data = vec![self.fact_flags1];
+        if self.fact_data_len >= 4 {
+            data.push(self.fact_flags2);
+            data.push(self.fact_data_unused[0]);
+            data.push(self.fact_data_unused[1]);
         }
-        if self.fact_evil {
-            f1 |= 2;
-        }
-        if self.fact_special_combat {
-            f1 |= 4;
-        }
-        let mut f2 = 0u8;
-        if self.fact_track_crime {
-            f2 |= 1;
-        }
-        session.doc.set_sub(fid, b"DATA", vec![f1, f2, 0, 0]);
-        if let Some(rep) = self.fact_reputation {
+        session.doc.set_sub(fid, b"DATA", data);
+
+        // CNAM is the spec's unnamed float32. The game writes 1.0 on the 34
+        // records that have it, and the editor writes it only when the record
+        // carries one, so an untouched record keeps its own bytes.
+        if self.fact_has_cnam {
             session
                 .doc
-                .set_sub(fid, b"WMI1", rep.to_le_bytes().to_vec());
+                .set_sub(fid, b"CNAM", self.fact_cnam.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"CNAM");
         }
-        if !self.fact_rank_male.trim().is_empty() {
-            session
-                .doc
-                .set_sub(fid, b"MNAM", encode_zstring(&self.fact_rank_male));
+
+        // WMI1 is the faction's reputation: a REPU record.
+        match self.fact_reputation {
+            Some(rep) => {
+                session
+                    .doc
+                    .set_sub(fid, b"WMI1", rep.to_le_bytes().to_vec());
+            }
+            None => session.doc.remove_sub(fid, b"WMI1"),
         }
-        if !self.fact_rank_female.trim().is_empty() {
-            session
-                .doc
-                .set_sub(fid, b"FNAM", encode_zstring(&self.fact_rank_female));
+
+        // The relations, as one list of XNAM.
+        let relations: Vec<Vec<u8>> = self.fact_relations.iter().map(|r| r.to_bytes()).collect();
+        session.doc.set_sub_list(fid, b"XNAM", relations);
+
+        // The rank collection, as one sequence: each entry is an RNAM and the
+        // titles that belong to it, in that order.
+        let mut ranks: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for r in &self.fact_ranks {
+            ranks.push((*b"RNAM", r.number.to_le_bytes().to_vec()));
+            if !r.male.trim().is_empty() {
+                ranks.push((*b"MNAM", encode_zstring(&r.male)));
+            }
+            if !r.female.trim().is_empty() {
+                ranks.push((*b"FNAM", encode_zstring(&r.female)));
+            }
+            if let Some(insignia) = &r.insignia {
+                if !insignia.trim().is_empty() {
+                    ranks.push((*b"INAM", encode_zstring(insignia)));
+                }
+            }
         }
+        session
+            .doc
+            .set_sub_sequence(fid, vec![*b"RNAM", *b"MNAM", *b"FNAM", *b"INAM"], ranks);
     }
 
     fn save_qust(&self, session: &mut crate::session::Session) {
@@ -3283,6 +3555,23 @@ const CLAS_ATTRIBUTES: [&str; 7] = [
     "Luck",
 ];
 
+/// `FACT` `DATA` Flags 1, the u8 word from fopdoc's FACT flag table.
+///
+/// The spec names bits 0, 1 and 2. The word is kept whole when saving, so a
+/// bit the spec does not name survives an edit: the game's own FACT records
+/// use only the three named bits, but a mod may set another.
+const FACT_FLAGS1: [(u8, &str); 3] = [
+    (0x01, "Hidden From PC"),
+    (0x02, "Evil"),
+    (0x04, "Special Combat"),
+];
+
+/// `FACT` `DATA` Flags 2, the u8 word from fopdoc's FACT flag table.
+const FACT_FLAGS2: [(u8, &str); 2] = [(0x01, "Track Crime"), (0x02, "Allow Sell")];
+
+/// `FACT` `XNAM` Group Combat Reaction, the enum from fopdoc's XNAM page.
+const FACT_REACTIONS: [(u32, &str); 4] = [(0, "Neutral"), (1, "Enemy"), (2, "Ally"), (3, "Friend")];
+
 /// Draw the Object Editor UI.
 pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
@@ -3351,7 +3640,7 @@ pub fn ui(
                 b"TERM" => draw_term_ui(ui, &mut state),
                 b"LIGH" => draw_ligh_ui(ui, &mut state),
                 b"BOOK" => draw_book_ui(ui, &mut state),
-                b"FACT" => draw_fact_ui(ui, &mut state),
+                b"FACT" => draw_fact_ui(ui, &session, &mut state),
                 b"QUST" => draw_qust_ui(ui, &mut state),
                 b"PERK" => draw_perk_ui(ui, &mut state),
                 b"SPEL" | b"ENCH" => draw_spell_ui(ui, &mut state),
@@ -4924,32 +5213,251 @@ fn draw_misc_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-fn draw_fact_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+fn draw_fact_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
-        ui.strong("Faction Flags & Behavior");
+        ui.strong("Faction Flags (DATA)");
         ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.checkbox(&mut state.fact_hidden, "Hidden from PC");
-            ui.checkbox(&mut state.fact_evil, "Evil");
-            ui.checkbox(&mut state.fact_special_combat, "Special Combat");
-            ui.checkbox(&mut state.fact_track_crime, "Track Crime");
+        // The checkboxes write the named bits of the whole word, so the two
+        // controls cannot disagree, and a bit the spec does not name survives.
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in FACT_FLAGS1 {
+                let mut set = (state.fact_flags1 & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.fact_flags1 |= bit;
+                    } else {
+                        state.fact_flags1 &= !bit;
+                    }
+                }
+            }
         });
+        // The second byte of DATA holds flags 2. 34 of the game's FACT records
+        // have a one-byte DATA with no flags 2 at all, so the row is offered
+        // only when the record carries the byte — and a one-byte record can be
+        // extended to the full four.
+        let mut has_flags2 = state.fact_data_len >= 2;
+        if ui
+            .checkbox(&mut has_flags2, "DATA carries a Flags 2 byte")
+            .on_hover_text(
+                "Extending a one-byte DATA to four bytes adds the flags 2 byte and the \
+                 two unused bytes the spec lists.",
+            )
+            .changed()
+        {
+            state.fact_data_len = if has_flags2 { 4 } else { 1 };
+        }
+        if has_flags2 {
+            ui.horizontal_wrapped(|ui| {
+                for (bit, name) in FACT_FLAGS2 {
+                    let mut set = (state.fact_flags2 & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            state.fact_flags2 |= bit;
+                        } else {
+                            state.fact_flags2 &= !bit;
+                        }
+                    }
+                }
+            });
+        } else {
+            ui.label(
+                egui::RichText::new(
+                    "This record's DATA carries only Flags 1: it has no Flags 2 byte.",
+                )
+                .italics(),
+            );
+        }
         ui.add_space(4.0);
+        // The raw words, because the bits fopdoc marks with a `?` are real and
+        // a mod may set them; the editor keeps them without naming them.
         ui.horizontal(|ui| {
-            ui.label("Reputation (FormID):");
-            formid_field(ui, "fact_rep", &mut state.fact_reputation);
+            ui.label("Raw flags 1:");
+            ui.add(
+                egui::DragValue::new(&mut state.fact_flags1)
+                    .range(0..=u8::MAX as i64)
+                    .speed(1.0),
+            );
+            ui.label("Raw flags 2:");
+            ui.add(
+                egui::DragValue::new(&mut state.fact_flags2)
+                    .range(0..=u8::MAX as i64)
+                    .speed(1.0),
+            );
         });
     });
 
     ui.add_space(6.0);
     ui.group(|ui| {
-        ui.strong("Rank Titles");
+        ui.strong("Reputation (WMI1)");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Male Rank Title:");
-            ui.add(egui::TextEdit::singleline(&mut state.fact_rank_male).desired_width(180.0));
-            ui.label("Female Rank Title:");
-            ui.add(egui::TextEdit::singleline(&mut state.fact_rank_female).desired_width(180.0));
+            let repus = session.records_by_sig(*b"REPU");
+            record_dropdown(ui, "fact_rep", &repus, &mut state.fact_reputation);
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Unused CNAM (float32)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            let mut has = state.fact_has_cnam;
+            if ui.checkbox(&mut has, "Record has a CNAM").changed() {
+                state.fact_has_cnam = has;
+            }
+            ui.label("Value:");
+            ui.add(egui::DragValue::new(&mut state.fact_cnam).speed(0.1));
+        });
+    });
+
+    // --- Relations (XNAM) ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Relations (XNAM) — {}", state.fact_relations.len()));
+        ui.add_space(4.0);
+
+        let factions_all = session.records_by_sig(*b"FACT");
+
+        if state.fact_relations.is_empty() {
+            ui.label(egui::RichText::new("No faction relations.").italics());
+        } else {
+            let mut remove_idx = None;
+            for (idx, rel) in state.fact_relations.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this relation")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    let name = rel
+                        .faction
+                        .and_then(|id| {
+                            factions_all
+                                .iter()
+                                .find(|(fid, _)| *fid == id)
+                                .map(|(_, n)| n.as_str())
+                        })
+                        .unwrap_or("Custom Faction");
+                    ui.label(format!("• {name} ({:08X})", rel.faction.unwrap_or(0)));
+                    ui.separator();
+                    ui.label("Modifier:");
+                    ui.add(egui::DragValue::new(&mut rel.modifier).range(-100..=100));
+                    ui.label("Reaction:");
+                    egui::ComboBox::from_id_salt(("fact_reaction", idx))
+                        .selected_text(
+                            FACT_REACTIONS
+                                .iter()
+                                .find(|(v, _)| *v == rel.group_combat_reaction)
+                                .map(|(_, n)| *n)
+                                .unwrap_or("Custom"),
+                        )
+                        .show_ui(ui, |ui| {
+                            for (v, name) in FACT_REACTIONS.iter() {
+                                ui.selectable_value(&mut rel.group_combat_reaction, *v, *name);
+                            }
+                        });
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.fact_relations.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Add Relation:");
+            let add = &mut state.fact_relation_to_add;
+            record_dropdown(ui, "fact_add_relation", &factions_all, &mut add.faction);
+            ui.label("Modifier:");
+            ui.add(egui::DragValue::new(&mut add.modifier).range(-100..=100));
+            ui.label("Reaction:");
+            egui::ComboBox::from_id_salt("fact_add_reaction")
+                .selected_text(
+                    FACT_REACTIONS
+                        .iter()
+                        .find(|(v, _)| *v == add.group_combat_reaction)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in FACT_REACTIONS.iter() {
+                        ui.selectable_value(&mut add.group_combat_reaction, *v, *name);
+                    }
+                });
+            if ui.button("+ Add").clicked() {
+                state
+                    .fact_relations
+                    .push(state.fact_relation_to_add.clone());
+            }
+        });
+    });
+
+    // --- Rank collection ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Ranks — {}", state.fact_ranks.len()));
+        ui.add_space(4.0);
+
+        if state.fact_ranks.is_empty() {
+            ui.label(egui::RichText::new("This faction has no ranks.").italics());
+        } else {
+            let mut remove_idx = None;
+            for (idx, rank) in state.fact_ranks.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").on_hover_text("Remove this rank").clicked() {
+                        remove_idx = Some(idx);
+                    }
+                    ui.label(format!("{}.", idx + 1));
+                    ui.label("Number:");
+                    ui.add(egui::DragValue::new(&mut rank.number).range(-1..=127));
+                    ui.label("Male:");
+                    ui.add(egui::TextEdit::singleline(&mut rank.male).desired_width(140.0));
+                    ui.label("Female:");
+                    ui.add(egui::TextEdit::singleline(&mut rank.female).desired_width(140.0));
+                });
+                ui.horizontal(|ui| {
+                    ui.add_space(24.0);
+                    ui.label("Insignia (INAM, unused):");
+                    let mut text = rank.insignia.clone().unwrap_or_default();
+                    if ui
+                        .add(
+                            egui::TextEdit::singleline(&mut text)
+                                .desired_width(240.0)
+                                .hint_text("(none)"),
+                        )
+                        .changed()
+                    {
+                        rank.insignia = if text.trim().is_empty() {
+                            None
+                        } else {
+                            Some(text)
+                        };
+                    }
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.fact_ranks.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            let add = &mut state.fact_rank_to_add;
+            ui.label("Add Rank — Number:");
+            ui.add(egui::DragValue::new(&mut add.number).range(-1..=127));
+            ui.label("Male:");
+            ui.add(egui::TextEdit::singleline(&mut add.male).desired_width(120.0));
+            ui.label("Female:");
+            ui.add(egui::TextEdit::singleline(&mut add.female).desired_width(120.0));
+            if ui.button("+ Add").clicked() {
+                state.fact_ranks.push(add.clone());
+            }
         });
     });
 }

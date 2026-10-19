@@ -103,8 +103,12 @@ fn main() {
     let mut fact_state = ObjectEditorState::default();
     fact_state.load_from_session(&session, fact_fid, *b"FACT");
     println!(
-        "Loaded FACT 0x{:08X}: EDID='{}', Hidden={}, Evil={}",
-        fact_state.form_id, fact_state.edid, fact_state.fact_hidden, fact_state.fact_evil
+        "Loaded FACT 0x{:08X}: EDID='{}', Flags1={:#04x}, Flags2={:#04x}, Relations={}",
+        fact_state.form_id,
+        fact_state.edid,
+        fact_state.fact_flags1,
+        fact_state.fact_flags2,
+        fact_state.fact_relations.len()
     );
     assert_eq!(fact_state.edid, "OmertaBossFaction2");
 
