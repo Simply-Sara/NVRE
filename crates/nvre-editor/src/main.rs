@@ -12,7 +12,7 @@
 //! viewport, and one window per panel. See [`nvre_editor::windows`] for why the
 //! main window is the primary one and the viewport names its own render target.
 
-use nvre_editor::{creature, gizmo, launcher, object_editor, panels, session, viewport, windows};
+use nvre_editor::{gizmo, launcher, object_editor, panels, session, viewport, windows};
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
@@ -163,7 +163,6 @@ fn main() {
         })
         .init_resource::<viewport::Spawned>()
         .init_resource::<gizmo::GizmoState>()
-        .init_resource::<creature::CreatureEditorState>()
         .init_resource::<object_editor::ObjectEditorState>()
         // Inserted at startup, not in `viewport::setup`: the debug panel draws
         // into its own schedule, which can run before that system has inserted

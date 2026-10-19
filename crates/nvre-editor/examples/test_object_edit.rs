@@ -205,5 +205,30 @@ fn main() {
     );
     assert_eq!(race_state.edid, "CaucasianOldAged");
 
+    // Test 15: Creature (CREA) 0x0017B587
+    let crea_fid = 0x0017B587;
+    let mut crea_state = ObjectEditorState::default();
+    crea_state.load_from_session(&session, crea_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', Name='{}', Type={}, HP={}, Damage={}, Str={}",
+        crea_state.form_id,
+        crea_state.edid,
+        crea_state.full_name,
+        crea_state.crea_type,
+        crea_state.actor_health,
+        crea_state.actor_damage,
+        crea_state.actor_strength,
+    );
+    assert_eq!(crea_state.edid, "VStreetCrBrahmin2");
+    assert_eq!(crea_state.full_name, "Brahmin");
+
+    let title = nvre_editor::object_editor::window_title(
+        &crea_state.sig,
+        &crea_state.edid,
+        &crea_state.full_name,
+    );
+    println!("CREA Window Title: '{}'", title);
+    assert_eq!(title, "Creature - VStreetCrBrahmin2 (Brahmin)");
+
     println!("All object editor tests passed successfully!");
 }

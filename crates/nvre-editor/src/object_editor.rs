@@ -273,6 +273,19 @@ pub struct ObjectEditorState {
     pub clmt_volatility: u8,
     pub clmt_sun_texture: String,
     pub clmt_sun_glare_texture: String,
+
+    // CREA specific fields
+    pub crea_type: u8,
+    pub crea_combat_skill: u8,
+    pub crea_magic_skill: u8,
+    pub crea_stealth_skill: u8,
+    pub crea_biped: bool,
+    pub crea_weapon_shield: bool,
+    pub crea_swims: bool,
+    pub crea_flies: bool,
+    pub crea_walks: bool,
+    pub crea_no_head_track: bool,
+    pub crea_sound_inherit: Option<u32>,
 }
 
 impl ObjectEditorState {
@@ -467,8 +480,19 @@ impl ObjectEditorState {
             self.actor_essential = (self.actor_flags & 2) != 0;
             self.actor_respawn = (self.actor_flags & 8) != 0;
             self.actor_pc_mult = (self.actor_flags & (1 << 7)) != 0;
+
+            self.crea_biped = (self.actor_flags & (1 << 0)) != 0;
+            self.crea_weapon_shield = (self.actor_flags & (1 << 2)) != 0;
+            self.crea_swims = (self.actor_flags & (1 << 4)) != 0;
+            self.crea_flies = (self.actor_flags & (1 << 5)) != 0;
+            self.crea_walks = (self.actor_flags & (1 << 6)) != 0;
+            self.crea_no_head_track = (self.actor_flags & (1 << 25)) != 0;
         }
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 17) {
+            self.crea_type = b[0];
+            self.crea_combat_skill = b[1];
+            self.crea_magic_skill = b[2];
+            self.crea_stealth_skill = b[3];
             self.actor_health = i16::from_le_bytes([b[4], b[5]]);
             self.actor_damage = i16::from_le_bytes([b[8], b[9]]);
             self.actor_strength = b[10];
@@ -501,6 +525,7 @@ impl ObjectEditorState {
         self.actor_voice = self.get_fid(b"VTCK");
         self.actor_template = self.get_fid(b"TPLT");
         self.actor_combat_style = self.get_fid(b"ZNAM");
+        self.crea_sound_inherit = self.get_fid(b"CSCR");
     }
 
     fn load_alch(&mut self) {
@@ -980,25 +1005,73 @@ impl ObjectEditorState {
             acbs.resize(24, 0);
         }
         let mut f = self.actor_flags;
-        if self.actor_female {
-            f |= 1;
+        if self.sig == *b"CREA" {
+            if self.crea_biped {
+                f |= 1 << 0;
+            } else {
+                f &= !(1 << 0);
+            }
+            if self.actor_essential {
+                f |= 1 << 1;
+            } else {
+                f &= !(1 << 1);
+            }
+            if self.crea_weapon_shield {
+                f |= 1 << 2;
+            } else {
+                f &= !(1 << 2);
+            }
+            if self.actor_respawn {
+                f |= 1 << 3;
+            } else {
+                f &= !(1 << 3);
+            }
+            if self.crea_swims {
+                f |= 1 << 4;
+            } else {
+                f &= !(1 << 4);
+            }
+            if self.crea_flies {
+                f |= 1 << 5;
+            } else {
+                f &= !(1 << 5);
+            }
+            if self.crea_walks {
+                f |= 1 << 6;
+            } else {
+                f &= !(1 << 6);
+            }
+            if self.actor_pc_mult {
+                f |= 1 << 7;
+            } else {
+                f &= !(1 << 7);
+            }
+            if self.crea_no_head_track {
+                f |= 1 << 25;
+            } else {
+                f &= !(1 << 25);
+            }
         } else {
-            f &= !1;
-        }
-        if self.actor_essential {
-            f |= 2;
-        } else {
-            f &= !2;
-        }
-        if self.actor_respawn {
-            f |= 8;
-        } else {
-            f &= !8;
-        }
-        if self.actor_pc_mult {
-            f |= 1 << 7;
-        } else {
-            f &= !(1 << 7);
+            if self.actor_female {
+                f |= 1;
+            } else {
+                f &= !1;
+            }
+            if self.actor_essential {
+                f |= 2;
+            } else {
+                f &= !2;
+            }
+            if self.actor_respawn {
+                f |= 8;
+            } else {
+                f &= !8;
+            }
+            if self.actor_pc_mult {
+                f |= 1 << 7;
+            } else {
+                f &= !(1 << 7);
+            }
         }
         acbs[0..4].copy_from_slice(&f.to_le_bytes());
         acbs[4..6].copy_from_slice(&self.actor_fatigue.to_le_bytes());
@@ -1045,6 +1118,10 @@ impl ObjectEditorState {
             if data.len() < 17 {
                 data.resize(17, 0);
             }
+            data[0] = self.crea_type;
+            data[1] = self.crea_combat_skill;
+            data[2] = self.crea_magic_skill;
+            data[3] = self.crea_stealth_skill;
             data[4..6].copy_from_slice(&self.actor_health.to_le_bytes());
             data[8..10].copy_from_slice(&self.actor_damage.to_le_bytes());
             data[10] = self.actor_strength;
@@ -1055,6 +1132,10 @@ impl ObjectEditorState {
             data[15] = self.actor_agility;
             data[16] = self.actor_luck;
             session.doc.set_sub(fid, b"DATA", data);
+
+            if let Some(s) = self.crea_sound_inherit {
+                session.doc.set_sub(fid, b"CSCR", s.to_le_bytes().to_vec());
+            }
         }
 
         if let Some(r) = self.actor_race {
@@ -1691,6 +1772,48 @@ fn encode_zstring(s: &str) -> Vec<u8> {
     v
 }
 
+/// Generate a clean, human-readable window title for any record.
+pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
+    let fallback = fnv_util::tag_str(sig);
+    let type_name = match sig {
+        b"CREA" => "Creature",
+        b"NPC_" => "NPC",
+        b"WEAP" => "Weapon",
+        b"ARMO" => "Armor",
+        b"AMMO" => "Ammo",
+        b"ALCH" => "Ingestible",
+        b"BOOK" => "Book",
+        b"NOTE" => "Note",
+        b"CONT" => "Container",
+        b"DOOR" => "Door",
+        b"ACTI" => "Activator",
+        b"TERM" => "Terminal",
+        b"LIGH" => "Light",
+        b"FACT" => "Faction",
+        b"QUST" => "Quest",
+        b"PERK" => "Perk",
+        b"CLAS" => "Class",
+        b"CSTY" => "Combat Style",
+        b"MGEF" => "Magic Effect",
+        b"WTHR" => "Weather",
+        b"WATR" => "Water",
+        b"GLOB" => "Global",
+        b"GMST" => "Game Setting",
+        b"RACE" => "Race",
+        b"LVLI" => "Leveled Item",
+        b"LVLN" => "Leveled NPC",
+        b"LVLC" => "Leveled Creature",
+        _ => fallback.as_str(),
+    };
+    if !full_name.trim().is_empty() {
+        format!("{type_name} - {edid} ({full_name})")
+    } else if !edid.trim().is_empty() {
+        format!("{type_name} - {edid}")
+    } else {
+        format!("{type_name} Editor")
+    }
+}
+
 /// Dynamically spawn or despawn the Object Editor window.
 pub fn manage_window(
     mut commands: Commands,
@@ -1702,37 +1825,18 @@ pub fn manage_window(
     let win_opt = win_query.iter_mut().next();
     let cam_opt = cam_query.iter().next();
 
-    if session.editing_object.is_some() {
+    if let Some((_fid, sig)) = session.editing_object {
+        let current_title = window_title(&sig, &state.edid, &state.full_name);
+
         if let Some((_, mut win)) = win_opt {
-            let expected_title = if !state.full_name.trim().is_empty() {
-                format!(
-                    "{} - {} ({})",
-                    fnv_util::tag_str(&state.sig),
-                    state.edid,
-                    state.full_name
-                )
-            } else {
-                format!("{} - {}", fnv_util::tag_str(&state.sig), state.edid)
-            };
-            if win.title != expected_title {
-                win.title = expected_title;
+            if win.title != current_title {
+                win.title = current_title;
             }
         } else {
-            let title = if !state.full_name.trim().is_empty() {
-                format!(
-                    "{} - {} ({})",
-                    fnv_util::tag_str(&state.sig),
-                    state.edid,
-                    state.full_name
-                )
-            } else {
-                format!("{} - {}", fnv_util::tag_str(&state.sig), state.edid)
-            };
-
             let window = commands
                 .spawn((
                     Window {
-                        title,
+                        title: current_title,
                         resolution: (880, 780).into(),
                         position: WindowPosition::new(IVec2::new(480, 50)),
                         ..default()
@@ -1789,7 +1893,6 @@ pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
     mut session: ResMut<crate::session::Session>,
     mut state: ResMut<ObjectEditorState>,
-    mut crea_state: ResMut<crate::creature::CreatureEditorState>,
 ) {
     let Some((fid, sig)) = session.editing_object else {
         return;
@@ -1799,16 +1902,6 @@ pub fn ui(
         return;
     };
     let ctx = ctx.get_mut();
-
-    if sig == *b"CREA" {
-        egui::CentralPanel::default().show(
-            &mut crate::panels::root_ui(ctx, "object_editor"),
-            |ui| {
-                crate::creature::draw_creature_ui(ui, &mut session, &mut crea_state, fid);
-            },
-        );
-        return;
-    }
 
     if state.loaded_target != Some((fid, sig)) {
         state.load_from_session(&session, fid, sig);
@@ -2106,7 +2199,48 @@ fn draw_armo_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
+const CREATURE_TYPES: [&str; 6] = [
+    "Animals",
+    "Mutated Animals",
+    "Mutated Insects",
+    "Abominations",
+    "Super Mutants",
+    "Feral Ghouls",
+];
+
 fn draw_actor_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    if state.sig == *b"CREA" {
+        ui.group(|ui| {
+            ui.strong("Creature Classification & Skills");
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Creature Type:");
+                let cur_type = (state.crea_type as usize).min(CREATURE_TYPES.len() - 1);
+                let cur_lbl = CREATURE_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+                egui::ComboBox::from_id_salt("crea_type")
+                    .selected_text(cur_lbl)
+                    .show_ui(ui, |ui| {
+                        for (i, &name) in CREATURE_TYPES.iter().enumerate() {
+                            ui.selectable_value(&mut state.crea_type, i as u8, name);
+                        }
+                    });
+                ui.separator();
+                ui.label("Combat Skill:");
+                ui.add(egui::DragValue::new(&mut state.crea_combat_skill).range(0..=100));
+                ui.label("Magic Skill:");
+                ui.add(egui::DragValue::new(&mut state.crea_magic_skill).range(0..=100));
+                ui.label("Stealth Skill:");
+                ui.add(egui::DragValue::new(&mut state.crea_stealth_skill).range(0..=100));
+            });
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Inherits Sounds From (CSCR FormID):");
+                formid_field(ui, "crea_sound_inherit", &mut state.crea_sound_inherit);
+            });
+        });
+        ui.add_space(6.0);
+    }
+
     ui.group(|ui| {
         ui.strong("Leveling & Vital Stats");
         ui.add_space(4.0);
@@ -2166,23 +2300,55 @@ fn draw_actor_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
 
     ui.add_space(6.0);
     ui.group(|ui| {
-        ui.strong("Flags & AI Behavior");
+        ui.strong(if state.sig == *b"CREA" {
+            "Creature Traits & Movement"
+        } else {
+            "Flags & Identity"
+        });
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.checkbox(&mut state.actor_female, "Female");
-            ui.checkbox(&mut state.actor_essential, "Essential");
-            ui.checkbox(&mut state.actor_respawn, "Respawn");
-            ui.separator();
+            if state.sig == *b"CREA" {
+                ui.checkbox(&mut state.crea_biped, "Biped");
+                ui.checkbox(&mut state.crea_swims, "Swims");
+                ui.checkbox(&mut state.crea_flies, "Flies");
+                ui.checkbox(&mut state.crea_walks, "Walks");
+                ui.checkbox(&mut state.crea_weapon_shield, "Weapon & Shield");
+                ui.checkbox(&mut state.actor_essential, "Essential");
+                ui.checkbox(&mut state.actor_respawn, "Respawn");
+                ui.checkbox(&mut state.crea_no_head_track, "No Head-Track");
+            } else {
+                ui.checkbox(&mut state.actor_female, "Female");
+                ui.checkbox(&mut state.actor_essential, "Essential");
+                ui.checkbox(&mut state.actor_respawn, "Respawn");
+            }
+        });
+
+        if state.sig == *b"NPC_" {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Race:");
+                formid_field(ui, "act_race", &mut state.actor_race);
+                ui.label("Class:");
+                formid_field(ui, "act_class", &mut state.actor_class);
+            });
+        }
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("AI Behavior & Templates");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
             ui.label("Aggression (0-3):");
             ui.add(egui::DragValue::new(&mut state.actor_aggression).range(0..=3));
             ui.label("Confidence (0-4):");
             ui.add(egui::DragValue::new(&mut state.actor_confidence).range(0..=4));
+            ui.label("Voice Type:");
+            formid_field(ui, "act_voice", &mut state.actor_voice);
         });
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Voice Type:");
-            formid_field(ui, "act_voice", &mut state.actor_voice);
             ui.label("Combat Style:");
             formid_field(ui, "act_cstyle", &mut state.actor_combat_style);
             ui.label("Template:");

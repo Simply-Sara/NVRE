@@ -5,7 +5,6 @@
 
 use bevy::prelude::*;
 
-pub mod creature;
 pub mod gizmo;
 pub mod launcher;
 pub mod object_editor;
