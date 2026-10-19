@@ -281,6 +281,10 @@ pub struct ObjectEditorState {
     pub lvl_each_item: bool,
     pub lvl_use_all: bool,
     pub lvl_global: Option<u32>,
+    pub lvl_entries: Vec<(i16, u32, i16)>,
+    pub lvl_entry_level_to_add: i16,
+    pub lvl_entry_fid_to_add: Option<u32>,
+    pub lvl_entry_count_to_add: i16,
 
     // IMOD & CLAS fields
     pub imod_val: u32,
@@ -397,6 +401,7 @@ impl ObjectEditorState {
         self.actor_packages.clear();
         self.actor_inventory.clear();
         self.crea_sounds.clear();
+        self.lvl_entries.clear();
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -418,6 +423,12 @@ impl ObjectEditorState {
                 let item_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
                 let count = i32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
                 self.actor_inventory.push((item_fid, count));
+            }
+            if s.sig == *b"LVLO" && s.data.len() >= 12 {
+                let lvl = i16::from_le_bytes([s.data[0], s.data[1]]);
+                let r_fid = u32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                let cnt = i16::from_le_bytes([s.data[8], s.data[9]]);
+                self.lvl_entries.push((lvl, r_fid, cnt));
             }
             if s.sig == *b"CSDT" && s.data.len() >= 4 {
                 cur_csdt = Some(u32::from_le_bytes([
@@ -1958,7 +1969,34 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"LVLF", vec![f]);
         if let Some(g) = self.lvl_global {
             session.doc.set_sub(fid, b"LVLG", g.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"LVLG");
         }
+
+        let mut lvlo_buffers = Vec::new();
+        for (lvl, r_fid, cnt) in &self.lvl_entries {
+            let mut buf = vec![0u8; 12];
+            buf[0..2].copy_from_slice(&lvl.to_le_bytes());
+            buf[4..8].copy_from_slice(&r_fid.to_le_bytes());
+            buf[8..10].copy_from_slice(&cnt.to_le_bytes());
+            lvlo_buffers.push(buf);
+        }
+        session.doc.set_sub_list(fid, b"LVLO", lvlo_buffers);
+
+        if !self.model.is_empty() {
+            let mut modl = self.model.as_bytes().to_vec();
+            modl.push(0);
+            session.doc.set_sub(fid, b"MODL", modl);
+        } else {
+            session.doc.remove_sub(fid, b"MODL");
+        }
+
+        let mut obnd = vec![0u8; 12];
+        for i in 0..3 {
+            obnd[i * 2..i * 2 + 2].copy_from_slice(&self.obnd_min[i].to_le_bytes());
+            obnd[6 + i * 2..6 + i * 2 + 2].copy_from_slice(&self.obnd_max[i].to_le_bytes());
+        }
+        session.doc.set_sub(fid, b"OBND", obnd);
     }
 
     fn save_imod(&self, session: &mut crate::session::Session) {
@@ -2396,7 +2434,7 @@ pub fn ui(
                 b"PROJ" => draw_proj_ui(ui, &mut state),
                 b"SOUN" => draw_soun_ui(ui, &mut state),
                 b"NOTE" => draw_note_ui(ui, &mut state),
-                b"LVLI" | b"LVLN" | b"LVLC" => draw_lvl_ui(ui, &mut state),
+                b"LVLI" | b"LVLN" | b"LVLC" => draw_lvl_ui(ui, &session, &mut state),
                 b"IMOD" => draw_imod_ui(ui, &mut state),
                 b"CLAS" => draw_clas_ui(ui, &mut state),
                 b"CSTY" => draw_csty_ui(ui, &mut state),
@@ -4043,7 +4081,11 @@ fn draw_note_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-fn draw_lvl_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+fn draw_lvl_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Leveled List Settings");
         ui.add_space(4.0);
@@ -4060,7 +4102,102 @@ fn draw_lvl_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                 "Calculate from all levels <= player's level",
             );
             ui.checkbox(&mut state.lvl_each_item, "Calculate for each item in count");
-            ui.checkbox(&mut state.lvl_use_all, "Use All");
+            if state.sig == *b"LVLI" {
+                ui.checkbox(&mut state.lvl_use_all, "Use All");
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        let title = match &state.sig {
+            b"LVLC" => "Leveled Creature Entries (LVLO)",
+            b"LVLN" => "Leveled NPC Entries (LVLO)",
+            _ => "Leveled Item Entries (LVLO)",
+        };
+        ui.strong(title);
+        ui.add_space(4.0);
+
+        let candidates = match &state.sig {
+            b"LVLC" => session.creature_templates(),
+            b"LVLN" => session.npc_templates(),
+            _ => session.inventory_items(),
+        };
+
+        if state.lvl_entries.is_empty() {
+            ui.label(egui::RichText::new("No entries in this leveled list.").italics());
+        } else {
+            let mut remove_idx = None;
+            for (idx, (level, r_fid, count)) in state.lvl_entries.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").on_hover_text("Remove this entry").clicked() {
+                        remove_idx = Some(idx);
+                    }
+                    ui.label("Level:");
+                    ui.add(egui::DragValue::new(level).range(1..=32767));
+                    ui.separator();
+                    let name = candidates
+                        .iter()
+                        .find(|(id, _)| *id == *r_fid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Object");
+                    ui.label(format!("{name} ({r_fid:08X})"));
+                    ui.separator();
+                    ui.label("Count:");
+                    ui.add(egui::DragValue::new(count).range(1..=32767));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.lvl_entries.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Add Entry - Level:");
+            if state.lvl_entry_level_to_add == 0 {
+                state.lvl_entry_level_to_add = 1;
+            }
+            if state.lvl_entry_count_to_add == 0 {
+                state.lvl_entry_count_to_add = 1;
+            }
+            ui.add(egui::DragValue::new(&mut state.lvl_entry_level_to_add).range(1..=32767));
+            ui.label("Object:");
+            record_dropdown(
+                ui,
+                "lvl_add_ref",
+                &candidates,
+                &mut state.lvl_entry_fid_to_add,
+            );
+            ui.label("Count:");
+            ui.add(egui::DragValue::new(&mut state.lvl_entry_count_to_add).range(1..=32767));
+            if ui.button("+ Add Entry").clicked() {
+                if let Some(fid) = state.lvl_entry_fid_to_add {
+                    state.lvl_entries.push((
+                        state.lvl_entry_level_to_add.max(1),
+                        fid,
+                        state.lvl_entry_count_to_add.max(1),
+                    ));
+                }
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Object Bounds (OBND)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Min X/Y/Z:");
+            ui.add(egui::DragValue::new(&mut state.obnd_min[0]));
+            ui.add(egui::DragValue::new(&mut state.obnd_min[1]));
+            ui.add(egui::DragValue::new(&mut state.obnd_min[2]));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Max X/Y/Z:");
+            ui.add(egui::DragValue::new(&mut state.obnd_max[0]));
+            ui.add(egui::DragValue::new(&mut state.obnd_max[1]));
+            ui.add(egui::DragValue::new(&mut state.obnd_max[2]));
         });
     });
 }

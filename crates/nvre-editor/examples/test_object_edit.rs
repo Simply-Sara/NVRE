@@ -381,6 +381,32 @@ fn main() {
     assert_eq!(turret_state.edid, "V34TurretCeiling01");
     assert_eq!(turret_state.dest_health, 40);
 
+    // Test 23: Leveled Creature (VEncVarLL1Tier2Valley35 0x00175F0D)
+    let lvlc_fid = 0x00175F0D;
+    let mut lvlc_state = ObjectEditorState::default();
+    lvlc_state.load_from_session(&session, lvlc_fid, *b"LVLC");
+    println!(
+        "Loaded LVLC 0x{:08X}: EDID='{}', ChanceNone={}, AllLevels={}, Entries count={}",
+        lvlc_state.form_id,
+        lvlc_state.edid,
+        lvlc_state.lvl_chance_none,
+        lvlc_state.lvl_all_levels,
+        lvlc_state.lvl_entries.len()
+    );
+    assert_eq!(lvlc_state.edid, "VEncVarLL1Tier2Valley35");
+    assert_eq!(lvlc_state.lvl_chance_none, 0);
+    assert!(lvlc_state.lvl_all_levels);
+    assert!(!lvlc_state.lvl_each_item);
+    assert_eq!(lvlc_state.lvl_entries.len(), 5);
+    assert_eq!(lvlc_state.lvl_entries[0], (1, 0x00156A9F, 1));
+    assert_eq!(lvlc_state.lvl_entries[1], (1, 0x00157B25, 1));
+
+    // Modify and save LVLC
+    lvlc_state.lvl_chance_none = 25;
+    lvlc_state.lvl_entries.push((5, 0x00156A9F, 2));
+    lvlc_state.save_to_session(&mut session);
+    println!("LVLC edit queued successfully.");
+
     let flsts = session.form_lists();
     let vtyps = session.records_by_sig(*b"VTYP");
     let cstys = session.records_by_sig(*b"CSTY");
