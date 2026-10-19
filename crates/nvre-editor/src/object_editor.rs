@@ -67,6 +67,7 @@ pub struct ObjectEditorState {
     pub weap_skill_req: u8,
     pub weap_num_proj: u8,
     pub weap_ap: f32,
+    pub weap_repair_list: Option<u32>,
 
     // ARMO fields
     pub armo_val: i32,
@@ -75,6 +76,7 @@ pub struct ObjectEditorState {
     pub armo_dt: f32,
     pub armo_dr: i16,
     pub armo_enchant: Option<u32>,
+    pub armo_repair_list: Option<u32>,
     pub armo_type: u8, // 0: Light, 1: Medium, 2: Heavy, 3: Power, 4: Non-Playable
     pub armo_biped_flags: u32,
     pub armo_modulates_voice: bool,
@@ -286,6 +288,7 @@ pub struct ObjectEditorState {
     pub crea_walks: bool,
     pub crea_no_head_track: bool,
     pub crea_sound_inherit: Option<u32>,
+    pub crea_weapon_list: Option<u32>,
 }
 
 impl ObjectEditorState {
@@ -434,6 +437,7 @@ impl ObjectEditorState {
                 self.weap_str_req = b[176];
             }
         }
+        self.weap_repair_list = self.get_fid(b"REPL");
     }
 
     fn load_armo(&mut self) {
@@ -465,6 +469,7 @@ impl ObjectEditorState {
             };
         }
         self.armo_enchant = self.get_fid(b"EITM");
+        self.armo_repair_list = self.get_fid(b"REPL");
     }
 
     fn load_actor(&mut self) {
@@ -526,6 +531,7 @@ impl ObjectEditorState {
         self.actor_template = self.get_fid(b"TPLT");
         self.actor_combat_style = self.get_fid(b"ZNAM");
         self.crea_sound_inherit = self.get_fid(b"CSCR");
+        self.crea_weapon_list = self.get_fid(b"LNAM");
     }
 
     fn load_alch(&mut self) {
@@ -959,6 +965,10 @@ impl ObjectEditorState {
             dnam[176] = self.weap_str_req;
         }
         session.doc.set_sub(fid, b"DNAM", dnam);
+
+        if let Some(r) = self.weap_repair_list {
+            session.doc.set_sub(fid, b"REPL", r.to_le_bytes().to_vec());
+        }
     }
 
     fn save_armo(&self, session: &mut crate::session::Session) {
@@ -991,6 +1001,10 @@ impl ObjectEditorState {
             session
                 .doc
                 .set_sub(fid, b"EITM", ench.to_le_bytes().to_vec());
+        }
+
+        if let Some(r) = self.armo_repair_list {
+            session.doc.set_sub(fid, b"REPL", r.to_le_bytes().to_vec());
         }
     }
 
@@ -1135,6 +1149,10 @@ impl ObjectEditorState {
 
             if let Some(s) = self.crea_sound_inherit {
                 session.doc.set_sub(fid, b"CSCR", s.to_le_bytes().to_vec());
+            }
+
+            if let Some(w) = self.crea_weapon_list {
+                session.doc.set_sub(fid, b"LNAM", w.to_le_bytes().to_vec());
             }
         }
 
@@ -1943,9 +1961,9 @@ pub fn ui(
             .id_salt("obj_scroll")
             .max_height(avail_h)
             .show(ui, |ui| match &state.sig {
-                b"WEAP" => draw_weap_ui(ui, &mut state),
-                b"ARMO" => draw_armo_ui(ui, &mut state),
-                b"NPC_" | b"CREA" => draw_actor_ui(ui, &mut state),
+                b"WEAP" => draw_weap_ui(ui, &session, &mut state),
+                b"ARMO" => draw_armo_ui(ui, &session, &mut state),
+                b"NPC_" | b"CREA" => draw_actor_ui(ui, &session, &mut state),
                 b"ALCH" => draw_alch_ui(ui, &mut state),
                 b"AMMO" => draw_ammo_ui(ui, &mut state),
                 b"CONT" => draw_cont_ui(ui, &mut state),
@@ -2034,7 +2052,49 @@ fn formid_field(ui: &mut egui::Ui, id: &str, opt: &mut Option<u32>) {
     }
 }
 
-fn draw_weap_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+fn form_list_dropdown(
+    ui: &mut egui::Ui,
+    id_salt: &str,
+    session: &crate::session::Session,
+    opt: &mut Option<u32>,
+) {
+    let form_lists = session.form_lists();
+    let cur_name = match opt {
+        Some(fid) => form_lists
+            .iter()
+            .find(|(id, _)| *id == *fid)
+            .map(|(_, name)| name.as_str())
+            .unwrap_or("Custom / FormID"),
+        None => "NONE",
+    };
+
+    ui.horizontal(|ui| {
+        egui::ComboBox::from_id_salt(id_salt)
+            .selected_text(cur_name)
+            .width(200.0)
+            .show_ui(ui, |ui| {
+                if ui.selectable_label(opt.is_none(), "NONE").clicked() {
+                    *opt = None;
+                }
+                for (fid, name) in &form_lists {
+                    let is_sel = *opt == Some(*fid);
+                    if ui
+                        .selectable_label(is_sel, format!("{name} ({fid:08X})"))
+                        .clicked()
+                    {
+                        *opt = Some(*fid);
+                    }
+                }
+            });
+        formid_field(ui, &format!("{id_salt}_fid"), opt);
+    });
+}
+
+fn draw_weap_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Combat & Damage Parameters");
         ui.add_space(4.0);
@@ -2104,6 +2164,12 @@ fn draw_weap_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
+            ui.label("Repair List (FormList):");
+            form_list_dropdown(ui, "weap_repl", session, &mut state.weap_repair_list);
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
             ui.label("Value (Caps):");
             ui.add(egui::DragValue::new(&mut state.weap_val).range(0..=100000));
             ui.label("Weight:");
@@ -2118,7 +2184,11 @@ fn draw_weap_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-fn draw_armo_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+fn draw_armo_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Protection & Defense");
         ui.add_space(4.0);
@@ -2162,6 +2232,9 @@ fn draw_armo_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         ui.horizontal(|ui| {
             ui.label("Enchantment / Object Effect (EITM):");
             formid_field(ui, "armo_ench", &mut state.armo_enchant);
+            ui.separator();
+            ui.label("Repair List (FormList):");
+            form_list_dropdown(ui, "armo_repl", session, &mut state.armo_repair_list);
         });
     });
 
@@ -2210,7 +2283,11 @@ const CREATURE_TYPES: [&str; 8] = [
     "Giant",
 ];
 
-fn draw_actor_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+fn draw_actor_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     if state.sig == *b"CREA" {
         ui.group(|ui| {
             ui.strong("Creature Classification & Skills");
@@ -2236,6 +2313,9 @@ fn draw_actor_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             });
             ui.add_space(4.0);
             ui.horizontal(|ui| {
+                ui.label("Weapon List (FormList):");
+                form_list_dropdown(ui, "crea_weap_list", session, &mut state.crea_weapon_list);
+                ui.separator();
                 ui.label("Inherits Sounds From (CSCR FormID):");
                 formid_field(ui, "crea_sound_inherit", &mut state.crea_sound_inherit);
             });

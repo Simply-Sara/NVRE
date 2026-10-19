@@ -332,7 +332,28 @@ impl Session {
         &self.palette_groups
     }
 
-    /// The worldspaces in the load order, as browser rows.
+    /// Return all FormList records (FLST) across the load order, sorted by Editor ID.
+    pub fn form_lists(&self) -> Vec<(u32, String)> {
+        let mut out: Vec<(u32, String)> = Vec::new();
+        let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
+        for (pi, _plugin) in self.lo.plugins.iter().enumerate() {
+            for r in &self.lo.records[pi] {
+                if r.header.sig == *b"FLST" {
+                    if let Some(global) = self.lo.to_global(pi, r.header.form_id) {
+                        if seen.insert(global) {
+                            let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
+                            let name = edid.or(full).unwrap_or_else(|| format!("{:08X}", global));
+                            out.push((global, name));
+                        }
+                    }
+                }
+            }
+        }
+        out.sort_by_key(|a| a.1.to_lowercase());
+        out
+    }
+
+    /// The worldspaces in the open plugin and its masters, as browser rows.
     ///
     /// This is the cell browser's dropdown: GECK's Cell View lists every
     /// worldspace and an "Interior" entry, and the list below it is filtered by

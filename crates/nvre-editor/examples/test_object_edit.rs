@@ -230,5 +230,26 @@ fn main() {
     println!("CREA Window Title: '{}'", title);
     assert_eq!(title, "Creature - VStreetCrBrahmin2 (Brahmin)");
 
+    // Test 16: Creature with Weapon List (CREA) 0x0017AF62 (CrSuperMutantDeadMinigunRubyHill)
+    let sm_fid = 0x0017AF62;
+    let mut sm_state = ObjectEditorState::default();
+    sm_state.load_from_session(&session, sm_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', WeaponList={:08X?}",
+        sm_state.form_id, sm_state.edid, sm_state.crea_weapon_list
+    );
+    assert_eq!(sm_state.edid, "CrSuperMutantDeadMinigunRubyHill");
+    assert_eq!(sm_state.crea_weapon_list, Some(0x0003A15E));
+
+    let flsts = session.form_lists();
+    println!(
+        "Session indexed {} FormLists across load order",
+        flsts.len()
+    );
+    assert!(!flsts.is_empty());
+    let sm_flst = flsts.iter().find(|(fid, _)| *fid == 0x0003A15E);
+    assert!(sm_flst.is_some());
+    println!("Found FormList in session: {:?}", sm_flst);
+
     println!("All object editor tests passed successfully!");
 }
