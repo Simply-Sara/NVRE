@@ -124,6 +124,8 @@ pub struct ObjectEditorState {
     pub actor_death_item: Option<u32>,
     pub actor_template: Option<u32>,
     pub actor_combat_style: Option<u32>,
+    pub actor_splo: Vec<u32>,
+    pub splo_to_add: Option<u32>,
 
     // ALCH fields
     pub alch_weight: f32,
@@ -340,13 +342,33 @@ impl ObjectEditorState {
         self.quest_item = (flags & (1 << 10)) != 0;
 
         self.raw_subs.clear();
-        for s in raw_subs {
+        self.actor_splo.clear();
+        for s in &raw_subs {
             self.raw_subs.insert(s.sig, s.data.clone());
+            if s.sig == *b"SPLO" && s.data.len() >= 4 {
+                let fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                self.actor_splo.push(fid);
+            }
         }
         if let Some(edits) = session.doc.edits_for(form_id) {
             for e in edits {
-                if let nvre_edit::Edit::SetSub { sig, data } = e {
-                    self.raw_subs.insert(*sig, data.clone());
+                match e {
+                    nvre_edit::Edit::SetSub { sig, data } => {
+                        self.raw_subs.insert(*sig, data.clone());
+                    }
+                    nvre_edit::Edit::SetSubList {
+                        sig: [b'S', b'P', b'L', b'O'],
+                        data,
+                    } => {
+                        self.actor_splo.clear();
+                        for d in data {
+                            if d.len() >= 4 {
+                                self.actor_splo
+                                    .push(u32::from_le_bytes([d[0], d[1], d[2], d[3]]));
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -1176,6 +1198,13 @@ impl ObjectEditorState {
         if let Some(cs) = self.actor_combat_style {
             session.doc.set_sub(fid, b"ZNAM", cs.to_le_bytes().to_vec());
         }
+
+        let splo_buffers: Vec<Vec<u8>> = self
+            .actor_splo
+            .iter()
+            .map(|fid| fid.to_le_bytes().to_vec())
+            .collect();
+        session.doc.set_sub_list(fid, b"SPLO", splo_buffers);
     }
 
     fn save_alch(&self, session: &mut crate::session::Session) {
@@ -2522,6 +2551,52 @@ fn draw_actor_ui(
                 &death_items,
                 &mut state.actor_death_item,
             );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Actor Effects & Spells (SPLO)");
+        ui.add_space(4.0);
+
+        let mut spells_all = session.records_by_sig(*b"SPEL");
+        let mut enchs = session.records_by_sig(*b"ENCH");
+        spells_all.append(&mut enchs);
+        spells_all.sort_by_key(|a| a.1.to_lowercase());
+
+        if state.actor_splo.is_empty() {
+            ui.label(egui::RichText::new("No active effects/spells.").italics());
+        } else {
+            let mut remove_idx = None;
+            for (idx, &fid) in state.actor_splo.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").on_hover_text("Remove this effect").clicked() {
+                        remove_idx = Some(idx);
+                    }
+                    let name = spells_all
+                        .iter()
+                        .find(|(id, _)| *id == fid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Effect");
+                    ui.label(format!("{name} ({fid:08X})"));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.actor_splo.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Add Effect:");
+            record_dropdown(ui, "actor_add_splo", &spells_all, &mut state.splo_to_add);
+            if ui.button("+ Add").clicked() {
+                if let Some(fid) = state.splo_to_add {
+                    if !state.actor_splo.contains(&fid) {
+                        state.actor_splo.push(fid);
+                    }
+                }
+            }
         });
     });
 }

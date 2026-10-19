@@ -227,6 +227,8 @@ fn main() {
     assert_eq!(crea_state.actor_death_item, Some(0x0009D413));
     assert_eq!(crea_state.actor_combat_style, Some(0x0003A371));
     assert_eq!(crea_state.actor_voice, Some(0x00094EED));
+    assert_eq!(crea_state.actor_splo, vec![0x00060C16]);
+    println!("CREA SPLO Spells: {:08X?}", crea_state.actor_splo);
 
     let title = nvre_editor::object_editor::window_title(
         &crea_state.sig,
@@ -282,6 +284,23 @@ fn main() {
     );
     assert_eq!(ym_state.edid, "YesManMainframe");
     assert!(ym_state.actor_invulnerable);
+
+    // Test 19: Creature with 3 SPLO spells (VCrTier3FeralGhoulGlowingOneNRSewers 0x0017B060)
+    let ghoul_fid = 0x0017B060;
+    let mut ghoul_state = ObjectEditorState::default();
+    ghoul_state.load_from_session(&session, ghoul_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', SPLO count={}, Spells={:08X?}",
+        ghoul_state.form_id,
+        ghoul_state.edid,
+        ghoul_state.actor_splo.len(),
+        ghoul_state.actor_splo
+    );
+    assert_eq!(ghoul_state.edid, "VCrTier3FeralGhoulGlowingOneNRSewers");
+    assert_eq!(
+        ghoul_state.actor_splo,
+        vec![0x0008AF5C, 0x0006E770, 0x000617BE]
+    );
 
     let flsts = session.form_lists();
     let vtyps = session.records_by_sig(*b"VTYP");
