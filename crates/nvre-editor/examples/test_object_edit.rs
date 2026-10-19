@@ -236,6 +236,31 @@ fn main() {
     );
     println!("CREA SNAM Factions: {:08X?}", crea_state.actor_factions);
 
+    assert_eq!(crea_state.crea_attack_reach, 32);
+    assert!((crea_state.actor_base_scale - 1.25).abs() < 1e-4);
+    assert!((crea_state.crea_turning_speed - 30.0).abs() < 1e-4);
+    assert!((crea_state.crea_foot_weight - 20.0).abs() < 1e-4);
+    assert_eq!(crea_state.actor_impact_material, 6); // Organic
+    assert_eq!(crea_state.actor_sound_level, 1); // Normal
+    assert_eq!(crea_state.actor_body_part_data, Some(0x00015833));
+    assert_eq!(crea_state.crea_impact_dataset, Some(0x0007DB64));
+    assert_eq!(crea_state.actor_packages, vec![0x0014D1FF, 0x000200D5]);
+    assert_eq!(crea_state.obnd_min, [-40, -80, 0]);
+    assert_eq!(crea_state.obnd_max, [40, 80, 80]);
+    println!("CREA Physical & Combat: Reach={}, Scale={}, Turn={}, Foot={}, Mat={}, Snd={}, BPTD={:08X?}, IPDS={:08X?}, PKID={:08X?}, OBND={:?}..{:?}",
+        crea_state.crea_attack_reach,
+        crea_state.actor_base_scale,
+        crea_state.crea_turning_speed,
+        crea_state.crea_foot_weight,
+        crea_state.actor_impact_material,
+        crea_state.actor_sound_level,
+        crea_state.actor_body_part_data,
+        crea_state.crea_impact_dataset,
+        crea_state.actor_packages,
+        crea_state.obnd_min,
+        crea_state.obnd_max,
+    );
+
     let title = nvre_editor::object_editor::window_title(
         &crea_state.sig,
         &crea_state.edid,

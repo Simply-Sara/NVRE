@@ -48,6 +48,10 @@ pub struct ObjectEditorState {
     pub record_flags: u32,
     pub quest_item: bool,
 
+    // Object Bounds (OBND)
+    pub obnd_min: [i16; 3],
+    pub obnd_max: [i16; 3],
+
     // Subrecord map for uncommitted overlay
     pub raw_subs: HashMap<[u8; 4], Vec<u8>>,
 
@@ -130,6 +134,30 @@ pub struct ObjectEditorState {
     pub actor_factions: Vec<(u32, i8)>,
     pub faction_to_add: Option<u32>,
     pub faction_rank_to_add: i8,
+
+    // Actor Physical & Combat fields (CREA/NPC_)
+    pub crea_attack_reach: u8,
+    pub actor_base_scale: f32,
+    pub crea_turning_speed: f32,
+    pub crea_foot_weight: f32,
+    pub actor_impact_material: u32,
+    pub actor_sound_level: u32,
+    pub actor_unarmed_effect: Option<u32>,
+    pub crea_unarmed_anim: u16,
+    pub actor_body_part_data: Option<u32>,
+    pub crea_impact_dataset: Option<u32>,
+
+    // AI & Economy fields
+    pub actor_barter_gold: u16,
+    pub actor_disp_base: i16,
+    pub actor_aggro_radius: i32,
+    pub actor_packages: Vec<u32>,
+    pub package_to_add: Option<u32>,
+
+    // Inventory collection (CNTO)
+    pub actor_inventory: Vec<(u32, i32)>,
+    pub item_to_add: Option<u32>,
+    pub item_count_to_add: i32,
 
     // ALCH fields
     pub alch_weight: f32,
@@ -351,6 +379,8 @@ impl ObjectEditorState {
         self.raw_subs.clear();
         self.actor_splo.clear();
         self.actor_factions.clear();
+        self.actor_packages.clear();
+        self.actor_inventory.clear();
         for s in &raw_subs {
             self.raw_subs.insert(s.sig, s.data.clone());
             if s.sig == *b"SPLO" && s.data.len() >= 4 {
@@ -361,6 +391,15 @@ impl ObjectEditorState {
                 let fac_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
                 let rank = s.data[4] as i8;
                 self.actor_factions.push((fac_fid, rank));
+            }
+            if s.sig == *b"PKID" && s.data.len() >= 4 {
+                let pkg_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                self.actor_packages.push(pkg_fid);
+            }
+            if s.sig == *b"CNTO" && s.data.len() >= 8 {
+                let item_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                let count = i32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                self.actor_inventory.push((item_fid, count));
             }
         }
         if let Some(edits) = session.doc.edits_for(form_id) {
@@ -394,9 +433,50 @@ impl ObjectEditorState {
                             }
                         }
                     }
+                    nvre_edit::Edit::SetSubList {
+                        sig: [b'P', b'K', b'I', b'D'],
+                        data,
+                    } => {
+                        self.actor_packages.clear();
+                        for d in data {
+                            if d.len() >= 4 {
+                                self.actor_packages
+                                    .push(u32::from_le_bytes([d[0], d[1], d[2], d[3]]));
+                            }
+                        }
+                    }
+                    nvre_edit::Edit::SetSubList {
+                        sig: [b'C', b'N', b'T', b'O'],
+                        data,
+                    } => {
+                        self.actor_inventory.clear();
+                        for d in data {
+                            if d.len() >= 8 {
+                                let item_fid = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
+                                let count = i32::from_le_bytes([d[4], d[5], d[6], d[7]]);
+                                self.actor_inventory.push((item_fid, count));
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
+        }
+
+        if let Some(b) = self.raw_subs.get(b"OBND").filter(|b| b.len() >= 12) {
+            self.obnd_min = [
+                i16::from_le_bytes([b[0], b[1]]),
+                i16::from_le_bytes([b[2], b[3]]),
+                i16::from_le_bytes([b[4], b[5]]),
+            ];
+            self.obnd_max = [
+                i16::from_le_bytes([b[6], b[7]]),
+                i16::from_le_bytes([b[8], b[9]]),
+                i16::from_le_bytes([b[10], b[11]]),
+            ];
+        } else {
+            self.obnd_min = [0, 0, 0];
+            self.obnd_max = [0, 0, 0];
         }
 
         // Common strings & FormIDs
@@ -456,6 +536,31 @@ impl ObjectEditorState {
             .get(sig)
             .filter(|b| b.len() >= 4)
             .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    }
+
+    fn get_u8(&self, sig: &[u8; 4]) -> Option<u8> {
+        self.raw_subs.get(sig).and_then(|b| b.first().copied())
+    }
+
+    fn get_u16(&self, sig: &[u8; 4]) -> Option<u16> {
+        self.raw_subs
+            .get(sig)
+            .filter(|b| b.len() >= 2)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]))
+    }
+
+    fn get_u32(&self, sig: &[u8; 4]) -> Option<u32> {
+        self.raw_subs
+            .get(sig)
+            .filter(|b| b.len() >= 4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    }
+
+    fn get_f32(&self, sig: &[u8; 4]) -> Option<f32> {
+        self.raw_subs
+            .get(sig)
+            .filter(|b| b.len() >= 4)
+            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
     }
 
     fn load_weap(&mut self) {
@@ -542,11 +647,13 @@ impl ObjectEditorState {
         if let Some(b) = self.raw_subs.get(b"ACBS").filter(|b| b.len() >= 24) {
             self.actor_flags = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.actor_fatigue = u16::from_le_bytes([b[4], b[5]]);
+            self.actor_barter_gold = u16::from_le_bytes([b[6], b[7]]);
             self.actor_level_or_mult = i16::from_le_bytes([b[8], b[9]]);
             self.actor_calc_min = u16::from_le_bytes([b[10], b[11]]);
             self.actor_calc_max = u16::from_le_bytes([b[12], b[13]]);
             self.actor_speed_mult = u16::from_le_bytes([b[14], b[15]]);
             self.actor_karma = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.actor_disp_base = i16::from_le_bytes([b[20], b[21]]);
             self.actor_template_flags = u16::from_le_bytes([b[22], b[23]]);
 
             // Shared & NPC flags
@@ -602,6 +709,7 @@ impl ObjectEditorState {
             self.actor_resp = b[3];
             self.actor_mood = b[4];
             self.actor_assistance = b[14] as i8;
+            self.actor_aggro_radius = i32::from_le_bytes([b[16], b[17], b[18], b[19]]);
         }
         self.actor_race = self.get_fid(b"RNAM");
         self.actor_class = self.get_fid(b"CNAM");
@@ -611,6 +719,19 @@ impl ObjectEditorState {
         self.actor_combat_style = self.get_fid(b"ZNAM");
         self.crea_sound_inherit = self.get_fid(b"CSCR");
         self.crea_weapon_list = self.get_fid(b"LNAM");
+
+        self.crea_attack_reach = self.get_u8(b"RNAM").unwrap_or(0);
+        self.actor_base_scale = self.get_f32(b"BNAM").unwrap_or(1.0);
+        self.crea_turning_speed = self.get_f32(b"TNAM").unwrap_or(0.0);
+        self.crea_foot_weight = self.get_f32(b"WNAM").unwrap_or(0.0);
+        self.actor_impact_material = self.get_u32(b"NAM4").unwrap_or(6);
+        self.actor_sound_level = self.get_u32(b"NAM5").unwrap_or(1);
+        self.actor_unarmed_effect = self.get_fid(b"EITM");
+        self.crea_unarmed_anim = self.get_u16(b"EAMT").unwrap_or(255);
+        self.actor_body_part_data = self.get_fid(b"PNAM");
+        if self.sig == *b"CREA" {
+            self.crea_impact_dataset = self.get_fid(b"CNAM");
+        }
     }
 
     fn load_alch(&mut self) {
@@ -956,6 +1077,20 @@ impl ObjectEditorState {
         }
         session.doc.set_flags(fid, flags);
 
+        if self.obnd_min != [0, 0, 0]
+            || self.obnd_max != [0, 0, 0]
+            || self.raw_subs.contains_key(b"OBND")
+        {
+            let mut obnd = vec![0u8; 12];
+            obnd[0..2].copy_from_slice(&self.obnd_min[0].to_le_bytes());
+            obnd[2..4].copy_from_slice(&self.obnd_min[1].to_le_bytes());
+            obnd[4..6].copy_from_slice(&self.obnd_min[2].to_le_bytes());
+            obnd[6..8].copy_from_slice(&self.obnd_max[0].to_le_bytes());
+            obnd[8..10].copy_from_slice(&self.obnd_max[1].to_le_bytes());
+            obnd[10..12].copy_from_slice(&self.obnd_max[2].to_le_bytes());
+            session.doc.set_sub(fid, b"OBND", obnd);
+        }
+
         match &self.sig {
             b"WEAP" => self.save_weap(session),
             b"ARMO" => self.save_armo(session),
@@ -1143,11 +1278,13 @@ impl ObjectEditorState {
         }
         acbs[0..4].copy_from_slice(&f.to_le_bytes());
         acbs[4..6].copy_from_slice(&self.actor_fatigue.to_le_bytes());
+        acbs[6..8].copy_from_slice(&self.actor_barter_gold.to_le_bytes());
         acbs[8..10].copy_from_slice(&self.actor_level_or_mult.to_le_bytes());
         acbs[10..12].copy_from_slice(&self.actor_calc_min.to_le_bytes());
         acbs[12..14].copy_from_slice(&self.actor_calc_max.to_le_bytes());
         acbs[14..16].copy_from_slice(&self.actor_speed_mult.to_le_bytes());
         acbs[16..20].copy_from_slice(&self.actor_karma.to_le_bytes());
+        acbs[20..22].copy_from_slice(&self.actor_disp_base.to_le_bytes());
         acbs[22..24].copy_from_slice(&self.actor_template_flags.to_le_bytes());
         session.doc.set_sub(fid, b"ACBS", acbs);
 
@@ -1165,6 +1302,7 @@ impl ObjectEditorState {
         aidt[3] = self.actor_resp;
         aidt[4] = self.actor_mood;
         aidt[14] = self.actor_assistance as u8;
+        aidt[16..20].copy_from_slice(&self.actor_aggro_radius.to_le_bytes());
         session.doc.set_sub(fid, b"AIDT", aidt);
 
         if self.sig == *b"NPC_" {
@@ -1250,6 +1388,91 @@ impl ObjectEditorState {
             })
             .collect();
         session.doc.set_sub_list(fid, b"SNAM", snam_buffers);
+
+        if self.sig == *b"CREA" {
+            session
+                .doc
+                .set_sub(fid, b"RNAM", vec![self.crea_attack_reach]);
+            session
+                .doc
+                .set_sub(fid, b"BNAM", self.actor_base_scale.to_le_bytes().to_vec());
+            session
+                .doc
+                .set_sub(fid, b"TNAM", self.crea_turning_speed.to_le_bytes().to_vec());
+            session
+                .doc
+                .set_sub(fid, b"WNAM", self.crea_foot_weight.to_le_bytes().to_vec());
+            session.doc.set_sub(
+                fid,
+                b"NAM4",
+                self.actor_impact_material.to_le_bytes().to_vec(),
+            );
+            session
+                .doc
+                .set_sub(fid, b"NAM5", self.actor_sound_level.to_le_bytes().to_vec());
+            session
+                .doc
+                .set_sub(fid, b"EAMT", self.crea_unarmed_anim.to_le_bytes().to_vec());
+
+            if let Some(eff) = self.actor_unarmed_effect {
+                session
+                    .doc
+                    .set_sub(fid, b"EITM", eff.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"EITM");
+            }
+            if let Some(bptd) = self.actor_body_part_data {
+                session
+                    .doc
+                    .set_sub(fid, b"PNAM", bptd.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"PNAM");
+            }
+            if let Some(ipds) = self.crea_impact_dataset {
+                session
+                    .doc
+                    .set_sub(fid, b"CNAM", ipds.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"CNAM");
+            }
+        } else if self.sig == *b"NPC_" {
+            session
+                .doc
+                .set_sub(fid, b"BNAM", self.actor_base_scale.to_le_bytes().to_vec());
+            if let Some(eff) = self.actor_unarmed_effect {
+                session
+                    .doc
+                    .set_sub(fid, b"EITM", eff.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"EITM");
+            }
+            if let Some(bptd) = self.actor_body_part_data {
+                session
+                    .doc
+                    .set_sub(fid, b"PNAM", bptd.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"PNAM");
+            }
+        }
+
+        let pkid_buffers: Vec<Vec<u8>> = self
+            .actor_packages
+            .iter()
+            .map(|fid| fid.to_le_bytes().to_vec())
+            .collect();
+        session.doc.set_sub_list(fid, b"PKID", pkid_buffers);
+
+        let cnto_buffers: Vec<Vec<u8>> = self
+            .actor_inventory
+            .iter()
+            .map(|(item_fid, count)| {
+                let mut buf = vec![0u8; 8];
+                buf[0..4].copy_from_slice(&item_fid.to_le_bytes());
+                buf[4..8].copy_from_slice(&count.to_le_bytes());
+                buf
+            })
+            .collect();
+        session.doc.set_sub_list(fid, b"CNTO", cnto_buffers);
     }
 
     fn save_alch(&self, session: &mut crate::session::Session) {
@@ -2382,6 +2605,29 @@ const CREATURE_TYPES: [&str; 8] = [
     "Giant",
 ];
 
+const IMPACT_MATERIALS: [&str; 12] = [
+    "Stone",
+    "Dirt",
+    "Grass",
+    "Glass",
+    "Metal",
+    "Wood",
+    "Organic",
+    "Cloth",
+    "Water",
+    "Hollow Metal",
+    "Organic Bug",
+    "Organic Glow",
+];
+
+const SOUND_LEVELS: [&str; 3] = ["Loud", "Normal", "Silent"];
+
+const MOOD_NAMES: [&str; 8] = [
+    "Neutral", "Afraid", "Annoyed", "Cocky", "Drugged", "Pleasant", "Angry", "Sad",
+];
+
+const ASSISTANCE_NAMES: [&str; 3] = ["Helps Nobody", "Helps Allies", "Helps Friends and Allies"];
+
 fn draw_actor_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
@@ -2488,6 +2734,15 @@ fn draw_actor_ui(
                     .range(-1000.0..=1000.0),
             );
         });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Barter Gold:");
+            ui.add(egui::DragValue::new(&mut state.actor_barter_gold).range(0..=65535));
+            ui.separator();
+            ui.label("Base Disposition:");
+            ui.add(egui::DragValue::new(&mut state.actor_disp_base).range(-100..=100));
+        });
     });
 
     ui.add_space(6.0);
@@ -2569,6 +2824,95 @@ fn draw_actor_ui(
 
     ui.add_space(6.0);
     ui.group(|ui| {
+        ui.strong(if state.sig == *b"CREA" {
+            "Physical & Combat Parameters (CREA)"
+        } else {
+            "Physical & Combat Parameters"
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            if state.sig == *b"CREA" {
+                ui.label("Attack Reach (RNAM):");
+                ui.add(egui::DragValue::new(&mut state.crea_attack_reach).range(0..=255));
+                ui.label("Turning Speed (TNAM):");
+                ui.add(
+                    egui::DragValue::new(&mut state.crea_turning_speed)
+                        .speed(1.0)
+                        .range(0.0..=500.0),
+                );
+                ui.label("Foot Weight (WNAM):");
+                ui.add(
+                    egui::DragValue::new(&mut state.crea_foot_weight)
+                        .speed(1.0)
+                        .range(0.0..=1000.0),
+                );
+            }
+            ui.label("Base Scale (BNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.actor_base_scale)
+                    .speed(0.05)
+                    .range(0.1..=10.0),
+            );
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Impact Material (NAM4):");
+            let cur_mat = (state.actor_impact_material as usize).min(IMPACT_MATERIALS.len() - 1);
+            let mat_lbl = IMPACT_MATERIALS.get(cur_mat).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_mat")
+                .selected_text(mat_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in IMPACT_MATERIALS.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_impact_material, i as u32, name);
+                    }
+                });
+
+            ui.separator();
+            ui.label("Sound Level (NAM5):");
+            let cur_snd = (state.actor_sound_level as usize).min(SOUND_LEVELS.len() - 1);
+            let snd_lbl = SOUND_LEVELS.get(cur_snd).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_snd_lvl")
+                .selected_text(snd_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in SOUND_LEVELS.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_sound_level, i as u32, name);
+                    }
+                });
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Body Part Data (PNAM):");
+            let bptds = session.records_by_sig(*b"BPTD");
+            record_dropdown(ui, "actor_pnam", &bptds, &mut state.actor_body_part_data);
+            if state.sig == *b"CREA" {
+                ui.separator();
+                ui.label("Impact Dataset (CNAM):");
+                let ipds = session.records_by_sig(*b"IPDS");
+                record_dropdown(ui, "crea_cnam", &ipds, &mut state.crea_impact_dataset);
+            }
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Unarmed Attack Effect (EITM):");
+            let mut spells = session.records_by_sig(*b"SPEL");
+            let mut enchs = session.records_by_sig(*b"ENCH");
+            spells.append(&mut enchs);
+            spells.sort_by_key(|a| a.1.to_lowercase());
+            record_dropdown(ui, "actor_eitm", &spells, &mut state.actor_unarmed_effect);
+
+            if state.sig == *b"CREA" {
+                ui.separator();
+                ui.label("Unarmed Attack Anim (EAMT):");
+                ui.add(egui::DragValue::new(&mut state.crea_unarmed_anim).range(0..=255));
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
         ui.strong("AI Behavior, Combat & Voice");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
@@ -2576,6 +2920,46 @@ fn draw_actor_ui(
             ui.add(egui::DragValue::new(&mut state.actor_aggression).range(0..=3));
             ui.label("Confidence (0-4):");
             ui.add(egui::DragValue::new(&mut state.actor_confidence).range(0..=4));
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Energy (0-100):");
+            ui.add(egui::DragValue::new(&mut state.actor_energy).range(0..=100));
+            ui.label("Responsibility (0-100):");
+            ui.add(egui::DragValue::new(&mut state.actor_resp).range(0..=100));
+            ui.label("Aggro Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.actor_aggro_radius)
+                    .speed(50.0)
+                    .range(0..=100000),
+            );
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Mood:");
+            let cur_mood = (state.actor_mood as usize).min(MOOD_NAMES.len() - 1);
+            let mood_lbl = MOOD_NAMES.get(cur_mood).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_mood")
+                .selected_text(mood_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in MOOD_NAMES.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_mood, i as u8, name);
+                    }
+                });
+
+            ui.separator();
+            ui.label("Assistance:");
+            let cur_ast = (state.actor_assistance.max(0) as usize).min(ASSISTANCE_NAMES.len() - 1);
+            let ast_lbl = ASSISTANCE_NAMES.get(cur_ast).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_assist")
+                .selected_text(ast_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in ASSISTANCE_NAMES.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_assistance, i as i8, name);
+                    }
+                });
         });
 
         ui.add_space(4.0);
@@ -2753,6 +3137,140 @@ fn draw_actor_ui(
                     }
                 }
             }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("AI Packages (PKID)");
+        ui.add_space(4.0);
+
+        let packages_all = session.records_by_sig(*b"PACK");
+
+        if state.actor_packages.is_empty() {
+            ui.label(egui::RichText::new("No assigned AI packages.").italics());
+        } else {
+            let mut remove_idx = None;
+            for (idx, &fid) in state.actor_packages.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this package")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    let name = packages_all
+                        .iter()
+                        .find(|(id, _)| *id == fid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Package");
+                    ui.label(format!("• {name} ({fid:08X})"));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.actor_packages.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Add Package:");
+            record_dropdown(
+                ui,
+                "actor_add_pkg",
+                &packages_all,
+                &mut state.package_to_add,
+            );
+            if ui.button("+ Add").clicked() {
+                if let Some(fid) = state.package_to_add {
+                    if !state.actor_packages.contains(&fid) {
+                        state.actor_packages.push(fid);
+                    }
+                }
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Inventory Items (CNTO)");
+        ui.add_space(4.0);
+
+        let mut items_all = Vec::new();
+        for sig in [
+            b"WEAP", b"ARMO", b"ALCH", b"AMMO", b"BOOK", b"MISC", b"LVLI",
+        ] {
+            let mut sub = session.records_by_sig(*sig);
+            items_all.append(&mut sub);
+        }
+        items_all.sort_by_key(|a| a.1.to_lowercase());
+
+        if state.actor_inventory.is_empty() {
+            ui.label(egui::RichText::new("Inventory is empty.").italics());
+        } else {
+            let mut remove_idx = None;
+            for (idx, (fid, count)) in state.actor_inventory.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").on_hover_text("Remove this item").clicked() {
+                        remove_idx = Some(idx);
+                    }
+                    let name = items_all
+                        .iter()
+                        .find(|(id, _)| *id == *fid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Item");
+                    ui.label(format!("• {name} ({fid:08X})"));
+                    ui.separator();
+                    ui.label("Count:");
+                    ui.add(egui::DragValue::new(count).range(1..=100000));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.actor_inventory.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Add Item:");
+            record_dropdown(ui, "actor_add_item", &items_all, &mut state.item_to_add);
+            ui.label("Count:");
+            ui.add(egui::DragValue::new(&mut state.item_count_to_add).range(1..=10000));
+            if ui.button("+ Add").clicked() {
+                if let Some(fid) = state.item_to_add {
+                    if let Some(existing) =
+                        state.actor_inventory.iter_mut().find(|(f, _)| *f == fid)
+                    {
+                        existing.1 += state.item_count_to_add.max(1);
+                    } else {
+                        state
+                            .actor_inventory
+                            .push((fid, state.item_count_to_add.max(1)));
+                    }
+                }
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Object Bounds (OBND)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Min X:");
+            ui.add(egui::DragValue::new(&mut state.obnd_min[0]));
+            ui.label("Y:");
+            ui.add(egui::DragValue::new(&mut state.obnd_min[1]));
+            ui.label("Z:");
+            ui.add(egui::DragValue::new(&mut state.obnd_min[2]));
+            ui.separator();
+            ui.label("Max X:");
+            ui.add(egui::DragValue::new(&mut state.obnd_max[0]));
+            ui.label("Y:");
+            ui.add(egui::DragValue::new(&mut state.obnd_max[1]));
+            ui.label("Z:");
+            ui.add(egui::DragValue::new(&mut state.obnd_max[2]));
         });
     });
 }
