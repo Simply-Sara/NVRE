@@ -670,12 +670,13 @@ impl CstdData {
     /// Write the struct back over `original`, so every byte the editor does not
     /// own keeps the value the record had.
     ///
-    /// The spec marks several runs "Unused", but the game stores data in at
-    /// least one of them: 40 of the 84 CSTD subrecords in `FalloutNV.esm` carry
-    /// `[128, 63]` in bytes 2..4, which is `0x3F80` — a little-endian 1.0. An
-    /// editor that wrote zeros there would silently change what those combat
-    /// styles do, so the ranges the spec does not name are copied through
-    /// rather than rebuilt.
+    /// The spec marks several runs "Unused" and xEdit agrees, but the game does
+    /// not leave them zero: 40 of the 84 CSTD subrecords in `FalloutNV.esm`
+    /// carry the ASCII fragments "im", "pr", "ial" and ".kf" at offsets 2, 38,
+    /// 53 and 69 — the same four in all 40, with the other 44 all-zero. A
+    /// leftover string from whichever editor wrote them, not a documented
+    /// field, so the editor copies the bytes through rather than deciding what
+    /// they mean. Zeroing them would change 40 records for no reason.
     fn write_into(&self, original: &[u8]) -> Vec<u8> {
         let mut b = original.to_vec();
         b.resize(CSTD_LEN, 0);

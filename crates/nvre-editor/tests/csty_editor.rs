@@ -309,9 +309,14 @@ fn the_unused_bytes_the_game_fills_are_preserved() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    // The spec marks CSTD bytes 2..4 "Unused", but 40 of the 84 CSTY records in
-    // the masters carry [128, 63] there, which is 0x3F80 — a little-endian 1.0.
-    // Find one and check the editor does not zero it on save.
+    // The spec marks CSTD bytes 2..4 "Unused", and xEdit agrees. But 40 of the
+    // 84 CSTY records in the masters do not leave them zero: they carry the
+    // ASCII fragments "im", "pr", "ial" and ".kf" at offsets 2, 38, 53 and 69 —
+    // every one of those 40 carries the same four fragments, and the other 44
+    // carry all zeros. That is a leftover string from the editor that wrote
+    // them, not a documented field, so the editor must not decide what it
+    // means: it copies the bytes through unchanged. Find such a record and
+    // check an edit does not disturb them.
     let fids: Vec<u32> = s
         .object_groups("")
         .iter()
