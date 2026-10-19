@@ -355,6 +355,12 @@ pub struct ObjectEditorState {
     pub clmt_sun_texture: String,
     pub clmt_sun_glare_texture: String,
 
+    // AVIF fields
+    pub avif_desc: String,
+    pub avif_short_name: String,
+    pub avif_icon: String,
+    pub avif_mico: String,
+
     // CREA specific fields
     pub crea_type: u8,
     pub crea_combat_skill: u8,
@@ -604,6 +610,7 @@ impl ObjectEditorState {
             b"GMST" => self.load_gmst(),
             b"RACE" => self.load_race(),
             b"CLMT" => self.load_clmt(),
+            b"AVIF" => self.load_avif(),
             _ => self.load_misc(),
         }
     }
@@ -1153,6 +1160,13 @@ impl ObjectEditorState {
         self.clmt_sun_glare_texture = self.get_string(b"GNAM");
     }
 
+    fn load_avif(&mut self) {
+        self.avif_desc = self.get_string(b"DESC");
+        self.avif_short_name = self.get_string(b"ANAM");
+        self.avif_icon = self.get_string(b"ICON");
+        self.avif_mico = self.get_string(b"MICO");
+    }
+
     /// Save the current state back to session as uncommitted edits.
     pub fn save_to_session(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
@@ -1228,6 +1242,7 @@ impl ObjectEditorState {
             b"GMST" => self.save_gmst(session),
             b"RACE" => self.save_race(session),
             b"CLMT" => self.save_clmt(session),
+            b"AVIF" => self.save_avif(session),
             _ => self.save_misc(session),
         }
 
@@ -2305,6 +2320,38 @@ impl ObjectEditorState {
                 .set_sub(fid, b"GNAM", encode_zstring(&self.clmt_sun_glare_texture));
         }
     }
+
+    fn save_avif(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        if !self.avif_desc.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"DESC", encode_zstring(&self.avif_desc));
+        } else {
+            session.doc.remove_sub(fid, b"DESC");
+        }
+        if !self.avif_short_name.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"ANAM", encode_zstring(&self.avif_short_name));
+        } else {
+            session.doc.remove_sub(fid, b"ANAM");
+        }
+        if !self.avif_icon.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"ICON", encode_zstring(&self.avif_icon));
+        } else {
+            session.doc.remove_sub(fid, b"ICON");
+        }
+        if !self.avif_mico.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MICO", encode_zstring(&self.avif_mico));
+        } else {
+            session.doc.remove_sub(fid, b"MICO");
+        }
+    }
 }
 
 fn encode_zstring(s: &str) -> Vec<u8> {
@@ -2346,6 +2393,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"LVLI" => "Leveled Item",
         b"LVLN" => "Leveled NPC",
         b"LVLC" => "Leveled Creature",
+        b"AVIF" => "Actor Value",
         _ => fallback.as_str(),
     };
     if !full_name.trim().is_empty() {
@@ -2518,6 +2566,7 @@ pub fn ui(
                 b"GMST" => draw_gmst_ui(ui, &mut state),
                 b"RACE" => draw_race_ui(ui, &mut state),
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
+                b"AVIF" => draw_avif_ui(ui, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
 
@@ -4676,6 +4725,40 @@ fn draw_clmt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             ui.add(
                 egui::TextEdit::singleline(&mut state.clmt_sun_glare_texture)
                     .desired_width(ui.available_width() - 20.0),
+            );
+        });
+    });
+}
+
+fn draw_avif_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Actor Value Information");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Short Name / Abbreviation (ANAM):");
+            ui.add(egui::TextEdit::singleline(&mut state.avif_short_name).desired_width(120.0));
+        });
+        ui.add_space(4.0);
+        ui.label("Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.avif_desc)
+                .desired_rows(4)
+                .desired_width(ui.available_width() - 20.0),
+        );
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.avif_icon)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.avif_mico)
+                    .desired_width(ui.available_width() - 140.0),
             );
         });
     });

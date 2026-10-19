@@ -484,6 +484,39 @@ fn main() {
     npc_state.save_to_session(&mut session);
     println!("NPC_ edit queued successfully.");
 
+    // Test 26: Actor Value (AVEndurance 0x000003EA)
+    let avif_fid = 0x000003EA;
+    let mut avif_state = ObjectEditorState::default();
+    avif_state.load_from_session(&session, avif_fid, *b"AVIF");
+    println!(
+        "Loaded AVIF 0x{:08X}: EDID='{}', Name='{}', ShortName='{}', Icon='{}'",
+        avif_state.form_id,
+        avif_state.edid,
+        avif_state.full_name,
+        avif_state.avif_short_name,
+        avif_state.avif_icon
+    );
+    assert_eq!(avif_state.edid, "AVEndurance");
+    assert_eq!(avif_state.full_name, "Endurance");
+    assert_eq!(avif_state.avif_short_name, "END");
+    assert!(avif_state.avif_desc.starts_with("Endurance is a measure"));
+    assert_eq!(
+        avif_state.avif_icon,
+        "Interface\\Icons\\PipboyImages\\S.P.E.C.I.A.L\\SPECIAL_Endurance.dds"
+    );
+
+    let avif_title = nvre_editor::object_editor::window_title(
+        &avif_state.sig,
+        &avif_state.edid,
+        &avif_state.full_name,
+    );
+    assert_eq!(avif_title, "Actor Value - AVEndurance (Endurance)");
+
+    // Modify and save AVIF
+    avif_state.avif_short_name = "END_MOD".to_string();
+    avif_state.save_to_session(&mut session);
+    println!("AVIF edit queued successfully.");
+
     let flsts = session.form_lists();
     let vtyps = session.records_by_sig(*b"VTYP");
     let cstys = session.records_by_sig(*b"CSTY");
