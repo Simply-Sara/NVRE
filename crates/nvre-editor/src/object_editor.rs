@@ -302,10 +302,27 @@ pub struct ObjectEditorState {
     pub imod_val: u32,
     pub imod_weight: f32,
     pub imod_desc: String,
-    pub clas_teaches: u8,
+    /// `Teaches` is an int8 skill enum that starts at -1 ("None"), so it is
+    /// signed, not a `u8` index into a 0-based table.
+    pub clas_teaches: i8,
     pub clas_max_train: u8,
     pub clas_playable: bool,
     pub clas_guard: bool,
+    /// The four `Tag Skill` int32s, in order.
+    pub clas_tag_skills: [i32; 4],
+    /// `Buys/Sells and Services`, the u32 service-flag word.
+    pub clas_services: u32,
+    /// The seven `ATTR` attributes, in the spec's order: Strength through Luck.
+    pub clas_attributes: [u8; 7],
+    /// The `DATA` flag word in full. The spec names bits 0 and 1, but the game's
+    /// own classes set bits 2, 3 and 4 too (`VaultDweller`, `VendorFood` and
+    /// `PlayerClass` all carry 29), so the word is kept whole and the two named
+    /// bits are edited inside it. Writing only the named bits would clear the
+    /// rest and change what the class does.
+    pub clas_flags: u32,
+    /// `DESC` Description — required by the spec, and the class's own blurb in
+    /// GECK's Class dialog.
+    pub clas_desc: String,
 
     // CSTY & MGEF fields
     pub csty_dodge_chance: u8,
@@ -1247,13 +1264,28 @@ impl ObjectEditorState {
     }
 
     fn load_clas(&mut self) {
+        // DATA is a fixed 28-byte struct: four int32 tag skills, the u32 flag
+        // word, the u32 service word, int8 teaches, u8 max training level, and
+        // two unused bytes. Every one of the 74 CLAS records in FalloutNV.esm
+        // measures exactly 28 bytes, so the offsets are the spec's own.
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 26) {
+            for i in 0..4 {
+                let o = i * 4;
+                self.clas_tag_skills[i] = i32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]);
+            }
             let flags = u32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.clas_flags = flags;
             self.clas_playable = (flags & 1) != 0;
             self.clas_guard = (flags & 2) != 0;
-            self.clas_teaches = b[24];
+            self.clas_services = u32::from_le_bytes([b[20], b[21], b[22], b[23]]);
+            self.clas_teaches = b[24] as i8;
             self.clas_max_train = b[25];
         }
+        // ATTR is the seven SPECIAL attributes in the spec's order.
+        if let Some(b) = self.raw_subs.get(b"ATTR").filter(|b| b.len() >= 7) {
+            self.clas_attributes.copy_from_slice(&b[0..7]);
+        }
+        self.clas_desc = self.get_string(b"DESC");
     }
 
     fn load_csty(&mut self) {
@@ -2376,15 +2408,17 @@ impl ObjectEditorState {
 
     fn save_clas(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut d = self
-            .raw_subs
-            .get(b"DATA")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 26]);
-        if d.len() < 26 {
-            d.resize(26, 0);
+        // 28 bytes is the spec's size and the only size in the game's masters;
+        // the two trailing bytes are the struct's Unused field, kept zero.
+        let mut d = vec![0u8; 28];
+        for (i, skill) in self.clas_tag_skills.iter().enumerate() {
+            let o = i * 4;
+            d[o..o + 4].copy_from_slice(&skill.to_le_bytes());
         }
-        let mut f = u32::from_le_bytes([d[16], d[17], d[18], d[19]]);
+        // The flag word is edited in place, not rebuilt: bits 2, 3 and 4 are set
+        // by the game's own classes and are not named by the spec, so they have
+        // to survive the save unchanged.
+        let mut f = self.clas_flags;
         if self.clas_playable {
             f |= 1;
         } else {
@@ -2396,9 +2430,19 @@ impl ObjectEditorState {
             f &= !2;
         }
         d[16..20].copy_from_slice(&f.to_le_bytes());
-        d[24] = self.clas_teaches;
+        d[20..24].copy_from_slice(&self.clas_services.to_le_bytes());
+        d[24] = self.clas_teaches as u8;
         d[25] = self.clas_max_train;
         session.doc.set_sub(fid, b"DATA", d);
+        session
+            .doc
+            .set_sub(fid, b"ATTR", self.clas_attributes.to_vec());
+        // DESC is required by the spec. An empty description is a real state
+        // (every class in the game's masters carries an empty one), so it is
+        // written rather than removed.
+        session
+            .doc
+            .set_sub(fid, b"DESC", encode_zstring(&self.clas_desc));
     }
 
     fn save_csty(&self, session: &mut crate::session::Session) {
@@ -2790,6 +2834,79 @@ const DIFFICULTY_LEVELS: [&str; 6] = [
     "Hard",
     "Very Hard",
     "Requires Key",
+];
+
+/// `CLAS` `DATA.Teaches`, the skill enum from fopdoc's Skills page. It is an
+/// int8 that starts at -1 ("None"), so the table is indexed from -1.
+const CLAS_TEACHES: [(i8, &str); 15] = [
+    (-1, "None"),
+    (0, "Barter"),
+    (1, "Big Guns"),
+    (2, "Energy Weapons"),
+    (3, "Explosives"),
+    (4, "Lockpick"),
+    (5, "Medicine"),
+    (6, "Melee Weapons"),
+    (7, "Repair"),
+    (8, "Science"),
+    (9, "Guns"),
+    (10, "Sneak"),
+    (11, "Speech"),
+    (12, "Survival"),
+    (13, "Unarmed"),
+];
+
+/// `CLAS` `DATA` Tag Skill. The spec links this to the Actor Values page, not
+/// the Skills page, so the values are the actor-value enum: Barter is 32 and
+/// Guns is 41, not 0 and 9. A class names up to four, and "None" (-1) is a real
+/// value: 81 of the 296 tag-skill slots across the game's 74 classes are None,
+/// so an empty slot must stay empty rather than defaulting to a skill.
+const CLAS_TAG_SKILLS: [(i32, &str); 15] = [
+    (-1, "None"),
+    (32, "Barter"),
+    (33, "Big Guns"),
+    (34, "Energy Weapons"),
+    (35, "Explosives"),
+    (36, "Lockpick"),
+    (37, "Medicine"),
+    (38, "Melee Weapons"),
+    (39, "Repair"),
+    (40, "Science"),
+    (41, "Guns"),
+    (42, "Sneak"),
+    (43, "Speech"),
+    (44, "Survival"),
+    (45, "Unarmed"),
+];
+
+/// `CLAS` `DATA` Buys/Sells and Services, the u32 flag word from fopdoc's
+/// Services page. The bits fopdoc marks with a `?` are unnamed in the spec and
+/// are left out, exactly as the schema leaves them out: naming a bit that is
+/// not documented would invent behaviour.
+const CLAS_SERVICES: [(u32, &str); 12] = [
+    (0x0000_0001, "Weapons"),
+    (0x0000_0002, "Armor"),
+    (0x0000_0004, "Alcohol"),
+    (0x0000_0008, "Books"),
+    (0x0000_0010, "Food"),
+    (0x0000_0020, "Chems"),
+    (0x0000_0040, "Stimpaks"),
+    (0x0000_0080, "Lights"),
+    (0x0000_0400, "Miscellaneous"),
+    (0x0000_4000, "Training"),
+    (0x0001_0000, "Recharge"),
+    (0x0002_0000, "Repair"),
+];
+
+/// The seven `CLAS` `ATTR` attributes, in the spec's order.
+const CLAS_ATTRIBUTES: [&str; 7] = [
+    "Strength",
+    "Perception",
+    "Endurance",
+    "Charisma",
+    "Intelligence",
+    "Agility",
+    "Luck",
 ];
 
 /// Draw the Object Editor UI.
@@ -4858,23 +4975,147 @@ fn draw_imod_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
 
 fn draw_clas_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.group(|ui| {
+        ui.label("Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.clas_desc)
+                .desired_rows(3)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Attributes (ATTR)");
+        ui.add_space(4.0);
+        // Two rows of the seven SPECIAL attributes, in the spec's order.
+        ui.horizontal_wrapped(|ui| {
+            for (i, name) in CLAS_ATTRIBUTES.iter().enumerate() {
+                ui.label(*name);
+                ui.add(egui::DragValue::new(&mut state.clas_attributes[i]).range(0..=255));
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Tag Skills (DATA)");
+        ui.add_space(4.0);
+        // Four dropdowns, in order. Each names one actor value, and "None" is a
+        // real choice: most classes leave a slot empty.
+        ui.horizontal_wrapped(|ui| {
+            for i in 0..4 {
+                ui.label(format!("Tag Skill {}:", i + 1));
+                let cur = CLAS_TAG_SKILLS
+                    .iter()
+                    .find(|(v, _)| *v == state.clas_tag_skills[i])
+                    .map(|(_, n)| *n);
+                egui::ComboBox::from_id_salt(("clas_tag", i))
+                    .selected_text(cur.unwrap_or("Custom"))
+                    .width(150.0)
+                    .show_ui(ui, |ui| {
+                        for (v, name) in CLAS_TAG_SKILLS {
+                            ui.selectable_value(&mut state.clas_tag_skills[i], v, name);
+                        }
+                    });
+                // The raw value stays reachable: the enum runs past the 14 skills
+                // the game ships, and a mod may name any actor value.
+                ui.label("Raw:");
+                ui.add(egui::DragValue::new(&mut state.clas_tag_skills[i]).range(-1..=255));
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
         ui.strong("Class Configuration");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
+            // The checkboxes write the named bits of the whole word, so the two
+            // controls cannot disagree.
+            let mut playable = (state.clas_flags & 1) != 0;
+            if ui.checkbox(&mut playable, "Playable").changed() {
+                if playable {
+                    state.clas_flags |= 1;
+                } else {
+                    state.clas_flags &= !1;
+                }
+                state.clas_playable = playable;
+            }
+            let mut guard = (state.clas_flags & 2) != 0;
+            if ui.checkbox(&mut guard, "Guard").changed() {
+                if guard {
+                    state.clas_flags |= 2;
+                } else {
+                    state.clas_flags &= !2;
+                }
+                state.clas_guard = guard;
+            }
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
             ui.label("Teaches Skill:");
-            let cur_skill = (state.clas_teaches as usize).min(SKILL_NAMES.len() - 1);
-            let skill_lbl = SKILL_NAMES.get(cur_skill).copied().unwrap_or("Unknown");
-            egui::ComboBox::from_id_salt("clas_skill")
-                .selected_text(skill_lbl)
+            let cur = CLAS_TEACHES
+                .iter()
+                .find(|(v, _)| *v == state.clas_teaches)
+                .map(|(_, n)| *n);
+            egui::ComboBox::from_id_salt("clas_teaches")
+                .selected_text(cur.unwrap_or("Custom"))
                 .show_ui(ui, |ui| {
-                    for (i, &name) in SKILL_NAMES.iter().enumerate() {
-                        ui.selectable_value(&mut state.clas_teaches, i as u8, name);
+                    for (v, name) in CLAS_TEACHES {
+                        ui.selectable_value(&mut state.clas_teaches, v, name);
                     }
                 });
             ui.label("Max Training Level:");
             ui.add(egui::DragValue::new(&mut state.clas_max_train).range(0..=100));
-            ui.checkbox(&mut state.clas_playable, "Playable");
-            ui.checkbox(&mut state.clas_guard, "Guard");
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            // The raw word is the source of truth: editing it moves the two
+            // checkboxes with it, and the bits the spec does not name stay
+            // reachable here.
+            ui.label("Raw flags:");
+            let before = state.clas_flags;
+            if ui
+                .add(
+                    egui::DragValue::new(&mut state.clas_flags)
+                        .range(0..=u32::MAX as i64)
+                        .speed(1.0),
+                )
+                .changed()
+                && state.clas_flags != before
+            {
+                state.clas_playable = (state.clas_flags & 1) != 0;
+                state.clas_guard = (state.clas_flags & 2) != 0;
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Buys/Sells and Services");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in CLAS_SERVICES {
+                let mut set = (state.clas_services & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.clas_services |= bit;
+                    } else {
+                        state.clas_services &= !bit;
+                    }
+                }
+            }
+        });
+        ui.add_space(4.0);
+        // The raw word, because the bits fopdoc marks with a `?` are real and a
+        // mod may set them; the editor keeps them without naming them.
+        ui.horizontal(|ui| {
+            ui.label("Raw flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.clas_services)
+                    .range(0..=u32::MAX as i64)
+                    .speed(1.0),
+            );
         });
     });
 }
