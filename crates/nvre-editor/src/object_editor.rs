@@ -361,6 +361,13 @@ pub struct ObjectEditorState {
     pub avif_icon: String,
     pub avif_mico: String,
 
+    // BPTD fields: one Body Part per entry, in file order.
+    // A part is (BPTN?) BPNN BPNT BPNI BPND NAM1 NAM4 NAM5, so the optional
+    // Part Name is an Option and every other field is present.
+    pub bptd_ragdoll: Option<u32>,
+    pub bptd_parts: Vec<BptdPart>,
+    pub bptd_part_to_add: BptdPart,
+
     // CREA specific fields
     pub crea_type: u8,
     pub crea_combat_skill: u8,
@@ -374,6 +381,185 @@ pub struct ObjectEditorState {
     pub crea_no_head_track: bool,
     pub crea_sound_inherit: Option<u32>,
     pub crea_weapon_list: Option<u32>,
+}
+
+/// One body part of a `BPTD` record.
+///
+/// A part in the file is `(BPTN?) BPNN BPNT BPNI BPND NAM1 NAM4 NAM5` [observed:
+/// every one of the 304 parts across the 49 BPTD records in FalloutNV.esm follows
+/// that order, with `BPTN` present on 301 of 304]. Only the Part Name is optional.
+#[derive(Debug, Clone, Default)]
+pub struct BptdPart {
+    /// `BPTN` Part Name. `None` for an unnamed part, which is legal and appears
+    /// in real data (e.g. `NVVoidBodyPartData` has no `BPTN`).
+    pub name: Option<String>,
+    /// `BPNN` Part Node — the skeleton bone the engine matches the part to.
+    pub node: String,
+    /// `BPNT` VATS Target — the node a VATS shot is aimed at.
+    pub vats_target: String,
+    /// `BPNI` IK Data - Start Node.
+    pub ik_start_node: String,
+    /// `BPND` Node Data — the 84-byte packed struct, field-for-field.
+    pub data: BptdNodeData,
+    /// `NAM1` Limb Replacement Model — the gore mesh shown when the part is lost.
+    pub limb_model: String,
+    /// `NAM4` Gore Effects - Target Bone.
+    pub gore_target_bone: String,
+    /// `NAM5` Limb Replacement Model Texture Hashes, 24 bytes per texture hash.
+    /// Kept as raw bytes: the editor cannot author a hash, and rewriting an
+    /// unknown one would corrupt the mod.
+    pub texture_hashes: Vec<u8>,
+}
+
+/// The 84-byte `BPND` struct, in file order.
+///
+/// The layout is fixed-width and byte-exact (all 304 `BPND` subrecords in
+/// `FalloutNV.esm` measure exactly 84 bytes), so it is read and written by
+/// direct slice indexing rather than through a schema decode.
+#[derive(Debug, Clone, Default)]
+pub struct BptdNodeData {
+    pub damage_mult: f32,
+    pub flags: u8,
+    pub part_type: u8,
+    pub health_percent: u8,
+    pub actor_value: i8,
+    pub to_hit_chance: u8,
+    pub explodable_explosion_chance_percent: u8,
+    pub explodable_debris_count: u16,
+    pub explodable_debris: Option<u32>,
+    pub explodable_explosion: Option<u32>,
+    pub tracking_max_angle: f32,
+    pub explodable_debris_scale: f32,
+    pub severable_debris_count: i32,
+    pub severable_debris: Option<u32>,
+    pub severable_explosion: Option<u32>,
+    pub severable_debris_scale: f32,
+    pub gore_x: f32,
+    pub gore_y: f32,
+    pub gore_z: f32,
+    pub gore_rx: f32,
+    pub gore_ry: f32,
+    pub gore_rz: f32,
+    pub severable_impact_dataset: Option<u32>,
+    pub explodable_impact_dataset: Option<u32>,
+    pub severable_decal_count: u8,
+    pub explodable_decal_count: u8,
+    pub limb_replacement_scale: f32,
+}
+
+/// The size of a `BPND` payload: 4+1+1+1+1+1+1+2+4+4+4+4+4+4+4+4+ (6x4 gore)
+/// +4+4+1+1+2+4 = 84.
+const BPND_LEN: usize = 84;
+
+impl BptdNodeData {
+    fn from_bytes(b: &[u8]) -> Self {
+        let f = |i: usize| f32::from_le_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]]);
+        let u32at = |i: usize| u32::from_le_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]]);
+        // A zero FormID is the game's "none": the engine treats it as absent, and
+        // so does the editor, so a cleared dropdown round-trips as None.
+        let fid = |i: usize| {
+            let v = u32at(i);
+            if v == 0 {
+                None
+            } else {
+                Some(v)
+            }
+        };
+        Self {
+            damage_mult: f(0),
+            flags: b[4],
+            part_type: b[5],
+            health_percent: b[6],
+            actor_value: b[7] as i8,
+            to_hit_chance: b[8],
+            explodable_explosion_chance_percent: b[9],
+            explodable_debris_count: u16::from_le_bytes([b[10], b[11]]),
+            explodable_debris: fid(12),
+            explodable_explosion: fid(16),
+            tracking_max_angle: f(20),
+            explodable_debris_scale: f(24),
+            severable_debris_count: i32::from_le_bytes([b[28], b[29], b[30], b[31]]),
+            severable_debris: fid(32),
+            severable_explosion: fid(36),
+            severable_debris_scale: f(40),
+            gore_x: f(44),
+            gore_y: f(48),
+            gore_z: f(52),
+            gore_rx: f(56),
+            gore_ry: f(60),
+            gore_rz: f(64),
+            severable_impact_dataset: fid(68),
+            explodable_impact_dataset: fid(72),
+            severable_decal_count: b[76],
+            explodable_decal_count: b[77],
+            limb_replacement_scale: f(80),
+        }
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut b = vec![0u8; BPND_LEN];
+        fn put(b: &mut [u8], i: usize, bytes: [u8; 4]) {
+            b[i..i + 4].copy_from_slice(&bytes);
+        }
+        put(&mut b, 0, self.damage_mult.to_le_bytes());
+        b[4] = self.flags;
+        b[5] = self.part_type;
+        b[6] = self.health_percent;
+        b[7] = self.actor_value as u8;
+        b[8] = self.to_hit_chance;
+        b[9] = self.explodable_explosion_chance_percent;
+        b[10..12].copy_from_slice(&self.explodable_debris_count.to_le_bytes());
+        put(
+            &mut b,
+            12,
+            self.explodable_debris.unwrap_or(0).to_le_bytes(),
+        );
+        put(
+            &mut b,
+            16,
+            self.explodable_explosion.unwrap_or(0).to_le_bytes(),
+        );
+        put(&mut b, 20, self.tracking_max_angle.to_le_bytes());
+        put(&mut b, 24, self.explodable_debris_scale.to_le_bytes());
+        b[28..32].copy_from_slice(&self.severable_debris_count.to_le_bytes());
+        put(&mut b, 32, self.severable_debris.unwrap_or(0).to_le_bytes());
+        put(
+            &mut b,
+            36,
+            self.severable_explosion.unwrap_or(0).to_le_bytes(),
+        );
+        put(&mut b, 40, self.severable_debris_scale.to_le_bytes());
+        put(&mut b, 44, self.gore_x.to_le_bytes());
+        put(&mut b, 48, self.gore_y.to_le_bytes());
+        put(&mut b, 52, self.gore_z.to_le_bytes());
+        put(&mut b, 56, self.gore_rx.to_le_bytes());
+        put(&mut b, 60, self.gore_ry.to_le_bytes());
+        put(&mut b, 64, self.gore_rz.to_le_bytes());
+        put(
+            &mut b,
+            68,
+            self.severable_impact_dataset.unwrap_or(0).to_le_bytes(),
+        );
+        put(
+            &mut b,
+            72,
+            self.explodable_impact_dataset.unwrap_or(0).to_le_bytes(),
+        );
+        b[76] = self.severable_decal_count;
+        b[77] = self.explodable_decal_count;
+        // b[78..80] is the struct's 2-byte Unused field; every BPND in the game's
+        // masters carries zeros there, so the editor keeps it zero.
+        put(&mut b, 80, self.limb_replacement_scale.to_le_bytes());
+        b
+    }
+}
+
+impl BptdPart {
+    /// The part's display name: the Part Name when it has one, else its node, so
+    /// an unnamed part is still addressable in the list.
+    pub fn label(&self) -> &str {
+        self.name.as_deref().unwrap_or(&self.node)
+    }
 }
 
 impl ObjectEditorState {
@@ -421,6 +607,9 @@ impl ObjectEditorState {
         self.crea_sounds.clear();
         self.lvl_entries.clear();
         self.npc_head_parts.clear();
+        self.bptd_parts.clear();
+        self.bptd_ragdoll = None;
+        self.bptd_part_to_add = BptdPart::default();
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -611,6 +800,7 @@ impl ObjectEditorState {
             b"RACE" => self.load_race(),
             b"CLMT" => self.load_clmt(),
             b"AVIF" => self.load_avif(),
+            b"BPTD" => self.load_bptd(&raw_subs),
             _ => self.load_misc(),
         }
     }
@@ -1167,6 +1357,89 @@ impl ObjectEditorState {
         self.avif_mico = self.get_string(b"MICO");
     }
 
+    /// Load a `BPTD` (Body Part Data) record.
+    ///
+    /// The parts are a repeating collection — `(BPTN?) BPNN BPNT BPNI BPND NAM1
+    /// NAM4 NAM5` — so they cannot be read out of `raw_subs`, which is a
+    /// single-value-per-signature map and would collapse every part's BPNN onto
+    /// the last one. The subrecords are walked in order instead, and the whole
+    /// list is written back with one sequence edit.
+    fn load_bptd(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.bptd_parts.clear();
+        self.bptd_ragdoll = None;
+        let mut part: Option<BptdPart> = None;
+        for s in raw_subs {
+            let str_at = |i: usize| {
+                String::from_utf8_lossy(&s.data[i..])
+                    .trim_end_matches('\0')
+                    .to_string()
+            };
+            match &s.sig {
+                b"RAGA" if s.data.len() >= 4 => {
+                    self.bptd_ragdoll = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                // A part name opens a named part. An unnamed part has no BPTN, so
+                // its BPNN opens the part instead.
+                b"BPTN" => {
+                    if let Some(p) = part.take() {
+                        self.bptd_parts.push(p);
+                    }
+                    part = Some(BptdPart {
+                        name: Some(str_at(0)),
+                        ..BptdPart::default()
+                    });
+                }
+                b"BPNN" => {
+                    if part.as_ref().is_none_or(|p| p.name.is_none()) {
+                        if let Some(p) = part.take() {
+                            self.bptd_parts.push(p);
+                        }
+                        part = Some(BptdPart::default());
+                    }
+                    if let Some(p) = part.as_mut() {
+                        p.node = str_at(0);
+                    }
+                }
+                b"BPNT" => {
+                    if let Some(p) = part.as_mut() {
+                        p.vats_target = str_at(0);
+                    }
+                }
+                b"BPNI" => {
+                    if let Some(p) = part.as_mut() {
+                        p.ik_start_node = str_at(0);
+                    }
+                }
+                b"BPND" if s.data.len() >= BPND_LEN => {
+                    if let Some(p) = part.as_mut() {
+                        p.data = BptdNodeData::from_bytes(&s.data);
+                    }
+                }
+                b"NAM1" => {
+                    if let Some(p) = part.as_mut() {
+                        p.limb_model = str_at(0);
+                    }
+                }
+                b"NAM4" => {
+                    if let Some(p) = part.as_mut() {
+                        p.gore_target_bone = str_at(0);
+                    }
+                }
+                b"NAM5" => {
+                    if let Some(p) = part.as_mut() {
+                        p.texture_hashes = s.data.clone();
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(p) = part.take() {
+            self.bptd_parts.push(p);
+        }
+    }
+
     /// Save the current state back to session as uncommitted edits.
     pub fn save_to_session(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
@@ -1243,6 +1516,7 @@ impl ObjectEditorState {
             b"RACE" => self.save_race(session),
             b"CLMT" => self.save_clmt(session),
             b"AVIF" => self.save_avif(session),
+            b"BPTD" => self.save_bptd(session),
             _ => self.save_misc(session),
         }
 
@@ -2352,6 +2626,44 @@ impl ObjectEditorState {
             session.doc.remove_sub(fid, b"MICO");
         }
     }
+
+    /// Save a `BPTD` (Body Part Data) record.
+    ///
+    /// The whole part collection is rewritten as one sequence, because the parts
+    /// are not a list of one signature: each is a run of eight different
+    /// subrecords that must keep their order. A per-signature list edit would
+    /// cluster every BPNN together and every NAM5 together, which the engine
+    /// cannot read back into parts.
+    fn save_bptd(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut subs: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for p in &self.bptd_parts {
+            if let Some(name) = &p.name {
+                subs.push((*b"BPTN", encode_zstring(name)));
+            }
+            subs.push((*b"BPNN", encode_zstring(&p.node)));
+            subs.push((*b"BPNT", encode_zstring(&p.vats_target)));
+            subs.push((*b"BPNI", encode_zstring(&p.ik_start_node)));
+            subs.push((*b"BPND", p.data.to_bytes()));
+            subs.push((*b"NAM1", encode_zstring(&p.limb_model)));
+            subs.push((*b"NAM4", encode_zstring(&p.gore_target_bone)));
+            subs.push((*b"NAM5", p.texture_hashes.clone()));
+        }
+        // RAGA sits after the last part in every record that has one [observed:
+        // all 40 BPTD records carrying a RAGA put it last], so it is appended
+        // here rather than as a separate edit.
+        if let Some(ragdoll) = self.bptd_ragdoll {
+            subs.push((*b"RAGA", ragdoll.to_le_bytes().to_vec()));
+        }
+        session.doc.set_sub_sequence(
+            fid,
+            vec![
+                *b"BPTN", *b"BPNN", *b"BPNT", *b"BPNI", *b"BPND", *b"NAM1", *b"NAM4", *b"NAM5",
+                *b"RAGA",
+            ],
+            subs,
+        );
+    }
 }
 
 fn encode_zstring(s: &str) -> Vec<u8> {
@@ -2394,6 +2706,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"LVLN" => "Leveled NPC",
         b"LVLC" => "Leveled Creature",
         b"AVIF" => "Actor Value",
+        b"BPTD" => "Body Part Data",
         _ => fallback.as_str(),
     };
     if !full_name.trim().is_empty() {
@@ -2567,6 +2880,7 @@ pub fn ui(
                 b"RACE" => draw_race_ui(ui, &mut state),
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
                 b"AVIF" => draw_avif_ui(ui, &mut state),
+                b"BPTD" => draw_bptd_ui(ui, &session, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
 
@@ -2890,6 +3204,72 @@ const MOOD_NAMES: [&str; 8] = [
 ];
 
 const ASSISTANCE_NAMES: [&str; 3] = ["Helps Nobody", "Helps Allies", "Helps Friends and Allies"];
+
+/// `BPND` Flags, one bit per value in fopdoc's BPTD flag table.
+const BPTD_FLAGS: [(u8, &str); 7] = [
+    (0x01, "Severable"),
+    (0x02, "IK Data"),
+    (0x04, "IK Data - Biped Data"),
+    (0x08, "Explodable"),
+    (0x10, "IK Data - Is Head"),
+    (0x20, "IK Data - Headtracking"),
+    (0x40, "To Hit Chance - Absolute"),
+];
+
+/// `BPND` Part Type, the BodyLocation enum in fopdoc's BPTD part-type table.
+const BPTD_PART_TYPES: [&str; 15] = [
+    "Torso",
+    "Head 1",
+    "Head 2",
+    "Left Arm 1",
+    "Left Arm 2",
+    "Right Arm 1",
+    "Right Arm 2",
+    "Left Leg 1",
+    "Left Leg 2",
+    "Left Leg 3",
+    "Right Leg 1",
+    "Right Leg 2",
+    "Right Leg 3",
+    "Brain",
+    "Weapon",
+];
+
+/// `BPND` Actor Value — the engine's actor-value enum, of which a body part names
+/// the one whose condition the part tracks (e.g. a head reports Perception
+/// Condition). Only the range a body part can actually use is offered.
+const BPTD_ACTOR_VALUES: [(i8, &str); 30] = [
+    (-1, "None"),
+    (0, "Aggression"),
+    (1, "Confidence"),
+    (2, "Energy"),
+    (3, "Responsibility"),
+    (4, "Mood"),
+    (5, "Strength"),
+    (6, "Perception"),
+    (7, "Endurance"),
+    (8, "Charisma"),
+    (9, "Intelligence"),
+    (10, "Agility"),
+    (11, "Luck"),
+    (12, "Action Points"),
+    (13, "Carry Weight"),
+    (14, "Critical Chance"),
+    (15, "Heal Rate"),
+    (16, "Health"),
+    (17, "Melee Damage"),
+    (18, "Damage Resistance"),
+    (19, "Poison Resistance"),
+    (20, "Rad Resistance"),
+    (21, "Speed Multiplier"),
+    (22, "Fatigue"),
+    (23, "Karma"),
+    (24, "XP"),
+    (25, "Perception Condition"),
+    (26, "Endurance Condition"),
+    (27, "Left Attack Condition"),
+    (28, "Right Attack Condition"),
+];
 
 const CSDT_TYPES: [&str; 22] = [
     "Left Foot",
@@ -4760,6 +5140,390 @@ fn draw_avif_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                 egui::TextEdit::singleline(&mut state.avif_mico)
                     .desired_width(ui.available_width() - 140.0),
             );
+        });
+    });
+}
+
+/// Draw the one editable body part, in the order the record stores it.
+fn draw_bptd_part_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+    idx: usize,
+) {
+    let Some(part) = state.bptd_parts.get_mut(idx) else {
+        return;
+    };
+    let d = &mut part.data;
+
+    ui.group(|ui| {
+        ui.strong("Part Identity");
+        ui.add_space(4.0);
+        // The name is optional in the file, so it is a checkbox plus a field:
+        // an unnamed part is legal and the editor has to be able to express it.
+        let mut named = part.name.is_some();
+        ui.horizontal(|ui| {
+            if ui.checkbox(&mut named, "Named Part (BPTN)").changed() {
+                part.name = if named { Some(String::new()) } else { None };
+            }
+            if let Some(name) = part.name.as_mut() {
+                ui.label("Part Name:");
+                ui.add(egui::TextEdit::singleline(name).desired_width(200.0));
+            } else {
+                ui.label(
+                    egui::RichText::new("this part has no BPTN, which the game accepts").italics(),
+                );
+            }
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Part Node (BPNN):");
+            ui.add(
+                egui::TextEdit::singleline(&mut part.node)
+                    .desired_width(ui.available_width() - 160.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("VATS Target (BPNT):");
+            ui.add(
+                egui::TextEdit::singleline(&mut part.vats_target)
+                    .desired_width(ui.available_width() - 160.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("IK Data - Start Node (BPNI):");
+            ui.add(
+                egui::TextEdit::singleline(&mut part.ik_start_node)
+                    .desired_width(ui.available_width() - 200.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Node Data (BPND)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Damage Multiplier:");
+            ui.add(
+                egui::DragValue::new(&mut d.damage_mult)
+                    .speed(0.05)
+                    .range(0.0..=100.0),
+            );
+            ui.label("Health Percent:");
+            ui.add(egui::DragValue::new(&mut d.health_percent).range(0..=255));
+            ui.label("To Hit Chance:");
+            ui.add(egui::DragValue::new(&mut d.to_hit_chance).range(0..=100));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Part Type:");
+            let cur_type = (d.part_type as usize).min(BPTD_PART_TYPES.len() - 1);
+            let type_lbl = BPTD_PART_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt(("bptd_part_type", idx))
+                .selected_text(type_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in BPTD_PART_TYPES.iter().enumerate() {
+                        ui.selectable_value(&mut d.part_type, i as u8, name);
+                    }
+                });
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Actor Value:");
+            let cur_av = BPTD_ACTOR_VALUES
+                .iter()
+                .find(|(v, _)| *v == d.actor_value)
+                .map(|(_, n)| *n);
+            egui::ComboBox::from_id_salt(("bptd_actor_value", idx))
+                .selected_text(cur_av.unwrap_or("Custom"))
+                .show_ui(ui, |ui| {
+                    for (v, name) in BPTD_ACTOR_VALUES {
+                        ui.selectable_value(&mut d.actor_value, v, name);
+                    }
+                });
+            // The raw value stays reachable, because the enum is a superset of
+            // what the dropdown offers and a record may name anything.
+            ui.label("Raw:");
+            ui.add(
+                egui::DragValue::new(&mut d.actor_value)
+                    .range(-1..=127)
+                    .speed(0.2),
+            );
+        });
+
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Flags:").underline());
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in BPTD_FLAGS {
+                let mut set = (d.flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        d.flags |= bit;
+                    } else {
+                        d.flags &= !bit;
+                    }
+                }
+            }
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Tracking Max Angle:");
+            ui.add(
+                egui::DragValue::new(&mut d.tracking_max_angle)
+                    .speed(1.0)
+                    .range(0.0..=360.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Explodable");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Explosion Chance %:");
+            ui.add(egui::DragValue::new(&mut d.explodable_explosion_chance_percent).range(0..=100));
+            ui.label("Debris Count:");
+            ui.add(
+                egui::DragValue::new(&mut d.explodable_debris_count)
+                    .range(0..=65535)
+                    .speed(0.2),
+            );
+            ui.label("Debris Scale:");
+            ui.add(
+                egui::DragValue::new(&mut d.explodable_debris_scale)
+                    .speed(0.05)
+                    .range(0.0..=100.0),
+            );
+            ui.label("Decal Count:");
+            ui.add(egui::DragValue::new(&mut d.explodable_decal_count).range(0..=255));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Debris (DEBR):");
+            let debrs = session.records_by_sig(*b"DEBR");
+            record_dropdown(ui, "bptd_expl_debris", &debrs, &mut d.explodable_debris);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Explosion (EXPL):");
+            let expls = session.records_by_sig(*b"EXPL");
+            record_dropdown(
+                ui,
+                "bptd_expl_explosion",
+                &expls,
+                &mut d.explodable_explosion,
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Impact Dataset (IPDS):");
+            let ipdss = session.records_by_sig(*b"IPDS");
+            record_dropdown(
+                ui,
+                "bptd_expl_impact",
+                &ipdss,
+                &mut d.explodable_impact_dataset,
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Severable");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Debris Count:");
+            ui.add(egui::DragValue::new(&mut d.severable_debris_count).speed(0.2));
+            ui.label("Debris Scale:");
+            ui.add(
+                egui::DragValue::new(&mut d.severable_debris_scale)
+                    .speed(0.05)
+                    .range(0.0..=100.0),
+            );
+            ui.label("Decal Count:");
+            ui.add(egui::DragValue::new(&mut d.severable_decal_count).range(0..=255));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Debris (DEBR):");
+            let debrs = session.records_by_sig(*b"DEBR");
+            record_dropdown(ui, "bptd_sev_debris", &debrs, &mut d.severable_debris);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Explosion (EXPL):");
+            let expls = session.records_by_sig(*b"EXPL");
+            record_dropdown(ui, "bptd_sev_explosion", &expls, &mut d.severable_explosion);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Impact Dataset (IPDS):");
+            let ipdss = session.records_by_sig(*b"IPDS");
+            record_dropdown(
+                ui,
+                "bptd_sev_impact",
+                &ipdss,
+                &mut d.severable_impact_dataset,
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Gore Effects");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Translate X:");
+            ui.add(egui::DragValue::new(&mut d.gore_x).speed(0.1));
+            ui.label("Y:");
+            ui.add(egui::DragValue::new(&mut d.gore_y).speed(0.1));
+            ui.label("Z:");
+            ui.add(egui::DragValue::new(&mut d.gore_z).speed(0.1));
+        });
+        ui.horizontal(|ui| {
+            ui.label("X Rotation:");
+            ui.add(egui::DragValue::new(&mut d.gore_rx).speed(0.1));
+            ui.label("Y Rotation:");
+            ui.add(egui::DragValue::new(&mut d.gore_ry).speed(0.1));
+            ui.label("Z Rotation:");
+            ui.add(egui::DragValue::new(&mut d.gore_rz).speed(0.1));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Target Bone (NAM4):");
+            ui.add(
+                egui::TextEdit::singleline(&mut part.gore_target_bone)
+                    .desired_width(ui.available_width() - 160.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Limb Replacement");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Model (NAM1):");
+            ui.add(
+                egui::TextEdit::singleline(&mut part.limb_model)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Scale:");
+            ui.add(
+                egui::DragValue::new(&mut d.limb_replacement_scale)
+                    .speed(0.05)
+                    .range(0.0..=100.0),
+            );
+        });
+        // A texture hash is a file hash the editor cannot compute or author, so
+        // it reports what is there rather than offering to change it: rewriting
+        // it would corrupt the mod.
+        let hashes = part.texture_hashes.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (NAM5): {hashes} hash(es), {} bytes — preserved as-is",
+            part.texture_hashes.len()
+        ));
+    });
+}
+
+fn draw_bptd_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Ragdoll (RAGA)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            let ragdolls = session.records_by_sig(*b"RGDL");
+            record_dropdown(ui, "bptd_ragdoll", &ragdolls, &mut state.bptd_ragdoll);
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.strong(format!("Body Parts ({})", state.bptd_parts.len()));
+    ui.add_space(4.0);
+
+    if state.bptd_parts.is_empty() {
+        ui.label(
+            egui::RichText::new("No body parts: this record defines no damageable parts.")
+                .italics(),
+        );
+    }
+
+    let mut remove_idx = None;
+    for idx in 0..state.bptd_parts.len() {
+        let label = state.bptd_parts[idx].label().to_string();
+        let type_lbl = {
+            let t = state.bptd_parts[idx].data.part_type as usize;
+            BPTD_PART_TYPES.get(t).copied().unwrap_or("Unknown")
+        };
+        egui::CollapsingHeader::new(format!("{}. {label} — {type_lbl}", idx + 1))
+            .id_salt(("bptd_part", idx))
+            .default_open(idx == 0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this body part")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    ui.label(
+                        egui::RichText::new("part subrecords are written in file order").weak(),
+                    );
+                });
+                draw_bptd_part_ui(ui, session, state, idx);
+            });
+    }
+    if let Some(idx) = remove_idx {
+        state.bptd_parts.remove(idx);
+    }
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Add Body Part");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            let add = &mut state.bptd_part_to_add;
+            let mut named = add.name.is_some();
+            if ui.checkbox(&mut named, "Named Part (BPTN)").changed() {
+                add.name = if named { Some(String::new()) } else { None };
+            }
+            if let Some(name) = add.name.as_mut() {
+                ui.label("Name:");
+                ui.add(egui::TextEdit::singleline(name).desired_width(140.0));
+            }
+            ui.label("Part Node (BPNN):");
+            ui.add(
+                egui::TextEdit::singleline(&mut add.node)
+                    .desired_width(ui.available_width() - 380.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            let add = &mut state.bptd_part_to_add;
+            ui.label("Part Type:");
+            let cur_type = (add.data.part_type as usize).min(BPTD_PART_TYPES.len() - 1);
+            let type_lbl = BPTD_PART_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("bptd_add_part_type")
+                .selected_text(type_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in BPTD_PART_TYPES.iter().enumerate() {
+                        ui.selectable_value(&mut add.data.part_type, i as u8, name);
+                    }
+                });
+            if ui.button("+ Add Part").clicked() {
+                let new_part = std::mem::take(&mut state.bptd_part_to_add);
+                // A part the game can read needs a node to match against the
+                // skeleton; without one the engine ignores the part entirely.
+                if new_part.node.trim().is_empty() {
+                    state.status = "a body part needs a Part Node (BPNN)".to_string();
+                } else {
+                    state.bptd_parts.push(new_part);
+                }
+            }
         });
     });
 }
