@@ -2361,6 +2361,10 @@ fn draw_actor_ui(
         ui.horizontal(|ui| {
             ui.label("Health (HP):");
             ui.add(egui::DragValue::new(&mut state.actor_health).range(1..=50000));
+            if state.sig == *b"CREA" {
+                ui.label("Damage:");
+                ui.add(egui::DragValue::new(&mut state.actor_damage).range(0..=10000));
+            }
             ui.label("Fatigue:");
             ui.add(egui::DragValue::new(&mut state.actor_fatigue).range(0..=50000));
             ui.label("Speed Mult %:");
