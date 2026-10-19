@@ -229,6 +229,11 @@ fn main() {
     assert_eq!(crea_state.actor_voice, Some(0x00094EED));
     assert_eq!(crea_state.actor_splo, vec![0x00060C16]);
     println!("CREA SPLO Spells: {:08X?}", crea_state.actor_splo);
+    assert_eq!(
+        crea_state.actor_factions,
+        vec![(0x0005FF9F, 0), (0x00021472, 0), (0x0007E268, 0)]
+    );
+    println!("CREA SNAM Factions: {:08X?}", crea_state.actor_factions);
 
     let title = nvre_editor::object_editor::window_title(
         &crea_state.sig,

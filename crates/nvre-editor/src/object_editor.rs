@@ -126,6 +126,9 @@ pub struct ObjectEditorState {
     pub actor_combat_style: Option<u32>,
     pub actor_splo: Vec<u32>,
     pub splo_to_add: Option<u32>,
+    pub actor_factions: Vec<(u32, i8)>,
+    pub faction_to_add: Option<u32>,
+    pub faction_rank_to_add: i8,
 
     // ALCH fields
     pub alch_weight: f32,
@@ -154,11 +157,14 @@ pub struct ObjectEditorState {
     pub door_hidden: bool,
     pub door_minimal: bool,
     pub door_sliding: bool,
+    pub door_sound_open: Option<u32>,
 
     // ACTI & TERM fields
     pub acti_prompt: String,
+    pub acti_sound_loop: Option<u32>,
     pub term_difficulty: u8,
     pub term_welcome: String,
+    pub term_sound_loop: Option<u32>,
 
     // LIGH fields
     pub ligh_radius: u32,
@@ -343,11 +349,17 @@ impl ObjectEditorState {
 
         self.raw_subs.clear();
         self.actor_splo.clear();
+        self.actor_factions.clear();
         for s in &raw_subs {
             self.raw_subs.insert(s.sig, s.data.clone());
             if s.sig == *b"SPLO" && s.data.len() >= 4 {
                 let fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
                 self.actor_splo.push(fid);
+            }
+            if s.sig == *b"SNAM" && s.data.len() >= 5 {
+                let fac_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                let rank = s.data[4] as i8;
+                self.actor_factions.push((fac_fid, rank));
             }
         }
         if let Some(edits) = session.doc.edits_for(form_id) {
@@ -365,6 +377,19 @@ impl ObjectEditorState {
                             if d.len() >= 4 {
                                 self.actor_splo
                                     .push(u32::from_le_bytes([d[0], d[1], d[2], d[3]]));
+                            }
+                        }
+                    }
+                    nvre_edit::Edit::SetSubList {
+                        sig: [b'S', b'N', b'A', b'M'],
+                        data,
+                    } => {
+                        self.actor_factions.clear();
+                        for d in data {
+                            if d.len() >= 5 {
+                                let fac_fid = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
+                                let rank = d[4] as i8;
+                                self.actor_factions.push((fac_fid, rank));
                             }
                         }
                     }
@@ -632,10 +657,12 @@ impl ObjectEditorState {
             self.door_minimal = f & 4 != 0;
             self.door_sliding = f & 8 != 0;
         }
+        self.door_sound_open = self.get_fid(b"SNAM");
     }
 
     fn load_acti(&mut self) {
         self.acti_prompt = self.get_string(b"RNAM");
+        self.acti_sound_loop = self.get_fid(b"SNAM");
     }
 
     fn load_term(&mut self) {
@@ -643,6 +670,7 @@ impl ObjectEditorState {
             self.term_difficulty = b.first().copied().unwrap_or(0);
         }
         self.term_welcome = self.get_string(b"WNAM");
+        self.term_sound_loop = self.get_fid(b"SNAM");
     }
 
     fn load_ligh(&mut self) {
@@ -1205,6 +1233,18 @@ impl ObjectEditorState {
             .map(|fid| fid.to_le_bytes().to_vec())
             .collect();
         session.doc.set_sub_list(fid, b"SPLO", splo_buffers);
+
+        let snam_buffers: Vec<Vec<u8>> = self
+            .actor_factions
+            .iter()
+            .map(|(fac_fid, rank)| {
+                let mut buf = vec![0u8; 8];
+                buf[0..4].copy_from_slice(&fac_fid.to_le_bytes());
+                buf[4] = *rank as u8;
+                buf
+            })
+            .collect();
+        session.doc.set_sub_list(fid, b"SNAM", snam_buffers);
     }
 
     fn save_alch(&self, session: &mut crate::session::Session) {
@@ -1301,6 +1341,9 @@ impl ObjectEditorState {
             f |= 8;
         }
         session.doc.set_sub(fid, b"FNAM", vec![f]);
+        if let Some(s) = self.door_sound_open {
+            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+        }
     }
 
     fn save_acti(&self, session: &mut crate::session::Session) {
@@ -1309,6 +1352,9 @@ impl ObjectEditorState {
             session
                 .doc
                 .set_sub(fid, b"RNAM", encode_zstring(&self.acti_prompt));
+        }
+        if let Some(s) = self.acti_sound_loop {
+            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
         }
     }
 
@@ -1321,6 +1367,9 @@ impl ObjectEditorState {
             session
                 .doc
                 .set_sub(fid, b"WNAM", encode_zstring(&self.term_welcome));
+        }
+        if let Some(s) = self.term_sound_loop {
+            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
         }
     }
 
@@ -2599,6 +2648,63 @@ fn draw_actor_ui(
             }
         });
     });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Faction Memberships (SNAM)");
+        ui.add_space(4.0);
+
+        let factions_all = session.records_by_sig(*b"FACT");
+
+        if state.actor_factions.is_empty() {
+            ui.label(egui::RichText::new("No faction memberships.").italics());
+        } else {
+            let mut remove_idx = None;
+            for (idx, (fid, rank)) in state.actor_factions.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this faction")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    let name = factions_all
+                        .iter()
+                        .find(|(id, _)| *id == *fid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Faction");
+                    ui.label(format!("• {name} ({fid:08X})"));
+                    ui.separator();
+                    ui.label("Rank:");
+                    ui.add(egui::DragValue::new(rank).range(-1..=127));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.actor_factions.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Add Faction:");
+            record_dropdown(
+                ui,
+                "actor_add_fact",
+                &factions_all,
+                &mut state.faction_to_add,
+            );
+            ui.label("Rank:");
+            ui.add(egui::DragValue::new(&mut state.faction_rank_to_add).range(-1..=127));
+            if ui.button("+ Add").clicked() {
+                if let Some(fid) = state.faction_to_add {
+                    if !state.actor_factions.iter().any(|(f, _)| *f == fid) {
+                        state.actor_factions.push((fid, state.faction_rank_to_add));
+                    }
+                }
+            }
+        });
+    });
 }
 
 fn draw_alch_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
@@ -2698,6 +2804,11 @@ fn draw_door_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             ui.checkbox(&mut state.door_minimal, "Minimal Use");
             ui.checkbox(&mut state.door_sliding, "Sliding");
         });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Open Sound (SNAM FormID):");
+            formid_field(ui, "door_sound_open", &mut state.door_sound_open);
+        });
     });
 }
 
@@ -2708,6 +2819,11 @@ fn draw_acti_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         ui.horizontal(|ui| {
             ui.label("Activate Text Prompt (RNAM):");
             ui.add(egui::TextEdit::singleline(&mut state.acti_prompt).desired_width(200.0));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Looping Sound (SNAM FormID):");
+            formid_field(ui, "acti_sound_loop", &mut state.acti_sound_loop);
         });
     });
 }
@@ -2730,6 +2846,11 @@ fn draw_term_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                         ui.selectable_value(&mut state.term_difficulty, i as u8, name);
                     }
                 });
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Looping Sound (SNAM FormID):");
+            formid_field(ui, "term_sound_loop", &mut state.term_sound_loop);
         });
         ui.add_space(4.0);
         ui.label("Welcome Text (WNAM):");
