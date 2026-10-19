@@ -2932,7 +2932,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 [[package]]
 name = "fnv-bsa"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "fnv-inflate",
  "fnv-util",
@@ -2944,7 +2944,7 @@ dependencies = [
 [[package]]
 name = "fnv-dds"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "thiserror 2.0.21",
 ]
@@ -2968,7 +2968,7 @@ dependencies = [
 [[package]]
 name = "fnv-inflate"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "adler2",
  "flate2",
@@ -2978,7 +2978,7 @@ dependencies = [
 [[package]]
 name = "fnv-nif"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "fnv-util",
  "serde_json",
@@ -2989,7 +2989,7 @@ dependencies = [
 [[package]]
 name = "fnv-util"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "encoding_rs",
  "hex",
@@ -3000,7 +3000,7 @@ dependencies = [
 [[package]]
 name = "fnv-vfs"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "fnv-bsa",
  "thiserror 2.0.21",
@@ -4271,7 +4271,7 @@ dependencies = [
 [[package]]
 name = "nvf-assets"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#bb5f609682d7f1f3148bff99c9e55a1cc46b2f64"
+source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "bevy",
  "fnv-dds",
