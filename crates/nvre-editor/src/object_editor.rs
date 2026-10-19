@@ -1702,12 +1702,7 @@ pub fn manage_window(
     let win_opt = win_query.iter_mut().next();
     let cam_opt = cam_query.iter().next();
 
-    let is_editing_non_crea = match session.editing_object {
-        Some((_, sig)) => sig != *b"CREA",
-        None => false,
-    };
-
-    if is_editing_non_crea {
+    if session.editing_object.is_some() {
         if let Some((_, mut win)) = win_opt {
             let expected_title = if !state.full_name.trim().is_empty() {
                 format!(
@@ -1794,24 +1789,29 @@ pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
     mut session: ResMut<crate::session::Session>,
     mut state: ResMut<ObjectEditorState>,
+    mut crea_state: ResMut<crate::creature::CreatureEditorState>,
 ) {
-    let is_editing_non_crea = match session.editing_object {
-        Some((_, sig)) => sig != *b"CREA",
-        None => false,
-    };
-    if !is_editing_non_crea {
+    let Some((fid, sig)) = session.editing_object else {
         return;
-    }
+    };
 
     let Some(mut ctx) = ctx.iter_mut().next() else {
         return;
     };
     let ctx = ctx.get_mut();
 
-    if let Some((fid, sig)) = session.editing_object {
-        if state.loaded_target != Some((fid, sig)) {
-            state.load_from_session(&session, fid, sig);
-        }
+    if sig == *b"CREA" {
+        egui::CentralPanel::default().show(
+            &mut crate::panels::root_ui(ctx, "object_editor"),
+            |ui| {
+                crate::creature::draw_creature_ui(ui, &mut session, &mut crea_state, fid);
+            },
+        );
+        return;
+    }
+
+    if state.loaded_target != Some((fid, sig)) {
+        state.load_from_session(&session, fid, sig);
     }
 
     egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "object_editor"), |ui| {

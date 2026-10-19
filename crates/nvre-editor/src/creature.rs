@@ -484,32 +484,18 @@ const IMPACT_MATERIALS: [&str; 14] = [
 ];
 const ATTACK_ANIMS: [&str; 5] = ["Any", "Left", "Right", "Forward", "Back"];
 
-/// The UI rendering system for the creature editor window.
-pub fn ui(
-    mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
-    mut session: ResMut<crate::session::Session>,
-    mut state: ResMut<CreatureEditorState>,
+/// Draw the full Creature Editor UI within an egui panel.
+pub fn draw_creature_ui(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    state: &mut CreatureEditorState,
+    form_id: u32,
 ) {
-    if session.editing_creature.is_none() {
-        return;
-    }
-
-    let Some(mut ctx) = ctx.iter_mut().next() else {
-        return;
-    };
-    let ctx = ctx.get_mut();
-
     // Check if creature selection changed
-    if session.editing_creature != state.loaded_fid {
-        if let Some(fid) = session.editing_creature {
-            state.data = CreatureData::load(&session, fid);
-            state.loaded_fid = Some(fid);
-            state.status = format!("Loaded creature {:08X}", fid);
-        } else {
-            state.data = None;
-            state.loaded_fid = None;
-            state.status.clear();
-        }
+    if state.loaded_fid != Some(form_id) {
+        state.data = CreatureData::load(session, form_id);
+        state.loaded_fid = Some(form_id);
+        state.status = format!("Loaded creature {:08X}", form_id);
     }
 
     let CreatureEditorState {
@@ -519,126 +505,123 @@ pub fn ui(
         ref mut status,
     } = *state;
 
-    egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "creature"), |ui| {
-        let Some(data) = data else {
-            ui.centered_and_justified(|ui| {
-                ui.vertical_centered(|ui| {
-                    ui.heading("Creature Editor");
-                    ui.add_space(8.0);
-                    ui.label("No creature selected.");
-                    ui.label("Double-click any creature in the Objects window (Actors -> Creature) to edit.");
-                });
+    let Some(data) = data else {
+        ui.centered_and_justified(|ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Creature Editor");
+                ui.add_space(8.0);
+                ui.label(format!("Failed to load creature {:08X}.", form_id));
             });
-            return;
-        };
+        });
+        return;
+    };
 
-        // Header section (Identity)
-        ui.group(|ui| {
-            ui.horizontal(|ui| {
-                ui.label(format!("FormID: {:08X}", data.form_id));
-                ui.separator();
-                ui.label("Editor ID:");
-                ui.add(egui::TextEdit::singleline(&mut data.edid).desired_width(180.0));
-                ui.separator();
-                ui.label("Name:");
-                ui.add(egui::TextEdit::singleline(&mut data.full_name).desired_width(180.0));
-            });
-
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Creature Type:");
-                let cur_type = data.creature_type as usize;
-                let cur_label = CREATURE_TYPES.get(cur_type).copied().unwrap_or("Unknown");
-                egui::ComboBox::from_id_salt("crea_type")
-                    .selected_text(cur_label)
-                    .show_ui(ui, |ui| {
-                        for (i, &name) in CREATURE_TYPES.iter().enumerate() {
-                            ui.selectable_value(&mut data.creature_type, i as u8, name);
-                        }
-                    });
-
-                ui.separator();
-                ui.label("Script:");
-                formid_field(ui, "crea_script", &mut data.script);
-            });
+    // Header section (Identity)
+    ui.group(|ui| {
+        ui.horizontal(|ui| {
+            ui.label(format!("FormID: {:08X}", data.form_id));
+            ui.separator();
+            ui.label("Editor ID:");
+            ui.add(egui::TextEdit::singleline(&mut data.edid).desired_width(180.0));
+            ui.separator();
+            ui.label("Name:");
+            ui.add(egui::TextEdit::singleline(&mut data.full_name).desired_width(180.0));
         });
 
         ui.add_space(4.0);
-
-        // Tab bar
         ui.horizontal(|ui| {
-            ui.selectable_value(tab, CreatureTab::Stats, "Stats & Attributes");
-            ui.selectable_value(tab, CreatureTab::FlagsAndTraits, "Flags & Traits");
-            ui.selectable_value(tab, CreatureTab::AiData, "AI Data");
-            ui.selectable_value(tab, CreatureTab::ModelAndAudio, "Model & Audio");
-            ui.selectable_value(tab, CreatureTab::Template, "Template");
+            ui.label("Creature Type:");
+            let cur_type = data.creature_type as usize;
+            let cur_label = CREATURE_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("crea_type")
+                .selected_text(cur_label)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in CREATURE_TYPES.iter().enumerate() {
+                        ui.selectable_value(&mut data.creature_type, i as u8, name);
+                    }
+                });
+
+            ui.separator();
+            ui.label("Script:");
+            formid_field(ui, "crea_script", &mut data.script);
         });
-        ui.separator();
-
-        // Main Tab Content inside ScrollArea
-        let avail_h = (ui.available_height() - 48.0).max(200.0);
-        egui::ScrollArea::vertical()
-            .id_salt("crea_scroll")
-            .max_height(avail_h)
-            .show(ui, |ui| match *tab {
-                CreatureTab::Stats => {
-                    draw_stats_tab(ui, data);
-                }
-                CreatureTab::FlagsAndTraits => {
-                    draw_flags_tab(ui, data);
-                }
-                CreatureTab::AiData => {
-                    draw_ai_tab(ui, data);
-                }
-                CreatureTab::ModelAndAudio => {
-                    draw_model_tab(ui, data);
-                }
-                CreatureTab::Template => {
-                    draw_template_tab(ui, data);
-                }
-            });
-
-        ui.separator();
-
-        // Bottom Action Bar
-        let mut do_revert = false;
-        ui.horizontal(|ui| {
-            if ui
-                .add_sized([160.0, 28.0], egui::Button::new("Apply Changes to Mod"))
-                .clicked()
-            {
-                data.save(&mut session);
-                *status = format!(
-                    "Changes to {:08X} queued in active mod (save with Status panel).",
-                    data.form_id
-                );
-            }
-
-            if ui
-                .add_sized([100.0, 28.0], egui::Button::new("Revert"))
-                .clicked()
-            {
-                do_revert = true;
-            }
-
-            if ui
-                .add_sized([100.0, 28.0], egui::Button::new("Close"))
-                .clicked()
-            {
-                session.close_creature();
-            }
-
-            ui.add_space(8.0);
-            ui.label(&*status);
-        });
-
-        if do_revert {
-            if let Some(loaded) = CreatureData::load(&session, data.form_id) {
-                *data = loaded;
-            }
-            *status = "Reverted changes to disk/mod state.".to_string();
-        }
     });
+
+    ui.add_space(4.0);
+
+    // Tab bar
+    ui.horizontal(|ui| {
+        ui.selectable_value(tab, CreatureTab::Stats, "Stats & Attributes");
+        ui.selectable_value(tab, CreatureTab::FlagsAndTraits, "Flags & Traits");
+        ui.selectable_value(tab, CreatureTab::AiData, "AI Data");
+        ui.selectable_value(tab, CreatureTab::ModelAndAudio, "Model & Audio");
+        ui.selectable_value(tab, CreatureTab::Template, "Template");
+    });
+    ui.separator();
+
+    // Main Tab Content inside ScrollArea
+    let avail_h = (ui.available_height() - 48.0).max(200.0);
+    egui::ScrollArea::vertical()
+        .id_salt("crea_scroll")
+        .max_height(avail_h)
+        .show(ui, |ui| match *tab {
+            CreatureTab::Stats => {
+                draw_stats_tab(ui, data);
+            }
+            CreatureTab::FlagsAndTraits => {
+                draw_flags_tab(ui, data);
+            }
+            CreatureTab::AiData => {
+                draw_ai_tab(ui, data);
+            }
+            CreatureTab::ModelAndAudio => {
+                draw_model_tab(ui, data);
+            }
+            CreatureTab::Template => {
+                draw_template_tab(ui, data);
+            }
+        });
+
+    ui.separator();
+
+    // Bottom Action Bar
+    let mut do_revert = false;
+    ui.horizontal(|ui| {
+        if ui
+            .add_sized([160.0, 28.0], egui::Button::new("Apply Changes to Mod"))
+            .clicked()
+        {
+            data.save(session);
+            *status = format!(
+                "Changes to {:08X} queued in active mod (save with Status panel).",
+                data.form_id
+            );
+        }
+
+        if ui
+            .add_sized([100.0, 28.0], egui::Button::new("Revert"))
+            .clicked()
+        {
+            do_revert = true;
+        }
+
+        if ui
+            .add_sized([100.0, 28.0], egui::Button::new("Close"))
+            .clicked()
+        {
+            session.close_object_editor();
+        }
+
+        ui.add_space(8.0);
+        ui.label(&*status);
+    });
+
+    if do_revert {
+        if let Some(loaded) = CreatureData::load(session, data.form_id) {
+            *data = loaded;
+        }
+        *status = "Reverted changes to disk/mod state.".to_string();
+    }
 }
 
 fn formid_field(ui: &mut egui::Ui, id: &str, opt: &mut Option<u32>) {
@@ -1113,80 +1096,4 @@ fn draw_template_tab(ui: &mut egui::Ui, data: &mut CreatureData) {
             }
         });
     });
-}
-
-/// Component marking the dynamic Creature window entity.
-#[derive(Component)]
-pub struct CreatureWindow;
-
-/// Component marking the dynamic Creature camera entity.
-#[derive(Component)]
-pub struct CreatureCamera;
-
-/// Dynamically spawn or despawn the Creature window based on `session.editing_creature`.
-pub fn manage_window(
-    mut commands: Commands,
-    session: Res<crate::session::Session>,
-    mut win_query: Query<(Entity, &mut Window), With<CreatureWindow>>,
-    cam_query: Query<Entity, With<CreatureCamera>>,
-    state: Res<CreatureEditorState>,
-) {
-    let win_opt = win_query.iter_mut().next();
-    let cam_opt = cam_query.iter().next();
-
-    if session.editing_creature.is_some() {
-        if let Some((_, mut win)) = win_opt {
-            // Window is already open, keep its title up to date
-            if let Some(data) = &state.data {
-                let expected_title = if !data.full_name.trim().is_empty() {
-                    format!("Creature - {} ({})", data.edid, data.full_name)
-                } else {
-                    format!("Creature - {}", data.edid)
-                };
-                if win.title != expected_title {
-                    win.title = expected_title;
-                }
-            }
-        } else {
-            // Window is NOT open -> dynamically spawn it now!
-            let title = state
-                .data
-                .as_ref()
-                .map(|d| {
-                    if !d.full_name.trim().is_empty() {
-                        format!("Creature - {} ({})", d.edid, d.full_name)
-                    } else {
-                        format!("Creature - {}", d.edid)
-                    }
-                })
-                .unwrap_or_else(|| "Creature Editor".to_string());
-
-            let window = commands
-                .spawn((
-                    Window {
-                        title,
-                        resolution: (840, 760).into(),
-                        position: WindowPosition::new(IVec2::new(500, 60)),
-                        ..default()
-                    },
-                    CreatureWindow,
-                ))
-                .id();
-
-            commands.spawn((
-                Camera2d,
-                Projection::Orthographic(OrthographicProjection::default_2d()),
-                bevy::camera::RenderTarget::Window(bevy::window::WindowRef::Entity(window)),
-                bevy_egui::EguiSchedule::new(crate::windows::Panel::Creature),
-                crate::windows::PanelContext::<6>,
-                CreatureCamera,
-            ));
-        }
-    } else if let Some((win_ent, _)) = win_opt {
-        // Editing creature is None -> despawn the window and camera immediately!
-        commands.entity(win_ent).despawn();
-        if let Some(cam_ent) = cam_opt {
-            commands.entity(cam_ent).despawn();
-        }
-    }
 }

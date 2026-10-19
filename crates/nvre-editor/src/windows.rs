@@ -53,8 +53,6 @@ pub enum Panel {
     Status,
     /// The camera's state, read and written while the editor runs.
     Debug,
-    /// The creature editor window.
-    Creature,
 }
 
 /// Marks the egui context that belongs to one panel's window.

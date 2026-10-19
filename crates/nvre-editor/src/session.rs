@@ -54,8 +54,6 @@ pub struct Session {
     /// Status line for the UI.
     pub status: String,
     persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>>,
-    /// A creature currently open in the creature window, by FormID.
-    pub editing_creature: Option<u32>,
     /// Any object record currently open in the editor window: (FormID, Record Sig).
     pub editing_object: Option<(u32, [u8; 4])>,
 }
@@ -123,7 +121,6 @@ impl Session {
             deleted: Vec::new(),
             status: String::new(),
             persistent_by_grid,
-            editing_creature: None,
             editing_object: None,
         })
     }
@@ -184,7 +181,6 @@ impl Session {
             deleted: Vec::new(),
             status: format!("created new plugin {name}"),
             persistent_by_grid,
-            editing_creature: None,
             editing_object: None,
         })
     }
@@ -627,7 +623,6 @@ impl Session {
     /// Open any object by FormID and signature in its specialized editor window.
     pub fn open_object(&mut self, form_id: u32, sig: [u8; 4]) {
         self.editing_object = Some((form_id, sig));
-        self.editing_creature = if sig == *b"CREA" { Some(form_id) } else { None };
         self.status = format!(
             "opened {} {:08X} in editor window",
             fnv_util::tag_str(&sig),
@@ -638,7 +633,6 @@ impl Session {
     /// Close the object editor window.
     pub fn close_object_editor(&mut self) {
         self.editing_object = None;
-        self.editing_creature = None;
     }
 
     /// Open a creature by FormID in the Creature Editor window.

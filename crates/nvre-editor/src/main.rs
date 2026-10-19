@@ -231,10 +231,6 @@ fn main() {
             panels::debug.run_if(in_state(EditorState::Editing)),
         )
         .add_systems(
-            windows::Panel::Creature,
-            creature::ui.run_if(in_state(EditorState::Editing)),
-        )
-        .add_systems(
             object_editor::ObjectEditorSchedule,
             object_editor::ui.run_if(in_state(EditorState::Editing)),
         )
@@ -251,7 +247,6 @@ fn main() {
                 gizmo::gizmo_system,
                 viewport::pick,
                 viewport::flat_material_diagnostic,
-                creature::manage_window,
                 object_editor::manage_window,
                 handle_window_close,
             )
@@ -356,27 +351,21 @@ fn open_selected(
 /// which time it is in place.
 fn spawn_session() {}
 
-/// Handle window close requests: primary window exits app, creature and object windows close.
+/// Handle window close requests: primary window exits app, object editor window closes.
 fn handle_window_close(
     mut commands: Commands,
     mut closed: MessageReader<bevy::window::WindowCloseRequested>,
     mut app_exit: MessageWriter<AppExit>,
     primary: Query<Entity, With<bevy::window::PrimaryWindow>>,
-    creature_win: Query<Entity, With<creature::CreatureWindow>>,
     object_win: Query<Entity, With<object_editor::ObjectEditorWindow>>,
     mut session: Option<ResMut<session::Session>>,
 ) {
     let primary_ent = primary.iter().next();
-    let crea_ent = creature_win.iter().next();
     let obj_ent = object_win.iter().next();
 
     for ev in closed.read() {
         if Some(ev.window) == primary_ent {
             app_exit.write(AppExit::Success);
-        } else if Some(ev.window) == crea_ent {
-            if let Some(s) = &mut session {
-                s.close_creature();
-            }
         } else if Some(ev.window) == obj_ent {
             if let Some(s) = &mut session {
                 s.close_object_editor();
