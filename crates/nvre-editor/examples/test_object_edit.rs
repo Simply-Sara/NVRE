@@ -440,6 +440,50 @@ fn main() {
     lvln_state.save_to_session(&mut session);
     println!("LVLN edit queued successfully.");
 
+    // Test 25: Non-Player Character (NVProspectorFemaleT 0x0017B586)
+    let npc_fid = 0x0017B586;
+    let mut npc_state = ObjectEditorState::default();
+    npc_state.load_from_session(&session, npc_fid, *b"NPC_");
+    println!(
+        "Loaded NPC_ 0x{:08X}: EDID='{}', HP={}, STR={}, LCK={}, Hair={:08X?}, Eyes={:08X?}, HairColor={:?}, Skills={:?}",
+        npc_state.form_id,
+        npc_state.edid,
+        npc_state.actor_health,
+        npc_state.actor_strength,
+        npc_state.actor_luck,
+        npc_state.npc_hair,
+        npc_state.npc_eyes,
+        npc_state.npc_hair_color,
+        &npc_state.npc_skills[0..5]
+    );
+    assert_eq!(npc_state.edid, "NVProspectorFemaleT");
+    assert_eq!(npc_state.actor_health, 60);
+    assert_eq!(npc_state.actor_strength, 6);
+    assert_eq!(npc_state.actor_perception, 6);
+    assert_eq!(npc_state.actor_endurance, 5);
+    assert_eq!(npc_state.actor_charisma, 4);
+    assert_eq!(npc_state.actor_intelligence, 4);
+    assert_eq!(npc_state.actor_agility, 6);
+    assert_eq!(npc_state.actor_luck, 4);
+    assert_eq!(npc_state.npc_hair, Some(0x0005DC6B));
+    assert_eq!(npc_state.npc_eyes, Some(0x00004252));
+    assert_eq!(npc_state.npc_hair_color, [74, 37, 19, 0]);
+    assert_eq!(
+        npc_state.npc_skills,
+        [12, 47, 14, 14, 14, 12, 51, 12, 12, 51, 51, 12, 12, 12]
+    );
+    assert_eq!(
+        npc_state.npc_skill_offsets,
+        [15, 0, 20, 30, 10, 5, 0, 25, 5, 4, 0, 10, 40, 20]
+    );
+
+    // Modify and save NPC_
+    npc_state.actor_health = 75;
+    npc_state.actor_luck = 7;
+    npc_state.npc_skills[0] = 25; // Barter
+    npc_state.save_to_session(&mut session);
+    println!("NPC_ edit queued successfully.");
+
     let flsts = session.form_lists();
     let vtyps = session.records_by_sig(*b"VTYP");
     let cstys = session.records_by_sig(*b"CSTY");

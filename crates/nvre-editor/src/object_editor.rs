@@ -174,6 +174,18 @@ pub struct ObjectEditorState {
     // Destruction data (DEST)
     pub dest_health: i32,
 
+    // NPC_ specific fields (DNAM, HNAM, LNAM, ENAM, HCLR, NAM6, NAM7, PNAM)
+    pub npc_skills: [u8; 14],
+    pub npc_skill_offsets: [u8; 14],
+    pub npc_hair: Option<u32>,
+    pub npc_hair_length: f32,
+    pub npc_eyes: Option<u32>,
+    pub npc_hair_color: [u8; 4],
+    pub npc_height: f32,
+    pub npc_weight: f32,
+    pub npc_head_parts: Vec<u32>,
+    pub head_part_to_add: Option<u32>,
+
     // ALCH fields
     pub alch_weight: f32,
     pub alch_val: i32,
@@ -402,10 +414,15 @@ impl ObjectEditorState {
         self.actor_inventory.clear();
         self.crea_sounds.clear();
         self.lvl_entries.clear();
+        self.npc_head_parts.clear();
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
             self.raw_subs.insert(s.sig, s.data.clone());
+            if s.sig == *b"PNAM" && s.data.len() >= 4 && self.sig == *b"NPC_" {
+                let p_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                self.npc_head_parts.push(p_fid);
+            }
             if s.sig == *b"SPLO" && s.data.len() >= 4 {
                 let fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
                 self.actor_splo.push(fid);
@@ -749,29 +766,47 @@ impl ObjectEditorState {
             self.crea_walks = (self.actor_flags & (1 << 6)) != 0;
             self.crea_no_head_track = (self.actor_flags & (1 << 30)) != 0;
         }
-        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 17) {
-            self.crea_type = b[0];
-            self.crea_combat_skill = b[1];
-            self.crea_magic_skill = b[2];
-            self.crea_stealth_skill = b[3];
-            self.actor_health = i16::from_le_bytes([b[4], b[5]]);
-            self.actor_damage = i16::from_le_bytes([b[8], b[9]]);
-            self.actor_strength = b[10];
-            self.actor_perception = b[11];
-            self.actor_endurance = b[12];
-            self.actor_charisma = b[13];
-            self.actor_intelligence = b[14];
-            self.actor_agility = b[15];
-            self.actor_luck = b[16];
-        }
-        if let Some(b) = self.raw_subs.get(b"DNAM").filter(|b| b.len() >= 7) {
-            self.actor_strength = b[0];
-            self.actor_perception = b[1];
-            self.actor_endurance = b[2];
-            self.actor_charisma = b[3];
-            self.actor_intelligence = b[4];
-            self.actor_agility = b[5];
-            self.actor_luck = b[6];
+        if self.sig == *b"CREA" {
+            if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 17) {
+                self.crea_type = b[0];
+                self.crea_combat_skill = b[1];
+                self.crea_magic_skill = b[2];
+                self.crea_stealth_skill = b[3];
+                self.actor_health = i16::from_le_bytes([b[4], b[5]]);
+                self.actor_damage = i16::from_le_bytes([b[8], b[9]]);
+                self.actor_strength = b[10];
+                self.actor_perception = b[11];
+                self.actor_endurance = b[12];
+                self.actor_charisma = b[13];
+                self.actor_intelligence = b[14];
+                self.actor_agility = b[15];
+                self.actor_luck = b[16];
+            }
+            self.actor_body_part_data = self.get_fid(b"PNAM");
+            self.crea_impact_dataset = self.get_fid(b"CNAM");
+        } else if self.sig == *b"NPC_" {
+            if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 11) {
+                self.actor_health = i32::from_le_bytes([b[0], b[1], b[2], b[3]]) as i16;
+                self.actor_strength = b[4];
+                self.actor_perception = b[5];
+                self.actor_endurance = b[6];
+                self.actor_charisma = b[7];
+                self.actor_intelligence = b[8];
+                self.actor_agility = b[9];
+                self.actor_luck = b[10];
+            }
+            if let Some(b) = self.raw_subs.get(b"DNAM").filter(|b| b.len() >= 28) {
+                self.npc_skills.copy_from_slice(&b[0..14]);
+                self.npc_skill_offsets.copy_from_slice(&b[14..28]);
+            }
+            self.npc_hair = self.get_fid(b"HNAM");
+            self.npc_hair_length = self.get_f32(b"LNAM").unwrap_or(1.0);
+            self.npc_eyes = self.get_fid(b"ENAM");
+            if let Some(b) = self.raw_subs.get(b"HCLR").filter(|b| b.len() >= 4) {
+                self.npc_hair_color = [b[0], b[1], b[2], b[3]];
+            }
+            self.npc_height = self.get_f32(b"NAM6").unwrap_or(1.0);
+            self.npc_weight = self.get_f32(b"NAM7").unwrap_or(1.0);
         }
         if let Some(b) = self.raw_subs.get(b"AIDT").filter(|b| b.len() >= 20) {
             self.actor_aggression = b[0];
@@ -1377,16 +1412,54 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"AIDT", aidt);
 
         if self.sig == *b"NPC_" {
-            let dnam = vec![
-                self.actor_strength,
-                self.actor_perception,
-                self.actor_endurance,
-                self.actor_charisma,
-                self.actor_intelligence,
-                self.actor_agility,
-                self.actor_luck,
-            ];
+            let mut data = vec![0u8; 11];
+            let hp_i32 = self.actor_health as i32;
+            data[0..4].copy_from_slice(&hp_i32.to_le_bytes());
+            data[4] = self.actor_strength;
+            data[5] = self.actor_perception;
+            data[6] = self.actor_endurance;
+            data[7] = self.actor_charisma;
+            data[8] = self.actor_intelligence;
+            data[9] = self.actor_agility;
+            data[10] = self.actor_luck;
+            session.doc.set_sub(fid, b"DATA", data);
+
+            let mut dnam = vec![0u8; 28];
+            dnam[0..14].copy_from_slice(&self.npc_skills);
+            dnam[14..28].copy_from_slice(&self.npc_skill_offsets);
             session.doc.set_sub(fid, b"DNAM", dnam);
+
+            if let Some(h) = self.npc_hair {
+                session.doc.set_sub(fid, b"HNAM", h.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"HNAM");
+            }
+            session
+                .doc
+                .set_sub(fid, b"LNAM", self.npc_hair_length.to_le_bytes().to_vec());
+
+            if let Some(e) = self.npc_eyes {
+                session.doc.set_sub(fid, b"ENAM", e.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"ENAM");
+            }
+
+            session
+                .doc
+                .set_sub(fid, b"HCLR", self.npc_hair_color.to_vec());
+            session
+                .doc
+                .set_sub(fid, b"NAM6", self.npc_height.to_le_bytes().to_vec());
+            session
+                .doc
+                .set_sub(fid, b"NAM7", self.npc_weight.to_le_bytes().to_vec());
+
+            let pnam_buffers: Vec<Vec<u8>> = self
+                .npc_head_parts
+                .iter()
+                .map(|id| id.to_le_bytes().to_vec())
+                .collect();
+            session.doc.set_sub_list(fid, b"PNAM", pnam_buffers);
         } else {
             let mut data = self
                 .raw_subs
@@ -2794,6 +2867,23 @@ const CSDT_TYPES: [&str; 22] = [
     "Play Random / Loop",
 ];
 
+const NPC_SKILL_NAMES: [&str; 14] = [
+    "Barter",
+    "Big Guns",
+    "Energy Weapons",
+    "Explosives",
+    "Lockpick",
+    "Medicine",
+    "Melee Weapons",
+    "Repair",
+    "Science",
+    "Guns",
+    "Sneak",
+    "Speech",
+    "Survival",
+    "Unarmed",
+];
+
 fn draw_actor_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
@@ -2932,6 +3022,117 @@ fn draw_actor_ui(
             ui.add(egui::DragValue::new(&mut state.actor_luck).range(1..=10));
         });
     });
+
+    if state.sig == *b"NPC_" {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("NPC Skills & Offsets (DNAM)");
+            ui.add_space(4.0);
+            egui::Grid::new("npc_skills_grid")
+                .striped(true)
+                .min_col_width(80.0)
+                .show(ui, |ui| {
+                    ui.label(egui::RichText::new("Skill").strong());
+                    ui.label(egui::RichText::new("Base Value").strong());
+                    ui.label(egui::RichText::new("Offset").strong());
+                    ui.label(egui::RichText::new("Skill").strong());
+                    ui.label(egui::RichText::new("Base Value").strong());
+                    ui.label(egui::RichText::new("Offset").strong());
+                    ui.end_row();
+
+                    for row in 0..7 {
+                        // Left column
+                        let idx1 = row;
+                        ui.label(NPC_SKILL_NAMES[idx1]);
+                        ui.add(egui::DragValue::new(&mut state.npc_skills[idx1]).range(0..=100));
+                        ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx1]));
+
+                        // Right column
+                        let idx2 = row + 7;
+                        ui.label(NPC_SKILL_NAMES[idx2]);
+                        ui.add(egui::DragValue::new(&mut state.npc_skills[idx2]).range(0..=100));
+                        ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx2]));
+                        ui.end_row();
+                    }
+                });
+        });
+
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Appearance, Hair & Head Parts");
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Height (NAM6):");
+                ui.add(
+                    egui::DragValue::new(&mut state.npc_height)
+                        .speed(0.01)
+                        .range(0.1..=2.5),
+                );
+                ui.separator();
+                ui.label("Weight (NAM7):");
+                ui.add(
+                    egui::DragValue::new(&mut state.npc_weight)
+                        .speed(0.01)
+                        .range(0.1..=2.5),
+                );
+            });
+
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Hair (HNAM):");
+                let hairs = session.records_by_sig(*b"HAIR");
+                record_dropdown(ui, "npc_hair", &hairs, &mut state.npc_hair);
+                ui.separator();
+                ui.label("Hair Length (LNAM):");
+                ui.add(
+                    egui::DragValue::new(&mut state.npc_hair_length)
+                        .speed(0.01)
+                        .range(0.0..=1.0),
+                );
+            });
+
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Eyes (ENAM):");
+                let eyes = session.records_by_sig(*b"EYES");
+                record_dropdown(ui, "npc_eyes", &eyes, &mut state.npc_eyes);
+                ui.separator();
+                ui.label("Hair Color (RGBA):");
+                ui.color_edit_button_srgba_unmultiplied(&mut state.npc_hair_color);
+            });
+
+            ui.add_space(4.0);
+            ui.label(egui::RichText::new("Head Parts (PNAM):").underline());
+            let hdpts_all = session.records_by_sig(*b"HDPT");
+            let mut remove_hp = None;
+            for (idx, &fid) in state.npc_head_parts.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").clicked() {
+                        remove_hp = Some(idx);
+                    }
+                    let name = hdpts_all
+                        .iter()
+                        .find(|(id, _)| *id == fid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Head Part");
+                    ui.label(format!("• {name} ({fid:08X})"));
+                });
+            }
+            if let Some(idx) = remove_hp {
+                state.npc_head_parts.remove(idx);
+            }
+            ui.horizontal(|ui| {
+                record_dropdown(ui, "npc_add_hdpt", &hdpts_all, &mut state.head_part_to_add);
+                if ui.button("+ Add Head Part").clicked() {
+                    if let Some(fid) = state.head_part_to_add {
+                        if !state.npc_head_parts.contains(&fid) {
+                            state.npc_head_parts.push(fid);
+                        }
+                    }
+                }
+            });
+        });
+    }
 
     ui.add_space(6.0);
     ui.group(|ui| {
