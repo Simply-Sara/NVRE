@@ -159,6 +159,21 @@ pub struct ObjectEditorState {
     pub item_to_add: Option<u32>,
     pub item_count_to_add: i32,
 
+    // Sound Type overrides (CSDT/CSDI/CSDC)
+    pub crea_sounds: Vec<(u32, u32, u8)>,
+    pub sound_type_to_add: u32,
+    pub sound_fid_to_add: Option<u32>,
+    pub sound_chance_to_add: u8,
+
+    // Model & Animation lists (NIFZ / KFFZ)
+    pub crea_models: Vec<String>,
+    pub model_to_add: String,
+    pub crea_animations: Vec<String>,
+    pub anim_to_add: String,
+
+    // Destruction data (DEST)
+    pub dest_health: i32,
+
     // ALCH fields
     pub alch_weight: f32,
     pub alch_val: i32,
@@ -381,6 +396,9 @@ impl ObjectEditorState {
         self.actor_factions.clear();
         self.actor_packages.clear();
         self.actor_inventory.clear();
+        self.crea_sounds.clear();
+        let mut cur_csdt = None;
+        let mut cur_csdi = None;
         for s in &raw_subs {
             self.raw_subs.insert(s.sig, s.data.clone());
             if s.sig == *b"SPLO" && s.data.len() >= 4 {
@@ -401,7 +419,49 @@ impl ObjectEditorState {
                 let count = i32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
                 self.actor_inventory.push((item_fid, count));
             }
+            if s.sig == *b"CSDT" && s.data.len() >= 4 {
+                cur_csdt = Some(u32::from_le_bytes([
+                    s.data[0], s.data[1], s.data[2], s.data[3],
+                ]));
+                cur_csdi = None;
+            } else if s.sig == *b"CSDI" && s.data.len() >= 4 {
+                cur_csdi = Some(u32::from_le_bytes([
+                    s.data[0], s.data[1], s.data[2], s.data[3],
+                ]));
+            } else if s.sig == *b"CSDC" && !s.data.is_empty() {
+                let chance = s.data[0];
+                if let (Some(t), Some(snd)) = (cur_csdt, cur_csdi) {
+                    self.crea_sounds.push((t, snd, chance));
+                }
+            }
         }
+
+        self.crea_models.clear();
+        if let Some(b) = self.raw_subs.get(b"NIFZ") {
+            for slice in b.split(|&b| b == 0) {
+                if !slice.is_empty() {
+                    self.crea_models
+                        .push(String::from_utf8_lossy(slice).to_string());
+                }
+            }
+        }
+
+        self.crea_animations.clear();
+        if let Some(b) = self.raw_subs.get(b"KFFZ") {
+            for slice in b.split(|&b| b == 0) {
+                if !slice.is_empty() {
+                    self.crea_animations
+                        .push(String::from_utf8_lossy(slice).to_string());
+                }
+            }
+        }
+
+        self.dest_health = self
+            .raw_subs
+            .get(b"DEST")
+            .filter(|b| b.len() >= 4)
+            .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .unwrap_or(0);
         if let Some(edits) = session.doc.edits_for(form_id) {
             for e in edits {
                 match e {
@@ -1473,6 +1533,49 @@ impl ObjectEditorState {
             })
             .collect();
         session.doc.set_sub_list(fid, b"CNTO", cnto_buffers);
+
+        let mut sound_subs = Vec::new();
+        for (stype, ssound, schance) in &self.crea_sounds {
+            sound_subs.push((*b"CSDT", stype.to_le_bytes().to_vec()));
+            sound_subs.push((*b"CSDI", ssound.to_le_bytes().to_vec()));
+            sound_subs.push((*b"CSDC", vec![*schance]));
+        }
+        session
+            .doc
+            .set_sub_sequence(fid, vec![*b"CSDT", *b"CSDI", *b"CSDC"], sound_subs);
+
+        if !self.crea_models.is_empty() {
+            let mut nifz = Vec::new();
+            for m in &self.crea_models {
+                nifz.extend_from_slice(m.as_bytes());
+                nifz.push(0);
+            }
+            nifz.push(0);
+            session.doc.set_sub(fid, b"NIFZ", nifz);
+        } else {
+            session.doc.remove_sub(fid, b"NIFZ");
+        }
+
+        if !self.crea_animations.is_empty() {
+            let mut kffz = Vec::new();
+            for a in &self.crea_animations {
+                kffz.extend_from_slice(a.as_bytes());
+                kffz.push(0);
+            }
+            kffz.push(0);
+            session.doc.set_sub(fid, b"KFFZ", kffz);
+        } else {
+            session.doc.remove_sub(fid, b"KFFZ");
+        }
+
+        if self.dest_health > 0 {
+            let mut dest = vec![0u8; 8];
+            dest[0..4].copy_from_slice(&self.dest_health.to_le_bytes());
+            dest[4] = 1;
+            session.doc.set_sub(fid, b"DEST", dest);
+        } else {
+            session.doc.remove_sub(fid, b"DEST");
+        }
     }
 
     fn save_alch(&self, session: &mut crate::session::Session) {
@@ -2628,6 +2731,31 @@ const MOOD_NAMES: [&str; 8] = [
 
 const ASSISTANCE_NAMES: [&str; 3] = ["Helps Nobody", "Helps Allies", "Helps Friends and Allies"];
 
+const CSDT_TYPES: [&str; 22] = [
+    "Left Foot",
+    "Right Foot",
+    "Left Back Foot",
+    "Right Back Foot",
+    "Idle",
+    "Aware",
+    "Attack",
+    "Hit",
+    "Death",
+    "Weapon",
+    "Movement Loop",
+    "Conscious Loop",
+    "Auxiliary 1",
+    "Auxiliary 2",
+    "Auxiliary 3",
+    "Auxiliary 4",
+    "Auxiliary 5",
+    "Auxiliary 6",
+    "Auxiliary 7",
+    "Auxiliary 8",
+    "Jump",
+    "Play Random / Loop",
+];
+
 fn draw_actor_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
@@ -3252,6 +3380,150 @@ fn draw_actor_ui(
             }
         });
     });
+
+    if state.sig == *b"CREA" {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Sound Type Overrides (CSDT / CSDI / CSDC)");
+            ui.add_space(4.0);
+
+            let sounds_all = session.records_by_sig(*b"SOUN");
+
+            if state.crea_sounds.is_empty() {
+                ui.label(
+                    egui::RichText::new("No sound overrides (inheriting all base sounds).")
+                        .italics(),
+                );
+            } else {
+                let mut remove_idx = None;
+                for (idx, (stype, sfid, chance)) in state.crea_sounds.iter_mut().enumerate() {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .button("✖")
+                            .on_hover_text("Remove this sound override")
+                            .clicked()
+                        {
+                            remove_idx = Some(idx);
+                        }
+                        let t_name = CSDT_TYPES.get(*stype as usize).copied().unwrap_or("Custom");
+                        let s_name = sounds_all
+                            .iter()
+                            .find(|(id, _)| *id == *sfid)
+                            .map(|(_, n)| n.as_str())
+                            .unwrap_or("Custom Sound");
+                        ui.label(format!("• {t_name}: {s_name} ({sfid:08X})"));
+                        ui.separator();
+                        ui.label("Chance %:");
+                        ui.add(egui::DragValue::new(chance).range(0..=100));
+                    });
+                }
+                if let Some(idx) = remove_idx {
+                    state.crea_sounds.remove(idx);
+                }
+            }
+
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Add Sound:");
+                let cur_type = (state.sound_type_to_add as usize).min(CSDT_TYPES.len() - 1);
+                let cur_lbl = CSDT_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+                egui::ComboBox::from_id_salt("crea_add_csdt")
+                    .selected_text(cur_lbl)
+                    .show_ui(ui, |ui| {
+                        for (i, &name) in CSDT_TYPES.iter().enumerate() {
+                            ui.selectable_value(&mut state.sound_type_to_add, i as u32, name);
+                        }
+                    });
+                record_dropdown(
+                    ui,
+                    "crea_add_csdi",
+                    &sounds_all,
+                    &mut state.sound_fid_to_add,
+                );
+                ui.label("Chance %:");
+                ui.add(egui::DragValue::new(&mut state.sound_chance_to_add).range(0..=100));
+                if ui.button("+ Add").clicked() {
+                    if let Some(fid) = state.sound_fid_to_add {
+                        state.crea_sounds.push((
+                            state.sound_type_to_add,
+                            fid,
+                            state.sound_chance_to_add.max(1),
+                        ));
+                    }
+                }
+            });
+        });
+
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Model List & Animations (NIFZ / KFFZ)");
+            ui.add_space(4.0);
+
+            ui.label(egui::RichText::new("Alternate Models (NIFZ):").underline());
+            let mut remove_m = None;
+            for (idx, m) in state.crea_models.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").clicked() {
+                        remove_m = Some(idx);
+                    }
+                    ui.label(format!("• {m}"));
+                });
+            }
+            if let Some(idx) = remove_m {
+                state.crea_models.remove(idx);
+            }
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut state.model_to_add)
+                        .hint_text("model.nif")
+                        .desired_width(180.0),
+                );
+                if ui.button("+ Add Model").clicked() {
+                    let trimmed = state.model_to_add.trim();
+                    if !trimmed.is_empty() && !state.crea_models.contains(&trimmed.to_string()) {
+                        state.crea_models.push(trimmed.to_string());
+                        state.model_to_add.clear();
+                    }
+                }
+            });
+
+            ui.add_space(4.0);
+            ui.label(egui::RichText::new("Animations (KFFZ):").underline());
+            let mut remove_a = None;
+            for (idx, a) in state.crea_animations.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").clicked() {
+                        remove_a = Some(idx);
+                    }
+                    ui.label(format!("• {a}"));
+                });
+            }
+            if let Some(idx) = remove_a {
+                state.crea_animations.remove(idx);
+            }
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut state.anim_to_add)
+                        .hint_text("anim.kf")
+                        .desired_width(180.0),
+                );
+                if ui.button("+ Add Animation").clicked() {
+                    let trimmed = state.anim_to_add.trim();
+                    if !trimmed.is_empty() && !state.crea_animations.contains(&trimmed.to_string())
+                    {
+                        state.crea_animations.push(trimmed.to_string());
+                        state.anim_to_add.clear();
+                    }
+                }
+            });
+
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Destruction Health Stage (DEST):");
+                ui.add(egui::DragValue::new(&mut state.dest_health).range(0..=50000));
+            });
+        });
+    }
 
     ui.add_space(6.0);
     ui.group(|ui| {

@@ -26,6 +26,11 @@ pub enum Edit {
     SetSub { sig: [u8; 4], data: Vec<u8> },
     /// Replace all occurrences of subrecords with this signature with a new list of subrecords.
     SetSubList { sig: [u8; 4], data: Vec<Vec<u8>> },
+    /// Replace all occurrences of subrecords matching `remove_sigs` with a sequential list of subrecords.
+    SetSubrecordSequence {
+        remove_sigs: Vec<[u8; 4]>,
+        subs: Vec<([u8; 4], Vec<u8>)>,
+    },
     /// Drop the subrecord with this signature.
     RemoveSub { sig: [u8; 4] },
     /// Replace the record header's flags (deleted, persistent, ...).
@@ -236,6 +241,19 @@ impl Document {
             .push(Edit::SetSubList { sig: *sig, data });
     }
 
+    /// Queue replacing all subrecords matching `remove_sigs` with a sequential list of subrecords.
+    pub fn set_sub_sequence(
+        &mut self,
+        form_id: u32,
+        remove_sigs: Vec<[u8; 4]>,
+        subs: Vec<([u8; 4], Vec<u8>)>,
+    ) {
+        self.edits
+            .entry(form_id)
+            .or_default()
+            .push(Edit::SetSubrecordSequence { remove_sigs, subs });
+    }
+
     /// Queue a header-flag change.
     pub fn set_flags(&mut self, form_id: u32, flags: u32) {
         self.edits
@@ -384,6 +402,24 @@ fn apply_edits(r: &mut Record, edits: &[Edit]) {
                                     Subrecord {
                                         sig: *sig,
                                         data: entry.clone(),
+                                        extended: false,
+                                    },
+                                );
+                            }
+                        }
+                        Edit::SetSubrecordSequence {
+                            remove_sigs,
+                            subs: new_subs,
+                        } => {
+                            let first_idx = subs.iter().position(|s| remove_sigs.contains(&s.sig));
+                            subs.retain(|s| !remove_sigs.contains(&s.sig));
+                            let insert_pos = first_idx.unwrap_or(subs.len());
+                            for (offset, (sig, data)) in new_subs.iter().enumerate() {
+                                subs.insert(
+                                    insert_pos + offset,
+                                    Subrecord {
+                                        sig: *sig,
+                                        data: data.clone(),
                                         extended: false,
                                     },
                                 );

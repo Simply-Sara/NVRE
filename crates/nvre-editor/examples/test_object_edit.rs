@@ -335,6 +335,52 @@ fn main() {
         vec![0x0008AF5C, 0x0006E770, 0x000617BE]
     );
 
+    // Test 20: Creature with Sound Type Overrides (AudioTemplateDeathclawBaby 0x0016AC7A)
+    let dc_fid = 0x0016AC7A;
+    let mut dc_state = ObjectEditorState::default();
+    dc_state.load_from_session(&session, dc_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', Sound Overrides count={}",
+        dc_state.form_id,
+        dc_state.edid,
+        dc_state.crea_sounds.len()
+    );
+    assert_eq!(dc_state.edid, "AudioTemplateDeathclawBaby");
+    assert_eq!(dc_state.crea_sounds.len(), 14);
+    assert_eq!(dc_state.crea_sounds[0], (0, 0x000A5D3C, 100)); // Left foot
+    assert_eq!(dc_state.crea_sounds[4], (4, 0x000C029C, 50)); // Idle 50%
+    assert_eq!(dc_state.crea_sounds[5], (8, 0x0016AC84, 100)); // Death 100%
+
+    // Test 21: Creature with Animations (REPCONMrHandy2 0x00174971)
+    let handy_fid = 0x00174971;
+    let mut handy_state = ObjectEditorState::default();
+    handy_state.load_from_session(&session, handy_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', Animations count={}, First={}",
+        handy_state.form_id,
+        handy_state.edid,
+        handy_state.crea_animations.len(),
+        handy_state
+            .crea_animations
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("")
+    );
+    assert_eq!(handy_state.edid, "REPCONMrHandy2");
+    assert_eq!(handy_state.crea_animations.len(), 15);
+    assert_eq!(handy_state.crea_animations[0], "1hmaim.kf");
+
+    // Test 22: Creature with Destruction Data (V34TurretCeiling01 0x00173FD6)
+    let turret_fid = 0x00173FD6;
+    let mut turret_state = ObjectEditorState::default();
+    turret_state.load_from_session(&session, turret_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', Destruction Health={}",
+        turret_state.form_id, turret_state.edid, turret_state.dest_health
+    );
+    assert_eq!(turret_state.edid, "V34TurretCeiling01");
+    assert_eq!(turret_state.dest_health, 40);
+
     let flsts = session.form_lists();
     let vtyps = session.records_by_sig(*b"VTYP");
     let cstys = session.records_by_sig(*b"CSTY");
