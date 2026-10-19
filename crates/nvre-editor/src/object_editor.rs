@@ -111,6 +111,7 @@ pub struct ObjectEditorState {
     pub actor_race: Option<u32>,
     pub actor_class: Option<u32>,
     pub actor_voice: Option<u32>,
+    pub actor_death_item: Option<u32>,
     pub actor_template: Option<u32>,
     pub actor_combat_style: Option<u32>,
 
@@ -528,6 +529,7 @@ impl ObjectEditorState {
         self.actor_race = self.get_fid(b"RNAM");
         self.actor_class = self.get_fid(b"CNAM");
         self.actor_voice = self.get_fid(b"VTCK");
+        self.actor_death_item = self.get_fid(b"INAM");
         self.actor_template = self.get_fid(b"TPLT");
         self.actor_combat_style = self.get_fid(b"ZNAM");
         self.crea_sound_inherit = self.get_fid(b"CSCR");
@@ -1164,6 +1166,9 @@ impl ObjectEditorState {
         }
         if let Some(v) = self.actor_voice {
             session.doc.set_sub(fid, b"VTCK", v.to_le_bytes().to_vec());
+        }
+        if let Some(di) = self.actor_death_item {
+            session.doc.set_sub(fid, b"INAM", di.to_le_bytes().to_vec());
         }
         if let Some(t) = self.actor_template {
             session.doc.set_sub(fid, b"TPLT", t.to_le_bytes().to_vec());
@@ -2052,15 +2057,14 @@ fn formid_field(ui: &mut egui::Ui, id: &str, opt: &mut Option<u32>) {
     }
 }
 
-fn form_list_dropdown(
+fn record_dropdown(
     ui: &mut egui::Ui,
     id_salt: &str,
-    session: &crate::session::Session,
+    items: &[(u32, String)],
     opt: &mut Option<u32>,
 ) {
-    let form_lists = session.form_lists();
     let cur_name = match opt {
-        Some(fid) => form_lists
+        Some(fid) => items
             .iter()
             .find(|(id, _)| *id == *fid)
             .map(|(_, name)| name.as_str())
@@ -2076,7 +2080,7 @@ fn form_list_dropdown(
                 if ui.selectable_label(opt.is_none(), "NONE").clicked() {
                     *opt = None;
                 }
-                for (fid, name) in &form_lists {
+                for (fid, name) in items {
                     let is_sel = *opt == Some(*fid);
                     if ui
                         .selectable_label(is_sel, format!("{name} ({fid:08X})"))
@@ -2088,6 +2092,16 @@ fn form_list_dropdown(
             });
         formid_field(ui, &format!("{id_salt}_fid"), opt);
     });
+}
+
+fn form_list_dropdown(
+    ui: &mut egui::Ui,
+    id_salt: &str,
+    session: &crate::session::Session,
+    opt: &mut Option<u32>,
+) {
+    let form_lists = session.form_lists();
+    record_dropdown(ui, id_salt, &form_lists, opt);
 }
 
 fn draw_weap_ui(
@@ -2349,6 +2363,35 @@ fn draw_actor_ui(
             ui.add(egui::DragValue::new(&mut state.actor_fatigue).range(0..=50000));
             ui.label("Speed Mult %:");
             ui.add(egui::DragValue::new(&mut state.actor_speed_mult).range(10..=1000));
+            ui.separator();
+            ui.label("Alignment:");
+            let cur_align = if state.actor_karma >= 750.0 {
+                "Very Good"
+            } else if state.actor_karma >= 250.0 {
+                "Good"
+            } else if state.actor_karma > -250.0 {
+                "Neutral"
+            } else if state.actor_karma > -750.0 {
+                "Evil"
+            } else {
+                "Very Evil"
+            };
+            egui::ComboBox::from_id_salt("actor_alignment")
+                .selected_text(cur_align)
+                .show_ui(ui, |ui| {
+                    const ALIGN_PRESETS: [(&str, f32); 5] = [
+                        ("Very Good", 1000.0),
+                        ("Good", 500.0),
+                        ("Neutral", 0.0),
+                        ("Evil", -500.0),
+                        ("Very Evil", -1000.0),
+                    ];
+                    for (label, k_val) in ALIGN_PRESETS {
+                        if ui.selectable_label(cur_align == label, label).clicked() {
+                            state.actor_karma = k_val;
+                        }
+                    }
+                });
             ui.label("Karma:");
             ui.add(
                 egui::DragValue::new(&mut state.actor_karma)
@@ -2409,32 +2452,54 @@ fn draw_actor_ui(
             ui.add_space(4.0);
             ui.horizontal(|ui| {
                 ui.label("Race:");
-                formid_field(ui, "act_race", &mut state.actor_race);
+                let races = session.records_by_sig(*b"RACE");
+                record_dropdown(ui, "act_race", &races, &mut state.actor_race);
+                ui.separator();
                 ui.label("Class:");
-                formid_field(ui, "act_class", &mut state.actor_class);
+                let classes = session.records_by_sig(*b"CLAS");
+                record_dropdown(ui, "act_class", &classes, &mut state.actor_class);
             });
         }
     });
 
     ui.add_space(6.0);
     ui.group(|ui| {
-        ui.strong("AI Behavior & Templates");
+        ui.strong("AI Behavior, Combat & Voice");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Aggression (0-3):");
             ui.add(egui::DragValue::new(&mut state.actor_aggression).range(0..=3));
             ui.label("Confidence (0-4):");
             ui.add(egui::DragValue::new(&mut state.actor_confidence).range(0..=4));
+            ui.separator();
+            ui.label("Template:");
+            formid_field(ui, "act_tplt", &mut state.actor_template);
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
             ui.label("Voice Type:");
-            formid_field(ui, "act_voice", &mut state.actor_voice);
+            let voices = session.records_by_sig(*b"VTYP");
+            record_dropdown(ui, "act_voice", &voices, &mut state.actor_voice);
         });
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Combat Style:");
-            formid_field(ui, "act_cstyle", &mut state.actor_combat_style);
-            ui.label("Template:");
-            formid_field(ui, "act_tplt", &mut state.actor_template);
+            let styles = session.records_by_sig(*b"CSTY");
+            record_dropdown(ui, "act_cstyle", &styles, &mut state.actor_combat_style);
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Death Item (LVLI / Item):");
+            let death_items = session.records_by_sig(*b"LVLI");
+            record_dropdown(
+                ui,
+                "act_death_item",
+                &death_items,
+                &mut state.actor_death_item,
+            );
         });
     });
 }

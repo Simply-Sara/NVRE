@@ -332,13 +332,13 @@ impl Session {
         &self.palette_groups
     }
 
-    /// Return all FormList records (FLST) across the load order, sorted by Editor ID.
-    pub fn form_lists(&self) -> Vec<(u32, String)> {
+    /// Return all records of a given signature in the load order, sorted by Editor ID.
+    pub fn records_by_sig(&self, sig: [u8; 4]) -> Vec<(u32, String)> {
         let mut out: Vec<(u32, String)> = Vec::new();
         let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
         for (pi, _plugin) in self.lo.plugins.iter().enumerate() {
             for r in &self.lo.records[pi] {
-                if r.header.sig == *b"FLST" {
+                if r.header.sig == sig {
                     if let Some(global) = self.lo.to_global(pi, r.header.form_id) {
                         if seen.insert(global) {
                             let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
@@ -351,6 +351,11 @@ impl Session {
         }
         out.sort_by_key(|a| a.1.to_lowercase());
         out
+    }
+
+    /// Return all FormList records (FLST) across the load order, sorted by Editor ID.
+    pub fn form_lists(&self) -> Vec<(u32, String)> {
+        self.records_by_sig(*b"FLST")
     }
 
     /// The worldspaces in the open plugin and its masters, as browser rows.

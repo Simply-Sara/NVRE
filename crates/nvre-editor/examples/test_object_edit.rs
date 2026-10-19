@@ -210,7 +210,7 @@ fn main() {
     let mut crea_state = ObjectEditorState::default();
     crea_state.load_from_session(&session, crea_fid, *b"CREA");
     println!(
-        "Loaded CREA 0x{:08X}: EDID='{}', Name='{}', Type={}, HP={}, Damage={}, Str={}",
+        "Loaded CREA 0x{:08X}: EDID='{}', Name='{}', Type={}, HP={}, Damage={}, Str={}, DeathItem={:08X?}, Voice={:08X?}, CombatStyle={:08X?}",
         crea_state.form_id,
         crea_state.edid,
         crea_state.full_name,
@@ -218,9 +218,15 @@ fn main() {
         crea_state.actor_health,
         crea_state.actor_damage,
         crea_state.actor_strength,
+        crea_state.actor_death_item,
+        crea_state.actor_voice,
+        crea_state.actor_combat_style,
     );
     assert_eq!(crea_state.edid, "VStreetCrBrahmin2");
     assert_eq!(crea_state.full_name, "Brahmin");
+    assert_eq!(crea_state.actor_death_item, Some(0x0009D413));
+    assert_eq!(crea_state.actor_combat_style, Some(0x0003A371));
+    assert_eq!(crea_state.actor_voice, Some(0x00094EED));
 
     let title = nvre_editor::object_editor::window_title(
         &crea_state.sig,
@@ -242,11 +248,21 @@ fn main() {
     assert_eq!(sm_state.crea_weapon_list, Some(0x0003A15E));
 
     let flsts = session.form_lists();
+    let vtyps = session.records_by_sig(*b"VTYP");
+    let cstys = session.records_by_sig(*b"CSTY");
+    let lvlis = session.records_by_sig(*b"LVLI");
     println!(
-        "Session indexed {} FormLists across load order",
-        flsts.len()
+        "Session indexed {} FormLists, {} VoiceTypes, {} CombatStyles, {} LeveledItems",
+        flsts.len(),
+        vtyps.len(),
+        cstys.len(),
+        lvlis.len(),
     );
     assert!(!flsts.is_empty());
+    assert_eq!(vtyps.len(), 100);
+    assert_eq!(cstys.len(), 84);
+    assert!(!lvlis.is_empty());
+
     let sm_flst = flsts.iter().find(|(fid, _)| *fid == 0x0003A15E);
     assert!(sm_flst.is_some());
     println!("Found FormList in session: {:?}", sm_flst);
