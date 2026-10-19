@@ -123,6 +123,7 @@ pub struct ObjectEditorState {
     pub actor_voice: Option<u32>,
     pub actor_death_item: Option<u32>,
     pub actor_template: Option<u32>,
+    pub actor_template_flags: u16,
     pub actor_combat_style: Option<u32>,
     pub actor_splo: Vec<u32>,
     pub splo_to_add: Option<u32>,
@@ -546,6 +547,7 @@ impl ObjectEditorState {
             self.actor_calc_max = u16::from_le_bytes([b[12], b[13]]);
             self.actor_speed_mult = u16::from_le_bytes([b[14], b[15]]);
             self.actor_karma = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.actor_template_flags = u16::from_le_bytes([b[22], b[23]]);
 
             // Shared & NPC flags
             self.actor_female = (self.actor_flags & (1 << 0)) != 0;
@@ -1146,6 +1148,7 @@ impl ObjectEditorState {
         acbs[12..14].copy_from_slice(&self.actor_calc_max.to_le_bytes());
         acbs[14..16].copy_from_slice(&self.actor_speed_mult.to_le_bytes());
         acbs[16..20].copy_from_slice(&self.actor_karma.to_le_bytes());
+        acbs[22..24].copy_from_slice(&self.actor_template_flags.to_le_bytes());
         session.doc.set_sub(fid, b"ACBS", acbs);
 
         let mut aidt = self
@@ -1222,6 +1225,8 @@ impl ObjectEditorState {
         }
         if let Some(t) = self.actor_template {
             session.doc.set_sub(fid, b"TPLT", t.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"TPLT");
         }
         if let Some(cs) = self.actor_combat_style {
             session.doc.set_sub(fid, b"ZNAM", cs.to_le_bytes().to_vec());
@@ -2571,10 +2576,55 @@ fn draw_actor_ui(
             ui.add(egui::DragValue::new(&mut state.actor_aggression).range(0..=3));
             ui.label("Confidence (0-4):");
             ui.add(egui::DragValue::new(&mut state.actor_confidence).range(0..=4));
-            ui.separator();
-            ui.label("Template:");
-            formid_field(ui, "act_tplt", &mut state.actor_template);
         });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Template (TPLT):");
+            let templates = if state.sig == *b"CREA" {
+                let mut c = session.records_by_sig(*b"CREA");
+                let mut lvlc = session.records_by_sig(*b"LVLC");
+                c.append(&mut lvlc);
+                c.sort_by_key(|a| a.1.to_lowercase());
+                c
+            } else {
+                let mut n = session.records_by_sig(*b"NPC_");
+                let mut lvln = session.records_by_sig(*b"LVLN");
+                n.append(&mut lvln);
+                n.sort_by_key(|a| a.1.to_lowercase());
+                n
+            };
+            record_dropdown(ui, "act_tplt", &templates, &mut state.actor_template);
+        });
+
+        if state.actor_template.is_some() {
+            ui.add_space(4.0);
+            ui.label(egui::RichText::new("Template Inheritance Flags:").underline());
+            ui.horizontal_wrapped(|ui| {
+                const TPLT_FLAGS: [(u16, &str); 10] = [
+                    (0x0001, "Use Traits"),
+                    (0x0002, "Use Stats"),
+                    (0x0004, "Use Factions"),
+                    (0x0008, "Use Spells/Effects"),
+                    (0x0010, "Use AI Data"),
+                    (0x0020, "Use AI Packages"),
+                    (0x0040, "Use Model/Animation"),
+                    (0x0080, "Use Base Data"),
+                    (0x0100, "Use Inventory"),
+                    (0x0200, "Use Script"),
+                ];
+                for (bit, name) in TPLT_FLAGS {
+                    let mut set = (state.actor_template_flags & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            state.actor_template_flags |= bit;
+                        } else {
+                            state.actor_template_flags &= !bit;
+                        }
+                    }
+                }
+            });
+        }
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {

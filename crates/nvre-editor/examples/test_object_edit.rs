@@ -227,6 +227,7 @@ fn main() {
     assert_eq!(crea_state.actor_death_item, Some(0x0009D413));
     assert_eq!(crea_state.actor_combat_style, Some(0x0003A371));
     assert_eq!(crea_state.actor_voice, Some(0x00094EED));
+    assert_eq!(crea_state.actor_template, Some(0x0014D1FD));
     assert_eq!(crea_state.actor_splo, vec![0x00060C16]);
     println!("CREA SPLO Spells: {:08X?}", crea_state.actor_splo);
     assert_eq!(
@@ -258,6 +259,7 @@ fn main() {
     );
     assert_eq!(sm_state.edid, "CrSuperMutantDeadMinigunRubyHill");
     assert_eq!(sm_state.crea_weapon_list, Some(0x0003A15E));
+    assert_eq!(sm_state.actor_template, Some(0x00027FB3));
     assert!(sm_state.quest_item);
     assert!(sm_state.actor_allow_pickpocket);
     assert!(sm_state.actor_no_low_level_proc);
@@ -302,6 +304,7 @@ fn main() {
         ghoul_state.actor_splo
     );
     assert_eq!(ghoul_state.edid, "VCrTier3FeralGhoulGlowingOneNRSewers");
+    assert_eq!(ghoul_state.actor_template, Some(0x00167EE6));
     assert_eq!(
         ghoul_state.actor_splo,
         vec![0x0008AF5C, 0x0006E770, 0x000617BE]
