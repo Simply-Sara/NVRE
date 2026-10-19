@@ -3025,10 +3025,7 @@ fn draw_actor_ui(
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Unarmed Attack Effect (EITM):");
-            let mut spells = session.records_by_sig(*b"SPEL");
-            let mut enchs = session.records_by_sig(*b"ENCH");
-            spells.append(&mut enchs);
-            spells.sort_by_key(|a| a.1.to_lowercase());
+            let spells = session.spells_and_enchantments();
             record_dropdown(ui, "actor_eitm", &spells, &mut state.actor_unarmed_effect);
 
             if state.sig == *b"CREA" {
@@ -3094,17 +3091,9 @@ fn draw_actor_ui(
         ui.horizontal(|ui| {
             ui.label("Template (TPLT):");
             let templates = if state.sig == *b"CREA" {
-                let mut c = session.records_by_sig(*b"CREA");
-                let mut lvlc = session.records_by_sig(*b"LVLC");
-                c.append(&mut lvlc);
-                c.sort_by_key(|a| a.1.to_lowercase());
-                c
+                session.creature_templates()
             } else {
-                let mut n = session.records_by_sig(*b"NPC_");
-                let mut lvln = session.records_by_sig(*b"LVLN");
-                n.append(&mut lvln);
-                n.sort_by_key(|a| a.1.to_lowercase());
-                n
+                session.npc_templates()
             };
             record_dropdown(ui, "act_tplt", &templates, &mut state.actor_template);
         });
@@ -3170,10 +3159,7 @@ fn draw_actor_ui(
         ui.strong("Actor Effects & Spells (SPLO)");
         ui.add_space(4.0);
 
-        let mut spells_all = session.records_by_sig(*b"SPEL");
-        let mut enchs = session.records_by_sig(*b"ENCH");
-        spells_all.append(&mut enchs);
-        spells_all.sort_by_key(|a| a.1.to_lowercase());
+        let spells_all = session.spells_and_enchantments();
 
         if state.actor_splo.is_empty() {
             ui.label(egui::RichText::new("No active effects/spells.").italics());
@@ -3325,14 +3311,7 @@ fn draw_actor_ui(
         ui.strong("Inventory Items (CNTO)");
         ui.add_space(4.0);
 
-        let mut items_all = Vec::new();
-        for sig in [
-            b"WEAP", b"ARMO", b"ALCH", b"AMMO", b"BOOK", b"MISC", b"LVLI",
-        ] {
-            let mut sub = session.records_by_sig(*sig);
-            items_all.append(&mut sub);
-        }
-        items_all.sort_by_key(|a| a.1.to_lowercase());
+        let items_all = session.inventory_items();
 
         if state.actor_inventory.is_empty() {
             ui.label(egui::RichText::new("Inventory is empty.").italics());
