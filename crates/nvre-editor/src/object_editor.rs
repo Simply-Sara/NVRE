@@ -382,6 +382,12 @@ pub struct ObjectEditorState {
     pub avif_icon: String,
     pub avif_mico: String,
 
+    // EYES fields
+    /// `ICON` Texture — the eye texture's path.
+    pub eyes_icon: String,
+    /// `DATA` Flags, the u8 flag word: Playable, Not Male, Not Female.
+    pub eyes_flags: u8,
+
     // BPTD fields: one Body Part per entry, in file order.
     // A part is (BPTN?) BPNN BPNT BPNI BPND NAM1 NAM4 NAM5, so the optional
     // Part Name is an Option and every other field is present.
@@ -1137,6 +1143,7 @@ impl ObjectEditorState {
             b"RACE" => self.load_race(),
             b"CLMT" => self.load_clmt(),
             b"AVIF" => self.load_avif(),
+            b"EYES" => self.load_eyes(),
             b"BPTD" => self.load_bptd(&raw_subs),
             _ => self.load_misc(),
         }
@@ -1707,6 +1714,11 @@ impl ObjectEditorState {
         self.clmt_sun_glare_texture = self.get_string(b"GNAM");
     }
 
+    fn load_eyes(&mut self) {
+        self.eyes_icon = self.get_string(b"ICON");
+        self.eyes_flags = self.get_u8(b"DATA").unwrap_or(0);
+    }
+
     fn load_avif(&mut self) {
         self.avif_desc = self.get_string(b"DESC");
         self.avif_short_name = self.get_string(b"ANAM");
@@ -1873,6 +1885,7 @@ impl ObjectEditorState {
             b"RACE" => self.save_race(session),
             b"CLMT" => self.save_clmt(session),
             b"AVIF" => self.save_avif(session),
+            b"EYES" => self.save_eyes(session),
             b"BPTD" => self.save_bptd(session),
             _ => self.save_misc(session),
         }
@@ -2958,6 +2971,23 @@ impl ObjectEditorState {
         }
     }
 
+    fn save_eyes(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        // DATA is a single u8 flag word. Every EYES record in the game's
+        // masters carries it, so it is always written.
+        session.doc.set_sub(fid, b"DATA", vec![self.eyes_flags]);
+        // ICON is optional: 11 of the 12 records carry one, and eyeReanimate
+        // does not. An empty field means no texture, so it is removed rather
+        // than written as an empty string.
+        if self.eyes_icon.trim().is_empty() {
+            session.doc.remove_sub(fid, b"ICON");
+        } else {
+            session
+                .doc
+                .set_sub(fid, b"ICON", encode_zstring(&self.eyes_icon));
+        }
+    }
+
     fn save_avif(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
         if !self.avif_desc.trim().is_empty() {
@@ -3069,6 +3099,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"LVLN" => "Leveled NPC",
         b"LVLC" => "Leveled Creature",
         b"AVIF" => "Actor Value",
+        b"EYES" => "Eyes",
         b"BPTD" => "Body Part Data",
         _ => fallback.as_str(),
     };
@@ -3154,6 +3185,9 @@ const DIFFICULTY_LEVELS: [&str; 6] = [
     "Very Hard",
     "Requires Key",
 ];
+
+/// `EYES` `DATA` Flags, the u8 flag word from fopdoc's EYES page.
+const EYES_FLAGS: [(u8, &str); 3] = [(0x01, "Playable"), (0x02, "Not Male"), (0x04, "Not Female")];
 
 /// `CLAS` `DATA.Teaches`, the skill enum from fopdoc's Skills page. It is an
 /// int8 that starts at -1 ("None"), so the table is indexed from -1.
@@ -3337,6 +3371,7 @@ pub fn ui(
                 b"RACE" => draw_race_ui(ui, &mut state),
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
                 b"AVIF" => draw_avif_ui(ui, &mut state),
+                b"EYES" => draw_eyes_ui(ui, &mut state),
                 b"BPTD" => draw_bptd_ui(ui, &session, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
@@ -5932,6 +5967,48 @@ fn draw_clmt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             ui.add(
                 egui::TextEdit::singleline(&mut state.clmt_sun_glare_texture)
                     .desired_width(ui.available_width() - 20.0),
+            );
+        });
+    });
+}
+
+fn draw_eyes_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Eyes");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Texture (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.eyes_icon)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Flags (DATA)");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in EYES_FLAGS {
+                let mut set = (state.eyes_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.eyes_flags |= bit;
+                    } else {
+                        state.eyes_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.add_space(4.0);
+        // The raw byte, so a bit the spec does not name stays reachable.
+        ui.horizontal(|ui| {
+            ui.label("Raw flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.eyes_flags)
+                    .range(0..=u8::MAX as i64)
+                    .speed(1.0),
             );
         });
     });
