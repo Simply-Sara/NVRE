@@ -2199,13 +2199,15 @@ fn draw_armo_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-const CREATURE_TYPES: [&str; 6] = [
-    "Animals",
-    "Mutated Animals",
-    "Mutated Insects",
-    "Abominations",
-    "Super Mutants",
-    "Feral Ghouls",
+const CREATURE_TYPES: [&str; 8] = [
+    "Animal",
+    "Mutated Animal",
+    "Mutated Insect",
+    "Abomination",
+    "Super Mutant",
+    "Feral Ghoul",
+    "Robot",
+    "Giant",
 ];
 
 fn draw_actor_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
