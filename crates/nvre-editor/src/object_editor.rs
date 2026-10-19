@@ -325,11 +325,15 @@ pub struct ObjectEditorState {
     pub clas_desc: String,
 
     // CSTY & MGEF fields
-    pub csty_dodge_chance: u8,
-    pub csty_lr_chance: u8,
-    pub csty_power_chance: u8,
-    pub csty_cover_radius: f32,
-    pub csty_take_cover_chance: f32,
+    /// `CSTD` Advanced - Standard, all 92 bytes of it. The subrecord is a fixed
+    /// layout (every one of the 84 CSTY records in FalloutNV.esm measures
+    /// exactly 92 bytes), so the fields are read and written by slice indexing.
+    pub csty_std: CstdData,
+    /// `CSAD` Advanced - Advanced: 21 floats, 84 bytes. Not read at all before
+    /// this, so every modifier an advanced combat style applied was invisible.
+    pub csty_adv: CstyAdvData,
+    /// `CSSD` Simple: 16 fields, 64 bytes.
+    pub csty_simple: CstySimpleData,
     pub mgef_hostile: bool,
     pub mgef_recover: bool,
     pub mgef_detrimental: bool,
@@ -576,6 +580,321 @@ impl BptdPart {
     /// an unnamed part is still addressable in the list.
     pub fn label(&self) -> &str {
         self.name.as_deref().unwrap_or(&self.node)
+    }
+}
+
+/// The 92-byte `CSTD` (Advanced - Standard) struct, in file order.
+///
+/// The layout is fixed-width and byte-exact — every one of the 84 CSTY records
+/// in `FalloutNV.esm` measures exactly 92 bytes — so it is read and written by
+/// direct slice indexing rather than through a schema decode. The four Unused
+/// runs the spec marks are not fields the editor owns; they are preserved as
+/// the bytes they already are.
+#[derive(Debug, Clone, Default)]
+pub struct CstdData {
+    // Maneuver Decision
+    pub dodge_chance: u8,
+    pub left_right_chance: u8,
+    pub dodge_lr_timer_min: f32,
+    pub dodge_lr_timer_max: f32,
+    pub dodge_forward_timer_min: f32,
+    pub dodge_forward_timer_max: f32,
+    pub dodge_back_timer_min: f32,
+    pub dodge_back_timer_max: f32,
+    pub idle_timer_min: f32,
+    pub idle_timer_max: f32,
+    // Melee Decision
+    pub block_chance: u8,
+    pub attack_chance: u8,
+    pub recoil_stagger_bonus_to_attack: f32,
+    pub unconscious_bonus_to_attack: f32,
+    pub hand_to_hand_bonus_to_attack: f32,
+    pub power_attack_chance: u8,
+    pub recoil_stagger_bonus_to_power: f32,
+    pub unconscious_bonus_to_power_attack: f32,
+    pub power_attack_normal: u8,
+    pub power_attack_forward: u8,
+    pub power_attack_back: u8,
+    pub power_attack_left: u8,
+    pub power_attack_right: u8,
+    pub hold_timer_min: f32,
+    pub hold_timer_max: f32,
+    pub flags: u16,
+    // Maneuver Decision (cont.)
+    pub acrobatic_dodge_chance: u8,
+    // Melee Decision - Power Attacks (cont.)
+    pub rushing_attack_chance: u8,
+    pub rushing_attack_distance_mult: f32,
+}
+
+/// The size of a `CSTD` payload: the spec's own total, and the only size the
+/// game's masters carry.
+const CSTD_LEN: usize = 92;
+
+impl CstdData {
+    fn from_bytes(b: &[u8]) -> Self {
+        let f = |i: usize| f32::from_le_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]]);
+        Self {
+            dodge_chance: b[0],
+            left_right_chance: b[1],
+            dodge_lr_timer_min: f(4),
+            dodge_lr_timer_max: f(8),
+            dodge_forward_timer_min: f(12),
+            dodge_forward_timer_max: f(16),
+            dodge_back_timer_min: f(20),
+            dodge_back_timer_max: f(24),
+            idle_timer_min: f(28),
+            idle_timer_max: f(32),
+            block_chance: b[36],
+            attack_chance: b[37],
+            recoil_stagger_bonus_to_attack: f(40),
+            unconscious_bonus_to_attack: f(44),
+            hand_to_hand_bonus_to_attack: f(48),
+            power_attack_chance: b[52],
+            recoil_stagger_bonus_to_power: f(56),
+            unconscious_bonus_to_power_attack: f(60),
+            power_attack_normal: b[64],
+            power_attack_forward: b[65],
+            power_attack_back: b[66],
+            power_attack_left: b[67],
+            power_attack_right: b[68],
+            hold_timer_min: f(72),
+            hold_timer_max: f(76),
+            flags: u16::from_le_bytes([b[80], b[81]]),
+            acrobatic_dodge_chance: b[84],
+            rushing_attack_chance: b[85],
+            rushing_attack_distance_mult: f(88),
+        }
+    }
+
+    /// Write the struct back over `original`, so every byte the editor does not
+    /// own keeps the value the record had.
+    ///
+    /// The spec marks several runs "Unused", but the game stores data in at
+    /// least one of them: 40 of the 84 CSTD subrecords in `FalloutNV.esm` carry
+    /// `[128, 63]` in bytes 2..4, which is `0x3F80` — a little-endian 1.0. An
+    /// editor that wrote zeros there would silently change what those combat
+    /// styles do, so the ranges the spec does not name are copied through
+    /// rather than rebuilt.
+    fn write_into(&self, original: &[u8]) -> Vec<u8> {
+        let mut b = original.to_vec();
+        b.resize(CSTD_LEN, 0);
+        fn put(b: &mut [u8], i: usize, bytes: [u8; 4]) {
+            b[i..i + 4].copy_from_slice(&bytes);
+        }
+        b[0] = self.dodge_chance;
+        b[1] = self.left_right_chance;
+        put(&mut b, 4, self.dodge_lr_timer_min.to_le_bytes());
+        put(&mut b, 8, self.dodge_lr_timer_max.to_le_bytes());
+        put(&mut b, 12, self.dodge_forward_timer_min.to_le_bytes());
+        put(&mut b, 16, self.dodge_forward_timer_max.to_le_bytes());
+        put(&mut b, 20, self.dodge_back_timer_min.to_le_bytes());
+        put(&mut b, 24, self.dodge_back_timer_max.to_le_bytes());
+        put(&mut b, 28, self.idle_timer_min.to_le_bytes());
+        put(&mut b, 32, self.idle_timer_max.to_le_bytes());
+        b[36] = self.block_chance;
+        b[37] = self.attack_chance;
+        put(
+            &mut b,
+            40,
+            self.recoil_stagger_bonus_to_attack.to_le_bytes(),
+        );
+        put(&mut b, 44, self.unconscious_bonus_to_attack.to_le_bytes());
+        put(&mut b, 48, self.hand_to_hand_bonus_to_attack.to_le_bytes());
+        b[52] = self.power_attack_chance;
+        put(&mut b, 56, self.recoil_stagger_bonus_to_power.to_le_bytes());
+        put(
+            &mut b,
+            60,
+            self.unconscious_bonus_to_power_attack.to_le_bytes(),
+        );
+        b[64] = self.power_attack_normal;
+        b[65] = self.power_attack_forward;
+        b[66] = self.power_attack_back;
+        b[67] = self.power_attack_left;
+        b[68] = self.power_attack_right;
+        put(&mut b, 72, self.hold_timer_min.to_le_bytes());
+        put(&mut b, 76, self.hold_timer_max.to_le_bytes());
+        b[80..82].copy_from_slice(&self.flags.to_le_bytes());
+        b[84] = self.acrobatic_dodge_chance;
+        b[85] = self.rushing_attack_chance;
+        put(&mut b, 88, self.rushing_attack_distance_mult.to_le_bytes());
+        // The spec's Unused runs — [2..4], [38..40], [53..56], [69..72],
+        // [82..84] and [86..88] — are left exactly as the record had them.
+        b
+    }
+}
+
+/// The 84-byte `CSAD` (Advanced - Advanced) struct: 21 floats, in file order.
+///
+/// Every one of the 84 CSAD subrecords in `FalloutNV.esm` measures exactly 84
+/// bytes. The editor did not read this subrecord at all, so an advanced combat
+/// style's dodge fatigue, encumbrance, block, attack and power-attack modifiers
+/// were invisible and could not be edited.
+#[derive(Debug, Clone, Default)]
+pub struct CstyAdvData {
+    pub dodge_fatigue_mod_mult: f32,
+    pub dodge_fatigue_mod_base: f32,
+    pub encumbered_speed_mod_base: f32,
+    pub encumbered_speed_mod_mult: f32,
+    pub dodge_while_under_attack_mult: f32,
+    pub dodge_not_under_attack_mult: f32,
+    pub dodge_back_while_under_attack_mult: f32,
+    pub dodge_back_not_under_attack_mult: f32,
+    pub dodge_forward_while_attacking_mult: f32,
+    pub dodge_forward_not_attacking_mult: f32,
+    pub block_skill_modifier_mult: f32,
+    pub block_skill_modifier_base: f32,
+    pub block_while_under_attack_mult: f32,
+    pub block_not_under_attack_mult: f32,
+    pub attack_skill_modifier_mult: f32,
+    pub attack_skill_modifier_base: f32,
+    pub attack_while_under_attack_mult: f32,
+    pub attack_not_under_attack_mult: f32,
+    pub attack_during_block_mult: f32,
+    pub power_attack_fatigue_mod_base: f32,
+    pub power_attack_fatigue_mod_mult: f32,
+}
+
+/// The size of a `CSAD` payload: 21 floats.
+const CSAD_LEN: usize = 84;
+
+impl CstyAdvData {
+    fn from_bytes(b: &[u8]) -> Self {
+        let f = |i: usize| f32::from_le_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]]);
+        Self {
+            dodge_fatigue_mod_mult: f(0),
+            dodge_fatigue_mod_base: f(4),
+            encumbered_speed_mod_base: f(8),
+            encumbered_speed_mod_mult: f(12),
+            dodge_while_under_attack_mult: f(16),
+            dodge_not_under_attack_mult: f(20),
+            dodge_back_while_under_attack_mult: f(24),
+            dodge_back_not_under_attack_mult: f(28),
+            dodge_forward_while_attacking_mult: f(32),
+            dodge_forward_not_attacking_mult: f(36),
+            block_skill_modifier_mult: f(40),
+            block_skill_modifier_base: f(44),
+            block_while_under_attack_mult: f(48),
+            block_not_under_attack_mult: f(52),
+            attack_skill_modifier_mult: f(56),
+            attack_skill_modifier_base: f(60),
+            attack_while_under_attack_mult: f(64),
+            attack_not_under_attack_mult: f(68),
+            attack_during_block_mult: f(72),
+            power_attack_fatigue_mod_base: f(76),
+            power_attack_fatigue_mod_mult: f(80),
+        }
+    }
+
+    /// Write the struct back over `original`, so a byte the editor does not own
+    /// keeps the value the record had.
+    fn write_into(&self, original: &[u8]) -> Vec<u8> {
+        let mut b = original.to_vec();
+        b.resize(CSAD_LEN, 0);
+        fn put(b: &mut [u8], i: usize, v: f32) {
+            b[i..i + 4].copy_from_slice(&v.to_le_bytes());
+        }
+        put(&mut b, 0, self.dodge_fatigue_mod_mult);
+        put(&mut b, 4, self.dodge_fatigue_mod_base);
+        put(&mut b, 8, self.encumbered_speed_mod_base);
+        put(&mut b, 12, self.encumbered_speed_mod_mult);
+        put(&mut b, 16, self.dodge_while_under_attack_mult);
+        put(&mut b, 20, self.dodge_not_under_attack_mult);
+        put(&mut b, 24, self.dodge_back_while_under_attack_mult);
+        put(&mut b, 28, self.dodge_back_not_under_attack_mult);
+        put(&mut b, 32, self.dodge_forward_while_attacking_mult);
+        put(&mut b, 36, self.dodge_forward_not_attacking_mult);
+        put(&mut b, 40, self.block_skill_modifier_mult);
+        put(&mut b, 44, self.block_skill_modifier_base);
+        put(&mut b, 48, self.block_while_under_attack_mult);
+        put(&mut b, 52, self.block_not_under_attack_mult);
+        put(&mut b, 56, self.attack_skill_modifier_mult);
+        put(&mut b, 60, self.attack_skill_modifier_base);
+        put(&mut b, 64, self.attack_while_under_attack_mult);
+        put(&mut b, 68, self.attack_not_under_attack_mult);
+        put(&mut b, 72, self.attack_during_block_mult);
+        put(&mut b, 76, self.power_attack_fatigue_mod_base);
+        put(&mut b, 80, self.power_attack_fatigue_mod_mult);
+        b
+    }
+}
+
+/// The 64-byte `CSSD` (Simple) struct, in file order.
+///
+/// Every one of the 84 CSSD subrecords in `FalloutNV.esm` measures exactly 64
+/// bytes. The editor read only the first two fields before this.
+#[derive(Debug, Clone, Default)]
+pub struct CstySimpleData {
+    pub cover_search_radius: f32,
+    pub take_cover_chance: f32,
+    pub wait_timer_min: f32,
+    pub wait_timer_max: f32,
+    pub wait_to_fire_timer_min: f32,
+    pub wait_to_fire_timer_max: f32,
+    pub fire_timer_min: f32,
+    pub fire_timer_max: f32,
+    pub ranged_weapon_range_mult_min: f32,
+    /// The spec's Weapon Restrictions enum: 0 None, 1 Melee Only, 2 Ranged Only.
+    pub weapon_restrictions: u32,
+    pub ranged_weapon_range_mult_max: f32,
+    pub max_targeting_fov: f32,
+    pub combat_radius: f32,
+    pub semi_auto_firing_delay_mult_min: f32,
+    pub semi_auto_firing_delay_mult_max: f32,
+}
+
+/// The size of a `CSSD` payload.
+const CSSD_LEN: usize = 64;
+
+impl CstySimpleData {
+    fn from_bytes(b: &[u8]) -> Self {
+        let f = |i: usize| f32::from_le_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]]);
+        Self {
+            cover_search_radius: f(0),
+            take_cover_chance: f(4),
+            wait_timer_min: f(8),
+            wait_timer_max: f(12),
+            wait_to_fire_timer_min: f(16),
+            wait_to_fire_timer_max: f(20),
+            fire_timer_min: f(24),
+            fire_timer_max: f(28),
+            ranged_weapon_range_mult_min: f(32),
+            weapon_restrictions: u32::from_le_bytes([b[40], b[41], b[42], b[43]]),
+            ranged_weapon_range_mult_max: f(44),
+            max_targeting_fov: f(48),
+            combat_radius: f(52),
+            semi_auto_firing_delay_mult_min: f(56),
+            semi_auto_firing_delay_mult_max: f(60),
+        }
+    }
+
+    /// Write the struct back over `original`, so a byte the editor does not own
+    /// keeps the value the record had.
+    fn write_into(&self, original: &[u8]) -> Vec<u8> {
+        let mut b = original.to_vec();
+        b.resize(CSSD_LEN, 0);
+        fn put(b: &mut [u8], i: usize, v: f32) {
+            b[i..i + 4].copy_from_slice(&v.to_le_bytes());
+        }
+        put(&mut b, 0, self.cover_search_radius);
+        put(&mut b, 4, self.take_cover_chance);
+        put(&mut b, 8, self.wait_timer_min);
+        put(&mut b, 12, self.wait_timer_max);
+        put(&mut b, 16, self.wait_to_fire_timer_min);
+        put(&mut b, 20, self.wait_to_fire_timer_max);
+        put(&mut b, 24, self.fire_timer_min);
+        put(&mut b, 28, self.fire_timer_max);
+        put(&mut b, 32, self.ranged_weapon_range_mult_min);
+        b[40..44].copy_from_slice(&self.weapon_restrictions.to_le_bytes());
+        put(&mut b, 44, self.ranged_weapon_range_mult_max);
+        put(&mut b, 48, self.max_targeting_fov);
+        put(&mut b, 52, self.combat_radius);
+        put(&mut b, 56, self.semi_auto_firing_delay_mult_min);
+        put(&mut b, 60, self.semi_auto_firing_delay_mult_max);
+        // b[36..40] is the spec's 4-byte Unused run; it is left exactly as the
+        // record had it, for the same reason as CSTD's.
+        b
     }
 }
 
@@ -1289,14 +1608,19 @@ impl ObjectEditorState {
     }
 
     fn load_csty(&mut self) {
-        if let Some(b) = self.raw_subs.get(b"CSTD").filter(|b| b.len() >= 25) {
-            self.csty_dodge_chance = b[0];
-            self.csty_lr_chance = b[1];
-            self.csty_power_chance = b[24];
+        // CSTD is a fixed 92-byte struct; every CSTY record in the game's
+        // masters carries exactly that, so the whole of it is read.
+        if let Some(b) = self.raw_subs.get(b"CSTD").filter(|b| b.len() >= CSTD_LEN) {
+            self.csty_std = CstdData::from_bytes(b);
         }
-        if let Some(b) = self.raw_subs.get(b"CSSD").filter(|b| b.len() >= 8) {
-            self.csty_cover_radius = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
-            self.csty_take_cover_chance = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+        // CSAD is 21 floats and was not read at all before this.
+        if let Some(b) = self.raw_subs.get(b"CSAD").filter(|b| b.len() >= CSAD_LEN) {
+            self.csty_adv = CstyAdvData::from_bytes(b);
+        }
+        // CSSD is a fixed 64-byte struct; the old editor read only its first
+        // two fields.
+        if let Some(b) = self.raw_subs.get(b"CSSD").filter(|b| b.len() >= CSSD_LEN) {
+            self.csty_simple = CstySimpleData::from_bytes(b);
         }
     }
 
@@ -2447,29 +2771,23 @@ impl ObjectEditorState {
 
     fn save_csty(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut cstd = self
-            .raw_subs
+        // Each subrecord is written back over its own bytes, so a range the spec
+        // marks Unused — but the game fills with data — keeps its value.
+        let raw = &self.raw_subs;
+        let cstd = raw
             .get(b"CSTD")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 28]);
-        if cstd.len() < 28 {
-            cstd.resize(28, 0);
-        }
-        cstd[0] = self.csty_dodge_chance;
-        cstd[1] = self.csty_lr_chance;
-        cstd[24] = self.csty_power_chance;
-        session.doc.set_sub(fid, b"CSTD", cstd);
-
-        let mut cssd = self
-            .raw_subs
+            .map(|b| self.csty_std.write_into(b))
+            .unwrap_or_else(|| self.csty_std.write_into(&[]));
+        let csad = raw
+            .get(b"CSAD")
+            .map(|b| self.csty_adv.write_into(b))
+            .unwrap_or_else(|| self.csty_adv.write_into(&[]));
+        let cssd = raw
             .get(b"CSSD")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 8]);
-        if cssd.len() < 8 {
-            cssd.resize(8, 0);
-        }
-        cssd[0..4].copy_from_slice(&self.csty_cover_radius.to_le_bytes());
-        cssd[4..8].copy_from_slice(&self.csty_take_cover_chance.to_le_bytes());
+            .map(|b| self.csty_simple.write_into(b))
+            .unwrap_or_else(|| self.csty_simple.write_into(&[]));
+        session.doc.set_sub(fid, b"CSTD", cstd);
+        session.doc.set_sub(fid, b"CSAD", csad);
         session.doc.set_sub(fid, b"CSSD", cssd);
     }
 
@@ -2897,6 +3215,27 @@ const CLAS_SERVICES: [(u32, &str); 12] = [
     (0x0001_0000, "Recharge"),
     (0x0002_0000, "Repair"),
 ];
+
+/// `CSTD` Flags, the u16 flag word from fopdoc's CSTY flag table.
+///
+/// Bit 3 (0x0008) is marked `??` in the spec and is left out, exactly as the
+/// schema leaves it out: naming a bit that is not documented would invent
+/// behaviour. The word is kept whole when saving, so an undocumented bit that is
+/// set survives.
+const CSTY_FLAGS: [(u16, &str); 8] = [
+    (0x0001, "Choose Attack Using % Chance"),
+    (0x0002, "Melee Alert OK"),
+    (0x0004, "Flee Based on Personal Survival"),
+    (0x0010, "Ignore Threats"),
+    (0x0020, "Ignore Damaging Self"),
+    (0x0040, "Ignore Damaging Group"),
+    (0x0080, "Ignore Damaging Spectators"),
+    (0x0100, "Cannot Use Stealthboy"),
+];
+
+/// `CSSD` Weapon Restrictions, the enum from fopdoc's CSTY page.
+const CSTY_WEAPON_RESTRICTIONS: [(u32, &str); 3] =
+    [(0, "None"), (1, "Melee Only"), (2, "Ranged Only")];
 
 /// The seven `CLAS` `ATTR` attributes, in the spec's order.
 const CLAS_ATTRIBUTES: [&str; 7] = [
@@ -5121,31 +5460,277 @@ fn draw_clas_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
 }
 
 fn draw_csty_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    // Every subrecord is a fixed-size struct, so the panel edits each one as a
+    // whole: a field the panel does not show keeps the value the record had.
     ui.group(|ui| {
-        ui.strong("Combat Style Behavior & Chances");
+        ui.strong("Maneuver Decision (CSTD)");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Dodge Chance %:");
-            ui.add(egui::DragValue::new(&mut state.csty_dodge_chance).range(0..=100));
-            ui.label("Left/Right Dodge %:");
-            ui.add(egui::DragValue::new(&mut state.csty_lr_chance).range(0..=100));
-            ui.label("Power Attack %:");
-            ui.add(egui::DragValue::new(&mut state.csty_power_chance).range(0..=100));
+            ui.label("Dodge % Chance:");
+            ui.add(egui::DragValue::new(&mut state.csty_std.dodge_chance).range(0..=100));
+            ui.label("Left/Right % Chance:");
+            ui.add(egui::DragValue::new(&mut state.csty_std.left_right_chance).range(0..=100));
+            ui.label("Acrobatic Dodge %:");
+            ui.add(egui::DragValue::new(&mut state.csty_std.acrobatic_dodge_chance).range(0..=100));
         });
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            let std = &mut state.csty_std;
+            ui.label("Dodge L/R Timer:");
+            ui.add(egui::DragValue::new(&mut std.dodge_lr_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut std.dodge_lr_timer_max).speed(0.05));
+            ui.label("Forward Timer:");
+            ui.add(egui::DragValue::new(&mut std.dodge_forward_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut std.dodge_forward_timer_max).speed(0.05));
+        });
+        ui.horizontal_wrapped(|ui| {
+            let std = &mut state.csty_std;
+            ui.label("Dodge Back Timer:");
+            ui.add(egui::DragValue::new(&mut std.dodge_back_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut std.dodge_back_timer_max).speed(0.05));
+            ui.label("Idle Timer:");
+            ui.add(egui::DragValue::new(&mut std.idle_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut std.idle_timer_max).speed(0.05));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Melee Decision (CSTD)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Block % Chance:");
+            ui.add(egui::DragValue::new(&mut state.csty_std.block_chance).range(0..=100));
+            ui.label("Attack % Chance:");
+            ui.add(egui::DragValue::new(&mut state.csty_std.attack_chance).range(0..=100));
+            ui.label("Power Attack % Chance:");
+            ui.add(egui::DragValue::new(&mut state.csty_std.power_attack_chance).range(0..=100));
+        });
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            let std = &mut state.csty_std;
+            ui.label("Recoil/Stagger Bonus to Attack:");
+            ui.add(egui::DragValue::new(&mut std.recoil_stagger_bonus_to_attack).speed(0.5));
+            ui.label("Unconscious Bonus:");
+            ui.add(egui::DragValue::new(&mut std.unconscious_bonus_to_attack).speed(0.5));
+            ui.label("Hand-To-Hand Bonus:");
+            ui.add(egui::DragValue::new(&mut std.hand_to_hand_bonus_to_attack).speed(0.5));
+        });
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            let std = &mut state.csty_std;
+            ui.label("Hold Timer:");
+            ui.add(egui::DragValue::new(&mut std.hold_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut std.hold_timer_max).speed(0.05));
+        });
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Power Attacks - Directional Weights:").underline());
+        ui.horizontal_wrapped(|ui| {
+            let std = &mut state.csty_std;
+            ui.label("Normal:");
+            ui.add(egui::DragValue::new(&mut std.power_attack_normal).range(0..=100));
+            ui.label("Forward:");
+            ui.add(egui::DragValue::new(&mut std.power_attack_forward).range(0..=100));
+            ui.label("Back:");
+            ui.add(egui::DragValue::new(&mut std.power_attack_back).range(0..=100));
+            ui.label("Left:");
+            ui.add(egui::DragValue::new(&mut std.power_attack_left).range(0..=100));
+            ui.label("Right:");
+            ui.add(egui::DragValue::new(&mut std.power_attack_right).range(0..=100));
+        });
+        ui.horizontal_wrapped(|ui| {
+            let std = &mut state.csty_std;
+            ui.label("Recoil/Stagger Bonus to Power:");
+            ui.add(egui::DragValue::new(&mut std.recoil_stagger_bonus_to_power).speed(0.5));
+            ui.label("Unconscious Bonus:");
+            ui.add(egui::DragValue::new(&mut std.unconscious_bonus_to_power_attack).speed(0.5));
+            ui.label("Rushing Attack %:");
+            ui.add(egui::DragValue::new(&mut std.rushing_attack_chance).range(0..=100));
+            ui.label("Rushing Distance Mult:");
+            ui.add(egui::DragValue::new(&mut std.rushing_attack_distance_mult).speed(0.05));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Flags (CSTD)");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in CSTY_FLAGS {
+                let mut set = (state.csty_std.flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.csty_std.flags |= bit;
+                    } else {
+                        state.csty_std.flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.add_space(4.0);
+        // The raw word, because bit 3 is marked `??` in the spec and a mod may
+        // set it; the editor keeps it without naming it.
+        ui.horizontal(|ui| {
+            ui.label("Raw flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.csty_std.flags)
+                    .range(0..=u16::MAX as i64)
+                    .speed(1.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Advanced Modifiers (CSAD)");
+        ui.add_space(4.0);
+        let adv = &mut state.csty_adv;
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Dodge Fatigue Mod Mult:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_fatigue_mod_mult).speed(0.5));
+            ui.label("Base:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_fatigue_mod_base).speed(0.5));
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Encumbered Speed Mod Base:");
+            ui.add(egui::DragValue::new(&mut adv.encumbered_speed_mod_base).speed(0.5));
+            ui.label("Mult:");
+            ui.add(egui::DragValue::new(&mut adv.encumbered_speed_mod_mult).speed(0.05));
+        });
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Dodge Multipliers:").underline());
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_while_under_attack_mult).speed(0.05));
+            ui.label("Not Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_not_under_attack_mult).speed(0.05));
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Back, Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_back_while_under_attack_mult).speed(0.05));
+            ui.label("Back, Not Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_back_not_under_attack_mult).speed(0.05));
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Forward, While Attacking:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_forward_while_attacking_mult).speed(0.05));
+            ui.label("Forward, Not Attacking:");
+            ui.add(egui::DragValue::new(&mut adv.dodge_forward_not_attacking_mult).speed(0.05));
+        });
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Block Modifiers:").underline());
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Skill Modifier Mult:");
+            ui.add(egui::DragValue::new(&mut adv.block_skill_modifier_mult).speed(0.5));
+            ui.label("Base:");
+            ui.add(egui::DragValue::new(&mut adv.block_skill_modifier_base).speed(0.5));
+            ui.label("While Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.block_while_under_attack_mult).speed(0.05));
+            ui.label("Not Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.block_not_under_attack_mult).speed(0.05));
+        });
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Attack Modifiers:").underline());
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Skill Modifier Mult:");
+            ui.add(egui::DragValue::new(&mut adv.attack_skill_modifier_mult).speed(0.5));
+            ui.label("Base:");
+            ui.add(egui::DragValue::new(&mut adv.attack_skill_modifier_base).speed(0.5));
+            ui.label("While Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.attack_while_under_attack_mult).speed(0.05));
+            ui.label("Not Under Attack:");
+            ui.add(egui::DragValue::new(&mut adv.attack_not_under_attack_mult).speed(0.05));
+            ui.label("During Block:");
+            ui.add(egui::DragValue::new(&mut adv.attack_during_block_mult).speed(0.05));
+        });
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Power Attack Fatigue Mod:").underline());
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Base:");
+            ui.add(egui::DragValue::new(&mut adv.power_attack_fatigue_mod_base).speed(0.5));
+            ui.label("Mult:");
+            ui.add(egui::DragValue::new(&mut adv.power_attack_fatigue_mod_mult).speed(0.5));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Simple (CSSD)");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Cover Search Radius:");
             ui.add(
-                egui::DragValue::new(&mut state.csty_cover_radius)
+                egui::DragValue::new(&mut state.csty_simple.cover_search_radius)
                     .speed(10.0)
                     .range(0.0..=100000.0),
             );
             ui.label("Take Cover Chance %:");
             ui.add(
-                egui::DragValue::new(&mut state.csty_take_cover_chance)
+                egui::DragValue::new(&mut state.csty_simple.take_cover_chance)
                     .speed(0.05)
                     .range(0.0..=1.0),
             );
+            ui.label("Combat Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.csty_simple.combat_radius)
+                    .speed(10.0)
+                    .range(0.0..=100000.0),
+            );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Weapon Restrictions:");
+            let cur = CSTY_WEAPON_RESTRICTIONS
+                .iter()
+                .find(|(v, _)| *v == state.csty_simple.weapon_restrictions)
+                .map(|(_, n)| *n);
+            egui::ComboBox::from_id_salt("csty_weapon_restr")
+                .selected_text(cur.unwrap_or("Custom"))
+                .show_ui(ui, |ui| {
+                    for (v, name) in CSTY_WEAPON_RESTRICTIONS {
+                        ui.selectable_value(&mut state.csty_simple.weapon_restrictions, v, name);
+                    }
+                });
+        });
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            let s = &mut state.csty_simple;
+            ui.label("Wait Timer:");
+            ui.add(egui::DragValue::new(&mut s.wait_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut s.wait_timer_max).speed(0.05));
+            ui.label("Wait to Fire Timer:");
+            ui.add(egui::DragValue::new(&mut s.wait_to_fire_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut s.wait_to_fire_timer_max).speed(0.05));
+        });
+        ui.horizontal_wrapped(|ui| {
+            let s = &mut state.csty_simple;
+            ui.label("Fire Timer:");
+            ui.add(egui::DragValue::new(&mut s.fire_timer_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut s.fire_timer_max).speed(0.05));
+        });
+        ui.horizontal_wrapped(|ui| {
+            let s = &mut state.csty_simple;
+            ui.label("Ranged Weapon Range Mult:");
+            ui.add(egui::DragValue::new(&mut s.ranged_weapon_range_mult_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut s.ranged_weapon_range_mult_max).speed(0.05));
+        });
+        ui.horizontal_wrapped(|ui| {
+            let s = &mut state.csty_simple;
+            ui.label("Max Targeting FOV:");
+            ui.add(egui::DragValue::new(&mut s.max_targeting_fov).speed(0.05));
+            ui.label("Semi-Auto Firing Delay Mult:");
+            ui.add(egui::DragValue::new(&mut s.semi_auto_firing_delay_mult_min).speed(0.05));
+            ui.label("to");
+            ui.add(egui::DragValue::new(&mut s.semi_auto_firing_delay_mult_max).speed(0.05));
         });
     });
 }
