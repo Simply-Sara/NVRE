@@ -1702,7 +1702,12 @@ pub fn manage_window(
     let win_opt = win_query.iter_mut().next();
     let cam_opt = cam_query.iter().next();
 
-    if session.editing_object.is_some() {
+    let is_editing_non_crea = match session.editing_object {
+        Some((_, sig)) => sig != *b"CREA",
+        None => false,
+    };
+
+    if is_editing_non_crea {
         if let Some((_, mut win)) = win_opt {
             let expected_title = if !state.full_name.trim().is_empty() {
                 format!(
@@ -1790,7 +1795,11 @@ pub fn ui(
     mut session: ResMut<crate::session::Session>,
     mut state: ResMut<ObjectEditorState>,
 ) {
-    if session.editing_object.is_none() {
+    let is_editing_non_crea = match session.editing_object {
+        Some((_, sig)) => sig != *b"CREA",
+        None => false,
+    };
+    if !is_editing_non_crea {
         return;
     }
 
