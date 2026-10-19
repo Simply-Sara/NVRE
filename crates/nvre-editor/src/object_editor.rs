@@ -453,6 +453,22 @@ pub struct ObjectEditorState {
     /// rewriting one would corrupt the mod.
     pub hair_model: ModelData,
 
+    // HDPT fields
+    /// `DATA` Flags, the u8 flag word: Playable.
+    pub hdpt_flags: u8,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    ///
+    /// The collection is a set of subrecords that always appear together, so
+    /// it is kept as one struct rather than as loose fields. `MODT`'s texture
+    /// hashes are kept as raw bytes: the editor cannot author a file hash, and
+    /// rewriting one would corrupt the mod.
+    pub hdpt_model: ModelData,
+    /// `HNAM` Extra Parts — the FormIDs of other `HDPT` records. The subrecord
+    /// repeats: the game's records carry two or three of them.
+    pub hdpt_extra_parts: Vec<u32>,
+    /// The `HDPT` to add to the extra-parts list.
+    pub hdpt_extra_part_to_add: Option<u32>,
+
     // BPTD fields: one Body Part per entry, in file order.
     // A part is (BPTN?) BPNN BPNT BPNI BPND NAM1 NAM4 NAM5, so the optional
     // Part Name is an Option and every other field is present.
@@ -1295,6 +1311,8 @@ impl ObjectEditorState {
         self.fact_relations.clear();
         self.fact_ranks.clear();
         self.hair_model = ModelData::default();
+        self.hdpt_model = ModelData::default();
+        self.hdpt_extra_parts.clear();
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -1513,6 +1531,7 @@ impl ObjectEditorState {
             b"AVIF" => self.load_avif(),
             b"EYES" => self.load_eyes(),
             b"HAIR" => self.load_hair(&raw_subs),
+            b"HDPT" => self.load_hdpt(&raw_subs),
             b"BPTD" => self.load_bptd(&raw_subs),
             _ => self.load_misc(),
         }
@@ -2226,6 +2245,37 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load a `HDPT` (Head Part) record.
+    ///
+    /// The record is `EDID`, `FULL`, the model data collection (`MODL`,
+    /// `MODT`, `MODS`, and optionally `MODB` and `MODD`), a one-byte `DATA`
+    /// flag word, and a repeated `HNAM` naming other head parts. The model
+    /// collection's subrecords and the extra parts are read from the record's
+    /// own subrecord list rather than from `raw_subs`, which holds one value
+    /// per signature.
+    fn load_hdpt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.hdpt_flags = self.get_u8(b"DATA").unwrap_or(0);
+        self.hdpt_model = ModelData::default();
+        self.hdpt_extra_parts.clear();
+        for s in raw_subs {
+            match &s.sig {
+                b"MODL" => self.hdpt_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.hdpt_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.hdpt_model.modt = s.data.clone(),
+                b"MODS" => self.hdpt_model.mods = parse_mods(&s.data),
+                b"MODD" => self.hdpt_model.modd = s.data.first().copied(),
+                b"HNAM" if s.data.len() >= 4 => {
+                    self.hdpt_extra_parts.push(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn load_avif(&mut self) {
         self.avif_desc = self.get_string(b"DESC");
         self.avif_short_name = self.get_string(b"ANAM");
@@ -2394,6 +2444,7 @@ impl ObjectEditorState {
             b"AVIF" => self.save_avif(session),
             b"EYES" => self.save_eyes(session),
             b"HAIR" => self.save_hair(session),
+            b"HDPT" => self.save_hdpt(session),
             b"BPTD" => self.save_bptd(session),
             _ => self.save_misc(session),
         }
@@ -3603,6 +3654,60 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", vec![self.hair_flags]);
     }
 
+    /// Save a `HDPT` (Head Part) record.
+    ///
+    /// The model data collection's subrecords are written individually, in the
+    /// order the game writes them: `MODL`, `MODB`, `MODT`, `MODS`, `MODD`.
+    /// `MODT`'s texture hashes and `MODB`'s unknown bytes are copied through
+    /// unchanged — the editor cannot author a file hash, and rewriting one
+    /// would corrupt the mod.
+    ///
+    /// `HNAM` is a repeated subrecord, so the extra parts are written as one
+    /// list: a per-subrecord edit would collapse them onto the last one.
+    fn save_hdpt(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.hdpt_model;
+        let sigs = model.instance_sigs();
+
+        // The original instance's MODL is the common "Model Path" field the
+        // header panel owns and has already written, so it is not written
+        // again here. A numbered instance's model path has no such field, so
+        // it is written from the collection.
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+
+        // DATA is a single u8 flag word. Every one of the game's 61 HDPT
+        // records carries it, so it is always written.
+        session.doc.set_sub(fid, b"DATA", vec![self.hdpt_flags]);
+
+        // HNAM is the list of extra parts, each a FormID to another HDPT.
+        let parts: Vec<Vec<u8>> = self
+            .hdpt_extra_parts
+            .iter()
+            .map(|id| id.to_le_bytes().to_vec())
+            .collect();
+        session.doc.set_sub_list(fid, b"HNAM", parts);
+    }
+
     fn save_eyes(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
         // DATA is a single u8 flag word. Every EYES record in the game's
@@ -3740,6 +3845,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"AVIF" => "Actor Value",
         b"EYES" => "Eyes",
         b"HAIR" => "Hair",
+        b"HDPT" => "Head Part",
         b"BPTD" => "Body Part Data",
         _ => fallback.as_str(),
     };
@@ -3951,6 +4057,12 @@ const HAIR_FLAGS: [(u8, &str); 4] = [
     (0x08, "Fixed"),
 ];
 
+/// `HDPT` `DATA` Flags, the u8 word from fopdoc's HDPT flag table.
+///
+/// The spec names one bit, 0x01 "Playable". The word is kept whole when
+/// saving, so a bit the spec does not name survives an edit.
+const HDPT_FLAGS: [(u8, &str); 1] = [(0x01, "Playable")];
+
 /// `MODD` FaceGen Model Flags, the u8 word from fopdoc's Model Data page.
 const MODD_FLAGS: [(u8, &str); 4] = [
     (0x01, "Head"),
@@ -4049,6 +4161,7 @@ pub fn ui(
                 b"AVIF" => draw_avif_ui(ui, &mut state),
                 b"EYES" => draw_eyes_ui(ui, &mut state),
                 b"HAIR" => draw_hair_ui(ui, &session, &mut state),
+                b"HDPT" => draw_hdpt_ui(ui, &session, &mut state),
                 b"BPTD" => draw_bptd_ui(ui, &session, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
@@ -7019,6 +7132,191 @@ fn draw_hair_ui(
                 model.mods.remove(idx);
             }
         }
+    });
+}
+
+/// Draw the Head Part (HDPT) editor body.
+///
+/// The spec's `DATA` names a single flag, "Playable", but the word is kept
+/// whole and the raw byte is offered, so a bit a mod sets but the spec does
+/// not name is never silently cleared.
+fn draw_hdpt_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Flags (DATA)");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in HDPT_FLAGS {
+                let mut set = (state.hdpt_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.hdpt_flags |= bit;
+                    } else {
+                        state.hdpt_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.add_space(4.0);
+        // The raw byte, so a bit the spec does not name stays reachable.
+        ui.horizontal(|ui| {
+            ui.label("Raw flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.hdpt_flags)
+                    .range(0..=u8::MAX as i64)
+                    .speed(1.0),
+            );
+        });
+    });
+
+    // --- The model data collection ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+
+        let model = &mut state.hdpt_model;
+
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                // The original instance's model path is the header panel's
+                // "Model Path" field, so it is edited there.
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+
+        // MODT's texture hashes are file hashes the editor cannot compute or
+        // author, so it reports what is there rather than offering to change
+        // it: rewriting one would corrupt the mod.
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+
+        // MODB is four unknown bytes. They are reported, and copied through.
+        ui.horizontal(|ui| {
+            ui.label("MODB:");
+            match &model.modb {
+                Some(b) => ui.label(format!("{b:?} — preserved as-is")),
+                None => ui.label(egui::RichText::new("absent").italics()),
+            }
+        });
+
+        // MODD: the FaceGen model flags.
+        ui.horizontal(|ui| {
+            let mut has = model.modd.is_some();
+            if ui
+                .checkbox(&mut has, "Record has MODD (FaceGen flags)")
+                .changed()
+            {
+                model.modd = if has { Some(0) } else { None };
+            }
+            if let Some(modd) = model.modd.as_mut() {
+                for (bit, name) in MODD_FLAGS {
+                    let mut set = (*modd & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            *modd |= bit;
+                        } else {
+                            *modd &= !bit;
+                        }
+                    }
+                }
+            }
+        });
+
+        // MODS: the alternate textures.
+        ui.add_space(4.0);
+        ui.strong(format!("Alternate Textures (MODS) — {}", model.mods.len()));
+        ui.add_space(4.0);
+
+        if model.mods.is_empty() {
+            ui.label(egui::RichText::new("This model has no alternate textures.").italics());
+        } else {
+            let txsts = session.records_by_sig(*b"TXST");
+            let mut remove_idx = None;
+            for (idx, alt) in model.mods.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this alternate texture")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    ui.label("3D Name:");
+                    ui.add(egui::TextEdit::singleline(&mut alt.name).desired_width(180.0));
+                    ui.label("Texture (TXST):");
+                    let mut fid = Some(alt.texture);
+                    record_dropdown(ui, &format!("hdpt_alts_txst_{idx}"), &txsts, &mut fid);
+                    alt.texture = fid.unwrap_or(0);
+                    ui.label("3D Index:");
+                    ui.add(egui::DragValue::new(&mut alt.index).range(-1..=255));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                model.mods.remove(idx);
+            }
+        }
+    });
+
+    // --- HNAM: the extra parts ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Extra Parts (HNAM) — {}",
+            state.hdpt_extra_parts.len()
+        ));
+        ui.add_space(4.0);
+
+        let hdpts_all = session.records_by_sig(*b"HDPT");
+        let mut remove_idx = None;
+        for (idx, &fid) in state.hdpt_extra_parts.iter().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("✖")
+                    .on_hover_text("Remove this extra part")
+                    .clicked()
+                {
+                    remove_idx = Some(idx);
+                }
+                let name = hdpts_all
+                    .iter()
+                    .find(|(id, _)| *id == fid)
+                    .map(|(_, n)| n.as_str())
+                    .unwrap_or("Custom Head Part");
+                ui.label(format!("• {name} ({fid:08X})"));
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.hdpt_extra_parts.remove(idx);
+        }
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            record_dropdown(
+                ui,
+                "hdpt_add_extra",
+                &hdpts_all,
+                &mut state.hdpt_extra_part_to_add,
+            );
+            if ui.button("+ Add Extra Part").clicked() {
+                if let Some(fid) = state.hdpt_extra_part_to_add {
+                    if !state.hdpt_extra_parts.contains(&fid) {
+                        state.hdpt_extra_parts.push(fid);
+                    }
+                }
+            }
+        });
     });
 }
 
