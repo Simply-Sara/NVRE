@@ -407,6 +407,39 @@ fn main() {
     lvlc_state.save_to_session(&mut session);
     println!("LVLC edit queued successfully.");
 
+    // Test 24: Leveled NPC (VarVHDNCRRanger9Veteran 0x0017A2FE)
+    let lvln_fid = 0x0017A2FE;
+    let mut lvln_state = ObjectEditorState::default();
+    lvln_state.load_from_session(&session, lvln_fid, *b"LVLN");
+    println!(
+        "Loaded LVLN 0x{:08X}: EDID='{}', ChanceNone={}, EachItem={}, Entries count={}",
+        lvln_state.form_id,
+        lvln_state.edid,
+        lvln_state.lvl_chance_none,
+        lvln_state.lvl_each_item,
+        lvln_state.lvl_entries.len()
+    );
+    assert_eq!(lvln_state.edid, "VarVHDNCRRanger9Veteran");
+    assert_eq!(lvln_state.lvl_chance_none, 0);
+    assert!(!lvln_state.lvl_all_levels);
+    assert!(lvln_state.lvl_each_item);
+    assert_eq!(lvln_state.lvl_entries.len(), 2);
+    assert_eq!(lvln_state.lvl_entries[0], (33, 0x0017A2F4, 1));
+    assert_eq!(lvln_state.lvl_entries[1], (33, 0x0017A2F5, 1));
+
+    let lvln_title = nvre_editor::object_editor::window_title(
+        &lvln_state.sig,
+        &lvln_state.edid,
+        &lvln_state.full_name,
+    );
+    assert_eq!(lvln_title, "Leveled NPC - VarVHDNCRRanger9Veteran");
+
+    // Modify and save LVLN
+    lvln_state.lvl_chance_none = 10;
+    lvln_state.lvl_entries.push((35, 0x0017A2F4, 1));
+    lvln_state.save_to_session(&mut session);
+    println!("LVLN edit queued successfully.");
+
     let flsts = session.form_lists();
     let vtyps = session.records_by_sig(*b"VTYP");
     let cstys = session.records_by_sig(*b"CSTY");
