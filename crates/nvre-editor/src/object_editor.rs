@@ -414,6 +414,19 @@ pub struct ObjectEditorState {
     /// `DATA` Flags, the u8 flag word: Playable, Not Male, Not Female.
     pub eyes_flags: u8,
 
+    // HAIR fields
+    /// `ICON` Texture — the hair texture's path.
+    pub hair_icon: String,
+    /// `DATA` Flags, the u8 flag word: Playable, Not Male, Not Female, Fixed.
+    pub hair_flags: u8,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    ///
+    /// The collection is a set of subrecords that always appear together, so
+    /// it is kept as one struct rather than as loose fields. `MODT`'s texture
+    /// hashes are kept as raw bytes: the editor cannot author a file hash, and
+    /// rewriting one would corrupt the mod.
+    pub hair_model: ModelData,
+
     // BPTD fields: one Body Part per entry, in file order.
     // A part is (BPTN?) BPNN BPNT BPNI BPND NAM1 NAM4 NAM5, so the optional
     // Part Name is an Option and every other field is present.
@@ -613,6 +626,174 @@ impl BptdPart {
     pub fn label(&self) -> &str {
         self.name.as_deref().unwrap_or(&self.node)
     }
+}
+
+/// The model data collection — `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+///
+/// fopdoc's shared Model Data page says these five subrecords hold model data
+/// and always appear together. `MODB` and `MODD` are optional, and `MODT`'s
+/// texture hashes are opaque file hashes the editor cannot author, so both are
+/// kept exactly as the record had them.
+///
+/// The collection appears more than once in some record types, with the second,
+/// third and fourth instances numbered. A record that carries a numbered
+/// instance names it in [`ModelData::instance_sigs`].
+#[derive(Debug, Clone, Default)]
+pub struct ModelData {
+    /// `MODL` — the model file's path.
+    pub modl: String,
+    /// `MODB` — four unknown bytes, carried through unchanged.
+    pub modb: Option<[u8; 4]>,
+    /// `MODT` — the texture file hashes, 24 bytes each, carried through
+    /// unchanged.
+    pub modt: Vec<u8>,
+    /// `MODS` — the alternate textures.
+    pub mods: Vec<AlternateTexture>,
+    /// `MODD` — the FaceGen model flags: Head, Torso, Right Hand, Left Hand.
+    pub modd: Option<u8>,
+    /// Which numbered instance of the collection this is. Zero is the
+    /// original (`MODL`/`MODT`/`MODS`/`MODD`); one, two and three are the
+    /// second, third and fourth instances. See
+    /// [`ModelData::instance_sigs`] for the signatures each one uses.
+    pub instance: u8,
+}
+
+impl ModelData {
+    /// The subrecord signatures this instance of the collection uses.
+    ///
+    /// The spec's Model Data page tabulates the numbered instances:
+    /// `MODL`/`MOD2`/`MOD3`/`MOD4`, `MODT`/`MO2T`/`MO3T`/`MO4T` and
+    /// `MODS`/`MO2S`/`MO3S`/`MO4S`. `MODB` exists only in the original
+    /// instance, and `MODD` exists in the original and in the *third*
+    /// instance, where it is spelled `MOSD` — the second and fourth instances
+    /// have none. The two that are always missing are `None` here.
+    pub fn instance_sigs(&self) -> ModelInstanceSigs {
+        ModelInstanceSigs {
+            modl: model_sig(self.instance, b"MODL", b"MOD2", b"MOD3", b"MOD4"),
+            modt: model_sig(self.instance, b"MODT", b"MO2T", b"MO3T", b"MO4T"),
+            mods: model_sig(self.instance, b"MODS", b"MO2S", b"MO3S", b"MO4S"),
+            modd: match self.instance {
+                0 => Some(*b"MODD"),
+                2 => Some(*b"MOSD"),
+                _ => None,
+            },
+        }
+    }
+}
+
+/// The subrecord signatures one instance of a model data collection uses.
+#[derive(Debug, Clone, Copy)]
+pub struct ModelInstanceSigs {
+    /// The model file's subrecord.
+    pub modl: [u8; 4],
+    /// The texture hash subrecord.
+    pub modt: [u8; 4],
+    /// The alternate textures subrecord.
+    pub mods: [u8; 4],
+    /// The FaceGen flags subrecord, or None when this instance has none.
+    pub modd: Option<[u8; 4]>,
+}
+
+/// The signature the given instance of a model collection uses.
+///
+/// Instance 0 is the original signature; instance 1, 2 and 3 use the numbered
+/// ones.
+fn model_sig(
+    instance: u8,
+    base: &[u8; 4],
+    second: &[u8; 4],
+    third: &[u8; 4],
+    fourth: &[u8; 4],
+) -> [u8; 4] {
+    match instance {
+        0 => *base,
+        1 => *second,
+        2 => *third,
+        3 => *fourth,
+        _ => *base,
+    }
+}
+
+/// One alternate texture in a `MODS` subrecord.
+///
+/// The struct is the spec's own: a `uint32` name length, the 3D name of that
+/// length, a `formid` naming a `TXST` record, and an `int32` 3D index.
+#[derive(Debug, Clone, Default)]
+pub struct AlternateTexture {
+    /// The 3D name of the alternate texture.
+    pub name: String,
+    /// The `TXST` record holding the new texture.
+    pub texture: u32,
+    /// The 3D index the texture applies to.
+    pub index: i32,
+}
+
+impl AlternateTexture {
+    /// Read one alternate texture out of a `MODS` payload, returning it and
+    /// the offset just past it.
+    fn from_bytes(b: &[u8], off: usize) -> Option<(Self, usize)> {
+        if off + 4 > b.len() {
+            return None;
+        }
+        let name_len = u32::from_le_bytes([b[off], b[off + 1], b[off + 2], b[off + 3]]) as usize;
+        let mut at = off + 4;
+        if at + name_len + 8 > b.len() {
+            return None;
+        }
+        let name = String::from_utf8_lossy(&b[at..at + name_len]).to_string();
+        at += name_len;
+        let texture = u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]);
+        at += 4;
+        let index = i32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]);
+        at += 4;
+        Some((
+            AlternateTexture {
+                name,
+                texture,
+                index,
+            },
+            at,
+        ))
+    }
+
+    /// Write one alternate texture into a `MODS` payload.
+    fn to_bytes(&self) -> Vec<u8> {
+        let name = self.name.as_bytes();
+        let mut b = Vec::with_capacity(4 + name.len() + 8);
+        b.extend_from_slice(&(name.len() as u32).to_le_bytes());
+        b.extend_from_slice(name);
+        b.extend_from_slice(&self.texture.to_le_bytes());
+        b.extend_from_slice(&self.index.to_le_bytes());
+        b
+    }
+}
+
+/// Read a `MODS` payload into its alternate textures.
+fn parse_mods(b: &[u8]) -> Vec<AlternateTexture> {
+    if b.len() < 4 {
+        return Vec::new();
+    }
+    let count = u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize;
+    let mut out = Vec::with_capacity(count.min(64));
+    let mut off = 4usize;
+    for _ in 0..count {
+        let Some((alt, next)) = AlternateTexture::from_bytes(b, off) else {
+            break;
+        };
+        out.push(alt);
+        off = next;
+    }
+    out
+}
+
+/// Write alternate textures back into a `MODS` payload.
+fn write_mods(alts: &[AlternateTexture]) -> Vec<u8> {
+    let mut b = Vec::new();
+    b.extend_from_slice(&(alts.len() as u32).to_le_bytes());
+    for a in alts {
+        b.extend_from_slice(&a.to_bytes());
+    }
+    b
 }
 
 /// One `XNAM` (Relation) subrecord of a `FACT` record.
@@ -1087,6 +1268,7 @@ impl ObjectEditorState {
         self.bptd_part_to_add = BptdPart::default();
         self.fact_relations.clear();
         self.fact_ranks.clear();
+        self.hair_model = ModelData::default();
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -1304,6 +1486,7 @@ impl ObjectEditorState {
             b"CLMT" => self.load_clmt(),
             b"AVIF" => self.load_avif(),
             b"EYES" => self.load_eyes(),
+            b"HAIR" => self.load_hair(&raw_subs),
             b"BPTD" => self.load_bptd(&raw_subs),
             _ => self.load_misc(),
         }
@@ -1678,6 +1861,7 @@ impl ObjectEditorState {
         // The relations and the rank collection, in file order.
         self.fact_relations.clear();
         self.fact_ranks.clear();
+        self.hair_model = ModelData::default();
         let mut cur_rank: Option<FactRank> = None;
         for s in raw_subs {
             match &s.sig {
@@ -1957,6 +2141,33 @@ impl ObjectEditorState {
         self.eyes_flags = self.get_u8(b"DATA").unwrap_or(0);
     }
 
+    /// Load a `HAIR` (Hair) record.
+    ///
+    /// The record is `EDID`, `FULL`, the model data collection (`MODL`,
+    /// `MODT`, `ICON`) and a one-byte `DATA`. The model data collection's
+    /// subrecords are read from the record's own subrecord list rather than
+    /// from `raw_subs`, because the collection can appear more than once in a
+    /// record and `raw_subs` holds one value per signature.
+    fn load_hair(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.hair_icon = self.get_string(b"ICON");
+        self.hair_flags = self.get_u8(b"DATA").unwrap_or(0);
+        self.hair_model = ModelData::default();
+
+        // The original instance of the collection, and any numbered ones.
+        for s in raw_subs {
+            match &s.sig {
+                b"MODL" => self.hair_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.hair_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.hair_model.modt = s.data.clone(),
+                b"MODS" => self.hair_model.mods = parse_mods(&s.data),
+                b"MODD" => self.hair_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
     fn load_avif(&mut self) {
         self.avif_desc = self.get_string(b"DESC");
         self.avif_short_name = self.get_string(b"ANAM");
@@ -2124,6 +2335,7 @@ impl ObjectEditorState {
             b"CLMT" => self.save_clmt(session),
             b"AVIF" => self.save_avif(session),
             b"EYES" => self.save_eyes(session),
+            b"HAIR" => self.save_hair(session),
             b"BPTD" => self.save_bptd(session),
             _ => self.save_misc(session),
         }
@@ -3243,6 +3455,58 @@ impl ObjectEditorState {
         }
     }
 
+    /// Save a `HAIR` (Hair) record.
+    ///
+    /// The model data collection's subrecords are written individually, in the
+    /// order the game writes them: `MODL`, `MODB`, `MODT`, `MODS`, `MODD`.
+    /// `MODT`'s texture hashes and `MODB`'s unknown bytes are copied through
+    /// unchanged — the editor cannot author a file hash, and rewriting one
+    /// would corrupt the mod.
+    fn save_hair(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.hair_model;
+        let sigs = model.instance_sigs();
+
+        // The original instance's MODL is the common "Model Path" field the
+        // header panel owns and has already written, so it is not written
+        // again here. A numbered instance's model path has no such field, so
+        // it is written from the collection.
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+
+        // ICON is the hair's texture.
+        if self.hair_icon.trim().is_empty() {
+            session.doc.remove_sub(fid, b"ICON");
+        } else {
+            session
+                .doc
+                .set_sub(fid, b"ICON", encode_zstring(&self.hair_icon));
+        }
+
+        // DATA is a single u8 flag word. Every one of the game's 67 HAIR
+        // records carries it, so it is always written.
+        session.doc.set_sub(fid, b"DATA", vec![self.hair_flags]);
+    }
+
     fn save_eyes(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
         // DATA is a single u8 flag word. Every EYES record in the game's
@@ -3331,6 +3595,13 @@ impl ObjectEditorState {
     }
 }
 
+/// Read a NUL-terminated string out of a subrecord payload.
+fn zstring(b: &[u8]) -> String {
+    String::from_utf8_lossy(b)
+        .trim_end_matches('\0')
+        .to_string()
+}
+
 fn encode_zstring(s: &str) -> Vec<u8> {
     let mut v = s.as_bytes().to_vec();
     if !v.ends_with(&[0]) {
@@ -3372,6 +3643,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"LVLC" => "Leveled Creature",
         b"AVIF" => "Actor Value",
         b"EYES" => "Eyes",
+        b"HAIR" => "Hair",
         b"BPTD" => "Body Part Data",
         _ => fallback.as_str(),
     };
@@ -3572,6 +3844,25 @@ const FACT_FLAGS2: [(u8, &str); 2] = [(0x01, "Track Crime"), (0x02, "Allow Sell"
 /// `FACT` `XNAM` Group Combat Reaction, the enum from fopdoc's XNAM page.
 const FACT_REACTIONS: [(u32, &str); 4] = [(0, "Neutral"), (1, "Enemy"), (2, "Ally"), (3, "Friend")];
 
+/// `HAIR` `DATA` Flags, the u8 word from fopdoc's HAIR flag table.
+///
+/// The spec names bits 0, 1, 2 and 3. The word is kept whole when saving, so
+/// a bit the spec does not name survives an edit.
+const HAIR_FLAGS: [(u8, &str); 4] = [
+    (0x01, "Playable"),
+    (0x02, "Not Male"),
+    (0x04, "Not Female"),
+    (0x08, "Fixed"),
+];
+
+/// `MODD` FaceGen Model Flags, the u8 word from fopdoc's Model Data page.
+const MODD_FLAGS: [(u8, &str); 4] = [
+    (0x01, "Head"),
+    (0x02, "Torso"),
+    (0x04, "Right Hand"),
+    (0x08, "Left Hand"),
+];
+
 /// Draw the Object Editor UI.
 pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
@@ -3661,6 +3952,7 @@ pub fn ui(
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
                 b"AVIF" => draw_avif_ui(ui, &mut state),
                 b"EYES" => draw_eyes_ui(ui, &mut state),
+                b"HAIR" => draw_hair_ui(ui, &session, &mut state),
                 b"BPTD" => draw_bptd_ui(ui, &session, &mut state),
                 _ => draw_misc_ui(ui, &mut state),
             });
@@ -6477,6 +6769,152 @@ fn draw_clmt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .desired_width(ui.available_width() - 20.0),
             );
         });
+    });
+}
+
+fn draw_hair_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Hair Flags (DATA)");
+        ui.add_space(4.0);
+        // The checkboxes write the named bits of the whole word, so the two
+        // controls cannot disagree, and a bit the spec does not name survives.
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in HAIR_FLAGS {
+                let mut set = (state.hair_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.hair_flags |= bit;
+                    } else {
+                        state.hair_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.add_space(4.0);
+        // The raw word, because the bits fopdoc marks with a `?` are real and
+        // a mod may set them; the editor keeps them without naming them.
+        ui.horizontal(|ui| {
+            ui.label("Raw flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.hair_flags)
+                    .range(0..=u8::MAX as i64)
+                    .speed(1.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Texture (ICON)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut state.hair_icon)
+                    .desired_width(ui.available_width() - 20.0),
+            );
+        });
+    });
+
+    // --- The model data collection ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+
+        let model = &mut state.hair_model;
+
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                // The original instance's model path is the header panel's
+                // "Model Path" field, so it is edited there.
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+
+        // MODT's texture hashes are file hashes the editor cannot compute or
+        // author, so it reports what is there rather than offering to change
+        // it: rewriting one would corrupt the mod.
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+
+        // MODB is four unknown bytes. They are reported, and copied through.
+        ui.horizontal(|ui| {
+            ui.label("MODB:");
+            match &model.modb {
+                Some(b) => ui.label(format!("{:?} — preserved as-is", b)),
+                None => ui.label(egui::RichText::new("absent").italics()),
+            }
+        });
+
+        // MODD: the FaceGen model flags.
+        ui.horizontal(|ui| {
+            let mut has = model.modd.is_some();
+            if ui
+                .checkbox(&mut has, "Record has MODD (FaceGen flags)")
+                .changed()
+            {
+                model.modd = if has { Some(0) } else { None };
+            }
+            if let Some(modd) = model.modd.as_mut() {
+                for (bit, name) in MODD_FLAGS {
+                    let mut set = (*modd & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            *modd |= bit;
+                        } else {
+                            *modd &= !bit;
+                        }
+                    }
+                }
+            }
+        });
+
+        // MODS: the alternate textures.
+        ui.add_space(4.0);
+        ui.strong(format!("Alternate Textures (MODS) — {}", model.mods.len()));
+        ui.add_space(4.0);
+
+        if model.mods.is_empty() {
+            ui.label(egui::RichText::new("This model has no alternate textures.").italics());
+        } else {
+            let txsts = session.records_by_sig(*b"TXST");
+            let mut remove_idx = None;
+            for (idx, alt) in model.mods.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this alternate texture")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    ui.label("3D Name:");
+                    ui.add(egui::TextEdit::singleline(&mut alt.name).desired_width(180.0));
+                    ui.label("Texture (TXST):");
+                    let mut fid = Some(alt.texture);
+                    record_dropdown(ui, &format!("hair_alts_txst_{idx}"), &txsts, &mut fid);
+                    alt.texture = fid.unwrap_or(0);
+                    ui.label("3D Index:");
+                    ui.add(egui::DragValue::new(&mut alt.index).range(-1..=255));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                model.mods.remove(idx);
+            }
+        }
     });
 }
 
