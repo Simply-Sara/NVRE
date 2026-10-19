@@ -45,6 +45,8 @@ pub struct ObjectEditorState {
     pub full_name: String,
     pub model: String,
     pub script: Option<u32>,
+    pub record_flags: u32,
+    pub quest_item: bool,
 
     // Subrecord map for uncommitted overlay
     pub raw_subs: HashMap<[u8; 4], Vec<u8>>,
@@ -85,6 +87,14 @@ pub struct ObjectEditorState {
     pub actor_female: bool,
     pub actor_essential: bool,
     pub actor_respawn: bool,
+    pub actor_no_low_level_proc: bool,
+    pub actor_no_vats_melee: bool,
+    pub actor_allow_pc_dialogue: bool,
+    pub actor_cant_open_doors: bool,
+    pub actor_no_knockdowns: bool,
+    pub actor_allow_pickpocket: bool,
+    pub actor_is_ghost: bool,
+    pub actor_invulnerable: bool,
     pub actor_flags: u32,
     pub actor_level_or_mult: i16,
     pub actor_pc_mult: bool,
@@ -306,21 +316,28 @@ impl ObjectEditorState {
         self.tab = EditorTab::Main;
         self.status = format!("Loaded {} {:08X}", fnv_util::tag_str(&sig), form_id);
 
-        let (raw_subs, found) = if let Some(rec) = session.doc.record(form_id) {
-            (rec.subrecords().unwrap_or_default(), true)
+        let (raw_subs, flags, found) = if let Some(rec) = session.doc.record(form_id) {
+            (rec.subrecords().unwrap_or_default(), rec.header.flags, true)
         } else if let Ok(lo) = session.load_order() {
             if let Some((_, orig)) = fnv_world::fields::winner(lo, form_id) {
-                (orig.subrecords().unwrap_or_default(), true)
+                (
+                    orig.subrecords().unwrap_or_default(),
+                    orig.header.flags,
+                    true,
+                )
             } else {
-                (Vec::new(), false)
+                (Vec::new(), 0, false)
             }
         } else {
-            (Vec::new(), false)
+            (Vec::new(), 0, false)
         };
 
         if !found {
             return;
         }
+
+        self.record_flags = flags;
+        self.quest_item = (flags & (1 << 10)) != 0;
 
         self.raw_subs.clear();
         for s in raw_subs {
@@ -482,17 +499,28 @@ impl ObjectEditorState {
             self.actor_calc_max = u16::from_le_bytes([b[12], b[13]]);
             self.actor_speed_mult = u16::from_le_bytes([b[14], b[15]]);
             self.actor_karma = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
-            self.actor_female = (self.actor_flags & 1) != 0;
-            self.actor_essential = (self.actor_flags & 2) != 0;
-            self.actor_respawn = (self.actor_flags & 8) != 0;
-            self.actor_pc_mult = (self.actor_flags & (1 << 7)) != 0;
 
+            // Shared & NPC flags
+            self.actor_female = (self.actor_flags & (1 << 0)) != 0;
+            self.actor_essential = (self.actor_flags & (1 << 1)) != 0;
+            self.actor_respawn = (self.actor_flags & (1 << 3)) != 0;
+            self.actor_pc_mult = (self.actor_flags & (1 << 7)) != 0;
+            self.actor_no_low_level_proc = (self.actor_flags & (1 << 9)) != 0;
+            self.actor_no_vats_melee = (self.actor_flags & (1 << 20)) != 0;
+            self.actor_allow_pc_dialogue = (self.actor_flags & (1 << 21)) != 0;
+            self.actor_cant_open_doors = (self.actor_flags & (1 << 22)) != 0;
+            self.actor_no_knockdowns = (self.actor_flags & (1 << 26)) != 0;
+            self.actor_allow_pickpocket = (self.actor_flags & (1 << 28)) != 0;
+            self.actor_is_ghost = (self.actor_flags & (1 << 29)) != 0;
+            self.actor_invulnerable = (self.actor_flags & (1 << 31)) != 0;
+
+            // Creature movement/traits
             self.crea_biped = (self.actor_flags & (1 << 0)) != 0;
             self.crea_weapon_shield = (self.actor_flags & (1 << 2)) != 0;
             self.crea_swims = (self.actor_flags & (1 << 4)) != 0;
             self.crea_flies = (self.actor_flags & (1 << 5)) != 0;
             self.crea_walks = (self.actor_flags & (1 << 6)) != 0;
-            self.crea_no_head_track = (self.actor_flags & (1 << 25)) != 0;
+            self.crea_no_head_track = (self.actor_flags & (1 << 30)) != 0;
         }
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 17) {
             self.crea_type = b[0];
@@ -868,6 +896,14 @@ impl ObjectEditorState {
             session.doc.set_sub(fid, b"SCRI", s.to_le_bytes().to_vec());
         }
 
+        let mut flags = self.record_flags;
+        if self.quest_item {
+            flags |= 1 << 10;
+        } else {
+            flags &= !(1 << 10);
+        }
+        session.doc.set_flags(fid, flags);
+
         match &self.sig {
             b"WEAP" => self.save_weap(session),
             b"ARMO" => self.save_armo(session),
@@ -1021,73 +1057,37 @@ impl ObjectEditorState {
             acbs.resize(24, 0);
         }
         let mut f = self.actor_flags;
+
+        let set_flag = |f: &mut u32, bit: u8, val: bool| {
+            if val {
+                *f |= 1 << bit;
+            } else {
+                *f &= !(1 << bit);
+            }
+        };
+
+        // Shared actor flags
+        set_flag(&mut f, 1, self.actor_essential);
+        set_flag(&mut f, 3, self.actor_respawn);
+        set_flag(&mut f, 7, self.actor_pc_mult);
+        set_flag(&mut f, 9, self.actor_no_low_level_proc);
+        set_flag(&mut f, 20, self.actor_no_vats_melee);
+        set_flag(&mut f, 26, self.actor_no_knockdowns);
+        set_flag(&mut f, 28, self.actor_allow_pickpocket);
+        set_flag(&mut f, 29, self.actor_is_ghost);
+        set_flag(&mut f, 31, self.actor_invulnerable);
+
         if self.sig == *b"CREA" {
-            if self.crea_biped {
-                f |= 1 << 0;
-            } else {
-                f &= !(1 << 0);
-            }
-            if self.actor_essential {
-                f |= 1 << 1;
-            } else {
-                f &= !(1 << 1);
-            }
-            if self.crea_weapon_shield {
-                f |= 1 << 2;
-            } else {
-                f &= !(1 << 2);
-            }
-            if self.actor_respawn {
-                f |= 1 << 3;
-            } else {
-                f &= !(1 << 3);
-            }
-            if self.crea_swims {
-                f |= 1 << 4;
-            } else {
-                f &= !(1 << 4);
-            }
-            if self.crea_flies {
-                f |= 1 << 5;
-            } else {
-                f &= !(1 << 5);
-            }
-            if self.crea_walks {
-                f |= 1 << 6;
-            } else {
-                f &= !(1 << 6);
-            }
-            if self.actor_pc_mult {
-                f |= 1 << 7;
-            } else {
-                f &= !(1 << 7);
-            }
-            if self.crea_no_head_track {
-                f |= 1 << 25;
-            } else {
-                f &= !(1 << 25);
-            }
+            set_flag(&mut f, 0, self.crea_biped);
+            set_flag(&mut f, 2, self.crea_weapon_shield);
+            set_flag(&mut f, 4, self.crea_swims);
+            set_flag(&mut f, 5, self.crea_flies);
+            set_flag(&mut f, 6, self.crea_walks);
+            set_flag(&mut f, 21, self.actor_allow_pc_dialogue);
+            set_flag(&mut f, 22, self.actor_cant_open_doors);
+            set_flag(&mut f, 30, self.crea_no_head_track);
         } else {
-            if self.actor_female {
-                f |= 1;
-            } else {
-                f &= !1;
-            }
-            if self.actor_essential {
-                f |= 2;
-            } else {
-                f &= !2;
-            }
-            if self.actor_respawn {
-                f |= 8;
-            } else {
-                f &= !8;
-            }
-            if self.actor_pc_mult {
-                f |= 1 << 7;
-            } else {
-                f &= !(1 << 7);
-            }
+            set_flag(&mut f, 0, self.actor_female);
         }
         acbs[0..4].copy_from_slice(&f.to_le_bytes());
         acbs[4..6].copy_from_slice(&self.actor_fatigue.to_le_bytes());
@@ -1942,7 +1942,9 @@ pub fn ui(
                 ui.add(egui::TextEdit::singleline(&mut state.edid).desired_width(180.0));
                 ui.separator();
                 ui.label("Name:");
-                ui.add(egui::TextEdit::singleline(&mut state.full_name).desired_width(180.0));
+                ui.add(egui::TextEdit::singleline(&mut state.full_name).desired_width(170.0));
+                ui.separator();
+                ui.checkbox(&mut state.quest_item, "Quest Item");
             });
 
             ui.add_space(4.0);
@@ -2426,27 +2428,43 @@ fn draw_actor_ui(
     ui.add_space(6.0);
     ui.group(|ui| {
         ui.strong(if state.sig == *b"CREA" {
-            "Creature Traits & Movement"
+            "Creature Flags, Movement & Traits"
         } else {
-            "Flags & Identity"
+            "Actor Flags & Traits"
         });
         ui.add_space(4.0);
-        ui.horizontal(|ui| {
+
+        ui.label(egui::RichText::new("Flags:").underline());
+        ui.horizontal_wrapped(|ui| {
+            ui.checkbox(&mut state.actor_essential, "Essential");
+            ui.checkbox(&mut state.actor_respawn, "Respawn");
+            ui.checkbox(&mut state.quest_item, "Quest Item");
+            ui.checkbox(&mut state.actor_invulnerable, "Invulnerable");
+            ui.checkbox(&mut state.actor_is_ghost, "Is Ghost");
+            ui.checkbox(&mut state.actor_no_knockdowns, "No Knockdowns");
+            ui.checkbox(&mut state.actor_no_low_level_proc, "No Level Processing");
+            ui.checkbox(&mut state.actor_no_vats_melee, "No VATS Melee");
+            ui.checkbox(&mut state.actor_allow_pickpocket, "Allow Pickpocket");
             if state.sig == *b"CREA" {
-                ui.checkbox(&mut state.crea_biped, "Biped");
-                ui.checkbox(&mut state.crea_swims, "Swims");
-                ui.checkbox(&mut state.crea_flies, "Flies");
-                ui.checkbox(&mut state.crea_walks, "Walks");
-                ui.checkbox(&mut state.crea_weapon_shield, "Weapon & Shield");
-                ui.checkbox(&mut state.actor_essential, "Essential");
-                ui.checkbox(&mut state.actor_respawn, "Respawn");
+                ui.checkbox(&mut state.actor_allow_pc_dialogue, "Allow PC Dialogue");
+                ui.checkbox(&mut state.actor_cant_open_doors, "Can't Open Doors");
                 ui.checkbox(&mut state.crea_no_head_track, "No Head-Track");
             } else {
                 ui.checkbox(&mut state.actor_female, "Female");
-                ui.checkbox(&mut state.actor_essential, "Essential");
-                ui.checkbox(&mut state.actor_respawn, "Respawn");
             }
         });
+
+        if state.sig == *b"CREA" {
+            ui.add_space(4.0);
+            ui.label(egui::RichText::new("Movement & Combat:").underline());
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut state.crea_biped, "Biped");
+                ui.checkbox(&mut state.crea_walks, "Walks");
+                ui.checkbox(&mut state.crea_swims, "Swims");
+                ui.checkbox(&mut state.crea_flies, "Flies");
+                ui.checkbox(&mut state.crea_weapon_shield, "Weapon & Shield");
+            });
+        }
 
         if state.sig == *b"NPC_" {
             ui.add_space(4.0);

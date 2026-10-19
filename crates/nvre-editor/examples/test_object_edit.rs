@@ -241,11 +241,47 @@ fn main() {
     let mut sm_state = ObjectEditorState::default();
     sm_state.load_from_session(&session, sm_fid, *b"CREA");
     println!(
-        "Loaded CREA 0x{:08X}: EDID='{}', WeaponList={:08X?}",
-        sm_state.form_id, sm_state.edid, sm_state.crea_weapon_list
+        "Loaded CREA 0x{:08X}: EDID='{}', WeaponList={:08X?}, QuestItem={}, Pickpocket={}, NoLowLevelProc={}",
+        sm_state.form_id,
+        sm_state.edid,
+        sm_state.crea_weapon_list,
+        sm_state.quest_item,
+        sm_state.actor_allow_pickpocket,
+        sm_state.actor_no_low_level_proc
     );
     assert_eq!(sm_state.edid, "CrSuperMutantDeadMinigunRubyHill");
     assert_eq!(sm_state.crea_weapon_list, Some(0x0003A15E));
+    assert!(sm_state.quest_item);
+    assert!(sm_state.actor_allow_pickpocket);
+    assert!(sm_state.actor_no_low_level_proc);
+
+    // Test 17: Ghost creature (NVCRTumbleweed 0x0016938D)
+    let tw_fid = 0x0016938D;
+    let mut tw_state = ObjectEditorState::default();
+    tw_state.load_from_session(&session, tw_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', IsGhost={}, NoKnockdowns={}, NoHeadTrack={}",
+        tw_state.form_id,
+        tw_state.edid,
+        tw_state.actor_is_ghost,
+        tw_state.actor_no_knockdowns,
+        tw_state.crea_no_head_track
+    );
+    assert_eq!(tw_state.edid, "NVCRTumbleweed");
+    assert!(tw_state.actor_is_ghost);
+    assert!(tw_state.actor_no_knockdowns);
+    assert!(tw_state.crea_no_head_track);
+
+    // Test 18: Invulnerable creature (YesManMainframe 0x0016A21D)
+    let ym_fid = 0x0016A21D;
+    let mut ym_state = ObjectEditorState::default();
+    ym_state.load_from_session(&session, ym_fid, *b"CREA");
+    println!(
+        "Loaded CREA 0x{:08X}: EDID='{}', Invulnerable={}",
+        ym_state.form_id, ym_state.edid, ym_state.actor_invulnerable
+    );
+    assert_eq!(ym_state.edid, "YesManMainframe");
+    assert!(ym_state.actor_invulnerable);
 
     let flsts = session.form_lists();
     let vtyps = session.records_by_sig(*b"VTYP");
