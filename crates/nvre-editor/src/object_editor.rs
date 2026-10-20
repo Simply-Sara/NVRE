@@ -428,6 +428,325 @@ pub struct ObjectEditorState {
     pub clmt_sun_texture: String,
     pub clmt_sun_glare_texture: String,
 
+    // DEHY (Dehydration) fields
+    /// `DATA` Trigger Threshold — the uint32.
+    pub dehyd_trigger_threshold: u32,
+    /// `DATA` Actor Effect — the FormID of a `SPEL` record.
+    pub dehyd_actor_effect: Option<u32>,
+
+    // HUNG (Hunger) fields
+    /// `DATA` Trigger Threshold — the uint32.
+    pub hung_trigger_threshold: u32,
+    /// `DATA` Actor Effect — the FormID of a `SPEL` record.
+    pub hung_actor_effect: Option<u32>,
+
+    // RADS (Radiation) fields
+    /// `DATA` Trigger Threshold — the uint32.
+    pub rads_trigger_threshold: u32,
+    /// `DATA` Actor Effect — the FormID of a `SPEL` record.
+    pub rads_actor_effect: Option<u32>,
+
+    // SLPD (Sleep Deprivation) fields
+    /// `DATA` Trigger Threshold — the uint32.
+    pub slpd_trigger_threshold: u32,
+    /// `DATA` Actor Effect — the FormID of a `SPEL` record.
+    pub slpd_actor_effect: Option<u32>,
+
+    // ECZN (Encounter Zone) fields
+    /// `DATA` Owner — the FormID of an `NPC_` or `FACT` record.
+    pub ecnz_owner: Option<u32>,
+    /// `DATA` Rank — the int8.
+    pub ecnz_rank: i8,
+    /// `DATA` Minimum Level — the int8.
+    pub ecnz_minimum_level: i8,
+    /// `DATA` Flags — the u8 flag word: Never Resets, Match PC Below Minimum
+    /// Level. The word is kept whole, so a bit the spec does not name
+    /// survives an edit.
+    pub ecnz_flags: u8,
+    /// `DATA` Unused — the byte the spec does not name, carried through.
+    pub ecnz_unused: u8,
+
+    // DOBJ (Default Object Manager) fields
+    /// `DATA` — the thirty-four default-object FormIDs, in the order the
+    /// record stores them. The field names are in `DOBJ_FIELDS`.
+    pub dobj_values: Vec<u32>,
+
+    // FURN (Furniture) fields
+    /// `MNAM` Marker Flags — the raw bytes.
+    pub furn_marker_flags: Vec<u8>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub furn_model: ModelData,
+    /// The destruction data: the `DEST` header and the `DSTD` stages.
+    pub furn_destruction: Vec<DestructionStage>,
+    /// `DEST` Health — the int32.
+    pub furn_dest_health: i32,
+    /// `DEST` Flags — the u8 flag word.
+    pub furn_dest_flags: u8,
+
+    // GRAS (Grass) fields
+    /// `DATA` Density — the uint8.
+    pub gras_density: u8,
+    /// `DATA` Min Slope — the uint8.
+    pub gras_min_slope: u8,
+    /// `DATA` Max Slope — the uint8.
+    pub gras_max_slope: u8,
+    /// `DATA` Unit From Water Amount — the uint16.
+    pub gras_unit_from_water_amount: u16,
+    /// `DATA` Unit From Water Type — the uint32 enum.
+    pub gras_unit_from_water_type: u32,
+    /// `DATA` Position Range — the float32.
+    pub gras_position_range: f32,
+    /// `DATA` Height Range — the float32.
+    pub gras_height_range: f32,
+    /// `DATA` Color Range — the float32.
+    pub gras_color_range: f32,
+    /// `DATA` Wave Period — the float32.
+    pub gras_wave_period: f32,
+    /// `DATA` Flags — the u8 flag word: Vertex Lighting, Uniform Scaling, Fit
+    /// To Slope. The word is kept whole, so a bit the spec does not name
+    /// survives an edit.
+    pub gras_flags: u8,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub gras_model: ModelData,
+
+    // CHAL (Challenge) fields
+    /// `DATA` Type — the uint32 enum: the fourteen kinds of challenge.
+    pub chal_type: u32,
+    /// `DATA` Threshold — the uint32 the challenge is measured against.
+    pub chal_threshold: u32,
+    /// `DATA` Flags — the uint32 flag word: Start Disabled, Recurring, Show
+    /// Zero Progress. The word is kept whole, so a bit the spec does not
+    /// name survives an edit.
+    pub chal_flags: u32,
+    /// `DATA` Interval — the uint32.
+    pub chal_interval: u32,
+    /// `DATA` Value1 — two bytes whose meaning depends on the type.
+    pub chal_value1: [u8; 2],
+    /// `DATA` Value2 — two bytes whose meaning depends on the type.
+    pub chal_value2: [u8; 2],
+    /// `DATA` Value3 — four bytes whose meaning depends on the type.
+    pub chal_value3: [u8; 4],
+    /// `SNAM` Value3 — the FormID, for the types whose Value3 is a reference.
+    pub chal_snam: Option<u32>,
+    /// `XNAM` Value4 — the FormID, for the types whose Value4 is a reference.
+    pub chal_xnam: Option<u32>,
+    /// `ICON` — the Pip-Boy icon.
+    pub chal_icon: String,
+    /// `MICO` — the message icon.
+    pub chal_mico: String,
+    /// `DESC` — the description.
+    pub chal_desc: String,
+
+    // CPTH (Camera Path) fields
+    /// `DATA` Camera Zoom — the u8 enum: Default, Disable, Shot List.
+    pub cpth_camera_zoom: u8,
+    /// `ANAM` Parent Camera Path — the FormID of another `CPTH` record.
+    pub cpth_parent: Option<u32>,
+    /// `ANAM` Previous Sibling Camera Path — the FormID of another `CPTH`.
+    pub cpth_previous: Option<u32>,
+    /// `SNAM` Camera Shot — the FormIDs of the `CAMS` records on the path.
+    /// `SNAM` is a *repeated* subrecord, so the shots are a list.
+    pub cpth_shots: Vec<u32>,
+    /// `CTDA` — the conditions on the path. `CTDA` is a *repeated*
+    /// subrecord, so the conditions are a list.
+    pub cpth_conditions: Vec<fnv_esm::Subrecord>,
+
+    // CSNO (Casino) fields
+    /// `DATA` Decks % Before Shuffle — the float32.
+    pub csno_decks_shuffle: f32,
+    /// `DATA` BlackJack Payout Ratio — the float32.
+    pub csno_payout_ratio: f32,
+    /// `DATA` Slot Reel Stop — the seven uint32 values: symbols 1 to 6 and W.
+    pub csno_reel_stops: Vec<u32>,
+    /// `DATA` Number of Decks — the uint32.
+    pub csno_number_of_decks: u32,
+    /// `DATA` Max Winnings — the uint32.
+    pub csno_max_winnings: u32,
+    /// `DATA` Currency — the FormID of a `CHIP` record.
+    pub csno_currency: Option<u32>,
+    /// `DATA` Casino Winnings Quest — the FormID of a `QUST` record.
+    pub csno_winnings_quest: Option<u32>,
+    /// `DATA` Flags — the uint32 flag word: Dealer Stay on Soft 17.
+    pub csno_flags: u32,
+    /// The chip models: `MODL` carries seven of them, then `MOD2`, `MOD3` and
+    /// `MOD4` carry the slot machine, blackjack table and roulette table.
+    pub csno_models: Vec<String>,
+    /// The slot reel textures: `ICON` carries seven of them.
+    pub csno_icons: Vec<String>,
+    /// The blackjack deck textures: `ICO2` carries four of them.
+    pub csno_deck_icons: Vec<String>,
+
+    // DEBR (Debris) fields
+    /// The debris models. Each is a `DATA` (percentage, model filename, flags)
+    /// and a `MODT` (texture hashes), and both repeat, so the collection is a
+    /// list of pairs.
+    pub debr_models: Vec<DebrisModel>,
+
+    // CAMS (Camera Shot) fields
+    /// `DATA` Action — the uint32 enum: Shoot, Fly, Hit, Zoom.
+    pub cams_action: u32,
+    /// `DATA` Location — the uint32 enum: Attacker, Projectile, Target.
+    pub cams_location: u32,
+    /// `DATA` Target — the uint32 enum: Attacker, Projectile, Target.
+    pub cams_target: u32,
+    /// `DATA` Flags — the uint32 flag word. The word is kept whole, so a bit
+    /// the spec does not name survives an edit.
+    pub cams_flags: u32,
+    /// `DATA` Player Time Multiplier.
+    pub cams_player_time_mult: f32,
+    /// `DATA` Target Time Multiplier.
+    pub cams_target_time_mult: f32,
+    /// `DATA` Global Time Multiplier.
+    pub cams_global_time_mult: f32,
+    /// `DATA` Max Time.
+    pub cams_max_time: f32,
+    /// `DATA` Min Time.
+    pub cams_min_time: f32,
+    /// `DATA` Target % Between Actors.
+    pub cams_target_percent: f32,
+    /// `MNAM` Image Space Modifier — the FormID of an `IMAD` record.
+    pub cams_image_space_modifier: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    ///
+    /// The collection is a set of subrecords that always appear together, so
+    /// it is kept as one struct rather than as loose fields. `MODT`'s texture
+    /// hashes are kept as raw bytes: the editor cannot author a file hash, and
+    /// rewriting one would corrupt the mod.
+    pub cams_model: ModelData,
+
+    // CCRD (Card) fields
+    /// `INTV` — the two uint32 values: the card suit and the card value.
+    /// `INTV` is a *repeated* subrecord, so the pair is a list.
+    pub ccrd_intv: Vec<u32>,
+    /// `DATA` Value — the uint32 the card is worth.
+    pub ccrd_value: u32,
+    /// `ICON` — the large icon filename.
+    pub ccrd_icon: String,
+    /// `MICO` — the small icon filename.
+    pub ccrd_mico: String,
+    /// `TX00` — the high-res face image.
+    pub ccrd_face: String,
+    /// `TX01` — the high-res back image.
+    pub ccrd_back: String,
+    /// `YNAM` — the pick-up sound.
+    pub ccrd_pickup_sound: Option<u32>,
+    /// `ZNAM` — the drop sound.
+    pub ccrd_drop_sound: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub ccrd_model: ModelData,
+
+    // CDCK (Caravan Deck) fields
+    /// `CARD` — the `CCRD` records on the deck. `CARD` is a *repeated*
+    /// subrecord, so the deck is a list.
+    pub cdck_cards: Vec<u32>,
+    /// `DATA` — the uint32 the spec marks broken. It is carried through
+    /// unchanged rather than being given a meaning the spec does not state.
+    pub cdck_data: u32,
+
+    // CHIP (Casino Chip) fields
+    /// `ICON` — the large icon filename.
+    pub chip_icon: String,
+    /// `MICO` — the small icon filename.
+    pub chip_mico: String,
+    /// `YNAM` — the pick-up sound.
+    pub chip_pickup_sound: Option<u32>,
+    /// `ZNAM` — the drop sound.
+    pub chip_drop_sound: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub chip_model: ModelData,
+    /// The destruction data: the `DEST` header and the `DSTD` stages.
+    pub chip_destruction: Vec<DestructionStage>,
+    /// `DEST` Health — the int32 the object's health starts at.
+    pub chip_dest_health: i32,
+    /// `DEST` Flags — the u8 flag word. Bit 0 is "VATS Targetable"; the byte
+    /// is kept whole so a bit the spec does not name survives.
+    pub chip_dest_flags: u8,
+
+    // CMNY (Money) fields
+    /// `DATA` Absolute Value — the uint32 the money is worth.
+    pub cmny_value: u32,
+    /// `ICON` — the large icon filename.
+    pub cmny_icon: String,
+    /// `MICO` — the small icon filename.
+    pub cmny_mico: String,
+    /// `YNAM` — the pick-up sound.
+    pub cmny_pickup_sound: Option<u32>,
+    /// `ZNAM` — the drop sound.
+    pub cmny_drop_sound: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub cmny_model: ModelData,
+
+    // ARMA (Armor Addon) fields
+    /// `DATA` Value — the int32 the armour is worth.
+    pub arma_val: i32,
+    /// `DATA` Max Condition — the int32 hit points.
+    pub arma_hp: i32,
+    /// `DATA` Weight — the float32.
+    pub arma_weight: f32,
+    /// `DNAM` AR — the int16 armour rating, a hundredth of a point.
+    pub arma_dr: i16,
+    /// `DNAM` Flags — the uint16 flag word. Only bit 0 ("Modulates Voice")
+    /// is named by the spec, so the word is kept whole.
+    pub arma_dnam_flags: u16,
+    /// `DNAM` DT — the float32 damage threshold.
+    pub arma_dt: f32,
+    /// The length the record's `DNAM` had: four bytes on 115 of the game's 131
+    /// records, twelve on the rest. A rebuild would grow the short ones and
+    /// give them fields they never had.
+    pub arma_dnam_len: usize,
+    /// `BMDT` biped flags — the uint32 word naming the body parts.
+    pub arma_biped_flags: u32,
+    /// `BMDT` general flags — the u8 byte. "Non-Playable" is set on records
+    /// the spec does not name it for, so the byte is kept whole.
+    pub arma_bmdt_general: u8,
+    /// `ETYP` Equipment Type — the int32 enum.
+    pub arma_equip_type: i32,
+    /// The four model data instances: male biped, male world, female biped and
+    /// female world.
+    ///
+    /// `MODB` is present only in the original instance, and `MODD` only in the
+    /// original and the third, where it is spelled `MOSD`.
+    pub arma_models: Vec<ModelData>,
+    /// `ICON` and `MICO` — the male inventory and message icons.
+    pub arma_icon: String,
+    pub arma_mico: String,
+    /// `ICO2` and `MIC2` — the female inventory and message icons.
+    pub arma_ico2: String,
+    pub arma_mic2: String,
+
+    // ASPC (Ambient Sound) fields
+    /// `SNAM` — the five sound loops, in the order the record stores them:
+    /// dawn, afternoon, dusk, night and walla. Each is a `SOUN` FormID.
+    pub aspc_sounds: Vec<u32>,
+    /// `WNAM` Walla Trigger Count.
+    pub aspc_walla_trigger_count: u32,
+    /// `RDAT` Use Sound from Region — the FormID of a `REGN` record.
+    pub aspc_region: Option<u32>,
+    /// `ANAM` Environment Type — the uint32 enum.
+    pub aspc_environment: u32,
+    /// `INAM` Is Interior — the uint32 enum: 1 is No, 2 is Yes.
+    pub aspc_is_interior: u32,
+
+    // AMEF (Ammo Effect) fields
+    /// `DATA` Type — the uint32 enum: Damage Mod, DR Mod, DT Mod, Spread Mod,
+    /// Weapon Condition Mod, Fatigue Mod.
+    pub amef_type: u32,
+    /// `DATA` Operation — the uint32 enum: Add, Multiply, Subtract.
+    pub amef_operation: u32,
+    /// `DATA` Value — the float32 the effect applies.
+    pub amef_value: f32,
+
+    // ANIO (Animation Object) fields
+    /// `DATA` Animation — the FormID of an `IDLE` record.
+    pub anio_animation: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    ///
+    /// The collection is a set of subrecords that always appear together, so
+    /// it is kept as one struct rather than as loose fields. `MODT`'s texture
+    /// hashes are kept as raw bytes: the editor cannot author a file hash, and
+    /// rewriting one would corrupt the mod.
+    pub anio_model: ModelData,
+
     // ALOC (Media Location Controller) fields
     /// `NAM1` — four bytes the spec calls "possibly a combination of flags and
     /// enums". The bytes are kept whole and offered raw.
@@ -801,6 +1120,206 @@ fn model_sig(
         3 => *fourth,
         _ => *base,
     }
+}
+
+/// Which model data instance of an `ARMA` record a signature belongs to.
+///
+/// `ARMA` carries four model collections: the male biped model (instance 0),
+/// the male world model (instance 1), the female biped model (instance 2) and
+/// the female world model (instance 3). The signatures are the shared Model
+/// Data page's numbered ones: `MODL`/`MOD2`/`MOD3`/`MOD4`, `MODT`/`MO2T`/
+/// `MO3T`/`MO4T` and `MODS`/`MO2S`/`MO3S`/`MO4S`. `MODB` exists only in the
+/// original instance and `MODD` in the original and the third, where it is
+/// spelled `MOSD`.
+fn arma_model_instance(sig: &[u8; 4]) -> Option<usize> {
+    match sig {
+        b"MODL" | b"MODB" | b"MODT" | b"MODS" | b"MODD" => Some(0),
+        b"MOD2" | b"MO2T" | b"MO2S" => Some(1),
+        b"MOD3" | b"MO3T" | b"MO3S" | b"MOSD" => Some(2),
+        b"MOD4" | b"MO4T" | b"MO4S" => Some(3),
+        _ => None,
+    }
+}
+
+/// One destruction stage, from the shared Destruction Data collection.
+///
+/// The collection is `DEST` (the header) followed by one or more stages, each
+/// a run of `DSTD`, `DMDL`, `DMDT` and `DSTF`. The stage's fields are the
+/// spec's `DSTD` struct.
+#[derive(Debug, Clone, Default)]
+pub struct DestructionStage {
+    /// `DSTD` Health Percentage — the uint8 percentage of the object's health
+    /// at which this stage begins.
+    pub health_percent: u8,
+    /// `DSTD` Index — the uint8 stage number.
+    pub index: u8,
+    /// `DSTD` Damage Stage — the uint8.
+    pub damage_stage: u8,
+    /// `DSTD` Flags — the uint8 flag word: Cap Damage, Disable, Destroy. The
+    /// word is kept whole, so a bit the spec does not name survives an edit.
+    pub flags: u8,
+    /// `DSTD` Self Damage per Second — the int32.
+    pub self_damage_per_second: i32,
+    /// `DSTD` Explosion — the FormID of an `EXPL` record.
+    pub explosion: Option<u32>,
+    /// `DSTD` Debris — the FormID of a `DEBR` record.
+    pub debris: Option<u32>,
+    /// `DSTD` Debris Count — the int32.
+    pub debris_count: i32,
+    /// `DMDL` — the stage model's filename.
+    pub model: String,
+    /// `DMDT` — the stage model's texture file hashes, copied through
+    /// unchanged: the editor cannot author a file hash.
+    pub texture_hashes: Vec<u8>,
+}
+
+/// Read the shared Destruction Data collection out of a record's subrecords.
+///
+/// The collection is `DEST` (the header) followed by one or more stages, each
+/// a run of `DSTD`, `DMDL`, `DMDT` and `DSTF`. The stages are walked in file
+/// order, because `raw_subs` holds one value per signature and would collapse
+/// every stage onto the last one.
+fn load_destruction(subs: &[fnv_esm::Subrecord]) -> Vec<DestructionStage> {
+    let mut stages: Vec<DestructionStage> = Vec::new();
+    let mut cur: Option<DestructionStage> = None;
+    for s in subs {
+        match &s.sig {
+            b"DSTD" => {
+                // A new stage starts here. The one in progress, if any, is
+                // finished and kept.
+                if let Some(stage) = cur.take() {
+                    stages.push(stage);
+                }
+                let mut stage = DestructionStage::default();
+                if s.data.len() >= 4 {
+                    stage.health_percent = s.data[0];
+                    stage.index = s.data[1];
+                    stage.damage_stage = s.data[2];
+                    stage.flags = s.data[3];
+                }
+                if s.data.len() >= 8 {
+                    stage.self_damage_per_second =
+                        i32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                }
+                if s.data.len() >= 12 {
+                    stage.explosion = Some(u32::from_le_bytes([
+                        s.data[8], s.data[9], s.data[10], s.data[11],
+                    ]));
+                }
+                if s.data.len() >= 16 {
+                    stage.debris = Some(u32::from_le_bytes([
+                        s.data[12], s.data[13], s.data[14], s.data[15],
+                    ]));
+                }
+                if s.data.len() >= 20 {
+                    stage.debris_count =
+                        i32::from_le_bytes([s.data[16], s.data[17], s.data[18], s.data[19]]);
+                }
+                cur = Some(stage);
+            }
+            b"DMDL" => {
+                if let Some(stage) = cur.as_mut() {
+                    stage.model = zstring(&s.data);
+                }
+            }
+            b"DMDT" => {
+                if let Some(stage) = cur.as_mut() {
+                    stage.texture_hashes = s.data.clone();
+                }
+            }
+            _ => {}
+        }
+    }
+    if let Some(stage) = cur.take() {
+        stages.push(stage);
+    }
+    stages
+}
+
+/// Write the shared Destruction Data collection back into a record.
+///
+/// The whole collection is written as one sequence, because the stages are
+/// not a list of one signature: each is a run of four different subrecords
+/// that must keep their order. A per-signature list edit would cluster every
+/// `DSTD` together and every `DMDL` together, which the engine cannot read
+/// back into stages.
+fn save_destruction(
+    session: &mut crate::session::Session,
+    fid: u32,
+    dest_health: i32,
+    dest_flags: u8,
+    stages: &[DestructionStage],
+) {
+    if dest_health <= 0 && stages.is_empty() {
+        return;
+    }
+    let mut subs: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+    // The DEST header is written over the record's own bytes, so the flag
+    // byte — "VATS Targetable" and any bit the spec does not name — survives
+    // a save.
+    let original_dest = session.doc.record(fid).and_then(|r| {
+        r.subrecords().ok().and_then(|subs| {
+            subs.iter()
+                .find(|s| s.sig == *b"DEST")
+                .map(|s| s.data.clone())
+        })
+    });
+    let mut dest = original_dest.unwrap_or_else(|| vec![0u8; 8]);
+    dest.resize(8, 0);
+    dest[0..4].copy_from_slice(&dest_health.to_le_bytes());
+    // The count is the number of stages.
+    dest[4] = stages.len().min(255) as u8;
+    dest[5] = dest_flags;
+    subs.push((*b"DEST", dest));
+
+    for stage in stages {
+        let mut dstd = vec![0u8; 20];
+        dstd[0] = stage.health_percent;
+        dstd[1] = stage.index;
+        dstd[2] = stage.damage_stage;
+        dstd[3] = stage.flags;
+        dstd[4..8].copy_from_slice(&stage.self_damage_per_second.to_le_bytes());
+        if let Some(e) = stage.explosion {
+            dstd[8..12].copy_from_slice(&e.to_le_bytes());
+        }
+        if let Some(d) = stage.debris {
+            dstd[12..16].copy_from_slice(&d.to_le_bytes());
+        }
+        dstd[16..20].copy_from_slice(&stage.debris_count.to_le_bytes());
+        subs.push((*b"DSTD", dstd));
+        if !stage.model.trim().is_empty() {
+            subs.push((*b"DMDL", encode_zstring(&stage.model)));
+        }
+        if !stage.texture_hashes.is_empty() {
+            subs.push((*b"DMDT", stage.texture_hashes.clone()));
+        }
+        subs.push((*b"DSTF", Vec::new()));
+    }
+
+    session.doc.set_sub_sequence(
+        fid,
+        vec![*b"DEST", *b"DSTD", *b"DMDL", *b"DMDT", *b"DSTF"],
+        subs,
+    );
+}
+
+/// One debris model on a `DEBR` (Debris) record.
+///
+/// The record's collection is a run of `DATA` (the percentage, the model
+/// filename and the flags) and `MODT` (the texture hashes) per entry, so the
+/// entries are walked in file order.
+#[derive(Debug, Clone, Default)]
+pub struct DebrisModel {
+    /// `DATA` Percentage — the uint8 chance this piece is spawned.
+    pub percentage: u8,
+    /// `DATA` Model Filename — the cstring.
+    pub model: String,
+    /// `DATA` Flags — the u8 flag word. Bit 0 is "Has Collision Data"; the
+    /// byte is kept whole so a bit the spec does not name survives.
+    pub flags: u8,
+    /// `MODT` — the texture file hashes, copied through unchanged: the
+    /// editor cannot author a file hash.
+    pub texture_hashes: Vec<u8>,
 }
 
 /// One media-set list on an `ALOC` (Media Location Controller) record.
@@ -1393,6 +1912,33 @@ impl ObjectEditorState {
         self.addn_node_index = 0;
         self.addn_master_cap = 0;
         self.addn_dnam_unknown = [0, 0];
+        self.dobj_values.clear();
+        self.furn_model = ModelData::default();
+        self.furn_destruction.clear();
+        self.furn_marker_flags.clear();
+        self.gras_model = ModelData::default();
+        self.cams_model = ModelData::default();
+        self.cpth_shots.clear();
+        self.cpth_conditions.clear();
+        self.csno_models.clear();
+        self.csno_icons.clear();
+        self.csno_deck_icons.clear();
+        self.csno_reel_stops.clear();
+        self.debr_models.clear();
+        self.ccrd_model = ModelData::default();
+        self.ccrd_intv.clear();
+        self.cdck_cards.clear();
+        self.chip_model = ModelData::default();
+        self.chip_destruction.clear();
+        self.cmny_model = ModelData::default();
+        self.arma_models.clear();
+        self.arma_dnam_len = 0;
+        self.aspc_sounds.clear();
+        self.anio_model = ModelData::default();
+        self.anio_animation = None;
+        self.amef_type = 0;
+        self.amef_operation = 0;
+        self.amef_value = 0.0;
         self.aloc_sets.clear();
         self.aloc_conditional_faction = None;
         self.aloc_set_to_add = None;
@@ -1614,6 +2160,27 @@ impl ObjectEditorState {
             b"CLMT" => self.load_clmt(),
             b"ADDN" => self.load_addn(&raw_subs),
             b"ALOC" => self.load_aloc(&raw_subs),
+            b"AMEF" => self.load_amef(),
+            b"ARMA" => self.load_arma(&raw_subs),
+            b"CAMS" => self.load_cams(&raw_subs),
+            b"CHAL" => self.load_chal(),
+            b"DEHY" => self.load_dehy(),
+            b"DOBJ" => self.load_dobj(),
+            b"ECZN" => self.load_ecnz(),
+            b"FURN" => self.load_furn(&raw_subs),
+            b"GRAS" => self.load_gras(&raw_subs),
+            b"HUNG" => self.load_hung(),
+            b"RADS" => self.load_rads(),
+            b"SLPD" => self.load_slpd(),
+            b"CPTH" => self.load_cpth(&raw_subs),
+            b"CSNO" => self.load_csno(&raw_subs),
+            b"DEBR" => self.load_debr(&raw_subs),
+            b"CCRD" => self.load_ccrd(&raw_subs),
+            b"CDCK" => self.load_cdck(&raw_subs),
+            b"CHIP" => self.load_chip(&raw_subs),
+            b"CMNY" => self.load_cmny(&raw_subs),
+            b"ASPC" => self.load_aspc(&raw_subs),
+            b"ANIO" => self.load_anio(&raw_subs),
             b"AVIF" => self.load_avif(),
             b"EYES" => self.load_eyes(),
             b"HAIR" => self.load_hair(&raw_subs),
@@ -2362,6 +2929,752 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load a `DEHY` (Dehydration) record.
+    fn load_dehy(&mut self) {
+        self.dehyd_trigger_threshold = 0;
+        self.dehyd_actor_effect = None;
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
+            self.dehyd_trigger_threshold = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.dehyd_actor_effect = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+        }
+    }
+
+    /// Load a `HUNG` (Hunger) record.
+    fn load_hung(&mut self) {
+        self.hung_trigger_threshold = 0;
+        self.hung_actor_effect = None;
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
+            self.hung_trigger_threshold = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.hung_actor_effect = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+        }
+    }
+
+    /// Load a `RADS` (Radiation) record.
+    fn load_rads(&mut self) {
+        self.rads_trigger_threshold = 0;
+        self.rads_actor_effect = None;
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
+            self.rads_trigger_threshold = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.rads_actor_effect = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+        }
+    }
+
+    /// Load a `SLPD` (Sleep Deprivation) record.
+    fn load_slpd(&mut self) {
+        self.slpd_trigger_threshold = 0;
+        self.slpd_actor_effect = None;
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
+            self.slpd_trigger_threshold = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.slpd_actor_effect = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+        }
+    }
+
+    /// Load an `ECZN` (Encounter Zone) record.
+    fn load_ecnz(&mut self) {
+        self.ecnz_owner = None;
+        self.ecnz_rank = 0;
+        self.ecnz_minimum_level = 0;
+        self.ecnz_flags = 0;
+        self.ecnz_unused = 0;
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
+            self.ecnz_owner = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+            self.ecnz_rank = b[4] as i8;
+            self.ecnz_minimum_level = b[5] as i8;
+            self.ecnz_flags = b[6];
+            self.ecnz_unused = b[7];
+        }
+    }
+
+    /// Load a `DOBJ` (Default Object Manager) record.
+    ///
+    /// The `DATA` subrecord is a flat array of thirty-four FormIDs, one per
+    /// default object. They are read in order and kept as a list, and
+    /// `DOBJ_FIELDS` names them.
+    fn load_dobj(&mut self) {
+        self.dobj_values.clear();
+        if let Some(b) = self.raw_subs.get(b"DATA") {
+            for chunk in b.as_chunks::<4>().0 {
+                self.dobj_values
+                    .push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+            }
+        }
+    }
+
+    /// Load a `FURN` (Furniture) record.
+    fn load_furn(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.furn_marker_flags.clear();
+        self.furn_model = ModelData::default();
+        self.furn_destruction.clear();
+        self.furn_dest_health = 0;
+        self.furn_dest_flags = 0;
+
+        for s in raw_subs {
+            match &s.sig {
+                b"MNAM" => self.furn_marker_flags = s.data.clone(),
+                b"DEST" if s.data.len() >= 8 => {
+                    self.furn_dest_health =
+                        i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    self.furn_dest_flags = s.data[5];
+                }
+                b"MODL" => self.furn_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.furn_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.furn_model.modt = s.data.clone(),
+                b"MODS" => self.furn_model.mods = parse_mods(&s.data),
+                b"MODD" => self.furn_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+        self.furn_destruction = load_destruction(raw_subs);
+    }
+
+    /// Load a `GRAS` (Grass) record.
+    ///
+    /// `DATA` is thirty-two bytes. The spec marks several fields unused; they
+    /// are carried through unchanged rather than being zeroed.
+    fn load_gras(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.gras_density = 0;
+        self.gras_min_slope = 0;
+        self.gras_max_slope = 0;
+        self.gras_unit_from_water_amount = 0;
+        self.gras_unit_from_water_type = 0;
+        self.gras_position_range = 0.0;
+        self.gras_height_range = 0.0;
+        self.gras_color_range = 0.0;
+        self.gras_wave_period = 0.0;
+        self.gras_flags = 0;
+        self.gras_model = ModelData::default();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" if s.data.len() >= 32 => {
+                    self.gras_density = s.data[0];
+                    self.gras_min_slope = s.data[1];
+                    self.gras_max_slope = s.data[2];
+                    self.gras_unit_from_water_amount = u16::from_le_bytes([s.data[4], s.data[5]]);
+                    self.gras_unit_from_water_type =
+                        u32::from_le_bytes([s.data[8], s.data[9], s.data[10], s.data[11]]);
+                    self.gras_position_range =
+                        f32::from_le_bytes([s.data[12], s.data[13], s.data[14], s.data[15]]);
+                    self.gras_height_range =
+                        f32::from_le_bytes([s.data[16], s.data[17], s.data[18], s.data[19]]);
+                    self.gras_color_range =
+                        f32::from_le_bytes([s.data[20], s.data[21], s.data[22], s.data[23]]);
+                    self.gras_wave_period =
+                        f32::from_le_bytes([s.data[24], s.data[25], s.data[26], s.data[27]]);
+                    self.gras_flags = s.data[28];
+                }
+                b"MODL" => self.gras_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.gras_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.gras_model.modt = s.data.clone(),
+                b"MODS" => self.gras_model.mods = parse_mods(&s.data),
+                b"MODD" => self.gras_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `CHAL` (Challenge) record.
+    ///
+    /// The record is `EDID`, `FULL`, `ICON`, `MICO`, `SCRI`, `DESC`, a
+    /// twenty-four-byte `DATA`, and the two reference values `SNAM` and
+    /// `XNAM`. The meaning of `DATA`'s three value fields depends on the
+    /// type, so they are kept as raw bytes.
+    fn load_chal(&mut self) {
+        self.chal_type = 0;
+        self.chal_threshold = 0;
+        self.chal_flags = 0;
+        self.chal_interval = 0;
+        self.chal_value1 = [0; 2];
+        self.chal_value2 = [0; 2];
+        self.chal_value3 = [0; 4];
+        self.chal_snam = self.get_fid(b"SNAM");
+        self.chal_xnam = self.get_fid(b"XNAM");
+        self.chal_icon = self.get_string(b"ICON");
+        self.chal_mico = self.get_string(b"MICO");
+        self.chal_desc = self.get_string(b"DESC");
+
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 24) {
+            self.chal_type = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.chal_threshold = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.chal_flags = u32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            self.chal_interval = u32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+            self.chal_value1 = [b[16], b[17]];
+            self.chal_value2 = [b[18], b[19]];
+            self.chal_value3 = [b[20], b[21], b[22], b[23]];
+        }
+    }
+
+    /// Load a `CPTH` (Camera Path) record.
+    ///
+    /// The record's `CTDA` conditions and its `SNAM` camera shots are both
+    /// *repeated* subrecords, so they are read in file order and kept as
+    /// lists.
+    fn load_cpth(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.cpth_camera_zoom = 0;
+        self.cpth_parent = None;
+        self.cpth_previous = None;
+        self.cpth_shots.clear();
+        self.cpth_conditions.clear();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" if !s.data.is_empty() => {
+                    self.cpth_camera_zoom = s.data[0];
+                }
+                b"ANAM" if s.data.len() >= 8 => {
+                    self.cpth_parent = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                    self.cpth_previous = Some(u32::from_le_bytes([
+                        s.data[4], s.data[5], s.data[6], s.data[7],
+                    ]));
+                }
+                b"SNAM" if s.data.len() >= 4 => {
+                    self.cpth_shots.push(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"CTDA" => {
+                    self.cpth_conditions.push(s.clone());
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `CSNO` (Casino) record.
+    ///
+    /// The record's chip models (`MODL` repeated seven times, then `MOD2`,
+    /// `MOD3` and `MOD4`), its slot reel textures (`ICON` repeated) and its
+    /// blackjack deck textures (`ICO2` repeated) are all *repeated*
+    /// subrecords, so each is read in file order and kept as a list.
+    fn load_csno(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.csno_decks_shuffle = 0.0;
+        self.csno_payout_ratio = 0.0;
+        self.csno_reel_stops.clear();
+        self.csno_number_of_decks = 0;
+        self.csno_max_winnings = 0;
+        self.csno_currency = None;
+        self.csno_winnings_quest = None;
+        self.csno_flags = 0;
+        self.csno_models.clear();
+        self.csno_icons.clear();
+        self.csno_deck_icons.clear();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" if s.data.len() >= 56 => {
+                    self.csno_decks_shuffle =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    self.csno_payout_ratio =
+                        f32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                    for i in 0..7 {
+                        let at = 8 + i * 4;
+                        self.csno_reel_stops.push(u32::from_le_bytes([
+                            s.data[at],
+                            s.data[at + 1],
+                            s.data[at + 2],
+                            s.data[at + 3],
+                        ]));
+                    }
+                    self.csno_number_of_decks =
+                        u32::from_le_bytes([s.data[36], s.data[37], s.data[38], s.data[39]]);
+                    self.csno_max_winnings =
+                        u32::from_le_bytes([s.data[40], s.data[41], s.data[42], s.data[43]]);
+                    self.csno_currency = Some(u32::from_le_bytes([
+                        s.data[44], s.data[45], s.data[46], s.data[47],
+                    ]));
+                    self.csno_winnings_quest = Some(u32::from_le_bytes([
+                        s.data[48], s.data[49], s.data[50], s.data[51],
+                    ]));
+                    self.csno_flags =
+                        u32::from_le_bytes([s.data[52], s.data[53], s.data[54], s.data[55]]);
+                }
+                b"MODL" | b"MOD2" | b"MOD3" | b"MOD4" => {
+                    self.csno_models.push(zstring(&s.data));
+                }
+                b"ICON" => {
+                    self.csno_icons.push(zstring(&s.data));
+                }
+                b"ICO2" => {
+                    self.csno_deck_icons.push(zstring(&s.data));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `DEBR` (Debris) record.
+    ///
+    /// The record's collection is a run of `DATA` and `MODT` per debris
+    /// model, so the entries are walked in file order rather than read out of
+    /// `raw_subs`, which holds one value per signature.
+    fn load_debr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.debr_models.clear();
+        let mut cur: Option<DebrisModel> = None;
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" => {
+                    if let Some(model) = cur.take() {
+                        self.debr_models.push(model);
+                    }
+                    let mut model = DebrisModel::default();
+                    if !s.data.is_empty() {
+                        model.percentage = s.data[0];
+                    }
+                    // The model filename is a NUL-terminated string that
+                    // follows the percentage byte, and the flags byte is the
+                    // last one.
+                    if s.data.len() > 1 {
+                        let name_end = s.data[1..]
+                            .iter()
+                            .position(|&b| b == 0)
+                            .map(|i| i + 1)
+                            .unwrap_or(s.data.len() - 1);
+                        model.model = zstring(&s.data[1..name_end]);
+                        if s.data.len() > name_end {
+                            model.flags = s.data[name_end];
+                        }
+                    }
+                    cur = Some(model);
+                }
+                b"MODT" => {
+                    if let Some(model) = cur.as_mut() {
+                        model.texture_hashes = s.data.clone();
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(model) = cur.take() {
+            self.debr_models.push(model);
+        }
+    }
+
+    /// Load a `CAMS` (Camera Shot) record.
+    ///
+    /// The record is `EDID`, the model data collection, a forty-byte `DATA`
+    /// holding the action, location and target enums, a flag word and six
+    /// floats, and `MNAM` naming the image space modifier.
+    ///
+    /// `DATA` is forty bytes on 272 of the game's 276 records and thirty-six
+    /// on the rest, so the length is kept and the fields the short form does
+    /// not have are left at their defaults.
+    fn load_cams(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.cams_action = 0;
+        self.cams_location = 0;
+        self.cams_target = 0;
+        self.cams_flags = 0;
+        self.cams_player_time_mult = 0.0;
+        self.cams_target_time_mult = 0.0;
+        self.cams_global_time_mult = 0.0;
+        self.cams_max_time = 0.0;
+        self.cams_min_time = 0.0;
+        self.cams_target_percent = 0.0;
+        self.cams_image_space_modifier = self.get_fid(b"MNAM");
+        self.cams_model = ModelData::default();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" => {
+                    if s.data.len() >= 4 {
+                        self.cams_action =
+                            u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    }
+                    if s.data.len() >= 8 {
+                        self.cams_location =
+                            u32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                    }
+                    if s.data.len() >= 12 {
+                        self.cams_target =
+                            u32::from_le_bytes([s.data[8], s.data[9], s.data[10], s.data[11]]);
+                    }
+                    if s.data.len() >= 16 {
+                        self.cams_flags =
+                            u32::from_le_bytes([s.data[12], s.data[13], s.data[14], s.data[15]]);
+                    }
+                    if s.data.len() >= 20 {
+                        self.cams_player_time_mult =
+                            f32::from_le_bytes([s.data[16], s.data[17], s.data[18], s.data[19]]);
+                    }
+                    if s.data.len() >= 24 {
+                        self.cams_target_time_mult =
+                            f32::from_le_bytes([s.data[20], s.data[21], s.data[22], s.data[23]]);
+                    }
+                    if s.data.len() >= 28 {
+                        self.cams_global_time_mult =
+                            f32::from_le_bytes([s.data[24], s.data[25], s.data[26], s.data[27]]);
+                    }
+                    if s.data.len() >= 32 {
+                        self.cams_max_time =
+                            f32::from_le_bytes([s.data[28], s.data[29], s.data[30], s.data[31]]);
+                    }
+                    if s.data.len() >= 36 {
+                        self.cams_min_time =
+                            f32::from_le_bytes([s.data[32], s.data[33], s.data[34], s.data[35]]);
+                    }
+                    if s.data.len() >= 40 {
+                        self.cams_target_percent =
+                            f32::from_le_bytes([s.data[36], s.data[37], s.data[38], s.data[39]]);
+                    }
+                }
+                b"MODL" => self.cams_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.cams_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.cams_model.modt = s.data.clone(),
+                b"MODS" => self.cams_model.mods = parse_mods(&s.data),
+                b"MODD" => self.cams_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `CCRD` (Card) record.
+    ///
+    /// The two `INTV` values — the card suit and the card value — are a
+    /// *repeated* subrecord, so they are read in file order and kept as a
+    /// list. A per-signature read would collapse the pair onto the last one.
+    fn load_ccrd(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.ccrd_intv.clear();
+        self.ccrd_value = 0;
+        self.ccrd_icon.clear();
+        self.ccrd_mico.clear();
+        self.ccrd_face.clear();
+        self.ccrd_back.clear();
+        self.ccrd_pickup_sound = None;
+        self.ccrd_drop_sound = None;
+        self.ccrd_model = ModelData::default();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"INTV" if s.data.len() >= 4 => {
+                    self.ccrd_intv.push(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"DATA" if s.data.len() >= 4 => {
+                    self.ccrd_value =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"ICON" => self.ccrd_icon = zstring(&s.data),
+                b"MICO" => self.ccrd_mico = zstring(&s.data),
+                b"TX00" => self.ccrd_face = zstring(&s.data),
+                b"TX01" => self.ccrd_back = zstring(&s.data),
+                b"YNAM" if s.data.len() >= 4 => {
+                    self.ccrd_pickup_sound = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"ZNAM" if s.data.len() >= 4 => {
+                    self.ccrd_drop_sound = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"MODL" => self.ccrd_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.ccrd_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.ccrd_model.modt = s.data.clone(),
+                b"MODS" => self.ccrd_model.mods = parse_mods(&s.data),
+                b"MODD" => self.ccrd_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `CDCK` (Caravan Deck) record.
+    ///
+    /// The deck's `CARD` subrecords are *repeated*, so they are read in file
+    /// order and kept as a list.
+    fn load_cdck(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.cdck_cards.clear();
+        self.cdck_data = 0;
+        for s in raw_subs {
+            match &s.sig {
+                b"CARD" if s.data.len() >= 4 => {
+                    self.cdck_cards.push(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"DATA" if s.data.len() >= 4 => {
+                    self.cdck_data =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `CHIP` (Casino Chip) record.
+    ///
+    /// The record carries the model data collection, the two icons, the two
+    /// sounds and the shared Destruction Data collection.
+    fn load_chip(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.chip_icon.clear();
+        self.chip_mico.clear();
+        self.chip_pickup_sound = None;
+        self.chip_drop_sound = None;
+        self.chip_model = ModelData::default();
+        self.chip_dest_health = 0;
+        self.chip_dest_flags = 0;
+
+        for s in raw_subs {
+            match &s.sig {
+                b"ICON" => self.chip_icon = zstring(&s.data),
+                b"MICO" => self.chip_mico = zstring(&s.data),
+                b"YNAM" if s.data.len() >= 4 => {
+                    self.chip_pickup_sound = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"ZNAM" if s.data.len() >= 4 => {
+                    self.chip_drop_sound = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"DEST" if s.data.len() >= 8 => {
+                    self.chip_dest_health =
+                        i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    self.chip_dest_flags = s.data[5];
+                }
+                b"MODL" => self.chip_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.chip_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.chip_model.modt = s.data.clone(),
+                b"MODS" => self.chip_model.mods = parse_mods(&s.data),
+                b"MODD" => self.chip_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+        self.chip_destruction = load_destruction(raw_subs);
+    }
+
+    /// Load a `CMNY` (Money) record.
+    fn load_cmny(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.cmny_value = 0;
+        self.cmny_icon.clear();
+        self.cmny_mico.clear();
+        self.cmny_pickup_sound = None;
+        self.cmny_drop_sound = None;
+        self.cmny_model = ModelData::default();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" if s.data.len() >= 4 => {
+                    self.cmny_value =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"ICON" => self.cmny_icon = zstring(&s.data),
+                b"MICO" => self.cmny_mico = zstring(&s.data),
+                b"YNAM" if s.data.len() >= 4 => {
+                    self.cmny_pickup_sound = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"ZNAM" if s.data.len() >= 4 => {
+                    self.cmny_drop_sound = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"MODL" => self.cmny_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.cmny_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.cmny_model.modt = s.data.clone(),
+                b"MODS" => self.cmny_model.mods = parse_mods(&s.data),
+                b"MODD" => self.cmny_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
+    /// Load an `ARMA` (Armor Addon) record.
+    ///
+    /// The record carries four model data instances — male biped, male world,
+    /// female biped and female world — so the model is kept as a list of four
+    /// collections rather than one. `MODB` is present only in the original
+    /// instance, and `MODD` only in the original and the third, where it is
+    /// spelled `MOSD`.
+    ///
+    /// `DNAM` is variable-length: 115 of the game's 131 records carry four
+    /// bytes and the rest twelve. The length is kept, so a save that changes
+    /// nothing is byte-identical and a short record is not grown fields it
+    /// never had.
+    fn load_arma(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.arma_val = 0;
+        self.arma_hp = 0;
+        self.arma_weight = 0.0;
+        self.arma_dr = 0;
+        self.arma_dnam_flags = 0;
+        self.arma_dt = 0.0;
+        self.arma_dnam_len = 0;
+        self.arma_biped_flags = 0;
+        self.arma_bmdt_general = 0;
+        self.arma_equip_type = -1;
+        self.arma_icon.clear();
+        self.arma_mico.clear();
+        self.arma_ico2.clear();
+        self.arma_mic2.clear();
+
+        self.arma_models = (0..4)
+            .map(|instance| ModelData {
+                instance,
+                ..ModelData::default()
+            })
+            .collect();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" if s.data.len() >= 12 => {
+                    self.arma_val =
+                        i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    self.arma_hp = i32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                    self.arma_weight =
+                        f32::from_le_bytes([s.data[8], s.data[9], s.data[10], s.data[11]]);
+                }
+                b"DNAM" => {
+                    self.arma_dnam_len = s.data.len();
+                    if s.data.len() >= 2 {
+                        self.arma_dr = i16::from_le_bytes([s.data[0], s.data[1]]);
+                    }
+                    if s.data.len() >= 4 {
+                        self.arma_dnam_flags = u16::from_le_bytes([s.data[2], s.data[3]]);
+                    }
+                    if s.data.len() >= 8 {
+                        self.arma_dt =
+                            f32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                    }
+                }
+                b"BMDT" if s.data.len() >= 8 => {
+                    self.arma_biped_flags =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    self.arma_bmdt_general = s.data[4];
+                }
+                b"ETYP" if s.data.len() >= 4 => {
+                    self.arma_equip_type =
+                        i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"ICON" => self.arma_icon = zstring(&s.data),
+                b"MICO" => self.arma_mico = zstring(&s.data),
+                b"ICO2" => self.arma_ico2 = zstring(&s.data),
+                b"MIC2" => self.arma_mic2 = zstring(&s.data),
+                _ => {
+                    // One of the four model data instances. The field each
+                    // signature feeds is named by the signature itself, not by
+                    // the instance: the third instance's model path is `MOD3`,
+                    // not `MODL`.
+                    if let Some(instance) = arma_model_instance(&s.sig) {
+                        if let Some(model) = self.arma_models.get_mut(instance) {
+                            match &s.sig {
+                                b"MODL" | b"MOD2" | b"MOD3" | b"MOD4" => {
+                                    model.modl = zstring(&s.data);
+                                }
+                                b"MODB" if s.data.len() >= 4 => {
+                                    model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                                }
+                                b"MODT" | b"MO2T" | b"MO3T" | b"MO4T" => {
+                                    model.modt = s.data.clone();
+                                }
+                                b"MODS" | b"MO2S" | b"MO3S" | b"MO4S" => {
+                                    model.mods = parse_mods(&s.data);
+                                }
+                                b"MODD" | b"MOSD" => model.modd = s.data.first().copied(),
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Load an `ASPC` (Ambient Sound) record.
+    ///
+    /// The five `SNAM` sound loops — dawn, afternoon, dusk, night and walla —
+    /// are *repeated* subrecords, so they cannot be read out of `raw_subs`,
+    /// which holds one value per signature and would collapse them onto the
+    /// last one. The subrecords are walked in file order instead.
+    fn load_aspc(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.aspc_sounds.clear();
+        self.aspc_walla_trigger_count = 0;
+        self.aspc_region = None;
+        self.aspc_environment = 0;
+        self.aspc_is_interior = 0;
+
+        for s in raw_subs {
+            match &s.sig {
+                b"SNAM" if s.data.len() >= 4 => {
+                    self.aspc_sounds.push(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"WNAM" if s.data.len() >= 4 => {
+                    self.aspc_walla_trigger_count =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"RDAT" if s.data.len() >= 4 => {
+                    self.aspc_region = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"ANAM" if s.data.len() >= 4 => {
+                    self.aspc_environment =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"INAM" if s.data.len() >= 4 => {
+                    self.aspc_is_interior =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load an `AMEF` (Ammo Effect) record.
+    ///
+    /// The record is `EDID`, `FULL` and a twelve-byte `DATA` holding a type
+    /// enum, an operation enum and a float32 value. The enums are kept as
+    /// their raw numbers, so a value outside the table stays editable rather
+    /// than being clamped to a known one.
+    fn load_amef(&mut self) {
+        self.amef_type = 0;
+        self.amef_operation = 0;
+        self.amef_value = 0.0;
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 12) {
+            self.amef_type = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.amef_operation = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.amef_value = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+        }
+    }
+
+    /// Load an `ANIO` (Animation Object) record.
+    ///
+    /// The record is `EDID`, the model data collection (`MODL` and, where the
+    /// game writes it, `MODT`), and a `DATA` naming the `IDLE` record the
+    /// animation plays.
+    fn load_anio(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.anio_animation = self.get_fid(b"DATA");
+        self.anio_model = ModelData::default();
+        for s in raw_subs {
+            match &s.sig {
+                b"MODL" => self.anio_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.anio_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.anio_model.modt = s.data.clone(),
+                b"MODS" => self.anio_model.mods = parse_mods(&s.data),
+                b"MODD" => self.anio_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
     /// Load an `ALOC` (Media Location Controller) record.
     ///
     /// The record is `EDID`, `FULL`, seven `NAM` fields, six media-set lists
@@ -2647,6 +3960,27 @@ impl ObjectEditorState {
             b"CLMT" => self.save_clmt(session),
             b"ADDN" => self.save_addn(session),
             b"ALOC" => self.save_aloc(session),
+            b"AMEF" => self.save_amef(session),
+            b"ARMA" => self.save_arma(session),
+            b"CAMS" => self.save_cams(session),
+            b"CHAL" => self.save_chal(session),
+            b"DEHY" => self.save_dehy(session),
+            b"DOBJ" => self.save_dobj(session),
+            b"ECZN" => self.save_ecnz(session),
+            b"FURN" => self.save_furn(session),
+            b"GRAS" => self.save_gras(session),
+            b"HUNG" => self.save_hung(session),
+            b"RADS" => self.save_rads(session),
+            b"SLPD" => self.save_slpd(session),
+            b"CPTH" => self.save_cpth(session),
+            b"CSNO" => self.save_csno(session),
+            b"DEBR" => self.save_debr(session),
+            b"CCRD" => self.save_ccrd(session),
+            b"CDCK" => self.save_cdck(session),
+            b"CHIP" => self.save_chip(session),
+            b"CMNY" => self.save_cmny(session),
+            b"ASPC" => self.save_aspc(session),
+            b"ANIO" => self.save_anio(session),
             b"AVIF" => self.save_avif(session),
             b"EYES" => self.save_eyes(session),
             b"HAIR" => self.save_hair(session),
@@ -3860,6 +5194,851 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", vec![self.hair_flags]);
     }
 
+    /// Save a `DEHY` (Dehydration) record.
+    fn save_dehy(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(8);
+        data.extend_from_slice(&self.dehyd_trigger_threshold.to_le_bytes());
+        data.extend_from_slice(&self.dehyd_actor_effect.unwrap_or(0).to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save a `HUNG` (Hunger) record.
+    fn save_hung(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(8);
+        data.extend_from_slice(&self.hung_trigger_threshold.to_le_bytes());
+        data.extend_from_slice(&self.hung_actor_effect.unwrap_or(0).to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save a `RADS` (Radiation) record.
+    fn save_rads(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(8);
+        data.extend_from_slice(&self.rads_trigger_threshold.to_le_bytes());
+        data.extend_from_slice(&self.rads_actor_effect.unwrap_or(0).to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save a `SLPD` (Sleep Deprivation) record.
+    fn save_slpd(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(8);
+        data.extend_from_slice(&self.slpd_trigger_threshold.to_le_bytes());
+        data.extend_from_slice(&self.slpd_actor_effect.unwrap_or(0).to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save an `ECZN` (Encounter Zone) record.
+    ///
+    /// `DATA` is eight bytes. The owner may be null, in which case the
+    /// FormID is written as zero.
+    fn save_ecnz(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(8);
+        data.extend_from_slice(&self.ecnz_owner.unwrap_or(0).to_le_bytes());
+        data.push(self.ecnz_rank as u8);
+        data.push(self.ecnz_minimum_level as u8);
+        data.push(self.ecnz_flags);
+        data.push(self.ecnz_unused);
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save a `DOBJ` (Default Object Manager) record.
+    ///
+    /// `DATA` is a flat array of thirty-four FormIDs. The record's own length
+    /// is kept, so a save that changes nothing is byte-identical.
+    fn save_dobj(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(136);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 136]);
+        data.resize(len, 0);
+        for (i, value) in self.dobj_values.iter().enumerate() {
+            let at = i * 4;
+            if at + 4 <= data.len() {
+                data[at..at + 4].copy_from_slice(&value.to_le_bytes());
+            }
+        }
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save a `FURN` (Furniture) record.
+    fn save_furn(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        // MNAM: the marker flags. Every one of the game's FURN records
+        // carries four bytes, so it is always written.
+        session
+            .doc
+            .set_sub(fid, b"MNAM", self.furn_marker_flags.clone());
+
+        let model = &self.furn_model;
+        let sigs = model.instance_sigs();
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+
+        // The destruction data.
+        save_destruction(
+            session,
+            fid,
+            self.furn_dest_health,
+            self.furn_dest_flags,
+            &self.furn_destruction,
+        );
+    }
+
+    /// Save a `GRAS` (Grass) record.
+    ///
+    /// `DATA` is written back over the record's own bytes, so the fields the
+    /// spec marks unused survive an edit.
+    fn save_gras(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(32);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 32]);
+        data.resize(len, 0);
+
+        if data.len() >= 3 {
+            data[0] = self.gras_density;
+            data[1] = self.gras_min_slope;
+            data[2] = self.gras_max_slope;
+        }
+        if data.len() >= 6 {
+            data[4..6].copy_from_slice(&self.gras_unit_from_water_amount.to_le_bytes());
+        }
+        if data.len() >= 12 {
+            data[8..12].copy_from_slice(&self.gras_unit_from_water_type.to_le_bytes());
+        }
+        if data.len() >= 16 {
+            data[12..16].copy_from_slice(&self.gras_position_range.to_le_bytes());
+        }
+        if data.len() >= 20 {
+            data[16..20].copy_from_slice(&self.gras_height_range.to_le_bytes());
+        }
+        if data.len() >= 24 {
+            data[20..24].copy_from_slice(&self.gras_color_range.to_le_bytes());
+        }
+        if data.len() >= 28 {
+            data[24..28].copy_from_slice(&self.gras_wave_period.to_le_bytes());
+        }
+        if data.len() >= 29 {
+            data[28] = self.gras_flags;
+        }
+        session.doc.set_sub(fid, b"DATA", data);
+
+        let model = &self.gras_model;
+        let sigs = model.instance_sigs();
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+    }
+
+    /// Save a `CHAL` (Challenge) record.
+    ///
+    /// `DATA` is a twenty-four-byte struct. Every one of the game's 105 CHAL
+    /// records carries exactly twenty-four bytes, so a fixed write is
+    /// byte-identical to what the record had.
+    fn save_chal(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        let mut data = Vec::with_capacity(24);
+        data.extend_from_slice(&self.chal_type.to_le_bytes());
+        data.extend_from_slice(&self.chal_threshold.to_le_bytes());
+        data.extend_from_slice(&self.chal_flags.to_le_bytes());
+        data.extend_from_slice(&self.chal_interval.to_le_bytes());
+        data.extend_from_slice(&self.chal_value1);
+        data.extend_from_slice(&self.chal_value2);
+        data.extend_from_slice(&self.chal_value3);
+        session.doc.set_sub(fid, b"DATA", data);
+
+        // SNAM and XNAM are the two reference values. Only nine of the
+        // game's 105 challenges carry an SNAM and seven carry an XNAM, so
+        // both are optional.
+        match self.chal_snam {
+            Some(v) => session.doc.set_sub(fid, b"SNAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"SNAM"),
+        }
+        match self.chal_xnam {
+            Some(v) => session.doc.set_sub(fid, b"XNAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"XNAM"),
+        }
+
+        for (sig, text) in [(b"ICON", &self.chal_icon), (b"MICO", &self.chal_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        if !self.chal_desc.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"DESC", encode_zstring(&self.chal_desc));
+        } else {
+            session.doc.remove_sub(fid, b"DESC");
+        }
+    }
+
+    /// Save a `CPTH` (Camera Path) record.
+    ///
+    /// The `CTDA` conditions and the `SNAM` camera shots are both *repeated*
+    /// subrecords, so they are written with list edits: a per-subrecord edit
+    /// would collapse each list onto its last entry.
+    fn save_cpth(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        session
+            .doc
+            .set_sub(fid, b"DATA", vec![self.cpth_camera_zoom]);
+
+        match self.cpth_parent {
+            Some(p) => {
+                let mut anam = p.to_le_bytes().to_vec();
+                anam.extend_from_slice(&self.cpth_previous.unwrap_or(0).to_le_bytes());
+                session.doc.set_sub(fid, b"ANAM", anam);
+            }
+            None => session.doc.remove_sub(fid, b"ANAM"),
+        }
+
+        let shots: Vec<Vec<u8>> = self
+            .cpth_shots
+            .iter()
+            .map(|s| s.to_le_bytes().to_vec())
+            .collect();
+        if shots.is_empty() {
+            session.doc.remove_sub(fid, b"SNAM");
+        } else {
+            session.doc.set_sub_list(fid, b"SNAM", shots);
+        }
+
+        let conditions: Vec<Vec<u8>> = self
+            .cpth_conditions
+            .iter()
+            .map(|c| c.data.clone())
+            .collect();
+        if conditions.is_empty() {
+            session.doc.remove_sub(fid, b"CTDA");
+        } else {
+            session.doc.set_sub_list(fid, b"CTDA", conditions);
+        }
+    }
+
+    /// Save a `CSNO` (Casino) record.
+    ///
+    /// The chip models, the slot reel textures and the blackjack deck textures
+    /// are all *repeated* subrecords, so each is written with a list edit.
+    ///
+    /// `DATA` is written at the length the record had: all five of the
+    /// game's CSNO records carry fifty-six bytes, but the length is kept so a
+    /// short record is not grown.
+    fn save_csno(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(56);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 56]);
+        data.resize(len, 0);
+
+        let put_f32 = |data: &mut Vec<u8>, at: usize, v: f32| {
+            if data.len() >= at + 4 {
+                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+        };
+        let put_u32 = |data: &mut Vec<u8>, at: usize, v: u32| {
+            if data.len() >= at + 4 {
+                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+        };
+
+        put_f32(&mut data, 0, self.csno_decks_shuffle);
+        put_f32(&mut data, 4, self.csno_payout_ratio);
+        for (i, stop) in self.csno_reel_stops.iter().enumerate() {
+            put_u32(&mut data, 8 + i * 4, *stop);
+        }
+        put_u32(&mut data, 36, self.csno_number_of_decks);
+        put_u32(&mut data, 40, self.csno_max_winnings);
+        if let Some(c) = self.csno_currency {
+            put_u32(&mut data, 44, c);
+        }
+        if let Some(q) = self.csno_winnings_quest {
+            put_u32(&mut data, 48, q);
+        }
+        put_u32(&mut data, 52, self.csno_flags);
+        session.doc.set_sub(fid, b"DATA", data);
+
+        // The models: the spec names eight `MODL` values (the six chip
+        // denominations, the roulette chip and the slot machine), then
+        // `MOD2` (the slot machine again), `MOD3` (the blackjack table) and
+        // `MOD4` (the roulette table).
+        const CSNO_MODL: usize = 8;
+        let mods: Vec<Vec<u8>> = self
+            .csno_models
+            .iter()
+            .take(CSNO_MODL)
+            .map(|m| encode_zstring(m))
+            .collect();
+        if mods.is_empty() {
+            session.doc.remove_sub(fid, b"MODL");
+        } else {
+            session.doc.set_sub_list(fid, b"MODL", mods);
+        }
+        let numbered: Vec<Vec<u8>> = self
+            .csno_models
+            .iter()
+            .skip(CSNO_MODL)
+            .take(3)
+            .map(|m| encode_zstring(m))
+            .collect();
+        for (i, sig) in [b"MOD2", b"MOD3", b"MOD4"].iter().enumerate() {
+            if let Some(m) = numbered.get(i) {
+                session.doc.set_sub(fid, sig, m.clone());
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
+
+        let icons: Vec<Vec<u8>> = self.csno_icons.iter().map(|i| encode_zstring(i)).collect();
+        if icons.is_empty() {
+            session.doc.remove_sub(fid, b"ICON");
+        } else {
+            session.doc.set_sub_list(fid, b"ICON", icons);
+        }
+
+        let decks: Vec<Vec<u8>> = self
+            .csno_deck_icons
+            .iter()
+            .map(|i| encode_zstring(i))
+            .collect();
+        if decks.is_empty() {
+            session.doc.remove_sub(fid, b"ICO2");
+        } else {
+            session.doc.set_sub_list(fid, b"ICO2", decks);
+        }
+    }
+
+    /// Save a `DEBR` (Debris) record.
+    ///
+    /// The whole collection is rewritten as one sequence, because the debris
+    /// models are not a list of one signature: each is a run of `DATA` and
+    /// `MODT` that must keep their order. A per-signature list edit would
+    /// cluster every `DATA` together and every `MODT` together, which the
+    /// engine cannot read back into models.
+    fn save_debr(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut subs: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for model in &self.debr_models {
+            let mut data = vec![model.percentage];
+            data.extend_from_slice(&encode_zstring(&model.model));
+            data.push(model.flags);
+            subs.push((*b"DATA", data));
+            if !model.texture_hashes.is_empty() {
+                subs.push((*b"MODT", model.texture_hashes.clone()));
+            }
+        }
+        session
+            .doc
+            .set_sub_sequence(fid, vec![*b"DATA", *b"MODT"], subs);
+    }
+
+    /// Save a `CAMS` (Camera Shot) record.
+    ///
+    /// `DATA` is written at the length the record had: 272 of the game's 276
+    /// records carry forty bytes and four carry thirty-six, and a fixed
+    /// forty-byte write would grow the short ones.
+    fn save_cams(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(40);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 40]);
+        data.resize(len, 0);
+
+        let put_u32 = |data: &mut Vec<u8>, at: usize, v: u32| {
+            if data.len() >= at + 4 {
+                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+        };
+        let put_f32 = |data: &mut Vec<u8>, at: usize, v: f32| {
+            if data.len() >= at + 4 {
+                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+        };
+
+        put_u32(&mut data, 0, self.cams_action);
+        put_u32(&mut data, 4, self.cams_location);
+        put_u32(&mut data, 8, self.cams_target);
+        put_u32(&mut data, 12, self.cams_flags);
+        put_f32(&mut data, 16, self.cams_player_time_mult);
+        put_f32(&mut data, 20, self.cams_target_time_mult);
+        put_f32(&mut data, 24, self.cams_global_time_mult);
+        put_f32(&mut data, 28, self.cams_max_time);
+        put_f32(&mut data, 32, self.cams_min_time);
+        put_f32(&mut data, 36, self.cams_target_percent);
+        session.doc.set_sub(fid, b"DATA", data);
+
+        // MNAM: the image space modifier.
+        match self.cams_image_space_modifier {
+            Some(m) => session.doc.set_sub(fid, b"MNAM", m.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"MNAM"),
+        }
+
+        // The model data collection.
+        let model = &self.cams_model;
+        let sigs = model.instance_sigs();
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+    }
+
+    /// Save a `CCRD` (Card) record.
+    ///
+    /// The two `INTV` values are a *repeated* subrecord, so they are written
+    /// with a list edit: a per-subrecord edit would collapse the pair onto
+    /// the card value, and the card would lose its suit.
+    fn save_ccrd(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        let intv: Vec<Vec<u8>> = self
+            .ccrd_intv
+            .iter()
+            .map(|v| v.to_le_bytes().to_vec())
+            .collect();
+        if intv.is_empty() {
+            session.doc.remove_sub(fid, b"INTV");
+        } else {
+            session.doc.set_sub_list(fid, b"INTV", intv);
+        }
+
+        session
+            .doc
+            .set_sub(fid, b"DATA", self.ccrd_value.to_le_bytes().to_vec());
+
+        for (sig, text) in [
+            (b"ICON", &self.ccrd_icon),
+            (b"MICO", &self.ccrd_mico),
+            (b"TX00", &self.ccrd_face),
+            (b"TX01", &self.ccrd_back),
+        ] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        match self.ccrd_pickup_sound {
+            Some(s) => session.doc.set_sub(fid, b"YNAM", s.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"YNAM"),
+        }
+        match self.ccrd_drop_sound {
+            Some(s) => session.doc.set_sub(fid, b"ZNAM", s.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"ZNAM"),
+        }
+
+        let model = &self.ccrd_model;
+        let sigs = model.instance_sigs();
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+    }
+
+    /// Save a `CDCK` (Caravan Deck) record.
+    ///
+    /// The deck's `CARD` subrecords are *repeated*, so they are written with a
+    /// list edit: a per-subrecord edit would collapse the deck onto its last
+    /// card, and the deck would lose fifty-one of its fifty-two.
+    fn save_cdck(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        let cards: Vec<Vec<u8>> = self
+            .cdck_cards
+            .iter()
+            .map(|c| c.to_le_bytes().to_vec())
+            .collect();
+        if cards.is_empty() {
+            session.doc.remove_sub(fid, b"CARD");
+        } else {
+            session.doc.set_sub_list(fid, b"CARD", cards);
+        }
+
+        // DATA: the spec calls this value broken, so it is carried through
+        // exactly as the record had it.
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let mut data = original.unwrap_or_else(|| vec![0u8; 4]);
+        data.resize(4, 0);
+        data[0..4].copy_from_slice(&self.cdck_data.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save a `CHIP` (Casino Chip) record.
+    fn save_chip(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        for (sig, text) in [(b"ICON", &self.chip_icon), (b"MICO", &self.chip_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        match self.chip_pickup_sound {
+            Some(s) => session.doc.set_sub(fid, b"YNAM", s.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"YNAM"),
+        }
+        match self.chip_drop_sound {
+            Some(s) => session.doc.set_sub(fid, b"ZNAM", s.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"ZNAM"),
+        }
+
+        let model = &self.chip_model;
+        let sigs = model.instance_sigs();
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+
+        // The destruction data.
+        save_destruction(
+            session,
+            fid,
+            self.chip_dest_health,
+            self.chip_dest_flags,
+            &self.chip_destruction,
+        );
+    }
+
+    /// Save a `CMNY` (Money) record.
+    fn save_cmny(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        session
+            .doc
+            .set_sub(fid, b"DATA", self.cmny_value.to_le_bytes().to_vec());
+
+        for (sig, text) in [(b"ICON", &self.cmny_icon), (b"MICO", &self.cmny_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        match self.cmny_pickup_sound {
+            Some(s) => session.doc.set_sub(fid, b"YNAM", s.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"YNAM"),
+        }
+        match self.cmny_drop_sound {
+            Some(s) => session.doc.set_sub(fid, b"ZNAM", s.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"ZNAM"),
+        }
+
+        let model = &self.cmny_model;
+        let sigs = model.instance_sigs();
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+    }
+
+    /// Save an `ARMA` (Armor Addon) record.
+    ///
+    /// `DNAM` is written back over the record's own bytes, not rebuilt from
+    /// the fields the editor owns. 115 of the 131 ARMA records in
+    /// FalloutNV.esm carry a four-byte `DNAM` — the armour rating and the flag
+    /// word, with no `DT` — and a rebuild would grow them to twelve bytes and
+    /// give them fields they never had. The length the record had is kept, so
+    /// a save that changes nothing is byte-identical.
+    ///
+    /// `BMDT` is likewise written whole: the general-flags byte is copied
+    /// through and only the named bits are written inside it, so "Non-Playable"
+    /// — set on records the spec does not name it for — survives a save.
+    fn save_arma(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        let mut data = Vec::with_capacity(12);
+        data.extend_from_slice(&self.arma_val.to_le_bytes());
+        data.extend_from_slice(&self.arma_hp.to_le_bytes());
+        data.extend_from_slice(&self.arma_weight.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+
+        // DNAM: the record's own bytes, with only the fields the editor owns
+        // written over them.
+        let original_dnam = self.raw_subs.get(b"DNAM").cloned();
+        let dnam_len = if self.arma_dnam_len >= 8 { 12 } else { 4 };
+        let mut dnam = original_dnam.unwrap_or_else(|| vec![0u8; dnam_len]);
+        dnam.resize(dnam_len, 0);
+        dnam[0..2].copy_from_slice(&self.arma_dr.to_le_bytes());
+        if dnam_len >= 4 {
+            dnam[2..4].copy_from_slice(&self.arma_dnam_flags.to_le_bytes());
+        }
+        if dnam_len >= 8 {
+            dnam[4..8].copy_from_slice(&self.arma_dt.to_le_bytes());
+        }
+        session.doc.set_sub(fid, b"DNAM", dnam);
+
+        // BMDT: the biped flag word and the general flag byte, with the
+        // general byte's unnamed bits preserved.
+        let original_bmdt = self.raw_subs.get(b"BMDT").cloned();
+        let mut bmdt = original_bmdt.unwrap_or_else(|| vec![0u8; 8]);
+        bmdt.resize(8, 0);
+        bmdt[0..4].copy_from_slice(&self.arma_biped_flags.to_le_bytes());
+        bmdt[4] = self.arma_bmdt_general;
+        session.doc.set_sub(fid, b"BMDT", bmdt);
+
+        // ETYP: the equipment type.
+        session
+            .doc
+            .set_sub(fid, b"ETYP", self.arma_equip_type.to_le_bytes().to_vec());
+
+        // The four model data instances.
+        for model in &self.arma_models {
+            let sigs = model.instance_sigs();
+            if !model.modl.trim().is_empty() {
+                session
+                    .doc
+                    .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+            }
+            if let Some(modb) = model.modb {
+                if model.instance == 0 {
+                    session.doc.set_sub(fid, b"MODB", modb.to_vec());
+                }
+            }
+            if !model.modt.is_empty() {
+                session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+            }
+            if !model.mods.is_empty() {
+                session
+                    .doc
+                    .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+            }
+            if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+                session.doc.set_sub(fid, &sig, vec![modd]);
+            }
+        }
+
+        // The four icons.
+        for (sig, text) in [
+            (b"ICON", &self.arma_icon),
+            (b"MICO", &self.arma_mico),
+            (b"ICO2", &self.arma_ico2),
+            (b"MIC2", &self.arma_mic2),
+        ] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+    }
+
+    /// Save an `ASPC` (Ambient Sound) record.
+    ///
+    /// The five `SNAM` sound loops are *repeated* subrecords, so they are
+    /// written with a list edit: a per-subrecord edit would collapse them
+    /// onto the last one, and the record would lose four of its five loops.
+    fn save_aspc(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        let payload: Vec<Vec<u8>> = self
+            .aspc_sounds
+            .iter()
+            .map(|s| s.to_le_bytes().to_vec())
+            .collect();
+        if payload.is_empty() {
+            session.doc.remove_sub(fid, b"SNAM");
+        } else {
+            session.doc.set_sub_list(fid, b"SNAM", payload);
+        }
+
+        session.doc.set_sub(
+            fid,
+            b"WNAM",
+            self.aspc_walla_trigger_count.to_le_bytes().to_vec(),
+        );
+        match self.aspc_region {
+            Some(r) => session.doc.set_sub(fid, b"RDAT", r.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"RDAT"),
+        }
+        session
+            .doc
+            .set_sub(fid, b"ANAM", self.aspc_environment.to_le_bytes().to_vec());
+        session
+            .doc
+            .set_sub(fid, b"INAM", self.aspc_is_interior.to_le_bytes().to_vec());
+    }
+
+    /// Save an `AMEF` (Ammo Effect) record.
+    ///
+    /// `DATA` is a twelve-byte struct: a type enum, an operation enum and a
+    /// float32 value. All 54 of the game's AMEF records carry exactly twelve
+    /// bytes, so a fixed twelve-byte write is byte-identical to what the
+    /// record had.
+    fn save_amef(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut d = Vec::with_capacity(12);
+        d.extend_from_slice(&self.amef_type.to_le_bytes());
+        d.extend_from_slice(&self.amef_operation.to_le_bytes());
+        d.extend_from_slice(&self.amef_value.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", d);
+    }
+
+    /// Save an `ANIO` (Animation Object) record.
+    ///
+    /// `DATA` names the `IDLE` record the animation plays. Every one of the
+    /// game's ANIO records carries it, so it is always written.
+    ///
+    /// The model data collection's subrecords are written individually. `MODT`'s
+    /// texture hashes and `MODB`'s unknown bytes are copied through unchanged
+    /// — the editor cannot author a file hash, and rewriting one would
+    /// corrupt the mod.
+    fn save_anio(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.anio_model;
+        let sigs = model.instance_sigs();
+
+        // The original instance's MODL is the common "Model Path" field the
+        // header panel owns and has already written, so it is not written
+        // again here. A numbered instance's model path has no such field, so
+        // it is written from the collection.
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+
+        // DATA: the animation.
+        match self.anio_animation {
+            Some(f) => session.doc.set_sub(fid, b"DATA", f.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"DATA"),
+        }
+    }
+
     /// Save an `ALOC` (Media Location Controller) record.
     ///
     /// The six media-set lists are *repeated* subrecords, so each is written
@@ -4171,6 +6350,27 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"LVLC" => "Leveled Creature",
         b"ADDN" => "Addon Node",
         b"ALOC" => "Media Location Controller",
+        b"AMEF" => "Ammo Effect",
+        b"ARMA" => "Armor Addon",
+        b"CAMS" => "Camera Shot",
+        b"CHAL" => "Challenge",
+        b"DEHY" => "Dehydration",
+        b"DOBJ" => "Default Object Manager",
+        b"ECZN" => "Encounter Zone",
+        b"FURN" => "Furniture",
+        b"GRAS" => "Grass",
+        b"HUNG" => "Hunger",
+        b"RADS" => "Radiation",
+        b"SLPD" => "Sleep Deprivation",
+        b"CPTH" => "Camera Path",
+        b"CSNO" => "Casino",
+        b"DEBR" => "Debris",
+        b"CCRD" => "Card",
+        b"CDCK" => "Caravan Deck",
+        b"CHIP" => "Casino Chip",
+        b"CMNY" => "Money",
+        b"ASPC" => "Ambient Sound",
+        b"ANIO" => "Animation Object",
         b"AVIF" => "Actor Value",
         b"EYES" => "Eyes",
         b"HAIR" => "Hair",
@@ -4358,6 +6558,263 @@ const CLAS_ATTRIBUTES: [&str; 7] = [
     "Luck",
 ];
 
+/// The thirty-four `DOBJ` (Default Object Manager) fields, in the order the
+/// record stores them.
+///
+/// The `DATA` subrecord is a flat array of FormIDs; the spec names each one.
+/// The names are kept in a table so the editor can label them and so the
+/// order is stated once rather than implied by the loader.
+pub const DOBJ_FIELDS: [&str; 34] = [
+    "Stimpack",
+    "SuperStimpack",
+    "RadX",
+    "RadAway",
+    "Morphine",
+    "Perk Paralysis",
+    "Player Faction",
+    "Mysterious Stranger NPC",
+    "Mysterious Stranger Faction",
+    "Default Music",
+    "Battle Music",
+    "Death Music",
+    "Success Music",
+    "Level Up Music",
+    "Player Voice (Male)",
+    "Player Voice (Male Child)",
+    "Player Voice (Female)",
+    "Player Voice (Female Child)",
+    "Eat Package Default Food",
+    "Every Actor Ability",
+    "Drug Wears Off Image Space",
+    "Doctor's Bag",
+    "Miss Fortune NPC",
+    "Miss Fortune Faction",
+    "Meltdown Explosion",
+    "Unarmed Forward PA",
+    "Unarmed Backward PA",
+    "Unarmed Left PA",
+    "Unarmed Right PA",
+    "Unarmed Crouch PA",
+    "Unarmed Counter PA",
+    "Spotter Effect",
+    "Item Detected Effect",
+    "Cateye Mobile Effect (NYI)",
+];
+
+/// `GRAS` `DATA` Unit From Water Type, the uint32 enum from fopdoc's GRAS page.
+const GRAS_WATER_TYPES: [(u32, &str); 8] = [
+    (0, "Above - At Least"),
+    (1, "Above - At Most"),
+    (2, "Below - At Least"),
+    (3, "Below - At Most"),
+    (4, "Either - At Least"),
+    (5, "Either - At Most"),
+    (6, "Either - At Most Above"),
+    (7, "Either - At Most Below"),
+];
+
+/// `GRAS` `DATA` Flags, the u8 word from fopdoc's GRAS page.
+///
+/// The word is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const GRAS_FLAGS: [(u8, &str); 3] = [
+    (0x01, "Vertex Lighting"),
+    (0x02, "Uniform Scaling"),
+    (0x04, "Fit To Slope"),
+];
+
+/// `ECZN` `DATA` Flags, the u8 word from fopdoc's ECZN page.
+///
+/// The word is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const ECZN_FLAGS: [(u8, &str); 2] = [
+    (0x01, "Never Resets"),
+    (0x02, "Match PC Below Minimum Level"),
+];
+
+/// `CHAL` `DATA` Type, the uint32 enum from fopdoc's CHAL page.
+const CHAL_TYPES: [(u32, &str); 14] = [
+    (0, "Kill From A Form List"),
+    (1, "Kill A Specific FormID"),
+    (2, "Kill Any In A Category"),
+    (3, "Hit An Enemy"),
+    (4, "Discover A Map Marker"),
+    (5, "Use An Item"),
+    (6, "Acquire An Item"),
+    (7, "Use A Skill"),
+    (8, "Do Damage"),
+    (9, "Use An Item From A List"),
+    (10, "Acquire An Item From A List"),
+    (11, "Miscellaneous Stat"),
+    (12, "Craft Using An Item"),
+    (13, "Scripted Challenge"),
+];
+
+/// `CHAL` `DATA` Flags, the uint32 word from fopdoc's CHAL page.
+///
+/// The word is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const CHAL_FLAGS: [(u32, &str); 3] = [
+    (0x0000_0001, "Start Disabled"),
+    (0x0000_0002, "Recurring"),
+    (0x0000_0004, "Show Zero Progress"),
+];
+
+/// `CPTH` `DATA` Camera Zoom, the u8 enum from fopdoc's CPTH page.
+const CPTH_ZOOMS: [(u8, &str); 3] = [(0, "Default"), (1, "Disable"), (2, "Shot List")];
+
+/// `CAMS` `DATA` Action, the uint32 enum from fopdoc's CAMS page.
+const CAMS_ACTIONS: [(u32, &str); 4] = [(0, "Shoot"), (1, "Fly"), (2, "Hit"), (3, "Zoom")];
+
+/// `CAMS` `DATA` Location and Target, the uint32 enum from fopdoc's CAMS page.
+const CAMS_ROLES: [(u32, &str); 3] = [(0, "Attacker"), (1, "Projectile"), (2, "Target")];
+
+/// `CAMS` `DATA` Flags, the uint32 word from fopdoc's CAMS page.
+///
+/// The word is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const CAMS_FLAGS: [(u32, &str); 6] = [
+    (0x0000_0001, "Position Follows Location"),
+    (0x0000_0002, "Rotation Follows Target"),
+    (0x0000_0004, "Don't Follow Bone"),
+    (0x0000_0008, "First Person Camera"),
+    (0x0000_0010, "No Tracer"),
+    (0x0000_0020, "Start At Time Zero"),
+];
+
+/// `CCRD` `INTV` Card Suit, the uint32 enum from fopdoc's CCRD page.
+const CCRD_SUITS: [(u32, &str); 6] = [
+    (0, "Unspecified"),
+    (1, "Hearts"),
+    (2, "Spades"),
+    (3, "Diamonds"),
+    (4, "Clubs"),
+    (5, "Joker"),
+];
+
+/// `CCRD` `INTV` Card Value, the uint32 enum from fopdoc's CCRD page.
+const CCRD_VALUES: [(u32, &str); 16] = [
+    (0, "Unspecified"),
+    (1, "Ace"),
+    (2, "2"),
+    (3, "3"),
+    (4, "4"),
+    (5, "5"),
+    (6, "6"),
+    (7, "7"),
+    (8, "8"),
+    (9, "9"),
+    (10, "10"),
+    (11, "Unspecified"),
+    (12, "Jack"),
+    (13, "Queen"),
+    (14, "King"),
+    (15, "Joker"),
+];
+
+/// `ASPC` `ANAM` Environment Type, the uint32 enum from fopdoc's ASPC page.
+///
+/// The whole table is listed, not a subset: truncating an enum corrupts the
+/// records that carry a value past the end of the list.
+const ASPC_ENVIRONMENTS: [(u32, &str); 31] = [
+    (0, "None"),
+    (1, "Default"),
+    (2, "Generic"),
+    (3, "Padded Cell"),
+    (4, "Room"),
+    (5, "Bathroom"),
+    (6, "Livingroom"),
+    (7, "Stone Room"),
+    (8, "Auditorium"),
+    (9, "Concerthall"),
+    (10, "Cave"),
+    (11, "Arena"),
+    (12, "Hangar"),
+    (13, "Carpeted Hallway"),
+    (14, "Hallway"),
+    (15, "Stone Corridor"),
+    (16, "Alley"),
+    (17, "Forest"),
+    (18, "City"),
+    (19, "Mountains"),
+    (20, "Quarry"),
+    (21, "Plain"),
+    (22, "Parkinglot"),
+    (23, "Sewerpipe"),
+    (24, "Underwater"),
+    (25, "Small Room"),
+    (26, "Medium Room"),
+    (27, "Large Room"),
+    (28, "Medium Hall"),
+    (29, "Large Hall"),
+    (30, "Plate"),
+];
+
+/// `ASPC` `INAM` Is Interior, the uint32 enum from fopdoc's ASPC page.
+const ASPC_INTERIOR: [(u32, &str); 2] = [(1, "No"), (2, "Yes")];
+
+/// The five `SNAM` sound loops an `ASPC` record carries, in the order the
+/// record stores them.
+const ASPC_SOUND_SLOTS: [&str; 5] = ["Dawn / Default Loop", "Afternoon", "Dusk", "Night", "Walla"];
+
+/// `BMDT` biped flags, the uint32 word from fopdoc's BMDT page.
+const BMDT_BIPED_FLAGS: [(u32, &str); 20] = [
+    (0x0000_0001, "Head"),
+    (0x0000_0002, "Hair"),
+    (0x0000_0004, "Upper Body"),
+    (0x0000_0008, "Left Hand"),
+    (0x0000_0010, "Right Hand"),
+    (0x0000_0020, "Weapon"),
+    (0x0000_0040, "PipBoy"),
+    (0x0000_0080, "Backpack"),
+    (0x0000_0100, "Necklace"),
+    (0x0000_0200, "Headband"),
+    (0x0000_0400, "Hat"),
+    (0x0000_0800, "Eye Glasses"),
+    (0x0000_1000, "Nose Ring"),
+    (0x0000_2000, "Earrings"),
+    (0x0000_4000, "Mask"),
+    (0x0000_8000, "Choker"),
+    (0x0001_0000, "Mouth Object"),
+    (0x0002_0000, "Body AddOn 1"),
+    (0x0004_0000, "Body AddOn 2"),
+    (0x0008_0000, "Body AddOn 3"),
+];
+
+/// `BMDT` general flags, the u8 byte from fopdoc's BMDT page.
+///
+/// The byte is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const BMDT_GENERAL_FLAGS: [(u8, &str); 8] = [
+    (0x01, "Unknown 0x01"),
+    (0x02, "Unknown 0x02"),
+    (0x04, "Has Backpack"),
+    (0x08, "Medium"),
+    (0x10, "Unknown 0x10"),
+    (0x20, "Power Armor"),
+    (0x40, "Non-Playable"),
+    (0x80, "Heavy"),
+];
+
+/// `ARMA` `DNAM` Flags, the uint16 word from fopdoc's ARMA page.
+///
+/// Only bit 0 is named by the spec, but the word is kept whole, so a mod's
+/// other bits survive an edit.
+const ARMA_DNAM_FLAGS: [(u16, &str); 1] = [(0x0001, "Modulates Voice")];
+
+/// `AMEF` `DATA` Type, the uint32 enum from fopdoc's AMEF page.
+const AMEF_TYPES: [(u32, &str); 6] = [
+    (0, "Damage Mod"),
+    (1, "DR Mod"),
+    (2, "DT Mod"),
+    (3, "Spread Mod"),
+    (4, "Weapon Condition Mod"),
+    (5, "Fatigue Mod"),
+];
+
+/// `AMEF` `DATA` Operation, the uint32 enum from fopdoc's AMEF page.
+const AMEF_OPERATIONS: [(u32, &str); 3] = [(0, "Add"), (1, "Multiply"), (2, "Subtract")];
+
 /// `FACT` `DATA` Flags 1, the u8 word from fopdoc's FACT flag table.
 ///
 /// The spec names bits 0, 1 and 2. The word is kept whole when saving, so a
@@ -4489,6 +6946,27 @@ pub fn ui(
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
                 b"ADDN" => draw_addn_ui(ui, &mut state),
                 b"ALOC" => draw_aloc_ui(ui, &session, &mut state),
+                b"AMEF" => draw_amef_ui(ui, &mut state),
+                b"ARMA" => draw_arma_ui(ui, &mut state),
+                b"CAMS" => draw_cams_ui(ui, &session, &mut state),
+                b"CHAL" => draw_chal_ui(ui, &mut state),
+                b"DEHY" => draw_need_ui(ui, &session, &mut state, "Dehydration"),
+                b"DOBJ" => draw_dobj_ui(ui, &mut state),
+                b"ECZN" => draw_ecnz_ui(ui, &session, &mut state),
+                b"FURN" => draw_furn_ui(ui, &mut state),
+                b"GRAS" => draw_gras_ui(ui, &mut state),
+                b"HUNG" => draw_need_ui(ui, &session, &mut state, "Hunger"),
+                b"RADS" => draw_need_ui(ui, &session, &mut state, "Radiation"),
+                b"SLPD" => draw_need_ui(ui, &session, &mut state, "Sleep Deprivation"),
+                b"CPTH" => draw_cpth_ui(ui, &session, &mut state),
+                b"CSNO" => draw_csno_ui(ui, &session, &mut state),
+                b"DEBR" => draw_debr_ui(ui, &mut state),
+                b"CCRD" => draw_ccrd_ui(ui, &session, &mut state),
+                b"CDCK" => draw_cdck_ui(ui, &session, &mut state),
+                b"CHIP" => draw_chip_ui(ui, &session, &mut state),
+                b"CMNY" => draw_cmny_ui(ui, &session, &mut state),
+                b"ASPC" => draw_aspc_ui(ui, &session, &mut state),
+                b"ANIO" => draw_anio_ui(ui, &session, &mut state),
                 b"AVIF" => draw_avif_ui(ui, &mut state),
                 b"EYES" => draw_eyes_ui(ui, &mut state),
                 b"HAIR" => draw_hair_ui(ui, &session, &mut state),
@@ -7689,6 +10167,1528 @@ fn draw_eyes_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .range(0..=u8::MAX as i64)
                     .speed(1.0),
             );
+        });
+    });
+}
+
+/// Draw a need-trigger record: `DEHY`, `HUNG`, `RADS` or `SLPD`.
+///
+/// All four have the same two-field `DATA`: a trigger threshold and the
+/// actor effect the trigger applies.
+fn draw_need_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+    title: &str,
+) {
+    // The threshold and the effect are read out before the widgets borrow the
+    // state, so the two never hold overlapping borrows.
+    let (mut threshold, mut effect) = match title {
+        "Dehydration" => (state.dehyd_trigger_threshold, state.dehyd_actor_effect),
+        "Hunger" => (state.hung_trigger_threshold, state.hung_actor_effect),
+        "Radiation" => (state.rads_trigger_threshold, state.rads_actor_effect),
+        _ => (state.slpd_trigger_threshold, state.slpd_actor_effect),
+    };
+
+    ui.group(|ui| {
+        ui.strong(title);
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Trigger Threshold:");
+            ui.add(egui::DragValue::new(&mut threshold).range(0..=1000000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Actor Effect:");
+            let spells = session.records_by_sig(*b"SPEL");
+            let mut fid = effect;
+            record_dropdown(ui, &format!("need_effect_{title}"), &spells, &mut fid);
+            effect = fid;
+        });
+    });
+
+    match title {
+        "Dehydration" => {
+            state.dehyd_trigger_threshold = threshold;
+            state.dehyd_actor_effect = effect;
+        }
+        "Hunger" => {
+            state.hung_trigger_threshold = threshold;
+            state.hung_actor_effect = effect;
+        }
+        "Radiation" => {
+            state.rads_trigger_threshold = threshold;
+            state.rads_actor_effect = effect;
+        }
+        _ => {
+            state.slpd_trigger_threshold = threshold;
+            state.slpd_actor_effect = effect;
+        }
+    }
+}
+
+/// Draw the Encounter Zone (ECZN) editor body.
+fn draw_ecnz_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Encounter Zone");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Owner:");
+            let mut fid = state.ecnz_owner;
+            record_dropdown(
+                ui,
+                "ecnz_owner",
+                &session.records_by_sig(*b"FACT"),
+                &mut fid,
+            );
+            state.ecnz_owner = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Rank:");
+            ui.add(egui::DragValue::new(&mut state.ecnz_rank).range(-128..=127));
+            ui.separator();
+            ui.label("Minimum Level:");
+            ui.add(egui::DragValue::new(&mut state.ecnz_minimum_level).range(-128..=127));
+        });
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in ECZN_FLAGS {
+                let mut set = (state.ecnz_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.ecnz_flags |= bit;
+                    } else {
+                        state.ecnz_flags &= !bit;
+                    }
+                }
+            }
+        });
+    });
+}
+
+/// Draw the Default Object Manager (DOBJ) editor body.
+fn draw_dobj_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Default Objects");
+        ui.add_space(4.0);
+        for (i, value) in state.dobj_values.iter_mut().enumerate() {
+            let name = DOBJ_FIELDS.get(i).copied().unwrap_or("Unknown");
+            ui.horizontal(|ui| {
+                ui.label(format!("{name}:"));
+                ui.add(
+                    egui::TextEdit::singleline(&mut value.to_string())
+                        .id_salt(format!("dobj_{i}"))
+                        .hint_text("00000000")
+                        .desired_width(100.0),
+                );
+            });
+        }
+    });
+}
+
+/// Draw the Furniture (FURN) editor body.
+fn draw_furn_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Furniture");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Marker Flags (MNAM):");
+            let hex: String = state
+                .furn_marker_flags
+                .iter()
+                .map(|b| format!("{b:02X}"))
+                .collect();
+            ui.label(hex);
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+        let model = &mut state.furn_model;
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+    });
+
+    draw_destruction_ui(
+        ui,
+        &mut state.furn_destruction,
+        &mut state.furn_dest_health,
+        &mut state.furn_dest_flags,
+        "furn",
+    );
+}
+
+/// Draw the Grass (GRAS) editor body.
+fn draw_gras_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Grass");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Density:");
+            ui.add(egui::DragValue::new(&mut state.gras_density).range(0..=255));
+            ui.separator();
+            ui.label("Min Slope:");
+            ui.add(egui::DragValue::new(&mut state.gras_min_slope).range(0..=255));
+            ui.separator();
+            ui.label("Max Slope:");
+            ui.add(egui::DragValue::new(&mut state.gras_max_slope).range(0..=255));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Unit From Water Amount:");
+            ui.add(egui::DragValue::new(&mut state.gras_unit_from_water_amount).range(0..=65535));
+            ui.separator();
+            ui.label("Unit From Water Type:");
+            egui::ComboBox::from_id_salt("gras_water_type")
+                .selected_text(
+                    GRAS_WATER_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.gras_unit_from_water_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in GRAS_WATER_TYPES.iter() {
+                        ui.selectable_value(&mut state.gras_unit_from_water_type, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Position Range:");
+            ui.add(
+                egui::DragValue::new(&mut state.gras_position_range)
+                    .speed(0.1)
+                    .range(-10000.0..=10000.0),
+            );
+            ui.separator();
+            ui.label("Height Range:");
+            ui.add(
+                egui::DragValue::new(&mut state.gras_height_range)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Color Range:");
+            ui.add(
+                egui::DragValue::new(&mut state.gras_color_range)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+            ui.separator();
+            ui.label("Wave Period:");
+            ui.add(
+                egui::DragValue::new(&mut state.gras_wave_period)
+                    .speed(0.1)
+                    .range(-10000.0..=10000.0),
+            );
+        });
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in GRAS_FLAGS {
+                let mut set = (state.gras_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.gras_flags |= bit;
+                    } else {
+                        state.gras_flags &= !bit;
+                    }
+                }
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+        let model = &mut state.gras_model;
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+    });
+}
+
+/// Draw the Challenge (CHAL) editor body.
+fn draw_chal_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Challenge");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt("chal_type")
+                .selected_text(
+                    CHAL_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.chal_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in CHAL_TYPES.iter() {
+                        ui.selectable_value(&mut state.chal_type, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Threshold:");
+            ui.add(egui::DragValue::new(&mut state.chal_threshold).range(0..=1000000));
+            ui.separator();
+            ui.label("Interval:");
+            ui.add(egui::DragValue::new(&mut state.chal_interval).range(0..=1000000));
+        });
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in CHAL_FLAGS {
+                let mut set = (state.chal_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.chal_flags |= bit;
+                    } else {
+                        state.chal_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Value1:");
+            ui.label(format!("{:02X?}", state.chal_value1));
+            ui.separator();
+            ui.label("Value2:");
+            ui.label(format!("{:02X?}", state.chal_value2));
+            ui.separator();
+            ui.label("Value3:");
+            ui.label(format!("{:02X?}", state.chal_value3));
+        });
+        ui.label("The three value fields' meaning depends on the type.");
+        ui.horizontal(|ui| {
+            ui.label("Value3 reference (SNAM):");
+            ui.add(
+                egui::TextEdit::singleline(
+                    &mut state
+                        .chal_snam
+                        .map(|v| format!("{v:08X}"))
+                        .unwrap_or_default(),
+                )
+                .id_salt("chal_snam")
+                .hint_text("00000000")
+                .desired_width(100.0),
+            );
+            ui.separator();
+            ui.label("Value4 reference (XNAM):");
+            ui.add(
+                egui::TextEdit::singleline(
+                    &mut state
+                        .chal_xnam
+                        .map(|v| format!("{v:08X}"))
+                        .unwrap_or_default(),
+                )
+                .id_salt("chal_xnam")
+                .hint_text("00000000")
+                .desired_width(100.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Presentation");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Pip-Boy Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.chal_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Message Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.chal_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.label("Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.chal_desc)
+                .desired_rows(3)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+}
+
+/// Draw the Camera Path (CPTH) editor body.
+fn draw_cpth_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Camera Path");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Camera Zoom (DATA):");
+            egui::ComboBox::from_id_salt("cpth_zoom")
+                .selected_text(
+                    CPTH_ZOOMS
+                        .iter()
+                        .find(|(v, _)| *v == state.cpth_camera_zoom)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in CPTH_ZOOMS.iter() {
+                        ui.selectable_value(&mut state.cpth_camera_zoom, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Parent Camera Path (ANAM):");
+            let paths = session.records_by_sig(*b"CPTH");
+            let mut parent = state.cpth_parent;
+            record_dropdown(ui, "cpth_parent", &paths, &mut parent);
+            state.cpth_parent = parent;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Previous Sibling (ANAM):");
+            let paths = session.records_by_sig(*b"CPTH");
+            let mut previous = state.cpth_previous;
+            record_dropdown(ui, "cpth_previous", &paths, &mut previous);
+            state.cpth_previous = previous;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Camera Shots (SNAM) — {}", state.cpth_shots.len()));
+        ui.add_space(4.0);
+        let shots = session.records_by_sig(*b"CAMS");
+        let mut remove_idx = None;
+        for (idx, shot) in state.cpth_shots.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("✖")
+                    .on_hover_text("Remove this camera shot")
+                    .clicked()
+                {
+                    remove_idx = Some(idx);
+                }
+                let mut fid = Some(*shot);
+                record_dropdown(ui, &format!("cpth_shot_{idx}"), &shots, &mut fid);
+                *shot = fid.unwrap_or(0);
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.cpth_shots.remove(idx);
+        }
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Conditions (CTDA) — {}", state.cpth_conditions.len()));
+        ui.add_space(4.0);
+        ui.label("The conditions are shown as raw bytes: the editor does not decode a condition's fields.");
+        for (idx, cond) in state.cpth_conditions.iter().enumerate() {
+            let hex: String = cond.data.iter().map(|b| format!("{b:02X}")).collect();
+            ui.label(format!("#{idx}: {hex}"));
+        }
+    });
+}
+
+/// Draw the Casino (CSNO) editor body.
+fn draw_csno_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Casino");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Decks % Before Shuffle:");
+            ui.add(
+                egui::DragValue::new(&mut state.csno_decks_shuffle)
+                    .speed(0.01)
+                    .range(0.0..=100.0),
+            );
+            ui.separator();
+            ui.label("BlackJack Payout Ratio:");
+            ui.add(
+                egui::DragValue::new(&mut state.csno_payout_ratio)
+                    .speed(0.01)
+                    .range(0.0..=100.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Number of Decks:");
+            ui.add(egui::DragValue::new(&mut state.csno_number_of_decks).range(0..=1000));
+            ui.separator();
+            ui.label("Max Winnings:");
+            ui.add(egui::DragValue::new(&mut state.csno_max_winnings).range(0..=1000000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Slot Reel Stops:");
+            for (i, stop) in state.csno_reel_stops.iter_mut().enumerate() {
+                ui.label(format!("#{i}"));
+                ui.add(egui::DragValue::new(stop).range(0..=1000));
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Currency (CHIP):");
+            let chips = session.records_by_sig(*b"CHIP");
+            let mut fid = state.csno_currency;
+            record_dropdown(ui, "csno_currency", &chips, &mut fid);
+            state.csno_currency = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Casino Winnings Quest (QUST):");
+            let quests = session.records_by_sig(*b"QUST");
+            let mut fid = state.csno_winnings_quest;
+            record_dropdown(ui, "csno_winnings_quest", &quests, &mut fid);
+            state.csno_winnings_quest = fid;
+        });
+        ui.horizontal_wrapped(|ui| {
+            let mut set = (state.csno_flags & 0x0000_0001) != 0;
+            if ui.checkbox(&mut set, "Dealer Stay on Soft 17").changed() {
+                if set {
+                    state.csno_flags |= 0x0000_0001;
+                } else {
+                    state.csno_flags &= !0x0000_0001;
+                }
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Models — {}", state.csno_models.len()));
+        ui.add_space(4.0);
+        let labels = [
+            "Casino $1 Chip Model",
+            "Casino $5 Chip Model",
+            "Casino $10 Chip Model",
+            "Casino $25 Chip Model",
+            "Casino $100 Chip Model",
+            "Casino $500 Chip Model",
+            "Casino Roulette Chip Model",
+            "Slot Machine Model",
+            "Slot Machine Model (MOD2)",
+            "BlackJack Table Model",
+            "Roulette Table Model",
+        ];
+        for (i, model) in state.csno_models.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(labels.get(i).copied().unwrap_or("Extra model"));
+                ui.add(
+                    egui::TextEdit::singleline(model)
+                        .id_salt(format!("csno_model_{i}"))
+                        .desired_width(ui.available_width() - 220.0),
+                );
+            });
+        }
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Slot Reel Textures — {}", state.csno_icons.len()));
+        ui.add_space(4.0);
+        for (i, icon) in state.csno_icons.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("Symbol {}", i + 1));
+                ui.add(
+                    egui::TextEdit::singleline(icon)
+                        .id_salt(format!("csno_icon_{i}"))
+                        .desired_width(ui.available_width() - 160.0),
+                );
+            });
+        }
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "BlackJack Deck Textures — {}",
+            state.csno_deck_icons.len()
+        ));
+        ui.add_space(4.0);
+        for (i, icon) in state.csno_deck_icons.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("Deck {}", i + 1));
+                ui.add(
+                    egui::TextEdit::singleline(icon)
+                        .id_salt(format!("csno_deck_{i}"))
+                        .desired_width(ui.available_width() - 160.0),
+                );
+            });
+        }
+    });
+}
+
+/// Draw the Debris (DEBR) editor body.
+fn draw_debr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong(format!("Debris Models — {}", state.debr_models.len()));
+        ui.add_space(4.0);
+        for (idx, model) in state.debr_models.iter_mut().enumerate() {
+            ui.separator();
+            ui.strong(format!("#{idx}"));
+            ui.horizontal(|ui| {
+                ui.label("Percentage:");
+                ui.add(egui::DragValue::new(&mut model.percentage).range(0..=100));
+                ui.separator();
+                let mut collision = (model.flags & 0x01) != 0;
+                if ui.checkbox(&mut collision, "Has Collision Data").changed() {
+                    if collision {
+                        model.flags |= 0x01;
+                    } else {
+                        model.flags &= !0x01;
+                    }
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Model Filename:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.model)
+                        .id_salt(format!("debr_model_{idx}"))
+                        .desired_width(ui.available_width() - 180.0),
+                );
+            });
+            let hashes = model.texture_hashes.len() / 24;
+            ui.label(format!(
+                "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+                model.texture_hashes.len()
+            ));
+        }
+    });
+}
+
+/// Draw the Camera Shot (CAMS) editor body.
+fn draw_cams_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Camera Shot");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Action:");
+            egui::ComboBox::from_id_salt("cams_action")
+                .selected_text(
+                    CAMS_ACTIONS
+                        .iter()
+                        .find(|(v, _)| *v == state.cams_action)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in CAMS_ACTIONS.iter() {
+                        ui.selectable_value(&mut state.cams_action, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Location:");
+            egui::ComboBox::from_id_salt("cams_location")
+                .selected_text(
+                    CAMS_ROLES
+                        .iter()
+                        .find(|(v, _)| *v == state.cams_location)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in CAMS_ROLES.iter() {
+                        ui.selectable_value(&mut state.cams_location, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Target:");
+            egui::ComboBox::from_id_salt("cams_target")
+                .selected_text(
+                    CAMS_ROLES
+                        .iter()
+                        .find(|(v, _)| *v == state.cams_target)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in CAMS_ROLES.iter() {
+                        ui.selectable_value(&mut state.cams_target, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in CAMS_FLAGS {
+                let mut set = (state.cams_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.cams_flags |= bit;
+                    } else {
+                        state.cams_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Player Time Mult:");
+            ui.add(
+                egui::DragValue::new(&mut state.cams_player_time_mult)
+                    .speed(0.01)
+                    .range(-100.0..=100.0),
+            );
+            ui.separator();
+            ui.label("Target Time Mult:");
+            ui.add(
+                egui::DragValue::new(&mut state.cams_target_time_mult)
+                    .speed(0.01)
+                    .range(-100.0..=100.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Global Time Mult:");
+            ui.add(
+                egui::DragValue::new(&mut state.cams_global_time_mult)
+                    .speed(0.01)
+                    .range(-100.0..=100.0),
+            );
+            ui.separator();
+            ui.label("Max Time:");
+            ui.add(
+                egui::DragValue::new(&mut state.cams_max_time)
+                    .speed(0.01)
+                    .range(0.0..=100.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Min Time:");
+            ui.add(
+                egui::DragValue::new(&mut state.cams_min_time)
+                    .speed(0.01)
+                    .range(0.0..=100.0),
+            );
+            ui.separator();
+            ui.label("Target % Between Actors:");
+            ui.add(
+                egui::DragValue::new(&mut state.cams_target_percent)
+                    .speed(0.01)
+                    .range(0.0..=100.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Image Space Modifier (MNAM):");
+            let imads = session.records_by_sig(*b"IMAD");
+            let mut fid = state.cams_image_space_modifier;
+            record_dropdown(ui, "cams_imad", &imads, &mut fid);
+            state.cams_image_space_modifier = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+        let model = &mut state.cams_model;
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+    });
+}
+
+/// Draw the Card (CCRD) editor body.
+///
+/// The suit and the value are two `INTV` subrecords, so the page edits them
+/// as a pair.
+fn draw_ccrd_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Card");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Suit (INTV):");
+            let suit = state.ccrd_intv.first().copied().unwrap_or(0);
+            egui::ComboBox::from_id_salt("ccrd_suit")
+                .selected_text(
+                    CCRD_SUITS
+                        .iter()
+                        .find(|(v, _)| *v == suit)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in CCRD_SUITS.iter() {
+                        if ui
+                            .selectable_value(&mut state.ccrd_intv[0], *v, *name)
+                            .clicked()
+                        {
+                            state.ccrd_intv[0] = *v;
+                        }
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Value (INTV):");
+            let val = state.ccrd_intv.get(1).copied().unwrap_or(0);
+            egui::ComboBox::from_id_salt("ccrd_value")
+                .selected_text(
+                    CCRD_VALUES
+                        .iter()
+                        .find(|(v, _)| *v == val)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in CCRD_VALUES.iter() {
+                        if ui
+                            .selectable_value(&mut state.ccrd_intv[1], *v, *name)
+                            .clicked()
+                        {
+                            state.ccrd_intv[1] = *v;
+                        }
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Value (DATA):");
+            ui.add(egui::DragValue::new(&mut state.ccrd_value).range(0..=100000));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Images");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ccrd_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ccrd_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("High Res Face (TX00):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ccrd_face)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("High Res Back (TX01):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ccrd_back)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Sounds");
+        ui.add_space(4.0);
+        let sounds = session.records_by_sig(*b"SOUN");
+        ui.horizontal(|ui| {
+            ui.label("Pick Up (YNAM):");
+            let mut fid = state.ccrd_pickup_sound;
+            record_dropdown(ui, "ccrd_pickup", &sounds, &mut fid);
+            state.ccrd_pickup_sound = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Drop (ZNAM):");
+            let mut fid = state.ccrd_drop_sound;
+            record_dropdown(ui, "ccrd_drop", &sounds, &mut fid);
+            state.ccrd_drop_sound = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+        let model = &mut state.ccrd_model;
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+    });
+}
+
+/// Draw the Caravan Deck (CDCK) editor body.
+///
+/// The deck's cards are a *repeated* subrecord, so the page edits them as a
+/// list.
+fn draw_cdck_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong(format!("Caravan Deck — {} cards", state.cdck_cards.len()));
+        ui.add_space(4.0);
+        if state.cdck_cards.is_empty() {
+            ui.label(egui::RichText::new("This deck has no cards.").italics());
+        } else {
+            let cards = session.records_by_sig(*b"CCRD");
+            let mut remove_idx = None;
+            for (idx, card) in state.cdck_cards.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").on_hover_text("Remove this card").clicked() {
+                        remove_idx = Some(idx);
+                    }
+                    let mut fid = Some(*card);
+                    record_dropdown(ui, &format!("cdck_card_{idx}"), &cards, &mut fid);
+                    *card = fid.unwrap_or(0);
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.cdck_cards.remove(idx);
+            }
+        }
+        ui.horizontal(|ui| {
+            ui.label("DATA (broken in the spec):");
+            ui.add(egui::DragValue::new(&mut state.cdck_data).range(0..=100000));
+        });
+    });
+}
+
+/// Draw the Casino Chip (CHIP) editor body.
+fn draw_chip_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Casino Chip");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.chip_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.chip_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Sounds");
+        ui.add_space(4.0);
+        let sounds = session.records_by_sig(*b"SOUN");
+        ui.horizontal(|ui| {
+            ui.label("Pick Up (YNAM):");
+            let mut fid = state.chip_pickup_sound;
+            record_dropdown(ui, "chip_pickup", &sounds, &mut fid);
+            state.chip_pickup_sound = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Drop (ZNAM):");
+            let mut fid = state.chip_drop_sound;
+            record_dropdown(ui, "chip_drop", &sounds, &mut fid);
+            state.chip_drop_sound = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+        let model = &mut state.chip_model;
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+    });
+
+    draw_destruction_ui(
+        ui,
+        &mut state.chip_destruction,
+        &mut state.chip_dest_health,
+        &mut state.chip_dest_flags,
+        "chip",
+    );
+}
+
+/// Draw the shared Destruction Data collection.
+fn draw_destruction_ui(
+    ui: &mut egui::Ui,
+    stages: &mut [DestructionStage],
+    health: &mut i32,
+    flags: &mut u8,
+    prefix: &str,
+) {
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Destruction Data — {} stage(s)", stages.len()));
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Health (DEST):");
+            ui.add(egui::DragValue::new(health).range(0..=50000));
+            ui.separator();
+            let mut vats = (*flags & 0x01) != 0;
+            if ui.checkbox(&mut vats, "VATS Targetable").changed() {
+                if vats {
+                    *flags |= 0x01;
+                } else {
+                    *flags &= !0x01;
+                }
+            }
+        });
+        for (idx, stage) in stages.iter_mut().enumerate() {
+            ui.separator();
+            ui.strong(format!("Stage {idx}"));
+            ui.horizontal(|ui| {
+                ui.label("Health %:");
+                ui.add(egui::DragValue::new(&mut stage.health_percent).range(0..=100));
+                ui.separator();
+                ui.label("Index:");
+                ui.add(egui::DragValue::new(&mut stage.index).range(0..=255));
+                ui.separator();
+                ui.label("Damage Stage:");
+                ui.add(egui::DragValue::new(&mut stage.damage_stage).range(0..=255));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Self Damage/s:");
+                ui.add(egui::DragValue::new(&mut stage.self_damage_per_second).range(-1000..=1000));
+                ui.separator();
+                ui.label("Debris Count:");
+                ui.add(egui::DragValue::new(&mut stage.debris_count).range(0..=1000));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Model (DMDL):");
+                ui.add(
+                    egui::TextEdit::singleline(&mut stage.model)
+                        .id_salt(format!("dest_model_{prefix}_{idx}"))
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            });
+            let hashes = stage.texture_hashes.len() / 24;
+            ui.label(format!(
+                "Texture File Hashes (DMDT): {hashes} hash(es), {} bytes — preserved as-is",
+                stage.texture_hashes.len()
+            ));
+        }
+    });
+}
+
+/// Draw the Money (CMNY) editor body.
+fn draw_cmny_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Money");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Absolute Value (DATA):");
+            ui.add(egui::DragValue::new(&mut state.cmny_value).range(0..=1000000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.cmny_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.cmny_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Sounds");
+        ui.add_space(4.0);
+        let sounds = session.records_by_sig(*b"SOUN");
+        ui.horizontal(|ui| {
+            ui.label("Pick Up (YNAM):");
+            let mut fid = state.cmny_pickup_sound;
+            record_dropdown(ui, "cmny_pickup", &sounds, &mut fid);
+            state.cmny_pickup_sound = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Drop (ZNAM):");
+            let mut fid = state.cmny_drop_sound;
+            record_dropdown(ui, "cmny_drop", &sounds, &mut fid);
+            state.cmny_drop_sound = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+        let model = &mut state.cmny_model;
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+    });
+}
+
+/// Draw the Armor Addon (ARMA) editor body.
+///
+/// The record carries four model collections, so the page has a section for
+/// each. `DNAM`'s length is shown, because it is four bytes on 115 of the
+/// game's 131 records and twelve on the rest, and the editor writes back the
+/// length the record had.
+fn draw_arma_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Armor Addon");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Value:");
+            ui.add(egui::DragValue::new(&mut state.arma_val).range(-100000..=100000));
+            ui.separator();
+            ui.label("Max Condition:");
+            ui.add(egui::DragValue::new(&mut state.arma_hp).range(0..=100000));
+            ui.separator();
+            ui.label("Weight:");
+            ui.add(
+                egui::DragValue::new(&mut state.arma_weight)
+                    .speed(0.1)
+                    .range(0.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Equipment Type (ETYP):");
+            ui.add(egui::DragValue::new(&mut state.arma_equip_type).range(-1..=13));
+        });
+    });
+
+    // --- DNAM ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Damage Resistance (DNAM) — {} bytes",
+            state.arma_dnam_len
+        ));
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("AR:");
+            ui.add(egui::DragValue::new(&mut state.arma_dr).range(-1000..=1000));
+            ui.separator();
+            ui.label("DT:");
+            ui.add(
+                egui::DragValue::new(&mut state.arma_dt)
+                    .speed(0.1)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        // The flag word is kept whole and the named bit is edited inside it.
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in ARMA_DNAM_FLAGS {
+                let mut set = (state.arma_dnam_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.arma_dnam_flags |= bit;
+                    } else {
+                        state.arma_dnam_flags &= !bit;
+                    }
+                }
+            }
+        });
+        if state.arma_dnam_len < 8 {
+            ui.label(
+                egui::RichText::new(
+                    "This record's DNAM is four bytes: it has no DT field, and the editor keeps it that way.",
+                )
+                .italics(),
+            );
+        }
+    });
+
+    // --- BMDT ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Biped Data (BMDT)");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in BMDT_BIPED_FLAGS {
+                let mut set = (state.arma_biped_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.arma_biped_flags |= bit;
+                    } else {
+                        state.arma_biped_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in BMDT_GENERAL_FLAGS {
+                let mut set = (state.arma_bmdt_general & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.arma_bmdt_general |= bit;
+                    } else {
+                        state.arma_bmdt_general &= !bit;
+                    }
+                }
+            }
+        });
+    });
+
+    // --- The four icons ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Icons");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Male inventory (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.arma_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Male message (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.arma_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Female inventory (ICO2):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.arma_ico2)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Female message (MIC2):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.arma_mic2)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+    });
+
+    // --- The four model collections ---
+    for model in state.arma_models.iter_mut() {
+        let title = match model.instance {
+            0 => "Male Biped Model Data",
+            1 => "Male World Model Data",
+            2 => "Female Biped Model Data",
+            _ => "Female World Model Data",
+        };
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong(title);
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Model:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            });
+            // MODT's texture hashes are file hashes the editor cannot compute
+            // or author, so it reports what is there rather than offering to
+            // change it: rewriting one would corrupt the mod.
+            let hashes = model.modt.len() / 24;
+            ui.label(format!(
+                "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+                model.modt.len()
+            ));
+            ui.horizontal(|ui| {
+                ui.label("MODB:");
+                match &model.modb {
+                    Some(b) => ui.label(format!("{b:?} — preserved as-is")),
+                    None => ui.label(egui::RichText::new("absent").italics()),
+                }
+            });
+        });
+    }
+}
+
+/// Draw the Ambient Sound (ASPC) editor body.
+///
+/// The five `SNAM` sound loops are edited as a list, because they are
+/// repeated subrecords.
+fn draw_aspc_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Ambient Sound");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Walla Trigger Count (WNAM):");
+            ui.add(egui::DragValue::new(&mut state.aspc_walla_trigger_count).range(0..=1000000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Environment Type (ANAM):");
+            egui::ComboBox::from_id_salt("aspc_environment")
+                .selected_text(
+                    ASPC_ENVIRONMENTS
+                        .iter()
+                        .find(|(v, _)| *v == state.aspc_environment)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in ASPC_ENVIRONMENTS.iter() {
+                        ui.selectable_value(&mut state.aspc_environment, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Is Interior (INAM):");
+            egui::ComboBox::from_id_salt("aspc_interior")
+                .selected_text(
+                    ASPC_INTERIOR
+                        .iter()
+                        .find(|(v, _)| *v == state.aspc_is_interior)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in ASPC_INTERIOR.iter() {
+                        ui.selectable_value(&mut state.aspc_is_interior, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Use Sound from Region (RDAT):");
+            let regions = session.records_by_sig(*b"REGN");
+            let mut fid = state.aspc_region;
+            record_dropdown(ui, "aspc_region", &regions, &mut fid);
+            state.aspc_region = fid;
+        });
+    });
+
+    // --- The five sound loops ---
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Sound Loops (SNAM) — {}", state.aspc_sounds.len()));
+        ui.add_space(4.0);
+        let sounds = session.records_by_sig(*b"SOUN");
+        let mut remove_idx = None;
+        for (idx, sound) in state.aspc_sounds.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("✖")
+                    .on_hover_text("Remove this sound loop")
+                    .clicked()
+                {
+                    remove_idx = Some(idx);
+                }
+                ui.label(ASPC_SOUND_SLOTS.get(idx).copied().unwrap_or("Extra"));
+                let mut fid = Some(*sound);
+                record_dropdown(ui, &format!("aspc_sound_{idx}"), &sounds, &mut fid);
+                *sound = fid.unwrap_or(0);
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.aspc_sounds.remove(idx);
+        }
+    });
+}
+
+/// Draw the Ammo Effect (AMEF) editor body.
+///
+/// The type and the operation are enums, so they are dropdowns. The raw
+/// number is kept underneath, so a value outside the table stays visible and
+/// editable instead of being clamped to a known one.
+fn draw_amef_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Ammo Effect");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt("amef_type")
+                .selected_text(
+                    AMEF_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.amef_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in AMEF_TYPES.iter() {
+                        ui.selectable_value(&mut state.amef_type, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Operation:");
+            egui::ComboBox::from_id_salt("amef_operation")
+                .selected_text(
+                    AMEF_OPERATIONS
+                        .iter()
+                        .find(|(v, _)| *v == state.amef_operation)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in AMEF_OPERATIONS.iter() {
+                        ui.selectable_value(&mut state.amef_operation, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Value:");
+            ui.add(
+                egui::DragValue::new(&mut state.amef_value)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+    });
+}
+
+/// Draw the Animation Object (ANIO) editor body.
+fn draw_anio_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Animation Object");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Animation (DATA):");
+            let idles = session.records_by_sig(*b"IDLE");
+            let mut fid = state.anio_animation;
+            record_dropdown(ui, "anio_animation", &idles, &mut fid);
+            state.anio_animation = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+
+        let model = &mut state.anio_model;
+
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                // The original instance's model path is the header panel's
+                // "Model Path" field, so it is edited there.
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+
+        // MODT's texture hashes are file hashes the editor cannot compute or
+        // author, so it reports what is there rather than offering to change
+        // it: rewriting one would corrupt the mod.
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+
+        // MODB is four unknown bytes. They are reported, and copied through.
+        ui.horizontal(|ui| {
+            ui.label("MODB:");
+            match &model.modb {
+                Some(b) => ui.label(format!("{b:?} — preserved as-is")),
+                None => ui.label(egui::RichText::new("absent").italics()),
+            }
         });
     });
 }
