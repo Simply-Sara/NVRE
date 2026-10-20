@@ -610,9 +610,9 @@ pub struct ObjectEditorState {
     /// fourteen HDR floats; everything after them depends on the record's
     /// form version, so it is carried through as raw bytes rather than
     /// guessed at.
-    pub imgs_hdr: [f32; 14],
-    /// The rest of `DNAM` — the version-dependent part, carried through
-    /// unchanged.
+    pub imgs_hdr: [f32; 26],
+    /// The image space adapter's flag byte and the bytes the spec does
+    /// not name.
     pub imgs_rest: Vec<u8>,
 
     // LGTM (Lighting) fields
@@ -2672,6 +2672,40 @@ const WEAP_ANIM_FIELDS: &[(usize, WeapAnimKind, &str)] = &[
     (191, WeapAnimKind::F32, "Value B - Mod 3"),
     (195, WeapAnimKind::F32, "Impulse Dist"),
     (199, WeapAnimKind::U32, "Skill Requirement"),
+];
+
+/// The image space adapter's fields, in the order the spec lists them,
+/// with each field's offset in the struct.
+///
+/// The struct is 124 bytes in the game's records. The bytes the spec does
+/// not name are carried through unchanged.
+const IMGS_FIELDS: &[(&str, usize)] = &[
+    ("HDR Eye Adapt Speed", 0),
+    ("HDR Blur Radius", 4),
+    ("HDR Blur Passes", 8),
+    ("HDR Emissive Multiplier", 12),
+    ("HDR Target LUM", 16),
+    ("HDR Upper LUM Clamp", 20),
+    ("HDR Bright Scale", 24),
+    ("HDR Bright Clamp", 28),
+    ("HDR LUM Ramp No Tex", 32),
+    ("HDR LUM Ramp Min", 36),
+    ("HDR Lum Ramp Max", 40),
+    ("HDR Sunlight Dimmer", 44),
+    ("HDR Grass Dimmer", 48),
+    ("HDR Tree Dimmer", 52),
+    ("HDR Skin Dimmer", 56),
+    ("Bloom Blur Radius", 60),
+    ("Bloom Alpha Mult Interior", 64),
+    ("Bloom Alpha Mult Exterior", 68),
+    ("Get Hit Blur Radius", 72),
+    ("Get Hit Blur Damping Constant", 76),
+    ("Get Hit Damping Constant", 80),
+    ("Brightness", 84),
+    ("Cinematic Saturation", 88),
+    ("Cinematic Contrast Avg Lum Value", 92),
+    ("Cinematic Contrast Value", 96),
+    ("Cinmatic Brightness Tint Value", 100),
 ];
 
 /// One ingredient or output on a `RCPE` (Recipe) record.
@@ -5918,14 +5952,19 @@ impl ObjectEditorState {
     /// version, so it is carried through as raw bytes rather than guessed
     /// at.
     fn load_imgs(&mut self) {
-        self.imgs_hdr = [0.0; 14];
+        self.imgs_hdr = [0.0; 26];
         self.imgs_rest.clear();
         if let Some(b) = self.raw_subs.get(b"DNAM") {
-            for (i, chunk) in b.as_chunks::<4>().0.iter().take(14).enumerate() {
-                self.imgs_hdr[i] = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            // The named float32s.
+            for (i, (_, at)) in IMGS_FIELDS.iter().enumerate() {
+                if b.len() >= at + 4 {
+                    self.imgs_hdr[i] =
+                        f32::from_le_bytes([b[*at], b[*at + 1], b[*at + 2], b[*at + 3]]);
+                }
             }
-            if b.len() > 56 {
-                self.imgs_rest = b[56..].to_vec();
+            // The flag byte and the bytes the spec does not name.
+            if b.len() > 104 {
+                self.imgs_rest = b[104..].to_vec();
             }
         }
     }
@@ -19290,23 +19329,7 @@ fn draw_imgs_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.group(|ui| {
         ui.strong("Image Space");
         ui.add_space(4.0);
-        let names = [
-            "HDR Eye Adapt Speed",
-            "HDR Blur Radius",
-            "HDR Blur Passes",
-            "HDR Emissive Multiplier",
-            "HDR Target LUM",
-            "HDR Upper LUM Clamp",
-            "HDR Bright Scale",
-            "HDR Bright Clamp",
-            "HDR LUM Ramp No Tex",
-            "HDR LUM Ramp Min",
-            "HDR LUM Ramp Max",
-            "HDR Sunlight Dimmer",
-            "HDR Grass Dimmer",
-            "HDR Tree Dimmer",
-        ];
-        for (i, name) in names.iter().enumerate() {
+        for (i, (name, _)) in IMGS_FIELDS.iter().enumerate() {
             ui.horizontal(|ui| {
                 ui.label(*name);
                 ui.add(
