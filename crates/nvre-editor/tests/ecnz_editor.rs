@@ -40,12 +40,12 @@ fn every_field_of_a_real_encounter_zone_is_loaded() {
     state.load_from_session(&s, ECZN_HOOVER, *b"ECZN");
 
     assert_eq!(state.edid, "HooverDamZone");
-    assert_eq!(state.ecnz_owner, Some(0), "DATA: Owner is null");
-    assert_eq!(state.ecnz_rank, 0, "DATA: Rank");
-    assert_eq!(state.ecnz_minimum_level, 10, "DATA: Minimum Level");
-    assert_eq!(state.ecnz_flags, 0, "DATA: Flags");
+    assert_eq!(state.eczn_owner, Some(0), "DATA: Owner is null");
+    assert_eq!(state.eczn_rank, 0, "DATA: Rank");
+    assert_eq!(state.eczn_minimum_level, 10, "DATA: Minimum Level");
+    assert_eq!(state.eczn_flags, 0, "DATA: Flags");
     assert_eq!(
-        state.ecnz_unused, 0,
+        state.eczn_unused, 0,
         "DATA: the byte the spec does not name"
     );
 }
@@ -58,14 +58,14 @@ fn the_second_record_reads_its_own_values() {
     };
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, ECZN_HOOVER, *b"ECZN");
-    assert_eq!(state.ecnz_minimum_level, 10);
+    assert_eq!(state.eczn_minimum_level, 10);
 
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, ECZN_GOMORRAH, *b"ECZN");
     assert_eq!(state.edid, "GomorrahZone");
-    assert_eq!(state.ecnz_rank, -1, "DATA: this record's own negative rank");
+    assert_eq!(state.eczn_rank, -1, "DATA: this record's own negative rank");
     assert_eq!(
-        state.ecnz_minimum_level, 22,
+        state.eczn_minimum_level, 22,
         "DATA: this record's own minimum level"
     );
 }
@@ -80,10 +80,10 @@ fn the_never_resets_flag_is_read() {
     state.load_from_session(&s, ECZN_SSHQ, *b"ECZN");
 
     assert_eq!(state.edid, "SSHQZone");
-    assert_eq!(state.ecnz_flags, 1, "DATA: Flags");
-    assert_ne!(state.ecnz_flags & 0x01, 0, "0x01 Never Resets");
+    assert_eq!(state.eczn_flags, 1, "DATA: Flags");
+    assert_ne!(state.eczn_flags & 0x01, 0, "0x01 Never Resets");
     assert_eq!(
-        state.ecnz_flags & 0x02,
+        state.eczn_flags & 0x02,
         0,
         "0x02 Match PC Below Minimum Level"
     );
@@ -100,7 +100,7 @@ fn an_encounter_zone_with_no_edits_saves_back_byte_identical() {
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, fid, *b"ECZN");
     state.save_to_session(&mut s);
-    let after = saved_subs(&s, fid, "ecnz_identity");
+    let after = saved_subs(&s, fid, "eczn_identity");
 
     assert_eq!(after.len(), before.len(), "the same subrecords come back");
     for (i, (b, a)) in before.iter().zip(after.iter()).enumerate() {
@@ -130,14 +130,14 @@ fn edited_fields_in_every_subrecord_survive_the_save() {
 
     // DATA: the owner, the rank, the minimum level, the flags and the byte
     // the spec does not name.
-    state.ecnz_owner = Some(0x0012_3456);
-    state.ecnz_rank = -5;
-    state.ecnz_minimum_level = 42;
-    state.ecnz_flags |= 0x02;
-    state.ecnz_unused = 0x7F;
+    state.eczn_owner = Some(0x0012_3456);
+    state.eczn_rank = -5;
+    state.eczn_minimum_level = 42;
+    state.eczn_flags |= 0x02;
+    state.eczn_unused = 0x7F;
 
     state.save_to_session(&mut s);
-    let after = saved_subs(&s, fid, "ecnz_edited");
+    let after = saved_subs(&s, fid, "eczn_edited");
 
     let data = payload(&after, b"DATA");
     assert_eq!(data.len(), 8, "DATA is eight bytes");
