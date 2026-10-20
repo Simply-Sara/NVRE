@@ -54,6 +54,10 @@ pub struct Document {
     removed: Vec<u32>,
     /// Records to add: (group path to insert into, record).
     added: Vec<PendingRecord>,
+    /// Cells staged for creation, with the group tree they need.
+    added_cells: Vec<PendingCell>,
+    /// Worldspaces staged for creation.
+    added_worlds: Vec<PendingWorldspace>,
     /// FormID → path into `plugin.nodes`, so a record can be found without
     /// walking the tree. Built once, when the plugin is opened.
     index: HashMap<u32, RecordPath>,
@@ -74,6 +78,30 @@ pub struct PendingRecord {
     pub record: Record,
 }
 
+/// A cell staged for creation.
+///
+/// The FormIDs are handed out when the cell is staged, not when it is saved,
+/// because a cell's place in the group tree depends on its own FormID: the
+/// interior block and sub-block labels are computed from it.
+#[derive(Debug, Clone)]
+pub struct PendingCell {
+    /// What the cell is: its Editor ID, its worldspace and its grid.
+    pub spec: crate::cell::NewCell,
+    /// The FormID the `CELL` record will carry.
+    pub form_id: u32,
+    /// The FormID the `LAND` record will carry, when the cell has terrain.
+    pub land_form_id: Option<u32>,
+}
+
+/// A worldspace staged for creation.
+#[derive(Debug, Clone)]
+pub struct PendingWorldspace {
+    /// What the worldspace is: its Editor ID, its heights and its climate.
+    pub spec: crate::cell::NewWorldspace,
+    /// The FormID the `WRLD` record will carry.
+    pub form_id: u32,
+}
+
 impl Document {
     /// Open a plugin for editing (read-only until saved).
     pub fn open(path: impl AsRef<std::path::Path>) -> Result<Document, EsmError> {
@@ -84,6 +112,8 @@ impl Document {
             edits: HashMap::new(),
             removed: Vec::new(),
             added: Vec::new(),
+            added_cells: Vec::new(),
+            added_worlds: Vec::new(),
             index,
         })
     }
@@ -96,6 +126,8 @@ impl Document {
             edits: HashMap::new(),
             removed: Vec::new(),
             added: Vec::new(),
+            added_cells: Vec::new(),
+            added_worlds: Vec::new(),
             index,
         }
     }
@@ -286,6 +318,49 @@ impl Document {
     /// The records queued for insertion this session.
     pub fn inserted(&self) -> &[PendingRecord] {
         &self.added
+    }
+
+    /// Stage a new cell.
+    ///
+    /// `global_form_id` is the FormID the cell will have in the load order —
+    /// the session's own numbering, with the plugin being edited in the top
+    /// byte. The save moves it into the new plugin's numbering, and the low 24
+    /// bits are what the cell's group tree is built from: an interior cell's
+    /// block and sub-block labels are computed from them.
+    pub fn add_cell(&mut self, spec: crate::cell::NewCell, global_form_id: u32) -> u32 {
+        let land_form_id = if spec.with_land {
+            Some(global_form_id.wrapping_add(1))
+        } else {
+            None
+        };
+        self.added_cells.push(PendingCell {
+            spec,
+            form_id: global_form_id,
+            land_form_id,
+        });
+        global_form_id
+    }
+
+    /// Stage a new worldspace.
+    ///
+    /// `global_form_id` is the FormID the worldspace will have in the load
+    /// order; see [`Document::add_cell`].
+    pub fn add_worldspace(&mut self, spec: crate::cell::NewWorldspace, global_form_id: u32) -> u32 {
+        self.added_worlds.push(PendingWorldspace {
+            spec,
+            form_id: global_form_id,
+        });
+        global_form_id
+    }
+
+    /// The cells staged for creation.
+    pub fn added_cells(&self) -> &[PendingCell] {
+        &self.added_cells
+    }
+
+    /// The worldspaces staged for creation.
+    pub fn added_worldspaces(&self) -> &[PendingWorldspace] {
+        &self.added_worlds
     }
 
     /// The records queued for deletion this session.
