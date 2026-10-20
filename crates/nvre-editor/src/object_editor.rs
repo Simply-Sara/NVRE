@@ -1013,15 +1013,24 @@ pub struct ObjectEditorState {
     /// says what it holds.
     pub imad_curves: Vec<ImadCurve>,
 
+    // EFSH (Effect Shader) fields
+    /// `DATA` — the effect shader's data struct.
+    pub efsh_data: EfshData,
+    /// `ICON` — the fill texture's filename.
+    pub efsh_icon: String,
+    /// `ICO2` — the particle shader texture's filename.
+    pub efsh_ico2: String,
+    /// `NAM7` — the holes texture's filename.
+    pub efsh_nam7: String,
+
     // REGN (Region) fields
     /// `RCLR` Map Color — the four bytes: red, green, blue and alpha.
     pub regn_map_color: [u8; 4],
     /// `WNAM` Worldspace — the FormID of a `WRLD` record.
     pub regn_worldspace: Option<u32>,
-    /// `RPLI` Edge Fall-Off — the uint32.
-    pub regn_edge_falloff: Option<u32>,
-    /// `RPLD` Region Point List Data — the array of x and y float32 pairs.
-    pub regn_points: Vec<[f32; 2]>,
+    /// The region area. Each entry is the edge fall-off and the point list
+    /// that belongs to it.
+    pub regn_areas: Vec<RegionArea>,
     /// The region data entries.
     pub regn_entries: Vec<RegionEntry>,
 
@@ -1952,6 +1961,12 @@ pub struct Condition {
     pub reference: Option<u32>,
     /// The three unused bytes, carried through unchanged.
     pub unused: [u8; 3],
+    /// The `CTDA` subrecord's own bytes.
+    ///
+    /// The spec's condition is twenty-eight bytes, but the game's `IDLE`
+    /// and `PACK` records use a twenty-byte short form. The condition is
+    /// written back over these bytes, so the length it had survives a save.
+    pub raw: Vec<u8>,
 }
 
 /// Read the shared `CTDA` conditions out of a record's subrecords.
@@ -1962,22 +1977,71 @@ pub struct Condition {
 fn load_conditions(subs: &[fnv_esm::Subrecord]) -> Vec<Condition> {
     let mut conditions = Vec::new();
     for s in subs {
-        if s.sig != *b"CTDA" || s.data.len() < 28 {
+        if s.sig != *b"CTDA" || s.data.len() < 20 {
             continue;
         }
-        let b = &s.data;
-        conditions.push(Condition {
-            cond_type: b[0],
-            unused: [b[1], b[2], b[3]],
-            comparison_value: u32::from_le_bytes([b[4], b[5], b[6], b[7]]),
-            function: u32::from_le_bytes([b[8], b[9], b[10], b[11]]),
-            parameter1: u32::from_le_bytes([b[12], b[13], b[14], b[15]]),
-            parameter2: u32::from_le_bytes([b[16], b[17], b[18], b[19]]),
-            run_on: u32::from_le_bytes([b[20], b[21], b[22], b[23]]),
-            reference: Some(u32::from_le_bytes([b[24], b[25], b[26], b[27]])),
-        });
+        conditions.push(read_condition(&s.data));
     }
     conditions
+}
+
+/// Read one `CTDA` condition out of a subrecord's payload.
+///
+/// The payload is twenty-eight bytes: the type and flag byte, three unused
+/// bytes, the comparison value, the function, two parameters, the run-on
+/// value and the reference.
+fn read_condition(b: &[u8]) -> Condition {
+    if b.len() < 20 {
+        return Condition::default();
+    }
+    let u32_at = |at: usize| -> u32 {
+        if b.len() >= at + 4 {
+            u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+        } else {
+            0
+        }
+    };
+    Condition {
+        cond_type: b[0],
+        unused: [b[1], b[2], b[3]],
+        comparison_value: u32_at(4),
+        function: u32_at(8),
+        parameter1: u32_at(12),
+        parameter2: u32_at(16),
+        run_on: u32_at(20),
+        reference: if b.len() >= 28 {
+            Some(u32_at(24))
+        } else {
+            None
+        },
+        raw: b.to_vec(),
+    }
+}
+
+/// Write one `CTDA` condition out as a subrecord payload.
+fn write_condition(c: &Condition) -> Vec<u8> {
+    // The condition is written back over its own bytes, so a short form
+    // stays short and the bytes the spec does not name survive.
+    let mut b = c.raw.clone();
+    if b.is_empty() {
+        b.resize(28, 0);
+    }
+    let put = |b: &mut Vec<u8>, at: usize, v: u32| {
+        if b.len() >= at + 4 {
+            b[at..at + 4].copy_from_slice(&v.to_le_bytes());
+        }
+    };
+    b[0] = c.cond_type;
+    if b.len() >= 4 {
+        b[1..4].copy_from_slice(&c.unused);
+    }
+    put(&mut b, 4, c.comparison_value);
+    put(&mut b, 8, c.function);
+    put(&mut b, 12, c.parameter1);
+    put(&mut b, 16, c.parameter2);
+    put(&mut b, 20, c.run_on);
+    put(&mut b, 24, c.reference.unwrap_or(0));
+    b
 }
 
 /// Write the shared `CTDA` conditions back onto a record.
@@ -1989,21 +2053,7 @@ fn save_conditions(session: &mut crate::session::Session, fid: u32, conditions: 
         session.doc.remove_sub(fid, b"CTDA");
         return;
     }
-    let payloads: Vec<Vec<u8>> = conditions
-        .iter()
-        .map(|c| {
-            let mut b = Vec::with_capacity(28);
-            b.push(c.cond_type);
-            b.extend_from_slice(&c.unused);
-            b.extend_from_slice(&c.comparison_value.to_le_bytes());
-            b.extend_from_slice(&c.function.to_le_bytes());
-            b.extend_from_slice(&c.parameter1.to_le_bytes());
-            b.extend_from_slice(&c.parameter2.to_le_bytes());
-            b.extend_from_slice(&c.run_on.to_le_bytes());
-            b.extend_from_slice(&c.reference.unwrap_or(0).to_le_bytes());
-            b
-        })
-        .collect();
+    let payloads: Vec<Vec<u8>> = conditions.iter().map(write_condition).collect();
     session.doc.set_sub_list(fid, b"CTDA", payloads);
 }
 
@@ -2042,6 +2092,9 @@ pub struct LeveledListEntry {
 pub struct MessageButton {
     /// `ITXT` Button Text — the cstring.
     pub text: String,
+    /// The `ITXT` subrecord's own bytes, so a byte that is not valid UTF-8
+    /// survives a save.
+    pub raw: Vec<u8>,
     /// The `CTDA` conditions — the repeated condition list.
     pub conditions: Vec<Condition>,
 }
@@ -2057,6 +2110,10 @@ pub struct SpellEffect {
     /// `EFIT` — the effect's parameters, carried through unchanged: the
     /// layout depends on the effect's own type.
     pub parameters: Vec<u8>,
+    /// The `CTDA` that follows the effect, if the record has one. The
+    /// condition belongs to the effect above it, so the effect collection
+    /// is walked in file order rather than collected by signature.
+    pub conditions: Vec<Condition>,
 }
 
 /// Read the shared `DODT` decal data out of a subrecord's payload.
@@ -2217,6 +2274,9 @@ fn read_package_dialog(data: &[u8]) -> PackageDialog {
     if data.len() >= 20 {
         d.dialog_type = u32::from_le_bytes([data[16], data[17], data[18], data[19]]);
     }
+    if data.len() >= 24 {
+        d.unused2 = [data[20], data[21], data[22], data[23]];
+    }
     d
 }
 
@@ -2229,30 +2289,30 @@ fn read_package_dialog(data: &[u8]) -> PackageDialog {
 fn read_region_objects(data: &[u8]) -> Vec<RegionObject> {
     const ENTRY: usize = 52;
     let mut out = Vec::with_capacity(data.len() / ENTRY);
-    for chunk in data.chunks_exact(ENTRY) {
-        let mut o = RegionObject::default();
-        o.object = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-        o.parent_index = u16::from_le_bytes([chunk[4], chunk[5]]);
-        o.unused = [chunk[6], chunk[7]];
-        o.density = f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
-        o.clustering = chunk[12];
-        o.min_slope = chunk[13];
-        o.max_slope = chunk[14];
-        o.flags = chunk[15];
-        o.parent_radius = u16::from_le_bytes([chunk[16], chunk[17]]);
-        o.radius = u16::from_le_bytes([chunk[18], chunk[19]]);
-        o.unknown = [chunk[20], chunk[21], chunk[22], chunk[23]];
-        o.max_height = f32::from_le_bytes([chunk[24], chunk[25], chunk[26], chunk[27]]);
-        o.sink = f32::from_le_bytes([chunk[28], chunk[29], chunk[30], chunk[31]]);
-        o.sink_variance = f32::from_le_bytes([chunk[32], chunk[33], chunk[34], chunk[35]]);
-        o.size_variance = f32::from_le_bytes([chunk[36], chunk[37], chunk[38], chunk[39]]);
-        o.x_angle_variance = u16::from_le_bytes([chunk[40], chunk[41]]);
-        o.y_angle_variance = u16::from_le_bytes([chunk[42], chunk[43]]);
-        o.z_angle_variance = u16::from_le_bytes([chunk[44], chunk[45]]);
-        o.unknown2 = [
-            chunk[46], chunk[47], chunk[48], chunk[49], chunk[50], chunk[51],
-        ];
-        out.push(o);
+    for chunk in data.as_chunks::<ENTRY>().0 {
+        out.push(RegionObject {
+            object: u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+            parent_index: u16::from_le_bytes([chunk[4], chunk[5]]),
+            unused: [chunk[6], chunk[7]],
+            density: f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]),
+            clustering: chunk[12],
+            min_slope: chunk[13],
+            max_slope: chunk[14],
+            flags: chunk[15],
+            parent_radius: u16::from_le_bytes([chunk[16], chunk[17]]),
+            radius: u16::from_le_bytes([chunk[18], chunk[19]]),
+            unknown: [chunk[20], chunk[21], chunk[22], chunk[23]],
+            max_height: f32::from_le_bytes([chunk[24], chunk[25], chunk[26], chunk[27]]),
+            sink: f32::from_le_bytes([chunk[28], chunk[29], chunk[30], chunk[31]]),
+            sink_variance: f32::from_le_bytes([chunk[32], chunk[33], chunk[34], chunk[35]]),
+            size_variance: f32::from_le_bytes([chunk[36], chunk[37], chunk[38], chunk[39]]),
+            x_angle_variance: u16::from_le_bytes([chunk[40], chunk[41]]),
+            y_angle_variance: u16::from_le_bytes([chunk[42], chunk[43]]),
+            z_angle_variance: u16::from_le_bytes([chunk[44], chunk[45]]),
+            unknown2: [
+                chunk[46], chunk[47], chunk[48], chunk[49], chunk[50], chunk[51],
+            ],
+        });
     }
     out
 }
@@ -2262,7 +2322,7 @@ fn read_region_objects(data: &[u8]) -> Vec<RegionObject> {
 /// Each entry is eight bytes: the grass's FormID and four unnamed bytes.
 fn read_region_grasses(data: &[u8]) -> Vec<RegionGrass> {
     let mut out = Vec::with_capacity(data.len() / 8);
-    for chunk in data.chunks_exact(8) {
+    for chunk in data.as_chunks::<8>().0 {
         out.push(RegionGrass {
             grass: u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
             unknown: [chunk[4], chunk[5], chunk[6], chunk[7]],
@@ -2277,7 +2337,7 @@ fn read_region_grasses(data: &[u8]) -> Vec<RegionGrass> {
 /// chance.
 fn read_region_sounds(data: &[u8]) -> Vec<RegionSound> {
     let mut out = Vec::with_capacity(data.len() / 12);
-    for chunk in data.chunks_exact(12) {
+    for chunk in data.as_chunks::<12>().0 {
         out.push(RegionSound {
             sound: u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
             flags: u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
@@ -2293,7 +2353,7 @@ fn read_region_sounds(data: &[u8]) -> Vec<RegionSound> {
 /// global's FormID.
 fn read_region_weather(data: &[u8]) -> Vec<RegionWeather> {
     let mut out = Vec::with_capacity(data.len() / 12);
-    for chunk in data.chunks_exact(12) {
+    for chunk in data.as_chunks::<12>().0 {
         out.push(RegionWeather {
             weather: u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
             chance: u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
@@ -2444,18 +2504,25 @@ fn write_imad_header(original: &[u8], h: &ImadHeader) -> Vec<u8> {
 /// channels. A trailing remainder too short for a whole key is kept, so the
 /// curve can be written back byte for byte.
 fn read_imad_keys(data: &[u8], is_color: bool) -> Vec<ImadKey> {
-    let stride = if is_color { 20 } else { 8 };
-    let mut keys = Vec::with_capacity(data.len() / stride);
-    for chunk in data.chunks_exact(stride) {
-        let mut k = ImadKey::default();
-        k.time = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-        k.value = f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
-        if is_color {
-            k.green = f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
-            k.blue = f32::from_le_bytes([chunk[12], chunk[13], chunk[14], chunk[15]]);
-            k.alpha = f32::from_le_bytes([chunk[16], chunk[17], chunk[18], chunk[19]]);
+    let mut keys = Vec::new();
+    if is_color {
+        for chunk in data.as_chunks::<20>().0 {
+            keys.push(ImadKey {
+                time: f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+                value: f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
+                green: f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]),
+                blue: f32::from_le_bytes([chunk[12], chunk[13], chunk[14], chunk[15]]),
+                alpha: f32::from_le_bytes([chunk[16], chunk[17], chunk[18], chunk[19]]),
+            });
         }
-        keys.push(k);
+    } else {
+        for chunk in data.as_chunks::<8>().0 {
+            keys.push(ImadKey {
+                time: f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+                value: f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
+                ..ImadKey::default()
+            });
+        }
     }
     keys
 }
@@ -2712,6 +2779,243 @@ pub struct ImadKey {
     pub alpha: f32,
 }
 
+/// The field layout of an `EFSH` (Effect Shader) record's `DATA` struct.
+///
+/// Each entry is the field's offset, its kind and the spec's name. The
+/// struct's length varies, so the fields past the end of a short record are
+/// simply not present.
+const EFSH_FIELDS: &[(usize, &str, EfshKind)] = &[
+    (4, "Membrane Source Blend Mode", EfshKind::U32),
+    (8, "Membrane Blend Operation", EfshKind::U32),
+    (12, "Membrane Z Test Function", EfshKind::U32),
+    (16, "Fill Color", EfshKind::Rgba),
+    (20, "Fill Alpha Fade In Time", EfshKind::F32),
+    (24, "Fill Full Alpha Time", EfshKind::F32),
+    (28, "Fill Alpha Fade Out Time", EfshKind::F32),
+    (32, "Fill Persistent Alpha Ratio", EfshKind::F32),
+    (36, "Fill Alpha Pulse Amplitude", EfshKind::F32),
+    (40, "Fill Alpha Pulse Frequency", EfshKind::F32),
+    (44, "Texture Animation Speed U", EfshKind::F32),
+    (48, "Texture Animation Speed V", EfshKind::F32),
+    (52, "Edge Fall Off", EfshKind::F32),
+    (56, "Edge Color", EfshKind::Rgba),
+    (60, "Edge Alpha Fade In Time", EfshKind::F32),
+    (64, "Edge Full Alpha Time", EfshKind::F32),
+    (68, "Edge Alpha Fade Out Time", EfshKind::F32),
+    (72, "Edge Persistent Alpha Ratio", EfshKind::F32),
+    (76, "Edge Alpha Pulse Amplitude", EfshKind::F32),
+    (80, "Edge Alpha Pulse Frequency", EfshKind::F32),
+    (84, "Edge Full Alpha Ratio", EfshKind::F32),
+    (88, "Edge Full Alpha Ratio", EfshKind::F32),
+    (92, "Membrane Dest Blend Mode", EfshKind::U32),
+    (96, "Particle Source Blend Mode", EfshKind::U32),
+    (100, "Particle Blend Operation", EfshKind::U32),
+    (104, "Particle Z Test Function", EfshKind::U32),
+    (108, "Particle Dest Blend Mode", EfshKind::U32),
+    (112, "Particle Birth Ramp Up Time", EfshKind::F32),
+    (116, "Full Particle Birth Time", EfshKind::F32),
+    (120, "Particle Birth Ramp Down Time", EfshKind::F32),
+    (124, "Full Particle Birth Ratio", EfshKind::F32),
+    (128, "Persistent Particle Birth Ratio", EfshKind::F32),
+    (132, "Particle Lifetime", EfshKind::F32),
+    (136, "Particle Lifetime +/-", EfshKind::F32),
+    (140, "Initial Speed Along Normal", EfshKind::F32),
+    (144, "Acceleration Along Normal", EfshKind::F32),
+    (148, "Initial Velocity 1", EfshKind::F32),
+    (152, "Initial Velocity 2", EfshKind::F32),
+    (156, "Initial Velocity 3", EfshKind::F32),
+    (160, "Acceleration 1", EfshKind::F32),
+    (164, "Acceleration 2", EfshKind::F32),
+    (168, "Acceleration 3", EfshKind::F32),
+    (172, "Scale Key 1", EfshKind::F32),
+    (176, "Scale Key 2", EfshKind::F32),
+    (180, "Scale Key 1 Time", EfshKind::F32),
+    (184, "Scale Key 2 Time", EfshKind::F32),
+    (188, "Color Key 1", EfshKind::Rgba),
+    (192, "Color Key 2", EfshKind::Rgba),
+    (196, "Color Key 3", EfshKind::Rgba),
+    (200, "Color Key 1 Alpha", EfshKind::F32),
+    (204, "Color Key 2 Alpha", EfshKind::F32),
+    (208, "Color Key 3 Alpha", EfshKind::F32),
+    (212, "Color Key 1 Time", EfshKind::F32),
+    (216, "Color Key 2 Time", EfshKind::F32),
+    (220, "Color Key 3 Time", EfshKind::F32),
+    (224, "Initial Speed Along Normal +/-", EfshKind::F32),
+    (228, "Initial Rotation", EfshKind::F32),
+    (232, "Initial Rotation +/-", EfshKind::F32),
+    (236, "Rotation Speed", EfshKind::F32),
+    (240, "Rotation Speed +/-", EfshKind::F32),
+    (244, "Addon Models", EfshKind::Fid),
+    (248, "Holes Start Time", EfshKind::F32),
+    (252, "Holes End Time", EfshKind::F32),
+    (256, "Holes Start Value", EfshKind::F32),
+    (260, "Holes End Value", EfshKind::F32),
+    (264, "Edge Width", EfshKind::F32),
+    (268, "Edge Color", EfshKind::Rgba),
+    (272, "Explosion Wind Speed", EfshKind::F32),
+    (276, "Texture Count U", EfshKind::U32),
+    (280, "Texture Count V", EfshKind::U32),
+    (284, "Addon Models Fade In Time", EfshKind::F32),
+    (288, "Addon Models Fade Out Time", EfshKind::F32),
+    (292, "Addon Models Scale Start", EfshKind::F32),
+    (296, "Addon Models Scale End", EfshKind::F32),
+    (300, "Addon Models Scale In Time", EfshKind::F32),
+    (304, "Addon Models Scale Out Time", EfshKind::F32),
+];
+
+/// The kind of an `EFSH` struct field.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EfshKind {
+    /// A float32.
+    F32,
+    /// A uint32.
+    U32,
+    /// A FormID.
+    Fid,
+    /// A four-byte colour.
+    Rgba,
+}
+
+/// Read an `EFSH` (Effect Shader) record's `DATA` struct.
+///
+/// The struct is a fixed run of fields, and the record's own length decides
+/// which of them are present: the game's records are 224, 248, 300 and 308
+/// bytes long.
+fn read_efsh_data(data: &[u8]) -> EfshData {
+    let mut out = EfshData::default();
+    if data.is_empty() {
+        return out;
+    }
+    out.flags = data[0];
+    for (offset, name, kind) in EFSH_FIELDS {
+        let size = match kind {
+            EfshKind::Rgba => 4,
+            _ => 4,
+        };
+        if data.len() < offset + size {
+            continue;
+        }
+        let b = &data[*offset..*offset + size];
+        let value = match kind {
+            EfshKind::F32 => EfshValue::F32(f32::from_le_bytes([b[0], b[1], b[2], b[3]])),
+            EfshKind::U32 => EfshValue::U32(u32::from_le_bytes([b[0], b[1], b[2], b[3]])),
+            EfshKind::Fid => EfshValue::Fid(u32::from_le_bytes([b[0], b[1], b[2], b[3]])),
+            EfshKind::Rgba => EfshValue::Rgba([b[0], b[1], b[2], b[3]]),
+        };
+        out.fields.push(EfshField {
+            offset: *offset,
+            name,
+            kind: *kind,
+            value,
+        });
+    }
+    out
+}
+
+/// Write an `EFSH` record's `DATA` struct back over the record's own bytes.
+///
+/// Only the fields that fit in the record's own length are written, so a
+/// short record does not grow and the bytes the spec does not name survive.
+fn write_efsh_data(original: &[u8], d: &EfshData) -> Vec<u8> {
+    let mut data = original.to_vec();
+    if data.is_empty() {
+        return data;
+    }
+    data[0] = d.flags;
+    for field in &d.fields {
+        let size = 4;
+        if data.len() < field.offset + size {
+            continue;
+        }
+        let bytes = match &field.value {
+            EfshValue::F32(v) => v.to_le_bytes(),
+            EfshValue::U32(v) => v.to_le_bytes(),
+            EfshValue::Fid(v) => v.to_le_bytes(),
+            EfshValue::Rgba(v) => [v[0], v[1], v[2], v[3]],
+        };
+        data[field.offset..field.offset + size].copy_from_slice(&bytes);
+    }
+    data
+}
+
+/// One field of an `EFSH` (Effect Shader) record's `DATA` struct.
+#[derive(Debug, Clone)]
+pub struct EfshField {
+    /// The field's offset in the struct.
+    pub offset: usize,
+    /// The field's name, from the spec.
+    pub name: &'static str,
+    /// The field's kind.
+    pub kind: EfshKind,
+    /// The field's value. A float32, a uint32, a FormID or a four-byte
+    /// colour, depending on the kind.
+    pub value: EfshValue,
+}
+
+/// The value of an `EFSH` struct field.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EfshValue {
+    /// A float32.
+    F32(f32),
+    /// A uint32.
+    U32(u32),
+    /// A FormID.
+    Fid(u32),
+    /// A four-byte colour.
+    Rgba([u8; 4]),
+}
+
+impl EfshValue {
+    /// The value as a float32, for the fields that are one.
+    pub fn as_f32(&self) -> f32 {
+        match self {
+            EfshValue::F32(v) => *v,
+            EfshValue::U32(v) => *v as f32,
+            EfshValue::Fid(v) => *v as f32,
+            EfshValue::Rgba(v) => v[0] as f32,
+        }
+    }
+
+    /// The value as a uint32, for the fields that are one.
+    pub fn as_u32(&self) -> u32 {
+        match self {
+            EfshValue::F32(v) => *v as u32,
+            EfshValue::U32(v) => *v,
+            EfshValue::Fid(v) => *v,
+            EfshValue::Rgba(v) => u32::from_le_bytes([v[0], v[1], v[2], v[3]]),
+        }
+    }
+}
+
+/// The `DATA` struct of an `EFSH` (Effect Shader) record.
+///
+/// The struct is a long run of named fields, and the game's records are 224,
+/// 248, 300 and 308 bytes long, so the later fields are simply absent from
+/// the shorter ones. The struct is written back over the record's own bytes,
+/// so the length it had and every byte the spec does not name survive a
+/// save.
+#[derive(Debug, Clone, Default)]
+pub struct EfshData {
+    /// The uint8 flag word: No Membrane Shader, No Particle Shader, Edge
+    /// Effect Inverse, Membrane Shader Affects Skin Only.
+    pub flags: u8,
+    /// The fields, in the order they appear in the struct.
+    pub fields: Vec<EfshField>,
+}
+
+/// One area of a `REGN` (Region) record.
+///
+/// The region area is a run of `RPLI` (the edge fall-off) and `RPLD` (the
+/// point list), and the record can carry several of them. Each point list
+/// belongs to the fall-off before it.
+#[derive(Debug, Clone, Default)]
+pub struct RegionArea {
+    /// `RPLI` Edge Fall-Off — the uint32.
+    pub edge_falloff: u32,
+    /// `RPLD` Region Point List Data — the x and y float32 pairs.
+    pub points: Vec<[f32; 2]>,
+}
+
 /// One region data entry on a `REGN` (Region) record.
 ///
 /// The record's region data is a run of `RDAT` (the header) followed by the
@@ -2725,10 +3029,16 @@ pub struct RegionEntry {
     pub kind: u32,
     /// `RDAT` Flags — the uint8: Override.
     pub flags: u8,
-    /// `RDAT` Unused — the unnamed byte.
-    pub unused: u8,
+    /// `RDAT` Priority — the u8 the spec does not name. The game's records
+    /// carry 50 here.
+    pub priority: u8,
+    /// `RDAT` Unused — the two unnamed bytes.
+    pub unused: [u8; 2],
     /// `RDMP` Map Name — the cstring.
     pub map_name: Option<String>,
+    /// `ICON` — the map's icon filename. It follows the entry it belongs
+    /// to.
+    pub icon: Option<String>,
     /// `RDMD` Music Type — the uint32.
     pub music_type: Option<u32>,
     /// `RDMO` Music — the FormID of a `MUSC` record.
@@ -2739,6 +3049,9 @@ pub struct RegionEntry {
     pub battle_media: Vec<u32>,
     /// `RDOT` Objects — the object placements.
     pub objects: Vec<RegionObject>,
+    /// Whether the entry carried an `RDOT` with no objects in it. The
+    /// game's records do, and it is a subrecord like any other.
+    pub had_empty_rdot: bool,
     /// `RDGS` Grasses — the grass entries.
     pub grasses: Vec<RegionGrass>,
     /// `RDSD` Sounds — the sound entries.
@@ -2897,6 +3210,8 @@ pub struct PackageDialog {
     pub unused: [u8; 4],
     /// The uint32 dialog type.
     pub dialog_type: u32,
+    /// The four trailing unnamed bytes.
+    pub unused2: [u8; 4],
 }
 
 /// One embedded script on a `PACK` (Package) record.
@@ -2909,6 +3224,9 @@ pub struct PackageDialog {
 pub struct PackageScript {
     /// The marker that introduces this script.
     pub marker: [u8; 4],
+    /// The `SCHR` subrecord's own bytes, so the fields the spec does not
+    /// name survive a save.
+    pub header_raw: Vec<u8>,
     /// `INAM` — the FormID of an `IDLE` record.
     pub idle: Option<u32>,
     /// `SCHR` — the script header.
@@ -2917,7 +3235,8 @@ pub struct PackageScript {
     pub compiled: Vec<u8>,
     /// `SCTX` — the script source.
     pub source: String,
-    /// The local variables.
+    /// The local variables. Each is an `SLSD` (the data), a `SCVR` (the
+    /// name) and the `SCRV` references that name it.
     pub variables: Vec<ScriptVariable>,
     /// The `SCRO` references.
     pub references: Vec<u32>,
@@ -2928,8 +3247,10 @@ pub struct PackageScript {
 /// The `SCHR` header of a script, from the shared Script collection.
 #[derive(Debug, Clone, Default)]
 pub struct ScriptHeader {
-    /// `SCHR` Type — the uint32.
+    /// `SCHR` Type — the uint16: Object, Quest or Effect.
     pub script_type: u32,
+    /// `SCHR` Flags — the uint16: Enabled.
+    pub flags: u16,
     /// `SCHR` Version — the uint32.
     pub version: u32,
     /// `SCHR` — the int32 unknown the spec names.
@@ -2948,6 +3269,16 @@ pub struct ScriptVariable {
     pub flags: u8,
     /// `SCVR` — the local variable's name.
     pub name: String,
+    /// The `SCRV` references that name this variable. Each is a uint32
+    /// that points at it, and they follow the variable.
+    pub refs: Vec<u32>,
+    /// The `SLSD` subrecord's own bytes.
+    ///
+    /// The spec names the index, the flag word and the bytes around them,
+    /// but the game's records carry values in the bytes after the flag word
+    /// that the spec does not name. The variable is written back over these
+    /// bytes, so those values survive an edit.
+    pub raw: Vec<u8>,
 }
 
 /// One master file on a `TES4` (Plugin Header) record.
@@ -2961,7 +3292,6 @@ pub struct Tes4Master {
     /// `SSIG` — the master's FormID.
     pub form_id: u32,
 }
-
 
 /// One collision part on a `SCOL` (Static Collision) record.
 ///
@@ -3862,6 +4192,7 @@ impl ObjectEditorState {
             b"RCPE" => self.load_rcpe(&raw_subs),
             b"SCPT" => self.load_scpt(&raw_subs),
             b"PACK" => self.load_pack(&raw_subs),
+            b"EFSH" => self.load_efsh(&raw_subs),
             b"REGN" => self.load_regn(&raw_subs),
             b"IMAD" => self.load_imad(&raw_subs),
             b"TES4" => self.load_tes4(&raw_subs),
@@ -5173,6 +5504,16 @@ impl ObjectEditorState {
     fn load_txst(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
         self.txst_textures = vec![String::new(); 6];
         self.txst_flags = 0;
+        self.txst_dodt_min_width = 0.0;
+        self.txst_dodt_max_width = 0.0;
+        self.txst_dodt_min_height = 0.0;
+        self.txst_dodt_max_height = 0.0;
+        self.txst_dodt_depth = 0.0;
+        self.txst_dodt_shininess = 0.0;
+        self.txst_dodt_parallax_scale = 0.0;
+        self.txst_dodt_parallax_passes = 0;
+        self.txst_dodt_flags = 0;
+        self.txst_dodt_color = [0; 4];
         for s in raw_subs {
             let idx = match &s.sig {
                 b"TX00" => 0,
@@ -5185,6 +5526,20 @@ impl ObjectEditorState {
                     if s.data.len() >= 2 {
                         self.txst_flags = u16::from_le_bytes([s.data[0], s.data[1]]);
                     }
+                    continue;
+                }
+                b"DODT" if s.data.len() >= 36 => {
+                    let d = read_decal_data(&s.data);
+                    self.txst_dodt_min_width = d.min_width;
+                    self.txst_dodt_max_width = d.max_width;
+                    self.txst_dodt_min_height = d.min_height;
+                    self.txst_dodt_max_height = d.max_height;
+                    self.txst_dodt_depth = d.depth;
+                    self.txst_dodt_shininess = d.shininess;
+                    self.txst_dodt_parallax_scale = d.parallax_scale;
+                    self.txst_dodt_parallax_passes = d.parallax_passes;
+                    self.txst_dodt_flags = d.flags;
+                    self.txst_dodt_color = d.color;
                     continue;
                 }
                 _ => continue,
@@ -5251,7 +5606,7 @@ impl ObjectEditorState {
                     if s.data.len() >= 5 {
                         self.tact_dest_health =
                             i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
-                        self.tact_dest_flags = s.data[4];
+                        self.tact_dest_flags = s.data[5];
                     }
                 }
                 _ => {}
@@ -5355,12 +5710,14 @@ impl ObjectEditorState {
                         u32::from_le_bytes([sub.data[4], sub.data[5], sub.data[6], sub.data[7]]);
                     self.idle_previous_sibling = if previous == 0 { None } else { Some(previous) };
                 }
-                b"DATA" if sub.data.len() >= 8 => {
+                b"DATA" if sub.data.len() >= 6 => {
                     self.idle_group_section = sub.data[0];
                     self.idle_looping_min = sub.data[1];
                     self.idle_looping_max = sub.data[2];
                     self.idle_replay_delay = i16::from_le_bytes([sub.data[4], sub.data[5]]);
-                    self.idle_flags = sub.data[6];
+                    if sub.data.len() >= 7 {
+                        self.idle_flags = sub.data[6];
+                    }
                 }
                 _ => {}
             }
@@ -5517,7 +5874,7 @@ impl ObjectEditorState {
                             sub.data[2],
                             sub.data[3],
                         ]);
-                        self.mstt_dest_flags = sub.data[4];
+                        self.mstt_dest_flags = sub.data[5];
                     }
                 }
                 _ => {}
@@ -5609,6 +5966,7 @@ impl ObjectEditorState {
                     }
                     current = Some(MessageButton {
                         text: zstring(&s.data),
+                        raw: s.data.clone(),
                         conditions: Vec::new(),
                     });
                 }
@@ -5688,7 +6046,7 @@ impl ObjectEditorState {
                             sub.data[2],
                             sub.data[3],
                         ]);
-                        self.misc_dest_flags = sub.data[4];
+                        self.misc_dest_flags = sub.data[5];
                     }
                 }
                 _ => {}
@@ -5729,11 +6087,17 @@ impl ObjectEditorState {
                             s.data[0], s.data[1], s.data[2], s.data[3],
                         ])),
                         parameters: Vec::new(),
+                        conditions: Vec::new(),
                     });
                 }
                 b"EFIT" => {
                     if let Some(effect) = current.as_mut() {
                         effect.parameters = s.data.clone();
+                    }
+                }
+                b"CTDA" => {
+                    if let Some(effect) = current.as_mut() {
+                        effect.conditions.push(read_condition(&s.data));
                     }
                 }
                 _ => {}
@@ -5811,7 +6175,7 @@ impl ObjectEditorState {
                             sub.data[2],
                             sub.data[3],
                         ]);
-                        self.keym_dest_flags = sub.data[4];
+                        self.keym_dest_flags = sub.data[5];
                     }
                 }
                 _ => {}
@@ -5875,11 +6239,17 @@ impl ObjectEditorState {
                             sub.data[3],
                         ])),
                         parameters: Vec::new(),
+                        conditions: Vec::new(),
                     });
                 }
                 b"EFIT" => {
                     if let Some(effect) = current.as_mut() {
                         effect.parameters = sub.data.clone();
+                    }
+                }
+                b"CTDA" => {
+                    if let Some(effect) = current.as_mut() {
+                        effect.conditions.push(read_condition(&sub.data));
                     }
                 }
                 _ => {}
@@ -5975,10 +6345,9 @@ impl ObjectEditorState {
     /// Load an `IPDS` (Impact Data Set) record.
     fn load_ipds(&mut self) {
         self.ipds_impacts = vec![None; 12];
-        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 48) {
-            for i in 0..12 {
-                let at = i * 4;
-                let fid = u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]);
+        if let Some(b) = self.raw_subs.get(b"DATA") {
+            for (i, chunk) in b.as_chunks::<4>().0.iter().take(12).enumerate() {
+                let fid = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
                 self.ipds_impacts[i] = if fid == 0 { None } else { Some(fid) };
             }
         }
@@ -6066,7 +6435,8 @@ impl ObjectEditorState {
             match &sub.sig {
                 b"SCHR" if sub.data.len() >= 20 => {
                     let b = &sub.data;
-                    self.scpt_header.script_type = u32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+                    self.scpt_header.script_type = u16::from_le_bytes([b[12], b[13]]) as u32;
+                    self.scpt_header.flags = u16::from_le_bytes([b[14], b[15]]);
                     self.scpt_header.version = u32::from_le_bytes([b[16], b[17], b[18], b[19]]);
                     self.scpt_header.unknown = i32::from_le_bytes([b[8], b[9], b[10], b[11]]);
                 }
@@ -6082,6 +6452,8 @@ impl ObjectEditorState {
                         ]),
                         flags: sub.data[16],
                         name: String::new(),
+                        refs: Vec::new(),
+                        raw: sub.data.clone(),
                     });
                 }
                 b"SCVR" => {
@@ -6116,6 +6488,23 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load an `EFSH` (Effect Shader) record.
+    fn load_efsh(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.efsh_data = EfshData::default();
+        self.efsh_icon = String::new();
+        self.efsh_ico2 = String::new();
+        self.efsh_nam7 = String::new();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"DATA" => self.efsh_data = read_efsh_data(&sub.data),
+                b"ICON" => self.efsh_icon = zstring(&sub.data),
+                b"ICO2" => self.efsh_ico2 = zstring(&sub.data),
+                b"NAM7" => self.efsh_nam7 = zstring(&sub.data),
+                _ => {}
+            }
+        }
+    }
+
     /// Load a `REGN` (Region) record.
     ///
     /// The region data is a run of `RDAT` headers, each followed by the
@@ -6125,8 +6514,7 @@ impl ObjectEditorState {
     fn load_regn(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
         self.regn_map_color = [0; 4];
         self.regn_worldspace = None;
-        self.regn_edge_falloff = None;
-        self.regn_points.clear();
+        self.regn_areas.clear();
         self.regn_entries.clear();
 
         // The region area is a run of RPLI (the edge fall-off) and RPLD (the
@@ -6154,15 +6542,16 @@ impl ObjectEditorState {
                 }
                 b"RPLD" => {
                     let mut points = Vec::with_capacity(sub.data.len() / 8);
-                    let mut c = sub.data.chunks_exact(8);
-                    for chunk in &mut c {
+                    for chunk in sub.data.as_chunks::<8>().0 {
                         points.push([
                             f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
                             f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
                         ]);
                     }
-                    self.regn_edge_falloff = pending_falloff.take();
-                    self.regn_points = points;
+                    self.regn_areas.push(RegionArea {
+                        edge_falloff: pending_falloff.take().unwrap_or(0),
+                        points,
+                    });
                 }
                 b"RDAT" => {
                     if let Some(entry) = cur.take() {
@@ -6181,13 +6570,23 @@ impl ObjectEditorState {
                         entry.flags = sub.data[4];
                     }
                     if sub.data.len() >= 6 {
-                        entry.unused = sub.data[5];
+                        entry.priority = sub.data[5];
+                    }
+                    if sub.data.len() >= 8 {
+                        entry.unused = [sub.data[6], sub.data[7]];
                     }
                     cur = Some(entry);
                 }
                 b"RDMP" => {
                     if let Some(entry) = cur.as_mut() {
                         entry.map_name = Some(zstring(&sub.data));
+                    }
+                }
+                b"ICON" => {
+                    // The icon follows the entry it belongs to, so it
+                    // belongs to the entry being read.
+                    if let Some(entry) = cur.as_mut() {
+                        entry.icon = Some(zstring(&sub.data));
                     }
                 }
                 b"RDMD" if sub.data.len() >= 4 => {
@@ -6232,6 +6631,7 @@ impl ObjectEditorState {
                 }
                 b"RDOT" => {
                     if let Some(entry) = cur.as_mut() {
+                        entry.had_empty_rdot = sub.data.is_empty();
                         entry.objects = read_region_objects(&sub.data);
                     }
                 }
@@ -6254,7 +6654,9 @@ impl ObjectEditorState {
                     if let Some(entry) = cur.as_mut() {
                         entry.imposters = sub
                             .data
-                            .chunks_exact(4)
+                            .as_chunks::<4>()
+                            .0
+                            .iter()
                             .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
                             .collect();
                     }
@@ -6334,7 +6736,7 @@ impl ObjectEditorState {
                 }
                 b"PSDT" => {
                     let b = &sub.data;
-                    if b.len() >= 1 {
+                    if !b.is_empty() {
                         self.pack_month = b[0] as i8;
                     }
                     if b.len() >= 2 {
@@ -6371,7 +6773,9 @@ impl ObjectEditorState {
                 b"IDLA" => {
                     self.pack_idle_animations = sub
                         .data
-                        .chunks_exact(4)
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
                         .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
                         .collect();
                 }
@@ -6444,12 +6848,15 @@ impl ObjectEditorState {
                 b"SCHR" if sub.data.len() >= 20 => {
                     let b = &sub.data;
                     let header = ScriptHeader {
-                        script_type: u32::from_le_bytes([b[12], b[13], b[14], b[15]]),
+                        script_type: u16::from_le_bytes([b[12], b[13]]) as u32,
+                        flags: u16::from_le_bytes([b[14], b[15]]),
                         version: u32::from_le_bytes([b[16], b[17], b[18], b[19]]),
                         unknown: i32::from_le_bytes([b[8], b[9], b[10], b[11]]),
                     };
+                    let header_raw = sub.data.clone();
                     if let Some(script) = cur.as_mut() {
                         script.header = header;
+                        script.header_raw = header_raw;
                     }
                 }
                 b"SCDA" => {
@@ -6473,6 +6880,8 @@ impl ObjectEditorState {
                             ]),
                             flags: sub.data[16],
                             name: String::new(),
+                            refs: Vec::new(),
+                            raw: sub.data.clone(),
                         });
                     }
                 }
@@ -6491,6 +6900,16 @@ impl ObjectEditorState {
                             sub.data[2],
                             sub.data[3],
                         ]));
+                    }
+                }
+                b"SCRV" if sub.data.len() >= 4 => {
+                    // The reference names the variable above it.
+                    let index =
+                        u32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    if let Some(script) = cur.as_mut() {
+                        if let Some(var) = script.variables.iter_mut().find(|v| v.index == index) {
+                            var.refs.push(index);
+                        }
                     }
                 }
                 _ => {}
@@ -6697,8 +7116,8 @@ impl ObjectEditorState {
                         model.percentage = s.data[0];
                     }
                     // The model filename is a NUL-terminated string that
-                    // follows the percentage byte, and the flags byte is the
-                    // last one.
+                    // follows the percentage byte, and the flags byte is
+                    // the last one, after the terminator.
                     if s.data.len() > 1 {
                         let name_end = s.data[1..]
                             .iter()
@@ -6706,8 +7125,8 @@ impl ObjectEditorState {
                             .map(|i| i + 1)
                             .unwrap_or(s.data.len() - 1);
                         model.model = zstring(&s.data[1..name_end]);
-                        if s.data.len() > name_end {
-                            model.flags = s.data[name_end];
+                        if s.data.len() > name_end + 1 {
+                            model.flags = s.data[name_end + 1];
                         }
                     }
                     cur = Some(model);
@@ -7358,15 +7777,39 @@ impl ObjectEditorState {
         let fid = self.form_id;
 
         // Strings
-        session
-            .doc
-            .set_sub(fid, b"EDID", encode_zstring(&self.edid));
-        if !self.full_name.trim().is_empty() {
+        if self.raw_subs.contains_key(b"EDID") {
+            session.doc.set_sub(
+                fid,
+                b"EDID",
+                encode_text_kept(self.raw_subs.get(b"EDID").map(|v| v.as_slice()), &self.edid),
+            );
+        } else {
+            session.doc.remove_sub(fid, b"EDID");
+        }
+        if self.raw_subs.contains_key(b"FULL") {
+            session.doc.set_sub(
+                fid,
+                b"FULL",
+                encode_text_kept(
+                    self.raw_subs.get(b"FULL").map(|v| v.as_slice()),
+                    &self.full_name,
+                ),
+            );
+        } else if !self.full_name.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"FULL", encode_zstring(&self.full_name));
         }
-        if !self.model.trim().is_empty() {
+        if self.raw_subs.contains_key(b"MODL") {
+            session.doc.set_sub(
+                fid,
+                b"MODL",
+                encode_text_kept(
+                    self.raw_subs.get(b"MODL").map(|v| v.as_slice()),
+                    &self.model,
+                ),
+            );
+        } else if !self.model.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"MODL", encode_zstring(&self.model));
@@ -7383,10 +7826,7 @@ impl ObjectEditorState {
         }
         session.doc.set_flags(fid, flags);
 
-        if self.obnd_min != [0, 0, 0]
-            || self.obnd_max != [0, 0, 0]
-            || self.raw_subs.contains_key(b"OBND")
-        {
+        if self.raw_subs.contains_key(b"OBND") {
             let mut obnd = vec![0u8; 12];
             obnd[0..2].copy_from_slice(&self.obnd_min[0].to_le_bytes());
             obnd[2..4].copy_from_slice(&self.obnd_min[1].to_le_bytes());
@@ -7441,6 +7881,7 @@ impl ObjectEditorState {
             b"RCPE" => self.save_rcpe(session),
             b"SCPT" => self.save_scpt(session),
             b"PACK" => self.save_pack(session),
+            b"EFSH" => self.save_efsh(session),
             b"REGN" => self.save_regn(session),
             b"IMAD" => self.save_imad(session),
             b"TES4" => self.save_tes4(session),
@@ -8409,12 +8850,16 @@ impl ObjectEditorState {
             session.doc.remove_sub(fid, b"MODL");
         }
 
-        let mut obnd = vec![0u8; 12];
-        for i in 0..3 {
-            obnd[i * 2..i * 2 + 2].copy_from_slice(&self.obnd_min[i].to_le_bytes());
-            obnd[6 + i * 2..6 + i * 2 + 2].copy_from_slice(&self.obnd_max[i].to_le_bytes());
+        if self.raw_subs.contains_key(b"OBND") {
+            let mut obnd = vec![0u8; 12];
+            for i in 0..3 {
+                obnd[i * 2..i * 2 + 2].copy_from_slice(&self.obnd_min[i].to_le_bytes());
+                obnd[6 + i * 2..6 + i * 2 + 2].copy_from_slice(&self.obnd_max[i].to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"OBND", obnd);
+        } else {
+            session.doc.remove_sub(fid, b"OBND");
         }
-        session.doc.set_sub(fid, b"OBND", obnd);
     }
 
     fn save_imod(&self, session: &mut crate::session::Session) {
@@ -9076,7 +9521,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
     }
@@ -9119,7 +9568,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
     }
@@ -9242,7 +9695,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
 
@@ -9484,26 +9941,45 @@ impl ObjectEditorState {
 
         // ANAM carries the parent and the previous sibling, and a null
         // reference is written as zero.
-        let mut anam = Vec::with_capacity(8);
-        anam.extend_from_slice(&self.idle_parent.unwrap_or(0).to_le_bytes());
-        anam.extend_from_slice(&self.idle_previous_sibling.unwrap_or(0).to_le_bytes());
-        session.doc.set_sub(fid, b"ANAM", anam);
-
-        // DATA is eight bytes. The two unnamed bytes are carried through.
-        let original = self.raw_subs.get(b"DATA").cloned();
-        let len = original.as_ref().map(|b| b.len()).unwrap_or(8);
-        let mut data = original.unwrap_or_else(|| vec![0u8; 8]);
-        data.resize(len, 0);
-        if data.len() >= 8 {
-            data[0] = self.idle_group_section;
-            data[1] = self.idle_looping_min;
-            data[2] = self.idle_looping_max;
-            data[4..6].copy_from_slice(&self.idle_replay_delay.to_le_bytes());
-            data[6] = self.idle_flags;
+        if self.raw_subs.contains_key(b"ANAM") {
+            let mut anam = Vec::with_capacity(8);
+            anam.extend_from_slice(&self.idle_parent.unwrap_or(0).to_le_bytes());
+            anam.extend_from_slice(&self.idle_previous_sibling.unwrap_or(0).to_le_bytes());
+            session.doc.set_sub(fid, b"ANAM", anam);
+        } else {
+            session.doc.remove_sub(fid, b"ANAM");
         }
-        session.doc.set_sub(fid, b"DATA", data);
 
-        save_conditions(session, fid, &self.idle_conditions);
+        // DATA is six or eight bytes. The record's own length decides, and
+        // the unnamed byte is carried through.
+        if let Some(original) = self.raw_subs.get(b"DATA") {
+            let mut data = original.clone();
+            data.resize(original.len(), 0);
+            if !data.is_empty() {
+                data[0] = self.idle_group_section;
+            }
+            if data.len() >= 2 {
+                data[1] = self.idle_looping_min;
+            }
+            if data.len() >= 3 {
+                data[2] = self.idle_looping_max;
+            }
+            if data.len() >= 6 {
+                data[4..6].copy_from_slice(&self.idle_replay_delay.to_le_bytes());
+            }
+            if data.len() >= 7 {
+                data[6] = self.idle_flags;
+            }
+            session.doc.set_sub(fid, b"DATA", data);
+        } else {
+            session.doc.remove_sub(fid, b"DATA");
+        }
+
+        if self.raw_subs.contains_key(b"CTDA") {
+            save_conditions(session, fid, &self.idle_conditions);
+        } else {
+            session.doc.remove_sub(fid, b"CTDA");
+        }
     }
 
     /// Save an `MSET` (Media Set) record.
@@ -9672,27 +10148,47 @@ impl ObjectEditorState {
     /// written as one sequence.
     fn save_mesg(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        if self.mesg_desc.trim().is_empty() {
+        // The description is plain text, and the game's records hold it
+        // both with and without a trailing null, so the record's own bytes
+        // decide the form.
+        if !self.raw_subs.contains_key(b"DESC") {
             session.doc.remove_sub(fid, b"DESC");
         } else {
-            session
-                .doc
-                .set_sub(fid, b"DESC", encode_zstring(&self.mesg_desc));
+            session.doc.set_sub(
+                fid,
+                b"DESC",
+                encode_text_kept(
+                    self.raw_subs.get(b"DESC").map(|v| v.as_slice()),
+                    &self.mesg_desc,
+                ),
+            );
         }
         match self.mesg_icon {
-            Some(v) => session.doc.set_sub(fid, b"INAM", v.to_le_bytes().to_vec()),
-            None => session.doc.remove_sub(fid, b"INAM"),
+            Some(v) if self.raw_subs.contains_key(b"INAM") => {
+                session.doc.set_sub(fid, b"INAM", v.to_le_bytes().to_vec());
+            }
+            _ => {
+                session.doc.remove_sub(fid, b"INAM");
+            }
         }
-        session
-            .doc
-            .set_sub(fid, b"DNAM", self.mesg_flags.to_le_bytes().to_vec());
-        session
-            .doc
-            .set_sub(fid, b"TNAM", self.mesg_display_time.to_le_bytes().to_vec());
+        if self.raw_subs.contains_key(b"DNAM") {
+            session
+                .doc
+                .set_sub(fid, b"DNAM", self.mesg_flags.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"DNAM");
+        }
+        if self.raw_subs.contains_key(b"TNAM") {
+            session
+                .doc
+                .set_sub(fid, b"TNAM", self.mesg_display_time.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"TNAM");
+        }
 
         let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
         for button in &self.mesg_buttons {
-            seq.push((*b"ITXT", encode_zstring(&button.text)));
+            seq.push((*b"ITXT", encode_text_kept(Some(&button.raw), &button.text)));
             for cond in &button.conditions {
                 let mut b = Vec::with_capacity(28);
                 b.push(cond.cond_type);
@@ -9709,7 +10205,7 @@ impl ObjectEditorState {
         if seq.is_empty() {
             session.doc.remove_sub(fid, b"ITXT");
             session.doc.remove_sub(fid, b"CTDA");
-        } else {
+        } else if self.raw_subs.contains_key(b"ITXT") {
             session
                 .doc
                 .set_sub_sequence(fid, vec![*b"ITXT", *b"CTDA"], seq);
@@ -9742,7 +10238,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
 
@@ -9804,14 +10304,20 @@ impl ObjectEditorState {
             if !effect.parameters.is_empty() {
                 seq.push((*b"EFIT", effect.parameters.clone()));
             }
+            // The condition belongs to the effect above it, so it is
+            // written straight after it.
+            for cond in &effect.conditions {
+                seq.push((*b"CTDA", write_condition(cond)));
+            }
         }
         if seq.is_empty() {
             session.doc.remove_sub(fid, b"EFID");
             session.doc.remove_sub(fid, b"EFIT");
+            session.doc.remove_sub(fid, b"CTDA");
         } else {
             session
                 .doc
-                .set_sub_sequence(fid, vec![*b"EFID", *b"EFIT"], seq);
+                .set_sub_sequence(fid, vec![*b"EFID", *b"EFIT", *b"CTDA"], seq);
         }
     }
 
@@ -9876,7 +10382,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
         for (sig, value) in [
@@ -9944,7 +10454,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
         match self.ingr_script {
@@ -9977,14 +10491,19 @@ impl ObjectEditorState {
             if !effect.parameters.is_empty() {
                 seq.push((*b"EFIT", effect.parameters.clone()));
             }
+            // The condition belongs to the effect above it.
+            for cond in &effect.conditions {
+                seq.push((*b"CTDA", write_condition(cond)));
+            }
         }
         if seq.is_empty() {
             session.doc.remove_sub(fid, b"EFID");
             session.doc.remove_sub(fid, b"EFIT");
+            session.doc.remove_sub(fid, b"CTDA");
         } else {
             session
                 .doc
-                .set_sub_sequence(fid, vec![*b"EFID", *b"EFIT"], seq);
+                .set_sub_sequence(fid, vec![*b"EFID", *b"EFIT", *b"CTDA"], seq);
         }
     }
 
@@ -10023,18 +10542,30 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", data);
 
         if let Some(dodt) = &self.ipct_dodt {
-            let mut b = Vec::with_capacity(36);
-            b.extend_from_slice(&dodt.min_width.to_le_bytes());
-            b.extend_from_slice(&dodt.max_width.to_le_bytes());
-            b.extend_from_slice(&dodt.min_height.to_le_bytes());
-            b.extend_from_slice(&dodt.max_height.to_le_bytes());
-            b.extend_from_slice(&dodt.depth.to_le_bytes());
-            b.extend_from_slice(&dodt.shininess.to_le_bytes());
-            b.extend_from_slice(&dodt.parallax_scale.to_le_bytes());
-            b.push(dodt.parallax_passes);
-            b.push(dodt.flags);
-            b.extend_from_slice(&[0u8; 2]);
-            b.extend_from_slice(&dodt.color);
+            // The decal data is written back over the record's own bytes, so
+            // the two bytes the spec leaves unnamed keep their values.
+            let mut b = self
+                .raw_subs
+                .get(b"DODT")
+                .cloned()
+                .unwrap_or_else(|| vec![0u8; 36]);
+            b.resize(36, 0);
+            let floats = [
+                dodt.min_width,
+                dodt.max_width,
+                dodt.min_height,
+                dodt.max_height,
+                dodt.depth,
+                dodt.shininess,
+                dodt.parallax_scale,
+            ];
+            for (i, v) in floats.iter().enumerate() {
+                let at = i * 4;
+                b[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+            b[28] = dodt.parallax_passes;
+            b[29] = dodt.flags;
+            b[32..36].copy_from_slice(&dodt.color);
             session.doc.set_sub(fid, b"DODT", b);
         }
 
@@ -10059,8 +10590,16 @@ impl ObjectEditorState {
     /// Save an `IPDS` (Impact Data Set) record.
     fn save_ipds(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut data = Vec::with_capacity(48);
-        for impact in &self.ipds_impacts {
+        // The impact list is a run of FormIDs, and the record's own length
+        // decides how many of them there are: the game's records are 36
+        // and 48 bytes long.
+        let count = self
+            .raw_subs
+            .get(b"DATA")
+            .map(|b| (b.len() / 4).min(12))
+            .unwrap_or(12);
+        let mut data = Vec::with_capacity(count * 4);
+        for impact in self.ipds_impacts.iter().take(count) {
             data.extend_from_slice(&impact.unwrap_or(0).to_le_bytes());
         }
         session.doc.set_sub(fid, b"DATA", data);
@@ -10115,7 +10654,8 @@ impl ObjectEditorState {
         let mut schr = original.unwrap_or_else(|| vec![0u8; 20]);
         schr.resize(20, 0);
         schr[8..12].copy_from_slice(&self.scpt_header.unknown.to_le_bytes());
-        schr[12..16].copy_from_slice(&self.scpt_header.script_type.to_le_bytes());
+        schr[12..14].copy_from_slice(&(self.scpt_header.script_type as u16).to_le_bytes());
+        schr[14..16].copy_from_slice(&self.scpt_header.flags.to_le_bytes());
         schr[16..20].copy_from_slice(&self.scpt_header.version.to_le_bytes());
         session.doc.set_sub(fid, b"SCHR", schr);
 
@@ -10129,9 +10669,14 @@ impl ObjectEditorState {
             session.doc.remove_sub(fid, b"SCDA");
         }
         if self.raw_subs.contains_key(b"SCTX") && !self.scpt_source.trim().is_empty() {
-            session
-                .doc
-                .set_sub(fid, b"SCTX", self.scpt_source.as_bytes().to_vec());
+            session.doc.set_sub(
+                fid,
+                b"SCTX",
+                encode_text_kept(
+                    self.raw_subs.get(b"SCTX").map(|v| v.as_slice()),
+                    &self.scpt_source,
+                ),
+            );
         } else {
             session.doc.remove_sub(fid, b"SCTX");
         }
@@ -10142,8 +10687,11 @@ impl ObjectEditorState {
         let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
         for var in &self.scpt_variables {
             // SLSD is twenty-four bytes: the index, twelve unused bytes, the
-            // flag word and seven more unused bytes.
-            let mut slsd = vec![0u8; 24];
+            // flag word and seven more unused bytes. The variable is written
+            // back over its own bytes, so the values the spec does not name
+            // survive an edit.
+            let mut slsd = var.raw.clone();
+            slsd.resize(24, 0);
             slsd[0..4].copy_from_slice(&var.index.to_le_bytes());
             slsd[16] = var.flags;
             seq.push((*b"SLSD", slsd));
@@ -10193,6 +10741,34 @@ impl ObjectEditorState {
         }
     }
 
+    /// Save an `EFSH` (Effect Shader) record.
+    fn save_efsh(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        if let Some(original) = self.raw_subs.get(b"DATA") {
+            let data = write_efsh_data(original, &self.efsh_data);
+            session.doc.set_sub(fid, b"DATA", data);
+        } else {
+            session.doc.remove_sub(fid, b"DATA");
+        }
+        for (sig, text) in [
+            (b"ICON", &self.efsh_icon),
+            (b"ICO2", &self.efsh_ico2),
+            (b"NAM7", &self.efsh_nam7),
+        ] {
+            // A texture the record had is written back even when the name
+            // is empty, because an empty name is still a subrecord.
+            if self.raw_subs.contains_key(sig) {
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
+    }
+
     /// Save a `REGN` (Region) record.
     fn save_regn(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
@@ -10214,25 +10790,23 @@ impl ObjectEditorState {
             }
         }
 
-        // The region area is a run of RPLI and RPLD, and the point list is
-        // the only thing the fall-off belongs to, so the pair is written
-        // together.
-        if self.raw_subs.contains_key(b"RPLD") {
-            let mut points = Vec::with_capacity(self.regn_points.len() * 8);
-            for p in &self.regn_points {
+        // The region area is a run of RPLI and RPLD, and each point list
+        // belongs to the fall-off before it, so the pairs are written as
+        // one sequence.
+        let mut areas: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for area in &self.regn_areas {
+            areas.push((*b"RPLI", area.edge_falloff.to_le_bytes().to_vec()));
+            let mut points = Vec::with_capacity(area.points.len() * 8);
+            for p in &area.points {
                 points.extend_from_slice(&p[0].to_le_bytes());
                 points.extend_from_slice(&p[1].to_le_bytes());
             }
-            session.doc.set_sub(fid, b"RPLD", points);
-            if self.raw_subs.contains_key(b"RPLI") {
-                session.doc.set_sub(
-                    fid,
-                    b"RPLI",
-                    self.regn_edge_falloff.unwrap_or(0).to_le_bytes().to_vec(),
-                );
-            } else {
-                session.doc.remove_sub(fid, b"RPLI");
-            }
+            areas.push((*b"RPLD", points));
+        }
+        if self.raw_subs.contains_key(b"RPLD") {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"RPLI", *b"RPLD"], areas);
         } else {
             session.doc.remove_sub(fid, b"RPLD");
             session.doc.remove_sub(fid, b"RPLI");
@@ -10246,8 +10820,8 @@ impl ObjectEditorState {
             let mut rdat = Vec::with_capacity(8);
             rdat.extend_from_slice(&entry.kind.to_le_bytes());
             rdat.push(entry.flags);
-            rdat.push(entry.unused);
-            rdat.extend_from_slice(&[0, 0]);
+            rdat.push(entry.priority);
+            rdat.extend_from_slice(&entry.unused);
             seq.push((*b"RDAT", rdat));
             if let Some(name) = &entry.map_name {
                 seq.push((*b"RDMP", encode_zstring(name)));
@@ -10266,7 +10840,7 @@ impl ObjectEditorState {
                     seq.push((*b"RDSB", v.to_le_bytes().to_vec()));
                 }
             }
-            if !entry.objects.is_empty() {
+            if !entry.objects.is_empty() || entry.had_empty_rdot {
                 let mut data = Vec::with_capacity(entry.objects.len() * 52);
                 for o in &entry.objects {
                     data.extend_from_slice(&o.object.to_le_bytes());
@@ -10324,20 +10898,24 @@ impl ObjectEditorState {
                 }
                 seq.push((*b"RDID", data));
             }
+            // The icon follows the entry it belongs to.
+            if let Some(icon) = &entry.icon {
+                seq.push((*b"ICON", encode_zstring(icon)));
+            }
         }
         if self.raw_subs.contains_key(b"RDAT") {
             session.doc.set_sub_sequence(
                 fid,
                 vec![
                     *b"RDAT", *b"RDMP", *b"RDMD", *b"RDMO", *b"RDSI", *b"RDSB", *b"RDOT", *b"RDGS",
-                    *b"RDSD", *b"RDWT", *b"RDID",
+                    *b"RDSD", *b"RDWT", *b"RDID", *b"ICON",
                 ],
                 seq,
             );
         } else {
             for sig in [
                 b"RDAT", b"RDMP", b"RDMD", b"RDMO", b"RDSI", b"RDSB", b"RDOT", b"RDGS", b"RDSD",
-                b"RDWT", b"RDID",
+                b"RDWT", b"RDID", b"ICON",
             ] {
                 session.doc.remove_sub(fid, sig);
             }
@@ -10541,12 +11119,20 @@ impl ObjectEditorState {
 
         if self.raw_subs.contains_key(b"PKDD") {
             let d = &self.pack_dialog;
-            let mut data = Vec::with_capacity(24);
-            data.extend_from_slice(&d.fov.to_le_bytes());
-            data.extend_from_slice(&d.topic.unwrap_or(0).to_le_bytes());
-            data.extend_from_slice(&d.flags.to_le_bytes());
-            data.extend_from_slice(&d.unused);
-            data.extend_from_slice(&d.dialog_type.to_le_bytes());
+            // The dialog data is written back over the record's own bytes, so
+            // the length it had and the trailing unnamed bytes survive.
+            let mut data = self
+                .raw_subs
+                .get(b"PKDD")
+                .cloned()
+                .unwrap_or_else(|| vec![0u8; 24]);
+            data.resize(data.len().max(24), 0);
+            data[0..4].copy_from_slice(&d.fov.to_le_bytes());
+            data[4..8].copy_from_slice(&d.topic.unwrap_or(0).to_le_bytes());
+            data[8..12].copy_from_slice(&d.flags.to_le_bytes());
+            data[12..16].copy_from_slice(&d.unused);
+            data[16..20].copy_from_slice(&d.dialog_type.to_le_bytes());
+            data[20..24].copy_from_slice(&d.unused2);
             session.doc.set_sub(fid, b"PKDD", data);
         } else {
             session.doc.remove_sub(fid, b"PKDD");
@@ -10565,16 +11151,13 @@ impl ObjectEditorState {
             seq.push((*b"INAM", script.idle.unwrap_or(0).to_le_bytes().to_vec()));
             // The script header: the four unnamed bytes, the reference
             // count, the compiled size, the variable count, the type and the
-            // flags.
-            let original = self
-                .raw_subs
-                .get(b"SCHR")
-                .cloned()
-                .unwrap_or_else(|| vec![0u8; 20]);
-            let mut schr = original;
+            // flags. It is written back over its own bytes, so the fields
+            // the spec does not name survive.
+            let mut schr = script.header_raw.clone();
             schr.resize(20, 0);
             schr[8..12].copy_from_slice(&script.header.unknown.to_le_bytes());
-            schr[12..16].copy_from_slice(&script.header.script_type.to_le_bytes());
+            schr[12..14].copy_from_slice(&(script.header.script_type as u16).to_le_bytes());
+            schr[14..16].copy_from_slice(&script.header.flags.to_le_bytes());
             schr[16..20].copy_from_slice(&script.header.version.to_le_bytes());
             seq.push((*b"SCHR", schr));
             if !script.compiled.is_empty() {
@@ -10584,11 +11167,16 @@ impl ObjectEditorState {
                 seq.push((*b"SCTX", script.source.as_bytes().to_vec()));
             }
             for var in &script.variables {
-                let mut slsd = vec![0u8; 24];
+                let mut slsd = var.raw.clone();
+                slsd.resize(24, 0);
                 slsd[0..4].copy_from_slice(&var.index.to_le_bytes());
                 slsd[16] = var.flags;
                 seq.push((*b"SLSD", slsd));
                 seq.push((*b"SCVR", encode_zstring(&var.name)));
+                // The references that name this variable follow it.
+                for r in &var.refs {
+                    seq.push((*b"SCRV", r.to_le_bytes().to_vec()));
+                }
             }
             for r in &script.references {
                 seq.push((*b"SCRO", r.to_le_bytes().to_vec()));
@@ -10600,7 +11188,7 @@ impl ObjectEditorState {
                 fid,
                 vec![
                     *b"POBA", *b"POEA", *b"POCA", *b"INAM", *b"SCHR", *b"SCDA", *b"SCTX", *b"SLSD",
-                    *b"SCVR", *b"SCRO", *b"TNAM",
+                    *b"SCVR", *b"SCRO", *b"SCRV", *b"TNAM",
                 ],
                 seq,
             );
@@ -10680,7 +11268,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
 
@@ -11018,7 +11610,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
 
@@ -11077,7 +11673,11 @@ impl ObjectEditorState {
             if text.trim().is_empty() {
                 session.doc.remove_sub(fid, sig);
             } else {
-                session.doc.set_sub(fid, sig, encode_zstring(text));
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
             }
         }
 
@@ -11574,6 +12174,21 @@ fn zstring(b: &[u8]) -> String {
         .to_string()
 }
 
+/// Encode a text field for a subrecord, keeping the record's own bytes when
+/// the text has not been edited.
+///
+/// The game's records hold text that is not valid UTF-8 — a lone accented
+/// byte in a name, say. Decoding that as UTF-8 replaces the bad bytes with
+/// the replacement character, and writing them back would change the
+/// record. So a field the modder has not touched is written out byte for
+/// byte, and only an edited one is re-encoded.
+fn encode_text_kept(original: Option<&[u8]>, text: &str) -> Vec<u8> {
+    match original {
+        Some(orig) if zstring(orig) == text => orig.to_vec(),
+        _ => encode_zstring(text),
+    }
+}
+
 fn encode_zstring(s: &str) -> Vec<u8> {
     let mut v = s.as_bytes().to_vec();
     if !v.ends_with(&[0]) {
@@ -11626,6 +12241,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"RCPE" => "Recipe",
         b"SCPT" => "Script",
         b"PACK" => "Package",
+        b"EFSH" => "Effect Shader",
         b"REGN" => "Region",
         b"IMAD" => "Image Space Adapter",
         b"TES4" => "Plugin Header",
@@ -12467,6 +13083,7 @@ pub fn ui(
                 b"RCPE" => draw_rcpe_ui(ui, &session, &mut state),
                 b"SCPT" => draw_scpt_ui(ui, &mut state),
                 b"PACK" => draw_pack_ui(ui, &session, &mut state),
+                b"EFSH" => draw_efsh_ui(ui, &mut state),
                 b"REGN" => draw_regn_ui(ui, &session, &mut state),
                 b"IMAD" => draw_imad_ui(ui, &mut state),
                 b"TES4" => draw_tes4_ui(ui, &mut state),
@@ -18338,6 +18955,71 @@ const REGN_ENTRY_TYPES: &[(u32, &str)] = &[
 /// The music types, from the `RDMD` field.
 const REGN_MUSIC_TYPES: &[(u32, &str)] = &[(0, "Default"), (1, "Public"), (2, "Dungeon")];
 
+/// Draw the Effect Shader (EFSH) editor body.
+fn draw_efsh_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Textures");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Fill:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.efsh_icon)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Particle:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.efsh_ico2)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Holes:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.efsh_nam7)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Data (DATA)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.efsh_data.flags).range(0..=u8::MAX));
+            ui.label(format!("0x{:02X}", state.efsh_data.flags));
+        });
+        for field in state.efsh_data.fields.iter_mut() {
+            ui.horizontal(|ui| {
+                ui.label(format!("{}:", field.name));
+                match &mut field.value {
+                    EfshValue::F32(v) => {
+                        ui.add(egui::DragValue::new(v).speed(0.01));
+                    }
+                    EfshValue::U32(v) => {
+                        ui.add(egui::DragValue::new(v).range(0..=u32::MAX));
+                    }
+                    EfshValue::Fid(v) => {
+                        ui.add(egui::DragValue::new(v).range(0..=u32::MAX));
+                    }
+                    EfshValue::Rgba(v) => {
+                        let mut rgb = [v[0], v[1], v[2]];
+                        if ui.color_edit_button_srgb(&mut rgb).changed() {
+                            v[0] = rgb[0];
+                            v[1] = rgb[1];
+                            v[2] = rgb[2];
+                        }
+                        ui.add(egui::DragValue::new(&mut v[3]).range(0..=u8::MAX));
+                    }
+                }
+            });
+        }
+    });
+}
+
 /// Draw the Region (REGN) editor body.
 fn draw_regn_ui(
     ui: &mut egui::Ui,
@@ -18369,14 +19051,19 @@ fn draw_regn_ui(
             state.regn_worldspace = fid;
         });
         ui.horizontal(|ui| {
-            ui.label("Edge Fall-Off:");
-            ui.add(egui::DragValue::new(
-                &mut state.regn_edge_falloff.unwrap_or(0),
-            ));
-            ui.separator();
-            ui.label("Points:");
-            ui.label(format!("{}", state.regn_points.len()));
+            ui.label("Areas:");
+            ui.label(format!("{}", state.regn_areas.len()));
         });
+        for (i, area) in state.regn_areas.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("Area {}", i + 1));
+                ui.label("Edge Fall-Off:");
+                ui.add(egui::DragValue::new(&mut area.edge_falloff));
+                ui.separator();
+                ui.label("Points:");
+                ui.label(format!("{}", area.points.len()));
+            });
+        }
     });
 
     ui.add_space(6.0);

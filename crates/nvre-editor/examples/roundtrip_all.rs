@@ -77,8 +77,11 @@ const TYPES: &[(&str, &[u8; 4], usize)] = &[
     ("VTYP", b"VTYP", 100),
 ];
 
+/// One subrecord: its signature and its payload.
+type Sub = ([u8; 4], Vec<u8>);
+
 /// The subrecords of a record, in file order, as signature and payload.
-fn shape(subs: &[fnv_esm::Subrecord]) -> Vec<([u8; 4], Vec<u8>)> {
+fn shape(subs: &[fnv_esm::Subrecord]) -> Vec<Sub> {
     subs.iter().map(|s| (s.sig, s.data.clone())).collect()
 }
 
@@ -99,7 +102,7 @@ fn main() {
     .expect("open the master");
 
     // The original shape of every record of every type, keyed by FormID.
-    let mut before: BTreeMap<u32, Vec<([u8; 4], Vec<u8>)>> = BTreeMap::new();
+    let mut before: BTreeMap<u32, Vec<Sub>> = BTreeMap::new();
     for (fid, rec) in session.doc.records() {
         let subs = rec.subrecords().expect("subrecords");
         before.insert(fid, shape(&subs));
@@ -162,7 +165,7 @@ fn main() {
                 continue;
             }
             for (i, (bs, bd)) in b.iter().enumerate() {
-                if &a[i] != &(*bs, bd.clone()) {
+                if a[i] != (*bs, bd.clone()) {
                     if bad == 0 {
                         first_problem = format!(
                             "{fid:08X}: subrecord {i} ({}) changes",
