@@ -15312,6 +15312,27 @@ pub fn ui(
                 _ => {}
             });
 
+        // The object bounds are a shared subrecord: every type that
+        // carries one shows them here, so no page has to repeat them.
+        if state.raw_subs.contains_key(b"OBND") {
+            ui.add_space(6.0);
+            ui.group(|ui| {
+                ui.strong("Object Bounds (OBND)");
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label("Min:");
+                    for i in 0..3 {
+                        ui.add(egui::DragValue::new(&mut state.obnd_min[i]).range(-32768..=32767));
+                    }
+                    ui.separator();
+                    ui.label("Max:");
+                    for i in 0..3 {
+                        ui.add(egui::DragValue::new(&mut state.obnd_max[i]).range(-32768..=32767));
+                    }
+                });
+            });
+        }
+
         ui.separator();
 
         // Footer Actions
@@ -17064,29 +17085,6 @@ fn draw_actor_inventory(
     });
 }
 
-/// Draw the object bounds section.
-fn draw_actor_bounds(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
-    ui.group(|ui| {
-        ui.strong("Object Bounds (OBND)");
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.label("Min X:");
-            ui.add(egui::DragValue::new(&mut state.obnd_min[0]));
-            ui.label("Y:");
-            ui.add(egui::DragValue::new(&mut state.obnd_min[1]));
-            ui.label("Z:");
-            ui.add(egui::DragValue::new(&mut state.obnd_min[2]));
-            ui.separator();
-            ui.label("Max X:");
-            ui.add(egui::DragValue::new(&mut state.obnd_max[0]));
-            ui.label("Y:");
-            ui.add(egui::DragValue::new(&mut state.obnd_max[1]));
-            ui.label("Z:");
-            ui.add(egui::DragValue::new(&mut state.obnd_max[2]));
-        });
-    });
-}
-
 /// Draw the flags and traits section of a creature's page.
 fn draw_crea_flags(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.group(|ui| {
@@ -17340,8 +17338,6 @@ fn draw_crea_ui(
     draw_actor_crea_sounds(ui, session, state);
     ui.add_space(6.0);
     draw_actor_crea_models(ui, state);
-    ui.add_space(6.0);
-    draw_actor_bounds(ui, state);
 }
 
 /// Draw the NPC (NPC_) editor body.
@@ -17371,8 +17367,6 @@ fn draw_npc_ui(
     draw_actor_packages(ui, session, state);
     ui.add_space(6.0);
     draw_actor_inventory(ui, session, state);
-    ui.add_space(6.0);
-    draw_actor_bounds(ui, state);
 }
 
 fn draw_alch_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
@@ -18364,24 +18358,6 @@ fn draw_lvl_ui(
                     });
                 }
             }
-        });
-    });
-
-    ui.add_space(6.0);
-    ui.group(|ui| {
-        ui.strong("Object Bounds (OBND)");
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.label("Min X/Y/Z:");
-            ui.add(egui::DragValue::new(&mut state.obnd_min[0]));
-            ui.add(egui::DragValue::new(&mut state.obnd_min[1]));
-            ui.add(egui::DragValue::new(&mut state.obnd_min[2]));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Max X/Y/Z:");
-            ui.add(egui::DragValue::new(&mut state.obnd_max[0]));
-            ui.add(egui::DragValue::new(&mut state.obnd_max[1]));
-            ui.add(egui::DragValue::new(&mut state.obnd_max[2]));
         });
     });
 }
