@@ -61,12 +61,24 @@ def parse_spec(sig):
     current = None
     in_table = False
     for line in text.splitlines():
+        # `### SIG` opens a subrecord's field table. `### Flag Values`
+        # and the other named tables are not subrecords, and their rows
+        # are flag values, not fields.
         m = re.match(r"^###\s+([A-Z][A-Z0-9_]{3})\s*$", line)
         if m:
             current = m.group(1)
             in_table = False
             continue
-        if line.startswith("##"):
+        # Any other heading ends the subrecord's field table. A `####`
+        # heading, for instance, opens the flag values that follow the
+        # table, and those rows are values, not fields.
+        if re.match(r"^#+\s+", line):
+            current = None
+            in_table = False
+            continue
+        # `##` ends the section, but `###` starts a subrecord's own
+        # table, so only a bare `##` clears the current subrecord.
+        if line.startswith("##") and not line.startswith("###"):
             current = None
             in_table = False
             continue
@@ -93,6 +105,21 @@ def function_span(src, name):
     end = src.find("\n}\n", start)
     if end == -1:
         return src[start:]
+    return src[start:end]
+
+
+def const_span(src, name):
+    """The text of a `const <name>` and everything it holds."""
+    m = re.search(rf"^(pub )?const {re.escape(name)}\b", src, re.M)
+    if not m:
+        return ""
+    start = m.start()
+    # A const ends at the line that closes it.
+    end = src.find("];", start)
+    if end == -1:
+        end = src.find("\n}\n", start)
+    if end == -1:
+        return src[start:start + 4000]
     return src[start:end]
 
 
@@ -126,12 +153,20 @@ def type_code(src, sig):
 
     own = "\n".join(parts)
 
-    # The shared helpers the type's own code calls.
-    called = set(re.findall(r"\b([a-z_][a-z0-9_]*)\s*\(", own))
+    # The shared helpers and the named tables the type's own code calls.
+    # A table of field names is a helper too: a type that lists its
+    # fields in a constant is covering them.
+    called = set(re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\b", own))
     for helper in called:
-        # Only the editor's own helpers, not the standard library.
-        if not re.search(rf"^(fn|pub fn) {re.escape(helper)}\(", src, re.M):
+        # Only the editor's own helpers and tables, not the standard
+        # library.
+        if not re.search(
+            rf"^(fn|pub fn|const|pub const|static|pub static) {re.escape(helper)}\b",
+            src,
+            re.M,
+        ):
             continue
+        parts.append(const_span(src, helper))
         parts.append(function_span(src, helper))
 
     # The state fields the type owns: the flat state prefixes its fields,
