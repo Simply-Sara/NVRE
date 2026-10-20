@@ -50,6 +50,13 @@ pub fn remap_sub(
     // Re-encode through the editor's own encoder, which refuses anything it
     // cannot write back byte for byte.
     let out = nvre_edit_encode(schema, rec_sig, &sub.sig, &value).ok()?;
+    // A layout that does not match the record's own length would rewrite
+    // the whole subrecord with the wrong field at every offset. The
+    // re-encoded bytes have to be the same length as the ones that were
+    // read, or the subrecord is left exactly as it was.
+    if out.len() != sub.data.len() {
+        return None;
+    }
     Some(out)
 }
 
