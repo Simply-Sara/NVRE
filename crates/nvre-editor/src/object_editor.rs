@@ -531,6 +531,21 @@ pub struct ObjectEditorState {
     pub race_playable: bool,
     pub race_child: bool,
     pub race_desc: String,
+    /// `DATA` The seven skill boosts. Each is a skill and the boost it
+    /// gives.
+    pub race_skill_boosts: [[i8; 2]; 7],
+    /// `VTCK` Male Voice — the FormID of the `VTYP` record.
+    pub race_male_voice: Option<u32>,
+    /// `VTCK` Female Voice — the FormID of the `VTYP` record.
+    pub race_female_voice: Option<u32>,
+    /// `DNAM` Male Default Hair Style — the FormID of the `HAIR` record.
+    pub race_male_hair: Option<u32>,
+    /// `DNAM` Female Default Hair Style — the FormID of the `HAIR` record.
+    pub race_female_hair: Option<u32>,
+    /// `CNAM` Male Default Hair Color — the uint8 enum.
+    pub race_male_hair_color: u8,
+    /// `CNAM` Female Default Hair Color — the uint8 enum.
+    pub race_female_hair_color: u8,
     pub clmt_sunrise_begin: u8,
     pub clmt_sunrise_end: u8,
     pub clmt_sunset_begin: u8,
@@ -5741,7 +5756,22 @@ impl ObjectEditorState {
     }
 
     fn load_race(&mut self) {
+        self.race_skill_boosts = [[0; 2]; 7];
+        self.race_male_voice = None;
+        self.race_female_voice = None;
+        self.race_male_hair = None;
+        self.race_female_hair = None;
+        self.race_male_hair_color = 0;
+        self.race_female_hair_color = 0;
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 36) {
+            // The seven skill boosts, each a skill and its boost.
+            for (i, boost) in self.race_skill_boosts.iter_mut().enumerate() {
+                let at = i * 2;
+                if b.len() >= at + 2 {
+                    boost[0] = b[at] as i8;
+                    boost[1] = b[at + 1] as i8;
+                }
+            }
             self.race_male_height = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
             self.race_female_height = f32::from_le_bytes([b[20], b[21], b[22], b[23]]);
             self.race_male_weight = f32::from_le_bytes([b[24], b[25], b[26], b[27]]);
@@ -5751,6 +5781,21 @@ impl ObjectEditorState {
             self.race_child = (f & 4) != 0;
         }
         self.race_desc = self.get_string(b"DESC");
+        // The voices.
+        if let Some(b) = self.raw_subs.get(b"VTCK").filter(|b| b.len() >= 8) {
+            self.race_male_voice = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+            self.race_female_voice = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+        }
+        // The default hair styles.
+        if let Some(b) = self.raw_subs.get(b"DNAM").filter(|b| b.len() >= 8) {
+            self.race_male_hair = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+            self.race_female_hair = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+        }
+        // The default hair colours.
+        if let Some(b) = self.raw_subs.get(b"CNAM").filter(|b| b.len() >= 2) {
+            self.race_male_hair_color = b[0];
+            self.race_female_hair_color = b[1];
+        }
     }
 
     fn load_clmt(&mut self) {
@@ -10496,7 +10541,14 @@ impl ObjectEditorState {
         }
         // The named fields are written into the record's own bytes, so the
         // bytes the spec does not name survive.
-        let _ = &d;
+        // The seven skill boosts, each a skill and its boost.
+        for (i, boost) in self.race_skill_boosts.iter().enumerate() {
+            let at = i * 2;
+            if d.len() >= at + 2 {
+                d[at] = boost[0] as u8;
+                d[at + 1] = boost[1] as u8;
+            }
+        }
         d[16..20].copy_from_slice(&self.race_male_height.to_le_bytes());
         d[20..24].copy_from_slice(&self.race_female_height.to_le_bytes());
         d[24..28].copy_from_slice(&self.race_male_weight.to_le_bytes());
@@ -10518,6 +10570,41 @@ impl ObjectEditorState {
             session
                 .doc
                 .set_sub(fid, b"DESC", encode_zstring(&self.race_desc));
+        }
+
+        // The voices.
+        if let Some(original) = self.raw_subs.get(b"VTCK") {
+            let mut v = original.clone();
+            v.resize(v.len().max(8), 0);
+            if let Some(f) = self.race_male_voice {
+                v[0..4].copy_from_slice(&f.to_le_bytes());
+            }
+            if let Some(f) = self.race_female_voice {
+                v[4..8].copy_from_slice(&f.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"VTCK", v);
+        }
+
+        // The default hair styles.
+        if let Some(original) = self.raw_subs.get(b"DNAM") {
+            let mut d = original.clone();
+            d.resize(d.len().max(8), 0);
+            if let Some(h) = self.race_male_hair {
+                d[0..4].copy_from_slice(&h.to_le_bytes());
+            }
+            if let Some(h) = self.race_female_hair {
+                d[4..8].copy_from_slice(&h.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"DNAM", d);
+        }
+
+        // The default hair colours.
+        if let Some(original) = self.raw_subs.get(b"CNAM") {
+            let mut c = original.clone();
+            c.resize(c.len().max(2), 0);
+            c[0] = self.race_male_hair_color;
+            c[1] = self.race_female_hair_color;
+            session.doc.set_sub(fid, b"CNAM", c);
         }
     }
 
@@ -14610,7 +14697,7 @@ pub fn ui(
                 b"WATR" => draw_watr_ui(ui, &session, &mut state),
                 b"GLOB" => draw_glob_ui(ui, &mut state),
                 b"GMST" => draw_gmst_ui(ui, &mut state),
-                b"RACE" => draw_race_ui(ui, &mut state),
+                b"RACE" => draw_race_ui(ui, &session, &mut state),
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
                 b"ADDN" => draw_addn_ui(ui, &mut state),
                 b"ALOC" => draw_aloc_ui(ui, &session, &mut state),
@@ -18648,7 +18735,31 @@ fn draw_gmst_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-fn draw_race_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+/// The race's default hair colours, from the spec.
+const RACE_HAIR_COLORS: [&str; 16] = [
+    "Bleached",
+    "Brown",
+    "Chocolate",
+    "Platinum",
+    "Cornsilk",
+    "Suede",
+    "Pecan",
+    "Auburn",
+    "Ginger",
+    "Honey",
+    "Gold",
+    "Rosewood",
+    "Black",
+    "Chestnut",
+    "Steel",
+    "Champagne",
+];
+
+fn draw_race_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Race Physical Dimensions & Flags");
         ui.add_space(4.0);
@@ -18690,6 +18801,84 @@ fn draw_race_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                 .desired_rows(4)
                 .desired_width(ui.available_width() - 20.0),
         );
+    });
+
+    // The seven skill boosts. Each is a skill and the boost it gives.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Skill Boosts");
+        ui.add_space(4.0);
+        egui::Grid::new("race_boosts_grid")
+            .striped(true)
+            .min_col_width(140.0)
+            .show(ui, |ui| {
+                for (i, boost) in state.race_skill_boosts.iter_mut().enumerate() {
+                    ui.label(format!("Skill Boost {}:", i + 1));
+                    ui.add(egui::DragValue::new(&mut boost[0]).range(-128..=127));
+                    ui.add(egui::DragValue::new(&mut boost[1]).range(-128..=127));
+                    ui.end_row();
+                }
+            });
+    });
+
+    // The voices, the default hair styles and the default hair colours.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Voices & Default Appearance");
+        ui.add_space(4.0);
+        let voices = session.records_by_sig(*b"VTYP");
+        let hairs = session.records_by_sig(*b"HAIR");
+        ui.horizontal(|ui| {
+            ui.label("Male Voice:");
+            let mut fid = state.race_male_voice;
+            record_dropdown(ui, "race_male_voice", &voices, &mut fid);
+            state.race_male_voice = fid;
+            ui.separator();
+            ui.label("Female Voice:");
+            let mut fid = state.race_female_voice;
+            record_dropdown(ui, "race_female_voice", &voices, &mut fid);
+            state.race_female_voice = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Male Default Hair Style:");
+            let mut fid = state.race_male_hair;
+            record_dropdown(ui, "race_male_hair", &hairs, &mut fid);
+            state.race_male_hair = fid;
+            ui.separator();
+            ui.label("Female Default Hair Style:");
+            let mut fid = state.race_female_hair;
+            record_dropdown(ui, "race_female_hair", &hairs, &mut fid);
+            state.race_female_hair = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Male Default Hair Color:");
+            egui::ComboBox::from_id_salt("race_male_hair_color")
+                .selected_text(
+                    RACE_HAIR_COLORS
+                        .get(state.race_male_hair_color as usize)
+                        .copied()
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (i, name) in RACE_HAIR_COLORS.iter().enumerate() {
+                        ui.selectable_value(&mut state.race_male_hair_color, i as u8, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Female Default Hair Color:");
+            egui::ComboBox::from_id_salt("race_female_hair_color")
+                .selected_text(
+                    RACE_HAIR_COLORS
+                        .get(state.race_female_hair_color as usize)
+                        .copied()
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (i, name) in RACE_HAIR_COLORS.iter().enumerate() {
+                        ui.selectable_value(&mut state.race_female_hair_color, i as u8, *name);
+                    }
+                });
+        });
     });
 }
 
