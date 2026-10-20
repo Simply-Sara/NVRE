@@ -171,6 +171,71 @@ fn every_named_field_is_written_when_it_is_edited() {
         );
     }
 
+    // The spell effect's five named fields.
+    {
+        let fid = *common::fids_of(&s, b"SPEL").first().expect("a spell");
+        let mut state = state_for(&s, fid, b"SPEL");
+        assert!(
+            !state.spel_effects.is_empty(),
+            "the spell has an effect to edit"
+        );
+        let effect = &mut state.spel_effects[0];
+        effect.magnitude = 42;
+        effect.area = 7;
+        effect.duration = 3;
+        effect.effect_type = 1;
+        effect.actor_value = -5;
+        state.save_to_session(&mut s);
+
+        let efit = payload(&saved_subs(&s, fid, "spel_effect"), b"EFIT");
+        assert_eq!(
+            u32::from_le_bytes([efit[0], efit[1], efit[2], efit[3]]),
+            42,
+            "the effect's magnitude is written"
+        );
+        assert_eq!(
+            u32::from_le_bytes([efit[4], efit[5], efit[6], efit[7]]),
+            7,
+            "the effect's area is written"
+        );
+        assert_eq!(
+            u32::from_le_bytes([efit[8], efit[9], efit[10], efit[11]]),
+            3,
+            "the effect's duration is written"
+        );
+        assert_eq!(
+            u32::from_le_bytes([efit[12], efit[13], efit[14], efit[15]]),
+            1,
+            "the effect's type is written"
+        );
+        assert_eq!(
+            i32::from_le_bytes([efit[16], efit[17], efit[18], efit[19]]),
+            -5,
+            "the effect's actor value is written"
+        );
+    }
+
+    // The actor data's services, teaching and training level.
+    {
+        let fid = *common::fids_of(&s, b"NPC_").first().expect("an npc");
+        let mut state = state_for(&s, fid, b"NPC_");
+        state.actor_services = 0x0000_0003;
+        state.actor_teaches = 2;
+        state.actor_max_training_level = 5;
+        state.actor_aggro_radius_behavior = 1;
+        state.save_to_session(&mut s);
+
+        let aidt = payload(&saved_subs(&s, fid, "npc_aidt"), b"AIDT");
+        assert_eq!(
+            u32::from_le_bytes([aidt[8], aidt[9], aidt[10], aidt[11]]),
+            0x0000_0003,
+            "the services are written"
+        );
+        assert_eq!(aidt[12] as i8, 2, "the taught skill is written");
+        assert_eq!(aidt[13], 5, "the maximum training level is written");
+        assert_eq!(aidt[15], 1, "the aggro radius behaviour is written");
+    }
+
     // The image space adapter's tint colours.
     {
         let fid = *common::fids_of(&s, b"IMGS")
