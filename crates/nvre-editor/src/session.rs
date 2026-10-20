@@ -16,6 +16,9 @@ type CachedRecordList = Arc<[(u32, String)]>;
 /// The open editing session.
 #[derive(Resource)]
 pub struct Session {
+    /// Which game's data this session is over. Drives the object-window group
+    /// table, and is what a panel reads when it has to name the game.
+    pub game: crate::game::GameProfile,
     /// The plugin being edited.
     pub doc: Document,
     /// The load order the plugin was opened in (masters first).
@@ -68,15 +71,25 @@ pub struct Session {
 
 impl Session {
     /// Open a plugin for editing, with the masters it depends on already loaded.
+    ///
+    /// Which game this is comes from the folder the plugin lives in
+    /// ([`crate::game::GameProfile::detect`]), so a caller that already knows the
+    /// Data folder needs no extra argument and a session opened by hand — from a
+    /// test or an example — names its own game. The game decides the
+    /// object-window group table and what the panels call the game; the format
+    /// work itself is shared, so a game with no schemas yet fails at
+    /// `Schema::load_dir` rather than misreading its master.
     pub fn open(
         path: &std::path::Path,
         schema_dir: &std::path::Path,
         masters: Vec<String>,
     ) -> Result<Session, String> {
+        // The plugin's own folder is the Data folder the launcher chose.
+        let dir = path.parent().unwrap_or(std::path::Path::new("."));
+        let game = crate::game::GameProfile::detect(dir);
         let schema = Schema::load_dir(schema_dir).map_err(|e| e.to_string())?;
         // Masters are named as file names and resolved beside the plugin being
         // edited, so `--masters FalloutNV.esm` works whatever the working folder.
-        let dir = path.parent().unwrap_or(std::path::Path::new("."));
         let mut plugins: Vec<fnv_esm::Plugin> = Vec::new();
         for m in &masters {
             let p = dir.join(m);
@@ -108,6 +121,7 @@ impl Session {
         }
 
         Ok(Session {
+            game: *game,
             doc,
             plugins: leaked_plugins,
             lo,
@@ -139,6 +153,9 @@ impl Session {
     }
 
     /// Create a new, blank plugin (.esp or .esm) with the chosen masters.
+    ///
+    /// The game is detected from `data_dir`, the same way [`Session::open`]
+    /// detects it from the plugin's folder.
     pub fn create(
         name: &str,
         is_master: bool,
@@ -146,6 +163,7 @@ impl Session {
         schema_dir: &std::path::Path,
         masters: Vec<String>,
     ) -> Result<Session, String> {
+        let game = crate::game::GameProfile::detect(data_dir);
         let schema = Schema::load_dir(schema_dir).map_err(|e| e.to_string())?;
         let mut plugins: Vec<fnv_esm::Plugin> = Vec::new();
         for m in &masters {
@@ -173,6 +191,7 @@ impl Session {
         let doc = Document::create_empty(name, is_master, &masters).map_err(|e| e.to_string())?;
 
         Ok(Session {
+            game: *game,
             doc,
             plugins: leaked_plugins,
             lo,
@@ -301,7 +320,9 @@ impl Session {
                 let mut types: HashMap<[u8; 4], (String, String)> = HashMap::new();
                 for (_, sig, _) in &objects {
                     types.entry(*sig).or_insert_with(|| {
-                        let group = geck_group_for_sig(sig)
+                        let group = self
+                            .game
+                            .group_for_sig(sig)
                             .unwrap_or("Miscellaneous")
                             .to_string();
                         let category = self

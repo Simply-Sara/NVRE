@@ -8,6 +8,33 @@ format (documented at the top of `fnv-esm`'s `crates/fnv-esm/src/schema.rs`).
 shipped masters. This directory adds the rest, so the editor can bind a
 property grid to every field it can read.
 
+## One directory per game
+
+`schemas/<game>/` is the record layout for one game. The editor picks the
+directory from the game the launcher chose (`crates/nvre-editor/src/game.rs`),
+so a session over Fallout 3 reads `schemas/fo3/` and never FNV's. A directory
+that does not exist yet is reported as `no schema files in ...` — the editor
+refuses to guess another game's layout out of FNV's.
+
+The format itself is game-neutral despite the `fnv` in its name: the container,
+the GRUP tree and the FormID numbering model are shared across Gamebryo and
+Creation engines, and only the record layouts differ. That is why one schema
+language serves every game.
+
+| Directory | Game | State |
+|---|---|---|
+| `fnv/` | Fallout: New Vegas | measured against all six shipped masters |
+| `fo3/` | Fallout 3 | not started |
+| `skyrim/` | Skyrim (Legendary) | not started |
+| `skyrimse/` | Skyrim Special Edition | not started |
+| `fo4/` | Fallout 4 | not started |
+
+A new game is measured the same way FNV's was: point `coverage` and `rtcheck`
+at its master, read the undecoded subrecords off the report, and write each
+entry with a `confidence` and a `note` naming its source. Never transcribe a
+layout from FNV's and assume the field means the same thing — `NPC_`'s `DATA`
+differs between the two engines.
+
 | File | Records |
 |---|---|
 | `common.json` | shared types and subrecords identical everywhere |

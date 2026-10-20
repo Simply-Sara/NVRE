@@ -67,8 +67,8 @@ pub enum Panel {
 #[derive(Component, Clone, Copy)]
 pub struct PanelContext<const P: u8>;
 
-/// The main window's title, and the viewport's.
-pub const MAIN_TITLE: &str = "New Vegas Rust Editor";
+/// The main window's title comes from the open game's profile
+/// ([`crate::game::GameProfile::editor_name`]); this is the viewport's.
 pub const VIEWPORT_TITLE: &str = "Viewport";
 
 /// Spawn the viewport window, with a camera that draws into it.

@@ -139,9 +139,11 @@ pub fn root_ui(ctx: &egui::Context, id: &'static str) -> egui::Ui {
 pub fn main_window(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<bevy_egui::PrimaryEguiContext>>,
     mut session: ResMut<crate::session::Session>,
+    game: Res<crate::Game>,
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "main"), |ui| {
-        ui.heading("New Vegas Rust Editor");
+        ui.heading(game.0.editor_name);
+        ui.label(format!("game    {}", game.0.name));
         ui.label(format!("plugin  {}", session.doc.name()));
         ui.label(format!("masters {:?}", session.masters));
         ui.label(format!("records {}", session.doc.records().len()));

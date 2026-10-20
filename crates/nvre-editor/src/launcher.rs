@@ -35,13 +35,19 @@ pub struct Launcher {
     pub listing_dir: Option<std::path::PathBuf>,
 }
 
-impl Default for Launcher {
-    fn default() -> Self {
+impl Launcher {
+    /// A fresh launcher for `game`.
+    ///
+    /// The default master list is the game's own load order, so a Fallout 3
+    /// session starts with `Fallout3.esm` rather than FNV's master — but the
+    /// resource is only defaulted once at startup, which is when the game is
+    /// known.
+    pub fn for_game(game: &crate::game::GameProfile) -> Launcher {
         Launcher {
             tab: LauncherTab::OpenExisting,
             active: None,
             required: Vec::new(),
-            masters: vec!["FalloutNV.esm".to_string()],
+            masters: game.default_masters(),
             new_name: "NewPlugin.esp".to_string(),
             new_is_master: false,
             adding: String::new(),
@@ -49,6 +55,12 @@ impl Default for Launcher {
             listing: Vec::new(),
             listing_dir: None,
         }
+    }
+}
+
+impl Default for Launcher {
+    fn default() -> Self {
+        Launcher::for_game(&crate::game::FNV)
     }
 }
 
@@ -73,20 +85,68 @@ fn list_plugins(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     out
 }
 
+/// Which game the launcher is pointed at, and which one the editor is using.
+///
+/// `chosen` is the user's pick from the dropdown; it starts as the detected game
+/// so the launcher is right without a click. `applied` is the game the running
+/// editor actually is: changing the pick does not switch the editor until Apply
+/// is pressed, because switching re-opens the asset layer.
+#[derive(Resource)]
+pub struct GameChoice {
+    /// The game the user has selected in the launcher.
+    pub chosen: &'static crate::game::GameProfile,
+    /// The game the editor is running as, until Apply is pressed.
+    pub applied: &'static crate::game::GameProfile,
+    /// Set when a game needs its Data folder pointed somewhere else first.
+    pub data_override: Option<std::path::PathBuf>,
+}
+
+impl Default for GameChoice {
+    fn default() -> Self {
+        GameChoice {
+            chosen: &crate::game::FNV,
+            applied: &crate::game::FNV,
+            data_override: None,
+        }
+    }
+}
+
+impl GameChoice {
+    /// A fresh choice for `game`, with nothing pending.
+    pub fn new(game: &'static crate::game::GameProfile) -> GameChoice {
+        GameChoice {
+            chosen: game,
+            applied: game,
+            data_override: None,
+        }
+    }
+
+    /// True when the pick differs from the running game.
+    pub fn pending(&self) -> bool {
+        !std::ptr::eq(self.chosen, self.applied)
+    }
+}
+
 /// Draw the launcher in the main window.
 pub fn ui(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<bevy_egui::PrimaryEguiContext>>,
     mut launcher: ResMut<Launcher>,
     data: Res<crate::DataDir>,
+    mut choice: ResMut<GameChoice>,
     mut open: MessageWriter<crate::OpenRequested>,
     failed: Option<Res<crate::OpenFailed>>,
 ) {
     let ctx = ctx.get_mut();
 
-    // The plugins in the Data folder, listed by name.
-    if launcher.listing_dir.as_deref() != Some(data.0.as_path()) {
-        launcher.listing_dir = Some(data.0.clone());
-        launcher.listing = list_plugins(&data.0);
+    // The plugins in the Data folder, listed by name. The folder is the one
+    // the picker names, which is the game's own when no override is set.
+    let active_dir = choice
+        .data_override
+        .clone()
+        .unwrap_or_else(|| data.0.clone());
+    if launcher.listing_dir.as_deref() != Some(active_dir.as_path()) {
+        launcher.listing_dir = Some(active_dir.clone());
+        launcher.listing = list_plugins(&active_dir);
     }
 
     let listing = launcher.listing.clone();
@@ -155,7 +215,77 @@ pub fn ui(
             // Main body fills all remaining space above the bottom bar
             ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
                 // Top Header
-                ui.heading("New Vegas Rust Editor");
+                ui.heading("Select a game");
+
+                // The game picker: what to mod, and where its data lives.
+                ui.horizontal(|ui| {
+                    ui.label("Game:");
+                    let selected = choice.chosen;
+                    egui::ComboBox::from_id_salt("game_pick")
+                        .selected_text(selected.name)
+                        .show_ui(ui, |ui| {
+                            for g in &crate::game::ALL {
+                                ui.selectable_value(
+                                    &mut choice.chosen,
+                                    g,
+                                    format!("{} ({})", g.name, g.master),
+                                );
+                            }
+                        });
+                    if choice.pending() {
+                        if ui.button("Apply").clicked() {
+                            choice.applied = choice.chosen;
+                            // The plugin list and master defaults are the game's.
+                            launcher.listing_dir = None;
+                            launcher.listing.clear();
+                            launcher.active = None;
+                            launcher.required.clear();
+                            launcher.masters = choice.applied.default_masters();
+                        }
+                    } else {
+                        ui.label(format!("editing {}", choice.applied.name));
+                    }
+                });
+
+                // The Data folder: detected per game, overridable when several
+                // games are installed and the folder named on the command line
+                // is not the picked game's.
+                let mut folder = choice
+                    .data_override
+                    .clone()
+                    .unwrap_or_else(|| data.0.clone())
+                    .to_string_lossy()
+                    .into_owned();
+                ui.horizontal(|ui| {
+                    ui.label("Data folder:");
+                    let resp = ui.add(
+                        egui::TextEdit::singleline(&mut folder)
+                            .desired_width(360.0)
+                            .hint_text("/path/to/<Game>/Data"),
+                    );
+                    if resp.lost_focus() {
+                        choice.data_override = if folder.trim().is_empty() {
+                            None
+                        } else {
+                            Some(std::path::PathBuf::from(folder.trim()))
+                        };
+                    }
+                });
+                let active_dir = choice
+                    .data_override
+                    .clone()
+                    .unwrap_or_else(|| data.0.clone());
+                if !active_dir.join(choice.chosen.master).exists() {
+                    ui.colored_label(
+                        egui::Color32::RED,
+                        format!("no {} in {}", choice.chosen.master, active_dir.display()),
+                    );
+                }
+                // What the picked game cannot do yet, said plainly here rather
+                // than shown as an empty viewport that looks like a bug.
+                for note in choice.chosen.notes {
+                    ui.colored_label(egui::Color32::from_rgb(0xd0, 0xa0, 0x40), *note);
+                }
 
                 // Top tab switcher
                 ui.horizontal(|ui| {

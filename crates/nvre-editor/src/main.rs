@@ -12,28 +12,30 @@
 //! viewport, and one window per panel. See [`nvre_editor::windows`] for why the
 //! main window is the primary one and the viewport names its own render target.
 
-use nvre_editor::{gizmo, launcher, object_editor, panels, session, viewport, windows};
+use nvre_editor::{game, gizmo, launcher, object_editor, panels, session, viewport, windows};
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 use clap::Parser;
-use nvf_assets::ArchivePlugin;
 use std::path::PathBuf;
 
 /// NVForever's Fallout: New Vegas editor.
 #[derive(Parser, Clone, Resource)]
 #[command(name = "nvre-editor", version)]
 struct Args {
+    /// Which game's Data folder this is. Detected from the folder's masters
+    /// when not given (`game.rs`), so the default is right for an install that
+    /// holds one game and only needs naming when it holds several.
+    #[arg(long)]
+    game: Option<String>,
     /// The game's Data folder (read-only). Defaults to $NVRE_DATA.
     #[arg(long, env = "NVRE_DATA")]
     data: PathBuf,
     /// Record schema directory. NVRE's own: upstream's layouts plus the records
-    /// and subrecords they do not define (`schemas/README.md`).
-    #[arg(
-        long,
-        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")
-    )]
-    esm_schema: PathBuf,
+    /// and subrecords they do not define (`schemas/README.md`). Defaults to the
+    /// detected game's own `schemas/<game>`.
+    #[arg(long)]
+    esm_schema: Option<PathBuf>,
     /// NIF schema directory, for the viewport's models. Still upstream's: NIF
     /// layout is not NVRE's to own, and NVForever's is the reference.
     #[arg(
@@ -41,11 +43,12 @@ struct Args {
         default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../NVForever/schemas/nif")
     )]
     nif_schema: PathBuf,
-    /// The plugin to edit.
-    #[arg(long, default_value = "FalloutNV.esm")]
-    plugin: String,
-    /// Masters the saved plugin will depend on, in load order.
-    #[arg(long, num_args = 1.., default_values_t = vec!["FalloutNV.esm".to_string()])]
+    /// The plugin to edit. Defaults to the game's own master.
+    #[arg(long)]
+    plugin: Option<String>,
+    /// Masters the saved plugin will depend on, in load order. Defaults to the
+    /// game's own master and DLC list (`game.rs`).
+    #[arg(long, num_args = 1..)]
     masters: Vec<String>,
     /// Cell to open first: Editor ID or 0xFormID.
     #[arg(long)]
@@ -64,8 +67,44 @@ struct Args {
     radius: i32,
 }
 
+/// The game to edit: `--game` when named, otherwise detected from `--data`.
+///
+/// Detection is by the master the folder holds, so an install of one game needs
+/// no flag at all — which is the case for every existing invocation.
+fn resolve_game(args: &Args) -> Result<&'static game::GameProfile, String> {
+    match &args.game {
+        Some(id) => game::GameProfile::by_id(id).ok_or_else(|| {
+            let known: Vec<&str> = game::ALL.iter().map(|g| g.id).collect();
+            format!("unknown game {id:?} (known: {})", known.join(", "))
+        }),
+        None => Ok(game::GameProfile::detect(&args.data)),
+    }
+}
+
+/// The record schemas: `--esm-schema` when named, otherwise the game's own.
+fn resolve_schema_dir(args: &Args, game: &game::GameProfile) -> PathBuf {
+    args.esm_schema
+        .clone()
+        .unwrap_or_else(|| game.esm_schema_dir())
+}
+
+/// The default plugin and masters for the game, overridden by flags.
+fn resolve_targets(args: &Args, game: &game::GameProfile) -> (String, Vec<String>) {
+    let plugin = args
+        .plugin
+        .clone()
+        .unwrap_or_else(|| game.master.to_string());
+    let masters = if args.masters.is_empty() {
+        game.default_masters()
+    } else {
+        args.masters.clone()
+    };
+    (plugin, masters)
+}
+
 /// Report what the session loaded, without opening a window.
-fn check(mut session: session::Session) {
+fn check(game: &game::GameProfile, mut session: session::Session) {
+    println!("game          {}", game.name);
     println!("plugin        {}", session.doc.name());
     println!("masters       {:?}", session.masters);
     println!("records       {}", session.doc.records().len());
@@ -101,21 +140,28 @@ fn check(mut session: session::Session) {
 fn main() {
     let args = Args::parse();
 
+    let profile = match resolve_game(&args) {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    };
+    let schema_dir = resolve_schema_dir(&args, profile);
+    let (plugin_name, masters) = resolve_targets(&args, profile);
+
     // The launcher runs first: nothing is loaded until a file is chosen, the way
     // GECK asks what to work on before it opens anything. `--check` still loads
     // headlessly, which is how the data path is verified without a display.
     if args.check {
-        let mut session = match session::Session::open(
-            &args.data.join(&args.plugin),
-            &args.esm_schema,
-            args.masters.clone(),
-        ) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("error: {e}");
-                std::process::exit(1);
-            }
-        };
+        let mut session =
+            match session::Session::open(&args.data.join(&plugin_name), &schema_dir, masters) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
         if let Some(cell) = &args.cell {
             let fid = u32::from_str_radix(cell.trim_start_matches("0x"), 16)
                 .ok()
@@ -133,16 +179,13 @@ fn main() {
                 eprintln!("warning: no cell {cell}");
             }
         }
-        return check(session);
+        return check(profile, session);
     }
 
-    let game = match nvf_assets::GameData::open(&args.data, &args.nif_schema) {
-        Ok(g) => g,
-        Err(e) => {
-            eprintln!("error: {e}");
-            std::process::exit(1);
-        }
-    };
+    // The asset layer opens when a game is chosen, not before: the launcher is
+    // the front door, and the game it picks decides which archives and which
+    // NIF schema to open. Until then there is no `ArchivePlugin`, which is why
+    // the launcher's own window draws only egui and no 3D viewport exists.
     if args.flat_material {
         // The system reads the environment so it can be set without a rebuild.
         unsafe { std::env::set_var("NVRE_FLAT_MATERIAL", "1") };
@@ -154,7 +197,9 @@ fn main() {
             // creates during its `resumed` event. The viewport and the panels
             // are spawned after that and depend on it existing.
             primary_window: Some(Window {
-                title: windows::MAIN_TITLE.into(),
+                // Named by the launcher's pick, which starts as the detected
+                // game; `launcher::ui` retitles it when the pick changes.
+                title: "Select a game".into(),
                 // The launcher fills this window, so it is sized for the
                 // launcher's contents rather than for a panel.
                 resolution: (640, 520).into(),
@@ -165,10 +210,17 @@ fn main() {
             ..default()
         }))
         .add_plugins(bevy_egui::EguiPlugin::default())
-        .add_plugins(ArchivePlugin(game))
+        // The NIF material's shaders and `MaterialPlugin`: identical for every
+        // game, so registered here rather than waiting for the game to be
+        // picked. The game's own half of `ArchivePlugin` — its archives, its
+        // NIF schema, and the caches over them — is added by `AddAssets` once
+        // the launcher has been through.
+        .add_plugins(nvf_assets::nif_material::NifMaterialPlugin)
         .insert_resource(args.clone())
         .insert_resource(nvre_editor::DataDir(args.data.clone()))
-        .init_resource::<launcher::Launcher>()
+        .insert_resource(nvre_editor::Game(profile))
+        .insert_resource(launcher::GameChoice::new(profile))
+        .insert_resource(launcher::Launcher::for_game(profile))
         .insert_resource(panels::Filters {
             exterior_radius: args.radius,
             ..default()
@@ -281,20 +333,66 @@ enum EditorState {
     Editing,
 }
 
+/// Add the chosen game's asset resources to the running app.
+///
+/// `ArchivePlugin` is two halves: `NifMaterialPlugin`, which registers the NIF
+/// material's shaders and a `MaterialPlugin` and is identical for every game, and
+/// the `GameData` resource with its two caches, which are the game's own. The
+/// first is added at startup; this command carries the second, because a plugin
+/// is added to the `App` while a system only has `Commands`. It is queued from
+/// `open_selected`, once the launcher has picked a game, and lands before the
+/// next frame's systems run.
+struct AddAssets(nvf_assets::GameData);
+
+impl Command for AddAssets {
+    type Out = ();
+
+    fn apply(self, world: &mut World) {
+        world.insert_resource(self.0);
+        world.init_resource::<nvf_assets::texture::TextureCache>();
+        world.init_resource::<nvf_assets::model::ModelCache>();
+    }
+}
+
 /// Open the file the launcher chose, and move to the editor.
 ///
 /// Runs while launching, so the moment a file is picked the session is built and
 /// the state changes: the editor's systems start on the next frame, with the
 /// session in place.
+///
+/// This is also where the game's asset layer is opened — its archives and NIF
+/// schema are the game's, and the game is only known once the launcher has been
+/// through. A failure here is reported through the launcher, which is still on
+/// screen, rather than killing the process.
 fn open_selected(
     mut commands: Commands,
     launcher: Res<launcher::Launcher>,
     args: Res<Args>,
+    choice: Res<launcher::GameChoice>,
     mut next: ResMut<NextState<EditorState>>,
     mut events: MessageReader<nvre_editor::OpenRequested>,
 ) {
     // The launcher's Open button raises this; the event carries what to open.
+    let game = choice.applied;
+    let data_dir = choice
+        .data_override
+        .clone()
+        .unwrap_or_else(|| args.data.clone());
+    let schema_dir = resolve_schema_dir(&args, game);
     for _ in events.read() {
+        // The game's archives and NIF schema, opened once for the session.
+        let assets = match game.open_asset_data(&data_dir, &args.nif_schema) {
+            Ok(g) => g,
+            Err(e) => {
+                commands.insert_resource(nvre_editor::OpenFailed(format!("{}: {}", game.name, e)));
+                return;
+            }
+        };
+        // A plugin is added to the `App`, and a system has `Commands`, so the
+        // add is queued as a command: it lands before the next frame's systems
+        // run, which is after the state has moved to `Editing`.
+        commands.queue(AddAssets(assets));
+
         let res = match launcher.tab {
             launcher::LauncherTab::CreateNew => {
                 let mut name = launcher.new_name.trim().to_string();
@@ -312,8 +410,8 @@ fn open_selected(
                 session::Session::create(
                     &name,
                     launcher.new_is_master,
-                    &args.data,
-                    &args.esm_schema,
+                    &data_dir,
+                    &schema_dir,
                     launcher.masters.clone(),
                 )
             }
@@ -321,7 +419,7 @@ fn open_selected(
                 let Some(path) = launcher.active.clone() else {
                     continue;
                 };
-                session::Session::open(&path, &args.esm_schema, launcher.masters.clone())
+                session::Session::open(&path, &schema_dir, launcher.masters.clone())
             }
         };
 

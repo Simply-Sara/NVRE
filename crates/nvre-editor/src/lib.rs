@@ -5,6 +5,7 @@
 
 use bevy::prelude::*;
 
+pub mod game;
 pub mod gizmo;
 pub mod launcher;
 pub mod object_editor;
@@ -12,6 +13,14 @@ pub mod panels;
 pub mod session;
 pub mod viewport;
 pub mod windows;
+
+/// Which game is open, as a resource.
+///
+/// A profile is `&'static` because the tables are constants, so this is a `Copy`
+/// handle rather than owned data: every panel, window and system can read it
+/// without a clone or a lock.
+#[derive(Resource, Clone, Copy)]
+pub struct Game(pub &'static crate::game::GameProfile);
 
 /// The game's Data folder, as a resource.
 ///
