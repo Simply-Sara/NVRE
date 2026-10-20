@@ -2352,6 +2352,16 @@ pub struct SpellEffect {
     /// `EFIT` — the effect's parameters, carried through unchanged: the
     /// layout depends on the effect's own type.
     pub parameters: Vec<u8>,
+    /// `EFIT` Magnitude — the uint32.
+    pub magnitude: u32,
+    /// `EFIT` Area — the uint32.
+    pub area: u32,
+    /// `EFIT` Duration — the uint32.
+    pub duration: u32,
+    /// `EFIT` Type — the uint32: Self, Touch or Target.
+    pub effect_type: u32,
+    /// `EFIT` Actor Value — the int32.
+    pub actor_value: i32,
     /// The `CTDA` that follows the effect, if the record has one. The
     /// condition belongs to the effect above it, so the effect collection
     /// is walked in file order rather than collected by signature.
@@ -7247,12 +7257,34 @@ impl ObjectEditorState {
                             s.data[0], s.data[1], s.data[2], s.data[3],
                         ])),
                         parameters: Vec::new(),
+                        magnitude: 0,
+                        area: 0,
+                        duration: 0,
+                        effect_type: 0,
+                        actor_value: 0,
                         conditions: Vec::new(),
                     });
                 }
                 b"EFIT" => {
                     if let Some(effect) = current.as_mut() {
                         effect.parameters = s.data.clone();
+                        // The struct is twenty bytes: the magnitude, the
+                        // area, the duration, the type and the actor
+                        // value.
+                        if s.data.len() >= 20 {
+                            effect.magnitude =
+                                u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                            effect.area =
+                                u32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                            effect.duration =
+                                u32::from_le_bytes([s.data[8], s.data[9], s.data[10], s.data[11]]);
+                            effect.effect_type = u32::from_le_bytes([
+                                s.data[12], s.data[13], s.data[14], s.data[15],
+                            ]);
+                            effect.actor_value = i32::from_le_bytes([
+                                s.data[16], s.data[17], s.data[18], s.data[19],
+                            ]);
+                        }
                     }
                 }
                 b"CTDA" => {
@@ -7399,6 +7431,11 @@ impl ObjectEditorState {
                             sub.data[3],
                         ])),
                         parameters: Vec::new(),
+                        magnitude: 0,
+                        area: 0,
+                        duration: 0,
+                        effect_type: 0,
+                        actor_value: 0,
                         conditions: Vec::new(),
                     });
                 }
@@ -12232,7 +12269,17 @@ impl ObjectEditorState {
             efid.extend_from_slice(&effect.effect.unwrap_or(0).to_le_bytes());
             seq.push((*b"EFID", efid));
             if !effect.parameters.is_empty() {
-                seq.push((*b"EFIT", effect.parameters.clone()));
+                // The named fields are written into the parameters, over
+                // the record's own bytes, so the length it had survives.
+                let mut parameters = effect.parameters.clone();
+                if parameters.len() >= 20 {
+                    parameters[0..4].copy_from_slice(&effect.magnitude.to_le_bytes());
+                    parameters[4..8].copy_from_slice(&effect.area.to_le_bytes());
+                    parameters[8..12].copy_from_slice(&effect.duration.to_le_bytes());
+                    parameters[12..16].copy_from_slice(&effect.effect_type.to_le_bytes());
+                    parameters[16..20].copy_from_slice(&effect.actor_value.to_le_bytes());
+                }
+                seq.push((*b"EFIT", parameters));
             }
             // The condition belongs to the effect above it, so it is
             // written straight after it.
@@ -21737,7 +21784,7 @@ fn draw_spel_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.group(|ui| {
         ui.strong(format!("Effects — {}", state.spel_effects.len()));
         ui.add_space(4.0);
-        for (idx, effect) in state.spel_effects.iter().enumerate() {
+        for (idx, effect) in state.spel_effects.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.label(format!("#{}", idx + 1));
                 ui.label("Effect (EFID):");
@@ -21754,9 +21801,44 @@ fn draw_spel_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                 );
                 ui.label(format!("{} parameter byte(s)", effect.parameters.len()));
             });
+            // The effect's five named fields.
+            if effect.parameters.len() >= 20 {
+                ui.horizontal(|ui| {
+                    ui.label("Magnitude:");
+                    ui.add(egui::DragValue::new(&mut effect.magnitude).range(0..=u32::MAX));
+                    ui.label("Area:");
+                    ui.add(egui::DragValue::new(&mut effect.area).range(0..=u32::MAX));
+                    ui.label("Duration:");
+                    ui.add(egui::DragValue::new(&mut effect.duration).range(0..=u32::MAX));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Type:");
+                    egui::ComboBox::from_id_salt(format!("spel_efit_type_{idx}"))
+                        .selected_text(
+                            SPEL_EFFECT_TYPES
+                                .iter()
+                                .find(|(v, _)| *v == effect.effect_type)
+                                .map(|(_, n)| *n)
+                                .unwrap_or("Custom"),
+                        )
+                        .show_ui(ui, |ui| {
+                            for (v, name) in SPEL_EFFECT_TYPES.iter() {
+                                ui.selectable_value(&mut effect.effect_type, *v, *name);
+                            }
+                        });
+                    ui.label("Actor Value:");
+                    ui.add(
+                        egui::DragValue::new(&mut effect.actor_value)
+                            .range(-2147483648..=2147483647),
+                    );
+                });
+            }
         }
     });
 }
+
+/// The spell effect's types, from the spec's Effect page.
+const SPEL_EFFECT_TYPES: [(u32, &str); 3] = [(0, "Self"), (1, "Touch"), (2, "Target")];
 
 /// Draw the Static (STAT) editor body.
 fn draw_stat_ui(
