@@ -1,0 +1,110 @@
+{
+  "format": "fnv.schema/1",
+  "types": {
+    "ACTI_PNAM": {
+      "struct": [
+        { "name": "r", "type": "u8", "note": "The red channel of the default primitive colour." },
+        { "name": "g", "type": "u8", "note": "The green channel of the default primitive colour." },
+        { "name": "b", "type": "u8", "note": "The blue channel of the default primitive colour." },
+        { "name": "unused", "type": "u8", "note": "Always zero." }
+      ]
+    },
+    "IDLE_DATA": {
+      "struct": [
+        { "name": "min_looping_seconds", "type": "u8", "note": "The minimum looping time. When both the minimum and maximum are 255, the animation loops forever." },
+        { "name": "max_looping_seconds", "type": "u8", "note": "The maximum looping time." },
+        { "name": "flags", "type": { "flags": "u8", "bits": { "1": "Sequence", "2": "Not Attacking", "3": "Blocking" } }, "note": "The animation's flags." },
+        { "name": "unknown", "type": "u8", "note": "Unknown." },
+        { "name": "replay_delay", "type": "u16", "note": "The delay before the animation replays." }
+      ]
+    },
+    "WTHR_PNAM": {
+      "struct": [
+        { "name": "sunrise", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] }, "note": "The colour at sunrise." },
+        { "name": "day", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] }, "note": "The colour at day." },
+        { "name": "sunset", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] }, "note": "The colour at sunset." },
+        { "name": "night", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] }, "note": "The colour at night." }
+      ]
+    },
+    "WTHR_JNAM": {
+      "struct": [
+        { "name": "sunrise", "type": "f32", "note": "The alpha at sunrise." },
+        { "name": "day", "type": "f32", "note": "The alpha at day." },
+        { "name": "sunset", "type": "f32", "note": "The alpha at sunset." },
+        { "name": "night", "type": "f32", "note": "The alpha at night." }
+      ]
+    }
+  },
+  "records": {
+    "ACTI": {
+      "name": "Active",
+      "confidence": "documented",
+      "note": "UESP, Skyrim Mod:Mod File Format/ACTI. [measured: 5,612 unknown ACTI subrecords in Skyrim.esm before this definition]",
+      "subrecords": {
+        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
+        "VMAD": { "name": "Script Data", "confidence": "documented", "note": "The script data.", "type": "bytes" },
+        "OBND": { "name": "Object Bounds", "confidence": "documented", "note": "Always 12 bytes, even when all zero.", "type": "ObjectBounds" },
+        "FULL": { "name": "Full Name", "confidence": "documented", "note": "The name shown in the game.", "type": "u32" },
+        "MODL": { "name": "Model", "confidence": "documented", "note": "The model, with the MODB, MODT, MODS and MODD fields.", "type": "bytes" },
+        "DEST": { "name": "Destruction Data", "confidence": "documented", "note": "The destructible object data, with the DSTD, DMDL, DMDT, DMDS and DSTF fields.", "type": "bytes" },
+        "KSIZ": { "name": "Keyword Count", "confidence": "documented", "note": "How many keywords follow.", "type": "u32" },
+        "KWDA": { "name": "Keyword", "confidence": "documented", "note": "A KYWD record. There is one per KSIZ.", "type": "formid" },
+        "PNAM": { "name": "Marker Color", "confidence": "documented", "note": "The default primitive colour.", "type": "ACTI_PNAM" },
+        "SNAM": { "name": "Sound Looping", "confidence": "documented", "note": "An SNDR record played in a loop.", "type": "formid" },
+        "VNAM": { "name": "Sound Activation", "confidence": "documented", "note": "An SNDR record played on activation.", "type": "formid" },
+        "WNAM": { "name": "Water Type", "confidence": "documented", "note": "A WATR record. Rare.", "type": "formid" },
+        "RNAM": { "name": "Activate Text Override", "confidence": "documented", "note": "A custom verb shown in the game when the activator is targeted, such as Mine or Place.", "type": "u32" },
+        "FNAM": { "name": "Flags", "confidence": "documented", "note": "0x01 = No Displacement, which goes with the water type. 0x02 = Ignored by Sandbox. The other bits appear in the record header.", "type": "u16" },
+        "KNAM": { "name": "Interaction Keyword", "confidence": "documented", "note": "A KYWD record used for interaction purposes.", "type": "formid" }
+      }
+    },
+    "IDLE": {
+      "name": "Idle Animation",
+      "confidence": "documented",
+      "note": "UESP, Skyrim Mod:Mod File Format/IDLE. [measured: 2,656 DNAM fields in Skyrim.esm]",
+      "subrecords": {
+        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
+        "CTDA": { "name": "Conditions", "confidence": "documented", "note": "The conditions under which the animation plays.", "type": "Condition" },
+        "DNAM": { "name": "Havok File", "confidence": "documented", "note": "The path to a .hkx.", "type": "zstring" },
+        "ENAM": { "name": "Anim Event", "confidence": "documented", "note": "The event, for example HorseExitSwim or NPCshoutStart.", "type": "zstring" },
+        "ANAM": { "name": "Animations", "confidence": "documented", "note": "The parent — an IDLE formid, or an AACT for a true root — and the previous IDLE.", "type": { "struct": [ { "name": "parent", "type": "formid" }, { "name": "previous", "type": "formid" } ] } },
+        "DATA": { "name": "Data", "confidence": "documented", "note": "The animation's looping times, flags and replay delay.", "type": "IDLE_DATA" }
+      }
+    },
+    "SMQN": {
+      "name": "Quest Node",
+      "confidence": "documented",
+      "note": "UESP, Skyrim Mod:Mod File Format/SMQN. A quest node is a tree of events, each with its own conditions and the quests it belongs to. [measured: 4,377 unknown SMQN subrecords in Skyrim.esm before this definition]",
+      "subrecords": {
+        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
+        "PNAM": { "name": "Parent", "confidence": "documented", "note": "The parent SMQN, SMBN or SMEN.", "type": "formid" },
+        "SNAM": { "name": "Sibling", "confidence": "documented", "note": "Zero for the first child, or the prior sibling.", "type": "formid" },
+        "CITC": { "name": "Condition Count", "confidence": "documented", "note": "How many CTDA records follow.", "type": "u32" },
+        "CTDA": { "name": "Conditions", "confidence": "documented", "note": "The conditions on the event.", "type": "Condition" },
+        "CIS2": { "name": "Variable Name", "confidence": "documented", "note": "An optional variable name, for example \"::playerAllegiance_var\".", "type": "zstring" },
+        "DNAM": { "name": "Flags", "confidence": "documented", "note": "The event's flags. 0x01 is known, and very large values such as 0x10000 and 0x100000 occur.", "type": "u32" },
+        "XNAM": { "name": "Unknown", "confidence": "documented", "note": "Always zero.", "type": "u32" },
+        "QNAM": { "name": "Quest Node Count", "confidence": "documented", "note": "How many NNAM records follow.", "type": "u32" },
+        "NNAM": { "name": "Quest Node", "confidence": "documented", "note": "A QUST formid. There is one per QNAM, each optionally followed by an RNAM.", "type": "formid" },
+        "RNAM": { "name": "Reset Time", "confidence": "documented", "note": "The time until the reset. The CK shows the value divided by 24 and labelled as hours, which is probably days.", "type": "f32" }
+      }
+    },
+    "WTHR": {
+      "name": "Weather",
+      "confidence": "documented",
+      "note": "UESP, Skyrim Mod:Mod File Format/WTHR. [measured: 6,768 TNAM fields in Skyrim.esm]",
+      "subrecords": {
+        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
+        "LNAM": { "name": "Texture Layer Count", "confidence": "documented", "note": "How many texture layers the clouds have. It is always 0x04 or 0x1d.", "type": "u32" },
+        "MNAM": { "name": "Precipitation", "confidence": "documented", "note": "The precipitation (SPGD).", "type": "formid" },
+        "NNAM": { "name": "Visual Effect", "confidence": "documented", "note": "The visual effect (RFCT).", "type": "formid" },
+        "RNAM": { "name": "Cloud Speed Y", "confidence": "documented", "note": "32 bytes, one per layer. The byte for layer n is a float encoded as a uint8, where 0x00 is -0.1, 0x7f is 0 and 0xfe is 0.1.", "type": "bytes" },
+        "QNAM": { "name": "Cloud Speed X", "confidence": "documented", "note": "32 bytes, one per layer, encoded as the cloud speed Y is.", "type": "bytes" },
+        "PNAM": { "name": "Cloud Texture Color", "confidence": "documented", "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night colours.", "type": { "array": "WTHR_PNAM", "count": 32 } },
+        "JNAM": { "name": "Cloud Texture Alpha", "confidence": "documented", "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night alphas.", "type": { "array": "WTHR_JNAM", "count": 32 } },
+        "NAM0": { "name": "Colours", "confidence": "documented", "note": "208, 224 or 272 bytes of 16-byte structs, each with the sunrise, day, sunset and night colours. The n-th struct is the sky upper, fog near, a layer that seems to be ignored, ambient, sunlight, sun, stars, sky lower, horizon, effect lightning, cloud LOD diffuse, cloud LOD ambient, fog far, and others.", "type": "bytes" },
+        "TNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" }
+      }
+    }
+  }
+}

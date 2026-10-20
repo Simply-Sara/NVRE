@@ -1,0 +1,565 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "ACHR": {
+   "confidence": "documented",
+   "name": "Actor",
+   "note": "UESP, Skyrim Mod:Mod File Format/ACHR. An ACHR is an actor placed in the world. [measured: 5,639 XLCN and 2,701 XLRT fields in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Locational Data",
+     "note": "The actor's x, y and z position and rotation, in radians.",
+     "type": {
+      "struct": [
+       {
+        "name": "position",
+        "type": {
+         "array": "f32",
+         "count": 3
+        }
+       },
+       {
+        "name": "rotation",
+        "type": {
+         "array": "f32",
+         "count": 3
+        }
+       }
+      ]
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base Object",
+     "note": "The formid of the actor this places.",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "XLCN": {
+     "confidence": "documented",
+     "name": "Location",
+     "note": "The LCTN record the actor is in.",
+     "type": "formid"
+    },
+    "XLRT": {
+     "confidence": "documented",
+     "name": "Location Ref Type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    }
+   }
+  },
+  "LVLI": {
+   "confidence": "documented",
+   "name": "Leveled Item",
+   "note": "UESP, Skyrim Mod:Mod File Format/LVLI. A leveled item is a list of entries, each with a level, an item and a count. [measured: 3,075 LVLD and LVLF fields and 3,056 LLCT fields in Skyrim.esm; the three are single bytes, not the dwords the names might suggest]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "LLCT": {
+     "confidence": "documented",
+     "name": "Entry Count",
+     "note": "How many entries the list has, which is the number of LVLO records.",
+     "type": "u8"
+    },
+    "LVLD": {
+     "confidence": "documented",
+     "name": "Chance For No Spawn",
+     "note": "The chance that an item on this list is not spawned at all. For example, 75 means there is a 25% chance to spawn an item.",
+     "type": "u8"
+    },
+    "LVLF": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "0x01 = All Levels, which sets it to calculate for every entry below the player level and choose randomly among them. 0x02 = Each, which repeats the check every time the list is called rather than reusing the result. 0x04 = Use All, which uses every entry when the list is called. 0x08 = Special Loot.",
+     "type": "u8"
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "Leveled Object",
+     "note": "The leveled item's contents.",
+     "type": "bytes"
+    }
+   }
+  },
+  "WEAP": {
+   "confidence": "documented",
+   "name": "Weapon",
+   "note": "UESP, Skyrim Mod:Mod File Format/WEAP. [measured: 2,484 WEAP records in Skyrim.esm; DATA is 10 bytes, CRDT is 24 and DNAM is 100]",
+   "subrecords": {
+    "BAMT": {
+     "confidence": "documented",
+     "name": "Alternate Block Material",
+     "note": "A MATT record.",
+     "type": "formid"
+    },
+    "BIDS": {
+     "confidence": "documented",
+     "name": "Bash Impact Data Set",
+     "note": "An IPDS record.",
+     "type": "formid"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Template",
+     "note": "The WEAP record to use as a template.",
+     "type": "formid"
+    },
+    "CRDT": {
+     "confidence": "documented",
+     "name": "Critical Damage",
+     "note": "The weapon's critical damage, multiplier and effect.",
+     "type": "WEAP_CRDT"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The weapon's value, weight and base damage.",
+     "type": "WEAP_DATA"
+    },
+    "DESC": {
+     "confidence": "documented",
+     "name": "Description",
+     "note": "The description shown in the game.",
+     "type": "u32"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Weapon Data",
+     "note": "The weapon's animation type, speed, reach, flags, ranges, rumble, skill and stagger.",
+     "type": "WEAP_DNAM"
+    },
+    "EAMT": {
+     "confidence": "documented",
+     "name": "Enchantment Amount",
+     "note": "The enchantment charge amount.",
+     "type": "u16"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "EITM": {
+     "confidence": "documented",
+     "name": "Enchantment",
+     "note": "An ENCH record.",
+     "type": "formid"
+    },
+    "ETYP": {
+     "confidence": "documented",
+     "name": "Equip Type",
+     "note": "The EQUP record giving the slot the weapon is used in, typically BothHands or EitherHand.",
+     "type": "formid"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Swing Impact Data Set",
+     "note": "The normal weapon swing's impact data set (IPDS).",
+     "type": "formid"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "name": "Keyword",
+     "note": "A KYWD record. There is one per KSIZ.",
+     "type": "formid"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model file's name.",
+     "type": "zstring"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "Used when overriding a nif's textures with texture sets.",
+     "type": "bytes"
+    },
+    "MODT": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data.",
+     "type": "bytes"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Attack Loop Sound",
+     "note": "An SNDR record. Not found in the original files.",
+     "type": "formid"
+    },
+    "NAM8": {
+     "confidence": "documented",
+     "name": "Unequip Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "Equip Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Embedded Weapon Node",
+     "note": "The embedded weapon's node.",
+     "type": "zstring"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The weapon's bounds, always 12 bytes.",
+     "type": "ObjectBounds"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Attack Sound",
+     "note": "The attack sound (trap fire), an SNDR record.",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Attack Fail Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "UNAM": {
+     "confidence": "documented",
+     "name": "Idle Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The scripting info.",
+     "type": "bytes"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Sound Detection Level",
+     "note": "How much sound using the weapon makes. It seems to be used when working out whether a nearby NPC notices the actor using it: 0 = Loud, 1 = Normal, 2 = Silent, 3 = Very Loud.",
+     "type": "u32"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "First Person Model Object",
+     "note": "The STAT record for the first person model. It affects the inventory item's display.",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Attack Sound 2D",
+     "note": "An SNDR record.",
+     "type": "formid"
+    }
+   }
+  }
+ },
+ "types": {
+  "ACHR_XLRT": {
+   "struct": [
+    {
+     "name": "location_ref_type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    }
+   ]
+  },
+  "WEAP_CRDT": {
+   "struct": [
+    {
+     "name": "critical_damage",
+     "note": "The critical damage, 0 to 13.",
+     "type": "u16"
+    },
+    {
+     "name": "unknown1",
+     "note": "Unknown.",
+     "type": "u16"
+    },
+    {
+     "name": "critical_mult",
+     "note": "The critical damage multiplier, 0 to 1.5.",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "note": "The critical effect's flags.",
+     "type": {
+      "bits": {
+       "0": "Critical Effect On Death"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "critical_spell",
+     "note": "The critical spell effect (SPEL).",
+     "type": "formid"
+    },
+    {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "u32"
+    }
+   ]
+  },
+  "WEAP_DATA": {
+   "struct": [
+    {
+     "name": "value",
+     "note": "The weapon's value.",
+     "type": "i32"
+    },
+    {
+     "name": "weight",
+     "note": "The weapon's weight.",
+     "type": "f32"
+    },
+    {
+     "name": "damage",
+     "note": "The base damage.",
+     "type": "i16"
+    }
+   ]
+  },
+  "WEAP_DNAM": {
+   "struct": [
+    {
+     "name": "anim_type",
+     "note": "The weapon's animation type. Other is used by the unarmed weapon, the weapon versions of the knife and fork, and the unpatched woodcutter's axe.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Other",
+       "1": "One Hand Sword",
+       "2": "One Hand Dagger",
+       "3": "One Hand Axe",
+       "4": "One Hand Mace",
+       "5": "Two Hand Sword",
+       "6": "Two Hand Axe",
+       "7": "Bow",
+       "8": "Staff",
+       "9": "Crossbow"
+      }
+     }
+    },
+    {
+     "name": "unknown1",
+     "note": "Unknown.",
+     "type": "i8"
+    },
+    {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "i16"
+    },
+    {
+     "name": "speed",
+     "note": "The weapon's speed.",
+     "type": "f32"
+    },
+    {
+     "name": "reach",
+     "note": "For a melee weapon, a multiplier used in the reach formula: the combat distance times the NPC scale times the weapon reach.",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "note": "The weapon's flags. The CK's Playable checkbox is the inverse of the Unplayable flag.",
+     "type": {
+      "bits": {
+       "0": "Ignores Normal Weapon Resistance",
+       "1": "Automatic",
+       "2": "Has Scope",
+       "3": "Can't Drop",
+       "4": "Hide Backpack",
+       "5": "Embedded Weapon",
+       "6": "Don't Use 1st Person IS Animations",
+       "7": "Unplayable"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "flags2",
+     "note": "Possibly more flags, but it has the constant value 145 in every record.",
+     "type": "u16"
+    },
+    {
+     "name": "sight_fov",
+     "note": "The angle of view when using iron sights. Deprecated, since it is done by zooming in.",
+     "type": "f32"
+    },
+    {
+     "name": "blank1",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "vats_to_hit",
+     "note": "The base VATS to-hit chance. Possibly obsolete; only the values 0 and 5 occur.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown3",
+     "note": "-1 in every record.",
+     "type": "i8"
+    },
+    {
+     "name": "projectiles",
+     "note": "The number of projectiles per ammo object. Possibly obsolete; it is 1 in every record.",
+     "type": "u8"
+    },
+    {
+     "name": "embedded_weapon",
+     "note": "The embedded weapon's actor value, where adding 46 gives the actor value index. The CK allows 0 PerceptionCondition through 6 BrainCondition. Only valid when the Embedded Weapon flag is set.",
+     "type": "i8"
+    },
+    {
+     "name": "min_range",
+     "note": "The combat AI does not need to be closer than this.",
+     "type": "f32"
+    },
+    {
+     "name": "max_range",
+     "note": "The combat AI does not want to be further away than this.",
+     "type": "f32"
+    },
+    {
+     "name": "unknown4",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "combat_flags",
+     "note": "The weapon's combat flags.",
+     "type": {
+      "bits": {
+       "0": "Player Only",
+       "1": "NPCs Use Ammo",
+       "10": "Alternate Rumble",
+       "11": "Long Bursts",
+       "12": "Non-Hostile",
+       "13": "Bound Weapon",
+       "2": "No Jam After Reload",
+       "4": "Minor Crime",
+       "5": "Fixed Range",
+       "6": "Not Used In Normal Combat",
+       "8": "Don't Use 3rd Person IS Animations",
+       "9": "Burst Shot"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "unknown5",
+     "note": "1 in every record.",
+     "type": "f32"
+    },
+    {
+     "name": "unknown6",
+     "note": "The values range from 0.1 to 5, but it is not shown in the CK.",
+     "type": "f32"
+    },
+    {
+     "name": "rumble_left",
+     "note": "The left motor's rumble strength.",
+     "type": "f32"
+    },
+    {
+     "name": "rumble_right",
+     "note": "The right motor's rumble strength.",
+     "type": "f32"
+    },
+    {
+     "name": "rumble_duration",
+     "note": "The rumble's duration.",
+     "type": "f32"
+    },
+    {
+     "name": "blank2",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "blank3",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "blank4",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "skill",
+     "note": "The skill that governs the weapon's use, as an actor value. For a staff it is a magic skill rather than a weapon skill, but that is apparently ignored. It is -1 for a weapon without a governing skill.",
+     "type": "i32"
+    },
+    {
+     "name": "blank5",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "blank6",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "resist",
+     "note": "An actor value: the CK allows 39 DamageResist through 44 MagicResist, or -1 for none. It is always -1 in the original files.",
+     "type": "i32"
+    },
+    {
+     "name": "blank7",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "stagger",
+     "note": "The stagger.",
+     "type": "f32"
+    }
+   ]
+  }
+ }
+}
