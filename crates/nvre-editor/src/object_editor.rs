@@ -87,6 +87,8 @@ pub struct ObjectEditorState {
     pub weap_speed: f32,
     pub weap_reach: f32,
     pub weap_sight_fov: f32,
+    /// The weapon's skill, as the actor value the game stores.
+    pub weap_skill_value: i32,
     pub weap_skill: u8,
     pub weap_str_req: u8,
     pub weap_skill_req: u8,
@@ -1266,6 +1268,22 @@ pub struct ObjectEditorState {
     pub cobj_weight: f32,
     /// The model data collection.
     pub cobj_model: ModelData,
+    /// `OBND` Object Bounds — the object's min corner.
+    pub cobj_bounds_min: [i16; 3],
+    /// `OBND` Object Bounds — the object's max corner.
+    pub cobj_bounds_max: [i16; 3],
+    /// `FULL` Name — the cstring.
+    pub cobj_name: String,
+    /// `ICON` Large icon filename — the cstring.
+    pub cobj_icon: String,
+    /// `MICO` Small icon filename — the cstring.
+    pub cobj_mico: String,
+    /// `SCRI` Script — the FormID of a `SCPT` record.
+    pub cobj_script: Option<u32>,
+    /// `YNAM` Sound - Pick Up — the FormID of a `SOUN` record.
+    pub cobj_sound_pickup: Option<u32>,
+    /// `ZNAM` Sound - Drop — the FormID of a `SOUN` record.
+    pub cobj_sound_drop: Option<u32>,
 
     // REGN (Region) fields
     /// `RCLR` Map Color — the four bytes: red, green, blue and alpha.
@@ -5043,6 +5061,29 @@ impl ObjectEditorState {
         if let Some(b) = self.raw_subs.get(b"DNAM") {
             self.weap_anim = read_weap_anim(b);
         }
+        // The page shows a few of the struct's fields on their own as well
+        // as in the animation table. Both point at the same bytes, so the
+        // table's copy is the one that is read.
+        self.weap_animation_type = weap_anim_u32(&self.weap_anim, "Animation Type");
+        self.weap_speed = weap_anim_f32(&self.weap_anim, "Animation Multiplier");
+        self.weap_reach = weap_anim_f32(&self.weap_anim, "Reach");
+        self.weap_sight_fov = weap_anim_f32(&self.weap_anim, "Sight FOV");
+        self.weap_num_proj = weap_anim_u8(&self.weap_anim, "Projectile Cound");
+        self.weap_ap = weap_anim_f32(&self.weap_anim, "Override - Action Points");
+        self.weap_str_req = weap_anim_u32(&self.weap_anim, "Strength Requirement") as u8;
+        // The skill is stored as the actor value, not as the skill's own
+        // index, so the page's skill list has to be translated both ways.
+        // A value the list does not name is kept as it is: the game writes
+        // a few, and dropping them would change the record.
+        self.weap_skill_value = weap_anim_i32(&self.weap_anim, "Skill");
+        self.weap_skill = match self.weap_skill_value {
+            41 => 1, // Guns
+            34 => 2, // Energy Weapons
+            38 => 3, // Melee
+            45 => 4, // Unarmed
+            35 => 5, // Explosives
+            _ => 0,
+        };
         self.weap_vats_present = self.raw_subs.contains_key(b"VATS");
         self.weap_vats_effect = None;
         self.weap_vats_skill = 0.0;
@@ -5089,20 +5130,6 @@ impl ObjectEditorState {
             }
             if b.len() >= 72 {
                 self.weap_ap = f32::from_le_bytes([b[68], b[69], b[70], b[71]]);
-            }
-            if b.len() >= 108 {
-                let av = u32::from_le_bytes([b[104], b[105], b[106], b[107]]);
-                self.weap_skill = match av {
-                    33 => 1, // Guns
-                    34 => 2, // Energy Weapons
-                    37 => 3, // Melee
-                    45 => 4, // Unarmed
-                    35 => 5, // Explosives
-                    _ => 0,
-                };
-            }
-            if b.len() >= 180 {
-                self.weap_str_req = b[176];
             }
         }
         self.weap_repair_list = self.get_fid(b"REPL");
@@ -7802,6 +7829,45 @@ impl ObjectEditorState {
                 b"MODT" => self.cobj_model.modt = sub.data.clone(),
                 b"MODS" => self.cobj_model.mods = parse_mods(&sub.data),
                 b"MODD" => self.cobj_model.modd = sub.data.first().copied(),
+                b"OBND" if sub.data.len() >= 12 => {
+                    self.cobj_bounds_min = [
+                        i16::from_le_bytes([sub.data[0], sub.data[1]]),
+                        i16::from_le_bytes([sub.data[2], sub.data[3]]),
+                        i16::from_le_bytes([sub.data[4], sub.data[5]]),
+                    ];
+                    self.cobj_bounds_max = [
+                        i16::from_le_bytes([sub.data[6], sub.data[7]]),
+                        i16::from_le_bytes([sub.data[8], sub.data[9]]),
+                        i16::from_le_bytes([sub.data[10], sub.data[11]]),
+                    ];
+                }
+                b"FULL" => self.cobj_name = zstring(&sub.data),
+                b"ICON" => self.cobj_icon = zstring(&sub.data),
+                b"MICO" => self.cobj_mico = zstring(&sub.data),
+                b"SCRI" if sub.data.len() >= 4 => {
+                    self.cobj_script = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"YNAM" if sub.data.len() >= 4 => {
+                    self.cobj_sound_pickup = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"ZNAM" if sub.data.len() >= 4 => {
+                    self.cobj_sound_drop = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
                 _ => {}
             }
         }
@@ -9296,6 +9362,15 @@ impl ObjectEditorState {
         let fid = self.form_id;
         // The animation data is written back over the record's own bytes,
         // so its length and the bytes the spec does not name survive.
+        //
+        // The handful of fields the page shows on their own are the same
+        // bytes the animation table holds, so they are copied into the
+        // table first. That way the table is the only place the struct's
+        // bytes come from, and a field edited on either part of the page
+        // reaches the file.
+        // The animation table is the only place the struct's bytes come
+        // from: the page's own editors write into it, so there is no
+        // second copy to fall out of step with it.
         if let Some(original) = self.raw_subs.get(b"DNAM") {
             let data = write_weap_anim(original, &self.weap_anim);
             session.doc.set_sub(fid, b"DNAM", data);
@@ -9359,41 +9434,11 @@ impl ObjectEditorState {
             session.doc.set_sub(fid, b"CRDT", crdt);
         }
 
-        let mut dnam = self
-            .raw_subs
-            .get(b"DNAM")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 108]);
-        if dnam.len() < 108 {
-            dnam.resize(108, 0);
-        }
-        // The record's own length is kept: the game's animation data runs to
-        // 204 bytes.
-        if let Some(original) = self.raw_subs.get(b"DNAM") {
-            dnam = original.clone();
-            if dnam.len() < 108 {
-                dnam.resize(108, 0);
-            }
-        }
-        dnam[4..8].copy_from_slice(&self.weap_speed.to_le_bytes());
-        dnam[8..12].copy_from_slice(&self.weap_reach.to_le_bytes());
-        if dnam.len() >= 32 {
-            dnam[28..32].copy_from_slice(&self.weap_sight_fov.to_le_bytes());
-        }
-        if dnam.len() > 42 {
-            dnam[42] = self.weap_num_proj;
-        }
-        if dnam.len() >= 72 {
-            dnam[68..72].copy_from_slice(&self.weap_ap.to_le_bytes());
-        }
-        if dnam.len() >= 4 {
-            // The animation type is the first field of the animation data.
-            dnam[0..4].copy_from_slice(&self.weap_animation_type.to_le_bytes());
-        }
-        if dnam.len() >= 180 {
-            dnam[176] = self.weap_str_req;
-        }
-        session.doc.set_sub(fid, b"DNAM", dnam);
+        // The animation data was already written above, over the record's
+        // own bytes. It is not written a second time here: a second write
+        // would replace the fields the animation table owns with the
+        // handful this function used to keep separately, and every other
+        // field of the struct would be lost.
 
         if let Some(r) = self.weap_repair_list {
             session.doc.set_sub(fid, b"REPL", r.to_le_bytes().to_vec());
@@ -12789,6 +12834,45 @@ impl ObjectEditorState {
             d[4..8].copy_from_slice(&self.cobj_weight.to_le_bytes());
             session.doc.set_sub(fid, b"DATA", d);
         }
+
+        // The object bounds. The record's own bytes are kept, so a save
+        // that changes nothing reproduces the record.
+        if self.raw_subs.contains_key(b"OBND") {
+            let mut obnd = self
+                .raw_subs
+                .get(b"OBND")
+                .cloned()
+                .unwrap_or_else(|| vec![0u8; 12]);
+            obnd.resize(12, 0);
+            for i in 0..3 {
+                obnd[i * 2..i * 2 + 2].copy_from_slice(&self.cobj_bounds_min[i].to_le_bytes());
+                obnd[6 + i * 2..8 + i * 2].copy_from_slice(&self.cobj_bounds_max[i].to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"OBND", obnd);
+        }
+
+        for (sig, value) in [
+            (b"FULL", &self.cobj_name),
+            (b"ICON", &self.cobj_icon),
+            (b"MICO", &self.cobj_mico),
+        ] {
+            if value.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(value));
+            }
+        }
+
+        for (sig, value) in [
+            (b"SCRI", self.cobj_script),
+            (b"YNAM", self.cobj_sound_pickup),
+            (b"ZNAM", self.cobj_sound_drop),
+        ] {
+            match value {
+                Some(v) => session.doc.set_sub(fid, sig, v.to_le_bytes().to_vec()),
+                None => session.doc.remove_sub(fid, sig),
+            }
+        }
     }
 
     /// Save an `IMAD` (Image Space Adapter) record.
@@ -15443,7 +15527,94 @@ fn read_weap_anim(b: &[u8]) -> Vec<WeapAnimField> {
     out
 }
 
-/// Write a weapon's animation data back over the record's own bytes.
+/// Set a uint32 field in the animation table.
+fn set_weap_anim_u32(fields: &mut [WeapAnimField], name: &str, value: u32) {
+    if let Some(f) = fields.iter_mut().find(|f| f.name == name) {
+        f.value = WeapAnimValue::U32(value);
+    }
+}
+
+/// Set a float32 field in the animation table.
+fn set_weap_anim_f32(fields: &mut [WeapAnimField], name: &str, value: f32) {
+    if let Some(f) = fields.iter_mut().find(|f| f.name == name) {
+        f.value = WeapAnimValue::F32(value);
+    }
+}
+
+/// Set a uint8 field in the animation table.
+fn set_weap_anim_u8(fields: &mut [WeapAnimField], name: &str, value: u8) {
+    if let Some(f) = fields.iter_mut().find(|f| f.name == name) {
+        f.value = WeapAnimValue::U8(value);
+    }
+}
+
+/// Set an int32 field in the animation table.
+fn set_weap_anim_i32(fields: &mut [WeapAnimField], name: &str, value: i32) {
+    if let Some(f) = fields.iter_mut().find(|f| f.name == name) {
+        f.value = WeapAnimValue::I32(value);
+    }
+}
+
+/// The actor value the game stores for a skill, from the page's skill list.
+fn weap_skill_actor_value(skill: u8) -> i32 {
+    match skill {
+        1 => 41, // Guns
+        2 => 34, // Energy Weapons
+        3 => 38, // Melee
+        4 => 45, // Unarmed
+        5 => 35, // Explosives
+        _ => 0,
+    }
+}
+
+/// A uint32 field out of the animation table.
+fn weap_anim_u32(fields: &[WeapAnimField], name: &str) -> u32 {
+    fields
+        .iter()
+        .find(|f| f.name == name)
+        .and_then(|f| match f.value {
+            WeapAnimValue::U32(v) => Some(v),
+            _ => None,
+        })
+        .unwrap_or(0)
+}
+
+/// A float32 field out of the animation table.
+fn weap_anim_f32(fields: &[WeapAnimField], name: &str) -> f32 {
+    fields
+        .iter()
+        .find(|f| f.name == name)
+        .and_then(|f| match f.value {
+            WeapAnimValue::F32(v) => Some(v),
+            _ => None,
+        })
+        .unwrap_or(0.0)
+}
+
+/// An int32 field out of the animation table.
+fn weap_anim_i32(fields: &[WeapAnimField], name: &str) -> i32 {
+    fields
+        .iter()
+        .find(|f| f.name == name)
+        .and_then(|f| match f.value {
+            WeapAnimValue::I32(v) => Some(v),
+            _ => None,
+        })
+        .unwrap_or(0)
+}
+
+/// A uint8 field out of the animation table.
+fn weap_anim_u8(fields: &[WeapAnimField], name: &str) -> u8 {
+    fields
+        .iter()
+        .find(|f| f.name == name)
+        .and_then(|f| match f.value {
+            WeapAnimValue::U8(v) => Some(v),
+            _ => None,
+        })
+        .unwrap_or(0)
+}
+
 fn write_weap_anim(original: &[u8], fields: &[WeapAnimField]) -> Vec<u8> {
     let mut b = original.to_vec();
     for field in fields {
@@ -15603,32 +15774,38 @@ fn draw_weap_ui(
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Animation Type:");
+            let mut anim_type = weap_anim_u32(&state.weap_anim, "Animation Type");
             egui::ComboBox::from_id_salt("weap_animation_type")
                 .selected_text(
                     WEAP_ANIMATION_TYPES
                         .iter()
-                        .find(|(_, v)| *v == state.weap_animation_type)
+                        .find(|(_, v)| *v == anim_type)
                         .map(|(n, _)| *n)
                         .unwrap_or("Custom"),
                 )
                 .show_ui(ui, |ui| {
                     for (name, value) in WEAP_ANIMATION_TYPES.iter() {
-                        ui.selectable_value(&mut state.weap_animation_type, *value, *name);
+                        ui.selectable_value(&mut anim_type, *value, *name);
                     }
                 });
+            set_weap_anim_u32(&mut state.weap_anim, "Animation Type", anim_type);
             ui.separator();
             ui.label("Damage:");
             ui.add(egui::DragValue::new(&mut state.weap_dmg).range(0..=1000));
             ui.label("Attack Speed (Rate):");
+            let mut speed = weap_anim_f32(&state.weap_anim, "Animation Multiplier");
             ui.add(
-                egui::DragValue::new(&mut state.weap_speed)
+                egui::DragValue::new(&mut speed)
                     .speed(0.1)
                     .range(0.1..=50.0),
             );
+            set_weap_anim_f32(&mut state.weap_anim, "Animation Multiplier", speed);
             ui.label("Clip Size:");
             ui.add(egui::DragValue::new(&mut state.weap_clip).range(0..=255));
             ui.label("Num Projectiles:");
-            ui.add(egui::DragValue::new(&mut state.weap_num_proj).range(1..=50));
+            let mut num_proj = weap_anim_u8(&state.weap_anim, "Projectile Cound");
+            ui.add(egui::DragValue::new(&mut num_proj).range(1..=50));
+            set_weap_anim_u8(&mut state.weap_anim, "Projectile Cound", num_proj);
         });
 
         ui.add_space(4.0);
@@ -15643,7 +15820,14 @@ fn draw_weap_ui(
                 .selected_text(skill_lbl)
                 .show_ui(ui, |ui| {
                     for (i, &name) in SKILL_NAMES.iter().take(6).enumerate() {
-                        ui.selectable_value(&mut state.weap_skill, i as u8, name);
+                        let mut current = state.weap_skill;
+                        ui.selectable_value(&mut current, i as u8, name);
+                        state.weap_skill = current;
+                        set_weap_anim_i32(
+                            &mut state.weap_anim,
+                            "Skill",
+                            weap_skill_actor_value(current),
+                        );
                     }
                 });
         });
@@ -15655,15 +15839,15 @@ fn draw_weap_ui(
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("STR Req:");
-            ui.add(egui::DragValue::new(&mut state.weap_str_req).range(1..=10));
+            let mut str_req = weap_anim_u32(&state.weap_anim, "Strength Requirement");
+            ui.add(egui::DragValue::new(&mut str_req).range(1..=10));
+            set_weap_anim_u32(&mut state.weap_anim, "Strength Requirement", str_req);
             ui.label("Skill Req:");
             ui.add(egui::DragValue::new(&mut state.weap_skill_req).range(0..=100));
             ui.label("VATS AP Cost:");
-            ui.add(
-                egui::DragValue::new(&mut state.weap_ap)
-                    .speed(0.5)
-                    .range(0.0..=100.0),
-            );
+            let mut ap = weap_anim_f32(&state.weap_anim, "Override - Action Points");
+            ui.add(egui::DragValue::new(&mut ap).speed(0.5).range(0.0..=100.0));
+            set_weap_anim_f32(&mut state.weap_anim, "Override - Action Points", ap);
         });
 
         ui.add_space(4.0);
@@ -22684,6 +22868,85 @@ fn draw_cobj_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                 egui::TextEdit::singleline(&mut state.cobj_model.modl)
                     .desired_width(ui.available_width() - 140.0),
             );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Names, Icons and Sounds");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Name:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.cobj_name)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Large Icon:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.cobj_icon)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.cobj_mico)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Script:");
+            ui.add(
+                egui::TextEdit::singleline(
+                    &mut state
+                        .cobj_script
+                        .map(|v| format!("{v:08X}"))
+                        .unwrap_or_default(),
+                )
+                .desired_width(110.0)
+                .hint_text("00000000"),
+            );
+            ui.label("Pick Up Sound:");
+            ui.add(
+                egui::TextEdit::singleline(
+                    &mut state
+                        .cobj_sound_pickup
+                        .map(|v| format!("{v:08X}"))
+                        .unwrap_or_default(),
+                )
+                .desired_width(110.0)
+                .hint_text("00000000"),
+            );
+            ui.label("Drop Sound:");
+            ui.add(
+                egui::TextEdit::singleline(
+                    &mut state
+                        .cobj_sound_drop
+                        .map(|v| format!("{v:08X}"))
+                        .unwrap_or_default(),
+                )
+                .desired_width(110.0)
+                .hint_text("00000000"),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Object Bounds (OBND)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Min:");
+            for i in 0..3 {
+                ui.add(egui::DragValue::new(&mut state.cobj_bounds_min[i]).range(-32768..=32767));
+            }
+            ui.separator();
+            ui.label("Max:");
+            for i in 0..3 {
+                ui.add(egui::DragValue::new(&mut state.cobj_bounds_max[i]).range(-32768..=32767));
+            }
         });
     });
 }

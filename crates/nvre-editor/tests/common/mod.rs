@@ -93,6 +93,93 @@ pub fn fids_of(s: &nvre_editor::session::Session, sig: &[u8; 4]) -> Vec<u32> {
         .collect()
 }
 
+/// A subrecord with a cstring payload.
+pub fn zsub(sig: &[u8; 4], text: &str) -> fnv_esm::Subrecord {
+    fnv_esm::Subrecord {
+        sig: *sig,
+        data: nvre_edit::document::encode_zstring(text),
+        extended: false,
+    }
+}
+
+/// A subrecord with a raw payload.
+pub fn rawsub(sig: &[u8; 4], data: Vec<u8>) -> fnv_esm::Subrecord {
+    fnv_esm::Subrecord {
+        sig: *sig,
+        data,
+        extended: false,
+    }
+}
+
+/// Build a one-record plugin file around a record's subrecords, so a type
+/// with no shipped records can still be exercised.
+///
+/// The file is a minimal ESM: a `TES4` header record, a top-level group and
+/// the record itself. The editor opens it like any other plugin.
+pub fn write_synthetic_plugin(
+    path: &std::path::Path,
+    sig: [u8; 4],
+    form_id: u32,
+    subs: Vec<fnv_esm::Subrecord>,
+) {
+    use bytes::BufMut;
+
+    let mut out: Vec<u8> = Vec::new();
+
+    // The TES4 header record. The editor reads the record count, the next
+    // object id and the masters, so the header carries a plausible set.
+    let mut hedr = Vec::new();
+    hedr.put_u32_le(1.34f32.to_bits()); // the format version
+    hedr.put_i32_le(2); // the record and group count, less the header
+    hedr.put_u32_le(form_id + 1); // the next object id
+    let mut tes4 = Vec::new();
+    tes4.put_slice(b"HEDR");
+    tes4.put_u16_le(hedr.len() as u16);
+    tes4.put_slice(&hedr);
+    write_record(&mut out, *b"TES4", 0x00100000, tes4);
+
+    // The record itself.
+    let mut body = Vec::new();
+    for sub in &subs {
+        body.put_slice(&sub.sig);
+        body.put_u16_le(sub.data.len() as u16);
+        body.put_slice(&sub.data);
+    }
+    let body_len = body.len();
+    let group_body = body.clone();
+    write_record(&mut out, sig, form_id, body);
+
+    // The top-level group holding the record. Its header is the
+    // signature, the size, the label, the group type, the stamp, two
+    // unknown words and the version.
+    let mut group = Vec::new();
+    group.put_slice(b"GRUP");
+    group.put_u32_le((body_len + 24 + 24) as u32);
+    group.put_u32_le(form_id); // the label
+    group.put_i32_le(0); // the group type: top level
+    group.put_u16_le(0); // the stamp
+    group.put_u16_le(0); // unknown
+    group.put_u16_le(0); // the version
+    group.put_u16_le(0); // unknown
+    group.put_slice(&group_body);
+
+    std::fs::write(path, out).expect("write the synthetic plugin");
+}
+
+/// Write one record: its signature, the payload size, the flags, the form
+/// id and eight more bytes of version-control bookkeeping, then the payload.
+fn write_record(out: &mut Vec<u8>, sig: [u8; 4], form_id: u32, body: Vec<u8>) {
+    use bytes::BufMut;
+    out.put_slice(&sig);
+    out.put_u32_le(body.len() as u32);
+    out.put_u32_le(0);
+    out.put_u32_le(form_id);
+    out.put_u32_le(0); // the version-control info
+    out.put_u16_le(44); // the form version
+    out.put_u16_le(0); // the version-control info
+    out.put_slice(&body);
+}
+
 /// Load every record of a type and save it back with no edit, then assert that
 /// every one comes back byte for byte.
 ///
