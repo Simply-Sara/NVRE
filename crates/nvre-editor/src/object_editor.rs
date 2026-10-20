@@ -24624,7 +24624,19 @@ fn draw_arma_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         });
         ui.horizontal(|ui| {
             ui.label("Equipment Type (ETYP):");
-            ui.add(egui::DragValue::new(&mut state.arma_equip_type).range(-1..=13));
+            egui::ComboBox::from_id_salt("arma_etyp")
+                .selected_text(
+                    ETYP_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.arma_equip_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in ETYP_TYPES.iter() {
+                        ui.selectable_value(&mut state.arma_equip_type, *v, *name);
+                    }
+                });
         });
     });
 
