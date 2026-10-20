@@ -1046,6 +1046,44 @@ pub struct ObjectEditorState {
     /// `NAM7` — the holes texture's filename.
     pub efsh_nam7: String,
 
+    // PMIS (Placed Missile) fields
+    /// `NAME` Base — the FormID of the `PROJ` record.
+    pub pmis_base: Option<u32>,
+    /// `XEZN` Encounter Zone — the FormID of the `ECZN` record.
+    pub pmis_encounter_zone: Option<u32>,
+    /// `XPRD` Idle Time — the float32.
+    pub pmis_idle_time: f32,
+    /// `INAM` Idle — the FormID of the `IDLE` record.
+    pub pmis_idle: Option<u32>,
+    /// `TNAM` Topic — the FormID of the `DIAL` record.
+    pub pmis_topic: Option<u32>,
+    /// `XOWN` Owner — the FormID of the owner.
+    pub pmis_owner: Option<u32>,
+    /// `XRGD` Ragdoll Data — the raw bytes.
+    pub pmis_ragdoll: Vec<u8>,
+    /// `XRGB` Ragdoll Biped Data — the raw bytes.
+    pub pmis_ragdoll_biped: Vec<u8>,
+    /// `XSCL` Scale — the float32.
+    pub pmis_scale: f32,
+    /// `DATA` Position — the three float32s.
+    pub pmis_position: [f32; 3],
+    /// `DATA` Rotation — the three float32s.
+    pub pmis_rotation: [f32; 3],
+    /// `DATA` Bounding Radius — the float32.
+    pub pmis_bounding_radius: f32,
+    /// `DATA` Flags — the uint32.
+    pub pmis_flags: u32,
+    /// `DATA` Unknown — the six unnamed bytes.
+    pub pmis_unknown: [u8; 6],
+
+    // COBJ (Constructible Object) fields
+    /// `DATA` Value — the int32.
+    pub cobj_value: i32,
+    /// `DATA` Weight — the float32.
+    pub cobj_weight: f32,
+    /// The model data collection.
+    pub cobj_model: ModelData,
+
     // REGN (Region) fields
     /// `RCLR` Map Color — the four bytes: red, green, blue and alpha.
     pub regn_map_color: [u8; 4],
@@ -4251,6 +4289,8 @@ impl ObjectEditorState {
             b"EFSH" => self.load_efsh(&raw_subs),
             b"REGN" => self.load_regn(&raw_subs),
             b"IMAD" => self.load_imad(&raw_subs),
+            b"COBJ" => self.load_cobj(&raw_subs),
+            b"PMIS" => self.load_pmis(&raw_subs),
             b"TES4" => self.load_tes4(&raw_subs),
             b"FLST" => self.load_flst(&raw_subs),
             b"MESG" => self.load_mesg(&raw_subs),
@@ -6564,6 +6604,138 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load a `PMIS` (Placed Missile) record.
+    ///
+    /// The record's format is the same as a placed grenade's.
+    fn load_pmis(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.pmis_base = None;
+        self.pmis_encounter_zone = None;
+        self.pmis_idle_time = 0.0;
+        self.pmis_idle = None;
+        self.pmis_topic = None;
+        self.pmis_owner = None;
+        self.pmis_ragdoll.clear();
+        self.pmis_ragdoll_biped.clear();
+        self.pmis_scale = 1.0;
+        self.pmis_position = [0.0; 3];
+        self.pmis_rotation = [0.0; 3];
+        self.pmis_bounding_radius = 0.0;
+        self.pmis_flags = 0;
+        self.pmis_unknown = [0; 6];
+        for sub in raw_subs {
+            match &sub.sig {
+                b"NAME" if sub.data.len() >= 4 => {
+                    self.pmis_base = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"XEZN" if sub.data.len() >= 4 => {
+                    self.pmis_encounter_zone = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"XPRD" if sub.data.len() >= 4 => {
+                    self.pmis_idle_time =
+                        f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"INAM" if sub.data.len() >= 4 => {
+                    self.pmis_idle = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"TNAM" if sub.data.len() >= 4 => {
+                    self.pmis_topic = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"XOWN" if sub.data.len() >= 4 => {
+                    self.pmis_owner = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"XRGD" => self.pmis_ragdoll = sub.data.clone(),
+                b"XRGB" => self.pmis_ragdoll_biped = sub.data.clone(),
+                b"XSCL" if sub.data.len() >= 4 => {
+                    self.pmis_scale =
+                        f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"DATA" if sub.data.len() >= 34 => {
+                    for i in 0..3 {
+                        let at = i * 4;
+                        self.pmis_position[i] = f32::from_le_bytes([
+                            sub.data[at],
+                            sub.data[at + 1],
+                            sub.data[at + 2],
+                            sub.data[at + 3],
+                        ]);
+                        let at = 12 + i * 4;
+                        self.pmis_rotation[i] = f32::from_le_bytes([
+                            sub.data[at],
+                            sub.data[at + 1],
+                            sub.data[at + 2],
+                            sub.data[at + 3],
+                        ]);
+                    }
+                    self.pmis_bounding_radius = f32::from_le_bytes([
+                        sub.data[24],
+                        sub.data[25],
+                        sub.data[26],
+                        sub.data[27],
+                    ]);
+                    self.pmis_flags = u32::from_le_bytes([
+                        sub.data[28],
+                        sub.data[29],
+                        sub.data[30],
+                        sub.data[31],
+                    ]);
+                    self.pmis_unknown.copy_from_slice(&sub.data[32..38]);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `COBJ` (Constructible Object) record.
+    fn load_cobj(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.cobj_value = 0;
+        self.cobj_weight = 0.0;
+        self.cobj_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"DATA" if sub.data.len() >= 8 => {
+                    self.cobj_value =
+                        i32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    self.cobj_weight =
+                        f32::from_le_bytes([sub.data[4], sub.data[5], sub.data[6], sub.data[7]]);
+                }
+                b"MODL" => self.cobj_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.cobj_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.cobj_model.modt = sub.data.clone(),
+                b"MODS" => self.cobj_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.cobj_model.modd = sub.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
     /// Load an `IMAD` (Image Space Adapter) record.
     fn load_imad(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
         self.imad_header = ImadHeader::default();
@@ -7987,6 +8159,8 @@ impl ObjectEditorState {
             b"EFSH" => self.save_efsh(session),
             b"REGN" => self.save_regn(session),
             b"IMAD" => self.save_imad(session),
+            b"COBJ" => self.save_cobj(session),
+            b"PMIS" => self.save_pmis(session),
             b"TES4" => self.save_tes4(session),
             b"FLST" => self.save_flst(session),
             b"MESG" => self.save_mesg(session),
@@ -11020,6 +11194,97 @@ impl ObjectEditorState {
         }
     }
 
+    /// Save a `PMIS` (Placed Missile) record.
+    fn save_pmis(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        for (sig, value) in [
+            (b"NAME", self.pmis_base),
+            (b"XEZN", self.pmis_encounter_zone),
+            (b"INAM", self.pmis_idle),
+            (b"TNAM", self.pmis_topic),
+            (b"XOWN", self.pmis_owner),
+        ] {
+            match value {
+                Some(v) if self.raw_subs.contains_key(sig) => {
+                    session.doc.set_sub(fid, sig, v.to_le_bytes().to_vec());
+                }
+                _ => {
+                    session.doc.remove_sub(fid, sig);
+                }
+            }
+        }
+        if self.raw_subs.contains_key(b"XPRD") {
+            session
+                .doc
+                .set_sub(fid, b"XPRD", self.pmis_idle_time.to_le_bytes().to_vec());
+        }
+        if self.raw_subs.contains_key(b"XSCL") {
+            session
+                .doc
+                .set_sub(fid, b"XSCL", self.pmis_scale.to_le_bytes().to_vec());
+        }
+        if !self.pmis_ragdoll.is_empty() {
+            session.doc.set_sub(fid, b"XRGD", self.pmis_ragdoll.clone());
+        }
+        if !self.pmis_ragdoll_biped.is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"XRGB", self.pmis_ragdoll_biped.clone());
+        }
+        // The position struct is written back over the record's own bytes, so
+        // the length it had and the unnamed bytes survive.
+        if let Some(original) = self.raw_subs.get(b"DATA") {
+            let mut d = original.clone();
+            d.resize(d.len().max(38), 0);
+            for i in 0..3 {
+                let at = i * 4;
+                d[at..at + 4].copy_from_slice(&self.pmis_position[i].to_le_bytes());
+                let at = 12 + i * 4;
+                d[at..at + 4].copy_from_slice(&self.pmis_rotation[i].to_le_bytes());
+            }
+            d[24..28].copy_from_slice(&self.pmis_bounding_radius.to_le_bytes());
+            d[28..32].copy_from_slice(&self.pmis_flags.to_le_bytes());
+            d[32..38].copy_from_slice(&self.pmis_unknown);
+            session.doc.set_sub(fid, b"DATA", d);
+        }
+    }
+
+    /// Save a `COBJ` (Constructible Object) record.
+    fn save_cobj(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.cobj_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+        // The data struct is written back over the record's own bytes.
+        if let Some(original) = self.raw_subs.get(b"DATA") {
+            let mut d = original.clone();
+            d.resize(d.len().max(8), 0);
+            d[0..4].copy_from_slice(&self.cobj_value.to_le_bytes());
+            d[4..8].copy_from_slice(&self.cobj_weight.to_le_bytes());
+            session.doc.set_sub(fid, b"DATA", d);
+        } else {
+            let mut d = vec![0u8; 8];
+            d[0..4].copy_from_slice(&self.cobj_value.to_le_bytes());
+            d[4..8].copy_from_slice(&self.cobj_weight.to_le_bytes());
+            session.doc.set_sub(fid, b"DATA", d);
+        }
+    }
+
     /// Save an `IMAD` (Image Space Adapter) record.
     fn save_imad(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
@@ -12556,6 +12821,8 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"EFSH" => "Effect Shader",
         b"REGN" => "Region",
         b"IMAD" => "Image Space Adapter",
+        b"COBJ" => "Constructible Object",
+        b"PMIS" => "Placed Missile",
         b"TES4" => "Plugin Header",
         b"FLST" => "Form List",
         b"MESG" => "Message",
@@ -13398,6 +13665,8 @@ pub fn ui(
                 b"EFSH" => draw_efsh_ui(ui, &mut state),
                 b"REGN" => draw_regn_ui(ui, &session, &mut state),
                 b"IMAD" => draw_imad_ui(ui, &mut state),
+                b"COBJ" => draw_cobj_ui(ui, &mut state),
+                b"PMIS" => draw_pmis_ui(ui, &session, &mut state),
                 b"TES4" => draw_tes4_ui(ui, &mut state),
                 b"FLST" => draw_flst_ui(ui, &mut state),
                 b"MESG" => draw_mesg_ui(ui, &session, &mut state),
@@ -19126,6 +19395,104 @@ const PACK_TARGET_TYPES: &[(i32, &str)] = &[
 
 /// The dialog types, from the `PKDD` Dialog Type field.
 const PACK_DIALOG_TYPES: &[(u32, &str)] = &[(0, "Say To"), (1, "Say To")];
+
+/// Draw the Placed Missile (PMIS) editor body.
+fn draw_pmis_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Placed Missile");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Base:");
+            let projs = session.records_by_sig(*b"PROJ");
+            let mut fid = state.pmis_base;
+            record_dropdown(ui, "pmis_base", &projs, &mut fid);
+            state.pmis_base = fid;
+            ui.separator();
+            ui.label("Encounter Zone:");
+            let zones = session.records_by_sig(*b"ECZN");
+            let mut fid = state.pmis_encounter_zone;
+            record_dropdown(ui, "pmis_zone", &zones, &mut fid);
+            state.pmis_encounter_zone = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Idle Time:");
+            ui.add(egui::DragValue::new(&mut state.pmis_idle_time).speed(0.01));
+            ui.separator();
+            ui.label("Scale:");
+            ui.add(egui::DragValue::new(&mut state.pmis_scale).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Idle:");
+            let idles = session.records_by_sig(*b"IDLE");
+            let mut fid = state.pmis_idle;
+            record_dropdown(ui, "pmis_idle", &idles, &mut fid);
+            state.pmis_idle = fid;
+            ui.separator();
+            ui.label("Topic:");
+            let topics = session.records_by_sig(*b"DIAL");
+            let mut fid = state.pmis_topic;
+            record_dropdown(ui, "pmis_topic", &topics, &mut fid);
+            state.pmis_topic = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Owner:");
+            let mut fid = state.pmis_owner;
+            formid_field(ui, "pmis_owner", &mut fid);
+            state.pmis_owner = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Position");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Position:");
+            for i in 0..3 {
+                ui.add(egui::DragValue::new(&mut state.pmis_position[i]).speed(0.5));
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Rotation:");
+            for i in 0..3 {
+                ui.add(egui::DragValue::new(&mut state.pmis_rotation[i]).speed(0.01));
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Bounding Radius:");
+            ui.add(egui::DragValue::new(&mut state.pmis_bounding_radius).speed(0.01));
+            ui.separator();
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.pmis_flags).range(0..=u32::MAX));
+        });
+    });
+}
+
+/// Draw the Constructible Object (COBJ) editor body.
+fn draw_cobj_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Constructible Object");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Value:");
+            ui.add(egui::DragValue::new(&mut state.cobj_value));
+            ui.separator();
+            ui.label("Weight:");
+            ui.add(egui::DragValue::new(&mut state.cobj_weight).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Model Path (.nif):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.cobj_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+}
 
 /// Draw the Image Space Adapter (IMAD) editor body.
 fn draw_imad_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {

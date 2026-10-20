@@ -39,6 +39,7 @@ const TYPES: &[(&str, &[u8; 4], usize)] = &[
     ("CLMT", b"CLMT", 31),
     ("CMNY", b"CMNY", 6),
     ("CONT", b"CONT", 2478),
+    ("COBJ", b"COBJ", 0),
     ("CPTH", b"CPTH", 418),
     ("CREA", b"CREA", 1578),
     ("CSNO", b"CSNO", 5),
@@ -89,6 +90,7 @@ const TYPES: &[(&str, &[u8; 4], usize)] = &[
     ("PACK", b"PACK", 4163),
     ("PERK", b"PERK", 176),
     ("PROJ", b"PROJ", 95),
+    ("PMIS", b"PMIS", 0),
     ("PWAT", b"PWAT", 29),
     ("QUST", b"QUST", 436),
     ("RACE", b"RACE", 22),
@@ -106,6 +108,7 @@ const TYPES: &[(&str, &[u8; 4], usize)] = &[
     ("STAT", b"STAT", 6785),
     ("TACT", b"TACT", 87),
     ("TERM", b"TERM", 344),
+    ("TES4", b"TES4", 1),
     ("TREE", b"TREE", 3),
     ("TXST", b"TXST", 493),
     ("VTYP", b"VTYP", 100),
@@ -166,6 +169,10 @@ fn main() {
                 fids.len()
             );
             std::process::exit(1);
+        }
+        if fids.is_empty() {
+            println!("{name:5} ok    0 records, the master has none");
+            continue;
         }
         for fid in &fids {
             let mut state = ObjectEditorState::default();
