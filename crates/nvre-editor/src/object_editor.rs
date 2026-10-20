@@ -364,6 +364,36 @@ pub struct ObjectEditorState {
     pub proj_light: Option<u32>,
     pub proj_sound: Option<u32>,
     pub proj_explosion: Option<u32>,
+    /// `DATA` Flags — the uint16 flag word.
+    pub proj_flags: u16,
+    /// `DATA` Muzzle Flash - Light — the FormID of the `LIGH` record.
+    pub proj_muzzle_flash_light: Option<u32>,
+    /// `DATA` Tracer Chance — the float32.
+    pub proj_tracer_chance: f32,
+    /// `DATA` Explosion - Alt. Trigger - Proximity — the float32.
+    pub proj_alt_trigger_proximity: f32,
+    /// `DATA` Explosion - Alt. Trigger - Timer — the float32.
+    pub proj_alt_trigger_timer: f32,
+    /// `DATA` Muzzle Flash - Duration — the float32.
+    pub proj_muzzle_flash_duration: f32,
+    /// `DATA` Fade Duration — the float32.
+    pub proj_fade_duration: f32,
+    /// `DATA` Impact Force — the float32.
+    pub proj_impact_force: f32,
+    /// `DATA` Sound - Countdown — the FormID of the `SOUN` record.
+    pub proj_sound_countdown: Option<u32>,
+    /// `DATA` Sound - Disable — the FormID of the `SOUN` record.
+    pub proj_sound_disable: Option<u32>,
+    /// `DATA` Default Weapon Source — the FormID of the `WEAP` record.
+    pub proj_default_weapon: Option<u32>,
+    /// `DATA` X Rotation — the float32.
+    pub proj_x_rotation: f32,
+    /// `DATA` Y Rotation — the float32.
+    pub proj_y_rotation: f32,
+    /// `DATA` Z Rotation — the float32.
+    pub proj_z_rotation: f32,
+    /// `DATA` Bouncy Multiplier — the float32.
+    pub proj_bouncy_multiplier: f32,
 
     // SOUN & NOTE fields
     pub sound_file: String,
@@ -5365,18 +5395,58 @@ impl ObjectEditorState {
     }
 
     fn load_proj(&mut self) {
+        self.proj_flags = 0;
+        self.proj_muzzle_flash_light = None;
+        self.proj_tracer_chance = 0.0;
+        self.proj_alt_trigger_proximity = 0.0;
+        self.proj_alt_trigger_timer = 0.0;
+        self.proj_muzzle_flash_duration = 0.0;
+        self.proj_fade_duration = 0.0;
+        self.proj_impact_force = 0.0;
+        self.proj_sound_countdown = None;
+        self.proj_sound_disable = None;
+        self.proj_default_weapon = None;
+        self.proj_x_rotation = 0.0;
+        self.proj_y_rotation = 0.0;
+        self.proj_z_rotation = 0.0;
+        self.proj_bouncy_multiplier = 0.0;
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 16) {
+            self.proj_flags = u16::from_le_bytes([b[0], b[1]]);
             self.proj_type = u16::from_le_bytes([b[2], b[3]]);
             self.proj_gravity = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
             self.proj_speed = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
             self.proj_range = f32::from_le_bytes([b[12], b[13], b[14], b[15]]);
-            if b.len() >= 20 {
-                self.proj_light = Some(u32::from_le_bytes([b[16], b[17], b[18], b[19]]));
-            }
-            if b.len() >= 44 {
-                self.proj_explosion = Some(u32::from_le_bytes([b[36], b[37], b[38], b[39]]));
-                self.proj_sound = Some(u32::from_le_bytes([b[40], b[41], b[42], b[43]]));
-            }
+            let fid = |at: usize| -> Option<u32> {
+                if b.len() >= at + 4 {
+                    Some(u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]))
+                } else {
+                    None
+                }
+            };
+            let f32_at = |at: usize| -> f32 {
+                if b.len() >= at + 4 {
+                    f32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+                } else {
+                    0.0
+                }
+            };
+            self.proj_light = fid(16);
+            self.proj_muzzle_flash_light = fid(20);
+            self.proj_tracer_chance = f32_at(24);
+            self.proj_alt_trigger_proximity = f32_at(28);
+            self.proj_alt_trigger_timer = f32_at(32);
+            self.proj_explosion = fid(36);
+            self.proj_sound = fid(40);
+            self.proj_muzzle_flash_duration = f32_at(44);
+            self.proj_fade_duration = f32_at(48);
+            self.proj_impact_force = f32_at(52);
+            self.proj_sound_countdown = fid(56);
+            self.proj_sound_disable = fid(60);
+            self.proj_default_weapon = fid(64);
+            self.proj_x_rotation = f32_at(68);
+            self.proj_y_rotation = f32_at(72);
+            self.proj_z_rotation = f32_at(76);
+            self.proj_bouncy_multiplier = f32_at(80);
         }
     }
 
@@ -9857,27 +9927,66 @@ impl ObjectEditorState {
 
     fn save_proj(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
+        // The data struct is written back over the record's own bytes, so
+        // its length and the bytes the spec does not name survive.
         let mut d = self
             .raw_subs
             .get(b"DATA")
             .cloned()
-            .unwrap_or_else(|| vec![0u8; 44]);
-        if d.len() < 44 {
-            d.resize(44, 0);
+            .unwrap_or_else(|| vec![0u8; 84]);
+        // The struct is 84 bytes in most of the game's records and 68 in
+        // a few, so a field the record's own bytes do not reach is left
+        // alone rather than growing the struct.
+        /// Write four bytes at an offset, if the record's own bytes reach
+        /// it.
+        fn put4(d: &mut [u8], at: usize, bytes: [u8; 4]) {
+            if d.len() >= at + 4 {
+                d[at..at + 4].copy_from_slice(&bytes);
+            }
         }
-        d[2..4].copy_from_slice(&self.proj_type.to_le_bytes());
-        d[4..8].copy_from_slice(&self.proj_gravity.to_le_bytes());
-        d[8..12].copy_from_slice(&self.proj_speed.to_le_bytes());
-        d[12..16].copy_from_slice(&self.proj_range.to_le_bytes());
+        /// Write two bytes at an offset, if the record's own bytes reach
+        /// it.
+        fn put2(d: &mut [u8], at: usize, bytes: [u8; 2]) {
+            if d.len() >= at + 2 {
+                d[at..at + 2].copy_from_slice(&bytes);
+            }
+        }
+        put2(&mut d, 0, self.proj_flags.to_le_bytes());
+        put2(&mut d, 2, self.proj_type.to_le_bytes());
+        put4(&mut d, 4, self.proj_gravity.to_le_bytes());
+        put4(&mut d, 8, self.proj_speed.to_le_bytes());
+        put4(&mut d, 12, self.proj_range.to_le_bytes());
         if let Some(l) = self.proj_light {
-            d[16..20].copy_from_slice(&l.to_le_bytes());
+            put4(&mut d, 16, l.to_le_bytes());
         }
+        if let Some(l) = self.proj_muzzle_flash_light {
+            put4(&mut d, 20, l.to_le_bytes());
+        }
+        put4(&mut d, 24, self.proj_tracer_chance.to_le_bytes());
+        put4(&mut d, 28, self.proj_alt_trigger_proximity.to_le_bytes());
+        put4(&mut d, 32, self.proj_alt_trigger_timer.to_le_bytes());
         if let Some(ex) = self.proj_explosion {
-            d[36..40].copy_from_slice(&ex.to_le_bytes());
+            put4(&mut d, 36, ex.to_le_bytes());
         }
         if let Some(s) = self.proj_sound {
-            d[40..44].copy_from_slice(&s.to_le_bytes());
+            put4(&mut d, 40, s.to_le_bytes());
         }
+        put4(&mut d, 44, self.proj_muzzle_flash_duration.to_le_bytes());
+        put4(&mut d, 48, self.proj_fade_duration.to_le_bytes());
+        put4(&mut d, 52, self.proj_impact_force.to_le_bytes());
+        if let Some(s) = self.proj_sound_countdown {
+            put4(&mut d, 56, s.to_le_bytes());
+        }
+        if let Some(s) = self.proj_sound_disable {
+            put4(&mut d, 60, s.to_le_bytes());
+        }
+        if let Some(w) = self.proj_default_weapon {
+            put4(&mut d, 64, w.to_le_bytes());
+        }
+        put4(&mut d, 68, self.proj_x_rotation.to_le_bytes());
+        put4(&mut d, 72, self.proj_y_rotation.to_le_bytes());
+        put4(&mut d, 76, self.proj_z_rotation.to_le_bytes());
+        put4(&mut d, 80, self.proj_bouncy_multiplier.to_le_bytes());
         session.doc.set_sub(fid, b"DATA", d);
     }
 
@@ -17113,6 +17222,53 @@ fn draw_proj_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             formid_field(ui, "proj_snd", &mut state.proj_sound);
             ui.label("Explosion:");
             formid_field(ui, "proj_expl", &mut state.proj_explosion);
+        });
+    });
+
+    // The rest of the data struct.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Projectile Data");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.proj_flags).range(0..=u16::MAX));
+            ui.label("Muzzle Flash - Light:");
+            formid_field(ui, "proj_muzzle_light", &mut state.proj_muzzle_flash_light);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Tracer Chance:");
+            ui.add(egui::DragValue::new(&mut state.proj_tracer_chance).speed(0.01));
+            ui.label("Explosion - Alt. Trigger - Proximity:");
+            ui.add(egui::DragValue::new(&mut state.proj_alt_trigger_proximity).speed(0.01));
+            ui.label("Explosion - Alt. Trigger - Timer:");
+            ui.add(egui::DragValue::new(&mut state.proj_alt_trigger_timer).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Muzzle Flash - Duration:");
+            ui.add(egui::DragValue::new(&mut state.proj_muzzle_flash_duration).speed(0.01));
+            ui.label("Fade Duration:");
+            ui.add(egui::DragValue::new(&mut state.proj_fade_duration).speed(0.01));
+            ui.label("Impact Force:");
+            ui.add(egui::DragValue::new(&mut state.proj_impact_force).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Sound - Countdown:");
+            formid_field(ui, "proj_snd_countdown", &mut state.proj_sound_countdown);
+            ui.label("Sound - Disable:");
+            formid_field(ui, "proj_snd_disable", &mut state.proj_sound_disable);
+            ui.label("Default Weapon Source:");
+            formid_field(ui, "proj_default_weapon", &mut state.proj_default_weapon);
+        });
+        ui.horizontal(|ui| {
+            ui.label("X Rotation:");
+            ui.add(egui::DragValue::new(&mut state.proj_x_rotation).speed(0.01));
+            ui.label("Y Rotation:");
+            ui.add(egui::DragValue::new(&mut state.proj_y_rotation).speed(0.01));
+            ui.label("Z Rotation:");
+            ui.add(egui::DragValue::new(&mut state.proj_z_rotation).speed(0.01));
+            ui.label("Bouncy Multiplier:");
+            ui.add(egui::DragValue::new(&mut state.proj_bouncy_multiplier).speed(0.01));
         });
     });
 }
