@@ -16,11 +16,13 @@
 //! All of it is format-level and headless, so it can be tested against the
 //! shipped masters without a window.
 
+pub mod cell;
 pub mod document;
 pub mod encode;
 pub mod formid;
 pub mod save;
 
+pub use cell::{NewCell, NewWorldspace};
 pub use document::{Document, Edit, PendingRecord, RecordRow};
 pub use formid::{count_formids, formid_fields, remap_sub};
 pub use save::{

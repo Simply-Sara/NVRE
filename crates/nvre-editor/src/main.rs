@@ -72,6 +72,18 @@ fn check(mut session: session::Session) {
     println!("cells         {}", session.index.cells.len());
     println!("references    {}", session.index.refs.len());
     println!("worldspaces   {}", session.index.worldspaces.len());
+    // Anything staged for creation, which a save will write.
+    for w in session.staged_worldspaces() {
+        println!("new worldspace {:08X} {}", w.form_id, w.spec.edid);
+    }
+    for c in session.staged_cells() {
+        let where_ = match (c.spec.world, c.spec.grid) {
+            (Some(w), Some((x, y))) => format!("world {w:08X} grid {x}, {y}"),
+            (Some(w), None) => format!("world {w:08X}"),
+            _ => "interior".to_string(),
+        };
+        println!("new cell     {:08X} {} ({where_})", c.form_id, c.spec.edid);
+    }
     if let Some(cell) = session.cell {
         let refs = session.cell_refs();
         println!("open cell     {cell:08X} with {} refs", refs.len());
