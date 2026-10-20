@@ -1,0 +1,385 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "DIAL": {
+   "confidence": "documented",
+   "name": "Dialogue Topic",
+   "note": "UESP, Skyrim Mod:Mod File Format/DIAL. A DIAL record defines a dialogue topic and is followed by a group holding the topic's INFO responses. [measured: 15,037 DIAL records in Skyrim.esm; SNAM is always 4 bytes, a four-character subtype code, and is not NUL-terminated]",
+   "subrecords": {
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Owning Branch",
+     "note": "The dialogue branch (DLBR) that owns the topic.",
+     "type": "formid"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "The custom and scene flags, the dialogue tab, the numeric subtype id and an unused byte. [measured: DATA is 4 bytes in all 15,037 DIAL records]",
+     "type": "DIAL_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Player Dialogue",
+     "note": "The player's dialogue, an index into the string file.",
+     "type": "u32"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Priority",
+     "note": "The topic's priority.",
+     "type": "f32"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Owning Quest",
+     "note": "The quest (QUST) that owns the topic.",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Subtype",
+     "note": "The four-character dialogue subtype, such as HELO for hello or ATCK for attack. It is not NUL-terminated, and the game uses it in preference to the numeric subtype id in DATA.",
+     "type": "string"
+    },
+    "TIFC": {
+     "confidence": "documented",
+     "name": "Info Count",
+     "note": "How many INFO records the topic has. The game uses it to preallocate the topic's info list, but it is not required.",
+     "type": "u32"
+    }
+   }
+  },
+  "INFO": {
+   "confidence": "documented",
+   "name": "Dialogue Topic Info",
+   "note": "UESP, Skyrim Mod:Mod File Format/INFO. An INFO record is one response to a dialogue topic. DATA and ENAM are exclusive: DATA is seen on record versions 31 and lower and ENAM on versions 31 and higher, though version 31 itself may carry either but not both. The response's text and notes are a group of NAM1, NAM2 and NAM3. [measured: 31,465 INFO records in Skyrim.esm; TRDT is always 24 bytes]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Favor Level",
+     "note": "The favor the response requires: 0 = None, 3 = Large.",
+     "type": "u8"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Conditions",
+     "note": "The conditions that must be true for this dialogue to be available.",
+     "type": "Condition"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Dialogue Tab And Flags",
+     "note": "The dialogue tab, the response's flags and the reset time in days. Only on record versions 31 and lower.",
+     "type": "INFO_DATA"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Shared Info",
+     "note": "The info whose response data to show instead. When a record has both, the shared info appears to override the responses.",
+     "type": "formid"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ENAM": {
+     "confidence": "documented",
+     "name": "Flags And Reset Time",
+     "note": "The response's flags and the reset time in hours, where 0 is 0 hours and 0xFFFF is 24. Only on record versions 31 and higher.",
+     "type": {
+      "struct": [
+       {
+        "name": "flags",
+        "note": "The response's flags. Bit 11 is inverted from the CK's display.",
+        "type": {
+         "bits": {
+          "0": "Goodbye",
+          "1": "Random",
+          "10": "Can Move While Greeting",
+          "11": "Has No Lip File",
+          "12": "Requires Post-Processing",
+          "13": "Has Audio Output Override",
+          "14": "Spends Favor Points",
+          "2": "Say Once",
+          "4": "On Activation",
+          "5": "Random End",
+          "6": "Invisible Continue",
+          "7": "Walk Away",
+          "8": "Walk Away Invisible In Menu",
+          "9": "Force Subtitle"
+         },
+         "flags": "u16"
+        }
+       },
+       {
+        "name": "reset_time",
+        "note": "Hours until the response resets. Scaled, so 0 is 0 hours and 0xFFFF is 24.",
+        "type": "u16"
+       }
+      ]
+     }
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Listener Idle Animations",
+     "note": "The listener's idle animations.",
+     "type": "formid"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Response Text",
+     "note": "The dialogue string shown in the game, an index into the string file.",
+     "type": "u32"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Response Notes",
+     "note": "The actor's notes. The game does not load it.",
+     "type": "zstring"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "Response Edits",
+     "note": "The response's edits. The game does not load it.",
+     "type": "zstring"
+    },
+    "NEXT": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length; it separates the SCHR fields.",
+     "type": "bytes"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Previous Info",
+     "note": "The previous topic info. Never present in Skyrim.esm, and always present in the other files.",
+     "type": "formid"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "SCHR": {
+     "confidence": "documented",
+     "name": "Old Script",
+     "note": "The old scripting info. When it is present at all the fields always include an SCHR grouping, a NEXT, and another SCHR grouping.",
+     "type": "bytes"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Speaker Idle Animations",
+     "note": "The speaker's idle animations.",
+     "type": "formid"
+    },
+    "TCLT": {
+     "confidence": "documented",
+     "name": "Topic Links",
+     "note": "The follow-up topics after this one.",
+     "type": "formid"
+    },
+    "TRDT": {
+     "confidence": "documented",
+     "name": "Response",
+     "note": "The response's emotion, sound and number.",
+     "type": "INFO_TRDT"
+    },
+    "TWAT": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The Papyrus script info.",
+     "type": "bytes"
+    }
+   }
+  }
+ },
+ "types": {
+  "DIAL_DATA": {
+   "struct": [
+    {
+     "name": "custom",
+     "note": "The custom flag, and the scene's do-all-before-repeating flag. Both are bits of this byte, not bytes of their own \u2014 the whole DATA is 4 bytes.",
+     "type": {
+      "bits": {
+       "0": "Custom",
+       "1": "Scene Do All Before Repeating"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "dialogue_tab",
+     "note": "The quest dialogue tab. There are some discrepancies with the internal CK data, so it is probably unused.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Player Dialogue",
+       "1": "Favor Dialogue",
+       "2": "Scenes",
+       "3": "Combat",
+       "4": "Favors",
+       "5": "Detection",
+       "6": "Service",
+       "7": "Misc"
+      }
+     }
+    },
+    {
+     "name": "subtype_id",
+     "note": "The subtype's numeric id. It is unreliable, and unused when an SNAM follows the DATA.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Always zero.",
+     "type": "u8"
+    }
+   ]
+  },
+  "INFO_DATA": {
+   "struct": [
+    {
+     "name": "dialogue_tab",
+     "note": "The quest dialogue tab. This sub-field is absent from the newer ENAM field and is presumably unused.",
+     "type": {
+      "enum": "u16",
+      "values": {
+       "0": "Player Dialogue",
+       "1": "Favor Dialogue",
+       "2": "Scenes",
+       "3": "Combat",
+       "4": "Favors",
+       "5": "Detection",
+       "6": "Service",
+       "7": "Misc"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "note": "The response's flags. Bit 11 is inverted from the CK's display.",
+     "type": {
+      "bits": {
+       "0": "Goodbye",
+       "1": "Random",
+       "10": "Can Move While Greeting",
+       "11": "Has No Lip File",
+       "12": "Requires Post-Processing",
+       "13": "Has Audio Output Override",
+       "14": "Spends Favor Points",
+       "2": "Say Once",
+       "4": "On Activation",
+       "5": "Random End",
+       "6": "Invisible Continue",
+       "7": "Walk Away",
+       "8": "Walk Away Invisible In Menu",
+       "9": "Force Subtitle"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "reset_time",
+     "note": "Days until the response resets. This DATA field's reset time is in days, unlike the ENAM field's.",
+     "type": "f32"
+    }
+   ]
+  },
+  "INFO_TRDT": {
+   "struct": [
+    {
+     "name": "emotion_type",
+     "note": "The response's emotion.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Neutral",
+       "1": "Anger",
+       "2": "Disgust",
+       "3": "Fear",
+       "4": "Sad",
+       "5": "Happy",
+       "6": "Surprise",
+       "7": "Puzzled"
+      }
+     }
+    },
+    {
+     "name": "emotion_value",
+     "note": "The emotion's strength, 0 to 100.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown1",
+     "note": "Always zero.",
+     "type": "i32"
+    },
+    {
+     "name": "id",
+     "note": "The response's number.",
+     "type": "u8"
+    },
+    {
+     "name": "junk",
+     "note": "Junk.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "sound_file",
+     "note": "The sound file.",
+     "type": "formid"
+    },
+    {
+     "name": "use_emo_anim",
+     "note": "Whether the emotion animation is used.",
+     "type": "u8"
+    },
+    {
+     "name": "junk2",
+     "note": "Junk.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  }
+ }
+}

@@ -1,5 +1,17 @@
 {
  "common": {
+  "CIS1": {
+   "confidence": "documented",
+   "name": "Variable Name",
+   "note": "The variable name that replaces the CTDA's first argument. It trails a CTDA that uses a string parameter, and the CTDA's parameter 1 is then a very high value. [UESP, Skyrim Mod:Mod File Format/CTDA Field. Seen in IDLE, PACK and CPTH.]",
+   "type": "zstring"
+  },
+  "CIS2": {
+   "confidence": "documented",
+   "name": "Variable Name",
+   "note": "The variable name that replaces the CTDA's second argument. It trails a CTDA that uses a string parameter. [UESP, Skyrim Mod:Mod File Format/CTDA Field. Seen in FACT, ENCH, SPEL, COBJ, QUST, IDLE, PACK, LSCR, PERK, SMBN, SMQN, SCEN and INFO.]",
+   "type": "zstring"
+  },
   "CTDA": {
    "confidence": "documented",
    "name": "Condition",
