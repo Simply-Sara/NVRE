@@ -117,6 +117,12 @@ pub struct ObjectEditorState {
     /// only bits 3, 5 and 7; bit 6 is "Non-Playable" and is set on 34 of the
     /// game's records, so a rebuild from the enum alone would clear it.
     pub armo_bmdt_general: u8,
+    /// The armor's sounds. The `SNAM` subrecord repeats, one per sound the
+    /// armor makes.
+    pub armo_sounds: Vec<ArmorSound>,
+    /// The `SNAM` subrecords' own bytes, in file order, so the three
+    /// unnamed bytes of each survive a save.
+    pub armo_snam_raw: Vec<Vec<u8>>,
 
     // NPC_ & CREA fields
     pub actor_female: bool,
@@ -256,6 +262,16 @@ pub struct ObjectEditorState {
     /// The spec's `RCIL` is the ammo effect, and `DAT2` holds the consumed
     /// ammo, so there is no FormID here to read.
     pub ammo_abbrev: String,
+    /// `DAT2` Projectiles Per Shot — the uint32.
+    pub ammo_projectiles_per_shot: u32,
+    /// `DAT2` Projectile — the FormID of the `PROJ` record.
+    pub ammo_projectile: Option<u32>,
+    /// `DAT2` Weight — the float32.
+    pub ammo_dat2_weight: f32,
+    /// `DAT2` Consumed Ammo — the FormID of the `AMMO` or `MISC` record.
+    pub ammo_consumed: Option<u32>,
+    /// `DAT2` Consumed Percentage — the float32.
+    pub ammo_consumed_percentage: f32,
 
     // CONT & DOOR fields
     pub cont_weight: f32,
@@ -272,6 +288,10 @@ pub struct ObjectEditorState {
     pub acti_prompt: String,
     pub acti_sound_loop: Option<u32>,
     pub term_difficulty: u8,
+    /// `DNAM` Flags — the uint8.
+    pub term_flags: u8,
+    /// `DNAM` Server Type — the uint8.
+    pub term_server_type: u8,
     pub term_welcome: String,
     pub term_sound_loop: Option<u32>,
 
@@ -281,6 +301,12 @@ pub struct ObjectEditorState {
     pub ligh_falloff: f32,
     pub ligh_fov: f32,
     pub ligh_flags: u32,
+    /// `DATA` Time — the int32.
+    pub ligh_time: i32,
+    /// `DATA` Value — the uint32.
+    pub ligh_value: u32,
+    /// `DATA` Weight — the float32.
+    pub ligh_weight: f32,
 
     // BOOK & MISC fields
     pub item_val: i32,
@@ -357,6 +383,12 @@ pub struct ObjectEditorState {
     pub expl_sound1: Option<u32>,
     pub expl_sound2: Option<u32>,
     pub expl_rad_level: f32,
+    /// `DATA` Radiation Dissipation Time — the float32.
+    pub expl_rad_dissipation_time: f32,
+    /// `DATA` Radiation Radius — the float32.
+    pub expl_rad_radius: f32,
+    /// `DATA` Sound Level — the uint32.
+    pub expl_sound_level: u32,
     pub proj_speed: f32,
     pub proj_gravity: f32,
     pub proj_range: f32,
@@ -582,6 +614,11 @@ pub struct ObjectEditorState {
     pub clmt_sunset_begin: u8,
     pub clmt_sunset_end: u8,
     pub clmt_volatility: u8,
+    /// `TNAM` Moons / Phase Length — the uint8.
+    pub clmt_moons_phase_length: u8,
+    /// `WLST` The weather list. Each entry is a weather, a chance and a
+    /// global variable.
+    pub clmt_weather_list: Vec<ClimateWeather>,
     pub clmt_sun_texture: String,
     pub clmt_sun_glare_texture: String,
 
@@ -837,6 +874,10 @@ pub struct ObjectEditorState {
     pub tree_seeds: Vec<u32>,
     /// `CNAM` Leaf Curvature — the float32.
     pub tree_leaf_curvature: f32,
+    /// `CNAM` Minimum Leaf Angle — the float32.
+    pub tree_minimum_leaf_angle: f32,
+    /// `CNAM` Maximum Leaf Angle — the float32.
+    pub tree_maximum_leaf_angle: f32,
     /// `CNAM` Minimum Leaf Angle — the float32.
     pub tree_min_leaf_angle: f32,
     /// `CNAM` Maximum Leaf Angle — the float32.
@@ -1404,6 +1445,12 @@ pub struct ObjectEditorState {
     pub cams_min_time: f32,
     /// `DATA` Target % Between Actors.
     pub cams_target_percent: f32,
+    /// `DATA` Player Time Multiplier — the float32.
+    pub cams_player_time_multiplier: f32,
+    /// `DATA` Target Time Multiplier — the float32.
+    pub cams_target_time_multiplier: f32,
+    /// `DATA` Global Time Multiplier — the float32.
+    pub cams_global_time_multiplier: f32,
     /// `MNAM` Image Space Modifier — the FormID of an `IMAD` record.
     pub cams_image_space_modifier: Option<u32>,
     /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
@@ -2783,6 +2830,30 @@ const IMGS_FIELDS: &[(&str, usize)] = &[
     ("Cinematic Contrast Value", 96),
     ("Cinmatic Brightness Tint Value", 100),
 ];
+
+/// One entry in a climate's weather list — the `WLST` subrecord of a
+/// `CLMT` (Climate) record.
+#[derive(Debug, Clone, Default)]
+pub struct ClimateWeather {
+    /// `Weather` — the FormID of the `WTHR` record.
+    pub weather: Option<u32>,
+    /// `Chance` — the int32.
+    pub chance: i32,
+    /// `Global` — the FormID of the `GLOB` record.
+    pub global: Option<u32>,
+}
+
+/// One of an armor's sounds — a `SNAM` subrecord of an `ARMO` (Armor)
+/// record.
+#[derive(Debug, Clone, Default)]
+pub struct ArmorSound {
+    /// `Sound` — the FormID of the `SOUN` record.
+    pub sound: Option<u32>,
+    /// `Chance` — the uint8.
+    pub chance: u8,
+    /// `Type` — the uint32.
+    pub kind: u32,
+}
 
 /// One ingredient or output on a `RCPE` (Recipe) record.
 ///
@@ -4784,7 +4855,7 @@ impl ObjectEditorState {
 
         match &sig {
             b"WEAP" => self.load_weap(),
-            b"ARMO" => self.load_armo(),
+            b"ARMO" => self.load_armo(&raw_subs),
             b"CREA" => {
                 self.load_actor();
                 self.load_actor_destruction(&raw_subs);
@@ -4821,7 +4892,7 @@ impl ObjectEditorState {
             b"GLOB" => self.load_glob(),
             b"GMST" => self.load_gmst(),
             b"RACE" => self.load_race(),
-            b"CLMT" => self.load_clmt(),
+            b"CLMT" => self.load_clmt(&raw_subs),
             b"ADDN" => self.load_addn(&raw_subs),
             b"ALOC" => self.load_aloc(&raw_subs),
             b"AMEF" => self.load_amef(),
@@ -5015,7 +5086,7 @@ impl ObjectEditorState {
         self.weap_repair_list = self.get_fid(b"REPL");
     }
 
-    fn load_armo(&mut self) {
+    fn load_armo(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 12) {
             self.armo_val = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.armo_hp = i32::from_le_bytes([b[4], b[5], b[6], b[7]]);
@@ -5037,6 +5108,31 @@ impl ObjectEditorState {
             }
             if b.len() >= 10 {
                 self.armo_modulates_voice = (u16::from_le_bytes([b[8], b[9]]) & 1) != 0;
+            }
+        }
+        // The armor's sounds. The `SNAM` subrecord repeats, one per sound,
+        // and `raw_subs` holds only the last, so the list is walked in file
+        // order.
+        self.armo_sounds.clear();
+        self.armo_snam_raw.clear();
+        for sub in raw_subs {
+            if sub.sig == *b"SNAM" && sub.data.len() >= 12 {
+                self.armo_snam_raw.push(sub.data.clone());
+                self.armo_sounds.push(ArmorSound {
+                    sound: Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ])),
+                    chance: sub.data[4],
+                    kind: u32::from_le_bytes([
+                        sub.data[8],
+                        sub.data[9],
+                        sub.data[10],
+                        sub.data[11],
+                    ]),
+                });
             }
         }
         if let Some(b) = self.raw_subs.get(b"BMDT").filter(|b| b.len() >= 5) {
@@ -5213,6 +5309,31 @@ impl ObjectEditorState {
     }
 
     fn load_ammo(&mut self) {
+        self.ammo_projectiles_per_shot = 0;
+        self.ammo_projectile = None;
+        self.ammo_dat2_weight = 0.0;
+        self.ammo_consumed = None;
+        self.ammo_consumed_percentage = 0.0;
+        // The struct is 20 bytes in most of the game's records and 12 in
+        // a few, so each field is read only when the record's own bytes
+        // reach it.
+        if let Some(b) = self.raw_subs.get(b"DAT2") {
+            if b.len() >= 4 {
+                self.ammo_projectiles_per_shot = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            }
+            if b.len() >= 8 {
+                self.ammo_projectile = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+            }
+            if b.len() >= 12 {
+                self.ammo_dat2_weight = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            }
+            if b.len() >= 16 {
+                self.ammo_consumed = Some(u32::from_le_bytes([b[12], b[13], b[14], b[15]]));
+            }
+            if b.len() >= 20 {
+                self.ammo_consumed_percentage = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            }
+        }
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 12) {
             self.ammo_speed = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.ammo_val = i32::from_le_bytes([b[8], b[9], b[10], b[11]]);
@@ -5252,20 +5373,34 @@ impl ObjectEditorState {
     }
 
     fn load_term(&mut self) {
+        self.term_flags = 0;
+        self.term_server_type = 0;
         if let Some(b) = self.raw_subs.get(b"DNAM") {
             self.term_difficulty = b.first().copied().unwrap_or(0);
+            if b.len() >= 2 {
+                self.term_flags = b[1];
+            }
+            if b.len() >= 3 {
+                self.term_server_type = b[2];
+            }
         }
         self.term_welcome = self.get_string(b"WNAM");
         self.term_sound_loop = self.get_fid(b"SNAM");
     }
 
     fn load_ligh(&mut self) {
+        self.ligh_time = 0;
+        self.ligh_value = 0;
+        self.ligh_weight = 0.0;
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 32) {
+            self.ligh_time = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.ligh_radius = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
             self.ligh_color = [b[8], b[9], b[10]];
             self.ligh_flags = u32::from_le_bytes([b[12], b[13], b[14], b[15]]);
             self.ligh_falloff = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
             self.ligh_fov = f32::from_le_bytes([b[20], b[21], b[22], b[23]]);
+            self.ligh_value = u32::from_le_bytes([b[24], b[25], b[26], b[27]]);
+            self.ligh_weight = f32::from_le_bytes([b[28], b[29], b[30], b[31]]);
         }
     }
 
@@ -5426,6 +5561,9 @@ impl ObjectEditorState {
     }
 
     fn load_expl(&mut self) {
+        self.expl_rad_dissipation_time = 0.0;
+        self.expl_rad_radius = 0.0;
+        self.expl_sound_level = 0;
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 28) {
             self.expl_force = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.expl_damage = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
@@ -5436,6 +5574,15 @@ impl ObjectEditorState {
             if b.len() >= 40 {
                 self.expl_sound2 = Some(u32::from_le_bytes([b[32], b[33], b[34], b[35]]));
                 self.expl_rad_level = f32::from_le_bytes([b[36], b[37], b[38], b[39]]);
+            }
+            if b.len() >= 44 {
+                self.expl_rad_dissipation_time = f32::from_le_bytes([b[40], b[41], b[42], b[43]]);
+            }
+            if b.len() >= 48 {
+                self.expl_rad_radius = f32::from_le_bytes([b[44], b[45], b[46], b[47]]);
+            }
+            if b.len() >= 52 {
+                self.expl_sound_level = u32::from_le_bytes([b[48], b[49], b[50], b[51]]);
             }
         }
     }
@@ -5880,13 +6027,33 @@ impl ObjectEditorState {
         }
     }
 
-    fn load_clmt(&mut self) {
+    fn load_clmt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.clmt_moons_phase_length = 0;
+        self.clmt_weather_list.clear();
         if let Some(b) = self.raw_subs.get(b"TNAM").filter(|b| b.len() >= 5) {
             self.clmt_sunrise_begin = b[0];
             self.clmt_sunrise_end = b[1];
             self.clmt_sunset_begin = b[2];
             self.clmt_sunset_end = b[3];
             self.clmt_volatility = b[4];
+            if b.len() >= 6 {
+                self.clmt_moons_phase_length = b[5];
+            }
+        }
+        // The weather list. The subrecord holds a run of twelve-byte
+        // entries, and a record can carry more than one.
+        for sub in raw_subs {
+            if sub.sig == *b"WLST" {
+                for chunk in sub.data.as_chunks::<12>().0 {
+                    self.clmt_weather_list.push(ClimateWeather {
+                        weather: Some(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])),
+                        chance: i32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
+                        global: Some(u32::from_le_bytes([
+                            chunk[8], chunk[9], chunk[10], chunk[11],
+                        ])),
+                    });
+                }
+            }
         }
         self.clmt_sun_texture = self.get_string(b"FNAM");
         self.clmt_sun_glare_texture = self.get_string(b"GNAM");
@@ -9203,6 +9370,37 @@ impl ObjectEditorState {
         // armor-type enum's three bits written inside it, so a bit the enum
         // does not name — "Non-Playable", set on 34 of the game's records —
         // survives a save.
+
+        // The armor's sounds. The `SNAM` subrecord repeats, and each one
+        // is written back over the record's own bytes so the three
+        // unnamed bytes survive.
+        if self.raw_subs.contains_key(b"SNAM") {
+            // The three unnamed bytes of each entry are the record's own,
+            // so the entries are written back over the bytes they came
+            // from.
+            let originals = &self.armo_snam_raw;
+            let entries: Vec<([u8; 4], Vec<u8>)> = self
+                .armo_sounds
+                .iter()
+                .enumerate()
+                .map(|(i, sound)| {
+                    let mut buf = originals.get(i).cloned().unwrap_or_else(|| vec![0u8; 12]);
+                    buf.resize(buf.len().max(12), 0);
+                    if let Some(f) = sound.sound {
+                        buf[0..4].copy_from_slice(&f.to_le_bytes());
+                    }
+                    buf[4] = sound.chance;
+                    buf[8..12].copy_from_slice(&sound.kind.to_le_bytes());
+                    (*b"SNAM", buf)
+                })
+                .collect();
+            if entries.is_empty() {
+                session.doc.remove_sub(fid, b"SNAM");
+            } else {
+                session.doc.set_sub_sequence(fid, vec![*b"SNAM"], entries);
+            }
+        }
+
         let original_bmdt = self.raw_subs.get(b"BMDT").cloned();
         let mut bmdt = original_bmdt.unwrap_or_else(|| vec![0u8; 8]);
         bmdt.resize(8, 0);
@@ -9651,10 +9849,29 @@ impl ObjectEditorState {
         }
         session.doc.set_sub(fid, b"DATA", d);
 
+        // The `DAT2` struct: the projectiles per shot, the projectile, the
+        // struct's own weight, the consumed ammo and the consumed
+        // percentage.
         if let Some(original) = self.raw_subs.get(b"DAT2") {
             let mut dat2 = original.clone();
+            if dat2.len() >= 4 {
+                dat2[0..4].copy_from_slice(&self.ammo_projectiles_per_shot.to_le_bytes());
+            }
+            if dat2.len() >= 8 {
+                if let Some(p) = self.ammo_projectile {
+                    dat2[4..8].copy_from_slice(&p.to_le_bytes());
+                }
+            }
             if dat2.len() >= 12 {
-                dat2[8..12].copy_from_slice(&self.ammo_weight.to_le_bytes());
+                dat2[8..12].copy_from_slice(&self.ammo_dat2_weight.to_le_bytes());
+            }
+            if dat2.len() >= 16 {
+                if let Some(c) = self.ammo_consumed {
+                    dat2[12..16].copy_from_slice(&c.to_le_bytes());
+                }
+            }
+            if dat2.len() >= 20 {
+                dat2[16..20].copy_from_slice(&self.ammo_consumed_percentage.to_le_bytes());
             }
             session.doc.set_sub(fid, b"DAT2", dat2);
         }
@@ -9778,6 +9995,12 @@ impl ObjectEditorState {
             if !dnam.is_empty() {
                 dnam[0] = self.term_difficulty;
             }
+            if dnam.len() >= 2 {
+                dnam[1] = self.term_flags;
+            }
+            if dnam.len() >= 3 {
+                dnam[2] = self.term_server_type;
+            }
             session.doc.set_sub(fid, b"DNAM", dnam);
         } else {
             session
@@ -9817,6 +10040,7 @@ impl ObjectEditorState {
         if d.len() < 32 {
             d.resize(32, 0);
         }
+        d[0..4].copy_from_slice(&self.ligh_time.to_le_bytes());
         d[4..8].copy_from_slice(&self.ligh_radius.to_le_bytes());
         d[8] = self.ligh_color[0];
         d[9] = self.ligh_color[1];
@@ -9824,6 +10048,8 @@ impl ObjectEditorState {
         d[12..16].copy_from_slice(&self.ligh_flags.to_le_bytes());
         d[16..20].copy_from_slice(&self.ligh_falloff.to_le_bytes());
         d[20..24].copy_from_slice(&self.ligh_fov.to_le_bytes());
+        d[24..28].copy_from_slice(&self.ligh_value.to_le_bytes());
+        d[28..32].copy_from_slice(&self.ligh_weight.to_le_bytes());
         session.doc.set_sub(fid, b"DATA", d);
     }
 
@@ -10027,14 +10253,14 @@ impl ObjectEditorState {
 
     fn save_expl(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
+        // The struct is written back over the record's own bytes, so its
+        // length and the bytes the spec does not name survive.
         let mut d = self
             .raw_subs
             .get(b"DATA")
             .cloned()
-            .unwrap_or_else(|| vec![0u8; 48]);
-        if d.len() < 48 {
-            d.resize(48, 0);
-        }
+            .unwrap_or_else(|| vec![0u8; 52]);
+        d.resize(d.len().max(52), 0);
         d[0..4].copy_from_slice(&self.expl_force.to_le_bytes());
         d[4..8].copy_from_slice(&self.expl_damage.to_le_bytes());
         d[8..12].copy_from_slice(&self.expl_radius.to_le_bytes());
@@ -10049,6 +10275,15 @@ impl ObjectEditorState {
             d[32..36].copy_from_slice(&s.to_le_bytes());
         }
         d[36..40].copy_from_slice(&self.expl_rad_level.to_le_bytes());
+        if d.len() >= 44 {
+            d[40..44].copy_from_slice(&self.expl_rad_dissipation_time.to_le_bytes());
+        }
+        if d.len() >= 48 {
+            d[44..48].copy_from_slice(&self.expl_rad_radius.to_le_bytes());
+        }
+        if d.len() >= 52 {
+            d[48..52].copy_from_slice(&self.expl_sound_level.to_le_bytes());
+        }
         session.doc.set_sub(fid, b"DATA", d);
     }
 
@@ -10741,7 +10976,32 @@ impl ObjectEditorState {
         tnam[2] = self.clmt_sunset_begin;
         tnam[3] = self.clmt_sunset_end;
         tnam[4] = self.clmt_volatility;
+        if tnam.len() >= 6 {
+            tnam[5] = self.clmt_moons_phase_length;
+        }
         session.doc.set_sub(fid, b"TNAM", tnam);
+
+        // The weather list. The subrecord holds a run of twelve-byte
+        // entries, and a record can carry more than one.
+        if self.raw_subs.contains_key(b"WLST") {
+            let mut wlst = Vec::new();
+            for w in &self.clmt_weather_list {
+                let mut buf = vec![0u8; 12];
+                if let Some(f) = w.weather {
+                    buf[0..4].copy_from_slice(&f.to_le_bytes());
+                }
+                buf[4..8].copy_from_slice(&w.chance.to_le_bytes());
+                if let Some(f) = w.global {
+                    buf[8..12].copy_from_slice(&f.to_le_bytes());
+                }
+                wlst.extend_from_slice(&buf);
+            }
+            if wlst.is_empty() {
+                session.doc.remove_sub(fid, b"WLST");
+            } else {
+                session.doc.set_sub(fid, b"WLST", wlst);
+            }
+        }
         if !self.clmt_sun_texture.trim().is_empty() {
             session
                 .doc
@@ -14816,7 +15076,7 @@ pub fn ui(
                 b"GLOB" => draw_glob_ui(ui, &mut state),
                 b"GMST" => draw_gmst_ui(ui, &mut state),
                 b"RACE" => draw_race_ui(ui, &session, &mut state),
-                b"CLMT" => draw_clmt_ui(ui, &mut state),
+                b"CLMT" => draw_clmt_ui(ui, &session, &mut state),
                 b"ADDN" => draw_addn_ui(ui, &mut state),
                 b"ALOC" => draw_aloc_ui(ui, &session, &mut state),
                 b"AMEF" => draw_amef_ui(ui, &mut state),
@@ -15446,6 +15706,33 @@ fn draw_armo_ui(
                 }
             }
         });
+    });
+
+    // The armor's sounds. The `SNAM` subrecord repeats, one per sound.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Armor Sounds (SNAM)");
+        ui.add_space(4.0);
+        let sounds = session.records_by_sig(*b"SOUN");
+        let mut remove_idx = None;
+        for (idx, sound) in state.armo_sounds.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui.button("✖").on_hover_text("Remove this sound").clicked() {
+                    remove_idx = Some(idx);
+                }
+                ui.label("Sound:");
+                let mut fid = sound.sound;
+                record_dropdown(ui, &format!("armo_sound_{idx}"), &sounds, &mut fid);
+                sound.sound = fid;
+                ui.label("Chance:");
+                ui.add(egui::DragValue::new(&mut sound.chance).range(0..=255));
+                ui.label("Type:");
+                ui.add(egui::DragValue::new(&mut sound.kind).range(0..=u32::MAX));
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.armo_sounds.remove(idx);
+        }
     });
 }
 
@@ -16922,6 +17209,13 @@ fn draw_term_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             formid_field(ui, "term_sound_loop", &mut state.term_sound_loop);
         });
         ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.term_flags).range(0..=u8::MAX));
+            ui.label("Server Type:");
+            ui.add(egui::DragValue::new(&mut state.term_server_type).range(0..=u8::MAX));
+        });
+        ui.add_space(4.0);
         ui.label("Welcome Text (WNAM):");
         ui.add(
             egui::TextEdit::multiline(&mut state.term_welcome)
@@ -16959,6 +17253,15 @@ fn draw_ligh_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .speed(1.0)
                     .range(0.0..=180.0),
             );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Time:");
+            ui.add(egui::DragValue::new(&mut state.ligh_time));
+            ui.label("Value:");
+            ui.add(egui::DragValue::new(&mut state.ligh_value).range(0..=u32::MAX));
+            ui.label("Weight:");
+            ui.add(egui::DragValue::new(&mut state.ligh_weight).speed(0.01));
         });
     });
 }
@@ -17370,6 +17673,23 @@ fn draw_expl_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .speed(10.0)
                     .range(0.0..=100000.0),
             );
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Radiation Dissipation Time:");
+            ui.add(
+                egui::DragValue::new(&mut state.expl_rad_dissipation_time)
+                    .speed(1.0)
+                    .range(0.0..=10000.0),
+            );
+            ui.label("Radiation Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.expl_rad_radius)
+                    .speed(10.0)
+                    .range(0.0..=100000.0),
+            );
+            ui.label("Sound Level:");
+            ui.add(egui::DragValue::new(&mut state.expl_sound_level).range(0..=u32::MAX));
         });
     });
 }
@@ -19062,7 +19382,11 @@ fn draw_race_ui(
     });
 }
 
-fn draw_clmt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+fn draw_clmt_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Climate Day/Night Cycle & Sky");
         ui.add_space(4.0);
@@ -19077,6 +19401,8 @@ fn draw_clmt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             ui.add(egui::DragValue::new(&mut state.clmt_sunset_end).range(0..=24));
             ui.label("Volatility:");
             ui.add(egui::DragValue::new(&mut state.clmt_volatility).range(0..=100));
+            ui.label("Moons / Phase Length:");
+            ui.add(egui::DragValue::new(&mut state.clmt_moons_phase_length).range(0..=255));
         });
         ui.add_space(4.0);
         ui.horizontal(|ui| {
@@ -19094,6 +19420,40 @@ fn draw_clmt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .desired_width(ui.available_width() - 20.0),
             );
         });
+    });
+
+    // The weather list.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Weather List (WLST)");
+        ui.add_space(4.0);
+        let weathers = session.records_by_sig(*b"WTHR");
+        let globals = session.records_by_sig(*b"GLOB");
+        let mut remove_idx = None;
+        for (idx, entry) in state.clmt_weather_list.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("✖")
+                    .on_hover_text("Remove this weather")
+                    .clicked()
+                {
+                    remove_idx = Some(idx);
+                }
+                ui.label("Weather:");
+                let mut fid = entry.weather;
+                record_dropdown(ui, &format!("clmt_weather_{idx}"), &weathers, &mut fid);
+                entry.weather = fid;
+                ui.label("Chance:");
+                ui.add(egui::DragValue::new(&mut entry.chance));
+                ui.label("Global:");
+                let mut fid = entry.global;
+                record_dropdown(ui, &format!("clmt_global_{idx}"), &globals, &mut fid);
+                entry.global = fid;
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.clmt_weather_list.remove(idx);
+        }
     });
 }
 
