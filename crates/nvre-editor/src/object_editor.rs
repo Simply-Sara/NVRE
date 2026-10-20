@@ -1260,6 +1260,36 @@ pub struct ObjectEditorState {
     pub pmis_flags: u32,
     /// `DATA` Unknown — the six unnamed bytes.
     pub pmis_unknown: [u8; 6],
+    /// `XRNK` Faction Rank — the int32.
+    pub pmis_faction_rank: i32,
+    /// `XCNT` Count — the int32.
+    pub pmis_count: i32,
+    /// `XRDS` Radius — the float32.
+    pub pmis_radius: f32,
+    /// `XHLP` Health — the float32.
+    pub pmis_health: f32,
+    /// `XLKR` Linked Reference — the FormID.
+    pub pmis_linked_reference: Option<u32>,
+    /// `XAPD` Flags — the uint8.
+    pub pmis_activate_flags: u8,
+    /// `XATO` Activation Prompt — the cstring.
+    pub pmis_activation_prompt: String,
+    /// `XEMI` Emittance — the FormID of a `LIGH` or `REGN` record.
+    pub pmis_emittance: Option<u32>,
+    /// `XMBR` MultiBound Reference — the FormID of a `REFR` record.
+    pub pmis_multibound_reference: Option<u32>,
+    /// `XIBS` Ignored By Sandbox — the null flag: true when the record
+    /// carries it.
+    pub pmis_ignored_by_sandbox: bool,
+    /// The embedded script's header.
+    pub pmis_script: Option<ScriptHeader>,
+    /// `SCDA` — the compiled script source.
+    pub pmis_compiled: Vec<u8>,
+    /// `SCTX` — the script source.
+    pub pmis_source: String,
+    /// The local variables. Each is an `SLSD` (the data) and a `SCVR` (the
+    /// name), and both repeat.
+    pub pmis_variables: Vec<ScriptVariable>,
 
     // COBJ (Constructible Object) fields
     /// `DATA` Value — the int32.
@@ -7720,6 +7750,20 @@ impl ObjectEditorState {
         self.pmis_bounding_radius = 0.0;
         self.pmis_flags = 0;
         self.pmis_unknown = [0; 6];
+        self.pmis_faction_rank = 0;
+        self.pmis_count = 0;
+        self.pmis_radius = 0.0;
+        self.pmis_health = 0.0;
+        self.pmis_linked_reference = None;
+        self.pmis_activate_flags = 0;
+        self.pmis_activation_prompt.clear();
+        self.pmis_emittance = None;
+        self.pmis_multibound_reference = None;
+        self.pmis_ignored_by_sandbox = false;
+        self.pmis_script = None;
+        self.pmis_compiled.clear();
+        self.pmis_source.clear();
+        self.pmis_variables.clear();
         for sub in raw_subs {
             match &sub.sig {
                 b"NAME" if sub.data.len() >= 4 => {
@@ -7768,6 +7812,91 @@ impl ObjectEditorState {
                 }
                 b"XRGD" => self.pmis_ragdoll = sub.data.clone(),
                 b"XRGB" => self.pmis_ragdoll_biped = sub.data.clone(),
+                b"XRNK" if sub.data.len() >= 4 => {
+                    self.pmis_faction_rank =
+                        i32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"XCNT" if sub.data.len() >= 4 => {
+                    self.pmis_count =
+                        i32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"XRDS" if sub.data.len() >= 4 => {
+                    self.pmis_radius =
+                        f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"XHLP" if sub.data.len() >= 4 => {
+                    self.pmis_health =
+                        f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"XLKR" if sub.data.len() >= 4 => {
+                    self.pmis_linked_reference = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"XAPD" if !sub.data.is_empty() => {
+                    self.pmis_activate_flags = sub.data[0];
+                }
+                b"XATO" => self.pmis_activation_prompt = zstring(&sub.data),
+                b"XEMI" if sub.data.len() >= 4 => {
+                    self.pmis_emittance = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"XMBR" if sub.data.len() >= 4 => {
+                    self.pmis_multibound_reference = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"XIBS" => self.pmis_ignored_by_sandbox = true,
+                b"SCHR" if sub.data.len() >= 20 => {
+                    self.pmis_script = Some(ScriptHeader {
+                        script_type: u16::from_le_bytes([sub.data[12], sub.data[13]]) as u32,
+                        flags: u16::from_le_bytes([sub.data[14], sub.data[15]]),
+                        version: u32::from_le_bytes([
+                            sub.data[16],
+                            sub.data[17],
+                            sub.data[18],
+                            sub.data[19],
+                        ]),
+                        unknown: i32::from_le_bytes([
+                            sub.data[8],
+                            sub.data[9],
+                            sub.data[10],
+                            sub.data[11],
+                        ]),
+                    });
+                }
+                b"SCDA" => self.pmis_compiled = sub.data.clone(),
+                b"SCTX" => self.pmis_source = String::from_utf8_lossy(&sub.data).into_owned(),
+                b"SLSD" if sub.data.len() >= 24 => {
+                    self.pmis_variables.push(ScriptVariable {
+                        index: u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]),
+                        flags: sub.data[20],
+                        name: String::new(),
+                        refs: Vec::new(),
+                        raw: sub.data.clone(),
+                    });
+                }
+                b"SCVR" => {
+                    // The name belongs to the variable above it.
+                    if let Some(v) = self.pmis_variables.last_mut() {
+                        v.name = zstring(&sub.data);
+                    }
+                }
                 b"XSCL" if sub.data.len() >= 4 => {
                     self.pmis_scale =
                         f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
@@ -12754,6 +12883,9 @@ impl ObjectEditorState {
             (b"INAM", self.pmis_idle),
             (b"TNAM", self.pmis_topic),
             (b"XOWN", self.pmis_owner),
+            (b"XLKR", self.pmis_linked_reference),
+            (b"XEMI", self.pmis_emittance),
+            (b"XMBR", self.pmis_multibound_reference),
         ] {
             match value {
                 Some(v) if self.raw_subs.contains_key(sig) => {
@@ -12768,6 +12900,80 @@ impl ObjectEditorState {
             session
                 .doc
                 .set_sub(fid, b"XPRD", self.pmis_idle_time.to_le_bytes().to_vec());
+        }
+        for (sig, value) in [
+            (b"XRNK", self.pmis_faction_rank.to_le_bytes().to_vec()),
+            (b"XCNT", self.pmis_count.to_le_bytes().to_vec()),
+            (b"XRDS", self.pmis_radius.to_le_bytes().to_vec()),
+            (b"XHLP", self.pmis_health.to_le_bytes().to_vec()),
+        ] {
+            if self.raw_subs.contains_key(sig) {
+                session.doc.set_sub(fid, sig, value);
+            }
+        }
+        if self.raw_subs.contains_key(b"XAPD") {
+            session
+                .doc
+                .set_sub(fid, b"XAPD", vec![self.pmis_activate_flags]);
+        }
+        if self.pmis_activation_prompt.trim().is_empty() {
+            session.doc.remove_sub(fid, b"XATO");
+        } else {
+            session
+                .doc
+                .set_sub(fid, b"XATO", encode_zstring(&self.pmis_activation_prompt));
+        }
+        if self.pmis_ignored_by_sandbox {
+            if !self.raw_subs.contains_key(b"XIBS") {
+                session.doc.set_sub(fid, b"XIBS", Vec::new());
+            }
+        } else {
+            session.doc.remove_sub(fid, b"XIBS");
+        }
+        // The embedded script: the header, the compiled source and the
+        // source, each written only when the record carries it.
+        if let Some(header) = &self.pmis_script {
+            if self.raw_subs.contains_key(b"SCHR") {
+                let mut schr = vec![0u8; 20];
+                schr[8..12].copy_from_slice(&header.unknown.to_le_bytes());
+                schr[12..14].copy_from_slice(&(header.script_type as u16).to_le_bytes());
+                schr[14..16].copy_from_slice(&header.flags.to_le_bytes());
+                schr[16..20].copy_from_slice(&header.version.to_le_bytes());
+                session.doc.set_sub(fid, b"SCHR", schr);
+            }
+        }
+        if self.raw_subs.contains_key(b"SCDA") {
+            session
+                .doc
+                .set_sub(fid, b"SCDA", self.pmis_compiled.clone());
+        }
+        if self.raw_subs.contains_key(b"SCTX") {
+            session
+                .doc
+                .set_sub(fid, b"SCTX", self.pmis_source.as_bytes().to_vec());
+        }
+        // The local variables: each is an `SLSD` and a `SCVR`, and both
+        // repeat, so they are written as a sequence.
+        if self.raw_subs.contains_key(b"SLSD") {
+            let mut vars: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+            for var in &self.pmis_variables {
+                let mut slsd = var.raw.clone();
+                if slsd.len() < 24 {
+                    slsd.resize(24, 0);
+                }
+                slsd[0..4].copy_from_slice(&var.index.to_le_bytes());
+                slsd[20] = var.flags;
+                vars.push((*b"SLSD", slsd));
+                vars.push((*b"SCVR", encode_zstring(&var.name)));
+            }
+            if vars.is_empty() {
+                session.doc.remove_sub(fid, b"SLSD");
+                session.doc.remove_sub(fid, b"SCVR");
+            } else {
+                session
+                    .doc
+                    .set_sub_sequence(fid, vec![*b"SLSD", *b"SCVR"], vars);
+            }
         }
         if self.raw_subs.contains_key(b"XSCL") {
             session
@@ -22798,7 +23004,67 @@ fn draw_pmis_ui(
             formid_field(ui, "pmis_owner", &mut fid);
             state.pmis_owner = fid;
         });
+        ui.horizontal(|ui| {
+            ui.label("Faction Rank:");
+            ui.add(egui::DragValue::new(&mut state.pmis_faction_rank).range(-10..=10));
+            ui.label("Count:");
+            ui.add(egui::DragValue::new(&mut state.pmis_count).range(0..=1000));
+            ui.label("Radius:");
+            ui.add(egui::DragValue::new(&mut state.pmis_radius).speed(0.1));
+            ui.label("Health:");
+            ui.add(egui::DragValue::new(&mut state.pmis_health).speed(0.1));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Linked Reference:");
+            let mut fid = state.pmis_linked_reference;
+            formid_field(ui, "pmis_linked_ref", &mut fid);
+            state.pmis_linked_reference = fid;
+            ui.label("Emittance:");
+            let mut fid = state.pmis_emittance;
+            formid_field(ui, "pmis_emittance", &mut fid);
+            state.pmis_emittance = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("MultiBound Reference:");
+            let mut fid = state.pmis_multibound_reference;
+            formid_field(ui, "pmis_multibound", &mut fid);
+            state.pmis_multibound_reference = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Activate Parents Flags:");
+            ui.add(egui::DragValue::new(&mut state.pmis_activate_flags).range(0..=255));
+            ui.checkbox(&mut state.pmis_ignored_by_sandbox, "Ignored By Sandbox");
+        });
+        ui.horizontal(|ui| {
+            ui.label("Activation Prompt:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.pmis_activation_prompt)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
     });
+
+    // The embedded script's local variables.
+    if !state.pmis_variables.is_empty() {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Local Variables");
+            ui.add_space(4.0);
+            for var in &mut state.pmis_variables {
+                ui.horizontal(|ui| {
+                    ui.label("Index:");
+                    ui.add(egui::DragValue::new(&mut var.index).range(0..=1000));
+                    ui.label("Name:");
+                    ui.add(
+                        egui::TextEdit::singleline(&mut var.name)
+                            .desired_width(ui.available_width() - 200.0),
+                    );
+                    ui.label("Flags:");
+                    ui.add(egui::DragValue::new(&mut var.flags).range(0..=255));
+                });
+            }
+        });
+    }
 
     ui.add_space(6.0);
     ui.group(|ui| {
