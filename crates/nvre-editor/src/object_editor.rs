@@ -155,6 +155,14 @@ pub struct ObjectEditorState {
     pub actor_luck: u8,
     pub actor_aggression: u8,
     pub actor_confidence: u8,
+    /// `AIDT` Buys/Sells and Services — the uint32 flag word.
+    pub actor_services: u32,
+    /// `AIDT` Teaches — the int8 enum.
+    pub actor_teaches: i8,
+    /// `AIDT` Maximum Training Level — the uint8.
+    pub actor_max_training_level: u8,
+    /// `AIDT` Aggro Radius Behaviour — the uint8 flag word.
+    pub actor_aggro_radius_behavior: u8,
     pub actor_assistance: i8,
     pub actor_mood: u8,
     pub actor_energy: u8,
@@ -5257,7 +5265,11 @@ impl ObjectEditorState {
             self.actor_energy = b[2];
             self.actor_resp = b[3];
             self.actor_mood = b[4];
+            self.actor_services = u32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            self.actor_teaches = b[12] as i8;
+            self.actor_max_training_level = b[13];
             self.actor_assistance = b[14] as i8;
+            self.actor_aggro_radius_behavior = b[15];
             self.actor_aggro_radius = i32::from_le_bytes([b[16], b[17], b[18], b[19]]);
         }
         self.actor_race = self.get_fid(b"RNAM");
@@ -9554,7 +9566,11 @@ impl ObjectEditorState {
         aidt[2] = self.actor_energy;
         aidt[3] = self.actor_resp;
         aidt[4] = self.actor_mood;
+        aidt[8..12].copy_from_slice(&self.actor_services.to_le_bytes());
+        aidt[12] = self.actor_teaches as u8;
+        aidt[13] = self.actor_max_training_level;
         aidt[14] = self.actor_assistance as u8;
+        aidt[15] = self.actor_aggro_radius_behavior;
         aidt[16..20].copy_from_slice(&self.actor_aggro_radius.to_le_bytes());
         session.doc.set_sub(fid, b"AIDT", aidt);
 
@@ -16499,6 +16515,49 @@ fn draw_actor_ai(
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
+            ui.label("Buys/Sells (services):");
+            for (bit, name) in CLAS_SERVICES.iter() {
+                let mut on = state.actor_services & bit != 0;
+                if ui.checkbox(&mut on, *name).changed() {
+                    if on {
+                        state.actor_services |= bit;
+                    } else {
+                        state.actor_services &= !bit;
+                    }
+                }
+            }
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Teaches:");
+            egui::ComboBox::from_id_salt("actor_teaches")
+                .selected_text(
+                    NPC_SKILL_NAMES
+                        .get(state.actor_teaches.max(0) as usize)
+                        .copied()
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut state.actor_teaches, -1, "None");
+                    for (i, name) in NPC_SKILL_NAMES.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_teaches, i as i8, *name);
+                    }
+                });
+            ui.label("Max Training Level:");
+            ui.add(egui::DragValue::new(&mut state.actor_max_training_level).range(0..=255));
+            ui.label("Aggro Radius Behaviour:");
+            let mut aggro_beh = state.actor_aggro_radius_behavior & 1 != 0;
+            if ui
+                .checkbox(&mut aggro_beh, "Aggro Radius Behavior")
+                .changed()
+            {
+                state.actor_aggro_radius_behavior = u8::from(aggro_beh);
+            }
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
             ui.label("Mood:");
             let cur_mood = (state.actor_mood as usize).min(MOOD_NAMES.len() - 1);
             let mood_lbl = MOOD_NAMES.get(cur_mood).copied().unwrap_or("Unknown");
@@ -16991,7 +17050,19 @@ fn draw_crea_physical(
             record_dropdown(ui, "actor_eitm", &spells, &mut state.actor_unarmed_effect);
             ui.separator();
             ui.label("Unarmed Attack Anim (EAMT):");
-            ui.add(egui::DragValue::new(&mut state.crea_unarmed_anim).range(0..=255));
+            egui::ComboBox::from_id_salt("actor_eamt")
+                .selected_text(
+                    ATTACK_ANIMATIONS
+                        .iter()
+                        .find(|(v, _)| *v == state.crea_unarmed_anim)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in ATTACK_ANIMATIONS.iter() {
+                        ui.selectable_value(&mut state.crea_unarmed_anim, *v, *name);
+                    }
+                });
         });
     });
 }
@@ -21836,6 +21907,127 @@ fn draw_spel_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         }
     });
 }
+
+/// The attack animations, from the spec's Attack Animations page. The
+/// actor's unarmed attack animation is one of these.
+const ATTACK_ANIMATIONS: [(u16, &str); 116] = [
+    (26, "AttackLeft"),
+    (27, "AttackLeftUp"),
+    (28, "AttackLeftDown"),
+    (29, "AttackLeftIS"),
+    (30, "AttackLeftISUp"),
+    (31, "AttackLeftISDown"),
+    (32, "AttackRight"),
+    (33, "AttackRightUp"),
+    (34, "AttackRightDown"),
+    (35, "AttackRightIS"),
+    (36, "AttackRightISUp"),
+    (37, "AttackRightISDown"),
+    (38, "Attack3"),
+    (39, "Attack3Up"),
+    (40, "Attack3Down"),
+    (41, "Attack3IS"),
+    (42, "Attack3ISUp"),
+    (43, "Attack3ISDown"),
+    (44, "Attack4"),
+    (45, "Attack4Up"),
+    (46, "Attack4Down"),
+    (47, "Attack4IS"),
+    (48, "Attack4ISUp"),
+    (49, "Attack4ISDown"),
+    (50, "Attack5"),
+    (51, "Attack5Up"),
+    (52, "Attack5Down"),
+    (53, "Attack5IS"),
+    (54, "Attack5ISUp"),
+    (55, "Attack5ISDown"),
+    (56, "Attack6"),
+    (57, "Attack6Up"),
+    (58, "Attack6Down"),
+    (59, "Attack6IS"),
+    (60, "Attack6ISUp"),
+    (61, "Attack6ISDown"),
+    (62, "Attack7"),
+    (63, "Attack7Up"),
+    (64, "Attack7Down"),
+    (65, "Attack7IS"),
+    (66, "Attack7ISUp"),
+    (67, "Attack7ISDown"),
+    (68, "Attack8"),
+    (69, "Attack8Up"),
+    (70, "Attack8Down"),
+    (71, "Attack8IS"),
+    (72, "Attack8ISUp"),
+    (73, "Attack8ISDown"),
+    (74, "AttackLoop"),
+    (75, "AttackLoopUp"),
+    (76, "AttackLoopDown"),
+    (77, "AttackLoopIS"),
+    (78, "AttackLoopISUp"),
+    (79, "AttackLoopISDown"),
+    (80, "AttackSpin"),
+    (81, "AttackSpinUp"),
+    (82, "AttackSpinDown"),
+    (83, "AttackSpinIS"),
+    (84, "AttackSpinISUp"),
+    (85, "AttackSpinISDown"),
+    (86, "AttackSpin2"),
+    (87, "AttackSpin2Up"),
+    (88, "AttackSpin2Down"),
+    (89, "AttackSpin2IS"),
+    (90, "AttackSpin2ISUp"),
+    (91, "AttackSpin2ISDown"),
+    (92, "AttackPower"),
+    (93, "AttackForwardPower"),
+    (94, "AttackBackPower"),
+    (95, "AttackLeftPower"),
+    (96, "AttackRightPower"),
+    (97, "PlaceMine"),
+    (98, "PlaceMineUp"),
+    (99, "PlaceMineDown"),
+    (100, "PlaceMineIS"),
+    (101, "PlaceMineISUp"),
+    (102, "PlaceMineISDown"),
+    (103, "PlaceMine2"),
+    (104, "PlaceMine2Up"),
+    (105, "PlaceMine2Down"),
+    (106, "PlaceMine2IS"),
+    (107, "PlaceMine2ISUp"),
+    (108, "PlaceMine2ISDown"),
+    (109, "AttackThrow"),
+    (110, "AttackThrowUp"),
+    (111, "AttackThrowDown"),
+    (112, "AttackThrowIS"),
+    (113, "AttackThrowISUp"),
+    (114, "AttackThrowISDown"),
+    (115, "AttackThrow2"),
+    (116, "AttackThrow2Up"),
+    (117, "AttackThrow2Down"),
+    (118, "AttackThrow2IS"),
+    (119, "AttackThrow2ISUp"),
+    (120, "AttackThrow2ISDown"),
+    (121, "AttackThrow3"),
+    (122, "AttackThrow3Up"),
+    (123, "AttackThrow3Down"),
+    (124, "AttackThrow3IS"),
+    (125, "AttackThrow3ISUp"),
+    (126, "AttackThrow3ISDown"),
+    (127, "AttackThrow4"),
+    (128, "AttackThrow4Up"),
+    (129, "AttackThrow4Down"),
+    (130, "AttackThrow4IS"),
+    (131, "AttackThrow4ISUp"),
+    (132, "AttackThrow4ISDown"),
+    (133, "AttackThrow5"),
+    (134, "AttackThrow5Up"),
+    (135, "AttackThrow5Down"),
+    (136, "AttackThrow5IS"),
+    (137, "AttackThrow5ISUp"),
+    (138, "AttackThrow5ISDown"),
+    (167, "PipBoy"),
+    (178, "PipBoyChild"),
+    (255, "ANY"),
+];
 
 /// The spell effect's types, from the spec's Effect page.
 const SPEL_EFFECT_TYPES: [(u32, &str); 3] = [(0, "Self"), (1, "Touch"), (2, "Target")];
