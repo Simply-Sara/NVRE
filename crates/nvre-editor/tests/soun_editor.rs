@@ -90,16 +90,18 @@ fn every_field_of_a_long_sound_is_loaded() {
     assert_eq!(a.stop_time, u8_at(10), "Stop Time");
     assert_eq!(a.start_time, u8_at(11), "Start Time");
     for (i, point) in a.attenuation_points.iter().enumerate() {
-        assert_eq!(*point, i16_at(13 + i * 2), "Attenuation Point {}", i + 1);
+        assert_eq!(*point, i16_at(12 + i * 2), "Attenuation Point {}", i + 1);
     }
     assert_eq!(
         a.reverb_attenuation,
-        i16_at(23),
+        i16_at(22),
         "Reverb Attenuation Control"
     );
-    assert_eq!(a.priority, i32_at(25), "Priority");
-    assert_eq!(a.x, i32_at(29), "X");
-    assert_eq!(a.y, i32_at(33), "Y");
+    assert_eq!(a.priority, i32_at(24), "Priority");
+    assert_eq!(a.x, i32_at(28), "X");
+    // The struct is thirty-two bytes in every one of the game's records,
+    // so there is no room for the spec's second coordinate.
+    assert_eq!(d.len(), 32, "the attenuation struct is thirty-two bytes");
 }
 
 #[test]

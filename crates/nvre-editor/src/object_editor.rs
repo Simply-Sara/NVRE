@@ -2619,10 +2619,10 @@ pub struct SoundAttenuation {
     pub reverb_attenuation: i16,
     /// `Priority` — the int32.
     pub priority: i32,
-    /// `X` — the int32.
+    /// `X` — the int32. The struct is thirty-two bytes in every one of
+    /// the game's records, so there is no room for the spec's second
+    /// coordinate and it is not read.
     pub x: i32,
-    /// `Y` — the int32.
-    pub y: i32,
 }
 
 /// Read a sound's attenuation struct out of a `SNDD` or `SNDX` payload.
@@ -2653,11 +2653,10 @@ fn read_sound_attenuation(b: &[u8]) -> SoundAttenuation {
         static_attenuation: i16_at(8),
         stop_time: u8_at(10),
         start_time: u8_at(11),
-        attenuation_points: [i16_at(13), i16_at(15), i16_at(17), i16_at(19), i16_at(21)],
-        reverb_attenuation: i16_at(23),
-        priority: i32_at(25),
-        x: i32_at(29),
-        y: i32_at(33),
+        attenuation_points: [i16_at(12), i16_at(14), i16_at(16), i16_at(18), i16_at(20)],
+        reverb_attenuation: i16_at(22),
+        priority: i32_at(24),
+        x: i32_at(28),
     }
 }
 
@@ -2683,13 +2682,12 @@ fn write_sound_attenuation(original: &[u8], a: &SoundAttenuation) -> Vec<u8> {
     put(&mut b, 10, 1, &a.stop_time.to_le_bytes());
     put(&mut b, 11, 1, &a.start_time.to_le_bytes());
     for (i, point) in a.attenuation_points.iter().enumerate() {
-        let at = 13 + i * 2;
+        let at = 12 + i * 2;
         put(&mut b, at, 2, &point.to_le_bytes());
     }
-    put(&mut b, 23, 2, &a.reverb_attenuation.to_le_bytes());
-    put(&mut b, 25, 4, &a.priority.to_le_bytes());
-    put(&mut b, 29, 4, &a.x.to_le_bytes());
-    put(&mut b, 33, 4, &a.y.to_le_bytes());
+    put(&mut b, 22, 2, &a.reverb_attenuation.to_le_bytes());
+    put(&mut b, 24, 4, &a.priority.to_le_bytes());
+    put(&mut b, 28, 4, &a.x.to_le_bytes());
     b
 }
 
@@ -18383,8 +18381,6 @@ fn draw_soun_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         ui.horizontal(|ui| {
             ui.label("X:");
             ui.add(egui::DragValue::new(&mut a.x).range(-2147483648..=2147483647));
-            ui.label("Y:");
-            ui.add(egui::DragValue::new(&mut a.y).range(-2147483648..=2147483647));
         });
         ui.add_space(4.0);
         ui.label(egui::RichText::new("Attenuation Curve:").underline());
