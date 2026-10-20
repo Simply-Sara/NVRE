@@ -265,6 +265,21 @@ impl GameProfile {
         &FNV
     }
 
+    /// The game's Data folder: the user's saved override if there is one,
+    /// otherwise the Steam install.
+    ///
+    /// The saved override wins because it is the user's own answer to "where is
+    /// this game", and it may name a folder Steam does not know about — a
+    /// extracted copy, a second copy for testing. A saved path that no longer
+    /// exists is ignored, so an unmounted drive falls back to Steam rather than
+    /// opening a folder that is not there.
+    pub fn data_dir(&self) -> Option<PathBuf> {
+        if let Some(saved) = saved_data_dir(self.id) {
+            return Some(saved);
+        }
+        self.steam_data_dir()
+    }
+
     /// The game's Steam install, if it has one: the `Data` folder under
     /// `steamapps/common/<folder>/`.
     ///
@@ -388,6 +403,56 @@ impl GameProfile {
             _ => None,
         }
     }
+}
+
+/// Remember a game's Data folder so the user does not type it again.
+///
+/// Written to `~/.config/nvre/data-dirs.json` as `{ "<game id>": "<path>" }`.
+/// A write failure is silent: the override still applies for this session, and
+/// the file is a convenience rather than state the editor needs.
+pub fn save_data_dir(game_id: &str, dir: &Path) {
+    let path = match config_path() {
+        Some(p) => p,
+        None => return,
+    };
+    let mut map = load_data_dirs();
+    map.insert(game_id.to_string(), dir.to_string_lossy().into_owned());
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let text = serde_json::to_string_pretty(&map).unwrap_or_default();
+    let _ = std::fs::write(&path, text);
+}
+
+/// The remembered Data folder for `game_id`, if the user set one.
+///
+/// A remembered path is only used when the folder still exists: a drive that is
+/// not mounted is not a Data folder, and falling back to the Steam install or
+/// an empty field beats opening a folder that is not there.
+pub fn saved_data_dir(game_id: &str) -> Option<PathBuf> {
+    let dir = load_data_dirs().remove(game_id)?;
+    let path = PathBuf::from(dir);
+    path.exists().then_some(path)
+}
+
+/// Every remembered Data folder, by game id.
+fn load_data_dirs() -> std::collections::BTreeMap<String, String> {
+    let Some(path) = config_path() else {
+        return Default::default();
+    };
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Default::default();
+    };
+    serde_json::from_str(&text).unwrap_or_default()
+}
+
+/// Where the remembered folders live.
+fn config_path() -> Option<PathBuf> {
+    // XDG, with the fallback the spec names when it is unset.
+    let base = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
+    Some(base.join("nvre").join("data-dirs.json"))
 }
 
 /// Every Steam library folder, in no particular order.

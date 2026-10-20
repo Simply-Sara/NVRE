@@ -61,7 +61,7 @@ impl Launcher {
 impl Default for Launcher {
     fn default() -> Self {
         let game = &crate::game::FNV;
-        let dir = game.steam_data_dir().unwrap_or_default();
+        let dir = game.data_dir().unwrap_or_default();
         Launcher::for_game(game, &dir)
     }
 }
@@ -104,6 +104,13 @@ pub struct GameChoice {
     /// rather than derived every frame, because it is what the editor opened
     /// with and must not change under it.
     pub data_dir: Option<std::path::PathBuf>,
+    /// The Data-folder field's text, live.
+    ///
+    /// An egui widget's buffer must outlive the frame: rebuilding it from
+    /// `data_dir` each frame throws away whatever was just typed, so the field
+    /// looks editable and silently is not. This holds the text between frames;
+    /// `data_dir` is only written when the edit is committed.
+    pub folder_edit: String,
 }
 
 impl GameChoice {
@@ -116,14 +123,21 @@ impl GameChoice {
         GameChoice {
             chosen: game,
             applied: game,
-            data_dir: game.steam_data_dir(),
+            data_dir: game.data_dir(),
+            folder_edit: String::new(),
         }
     }
 
     /// Point at `game`, re-resolving its Steam install.
     pub fn choose(&mut self, game: &'static crate::game::GameProfile) {
         self.chosen = game;
-        self.data_dir = game.steam_data_dir();
+        self.data_dir = game.data_dir();
+        // The field shows the new folder, so the buffer follows it.
+        self.folder_edit = self
+            .data_dir
+            .clone()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
     }
 
     /// True when the pick differs from the running game.
@@ -137,6 +151,23 @@ impl GameChoice {
         self.data_dir
             .clone()
             .unwrap_or_else(|| fallback.to_path_buf())
+    }
+
+    /// Commit the field's text as the Data folder, and remember it.
+    ///
+    /// An empty field clears the override rather than keeping the last one, so
+    /// the game falls back to its Steam install. The result is written to the
+    /// config file, which is what keeps the user from typing it again.
+    pub fn commit_folder(&mut self) {
+        let text = self.folder_edit.trim().to_string();
+        self.data_dir = if text.is_empty() {
+            None
+        } else {
+            Some(std::path::PathBuf::from(text))
+        };
+        if let Some(dir) = &self.data_dir {
+            crate::game::save_data_dir(self.applied.id, dir);
+        }
     }
 }
 
@@ -252,13 +283,13 @@ pub fn ui(
                                 // probe, and a dropdown is redrawn every frame,
                                 // so the answer is cached per game for the
                                 // launcher's lifetime.
-                                let installed = installed
+                                let found = installed
                                     .entry(g.id)
-                                    .or_insert_with(|| g.steam_data_dir().is_some());
-                                let label = if *installed {
+                                    .or_insert_with(|| g.data_dir().is_some());
+                                let label = if *found {
                                     format!("{} ({})", g.name, g.master)
                                 } else {
-                                    format!("{} ({}) — not installed", g.name, g.master)
+                                    format!("{} ({}) — no Data folder found", g.name, g.master)
                                 };
                                 if ui.selectable_value(&mut choice.chosen, g, label).clicked()
                                     && !std::ptr::eq(choice.chosen, selected)
@@ -287,27 +318,31 @@ pub fn ui(
                 });
 
                 // The Data folder. Filled from Steam when the install is there;
-                // empty for the user to fill when it is not.
-                let mut folder = choice
-                    .data_dir
-                    .clone()
-                    .map(|p| p.to_string_lossy().into_owned())
-                    .unwrap_or_default();
+                // empty for the user to fill when it is not. The buffer lives in
+                // the resource so typing is not discarded every frame.
                 ui.horizontal(|ui| {
                     ui.label("Data folder:");
                     let resp = ui.add(
-                        egui::TextEdit::singleline(&mut folder)
+                        egui::TextEdit::singleline(&mut choice.folder_edit)
                             .desired_width(360.0)
                             .hint_text("/path/to/<Game>/Data"),
                     );
+                    // Commit on losing focus or Enter: the plugin list and the
+                    // master list both follow the folder.
                     if resp.lost_focus() {
-                        choice.data_dir = if folder.trim().is_empty() {
-                            None
-                        } else {
-                            Some(std::path::PathBuf::from(folder.trim()))
-                        };
+                        let before = choice.data_dir.clone();
+                        choice.commit_folder();
+                        if choice.data_dir != before {
+                            launcher.listing_dir = None;
+                            launcher.listing.clear();
+                            launcher.active = None;
+                            launcher.required.clear();
+                        }
                     }
                 });
+                if let Some(dir) = &choice.data_dir {
+                    ui.label(format!("{}", dir.display()));
+                }
                 let active_dir = choice.active_dir(&data.0);
                 if !active_dir.join(choice.chosen.master).exists() {
                     ui.colored_label(
