@@ -749,6 +749,155 @@ impl Session {
         self.status = format!("opened {name}");
     }
 
+    /// The next FormID a new record may use, in the plugin's own numbering.
+    ///
+    /// A FormID is file-local: its top byte indexes that file's own master
+    /// list, and the value equal to the master count means "this file". So a
+    /// new record's FormID has the plugin's own index in its top byte, and the
+    /// low 24 bits are the next free ones.
+    ///
+    /// The low bits are what matter for a cell: an interior cell's block and
+    /// sub-block labels are computed from them, and the save keeps them when
+    /// it moves the cell into the new plugin's numbering.
+    pub fn next_local_form_id(&self) -> u32 {
+        let self_index = self.doc.plugin().self_index() as u32;
+        let base = self_index << 24;
+        let mut next = 1u32;
+        for (fid, _) in self.doc.records() {
+            if (fid >> 24) == self_index {
+                next = next.max((fid & 0x00FF_FFFF) + 1);
+            }
+        }
+        for c in self.doc.added_cells() {
+            next = next.max((c.form_id & 0x00FF_FFFF) + 1);
+        }
+        for w in self.doc.added_worldspaces() {
+            next = next.max((w.form_id & 0x00FF_FFFF) + 1);
+        }
+        base | next
+    }
+
+    /// A load-order FormID as one in the plugin being edited's own numbering.
+    ///
+    /// A worldspace reference is a load-order FormID, but a group label is a
+    /// *plugin-local* one: the label names a record in the file the label is
+    /// written to, so it has to be expressed in the numbering of the plugin
+    /// being edited — which is what the save remaps.
+    pub fn to_local_form_id(&self, global: u32) -> Option<u32> {
+        // A worldspace this session created is already plugin-local: it was
+        // handed out from the plugin's own range.
+        if self
+            .doc
+            .added_worldspaces()
+            .iter()
+            .any(|x| x.form_id == global)
+        {
+            return Some(global);
+        }
+        let lo = self.load_order().ok()?;
+        let source = lo
+            .plugins
+            .iter()
+            .position(|p| p.name.eq_ignore_ascii_case(&self.doc.plugin().name))?;
+        lo.to_local(source, global)
+    }
+
+    /// Create a new cell and stage it for the next save.
+    ///
+    /// The cell is staged rather than written immediately: a Bethesda plugin
+    /// is written whole, and the cell's group tree depends on the FormID it
+    /// will carry, which the save assigns.
+    ///
+    /// An interior cell has no worldspace and no grid. An exterior cell needs
+    /// both: the worldspace it belongs to and the grid square it sits in.
+    ///
+    /// Returns the FormID the cell will carry.
+    pub fn create_cell(
+        &mut self,
+        edid: &str,
+        full: Option<String>,
+        world: Option<u32>,
+        grid: Option<(i32, i32)>,
+        with_land: bool,
+    ) -> Result<u32, String> {
+        if edid.trim().is_empty() {
+            return Err("a cell needs an Editor ID".into());
+        }
+        // An exterior cell has to name a worldspace that exists, or the cell
+        // would hang off a worldspace the engine never finds. A worldspace
+        // this session created counts: it is staged, and the save writes it
+        // before the cell that hangs off it.
+        let world =
+            match world {
+                None => None,
+                Some(w) => {
+                    let known = self.index.worldspaces.contains_key(&w)
+                        || self.doc.added_worldspaces().iter().any(|x| x.form_id == w);
+                    if !known {
+                        return Err(format!("the worldspace {w:08X} is not in the load order"));
+                    }
+                    Some(self.to_local_form_id(w).ok_or_else(|| {
+                        format!("the worldspace {w:08X} has no plugin-local FormID")
+                    })?)
+                }
+            };
+        let mut spec = nvre_edit::NewCell {
+            edid: edid.to_string(),
+            full,
+            world,
+            grid,
+            with_land,
+            data_flags: 0,
+        };
+        if world.is_none() {
+            // An interior cell has no grid, and the game reads the grid of an
+            // exterior cell to place it.
+            spec.grid = None;
+            spec.with_land = false;
+        }
+        let form_id = self.next_local_form_id();
+        self.doc.add_cell(spec, form_id);
+        self.status = format!("created cell {edid} ({form_id:08X})");
+        Ok(form_id)
+    }
+
+    /// Create a new worldspace and stage it for the next save.
+    ///
+    /// Returns the FormID the worldspace will carry.
+    pub fn create_worldspace(
+        &mut self,
+        edid: &str,
+        full: Option<String>,
+        default_land_height: f32,
+        default_water_height: f32,
+    ) -> Result<u32, String> {
+        if edid.trim().is_empty() {
+            return Err("a worldspace needs an Editor ID".into());
+        }
+        let spec = nvre_edit::NewWorldspace {
+            edid: edid.to_string(),
+            full,
+            default_land_height,
+            default_water_height,
+            climate: None,
+            water: None,
+        };
+        let form_id = self.next_local_form_id();
+        self.doc.add_worldspace(spec, form_id);
+        self.status = format!("created worldspace {edid} ({form_id:08X})");
+        Ok(form_id)
+    }
+
+    /// The cells this session has staged for creation.
+    pub fn staged_cells(&self) -> &[nvre_edit::document::PendingCell] {
+        self.doc.added_cells()
+    }
+
+    /// The worldspaces this session has staged for creation.
+    pub fn staged_worldspaces(&self) -> &[nvre_edit::document::PendingWorldspace] {
+        self.doc.added_worldspaces()
+    }
+
     /// Select a reference.
     pub fn select(&mut self, form_id: u32) {
         self.selected = Some(form_id);
