@@ -100,6 +100,21 @@ fn main() {
             if let Some(s) = as_ {
                 show("AFTER ", &s.0, &s.1);
             }
+            // Show the first differing byte, so a long subrecord is easy to
+            // place.
+            if let (Some(b), Some(a)) = (bs, as_) {
+                if b.0 == a.0 && b.1 != a.1 {
+                    let first =
+                        b.1.iter()
+                            .zip(a.1.iter())
+                            .position(|(x, y)| x != y)
+                            .unwrap_or(0);
+                    println!(
+                        "     first difference at byte {first} of {}",
+                        fnv_util::tag_str(&b.0)
+                    );
+                }
+            }
         }
     }
 }

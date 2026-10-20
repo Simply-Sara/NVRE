@@ -62,6 +62,9 @@ pub struct ObjectEditorState {
     pub weap_dmg: i16,
     pub weap_clip: u8,
     pub weap_ammo: Option<u32>,
+    /// The animation type — the uint32 enum: Hand To Hand, Melee, Pistol,
+    /// Rifle, and the rest.
+    pub weap_animation_type: u32,
     pub weap_crit_dmg: u16,
     pub weap_crit_mult: f32,
     pub weap_crit_effect: Option<u32>,
@@ -84,6 +87,9 @@ pub struct ObjectEditorState {
     pub armo_enchant: Option<u32>,
     pub armo_repair_list: Option<u32>,
     pub armo_type: u8, // 0: Light, 1: Medium, 2: Heavy, 3: Power, 4: Non-Playable
+    /// The type the record's own flag bits say, so a save can tell a
+    /// change of type from a save that changes nothing.
+    pub armo_type_from_general: u8,
     pub armo_biped_flags: u32,
     pub armo_modulates_voice: bool,
     /// The length of the record's `DNAM` subrecord: 4 on the 21 ARMO records
@@ -141,6 +147,16 @@ pub struct ObjectEditorState {
     pub actor_splo: Vec<u32>,
     pub splo_to_add: Option<u32>,
     pub actor_factions: Vec<(u32, i8)>,
+    /// The record's own `SNAM` entries, in file order, so the bytes the
+    /// spec does not name survive a save.
+    pub raw_snam: Vec<Vec<u8>>,
+    /// The actor's inventory. Each is a `CNTO` (the item and the count) and
+    /// the `COED` that follows it, if it has one.
+    pub actor_inventory_entries: Vec<ActorInventoryEntry>,
+    /// The actor's destruction stages.
+    pub actor_destruction: Vec<DestructionStage>,
+    /// The destruction header's flag word.
+    pub actor_dest_flags: u8,
     pub faction_to_add: Option<u32>,
     pub faction_rank_to_add: i8,
 
@@ -304,6 +320,13 @@ pub struct ObjectEditorState {
     pub perk_trait: bool,
     pub perk_min_level: u8,
     pub perk_num_ranks: u8,
+    /// `DATA` Playable — the u8 enum: No, Yes, Hidden.
+    pub perk_playable: u8,
+    /// `DATA` Hidden — the u8 enum: No, Yes, Hidden.
+    pub perk_hidden: u8,
+    /// The perk's own five-byte `DATA` subrecord. The record also carries a
+    /// three-byte data per rank, so the two are told apart.
+    pub perk_own_data: Option<Vec<u8>>,
     pub perk_desc: String,
     pub spell_type: u32,
     pub spell_no_autocalc: bool,
@@ -2165,7 +2188,22 @@ pub struct DecalData {
     pub color: [u8; 4],
 }
 
-/// One ingredient or output on an `RCPE` (Recipe) record.
+/// One item in an actor's inventory.
+///
+/// The inventory is a run of `CNTO` (the item and the count) and an
+/// optional `COED` (the extra data), and the extra data belongs to the item
+/// before it.
+#[derive(Debug, Clone, Default)]
+pub struct ActorInventoryEntry {
+    /// The item's FormID.
+    pub item: u32,
+    /// The count — the int32.
+    pub count: i32,
+    /// The `COED` extra data, if the item has one.
+    pub extra: Option<Vec<u8>>,
+}
+
+/// One ingredient or output on a `RCPE` (Recipe) record.
 ///
 /// The collection is a run of `RCIL` (the item) and `RCQY` (the quantity),
 /// and both repeat.
@@ -3897,6 +3935,8 @@ impl ObjectEditorState {
         self.raw_subs.clear();
         self.actor_splo.clear();
         self.actor_factions.clear();
+        self.raw_snam.clear();
+        self.actor_inventory_entries.clear();
         self.actor_packages.clear();
         self.actor_inventory.clear();
         self.crea_sounds.clear();
@@ -3963,6 +4003,7 @@ impl ObjectEditorState {
                 let fac_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
                 let rank = s.data[4] as i8;
                 self.actor_factions.push((fac_fid, rank));
+                self.raw_snam.push(s.data.clone());
             }
             if s.sig == *b"PKID" && s.data.len() >= 4 {
                 let pkg_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
@@ -3972,6 +4013,11 @@ impl ObjectEditorState {
                 let item_fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
                 let count = i32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
                 self.actor_inventory.push((item_fid, count));
+                self.actor_inventory_entries.push(ActorInventoryEntry {
+                    item: item_fid,
+                    count,
+                    extra: None,
+                });
             }
             if s.sig == *b"LVLO" && s.data.len() >= 12 {
                 let lvl = i16::from_le_bytes([s.data[0], s.data[1]]);
@@ -3986,7 +4032,14 @@ impl ObjectEditorState {
                     ..Default::default()
                 });
             } else if s.sig == *b"COED" && s.data.len() >= 12 {
-                // The extra data belongs to the entry before it.
+                // The extra data belongs to the entry before it: an inventory
+                // item or a leveled list entry.
+                if let Some(entry) = self.actor_inventory_entries.last_mut() {
+                    if entry.extra.is_none() {
+                        entry.extra = Some(s.data.clone());
+                        continue;
+                    }
+                }
                 if let Some(entry) = self.lvl_entries.last_mut() {
                     let b = &s.data;
                     let owner = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
@@ -4151,7 +4204,10 @@ impl ObjectEditorState {
         match &sig {
             b"WEAP" => self.load_weap(),
             b"ARMO" => self.load_armo(),
-            b"NPC_" | b"CREA" => self.load_actor(),
+            b"NPC_" | b"CREA" => {
+                self.load_actor();
+                self.load_actor_destruction(&raw_subs);
+            }
             b"ALCH" => self.load_alch(),
             b"AMMO" => self.load_ammo(),
             b"CONT" => self.load_cont(),
@@ -4162,7 +4218,7 @@ impl ObjectEditorState {
             b"BOOK" => self.load_book(),
             b"FACT" => self.load_fact(&raw_subs),
             b"QUST" => self.load_qust(),
-            b"PERK" => self.load_perk(),
+            b"PERK" => self.load_perk_record(&raw_subs),
             b"ENCH" => self.load_spell(),
             b"EXPL" => self.load_expl(),
             b"PROJ" => self.load_proj(),
@@ -4319,6 +4375,7 @@ impl ObjectEditorState {
             };
         }
         if let Some(b) = self.raw_subs.get(b"DNAM").filter(|b| b.len() >= 44) {
+            self.weap_animation_type = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.weap_speed = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
             self.weap_reach = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
             if b.len() >= 32 {
@@ -4384,6 +4441,7 @@ impl ObjectEditorState {
             } else {
                 0 // Light
             };
+            self.armo_type_from_general = self.armo_type;
             // The `general` byte carries more than the three bits the type
             // enum names — bit 6 is "Non-Playable" and is set on 34 of the
             // game's records. The whole byte is kept so a save that changes
@@ -4395,6 +4453,8 @@ impl ObjectEditorState {
     }
 
     fn load_actor(&mut self) {
+        self.actor_destruction = Vec::new();
+        self.actor_dest_flags = 0;
         if let Some(b) = self.raw_subs.get(b"ACBS").filter(|b| b.len() >= 24) {
             self.actor_flags = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.actor_fatigue = u16::from_le_bytes([b[4], b[5]]);
@@ -4501,6 +4561,19 @@ impl ObjectEditorState {
         if self.sig == *b"CREA" {
             self.crea_impact_dataset = self.get_fid(b"CNAM");
         }
+    }
+
+    /// Read an actor's destruction data.
+    ///
+    /// The destruction collection is a `DEST` header followed by one or more
+    /// stages, each a run of `DSTD`, `DMDL`, `DMDT` and `DSTF`.
+    fn load_actor_destruction(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.actor_destruction = load_destruction(raw_subs);
+        self.actor_dest_flags = raw_subs
+            .iter()
+            .find(|s| s.sig == *b"DEST" && s.data.len() >= 6)
+            .map(|s| s.data[5])
+            .unwrap_or(0);
     }
 
     fn load_alch(&mut self) {
@@ -4700,12 +4773,37 @@ impl ObjectEditorState {
     }
 
     fn load_perk(&mut self) {
-        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 3) {
-            self.perk_trait = b[0] != 0;
-            self.perk_min_level = b[1];
-            self.perk_num_ranks = b[2];
-        }
+        self.perk_trait = false;
+        self.perk_min_level = 0;
+        self.perk_num_ranks = 0;
+        self.perk_playable = 0;
+        self.perk_hidden = 0;
+        self.perk_own_data = None;
         self.perk_desc = self.get_string(b"DESC");
+    }
+
+    /// Load a `PERK` (Perk) record.
+    ///
+    /// The record carries two kinds of `DATA`: the perk's own, which is five
+    /// bytes long, and one per rank, which is three. The perk's own comes
+    /// first, so it is the first `DATA` of the five-byte kind.
+    fn load_perk_record(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.load_perk();
+        let mut seen_own = false;
+        for sub in raw_subs {
+            if sub.sig != *b"DATA" {
+                continue;
+            }
+            if sub.data.len() >= 5 && !seen_own {
+                seen_own = true;
+                self.perk_own_data = Some(sub.data.clone());
+                self.perk_trait = sub.data[0] != 0;
+                self.perk_min_level = sub.data[1];
+                self.perk_num_ranks = sub.data[2];
+                self.perk_playable = sub.data[3];
+                self.perk_hidden = sub.data[4];
+            }
+        }
     }
 
     fn load_spell(&mut self) {
@@ -7800,19 +7898,24 @@ impl ObjectEditorState {
                 .doc
                 .set_sub(fid, b"FULL", encode_zstring(&self.full_name));
         }
-        if self.raw_subs.contains_key(b"MODL") {
-            session.doc.set_sub(
-                fid,
-                b"MODL",
-                encode_text_kept(
-                    self.raw_subs.get(b"MODL").map(|v| v.as_slice()),
-                    &self.model,
-                ),
-            );
-        } else if !self.model.trim().is_empty() {
-            session
-                .doc
-                .set_sub(fid, b"MODL", encode_zstring(&self.model));
+        // The race's MODL belongs to its head-part collection rather than
+        // to the record's own model, so the header panel's model field does
+        // not apply to it.
+        if self.sig != *b"RACE" {
+            if self.raw_subs.contains_key(b"MODL") {
+                session.doc.set_sub(
+                    fid,
+                    b"MODL",
+                    encode_text_kept(
+                        self.raw_subs.get(b"MODL").map(|v| v.as_slice()),
+                        &self.model,
+                    ),
+                );
+            } else if !self.model.trim().is_empty() {
+                session
+                    .doc
+                    .set_sub(fid, b"MODL", encode_zstring(&self.model));
+            }
         }
         if let Some(s) = self.script {
             session.doc.set_sub(fid, b"SCRI", s.to_le_bytes().to_vec());
@@ -7943,7 +8046,12 @@ impl ObjectEditorState {
 
     fn save_weap(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut d = vec![0u8; 15];
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 15]);
+        d.resize(d.len().max(15), 0);
         d[0..4].copy_from_slice(&self.weap_val.to_le_bytes());
         d[4..8].copy_from_slice(&self.weap_hp.to_le_bytes());
         d[8..12].copy_from_slice(&self.weap_weight.to_le_bytes());
@@ -7957,13 +8065,16 @@ impl ObjectEditorState {
                 .set_sub(fid, b"NAM0", ammo.to_le_bytes().to_vec());
         }
 
-        let mut crdt = vec![0u8; 16];
-        crdt[0..2].copy_from_slice(&self.weap_crit_dmg.to_le_bytes());
-        crdt[4..8].copy_from_slice(&self.weap_crit_mult.to_le_bytes());
-        if let Some(eff) = self.weap_crit_effect {
-            crdt[12..16].copy_from_slice(&eff.to_le_bytes());
+        // The critical data is written back over the record's own bytes, so
+        // the flags and the bytes the spec does not name survive.
+        if let Some(original) = self.raw_subs.get(b"CRDT") {
+            let mut crdt = original.clone();
+            crdt.resize(crdt.len().max(16), 0);
+            crdt[0..2].copy_from_slice(&self.weap_crit_dmg.to_le_bytes());
+            crdt[4..8].copy_from_slice(&self.weap_crit_mult.to_le_bytes());
+            crdt[12..16].copy_from_slice(&self.weap_crit_effect.unwrap_or(0).to_le_bytes());
+            session.doc.set_sub(fid, b"CRDT", crdt);
         }
-        session.doc.set_sub(fid, b"CRDT", crdt);
 
         let mut dnam = self
             .raw_subs
@@ -7972,6 +8083,14 @@ impl ObjectEditorState {
             .unwrap_or_else(|| vec![0u8; 108]);
         if dnam.len() < 108 {
             dnam.resize(108, 0);
+        }
+        // The record's own length is kept: the game's animation data runs to
+        // 204 bytes.
+        if let Some(original) = self.raw_subs.get(b"DNAM") {
+            dnam = original.clone();
+            if dnam.len() < 108 {
+                dnam.resize(108, 0);
+            }
         }
         dnam[4..8].copy_from_slice(&self.weap_speed.to_le_bytes());
         dnam[8..12].copy_from_slice(&self.weap_reach.to_le_bytes());
@@ -7984,16 +8103,9 @@ impl ObjectEditorState {
         if dnam.len() >= 72 {
             dnam[68..72].copy_from_slice(&self.weap_ap.to_le_bytes());
         }
-        if dnam.len() >= 108 {
-            let av: u32 = match self.weap_skill {
-                1 => 33, // Guns
-                2 => 34, // Energy Weapons
-                3 => 37, // Melee
-                4 => 45, // Unarmed
-                5 => 35, // Explosives
-                _ => 0,
-            };
-            dnam[104..108].copy_from_slice(&av.to_le_bytes());
+        if dnam.len() >= 4 {
+            // The animation type is the first field of the animation data.
+            dnam[0..4].copy_from_slice(&self.weap_animation_type.to_le_bytes());
         }
         if dnam.len() >= 180 {
             dnam[176] = self.weap_str_req;
@@ -8042,15 +8154,22 @@ impl ObjectEditorState {
         bmdt.resize(8, 0);
         bmdt[0..4].copy_from_slice(&self.armo_biped_flags.to_le_bytes());
         let mut general = self.armo_bmdt_general;
+        // The type's bits are the three the spec names, and the record can
+        // carry more than one of them. The bits the record already had are
+        // kept unless the modder picks a different type, so a save that
+        // changes nothing reproduces the record.
+        const TYPE_BITS: u8 = (1 << 3) | (1 << 5) | (1 << 7);
         let type_bit: u8 = match self.armo_type {
             1 => 1 << 3, // Medium
             2 => 1 << 7, // Heavy
             3 => 1 << 5, // Power
             _ => 0,      // Light
         };
-        // Clear the three named bits, then set the one the enum selects.
-        general &= !((1 << 3) | (1 << 5) | (1 << 7));
-        general |= type_bit;
+        if self.armo_type != self.armo_type_from_general {
+            // Clear the three named bits, then set the one the enum selects.
+            general &= !TYPE_BITS;
+            general |= type_bit;
+        }
         bmdt[4] = general;
         session.doc.set_sub(fid, b"BMDT", bmdt);
 
@@ -8247,17 +8366,30 @@ impl ObjectEditorState {
             .collect();
         session.doc.set_sub_list(fid, b"SPLO", splo_buffers);
 
+        // The faction list is a run of SNAM, and each one carries three
+        // unnamed bytes. The list is written back over the record's own
+        // entries, so those bytes survive.
         let snam_buffers: Vec<Vec<u8>> = self
             .actor_factions
             .iter()
-            .map(|(fac_fid, rank)| {
-                let mut buf = vec![0u8; 8];
+            .enumerate()
+            .map(|(i, (fac_fid, rank))| {
+                let mut buf = self
+                    .raw_snam
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| vec![0u8; 8]);
+                buf.resize(8, 0);
                 buf[0..4].copy_from_slice(&fac_fid.to_le_bytes());
                 buf[4] = *rank as u8;
                 buf
             })
             .collect();
-        session.doc.set_sub_list(fid, b"SNAM", snam_buffers);
+        if snam_buffers.is_empty() {
+            session.doc.remove_sub(fid, b"SNAM");
+        } else {
+            session.doc.set_sub_list(fid, b"SNAM", snam_buffers);
+        }
 
         if self.sig == *b"CREA" {
             session
@@ -8332,17 +8464,27 @@ impl ObjectEditorState {
             .collect();
         session.doc.set_sub_list(fid, b"PKID", pkid_buffers);
 
-        let cnto_buffers: Vec<Vec<u8>> = self
-            .actor_inventory
-            .iter()
-            .map(|(item_fid, count)| {
-                let mut buf = vec![0u8; 8];
-                buf[0..4].copy_from_slice(&item_fid.to_le_bytes());
-                buf[4..8].copy_from_slice(&count.to_le_bytes());
-                buf
-            })
-            .collect();
-        session.doc.set_sub_list(fid, b"CNTO", cnto_buffers);
+        // The inventory is a run of CNTO, and a COED after one of them is
+        // that item's extra data, so the whole run is written as one
+        // sequence.
+        let mut inv: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for entry in &self.actor_inventory_entries {
+            let mut buf = vec![0u8; 8];
+            buf[0..4].copy_from_slice(&entry.item.to_le_bytes());
+            buf[4..8].copy_from_slice(&entry.count.to_le_bytes());
+            inv.push((*b"CNTO", buf));
+            if let Some(extra) = &entry.extra {
+                inv.push((*b"COED", extra.clone()));
+            }
+        }
+        if inv.is_empty() {
+            session.doc.remove_sub(fid, b"CNTO");
+            session.doc.remove_sub(fid, b"COED");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"CNTO", *b"COED"], inv);
+        }
 
         let mut sound_subs = Vec::new();
         for (stype, ssound, schance) in &self.crea_sounds {
@@ -8386,6 +8528,17 @@ impl ObjectEditorState {
         } else {
             session.doc.remove_sub(fid, b"DEST");
         }
+
+        // The destruction data.
+        if self.raw_subs.contains_key(b"DEST") {
+            save_destruction(
+                session,
+                fid,
+                self.dest_health,
+                self.actor_dest_flags,
+                &self.actor_destruction,
+            );
+        }
     }
 
     fn save_alch(&self, session: &mut crate::session::Session) {
@@ -8425,34 +8578,46 @@ impl ObjectEditorState {
 
     fn save_ammo(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
+        // The data and the dat2 are written back over the record's own
+        // bytes, so a shorter record is not grown and the bytes the spec
+        // does not name survive.
         let mut d = self
             .raw_subs
             .get(b"DATA")
             .cloned()
             .unwrap_or_else(|| vec![0u8; 13]);
-        if d.len() < 13 {
-            d.resize(13, 0);
+        if d.len() >= 4 {
+            d[0..4].copy_from_slice(&self.ammo_speed.to_le_bytes());
         }
-        d[0..4].copy_from_slice(&self.ammo_speed.to_le_bytes());
-        d[8..12].copy_from_slice(&self.ammo_val.to_le_bytes());
-        d[12] = self.ammo_clip_rounds as u8;
+        if d.len() >= 12 {
+            d[8..12].copy_from_slice(&self.ammo_val.to_le_bytes());
+        }
+        if d.len() >= 13 {
+            d[12] = self.ammo_clip_rounds as u8;
+        }
         session.doc.set_sub(fid, b"DATA", d);
 
-        let mut dat2 = self
-            .raw_subs
-            .get(b"DAT2")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 12]);
-        if dat2.len() < 12 {
-            dat2.resize(12, 0);
+        if let Some(original) = self.raw_subs.get(b"DAT2") {
+            let mut dat2 = original.clone();
+            if dat2.len() >= 12 {
+                dat2[8..12].copy_from_slice(&self.ammo_weight.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"DAT2", dat2);
         }
-        dat2[8..12].copy_from_slice(&self.ammo_weight.to_le_bytes());
-        session.doc.set_sub(fid, b"DAT2", dat2);
 
         // `QNAM` is the ammo's abbreviation, a cstring. It used to be read as
         // a FormID, which turned "5mm" into a number and wrote those four
         // bytes back over the abbreviation.
-        if !self.ammo_abbrev.trim().is_empty() {
+        if self.raw_subs.contains_key(b"QNAM") {
+            session.doc.set_sub(
+                fid,
+                b"QNAM",
+                encode_text_kept(
+                    self.raw_subs.get(b"QNAM").map(|v| v.as_slice()),
+                    &self.ammo_abbrev,
+                ),
+            );
+        } else if !self.ammo_abbrev.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"QNAM", encode_zstring(&self.ammo_abbrev));
@@ -8475,49 +8640,116 @@ impl ObjectEditorState {
 
     fn save_door(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut f = 0u8;
+        // The flags are written into the record's own byte, so a bit the
+        // spec does not name survives.
+        let mut f = self
+            .raw_subs
+            .get(b"FNAM")
+            .and_then(|d| d.first().copied())
+            .unwrap_or(0);
         if self.door_auto {
             f |= 1;
+        } else {
+            f &= !1;
         }
         if self.door_hidden {
             f |= 2;
+        } else {
+            f &= !2;
         }
         if self.door_minimal {
             f |= 4;
+        } else {
+            f &= !4;
         }
         if self.door_sliding {
             f |= 8;
+        } else {
+            f &= !8;
         }
-        session.doc.set_sub(fid, b"FNAM", vec![f]);
+        // The flag byte is written back over the record's own bytes, so a
+        // bit the spec does not name survives.
+        if let Some(original) = self.raw_subs.get(b"FNAM") {
+            let mut fnam = original.clone();
+            if !fnam.is_empty() {
+                fnam[0] = f;
+            }
+            session.doc.set_sub(fid, b"FNAM", fnam);
+        } else {
+            session.doc.set_sub(fid, b"FNAM", vec![f]);
+        }
         if let Some(s) = self.door_sound_open {
-            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+            if self.raw_subs.contains_key(b"SNAM") {
+                session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+            }
+        } else {
+            session.doc.remove_sub(fid, b"SNAM");
         }
     }
 
     fn save_acti(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        if !self.acti_prompt.trim().is_empty() {
+        // The prompt is a filename, and the game's records hold bytes in it
+        // that are not valid UTF-8, so it is written back over the record's
+        // own bytes.
+        if self.raw_subs.contains_key(b"RNAM") {
+            session.doc.set_sub(
+                fid,
+                b"RNAM",
+                encode_text_kept(
+                    self.raw_subs.get(b"RNAM").map(|v| v.as_slice()),
+                    &self.acti_prompt,
+                ),
+            );
+        } else if !self.acti_prompt.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"RNAM", encode_zstring(&self.acti_prompt));
         }
         if let Some(s) = self.acti_sound_loop {
-            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+            if self.raw_subs.contains_key(b"SNAM") {
+                session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+            }
+        } else {
+            session.doc.remove_sub(fid, b"SNAM");
         }
     }
 
     fn save_term(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        session
-            .doc
-            .set_sub(fid, b"DNAM", vec![self.term_difficulty]);
-        if !self.term_welcome.trim().is_empty() {
+        // The difficulty byte is written back over the record's own bytes,
+        // so the length it had survives.
+        if let Some(original) = self.raw_subs.get(b"DNAM") {
+            let mut dnam = original.clone();
+            if !dnam.is_empty() {
+                dnam[0] = self.term_difficulty;
+            }
+            session.doc.set_sub(fid, b"DNAM", dnam);
+        } else {
+            session
+                .doc
+                .set_sub(fid, b"DNAM", vec![self.term_difficulty]);
+        }
+        if self.raw_subs.contains_key(b"WNAM") {
+            session.doc.set_sub(
+                fid,
+                b"WNAM",
+                encode_text_kept(
+                    self.raw_subs.get(b"WNAM").map(|v| v.as_slice()),
+                    &self.term_welcome,
+                ),
+            );
+        } else if !self.term_welcome.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"WNAM", encode_zstring(&self.term_welcome));
         }
         if let Some(s) = self.term_sound_loop {
-            session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+            if self.raw_subs.contains_key(b"SNAM") {
+                session.doc.set_sub(fid, b"SNAM", s.to_le_bytes().to_vec());
+            }
+        } else {
+            session.doc.remove_sub(fid, b"SNAM");
         }
     }
 
@@ -8543,12 +8775,28 @@ impl ObjectEditorState {
 
     fn save_book(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut d = vec![0u8; 10];
+        // The data struct is written back over the record's own bytes, so
+        // the length it had and the bytes the spec does not name survive.
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 10]);
+        d.resize(d.len().max(10), 0);
         d[1] = self.book_teaches;
         d[2..6].copy_from_slice(&self.item_val.to_le_bytes());
         d[6..10].copy_from_slice(&self.item_weight.to_le_bytes());
         session.doc.set_sub(fid, b"DATA", d);
-        if !self.book_text.trim().is_empty() {
+        if self.raw_subs.contains_key(b"DESC") {
+            session.doc.set_sub(
+                fid,
+                b"DESC",
+                encode_text_kept(
+                    self.raw_subs.get(b"DESC").map(|v| v.as_slice()),
+                    &self.book_text,
+                ),
+            );
+        } else if !self.book_text.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"DESC", encode_zstring(&self.book_text));
@@ -8628,20 +8876,31 @@ impl ObjectEditorState {
         // `DATA` is written back over the record's own bytes. Two of the 436
         // QUST records in FalloutNV.esm carry only two bytes, with no delay,
         // and a rebuild would grow them to eight.
-        let original_data = self.raw_subs.get(b"DATA").cloned();
-        let data_len = if self.qust_data_len >= 8 { 8 } else { 2 };
-        let mut d = original_data.unwrap_or_else(|| vec![0u8; data_len]);
-        d.resize(data_len, 0);
-        let mut f = 0u8;
+        let mut d = self
+            .raw_subs
+            .get(b"DATA")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 8]);
+        // The flags are written into the record's own byte, so a bit the
+        // spec does not name survives.
+        let mut f = if d.is_empty() { 0 } else { d[0] };
         if self.qust_start_enabled {
             f |= 1;
+        } else {
+            f &= !1;
         }
         if self.qust_repeated_stages {
             f |= 8;
+        } else {
+            f &= !8;
         }
-        d[0] = f;
-        d[1] = self.qust_priority;
-        if data_len >= 8 {
+        if !d.is_empty() {
+            d[0] = f;
+        }
+        if d.len() >= 2 {
+            d[1] = self.qust_priority;
+        }
+        if d.len() >= 8 {
             d[4..8].copy_from_slice(&self.qust_delay.to_le_bytes());
         }
         session.doc.set_sub(fid, b"DATA", d);
@@ -8649,13 +8908,31 @@ impl ObjectEditorState {
 
     fn save_perk(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let d = vec![
-            if self.perk_trait { 1 } else { 0 },
-            self.perk_min_level,
-            self.perk_num_ranks,
-        ];
-        session.doc.set_sub(fid, b"DATA", d);
-        if !self.perk_desc.trim().is_empty() {
+        // The data struct is written back over the record's own bytes, so
+        // the length it had survives: the game's records are three and five
+        // bytes long.
+        // The perk's own data is the first five-byte one, and the record
+        // also carries a three-byte data per rank. The perk's is written
+        // back over its own bytes, and the rank's are left alone.
+        if let Some(original) = self.perk_own_data.as_ref() {
+            let mut d = original.clone();
+            d[0] = if self.perk_trait { 1 } else { 0 };
+            d[1] = self.perk_min_level;
+            d[2] = self.perk_num_ranks;
+            d[3] = self.perk_playable;
+            d[4] = self.perk_hidden;
+            session.doc.set_sub(fid, b"DATA", d);
+        }
+        if self.raw_subs.contains_key(b"DESC") {
+            session.doc.set_sub(
+                fid,
+                b"DESC",
+                encode_text_kept(
+                    self.raw_subs.get(b"DESC").map(|v| v.as_slice()),
+                    &self.perk_desc,
+                ),
+            );
+        } else if !self.perk_desc.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"DESC", encode_zstring(&self.perk_desc));
@@ -8664,28 +8941,34 @@ impl ObjectEditorState {
 
     fn save_spell(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut spit = self
-            .raw_subs
-            .get(b"SPIT")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 16]);
-        if spit.len() < 16 {
-            spit.resize(16, 0);
-        }
-        spit[0..4].copy_from_slice(&self.spell_type.to_le_bytes());
-        let mut f = spit[12];
-        if self.spell_no_autocalc {
-            f |= 1;
+        // The actor effect's data is an ENIT, not the spell's SPIT, so the
+        // SPIT is only written for a spell.
+        if self.raw_subs.contains_key(b"SPIT") {
+            let mut spit = self
+                .raw_subs
+                .get(b"SPIT")
+                .cloned()
+                .unwrap_or_else(|| vec![0u8; 16]);
+            if spit.len() < 16 {
+                spit.resize(16, 0);
+            }
+            spit[0..4].copy_from_slice(&self.spell_type.to_le_bytes());
+            let mut f = spit[12];
+            if self.spell_no_autocalc {
+                f |= 1;
+            } else {
+                f &= !1;
+            }
+            if self.spell_always_applies {
+                f |= 32;
+            } else {
+                f &= !32;
+            }
+            spit[12] = f;
+            session.doc.set_sub(fid, b"SPIT", spit);
         } else {
-            f &= !1;
+            session.doc.remove_sub(fid, b"SPIT");
         }
-        if self.spell_always_applies {
-            f |= 32;
-        } else {
-            f &= !32;
-        }
-        spit[12] = f;
-        session.doc.set_sub(fid, b"SPIT", spit);
     }
 
     fn save_expl(&self, session: &mut crate::session::Session) {
@@ -8743,39 +9026,61 @@ impl ObjectEditorState {
 
     fn save_soun(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        if !self.sound_file.trim().is_empty() {
+        if self.raw_subs.contains_key(b"FNAM") {
+            session.doc.set_sub(
+                fid,
+                b"FNAM",
+                encode_text_kept(
+                    self.raw_subs.get(b"FNAM").map(|v| v.as_slice()),
+                    &self.sound_file,
+                ),
+            );
+        } else if !self.sound_file.trim().is_empty() {
             session
                 .doc
                 .set_sub(fid, b"FNAM", encode_zstring(&self.sound_file));
         }
-        session
-            .doc
-            .set_sub(fid, b"RNAM", vec![self.sound_random_chance]);
-        let mut sndd = self
-            .raw_subs
-            .get(b"SNDD")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 10]);
-        if sndd.len() < 10 {
-            sndd.resize(10, 0);
+        // The random chance byte is written back over the record's own
+        // bytes, so its length survives.
+        if let Some(original) = self.raw_subs.get(b"RNAM") {
+            let mut rnam = original.clone();
+            if !rnam.is_empty() {
+                rnam[0] = self.sound_random_chance;
+            }
+            session.doc.set_sub(fid, b"RNAM", rnam);
         }
-        sndd[0] = self.sound_min_dist;
-        sndd[1] = self.sound_max_dist;
-        sndd[2] = self.sound_freq_adj as u8;
-        let mut flags = u32::from_le_bytes([sndd[4], sndd[5], sndd[6], sndd[7]]);
-        if self.sound_loop {
-            flags |= 1 << 4;
-        } else {
-            flags &= !(1 << 4);
+        // The sound data is written back over the record's own bytes, so
+        // the length it had and the bytes the spec does not name survive.
+        if let Some(original) = self.raw_subs.get(b"SNDD") {
+            let mut sndd = original.clone();
+            if !sndd.is_empty() {
+                sndd[0] = self.sound_min_dist;
+            }
+            if sndd.len() >= 2 {
+                sndd[1] = self.sound_max_dist;
+            }
+            if sndd.len() >= 3 {
+                sndd[2] = self.sound_freq_adj as u8;
+            }
+            if sndd.len() >= 8 {
+                let mut flags = u32::from_le_bytes([sndd[4], sndd[5], sndd[6], sndd[7]]);
+                if self.sound_loop {
+                    flags |= 1 << 4;
+                } else {
+                    flags &= !(1 << 4);
+                }
+                if self.sound_2d {
+                    flags |= 1 << 6;
+                } else {
+                    flags &= !(1 << 6);
+                }
+                sndd[4..8].copy_from_slice(&flags.to_le_bytes());
+            }
+            if sndd.len() >= 10 {
+                sndd[8..10].copy_from_slice(&self.sound_vol_cdb.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"SNDD", sndd);
         }
-        if self.sound_2d {
-            flags |= 1 << 6;
-        } else {
-            flags &= !(1 << 6);
-        }
-        sndd[4..8].copy_from_slice(&flags.to_le_bytes());
-        sndd[8..10].copy_from_slice(&self.sound_vol_cdb.to_le_bytes());
-        session.doc.set_sub(fid, b"SNDD", sndd);
     }
 
     fn save_note(&self, session: &mut crate::session::Session) {
@@ -9055,6 +9360,9 @@ impl ObjectEditorState {
         if d.len() < 36 {
             d.resize(36, 0);
         }
+        // The named fields are written into the record's own bytes, so the
+        // bytes the spec does not name survive.
+        let _ = &d;
         d[16..20].copy_from_slice(&self.race_male_height.to_le_bytes());
         d[20..24].copy_from_slice(&self.race_female_height.to_le_bytes());
         d[24..28].copy_from_slice(&self.race_male_weight.to_le_bytes());
@@ -9081,14 +9389,19 @@ impl ObjectEditorState {
 
     fn save_clmt(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let tnam = vec![
-            self.clmt_sunrise_begin,
-            self.clmt_sunrise_end,
-            self.clmt_sunset_begin,
-            self.clmt_sunset_end,
-            self.clmt_volatility,
-            1, // Moon phase length
-        ];
+        // The time struct is written back over the record's own bytes, so
+        // the byte the spec does not name survives.
+        let mut tnam = self
+            .raw_subs
+            .get(b"TNAM")
+            .cloned()
+            .unwrap_or_else(|| vec![0u8; 6]);
+        tnam.resize(tnam.len().max(6), 0);
+        tnam[0] = self.clmt_sunrise_begin;
+        tnam[1] = self.clmt_sunrise_end;
+        tnam[2] = self.clmt_sunset_begin;
+        tnam[3] = self.clmt_sunset_end;
+        tnam[4] = self.clmt_volatility;
         session.doc.set_sub(fid, b"TNAM", tnam);
         if !self.clmt_sun_texture.trim().is_empty() {
             session
@@ -12098,19 +12411,18 @@ impl ObjectEditorState {
 
     fn save_avif(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        if !self.avif_desc.trim().is_empty() {
-            session
-                .doc
-                .set_sub(fid, b"DESC", encode_zstring(&self.avif_desc));
-        } else {
-            session.doc.remove_sub(fid, b"DESC");
-        }
-        if !self.avif_short_name.trim().is_empty() {
-            session
-                .doc
-                .set_sub(fid, b"ANAM", encode_zstring(&self.avif_short_name));
-        } else {
-            session.doc.remove_sub(fid, b"ANAM");
+        for (sig, text) in [(b"DESC", &self.avif_desc), (b"ANAM", &self.avif_short_name)] {
+            if self.raw_subs.contains_key(sig) {
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
+            } else if !text.trim().is_empty() {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
         }
         if !self.avif_icon.trim().is_empty() {
             session
@@ -13243,6 +13555,24 @@ fn form_list_dropdown(
     record_dropdown(ui, id_salt, &form_lists, opt);
 }
 
+/// The weapon's animation types, from the spec's Weapon Animation Types page.
+const WEAP_ANIMATION_TYPES: &[(&str, u32)] = &[
+    ("Hand To Hand", 0),
+    ("Melee (1 Hand)", 1),
+    ("Melee (2 Hand)", 2),
+    ("Pistol - Ballistic (1 Hand)", 3),
+    ("Pistol - Energy (1 Hand)", 4),
+    ("Rifle - Ballistic (2 Hand)", 5),
+    ("Rifle - Automatic (2 Hand)", 6),
+    ("Rifle - Energy (2 Hand)", 7),
+    ("Handle (2 Hand)", 8),
+    ("Launcher (2 Hand)", 9),
+    ("Grenade Throw (1 Hand)", 10),
+    ("Land Mine (1 Hand)", 11),
+    ("Mine Drop (1 Hand)", 12),
+    ("Thrown (1 Hand)", 13),
+];
+
 fn draw_weap_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
@@ -13252,6 +13582,21 @@ fn draw_weap_ui(
         ui.strong("Combat & Damage Parameters");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
+            ui.label("Animation Type:");
+            egui::ComboBox::from_id_salt("weap_animation_type")
+                .selected_text(
+                    WEAP_ANIMATION_TYPES
+                        .iter()
+                        .find(|(_, v)| *v == state.weap_animation_type)
+                        .map(|(n, _)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (name, value) in WEAP_ANIMATION_TYPES.iter() {
+                        ui.selectable_value(&mut state.weap_animation_type, *value, *name);
+                    }
+                });
+            ui.separator();
             ui.label("Damage:");
             ui.add(egui::DragValue::new(&mut state.weap_dmg).range(0..=1000));
             ui.label("Attack Speed (Rate):");
