@@ -481,17 +481,17 @@ pub struct ObjectEditorState {
 
     // ECZN (Encounter Zone) fields
     /// `DATA` Owner — the FormID of an `NPC_` or `FACT` record.
-    pub ecnz_owner: Option<u32>,
+    pub eczn_owner: Option<u32>,
     /// `DATA` Rank — the int8.
-    pub ecnz_rank: i8,
+    pub eczn_rank: i8,
     /// `DATA` Minimum Level — the int8.
-    pub ecnz_minimum_level: i8,
+    pub eczn_minimum_level: i8,
     /// `DATA` Flags — the u8 flag word: Never Resets, Match PC Below Minimum
     /// Level. The word is kept whole, so a bit the spec does not name
     /// survives an edit.
-    pub ecnz_flags: u8,
+    pub eczn_flags: u8,
     /// `DATA` Unused — the byte the spec does not name, carried through.
-    pub ecnz_unused: u8,
+    pub eczn_unused: u8,
 
     // DOBJ (Default Object Manager) fields
     /// `DATA` — the thirty-four default-object FormIDs, in the order the
@@ -4324,7 +4324,7 @@ impl ObjectEditorState {
             b"MUSC" => self.load_musc(),
             b"DEHY" => self.load_dehy(),
             b"DOBJ" => self.load_dobj(),
-            b"ECZN" => self.load_ecnz(),
+            b"ECZN" => self.load_eczn(),
             b"FURN" => self.load_furn(&raw_subs),
             b"GRAS" => self.load_gras(&raw_subs),
             b"HUNG" => self.load_hung(),
@@ -5165,18 +5165,18 @@ impl ObjectEditorState {
     }
 
     /// Load an `ECZN` (Encounter Zone) record.
-    fn load_ecnz(&mut self) {
-        self.ecnz_owner = None;
-        self.ecnz_rank = 0;
-        self.ecnz_minimum_level = 0;
-        self.ecnz_flags = 0;
-        self.ecnz_unused = 0;
+    fn load_eczn(&mut self) {
+        self.eczn_owner = None;
+        self.eczn_rank = 0;
+        self.eczn_minimum_level = 0;
+        self.eczn_flags = 0;
+        self.eczn_unused = 0;
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
-            self.ecnz_owner = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
-            self.ecnz_rank = b[4] as i8;
-            self.ecnz_minimum_level = b[5] as i8;
-            self.ecnz_flags = b[6];
-            self.ecnz_unused = b[7];
+            self.eczn_owner = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+            self.eczn_rank = b[4] as i8;
+            self.eczn_minimum_level = b[5] as i8;
+            self.eczn_flags = b[6];
+            self.eczn_unused = b[7];
         }
     }
 
@@ -8197,7 +8197,7 @@ impl ObjectEditorState {
             b"MUSC" => self.save_musc(session),
             b"DEHY" => self.save_dehy(session),
             b"DOBJ" => self.save_dobj(session),
-            b"ECZN" => self.save_ecnz(session),
+            b"ECZN" => self.save_eczn(session),
             b"FURN" => self.save_furn(session),
             b"GRAS" => self.save_gras(session),
             b"HUNG" => self.save_hung(session),
@@ -9690,14 +9690,14 @@ impl ObjectEditorState {
     ///
     /// `DATA` is eight bytes. The owner may be null, in which case the
     /// FormID is written as zero.
-    fn save_ecnz(&self, session: &mut crate::session::Session) {
+    fn save_eczn(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
         let mut data = Vec::with_capacity(8);
-        data.extend_from_slice(&self.ecnz_owner.unwrap_or(0).to_le_bytes());
-        data.push(self.ecnz_rank as u8);
-        data.push(self.ecnz_minimum_level as u8);
-        data.push(self.ecnz_flags);
-        data.push(self.ecnz_unused);
+        data.extend_from_slice(&self.eczn_owner.unwrap_or(0).to_le_bytes());
+        data.push(self.eczn_rank as u8);
+        data.push(self.eczn_minimum_level as u8);
+        data.push(self.eczn_flags);
+        data.push(self.eczn_unused);
         session.doc.set_sub(fid, b"DATA", data);
     }
 
@@ -13705,7 +13705,7 @@ pub fn ui(
                 b"MUSC" => draw_musc_ui(ui, &mut state),
                 b"DEHY" => draw_dehy_ui(ui, &session, &mut state),
                 b"DOBJ" => draw_dobj_ui(ui, &mut state),
-                b"ECZN" => draw_ecnz_ui(ui, &session, &mut state),
+                b"ECZN" => draw_eczn_ui(ui, &session, &mut state),
                 b"FURN" => draw_furn_ui(ui, &mut state),
                 b"GRAS" => draw_gras_ui(ui, &mut state),
                 b"HUNG" => draw_hung_ui(ui, &session, &mut state),
@@ -17404,7 +17404,7 @@ fn draw_slpd_ui(
 }
 
 /// Draw the Encounter Zone (ECZN) editor body.
-fn draw_ecnz_ui(
+fn draw_eczn_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
     state: &mut ObjectEditorState,
@@ -17414,30 +17414,30 @@ fn draw_ecnz_ui(
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Owner:");
-            let mut fid = state.ecnz_owner;
+            let mut fid = state.eczn_owner;
             record_dropdown(
                 ui,
-                "ecnz_owner",
+                "eczn_owner",
                 &session.records_by_sig(*b"FACT"),
                 &mut fid,
             );
-            state.ecnz_owner = fid;
+            state.eczn_owner = fid;
         });
         ui.horizontal(|ui| {
             ui.label("Rank:");
-            ui.add(egui::DragValue::new(&mut state.ecnz_rank).range(-128..=127));
+            ui.add(egui::DragValue::new(&mut state.eczn_rank).range(-128..=127));
             ui.separator();
             ui.label("Minimum Level:");
-            ui.add(egui::DragValue::new(&mut state.ecnz_minimum_level).range(-128..=127));
+            ui.add(egui::DragValue::new(&mut state.eczn_minimum_level).range(-128..=127));
         });
         ui.horizontal_wrapped(|ui| {
             for (bit, name) in ECZN_FLAGS {
-                let mut set = (state.ecnz_flags & bit) != 0;
+                let mut set = (state.eczn_flags & bit) != 0;
                 if ui.checkbox(&mut set, name).changed() {
                     if set {
-                        state.ecnz_flags |= bit;
+                        state.eczn_flags |= bit;
                     } else {
-                        state.ecnz_flags &= !bit;
+                        state.eczn_flags &= !bit;
                     }
                 }
             }
