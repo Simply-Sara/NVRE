@@ -69,8 +69,12 @@ fn main() {
         for rec in &recs {
             let rsig = rec.sig_str();
             let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, rec.header.sig);
-            for s in rec.subrecords().expect("subs") {
-                let d = fnv_esm::decode::decode_sub(&rec.header.sig, &s, &mut ctx);
+            let subs = rec.subrecords().expect("subs");
+            // The sequence walk, so a record whose subrecords are an ordered
+            // list of blocks is measured against the block each subrecord is
+            // in — the same walk the decoder and `Coverage::measure` use.
+            fnv_esm::decode::walk_sequence(&rec.header.sig, &subs, &schema, &mut ctx, |s, ctx| {
+                let d = fnv_esm::decode::decode_sub(&rec.header.sig, s, ctx);
                 if d.status.as_str() == "unknown" {
                     let ssig = s.sig_str();
                     *by_sig.entry(ssig.clone()).or_insert(0) += 1;
@@ -86,7 +90,7 @@ fn main() {
                         .unwrap_or_else(|| "error".to_string());
                     *by_err.entry((rsig.clone(), ssig, msg)).or_insert(0) += 1;
                 }
-            }
+            });
         }
         let v = cov.to_json(15);
         let s = &v["summary"];

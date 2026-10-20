@@ -1,0 +1,61 @@
+{
+ "common": {
+  "CTDA": {
+   "confidence": "documented",
+   "name": "Condition",
+   "note": "xEdit wbDefinitionsFNV.pas wbConditions helper record; Comparison Value (float or GLOB FormID, chosen by a Type flag), Parameter #1/#2 (function-dependent) and Reference (FormID or unused, depends on Run On) are xEdit unions of 4-byte alternatives, decoded here as raw u32; Run On/Reference optional per SetOptionalFrom(7); Type is a custom-formatted u8 (comparison operator + flags). [measured: FalloutNV.esm has CTDA of 20, 24 and 28 bytes \u2014 the 20-byte form omits both optional fields, the 24-byte form has Run On but not Reference, and the 28-byte form has both; Fallout3.esm has the same three sizes.]",
+   "type": "Condition"
+  }
+ },
+ "format": "fnv.schema/1",
+ "types": {
+  "Condition": {
+   "struct": [
+    {
+     "name": "type",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "comparison_value_raw",
+     "type": "u32"
+    },
+    {
+     "name": "function",
+     "type": "u16"
+    },
+    {
+     "name": "unused2",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "parameter1_raw",
+     "type": "u32"
+    },
+    {
+     "name": "parameter2_raw",
+     "type": "u32"
+    },
+    {
+     "name": "run_on",
+     "optional": true,
+     "type": "u32"
+    },
+    {
+     "name": "reference_raw",
+     "optional": true,
+     "type": "u32"
+    }
+   ]
+  }
+ }
+}

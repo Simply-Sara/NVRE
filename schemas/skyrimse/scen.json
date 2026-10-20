@@ -1,0 +1,288 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "SCEN": {
+   "confidence": "documented",
+   "name": "Scene",
+   "note": "UESP, Skyrim Mod:Mod File Format/SCEN. The three lists (phases, actors, actions) 'have no terminator and simply repeat until a field designates that the next block is starting', so the record is an ordered list of blocks rather than a set of subrecord types. Block openers measured on Skyrim.esm: HNAM (0-length) opens a phase, ANAM opens an action, and ALID opens an actor \u2014 but ALID is also a field inside an action, so the actor block's opener is ALID and an action's ALID is the actor the action is performed by. The two lists therefore interleave: an action's ALID must not be read as opening a new actor block, which is why the block structure is tracked by the decoder and not by the signature alone. [observed: 4,612 SCEN records in Skyrim.esm, 18 record versions (v18-v40); the structure is identical across every version \u2014 the same subrecord sequence appears under v39 and v40 alike]",
+   "sequence": {
+    "blocks": {
+     "action": {
+      "opener": "ANAM",
+      "order": [
+       "NAM0",
+       "ALID",
+       "INAM",
+       "FNAM",
+       "SNAM",
+       "ENAM",
+       "DATA",
+       "HTID",
+       "DMAX",
+       "DMIN",
+       "DEMO",
+       "DEVA"
+      ],
+      "subrecords": {
+       "ALID": {
+        "confidence": "documented",
+        "name": "Action Actor",
+        "note": "uint32, the alias of the actor performing the action. Distinct from the actor block's ALID, which opens the actor list.",
+        "type": "u32"
+       },
+       "ANAM": {
+        "confidence": "documented",
+        "name": "Action Type",
+        "note": "uint16: 0 = Dialogue, 1 = Package, 2 = Timer. Also the block's opener. [observed: 2 bytes when it opens an action, and 0 bytes in 13,624 of the 27,248 instances \u2014 a 0-byte ANAM is a package action's placeholder for the timer that is not there, so the block opens with no type at all. The union reads the uint16 when there are two bytes and leaves an empty block opener alone otherwise.]",
+        "type": {
+         "union": [
+          {
+           "name": "Type",
+           "size": 2,
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "Dialogue",
+             "1": "Package",
+             "2": "Timer"
+            }
+           }
+          },
+          {
+           "name": "Empty",
+           "size": 0,
+           "type": "bytes"
+          }
+         ]
+        }
+       },
+       "DATA": {
+        "confidence": "documented",
+        "name": "Topic",
+        "note": "formid, the dialogue topic \u2014 a dialogue action only. [observed: 4 bytes]",
+        "type": "formid"
+       },
+       "DEMO": {
+        "confidence": "documented",
+        "name": "Emotion Type",
+        "note": "uint32: 0 Neutral, 1 Anger, 2 Disgust, 3 Fear, 4 Sad, 5 Happy, 6 Surprise, 7 Puzzled.",
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Neutral",
+          "1": "Anger",
+          "2": "Disgust",
+          "3": "Fear",
+          "4": "Sad",
+          "5": "Happy",
+          "6": "Surprise",
+          "7": "Puzzled"
+         }
+        }
+       },
+       "DEVA": {
+        "confidence": "documented",
+        "name": "Emotion Value",
+        "note": "uint32.",
+        "type": "u32"
+       },
+       "DMAX": {
+        "confidence": "documented",
+        "name": "Looping Max",
+        "note": "float32, the upper bound of a looping dialogue action.",
+        "type": "f32"
+       },
+       "DMIN": {
+        "confidence": "documented",
+        "name": "Looping Min",
+        "note": "float32, the lower bound of a looping dialogue action.",
+        "type": "f32"
+       },
+       "ENAM": {
+        "confidence": "documented",
+        "name": "End Phase",
+        "note": "uint32, the phase the action ends at, zero-based.",
+        "type": "u32"
+       },
+       "FNAM": {
+        "confidence": "documented",
+        "name": "Action Flags",
+        "note": "uint32. Bit 15 = Face target, bit 16 = Looping, bit 17 = Head track player. Distinct from the main record's FNAM, which holds the scene's own flags (bit 0 = Begin on quest start, and so on).",
+        "type": {
+         "bits": {
+          "15": "Face Target",
+          "16": "Looping",
+          "17": "Head Track Player"
+         },
+         "flags": "u32"
+        }
+       },
+       "HTID": {
+        "confidence": "documented",
+        "name": "Head Tracking ID",
+        "note": "int32, the head-tracking alias. UESP: 'Values range from -1-225, 435 (0x1B3). High bit may be flag.'",
+        "type": "i32"
+       },
+       "INAM": {
+        "confidence": "documented",
+        "name": "Action Number",
+        "note": "uint32, the action's number within the scene.",
+        "type": "u32"
+       },
+       "NAM0": {
+        "confidence": "documented",
+        "name": "Action Description",
+        "note": "zstring. A phase's NAM0 is the phase description and an action's is the action description; the two blocks carry their own definitions because the same signature means different things in each.",
+        "type": "zstring"
+       },
+       "SNAM": {
+        "confidence": "documented",
+        "name": "Start Phase",
+        "note": "uint32, the phase the action starts at, zero-based.",
+        "type": "u32"
+       }
+      }
+     },
+     "actor": {
+      "opener": "ALID",
+      "order": [
+       "LNAM",
+       "DNAM"
+      ],
+      "subrecords": {
+       "ALID": {
+        "confidence": "documented",
+        "name": "Alias ID",
+        "note": "uint32, the alias the actor is bound to. Also the block's opener \u2014 but the same signature appears inside an action, where it is the actor performing that action rather than the start of a new actor. The decoder distinguishes them by which block it is in.",
+        "type": "u32"
+       },
+       "DNAM": {
+        "confidence": "documented",
+        "name": "Actor Behaviors",
+        "note": "uint32.",
+        "type": "u32"
+       },
+       "LNAM": {
+        "confidence": "documented",
+        "name": "Actor Flags",
+        "note": "uint32.",
+        "type": "u32"
+       }
+      }
+     },
+     "phase": {
+      "opener": "HNAM",
+      "order": [
+       "NAM0",
+       "CTDA",
+       "NEXT",
+       "CTDA",
+       "NEXT",
+       "WNAM",
+       "HNAM"
+      ],
+      "subrecords": {
+       "CTDA": {
+        "confidence": "documented",
+        "name": "Phase Conditions",
+        "note": "xEdit's condition struct: flags u16, operand u16, operator u8, unused u8, then the three comparison values as an int32/float32 union, then the two FormIDs. Shared with every other record that carries conditions; the same layout as FNV's.",
+        "type": "Condition"
+       },
+       "HNAM": {
+        "confidence": "documented",
+        "name": "Phase Marker",
+        "note": "Zero-length. Opens a phase and closes the previous one, so a phase block is HNAM (open) ... HNAM (close). [observed: always 0 bytes]",
+        "type": "bytes"
+       },
+       "NAM0": {
+        "confidence": "documented",
+        "name": "Phase Description",
+        "note": "UESP: 'Always present, even if just a null-terminator.' [observed: 1 byte in most instances, longer where the phase has a name]",
+        "type": "zstring"
+       },
+       "NEXT": {
+        "confidence": "documented",
+        "name": "Conditions Marker",
+        "note": "Zero-length. 'Delineates start conditions from completion conditions.' [observed: always 0 bytes, and it appears twice per phase in the shipped data \u2014 once between the start and completion conditions and once to close them]",
+        "type": "bytes"
+       },
+       "WNAM": {
+        "confidence": "documented",
+        "name": "Phase Width",
+        "note": "uint32, the display width of the phase's marker in the CK timeline.",
+        "type": "u32"
+       }
+      }
+     }
+    },
+    "end": [
+     "PNAM",
+     "INAM",
+     "VNAM",
+     "DATA"
+    ],
+    "start": [
+     "EDID",
+     "VMAD",
+     "FNAM"
+    ]
+   },
+   "subrecords": {
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Scene Conditions",
+     "note": "The scene's own conditions, in the main record rather than in a phase. The phase block carries its own CTDA with the same layout.",
+     "type": "Condition"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "zstring.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Scene Flags",
+     "note": "uint32. Bit 0 = Begin on quest start, bit 1 = Stop quest on end, bit 2 = Show all text, bit 3 = Repeat while condition block is true, bit 4 = Interruptible. Distinct from an action's FNAM, which holds the action's own flags.",
+     "type": {
+      "bits": {
+       "0": "Begin On Quest Start",
+       "1": "Stop Quest On End",
+       "2": "Show All Text",
+       "3": "Repeat While Condition Block Is True",
+       "4": "Interruptible"
+      },
+      "flags": "u32"
+     }
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Max Action",
+     "note": "uint32, the highest action number. 'In rare cases, this may be higher than the highest action number, possibly indicating deleted actions.' Distinct from an action's INAM, which is the action's own number.",
+     "type": "u32"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent Quest",
+     "note": "formid.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "byte[] \u2014 the attached script's info. Left opaque: the layout is xEdit's and no Skyrim instance is decoded field-by-field here.",
+     "type": "bytes"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Behavior Settings",
+     "note": "uint32[4] \u2014 the 'Set all' check boxes at the top of the Actor Behavior dialogue: 0 = Set all Normal, 1 = Set all Pause, 2 = Set all End, 3 = Don't set all.",
+     "type": {
+      "array": "u32",
+      "count": 4
+     }
+    }
+   }
+  }
+ }
+}

@@ -129,11 +129,26 @@ impl Prim {
             Prim::U16 | Prim::I16 => Some(2),
             Prim::U32 | Prim::I32 | Prim::F32 | Prim::FormId => Some(4),
             Prim::U64 | Prim::I64 | Prim::F64 => Some(8),
-            Prim::ZString | Prim::ZStringArray | Prim::LenString | Prim::String | Prim::CString | Prim::Bytes => None,
+            Prim::ZString
+            | Prim::ZStringArray
+            | Prim::LenString
+            | Prim::String
+            | Prim::CString
+            | Prim::Bytes => None,
         }
     }
     pub fn is_integer(self) -> bool {
-        matches!(self, Prim::U8 | Prim::U16 | Prim::U32 | Prim::U64 | Prim::I8 | Prim::I16 | Prim::I32 | Prim::I64)
+        matches!(
+            self,
+            Prim::U8
+                | Prim::U16
+                | Prim::U32
+                | Prim::U64
+                | Prim::I8
+                | Prim::I16
+                | Prim::I32
+                | Prim::I64
+        )
     }
 }
 
@@ -153,9 +168,20 @@ pub enum TypeDef {
     Prim(Prim),
     Named(String),
     Struct(Vec<Field>),
-    Array { elem: Box<TypeDef>, count: Option<usize>, count_prefix: Option<Prim>, count_field: Option<String> },
-    Enum { base: Prim, values: Vec<(i64, String)> },
-    Flags { base: Prim, bits: Vec<(u32, String)> },
+    Array {
+        elem: Box<TypeDef>,
+        count: Option<usize>,
+        count_prefix: Option<Prim>,
+        count_field: Option<String>,
+    },
+    Enum {
+        base: Prim,
+        values: Vec<(i64, String)>,
+    },
+    Flags {
+        base: Prim,
+        bits: Vec<(u32, String)>,
+    },
     /// Layout chosen by the number of bytes left: `(Some(n), T)` applies when exactly `n`
     /// bytes remain, `(None, T)` is the fallback. Expresses xEdit's size-decided unions
     /// (e.g. WATR DATA: 2-byte damage, or the older 186-byte visual data).
@@ -166,7 +192,12 @@ pub enum TypeDef {
     /// `cases` maps that value to a variant index; `default` is used when no case
     /// matches. `name` is the sibling field to read, which must decode to an
     /// integer (enums and flags included) earlier in the same struct.
-    ValueUnion { name: String, cases: Vec<(u64, usize)>, default: usize, variants: Vec<TypeDef> },
+    ValueUnion {
+        name: String,
+        cases: Vec<(u64, usize)>,
+        default: usize,
+        variants: Vec<TypeDef>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -194,7 +225,7 @@ pub struct RecordDef {
     pub sequence: Option<SequenceDef>,
 }
 
-/// A record whose subrecords are an ordered list with block openers.
+/// A record whose subrecords are an ordered list of blocks.
 ///
 /// Expresses what a per-subrecord decoder cannot: UESP's Skyrim `SCEN` says its
 /// three lists "have no terminator and simply repeat until a field designates
@@ -202,38 +233,74 @@ pub struct RecordDef {
 /// have different meanings depending upon where they occur", and `QUST`'s "order
 /// in which the fields appear provides important information".
 ///
-/// `start` and `end` are ordinary signatures decoded as always. `blocks` names
-/// *block openers*: on reaching one of these signatures outside a block, a new
-/// block of that kind opens and every following subrecord is decoded in that
-/// block's context until another opener or `end` is reached. A signature listed
-/// under several blocks is decoded by the block it is currently inside, which is
-/// exactly the "different meaning depending on where it occurs" case.
+/// The shape is: a run of subrecords, in which a **block opener** starts a
+/// block and every subrecord after it belongs to that block until the next
+/// opener. Each block kind carries its own subrecord definitions, because the
+/// same signature means different things in different blocks — `ANAM` is a
+/// formid in `ASPC` and a string in `PACK`'s activity list, and within one
+/// record a signature can change meaning from block to block.
+///
+/// A record's own `subrecords` map holds the definitions for the parts of the
+/// record that are *not* in a block; a block's own map holds the rest.
 #[derive(Debug, Clone, Default)]
 pub struct SequenceDef {
-    /// Signatures that may appear before any block opens.
+    /// Subrecords that appear before any block opens, in order.
     pub start: Vec<[u8; 4]>,
-    /// Block name -> the signature that opens a block of that kind.
-    pub blocks: Vec<(String, [u8; 4])>,
-    /// Signatures that may appear after the blocks end.
+    /// The blocks, in the order their openers first appear.
+    pub blocks: Vec<BlockDef>,
+    /// Subrecords that appear after the blocks end, in order.
     pub end: Vec<[u8; 4]>,
 }
 
+/// One block of a sequence: the signature that opens it, and what its
+/// subrecords mean.
+#[derive(Debug, Clone)]
+pub struct BlockDef {
+    /// The block's name, for a schema note and for a decode error.
+    pub name: String,
+    /// The signature that opens a block of this kind.
+    pub opener: [u8; 4],
+    /// The subrecords this block contains, and their layouts. A signature may
+    /// appear in several blocks with a different layout in each.
+    pub subrecords: HashMap<[u8; 4], SubDef>,
+    /// The order the block's subrecords appear in.
+    ///
+    /// This is what disambiguates a signature that both opens a block and
+    /// appears inside one. `ALID` opens `SCEN`'s actor list and is also a field
+    /// of an action, so the two cases cannot be told apart by the signature
+    /// alone: a signature that matches the block's *next expected* slot
+    /// continues the block, and one that does not — and is a known opener —
+    /// starts a new block.
+    ///
+    /// A signature may repeat within a block (a phase's `CTDA` appears twice),
+    /// so the order is a cycle rather than a single pass: the next expected slot
+    /// after the last one is the first again.
+    pub order: Vec<[u8; 4]>,
+}
+
 impl SequenceDef {
-    /// The block kind whose opener is `sig`, if any.
-    pub fn block_for(&self, sig: &[u8; 4]) -> Option<&str> {
-        self.blocks.iter().find(|(_, s)| s == sig).map(|(n, _)| n.as_str())
+    /// The block whose opener is `sig`, if any.
+    pub fn block_for(&self, sig: &[u8; 4]) -> Option<&BlockDef> {
+        self.blocks.iter().find(|b| &b.opener == sig)
     }
-    /// Whether `sig` is an opener of some block.
+    /// Whether `sig` opens some block.
     pub fn is_opener(&self, sig: &[u8; 4]) -> bool {
-        self.blocks.iter().any(|(_, s)| s == sig)
+        self.blocks.iter().any(|b| &b.opener == sig)
     }
     /// Whether `sig` is named as a start or end signature.
     pub fn is_boundary(&self, sig: &[u8; 4]) -> bool {
         self.start.contains(sig) || self.end.contains(sig)
     }
     /// Every signature the sequence names, for validation.
-    pub fn all_sigs(&self) -> impl Iterator<Item = [u8; 4]> + '_ {
-        self.start.iter().chain(self.end.iter()).chain(self.blocks.iter().map(|(_, s)| s)).copied()
+    pub fn all_sigs(&self) -> Vec<[u8; 4]> {
+        let mut out: Vec<[u8; 4]> = Vec::new();
+        out.extend(self.start.iter().copied());
+        out.extend(self.end.iter().copied());
+        for b in &self.blocks {
+            out.push(b.opener);
+            out.extend(b.subrecords.keys().copied());
+        }
+        out
     }
 }
 
@@ -241,12 +308,19 @@ impl RecordDef {
     /// The mask of the header flag with this name (case-insensitive), if the schema
     /// names it for this record type.
     pub fn header_flag(&self, name: &str) -> Option<u32> {
-        self.header_flags.iter().find(|(_, n)| n.eq_ignore_ascii_case(name)).map(|(b, _)| 1u32 << b)
+        self.header_flags
+            .iter()
+            .find(|(_, n)| n.eq_ignore_ascii_case(name))
+            .map(|(b, _)| 1u32 << b)
     }
 
     /// Names of the set bits of `flags` that the schema names, in bit order.
     pub fn header_flag_names(&self, flags: u32) -> Vec<&str> {
-        self.header_flags.iter().filter(|(b, _)| flags & (1u32 << b) != 0).map(|(_, n)| n.as_str()).collect()
+        self.header_flags
+            .iter()
+            .filter(|(b, _)| flags & (1u32 << b) != 0)
+            .map(|(_, n)| n.as_str())
+            .collect()
     }
 }
 
@@ -265,7 +339,9 @@ pub struct SchemaError(pub String);
 fn sig4(s: &str, ctx: &str) -> Result<[u8; 4], SchemaError> {
     let b = s.as_bytes();
     if b.len() != 4 {
-        return Err(SchemaError(format!("{ctx}: signature {s:?} is not 4 bytes")));
+        return Err(SchemaError(format!(
+            "{ctx}: signature {s:?} is not 4 bytes"
+        )));
     }
     Ok([b[0], b[1], b[2], b[3]])
 }
@@ -278,7 +354,9 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
         }),
         Value::Object(_) => {
             if let Some(fields) = v.get("struct") {
-                let arr = fields.as_array().ok_or_else(|| SchemaError(format!("{ctx}: struct must be an array")))?;
+                let arr = fields
+                    .as_array()
+                    .ok_or_else(|| SchemaError(format!("{ctx}: struct must be an array")))?;
                 let mut out = Vec::new();
                 for (i, f) in arr.iter().enumerate() {
                     let name = f
@@ -286,12 +364,18 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                         .and_then(Value::as_str)
                         .ok_or_else(|| SchemaError(format!("{ctx}: field #{i} needs a name")))?;
                     let ty = parse_type(
-                        f.get("type").ok_or_else(|| SchemaError(format!("{ctx}.{name}: missing type")))?,
+                        f.get("type")
+                            .ok_or_else(|| SchemaError(format!("{ctx}.{name}: missing type")))?,
                         &format!("{ctx}.{name}"),
                     )?;
                     let optional = f.get("optional").and_then(Value::as_bool).unwrap_or(false);
                     let expose = f.get("expose").and_then(Value::as_bool).unwrap_or(false);
-                    out.push(Field { name: name.to_string(), ty, optional, expose });
+                    out.push(Field {
+                        name: name.to_string(),
+                        ty,
+                        optional,
+                        expose,
+                    });
                 }
                 // A struct's JSON form is an object, so two fields may not share a
                 // name: the second would silently overwrite the first and the value
@@ -311,13 +395,19 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                 // Only a trailing run of fields may be optional.
                 let first_opt = out.iter().position(|f| f.optional).unwrap_or(out.len());
                 if out[first_opt..].iter().any(|f| !f.optional) {
-                    return Err(SchemaError(format!("{ctx}: optional fields must all be at the end")));
+                    return Err(SchemaError(format!(
+                        "{ctx}: optional fields must all be at the end"
+                    )));
                 }
                 Ok(TypeDef::Struct(out))
             } else if let Some(elem) = v.get("array") {
                 let count = match v.get("count") {
                     None => None,
-                    Some(c) => Some(c.as_u64().ok_or_else(|| SchemaError(format!("{ctx}: bad count")))? as usize),
+                    Some(c) => Some(
+                        c.as_u64()
+                            .ok_or_else(|| SchemaError(format!("{ctx}: bad count")))?
+                            as usize,
+                    ),
                 };
                 // A count read from the data instead of written in the schema:
                 // `{"array": T, "count_prefix": "u32"}`. xEdit's `wbArrayS`/`wbArray`
@@ -331,12 +421,16 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                             .and_then(Prim::parse)
                             .filter(|p| matches!(p, Prim::U8 | Prim::U16 | Prim::U32))
                             .ok_or_else(|| {
-                                SchemaError(format!("{ctx}: count_prefix must be \"u8\", \"u16\" or \"u32\""))
+                                SchemaError(format!(
+                                    "{ctx}: count_prefix must be \"u8\", \"u16\" or \"u32\""
+                                ))
                             })?,
                     ),
                 };
                 if count.is_some() && count_prefix.is_some() {
-                    return Err(SchemaError(format!("{ctx}: array cannot have both \"count\" and \"count_prefix\"")));
+                    return Err(SchemaError(format!(
+                        "{ctx}: array cannot have both \"count\" and \"count_prefix\""
+                    )));
                 }
                 // A count stored in a sibling field of the same struct: xEdit's
                 // `SetCountPath('Vertex Count', True)`. The count bytes are read once as
@@ -365,11 +459,15 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                     .as_str()
                     .and_then(Prim::parse)
                     .filter(|p| p.is_integer())
-                    .ok_or_else(|| SchemaError(format!("{ctx}: enum base must be an integer type")))?;
+                    .ok_or_else(|| {
+                        SchemaError(format!("{ctx}: enum base must be an integer type"))
+                    })?;
                 let mut values = Vec::new();
                 if let Some(Value::Object(m)) = v.get("values") {
                     for (k, n) in m {
-                        let key: i64 = k.parse().map_err(|_| SchemaError(format!("{ctx}: enum key {k:?}")))?;
+                        let key: i64 = k
+                            .parse()
+                            .map_err(|_| SchemaError(format!("{ctx}: enum key {k:?}")))?;
                         values.push((key, n.as_str().unwrap_or("").to_string()));
                     }
                 }
@@ -379,11 +477,15 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                     .as_str()
                     .and_then(Prim::parse)
                     .filter(|p| p.is_integer())
-                    .ok_or_else(|| SchemaError(format!("{ctx}: flags base must be an integer type")))?;
+                    .ok_or_else(|| {
+                        SchemaError(format!("{ctx}: flags base must be an integer type"))
+                    })?;
                 let mut bits = Vec::new();
                 if let Some(Value::Object(m)) = v.get("bits") {
                     for (k, n) in m {
-                        let bit: u32 = k.parse().map_err(|_| SchemaError(format!("{ctx}: bit {k:?}")))?;
+                        let bit: u32 = k
+                            .parse()
+                            .map_err(|_| SchemaError(format!("{ctx}: bit {k:?}")))?;
                         if bit > 63 {
                             return Err(SchemaError(format!("{ctx}: bit {bit} out of range")));
                         }
@@ -392,21 +494,31 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                 }
                 Ok(TypeDef::Flags { base, bits })
             } else if let Some(vs) = v.get("union") {
-                let arr = vs.as_array().ok_or_else(|| SchemaError(format!("{ctx}: union must be an array")))?;
+                let arr = vs
+                    .as_array()
+                    .ok_or_else(|| SchemaError(format!("{ctx}: union must be an array")))?;
                 let mut out = Vec::new();
                 for (i, var) in arr.iter().enumerate() {
                     let size = match var.get("size") {
                         None => None,
-                        Some(n) => Some(n.as_u64().ok_or_else(|| SchemaError(format!("{ctx}: union #{i} bad size")))? as usize),
+                        Some(n) => Some(
+                            n.as_u64()
+                                .ok_or_else(|| SchemaError(format!("{ctx}: union #{i} bad size")))?
+                                as usize,
+                        ),
                     };
                     let ty = parse_type(
-                        var.get("type").ok_or_else(|| SchemaError(format!("{ctx}: union #{i} missing type")))?,
+                        var.get("type").ok_or_else(|| {
+                            SchemaError(format!("{ctx}: union #{i} missing type"))
+                        })?,
                         &format!("{ctx}[{i}]"),
                     )?;
                     out.push((size, ty));
                 }
                 if out.is_empty() {
-                    return Err(SchemaError(format!("{ctx}: union needs at least one variant")));
+                    return Err(SchemaError(format!(
+                        "{ctx}: union needs at least one variant"
+                    )));
                 }
                 // `{"union": [...], "switch_on": "field", "cases": {"v": i}}` turns the
                 // union into a *value*-decided one: the variant index comes from an
@@ -459,15 +571,29 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                 Err(SchemaError(format!("{ctx}: unrecognised type object")))
             }
         }
-        _ => Err(SchemaError(format!("{ctx}: type must be a string or object"))),
+        _ => Err(SchemaError(format!(
+            "{ctx}: type must be a string or object"
+        ))),
     }
 }
 
 fn parse_subdef(v: &Value, ctx: &str) -> Result<SubDef, SchemaError> {
     Ok(SubDef {
-        name: v.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
-        ty: parse_type(v.get("type").ok_or_else(|| SchemaError(format!("{ctx}: missing type")))?, ctx)?,
-        confidence: v.get("confidence").and_then(Value::as_str).unwrap_or("hypothesis").to_string(),
+        name: v
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+        ty: parse_type(
+            v.get("type")
+                .ok_or_else(|| SchemaError(format!("{ctx}: missing type")))?,
+            ctx,
+        )?,
+        confidence: v
+            .get("confidence")
+            .and_then(Value::as_str)
+            .unwrap_or("hypothesis")
+            .to_string(),
         note: v.get("note").and_then(Value::as_str).map(str::to_string),
         expose: v.get("expose").and_then(Value::as_bool).unwrap_or(false),
     })
@@ -478,19 +604,36 @@ type HeaderFlags = (Vec<(u32, String)>, Option<String>);
 
 /// A record entry's `header_flags`: `{"bits": {"10": "Name"}, "confidence", "note"}`.
 fn parse_header_flags(v: Option<&Value>, ctx: &str) -> Result<HeaderFlags, SchemaError> {
-    let Some(v) = v else { return Ok((Vec::new(), None)) };
-    let bits = v.get("bits").and_then(Value::as_object).ok_or_else(|| SchemaError(format!("{ctx}: needs a \"bits\" object")))?;
+    let Some(v) = v else {
+        return Ok((Vec::new(), None));
+    };
+    let bits = v
+        .get("bits")
+        .and_then(Value::as_object)
+        .ok_or_else(|| SchemaError(format!("{ctx}: needs a \"bits\" object")))?;
     let mut out = Vec::new();
     for (k, n) in bits {
-        let bit: u32 = k.parse().map_err(|_| SchemaError(format!("{ctx}: bit {k:?}")))?;
+        let bit: u32 = k
+            .parse()
+            .map_err(|_| SchemaError(format!("{ctx}: bit {k:?}")))?;
         if bit > 31 {
-            return Err(SchemaError(format!("{ctx}: bit {bit} out of range (the field is a u32)")));
+            return Err(SchemaError(format!(
+                "{ctx}: bit {bit} out of range (the field is a u32)"
+            )));
         }
-        let name = n.as_str().filter(|n| !n.is_empty()).ok_or_else(|| SchemaError(format!("{ctx}: bit {bit} needs a name")))?;
+        let name = n
+            .as_str()
+            .filter(|n| !n.is_empty())
+            .ok_or_else(|| SchemaError(format!("{ctx}: bit {bit} needs a name")))?;
         out.push((bit, name.to_string()));
     }
     out.sort();
-    Ok((out, v.get("confidence").and_then(Value::as_str).map(str::to_string)))
+    Ok((
+        out,
+        v.get("confidence")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    ))
 }
 
 /// A record entry's `sequence`: `{"start": [...], "blocks": {"name": "SIG"}, "end": [...]}`.
@@ -504,41 +647,85 @@ fn parse_header_flags(v: Option<&Value>, ctx: &str) -> Result<HeaderFlags, Schem
 fn parse_sequence(v: Option<&Value>, ctx: &str) -> Result<Option<SequenceDef>, SchemaError> {
     let Some(v) = v else { return Ok(None) };
     let sigs = |key: &str| -> Result<Vec<[u8; 4]>, SchemaError> {
-        let Some(a) = v.get(key) else { return Ok(Vec::new()) };
-        let a = a.as_array().ok_or_else(|| SchemaError(format!("{ctx}: {key} must be an array")))?;
+        let Some(a) = v.get(key) else {
+            return Ok(Vec::new());
+        };
+        let a = a
+            .as_array()
+            .ok_or_else(|| SchemaError(format!("{ctx}: {key} must be an array")))?;
         let mut out = Vec::new();
         for s in a {
-            let s = s.as_str().ok_or_else(|| SchemaError(format!("{ctx}: {key} entries must be strings")))?;
+            let s = s
+                .as_str()
+                .ok_or_else(|| SchemaError(format!("{ctx}: {key} entries must be strings")))?;
             out.push(sig4(s, ctx)?);
         }
         Ok(out)
     };
     let start = sigs("start")?;
     let end = sigs("end")?;
+    // Each block is an object: `{"opener": "SIG", "order": [...], "subrecords": {...}}`.
+    // The order of the blocks in the file is the order their openers first
+    // appear, which is what the decoder walks.
     let mut blocks = Vec::new();
     if let Some(Value::Object(m)) = v.get("blocks") {
-        for (name, sig) in m {
-            let sig = sig
-                .as_str()
-                .ok_or_else(|| SchemaError(format!("{ctx}: block {name:?} must name a signature string")))?;
-            blocks.push((name.clone(), sig4(sig, ctx)?));
+        for (name, b) in m {
+            let bctx = format!("{ctx}: block {name}");
+            let opener = b
+                .get("opener")
+                .and_then(Value::as_str)
+                .ok_or_else(|| SchemaError(format!("{bctx}: needs an \"opener\" signature")))?;
+            let mut subs = HashMap::new();
+            if let Some(Value::Object(sm)) = b.get("subrecords") {
+                for (ss, sd) in sm {
+                    subs.insert(sig4(ss, &bctx)?, parse_subdef(sd, &format!("{bctx}.{ss}"))?);
+                }
+            }
+            blocks.push(BlockDef {
+                name: name.clone(),
+                opener: sig4(opener, &bctx)?,
+                subrecords: subs,
+                order: sigs_of(b, "order", &bctx)?,
+            });
         }
     }
     let seq = SequenceDef { start, blocks, end };
-    for (_, opener) in &seq.blocks {
-        if seq.start.contains(opener) || seq.end.contains(opener) {
+    for b in &seq.blocks {
+        if seq.start.contains(&b.opener) || seq.end.contains(&b.opener) {
             return Err(SchemaError(format!(
-                "{ctx}: block opener {opener:?} may not also be a start or end signature"
+                "{ctx}: block opener {:?} may not also be a start or end signature",
+                b.opener
             )));
         }
     }
     let mut seen = std::collections::HashSet::new();
-    for (_, opener) in &seq.blocks {
-        if !seen.insert(opener) {
-            return Err(SchemaError(format!("{ctx}: block opener {opener:?} names two blocks")));
+    for b in &seq.blocks {
+        if !seen.insert(b.opener) {
+            return Err(SchemaError(format!(
+                "{ctx}: block opener {:?} names two blocks",
+                b.opener
+            )));
         }
     }
     Ok(Some(seq))
+}
+
+/// The signatures in `obj`'s `key` array, as 4-byte tags.
+fn sigs_of(obj: &Value, key: &str, ctx: &str) -> Result<Vec<[u8; 4]>, SchemaError> {
+    let Some(a) = obj.get(key) else {
+        return Ok(Vec::new());
+    };
+    let a = a
+        .as_array()
+        .ok_or_else(|| SchemaError(format!("{ctx}: {key} must be an array")))?;
+    let mut out = Vec::new();
+    for s in a {
+        let s = s
+            .as_str()
+            .ok_or_else(|| SchemaError(format!("{ctx}: {key} entries must be strings")))?;
+        out.push(sig4(s, ctx)?);
+    }
+    Ok(out)
 }
 
 impl Schema {
@@ -582,7 +769,8 @@ impl Schema {
             None => Schema::default(),
         };
         let mut files = Vec::new();
-        collect_json(dir, &mut files).map_err(|e| SchemaError(format!("{}: {e}", dir.display())))?;
+        collect_json(dir, &mut files)
+            .map_err(|e| SchemaError(format!("{}: {e}", dir.display())))?;
         files.sort();
         if files.is_empty() {
             return Err(SchemaError(format!("no schema files in {}", dir.display())));
@@ -595,7 +783,8 @@ impl Schema {
                     continue;
                 }
             }
-            let text = std::fs::read_to_string(f).map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
+            let text = std::fs::read_to_string(f)
+                .map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
             if base_canon.is_some() {
                 s.merge_overlay_str(&text, &f.display().to_string())?;
             } else {
@@ -653,7 +842,8 @@ impl Schema {
     /// of the overlay as "already loaded" and silently merges nothing.
     fn merge_over_dir(&mut self, dir: &Path, base: &Path, strict: bool) -> Result<(), SchemaError> {
         let mut files = Vec::new();
-        collect_json(dir, &mut files).map_err(|e| SchemaError(format!("{}: {e}", dir.display())))?;
+        collect_json(dir, &mut files)
+            .map_err(|e| SchemaError(format!("{}: {e}", dir.display())))?;
         files.sort();
         let base_canon = base.canonicalize().unwrap_or_else(|_| base.to_path_buf());
         for f in &files {
@@ -664,7 +854,8 @@ impl Schema {
             if is_base {
                 continue;
             }
-            let text = std::fs::read_to_string(f).map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
+            let text = std::fs::read_to_string(f)
+                .map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
             if strict {
                 self.merge_str(&text, &f.display().to_string())?;
             } else {
@@ -709,21 +900,30 @@ impl Schema {
     pub fn merge_str(&mut self, text: &str, label: &str) -> Result<(), SchemaError> {
         let v = parse_strict(text).map_err(|e| SchemaError(format!("{label}: {e}")))?;
         if v.get("format").and_then(Value::as_str) != Some("fnv.schema/1") {
-            return Err(SchemaError(format!("{label}: missing \"format\": \"fnv.schema/1\"")));
+            return Err(SchemaError(format!(
+                "{label}: missing \"format\": \"fnv.schema/1\""
+            )));
         }
         if let Some(Value::Object(types)) = v.get("types") {
             for (name, t) in types {
-                if self.types.insert(name.clone(), parse_type(t, &format!("{label}:types.{name}"))?).is_some() {
-                    return Err(SchemaError(format!("{label}: type {name} defined twice")));
-                }
+                // A type in an overlay *replaces* the one it shadows. A layout
+                // that is not the same in every game cannot live in the base,
+                // so the game that differs supplies its own and the base's
+                // copy is overwritten.
+                self.types.insert(
+                    name.clone(),
+                    parse_type(t, &format!("{label}:types.{name}"))?,
+                );
             }
         }
         if let Some(Value::Object(common)) = v.get("common") {
             for (sig, d) in common {
                 let k = sig4(sig, label)?;
-                if self.common.insert(k, parse_subdef(d, &format!("{label}:common.{sig}"))?).is_some() {
-                    return Err(SchemaError(format!("{label}: common subrecord {sig} defined twice")));
-                }
+                // A common subrecord in an overlay replaces the one it shadows,
+                // for the same reason a type does: a subrecord whose layout is
+                // not the same in every game belongs to the game, not the base.
+                self.common
+                    .insert(k, parse_subdef(d, &format!("{label}:common.{sig}"))?);
             }
         }
         if let Some(Value::Object(recs)) = v.get("records") {
@@ -732,17 +932,34 @@ impl Schema {
                 let mut subs = HashMap::new();
                 if let Some(Value::Object(sm)) = d.get("subrecords") {
                     for (ss, sd) in sm {
-                        subs.insert(sig4(ss, label)?, parse_subdef(sd, &format!("{label}:{sig}.{ss}"))?);
+                        subs.insert(
+                            sig4(ss, label)?,
+                            parse_subdef(sd, &format!("{label}:{sig}.{ss}"))?,
+                        );
                     }
                 }
-                let (header_flags, header_flags_confidence) = parse_header_flags(d.get("header_flags"), &format!("{label}:{sig}.header_flags"))?;
+                let (header_flags, header_flags_confidence) = parse_header_flags(
+                    d.get("header_flags"),
+                    &format!("{label}:{sig}.header_flags"),
+                )?;
                 let rd = RecordDef {
-                    name: d.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
-                    confidence: d.get("confidence").and_then(Value::as_str).unwrap_or("hypothesis").to_string(),
+                    name: d
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    confidence: d
+                        .get("confidence")
+                        .and_then(Value::as_str)
+                        .unwrap_or("hypothesis")
+                        .to_string(),
                     subrecords: subs,
                     header_flags,
                     header_flags_confidence,
-                    sequence: parse_sequence(d.get("sequence"), &format!("{label}:{sig}.sequence"))?,
+                    sequence: parse_sequence(
+                        d.get("sequence"),
+                        &format!("{label}:{sig}.sequence"),
+                    )?,
                 };
                 if self.records.insert(k, rd).is_some() {
                     return Err(SchemaError(format!("{label}: record {sig} defined twice")));
@@ -767,21 +984,30 @@ impl Schema {
     pub fn merge_overlay_str(&mut self, text: &str, label: &str) -> Result<(), SchemaError> {
         let v = parse_strict(text).map_err(|e| SchemaError(format!("{label}: {e}")))?;
         if v.get("format").and_then(Value::as_str) != Some("fnv.schema/1") {
-            return Err(SchemaError(format!("{label}: missing \"format\": \"fnv.schema/1\"")));
+            return Err(SchemaError(format!(
+                "{label}: missing \"format\": \"fnv.schema/1\""
+            )));
         }
         if let Some(Value::Object(types)) = v.get("types") {
             for (name, t) in types {
-                if self.types.insert(name.clone(), parse_type(t, &format!("{label}:types.{name}"))?).is_some() {
-                    return Err(SchemaError(format!("{label}: type {name} defined twice")));
-                }
+                // A type in an overlay *replaces* the one it shadows. A layout
+                // that is not the same in every game cannot live in the base,
+                // so the game that differs supplies its own and the base's
+                // copy is overwritten.
+                self.types.insert(
+                    name.clone(),
+                    parse_type(t, &format!("{label}:types.{name}"))?,
+                );
             }
         }
         if let Some(Value::Object(common)) = v.get("common") {
             for (sig, d) in common {
                 let k = sig4(sig, label)?;
-                if self.common.insert(k, parse_subdef(d, &format!("{label}:common.{sig}"))?).is_some() {
-                    return Err(SchemaError(format!("{label}: common subrecord {sig} defined twice")));
-                }
+                // A common subrecord in an overlay replaces the one it shadows,
+                // for the same reason a type does: a subrecord whose layout is
+                // not the same in every game belongs to the game, not the base.
+                self.common
+                    .insert(k, parse_subdef(d, &format!("{label}:common.{sig}"))?);
             }
         }
         if let Some(Value::Object(recs)) = v.get("records") {
@@ -790,17 +1016,34 @@ impl Schema {
                 let mut subs = HashMap::new();
                 if let Some(Value::Object(sm)) = d.get("subrecords") {
                     for (ss, sd) in sm {
-                        subs.insert(sig4(ss, label)?, parse_subdef(sd, &format!("{label}:{sig}.{ss}"))?);
+                        subs.insert(
+                            sig4(ss, label)?,
+                            parse_subdef(sd, &format!("{label}:{sig}.{ss}"))?,
+                        );
                     }
                 }
-                let (header_flags, header_flags_confidence) = parse_header_flags(d.get("header_flags"), &format!("{label}:{sig}.header_flags"))?;
+                let (header_flags, header_flags_confidence) = parse_header_flags(
+                    d.get("header_flags"),
+                    &format!("{label}:{sig}.header_flags"),
+                )?;
                 let rd = RecordDef {
-                    name: d.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
-                    confidence: d.get("confidence").and_then(Value::as_str).unwrap_or("hypothesis").to_string(),
+                    name: d
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    confidence: d
+                        .get("confidence")
+                        .and_then(Value::as_str)
+                        .unwrap_or("hypothesis")
+                        .to_string(),
                     subrecords: subs,
                     header_flags,
                     header_flags_confidence,
-                    sequence: parse_sequence(d.get("sequence"), &format!("{label}:{sig}.sequence"))?,
+                    sequence: parse_sequence(
+                        d.get("sequence"),
+                        &format!("{label}:{sig}.sequence"),
+                    )?,
                 };
                 self.records.insert(k, rd);
             }
@@ -813,7 +1056,9 @@ impl Schema {
     pub fn validate(&self) -> Result<(), SchemaError> {
         fn check(s: &Schema, t: &TypeDef, depth: usize, ctx: &str) -> Result<(), SchemaError> {
             if depth > 32 {
-                return Err(SchemaError(format!("{ctx}: type nesting too deep (cycle?)")));
+                return Err(SchemaError(format!(
+                    "{ctx}: type nesting too deep (cycle?)"
+                )));
             }
             match t {
                 TypeDef::Prim(_) | TypeDef::Enum { .. } | TypeDef::Flags { .. } => Ok(()),
@@ -827,9 +1072,16 @@ impl Schema {
                         // A count-field array names a sibling integer field decoded
                         // earlier in the same struct. A dangling or self-referential
                         // name is a schema bug, not a data problem.
-                        if let TypeDef::Array { count_field: Some(name), .. } = &f.ty {
+                        if let TypeDef::Array {
+                            count_field: Some(name),
+                            ..
+                        } = &f.ty
+                        {
                             if name == &f.name {
-                                return Err(SchemaError(format!("{ctx}.{}: count_field cannot name itself", f.name)));
+                                return Err(SchemaError(format!(
+                                    "{ctx}.{}: count_field cannot name itself",
+                                    f.name
+                                )));
                             }
                             let declared_earlier = fs
                                 .iter()
@@ -847,9 +1099,9 @@ impl Schema {
                 }
                 TypeDef::Array { elem, .. } => check(s, elem, depth + 1, ctx),
                 TypeDef::Union(vs) => vs.iter().try_for_each(|(_, t)| check(s, t, depth + 1, ctx)),
-                TypeDef::ValueUnion { variants, .. } => {
-                    variants.iter().try_for_each(|t| check(s, t, depth + 1, ctx))
-                }
+                TypeDef::ValueUnion { variants, .. } => variants
+                    .iter()
+                    .try_for_each(|t| check(s, t, depth + 1, ctx)),
             }
         }
         for (n, t) in &self.types {
@@ -860,15 +1112,48 @@ impl Schema {
         }
         for (rk, r) in &self.records {
             for (sk, d) in &r.subrecords {
-                check(self, &d.ty, 0, &format!("{}.{}", fnv_util::tag_str(rk), fnv_util::tag_str(sk)))?;
+                check(
+                    self,
+                    &d.ty,
+                    0,
+                    &format!("{}.{}", fnv_util::tag_str(rk), fnv_util::tag_str(sk)),
+                )?;
             }
         }
         Ok(())
     }
 
-    /// The definition that applies to `sub` inside a `rec` record.
+    /// The definition that applies to `sub` inside `rec` record.
     pub fn lookup(&self, rec: &[u8; 4], sub: &[u8; 4]) -> Option<&SubDef> {
-        self.records.get(rec).and_then(|r| r.subrecords.get(sub)).or_else(|| self.common.get(sub))
+        self.records
+            .get(rec)
+            .and_then(|r| r.subrecords.get(sub))
+            .or_else(|| self.common.get(sub))
+    }
+
+    /// The definition that applies to `sub` inside `rec`, given the sequence
+    /// block the decoder is in.
+    ///
+    /// A block's own definitions win over the record's: a signature listed in a
+    /// block means that block's version of it, which is the whole point of a
+    /// sequence. A signature the block does not define falls back to the
+    /// record's own map, and then to `common`.
+    pub fn lookup_in_block(
+        &self,
+        rec: &[u8; 4],
+        sub: &[u8; 4],
+        block: Option<usize>,
+    ) -> Option<&SubDef> {
+        if let Some(b) = block {
+            if let Some(seq) = self.records.get(rec).and_then(|r| r.sequence.as_ref()) {
+                if let Some(bd) = seq.blocks.get(b) {
+                    if let Some(d) = bd.subrecords.get(sub) {
+                        return Some(d);
+                    }
+                }
+            }
+        }
+        self.lookup(rec, sub)
     }
 
     pub fn resolve<'a>(&'a self, t: &'a TypeDef) -> &'a TypeDef {
@@ -1006,7 +1291,10 @@ mod tests {
         assert_eq!(s.lookup(b"GLOB", b"EDID").unwrap().name, "Editor ID");
         assert_eq!(s.lookup(b"GLOB", b"FLTV").unwrap().name, "Value");
         assert!(s.lookup(b"WEAP", b"FLTV").is_none());
-        assert_eq!(s.fixed_size(&s.lookup(b"GLOB", b"OBND").unwrap().ty), Some(4));
+        assert_eq!(
+            s.fixed_size(&s.lookup(b"GLOB", b"OBND").unwrap().ty),
+            Some(4)
+        );
     }
 
     #[test]
@@ -1014,16 +1302,30 @@ mod tests {
         let mut s = Schema::default();
         assert!(s.merge_str(r#"{"records":{}}"#, "nofmt").is_err());
         let mut s = Schema::default();
-        s.merge_str(r#"{"format":"fnv.schema/1","common":{"EDID":{"type":"Nope"}}}"#, "x").unwrap();
+        s.merge_str(
+            r#"{"format":"fnv.schema/1","common":{"EDID":{"type":"Nope"}}}"#,
+            "x",
+        )
+        .unwrap();
         assert!(s.validate().is_err());
         let mut s = Schema::default();
         let opt_mid = r#"{"format":"fnv.schema/1","types":{"T":{"struct":[{"name":"a","type":"u8","optional":true},{"name":"b","type":"u8"}]}}}"#;
         assert!(s.merge_str(opt_mid, "x").is_err());
         let mut s = Schema::default();
-        assert!(s.merge_str(r#"{"format":"fnv.schema/1","common":{"TOOLONG":{"type":"u8"}}}"#, "x").is_err());
+        assert!(s
+            .merge_str(
+                r#"{"format":"fnv.schema/1","common":{"TOOLONG":{"type":"u8"}}}"#,
+                "x"
+            )
+            .is_err());
         let mut s = Schema::default();
-        let dup = r#"{"format":"fnv.schema/1","common":{"EDID":{"type":"u8"},"EDID":{"type":"u16"}}}"#;
-        assert!(s.merge_str(dup, "x").unwrap_err().0.contains("duplicate key"));
+        let dup =
+            r#"{"format":"fnv.schema/1","common":{"EDID":{"type":"u8"},"EDID":{"type":"u16"}}}"#;
+        assert!(s
+            .merge_str(dup, "x")
+            .unwrap_err()
+            .0
+            .contains("duplicate key"));
     }
 
     #[test]
@@ -1038,8 +1340,15 @@ mod tests {
         let r = &s.records[b"MISC"];
         assert_eq!(r.header_flag_names(0x420), vec!["Deleted", "Quest Item"]);
         assert_eq!(r.header_flags_confidence.as_deref(), Some("documented"));
-        for bad in [r#"{"bits":{"32":"X"}}"#, r#"{"bits":{"x":"X"}}"#, r#"{"bits":{"1":""}}"#, r#"{}"#] {
-            let t = format!(r#"{{"format":"fnv.schema/1","records":{{"MISC":{{"header_flags":{bad}}}}}}}"#);
+        for bad in [
+            r#"{"bits":{"32":"X"}}"#,
+            r#"{"bits":{"x":"X"}}"#,
+            r#"{"bits":{"1":""}}"#,
+            r#"{}"#,
+        ] {
+            let t = format!(
+                r#"{{"format":"fnv.schema/1","records":{{"MISC":{{"header_flags":{bad}}}}}}}"#
+            );
             assert!(Schema::default().merge_str(&t, "x").is_err(), "{bad}");
         }
     }

@@ -151,6 +151,59 @@ https://github.com/TES5Edit/TES5Edit) and were re-expressed in this format; no
 xEdit code is included. NVRE's additions follow the same rule, and their `note`
 names the Pascal file and line they came from.
 
+## Sequences: records whose subrecords are an ordered list of blocks
+
+Some records are not a bag of subrecords but a list of blocks, where the same
+signature means different things depending on which block it is in. `SCEN` is
+the case this exists for: its `ALID` opens the actor list *and* is a field
+inside an action, so the signature alone cannot say which definition applies.
+
+A record with a `sequence` gives the blocks it has:
+
+```json
+"sequence": {
+  "start": ["EDID", "VMAD", "FNAM"],
+  "blocks": {
+    "actor": {
+      "opener": "ALID",
+      "order": ["LNAM", "DNAM"],
+      "subrecords": { "ALID": { "name": "Alias ID", "type": "u32" } }
+    }
+  },
+  "end": ["PNAM", "INAM", "VNAM"]
+}
+```
+
+- `opener` is the signature that starts the block.
+- `order` lists the signatures that follow the opener, in the order they
+  appear. A signature in the order **continues** the current block; one that is
+  not in the order, and is a known opener, **starts** a new block. That is what
+  tells `SCEN`'s `ALID` apart: inside an action it is where the action's order
+  says it should be, so it continues that block; at the head of the actor list
+  it is not expected, so it opens one.
+- `subrecords` is the block's own definitions. A signature defined in a block
+  means that block's version of it, and the block's definition wins over the
+  record's own map.
+- `start` and `end` are the subrecords outside any block.
+
+The decoder walks the sequence and records the block each subrecord is in
+(`DecodeCtx::block`), so `Schema::lookup_in_block` can pick the right
+definition. `Coverage` uses the same walk, so a sequence record is measured
+against its blocks.
+
+## Overlays replace, they do not merge
+
+A later directory in the chain **replaces** a record, a `common` subrecord or a
+named type that an earlier one defined. It does not merge them. So a record
+that is not the same in every game cannot live in `base` — the base holds only
+what is the same everywhere, and a game that differs supplies its own copy.
+
+`Condition` is the worked example. Fallout's `CTDA` is 20, 24 or 28 bytes
+(Run On and Reference are optional); Skyrim's is always 32 bytes (Run On,
+Reference and a trailing index are all present). So `Condition` and the
+`CTDA` common subrecord live in `schemas/fnv/conditions.json` and
+`schemas/fo3/conditions.json` — not in `base`.
+
 `fnvtool esm coverage` prints the same numbers, but it lives inside the
 NVForever submodule and links upstream's `fnv-esm`, so it cannot see NVRE's
 patched schema language (`len_string`, `count_prefix`, `count_field`,

@@ -4,9 +4,9 @@
 
 use crate::raw::{Record, Subrecord};
 use crate::schema::{Prim, Schema, TypeDef};
-use serde_json::{json, Map, Value};
 use fnv_util::{cp1252, sha256::to_hex, Cursor};
 use rayon::prelude::*;
+use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -50,6 +50,15 @@ pub struct DecodeCtx<'a> {
     /// `switch_on` (e.g. a nested `wbUnion` that reads a sibling field of its
     /// own struct rather than another subrecord).
     pub switch_on: Option<HashMap<String, u64>>,
+    /// The sequence block the decoder is currently inside, when the record has
+    /// a `sequence`.
+    ///
+    /// A record whose subrecords are an ordered list of blocks gives the same
+    /// signature different meanings in different blocks — `ANAM` is a formid in
+    /// `ASPC` and a string in `PACK`'s activity list — so the definition used
+    /// depends on which block the subrecord is in. This is the block's index
+    /// into the record's `sequence.blocks`.
+    pub block: Option<usize>,
 }
 
 impl<'a> DecodeCtx<'a> {
@@ -61,6 +70,7 @@ impl<'a> DecodeCtx<'a> {
             exposed: HashMap::new(),
             rec_sig,
             switch_on: None,
+            block: None,
         }
     }
 }
@@ -94,7 +104,10 @@ fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, Stri
             if rest.last() != Some(&0) && !rest.is_empty() {
                 // Not terminated: keep the text but flag it via an error so the
                 // definition gets reviewed.
-                return Err(format!("zstring not NUL-terminated: {:?}", cp1252::decode(rest)));
+                return Err(format!(
+                    "zstring not NUL-terminated: {:?}",
+                    cp1252::decode(rest)
+                ));
             }
             Value::from(cp1252::decode_z(rest))
         }
@@ -104,21 +117,30 @@ fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, Stri
                 return Ok(Value::Array(Vec::new()));
             }
             let Some(body) = rest.strip_suffix(&[0]) else {
-                return Err(format!("zstring array not NUL-terminated: {:?}", cp1252::decode(rest)));
+                return Err(format!(
+                    "zstring array not NUL-terminated: {:?}",
+                    cp1252::decode(rest)
+                ));
             };
             // Drop the extra NUL that closes the list, when present.
             let body = body.strip_suffix(&[0]).unwrap_or(body);
             if body.is_empty() {
                 return Ok(Value::Array(Vec::new()));
             }
-            Value::Array(body.split(|&b| b == 0).map(|s| Value::from(cp1252::decode(s))).collect())
+            Value::Array(
+                body.split(|&b| b == 0)
+                    .map(|s| Value::from(cp1252::decode(s)))
+                    .collect(),
+            )
         }
         Prim::LenString => {
             // xEdit's `wbLenString`: a little-endian u32 byte count, then exactly
             // that many bytes of text with no terminator. A length that runs past
             // the end of the field is an error, never a truncation.
             let n = c.u32().map_err(e)? as usize;
-            let s = c.bytes(n).map_err(|oob| format!("len_string length {n} exceeds the field: {oob}"))?;
+            let s = c
+                .bytes(n)
+                .map_err(|oob| format!("len_string length {n} exceeds the field: {oob}"))?;
             Value::from(cp1252::decode(s))
         }
         Prim::String => Value::from(cp1252::decode(c.bytes(c.remaining()).unwrap())),
@@ -197,15 +219,22 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 .ok_or_else(|| format!("no union variant for {left} bytes"))?;
             decode_type(&chosen.1, c, ctx)
         }
-        TypeDef::ValueUnion { name, cases, default, variants } => {
+        TypeDef::ValueUnion {
+            name,
+            cases,
+            default,
+            variants,
+        } => {
             // The variant is chosen by a sibling value, not by the bytes left.
             // Two lookups, in order: a field decoded earlier in the *same* struct
             // (already in `ctx.exposed` by a sibling subrecord, or the enclosing
             // struct's own field), else a field exposed by an earlier subrecord
             // of the same record (xEdit's `RecordBySignature[PRKE]`).
-            let switch = ctx.switch_on.as_ref().and_then(|s| s.get(name).copied()).or_else(|| {
-                ctx.exposed.get(&(ctx.rec_sig, name.clone())).copied()
-            });
+            let switch = ctx
+                .switch_on
+                .as_ref()
+                .and_then(|s| s.get(name).copied())
+                .or_else(|| ctx.exposed.get(&(ctx.rec_sig, name.clone())).copied());
             // A missing switch selects the default, mirroring xEdit's deciders
             // (e.g. wbPerkDATADecider returns 0 when the sibling PRKE is absent,
             // which is exactly the record-level case the union must also cover).
@@ -229,16 +258,27 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 // that was decoded earlier in this same struct (xEdit's
                 // `SetCountPath`). An integer field is kept as a raw number for that
                 // lookup without disturbing its JSON representation.
-                if let TypeDef::Array { count_field: Some(name), .. } = &schema.resolve(&f.ty) {
-                    let n = obj
-                        .get(name)
-                        .and_then(Value::as_u64)
-                        .ok_or_else(|| format!("{}: count_field {name:?} has no earlier integer value", f.name))?;
-                    let TypeDef::Array { elem, .. } = schema.resolve(&f.ty) else { unreachable!() };
+                if let TypeDef::Array {
+                    count_field: Some(name),
+                    ..
+                } = &schema.resolve(&f.ty)
+                {
+                    let n = obj.get(name).and_then(Value::as_u64).ok_or_else(|| {
+                        format!(
+                            "{}: count_field {name:?} has no earlier integer value",
+                            f.name
+                        )
+                    })?;
+                    let TypeDef::Array { elem, .. } = schema.resolve(&f.ty) else {
+                        unreachable!()
+                    };
                     let mut out = Vec::new();
                     for i in 0..n {
                         let before = c.pos;
-                        out.push(decode_type(elem, c, ctx).map_err(|e| format!("{}: [{i}]: {e}", f.name))?);
+                        out.push(
+                            decode_type(elem, c, ctx)
+                                .map_err(|e| format!("{}: [{i}]: {e}", f.name))?,
+                        );
                         if c.pos == before {
                             return Err(format!("{}: array element consumed no bytes", f.name));
                         }
@@ -266,7 +306,12 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             }
             Ok(Value::Object(obj))
         }
-        TypeDef::Array { elem, count, count_prefix, .. } => {
+        TypeDef::Array {
+            elem,
+            count,
+            count_prefix,
+            ..
+        } => {
             let mut out = Vec::new();
             match count {
                 Some(n) => {
@@ -290,7 +335,9 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                             let mut i = 0;
                             while !c.is_empty() {
                                 let before = c.pos;
-                                out.push(decode_type(elem, c, ctx).map_err(|e| format!("[{i}]: {e}"))?);
+                                out.push(
+                                    decode_type(elem, c, ctx).map_err(|e| format!("[{i}]: {e}"))?,
+                                );
                                 if c.pos == before {
                                     return Err("array element consumed no bytes".into());
                                 }
@@ -346,9 +393,17 @@ pub struct DecodedSub {
 }
 
 pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> DecodedSub {
-    let def = match ctx.schema.lookup(rec_sig, &s.sig) {
+    let def = match ctx.schema.lookup_in_block(rec_sig, &s.sig, ctx.block) {
         Some(d) => d,
-        None => return DecodedSub { status: SubStatus::Unknown, opaque: false, name: None, value: None, error: None },
+        None => {
+            return DecodedSub {
+                status: SubStatus::Unknown,
+                opaque: false,
+                name: None,
+                value: None,
+                error: None,
+            }
+        }
     };
     let opaque = matches!(ctx.schema.resolve(&def.ty), TypeDef::Prim(Prim::Bytes));
     let mut c = Cursor::new(&s.data);
@@ -365,7 +420,13 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
                 }
             }
             if c.is_empty() {
-                DecodedSub { status: SubStatus::Ok, opaque, name: Some(def.name.clone()), value: Some(v), error: None }
+                DecodedSub {
+                    status: SubStatus::Ok,
+                    opaque,
+                    name: Some(def.name.clone()),
+                    value: Some(v),
+                    error: None,
+                }
             } else {
                 let rest = to_hex(&s.data[c.pos..]);
                 DecodedSub {
@@ -377,9 +438,58 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
                 }
             }
         }
-        Err(e) => {
-            DecodedSub { status: SubStatus::Error, opaque, name: Some(def.name.clone()), value: None, error: Some(e) }
+        Err(e) => DecodedSub {
+            status: SubStatus::Error,
+            opaque,
+            name: Some(def.name.clone()),
+            value: None,
+            error: Some(e),
+        },
+    }
+}
+
+/// Walk a record's subrecords, tracking which sequence block each is in.
+///
+/// A record with a `sequence` is an ordered list of blocks. A block's `order`
+/// says which signature is expected next, and a signature that matches it
+/// continues the block; one that does not, and is a known opener, starts a new
+/// block. That is what tells `SCEN`'s `ALID` — which both opens an actor and
+/// appears inside an action — apart, since the signature alone cannot.
+///
+/// The two callers differ only in what they do with each decoded subrecord, so
+/// the walk lives here and both use it.
+pub fn walk_sequence(
+    rec_sig: &[u8; 4],
+    subs: &[crate::raw::Subrecord],
+    schema: &Schema,
+    ctx: &mut DecodeCtx,
+    mut f: impl FnMut(&crate::raw::Subrecord, &mut DecodeCtx),
+) {
+    let seq = schema
+        .records
+        .get(rec_sig)
+        .and_then(|rd| rd.sequence.as_ref());
+    let mut block: Option<usize> = None;
+    for s in subs {
+        if let Some(seq) = seq {
+            // The signature opens a block only when the current block does not
+            // expect it. That is what tells `SCEN`'s `ALID` — which both opens
+            // an actor and appears inside an action — apart: inside an action it
+            // is where the action's order says it should be, so it continues
+            // that block; at the head of the actor list it is not expected, so
+            // it opens one.
+            let expected_here = block
+                .and_then(|b| seq.blocks.get(b))
+                .map(|bd| bd.order.contains(&s.sig))
+                .unwrap_or(false);
+            if !expected_here {
+                if let Some(i) = seq.blocks.iter().position(|b| b.opener == s.sig) {
+                    block = Some(i);
+                }
+            }
         }
+        ctx.block = block;
+        f(s, ctx);
     }
 }
 
@@ -406,8 +516,8 @@ pub fn decode_record(r: &Record, schema: &Schema) -> Value {
         Ok(subs) => {
             let mut arr = Vec::with_capacity(subs.len());
             let mut ctx = DecodeCtx::new(schema, r.header.sig);
-            for s in &subs {
-                let d = decode_sub(&r.header.sig, s, &mut ctx);
+            walk_sequence(&r.header.sig, &subs, schema, &mut ctx, |s, ctx| {
+                let d = decode_sub(&r.header.sig, s, ctx);
                 let mut o = Map::new();
                 o.insert("sig".into(), json!(s.sig_str()));
                 if let Some(n) = d.name {
@@ -422,7 +532,7 @@ pub fn decode_record(r: &Record, schema: &Schema) -> Value {
                     o.insert("error".into(), json!(e));
                 }
                 arr.push(Value::Object(o));
-            }
+            });
             out["subrecords"] = Value::Array(arr);
         }
     }
@@ -468,17 +578,36 @@ struct SubOutcome {
 
 impl Coverage {
     /// Decode one record's subrecords against the schema (no shared state).
-    pub fn measure<'a>(r: &Record, schema: &'a Schema, on_formid: Option<&'a mut dyn FnMut(u32)>) -> RecordCoverage {
+    pub fn measure<'a>(
+        r: &Record,
+        schema: &'a Schema,
+        on_formid: Option<&'a mut dyn FnMut(u32)>,
+    ) -> RecordCoverage {
         let subs = r.subrecords().map_err(|e| e.to_string()).map(|subs| {
-            let mut ctx = DecodeCtx { on_formid, ..DecodeCtx::new(schema, r.header.sig) };
-            subs.iter()
-                .map(|s| {
-                    let d = decode_sub(&r.header.sig, s, &mut ctx);
-                    SubOutcome { sig: s.sig_str(), size: s.data.len(), status: d.status, opaque: d.opaque, error: d.error }
-                })
-                .collect()
+            let mut ctx = DecodeCtx {
+                on_formid,
+                ..DecodeCtx::new(schema, r.header.sig)
+            };
+            // The same sequence walk as `decode_record`: the block decides
+            // which definition a signature gets.
+            let mut out = Vec::with_capacity(subs.len());
+            walk_sequence(&r.header.sig, &subs, schema, &mut ctx, |s, ctx| {
+                let d = decode_sub(&r.header.sig, s, ctx);
+                out.push(SubOutcome {
+                    sig: s.sig_str(),
+                    size: s.data.len(),
+                    status: d.status,
+                    opaque: d.opaque,
+                    error: d.error,
+                });
+            });
+            out
         });
-        RecordCoverage { sig: r.sig_str(), form_id: r.header.form_id, subs }
+        RecordCoverage {
+            sig: r.sig_str(),
+            form_id: r.header.form_id,
+            subs,
+        }
     }
 
     /// Fold one measured record into the totals. Records must be added in file
@@ -517,7 +646,12 @@ impl Coverage {
         }
     }
 
-    pub fn add_record<'a>(&mut self, r: &Record, schema: &'a Schema, on_formid: Option<&'a mut dyn FnMut(u32)>) {
+    pub fn add_record<'a>(
+        &mut self,
+        r: &Record,
+        schema: &'a Schema,
+        on_formid: Option<&'a mut dyn FnMut(u32)>,
+    ) {
         self.add(Self::measure(r, schema, on_formid));
     }
 
@@ -525,7 +659,10 @@ impl Coverage {
     /// order, so the result is identical to adding them one by one.
     pub fn add_records_par(&mut self, recs: &[&Record], schema: &Schema) {
         for chunk in recs.chunks(4096) {
-            let measured: Vec<RecordCoverage> = chunk.par_iter().map(|r| Self::measure(r, schema, None)).collect();
+            let measured: Vec<RecordCoverage> = chunk
+                .par_iter()
+                .map(|r| Self::measure(r, schema, None))
+                .collect();
             for rc in measured {
                 self.add(rc);
             }
@@ -546,7 +683,13 @@ impl Coverage {
 
     pub fn to_json(&self, max_rows: usize) -> Value {
         let (total, ok, unknown, trailing, error) = self.totals();
-        let pct = |n: u64| if total == 0 { 0.0 } else { (n as f64) * 100.0 / total as f64 };
+        let pct = |n: u64| {
+            if total == 0 {
+                0.0
+            } else {
+                (n as f64) * 100.0 / total as f64
+            }
+        };
         let summary = json!({
             "subrecords": total,
             "ok": ok,
@@ -561,13 +704,20 @@ impl Coverage {
         // Work queue: pairs with the most undecoded instances first.
         let mut rows: Vec<(&(String, String), &SubCoverage)> =
             self.by_sub.iter().filter(|(_, c)| c.ok < c.total).collect();
-        rows.sort_by(|a, b| (b.1.total - b.1.ok).cmp(&(a.1.total - a.1.ok)).then(a.0.cmp(b.0)));
+        rows.sort_by(|a, b| {
+            (b.1.total - b.1.ok)
+                .cmp(&(a.1.total - a.1.ok))
+                .then(a.0.cmp(b.0))
+        });
         let mut q = Vec::new();
         for ((rt, st), c) in rows.into_iter().take(max_rows) {
             let sizes: Vec<Value> = {
                 let mut sv: Vec<(&usize, &u64)> = c.sizes.iter().collect();
                 sv.sort_by(|a, b| b.1.cmp(a.1));
-                sv.into_iter().take(5).map(|(sz, n)| json!({"size": sz, "count": n})).collect()
+                sv.into_iter()
+                    .take(5)
+                    .map(|(sz, n)| json!({"size": sz, "count": n}))
+                    .collect()
             };
             let mut o = json!({
                 "record": rt,
