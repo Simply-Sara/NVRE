@@ -13,7 +13,8 @@
 //! - `CaravanDeckNobark` (0x0017B41B): the first card is `0x00166F61` and
 //!   the second is `0x00166EF2`.
 //! - The spec calls `DATA` broken, so it is carried through unchanged rather
-//!   than given a meaning the spec does not state.
+//!   than given a meaning the spec does not state. The game does write a
+//!   real value: this deck's is 45.
 
 mod common;
 
@@ -44,7 +45,9 @@ fn every_field_of_a_real_caravan_deck_is_loaded() {
     assert_eq!(state.cdck_cards[1], 0x0016_6EF2, "CARD: the second card");
 
     // --- DATA: the value the spec calls broken ---
-    assert_eq!(state.cdck_data, 0, "DATA: the value the record had");
+    // The spec marks the value broken, but the game writes a real one:
+    // this deck's is 45. It is carried through unchanged.
+    assert_eq!(state.cdck_data, 45, "DATA: the value the record had");
 }
 
 #[test]
