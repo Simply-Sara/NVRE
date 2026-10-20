@@ -402,12 +402,23 @@ fn main() {
     assert!(lvlc_state.lvl_all_levels);
     assert!(!lvlc_state.lvl_each_item);
     assert_eq!(lvlc_state.lvl_entries.len(), 5);
-    assert_eq!(lvlc_state.lvl_entries[0], (1, 0x00156A9F, 1));
-    assert_eq!(lvlc_state.lvl_entries[1], (1, 0x00157B25, 1));
+    assert_eq!(lvlc_state.lvl_entries[0].level, 1);
+    assert_eq!(lvlc_state.lvl_entries[0].reference, Some(0x00156A9F));
+    assert_eq!(lvlc_state.lvl_entries[0].count, 1);
+    assert_eq!(lvlc_state.lvl_entries[1].level, 1);
+    assert_eq!(lvlc_state.lvl_entries[1].reference, Some(0x00157B25));
+    assert_eq!(lvlc_state.lvl_entries[1].count, 1);
 
     // Modify and save LVLC
     lvlc_state.lvl_chance_none = 25;
-    lvlc_state.lvl_entries.push((5, 0x00156A9F, 2));
+    lvlc_state
+        .lvl_entries
+        .push(nvre_editor::object_editor::LeveledListEntry {
+            level: 5,
+            reference: Some(0x00156A9F),
+            count: 2,
+            ..Default::default()
+        });
     lvlc_state.save_to_session(&mut session);
     println!("LVLC edit queued successfully.");
 
@@ -428,8 +439,12 @@ fn main() {
     assert!(!lvln_state.lvl_all_levels);
     assert!(lvln_state.lvl_each_item);
     assert_eq!(lvln_state.lvl_entries.len(), 2);
-    assert_eq!(lvln_state.lvl_entries[0], (33, 0x0017A2F4, 1));
-    assert_eq!(lvln_state.lvl_entries[1], (33, 0x0017A2F5, 1));
+    assert_eq!(lvln_state.lvl_entries[0].level, 33);
+    assert_eq!(lvln_state.lvl_entries[0].reference, Some(0x0017A2F4));
+    assert_eq!(lvln_state.lvl_entries[0].count, 1);
+    assert_eq!(lvln_state.lvl_entries[1].level, 33);
+    assert_eq!(lvln_state.lvl_entries[1].reference, Some(0x0017A2F5));
+    assert_eq!(lvln_state.lvl_entries[1].count, 1);
 
     let lvln_title = nvre_editor::object_editor::window_title(
         &lvln_state.sig,
@@ -440,7 +455,14 @@ fn main() {
 
     // Modify and save LVLN
     lvln_state.lvl_chance_none = 10;
-    lvln_state.lvl_entries.push((35, 0x0017A2F4, 1));
+    lvln_state
+        .lvl_entries
+        .push(nvre_editor::object_editor::LeveledListEntry {
+            level: 35,
+            reference: Some(0x0017A2F4),
+            count: 1,
+            ..Default::default()
+        });
     lvln_state.save_to_session(&mut session);
     println!("LVLN edit queued successfully.");
 

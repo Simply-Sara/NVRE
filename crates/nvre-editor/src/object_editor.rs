@@ -345,7 +345,11 @@ pub struct ObjectEditorState {
     pub lvl_each_item: bool,
     pub lvl_use_all: bool,
     pub lvl_global: Option<u32>,
-    pub lvl_entries: Vec<(i16, u32, i16)>,
+    /// The leveled list entries: the level, the reference and the count.
+    ///
+    /// The `COED` extra data that follows an `LVLO` belongs to that entry,
+    /// so it is kept alongside it rather than dropped.
+    pub lvl_entries: Vec<LeveledListEntry>,
     pub lvl_entry_level_to_add: i16,
     pub lvl_entry_fid_to_add: Option<u32>,
     pub lvl_entry_count_to_add: i16,
@@ -509,6 +513,394 @@ pub struct ObjectEditorState {
     /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
     pub gras_model: ModelData,
 
+    // IDLM (Idle Animation) fields
+    /// `IDLF` Flags — the u8 flag word: Run In Sequence, Do Once. The word is
+    /// kept whole, so a bit the spec does not name survives an edit.
+    pub idlm_flags: u8,
+    /// `IDLC` Animation Count — the u8.
+    pub idlm_animation_count: u8,
+    /// `IDLC`'s three unused bytes, carried through unchanged.
+    pub idlm_idlc_unused: [u8; 3],
+    /// `IDLT` Idle Timer Setting — the float32.
+    pub idlm_idle_timer: f32,
+    /// `IDLA` Animations — the list of `IDLE` record FormIDs.
+    pub idlm_animations: Vec<u32>,
+
+    // IMGS (Image Space) fields
+    ///
+    /// The `DNAM` layout is version-dependent: 152 bytes on 67 of the game's
+    /// records, 148 on twelve and 132 on eleven. The schema names the first
+    /// fourteen HDR floats; everything after them depends on the record's
+    /// form version, so it is carried through as raw bytes rather than
+    /// guessed at.
+    pub imgs_hdr: [f32; 14],
+    /// The rest of `DNAM` — the version-dependent part, carried through
+    /// unchanged.
+    pub imgs_rest: Vec<u8>,
+
+    // LGTM (Lighting) fields
+    /// `DATA` Ambient Color — the byte quadruple (red, green, blue, unused).
+    pub lgtm_ambient_color: [u8; 4],
+    /// `DATA` Directional Color — the byte quadruple.
+    pub lgtm_directional_color: [u8; 4],
+    /// `DATA` Fog Color — the byte quadruple.
+    pub lgtm_fog_color: [u8; 4],
+    pub lgtm_fog_near: f32,
+    pub lgtm_fog_far: f32,
+    pub lgtm_directional_rotation_xy: i32,
+    pub lgtm_directional_rotation_z: i32,
+    pub lgtm_directional_fade: f32,
+    pub lgtm_fog_clip_distance: f32,
+    pub lgtm_fog_power: f32,
+
+    // LSCR (Load Screen) fields
+    /// `ICON` — the large icon filename.
+    pub lscr_icon: String,
+    /// `MICO` — the small icon filename.
+    pub lscr_mico: String,
+    /// `DESC` — the description.
+    pub lscr_desc: String,
+    /// `WMI1` Load Screen Type — the FormID of an `LSCT` record.
+    pub lscr_load_screen_type: Option<u32>,
+    /// `LNAM` — the load screen's locations. `LNAM` is a *repeated*
+    /// subrecord, so the locations are a list.
+    pub lscr_locations: Vec<LoadScreenLocation>,
+
+    // LSCT (Load Screen Type) fields
+    /// `DATA` Type — the uint32 enum.
+    pub lsct_type: u32,
+    pub lsct_x: u32,
+    pub lsct_y: u32,
+    pub lsct_width: u32,
+    pub lsct_height: u32,
+    pub lsct_orientation: f32,
+    pub lsct_font1: u32,
+    pub lsct_font1_color: [f32; 3],
+    pub lsct_font1_alignment: u32,
+    pub lsct_font2: u32,
+    pub lsct_font2_color: [f32; 3],
+    pub lsct_font2_alignment: u32,
+    pub lsct_stats: u32,
+
+    // MICN (Mission Icon) fields
+    /// `ICON` — the large icon filename.
+    pub micn_icon: String,
+    /// `MICO` — the small icon filename.
+    pub micn_mico: String,
+
+    // MUSC (Music) fields
+    /// `FNAM` — the music's filename.
+    pub musc_filename: String,
+    /// `ANAM` db — the float32. A positive value makes the music loop.
+    pub musc_db: f32,
+
+    // RCCT (Recipe Category) fields
+    /// `DATA` Flags — the u8 flag word. The word is kept whole, so a bit the
+    /// spec does not name survives an edit.
+    pub rcct_flags: u8,
+
+    // REPU (Reputation) fields
+    /// `DATA` Value — the float32.
+    pub repu_value: f32,
+    /// `ICON` — the large icon filename.
+    pub repu_icon: String,
+    /// `MICO` — the small icon filename.
+    pub repu_mico: String,
+
+    // RGDL (Ragdoll) fields
+    /// `NVER` Version — the uint32.
+    pub rgdl_version: u32,
+    /// `DATA` Dynamic Bone Count — the uint32.
+    pub rgdl_dynamic_bone_count: u32,
+    /// `DATA` Feedback Enabled — the u8 enum: 0 is No, 1 is Yes.
+    pub rgdl_feedback_enabled: u8,
+    /// `DATA` Foot IK Enabled — the u8 enum.
+    pub rgdl_foot_ik_enabled: u8,
+    /// `DATA` Look IK Enabled — the u8 enum.
+    pub rgdl_look_ik_enabled: u8,
+    /// `DATA` Grab IK Enabled — the u8 enum.
+    pub rgdl_grab_ik_enabled: u8,
+    /// `DATA` Pose Matching — the u8 enum.
+    pub rgdl_pose_matching: u8,
+    /// `XNAM` Actor Base — the FormID of a `CREA` or `NPC_` record.
+    pub rgdl_actor_base: Option<u32>,
+    /// `TNAM` Body Part Data — the FormID of a `BPTD` record.
+    pub rgdl_body_part_data: Option<u32>,
+    /// `ANAM` Death Pose — the cstring.
+    pub rgdl_death_pose: String,
+    /// `RAFB` Feedback Dynamic Bones — the uint16 list.
+    pub rgdl_feedback_bones: Vec<u16>,
+    /// `RAFD` Dynamic / Keyframe Blend Amount — the float32.
+    pub rgdl_dynamic_keyframe_blend: f32,
+    /// `RAFD` Hierarchy Gain — the float32.
+    pub rgdl_hierarchy_gain: f32,
+    /// `RAFD` Position Gain — the float32.
+    pub rgdl_position_gain: f32,
+    /// `RAFD` Velocity Gain — the float32.
+    pub rgdl_velocity_gain: f32,
+    /// `RAFD` Acceleration Gain — the float32.
+    pub rgdl_acceleration_gain: f32,
+    /// `RAFD` Snap Gain — the float32.
+    pub rgdl_snap_gain: f32,
+    /// `RAFD` Velocity Damping — the float32.
+    pub rgdl_velocity_damping: f32,
+    /// `RAFD` Snap Max Linear Velocity — the float32.
+    pub rgdl_snap_max_linear_velocity: f32,
+    /// `RAFD` Snap Max Angular Velocity — the float32.
+    pub rgdl_snap_max_angular_velocity: f32,
+    /// `RAFD` Snap Max Linear Distance — the float32.
+    pub rgdl_snap_max_linear_distance: f32,
+    /// `RAFD` Snap Max Angular Distance — the float32.
+    pub rgdl_snap_max_angular_distance: f32,
+    /// `RAFD` Position Max Linear Velocity — the float32.
+    pub rgdl_position_max_linear_velocity: f32,
+    /// `RAFD` Position Max Angular Velocity — the float32.
+    pub rgdl_position_max_angular_velocity: f32,
+    /// `RAFD` Projectile Position Max Velocity — the int32. The game divides
+    /// the value by 1000.
+    pub rgdl_projectile_position_max_velocity: i32,
+    /// `RAFD` Melee Position Max Velocity — the uint32. The game divides the
+    /// value by 1000.
+    pub rgdl_melee_position_max_velocity: u32,
+    /// `RAPS` Match Bone 1 — the uint16.
+    pub rgdl_match_bone1: u16,
+    /// `RAPS` Match Bone 2 — the uint16.
+    pub rgdl_match_bone2: u16,
+    /// `RAPS` Match Bone 3 — the uint16.
+    pub rgdl_match_bone3: u16,
+    /// `RAPS` Flags — the u8 flag word: Disable On Move.
+    pub rgdl_aps_flags: u8,
+    /// `RAPS` Motors Strength — the float32.
+    pub rgdl_motors_strength: f32,
+    /// `RAPS` Pose Activation Delay Time — the float32.
+    pub rgdl_pose_activation_delay: f32,
+    /// `RAPS` Match Error Allowance — the float32.
+    pub rgdl_match_error_allowance: f32,
+    /// `RAPS` Displacement To Disable — the float32.
+    pub rgdl_displacement_to_disable: f32,
+
+    // TREE (Tree) fields
+    /// `SNAM` SpeedTree Seeds — the uint32 list.
+    pub tree_seeds: Vec<u32>,
+    /// `CNAM` Leaf Curvature — the float32.
+    pub tree_leaf_curvature: f32,
+    /// `CNAM` Minimum Leaf Angle — the float32.
+    pub tree_min_leaf_angle: f32,
+    /// `CNAM` Maximum Leaf Angle — the float32.
+    pub tree_max_leaf_angle: f32,
+    /// `CNAM` Branch Dimming Value — the float32.
+    pub tree_branch_dimming: f32,
+    /// `CNAM` Leaf Dimming Value — the float32.
+    pub tree_leaf_dimming: f32,
+    /// `CNAM` Shadow Radius — the int32.
+    pub tree_shadow_radius: i32,
+    /// `CNAM` Rock Speed — the float32.
+    pub tree_rock_speed: f32,
+    /// `CNAM` Rustle Speed — the float32.
+    pub tree_rustle_speed: f32,
+    /// `BNAM` Width — the float32.
+    pub tree_billboard_width: f32,
+    /// `BNAM` Height — the float32.
+    pub tree_billboard_height: f32,
+    /// `ICON` — the large icon filename.
+    pub tree_icon: String,
+    /// `MICO` — the small icon filename.
+    pub tree_mico: String,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub tree_model: ModelData,
+
+    // TXST (Texture) fields
+    /// `TX00` through `TX05` — the six texture paths.
+    pub txst_textures: Vec<String>,
+    /// `DNAM` Flags — the uint16 flag word: No Specular Map.
+    pub txst_flags: u16,
+    /// `DODT` Min Width — the float32.
+    pub txst_dodt_min_width: f32,
+    /// `DODT` Max Width — the float32.
+    pub txst_dodt_max_width: f32,
+    /// `DODT` Min Height — the float32.
+    pub txst_dodt_min_height: f32,
+    /// `DODT` Max Height — the float32.
+    pub txst_dodt_max_height: f32,
+    /// `DODT` Depth — the float32.
+    pub txst_dodt_depth: f32,
+    /// `DODT` Shininess — the float32.
+    pub txst_dodt_shininess: f32,
+    /// `DODT` Parallax Scale — the float32.
+    pub txst_dodt_parallax_scale: f32,
+    /// `DODT` Parallax Passes — the u8.
+    pub txst_dodt_parallax_passes: u8,
+    /// `DODT` Flags — the u8 flag word: Parallax, Alpha Blending, Alpha
+    /// Testing.
+    pub txst_dodt_flags: u8,
+    /// `DODT` Color — the rgba quadruple.
+    pub txst_dodt_color: [u8; 4],
+
+    // VTYP (Voice Type) fields
+    /// `DNAM` Flags — the u8 flag word: Allow Default Dialog, Female.
+    pub vtyp_flags: u8,
+
+    // TACT (Talking Activator) fields
+    /// `SNAM` Looping Sound — the FormID of a `SOUN` record.
+    pub tact_looping_sound: Option<u32>,
+    /// `VNAM` Voice Type — the FormID of a `VTYP` record.
+    pub tact_voice_type: Option<u32>,
+    /// `INAM` Radio Template — the FormID of a `SOUN` record.
+    pub tact_radio_template: Option<u32>,
+    /// `SCRI` Script — the FormID of a `SCPT` record.
+    pub tact_script: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub tact_model: ModelData,
+    /// The destruction data: the `DEST` header and the `DSTD` stages.
+    pub tact_destruction: Vec<DestructionStage>,
+    /// `DEST` Health — the int32.
+    pub tact_dest_health: i32,
+    /// `DEST` Flags — the u8 flag word.
+    pub tact_dest_flags: u8,
+
+    // SCOL (Static Collision) fields
+    /// The collision parts. Each is an `ONAM` (the static) and a `DATA`
+    /// (the placements), and both repeat, so the parts are a list.
+    pub scol_parts: Vec<ScolPart>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub scol_model: ModelData,
+
+    // IDLE (Idle Animation) fields
+    /// `ANAM` Parent Idle Animation — the FormID of an `IDLE` record.
+    pub idle_parent: Option<u32>,
+    /// `ANAM` Previous Sibling Idle Animation — the FormID of an `IDLE`
+    /// record.
+    pub idle_previous_sibling: Option<u32>,
+    /// `DATA` Animation Group Section — the u8 enum.
+    pub idle_group_section: u8,
+    /// `DATA` Looping Min — the u8.
+    pub idle_looping_min: u8,
+    /// `DATA` Looping Max — the u8.
+    pub idle_looping_max: u8,
+    /// `DATA` Replay Delay — the int16.
+    pub idle_replay_delay: i16,
+    /// `DATA` Flags — the u8 flag word.
+    pub idle_flags: u8,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub idle_model: ModelData,
+    /// The `CTDA` conditions — the repeated condition list.
+    pub idle_conditions: Vec<Condition>,
+
+    // MSET (Media Set) fields
+    /// `NAM1` Type — the int32 enum: -1 is No Set, 0 is Battle Set, 1 is
+    /// Location Set, 2 is Dungeon Set and 3 is Incidental Set.
+    pub mset_type: i32,
+    /// `NAM2` through `NAM7` — the six cstring track names.
+    pub mset_tracks: Vec<String>,
+    /// `NAM8` through `CNAM` — the six float32 track levels.
+    pub mset_levels: Vec<f32>,
+    /// `JNAM` — the six float32 boundary percentages. The subrecord repeats,
+    /// so the boundaries are a list.
+    pub mset_boundaries: Vec<f32>,
+    /// `PNAM` Enable Flags — the u8 flag word.
+    pub mset_enable_flags: u8,
+    /// `DNAM` Wait Time / Min Time On / Daytime Min — the float32.
+    pub mset_wait_time: f32,
+    /// `ENAM` Loop Fade Out / Crossfade Overlap / Nighttime Min — the float32.
+    pub mset_loop_fade_out: f32,
+    /// `FNAM` Recovery Time / Layer Crossfade Time / Daytime Max — the
+    /// float32.
+    pub mset_recovery_time: f32,
+    /// `GNAM` Nighttime Max — the float32.
+    pub mset_nighttime_max: f32,
+    /// `HNAM` Intro / Daytime — the FormID of a `SOUN` record.
+    pub mset_intro: Option<u32>,
+    /// `INAM` Outro / Nighttime — the FormID of a `SOUN` record.
+    pub mset_outro: Option<u32>,
+
+    // MSTT (Movable Static) fields
+    /// `DATA` — the one byte the spec calls Unknown.
+    pub mstt_data: u8,
+    /// `SNAM` Sound — the FormID of a `SOUN` record.
+    pub mstt_sound: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub mstt_model: ModelData,
+    /// The destruction data: the `DEST` header and the `DSTD` stages.
+    pub mstt_destruction: Vec<DestructionStage>,
+    /// `DEST` Health — the int32.
+    pub mstt_dest_health: i32,
+    /// `DEST` Flags — the u8 flag word.
+    pub mstt_dest_flags: u8,
+
+    // PWAT (Water) fields
+    /// `DNAM` Flags — the uint32 flag word.
+    pub pwat_flags: u32,
+    /// `DNAM` Water — the FormID of a `WATR` record.
+    pub pwat_water: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub pwat_model: ModelData,
+
+    // FLST (Form List) fields
+    /// `LNAM` — the list of FormIDs. The subrecord repeats, so the list is
+    /// a list.
+    pub flst_entries: Vec<u32>,
+
+    // MESG (Message) fields
+    /// `DESC` Description — the cstring.
+    pub mesg_desc: String,
+    /// `INAM` Icon — the FormID of a `MICN` record.
+    pub mesg_icon: Option<u32>,
+    /// `DNAM` Flags — the uint32 flag word.
+    pub mesg_flags: u32,
+    /// `TNAM` Display Time — the uint32.
+    pub mesg_display_time: u32,
+    /// The menu buttons. Each is an `ITXT` (the text) and a repeated
+    /// `CTDA` (the conditions), and both repeat.
+    pub mesg_buttons: Vec<MessageButton>,
+
+    // MISC (Miscellaneous) fields
+    /// `DATA` Value — the int32.
+    pub misc_value: i32,
+    /// `DATA` Weight — the float32.
+    pub misc_weight: f32,
+    /// `ICON` — the large icon filename.
+    pub misc_icon: String,
+    /// `MICO` — the small icon filename.
+    pub misc_mico: String,
+    /// `SCRI` Script — the FormID of a `SCPT` record.
+    pub misc_script: Option<u32>,
+    /// `YNAM` Sound - Pick Up — the FormID of a `SOUN` record.
+    pub misc_pickup_sound: Option<u32>,
+    /// `ZNAM` Sound - Drop — the FormID of a `SOUN` record.
+    pub misc_drop_sound: Option<u32>,
+    /// `RNAM` Sound - Random / Looping — the FormID of a `SOUN` record.
+    pub misc_random_sound: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub misc_model: ModelData,
+    /// The destruction data: the `DEST` header and the `DSTD` stages.
+    pub misc_destruction: Vec<DestructionStage>,
+    /// `DEST` Health — the int32.
+    pub misc_dest_health: i32,
+    /// `DEST` Flags — the u8 flag word.
+    pub misc_dest_flags: u8,
+
+    // SPEL (Spell) fields
+    /// `SPIT` Type — the uint32 enum.
+    pub spel_type: u32,
+    /// `SPIT` Cost — the uint32.
+    pub spel_cost: u32,
+    /// `SPIT` Level — the uint32.
+    pub spel_level: u32,
+    /// `SPIT` Flags — the u8 flag word.
+    pub spel_flags: u8,
+    /// The effects. Each is an `EFID` (the effect) and an `EFIT` (the
+    /// parameters), and both repeat.
+    pub spel_effects: Vec<SpellEffect>,
+
+    // STAT (Static) fields
+    /// `BRUS` Passthrough Sound — the int8 enum: -1 is None, 0 is BushA and
+    /// so on up to 9 being BushJ.
+    pub stat_passthrough: i8,
+    /// `RNAM` Sound - Looping / Random — the FormID of a `SOUN` record.
+    pub stat_looping_sound: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub stat_model: ModelData,
+
     // CHAL (Challenge) fields
     /// `DATA` Type — the uint32 enum: the fourteen kinds of challenge.
     pub chal_type: u32,
@@ -549,7 +941,7 @@ pub struct ObjectEditorState {
     pub cpth_shots: Vec<u32>,
     /// `CTDA` — the conditions on the path. `CTDA` is a *repeated*
     /// subrecord, so the conditions are a list.
-    pub cpth_conditions: Vec<fnv_esm::Subrecord>,
+    pub cpth_conditions: Vec<Condition>,
 
     // CSNO (Casino) fields
     /// `DATA` Decks % Before Shuffle — the float32.
@@ -1303,6 +1695,174 @@ fn save_destruction(
     );
 }
 
+/// One load screen location on an `LSCR` (Load Screen) record.
+///
+/// The record's `LNAM` subrecords name where the screen appears: a direct
+/// cell or worldspace, or an indirect worldspace and a grid position. The
+/// subrecord repeats, so the locations are a list.
+#[derive(Debug, Clone, Default)]
+pub struct LoadScreenLocation {
+    /// The direct location — the FormID of a `CELL` or `WRLD` record.
+    pub direct: Option<u32>,
+    /// The indirect worldspace — the FormID of a `WRLD` record.
+    pub indirect_world: Option<u32>,
+    /// The indirect grid Y.
+    pub indirect_grid_y: i16,
+    /// The indirect grid X.
+    pub indirect_grid_x: i16,
+}
+
+/// One condition, from the shared `CTDA` subrecord.
+///
+/// The subrecord is twenty-eight bytes: the type word, three unused bytes,
+/// the comparison value, the function index, two four-byte parameters, the
+/// run-on value and the reference.
+///
+/// The comparison value is a `GLOB` record's FormID *or* a float32,
+///// depending on the function, so the raw four bytes are kept and the
+/// interpretation is left to the reader.
+#[derive(Debug, Clone, Default)]
+pub struct Condition {
+    /// `CTDA` Type — the flag word and the comparison: 0x0001 is Combine
+    /// Next Condition Using OR, 0x0002 is Run On Target, 0x0004 is Use
+    /// Global, and the comparison is the high bits: 0x0000 is Equal To,
+    /// 0x2000 is Not Equal To, 0x4000 is Greater Than, 0x6000 is Greater
+    /// Than or Equal To, 0x8000 is Less Than and 0xA000 is Less Than or
+    /// Equal To.
+    pub cond_type: u8,
+    /// `CTDA` Comparison Value — the raw four bytes.
+    pub comparison_value: u32,
+    /// `CTDA` Function — the uint32 function index.
+    pub function: u32,
+    /// `CTDA` Parameter #1 — the raw four bytes.
+    pub parameter1: u32,
+    /// `CTDA` Parameter #2 — the raw four bytes.
+    pub parameter2: u32,
+    /// `CTDA` Run On — the uint32.
+    pub run_on: u32,
+    /// `CTDA` Reference — the FormID.
+    pub reference: Option<u32>,
+    /// The three unused bytes, carried through unchanged.
+    pub unused: [u8; 3],
+}
+
+/// Read the shared `CTDA` conditions out of a record's subrecords.
+///
+/// `CTDA` is a *repeated* subrecord, so the conditions are walked in file
+/// order rather than read out of `raw_subs`, which holds one value per
+/// signature and would collapse every condition onto the last one.
+fn load_conditions(subs: &[fnv_esm::Subrecord]) -> Vec<Condition> {
+    let mut conditions = Vec::new();
+    for s in subs {
+        if s.sig != *b"CTDA" || s.data.len() < 28 {
+            continue;
+        }
+        let b = &s.data;
+        conditions.push(Condition {
+            cond_type: b[0],
+            unused: [b[1], b[2], b[3]],
+            comparison_value: u32::from_le_bytes([b[4], b[5], b[6], b[7]]),
+            function: u32::from_le_bytes([b[8], b[9], b[10], b[11]]),
+            parameter1: u32::from_le_bytes([b[12], b[13], b[14], b[15]]),
+            parameter2: u32::from_le_bytes([b[16], b[17], b[18], b[19]]),
+            run_on: u32::from_le_bytes([b[20], b[21], b[22], b[23]]),
+            reference: Some(u32::from_le_bytes([b[24], b[25], b[26], b[27]])),
+        });
+    }
+    conditions
+}
+
+/// Write the shared `CTDA` conditions back onto a record.
+///
+/// The conditions are written with a list edit: a per-subrecord edit would
+/// collapse them onto the last one.
+fn save_conditions(session: &mut crate::session::Session, fid: u32, conditions: &[Condition]) {
+    if conditions.is_empty() {
+        session.doc.remove_sub(fid, b"CTDA");
+        return;
+    }
+    let payloads: Vec<Vec<u8>> = conditions
+        .iter()
+        .map(|c| {
+            let mut b = Vec::with_capacity(28);
+            b.push(c.cond_type);
+            b.extend_from_slice(&c.unused);
+            b.extend_from_slice(&c.comparison_value.to_le_bytes());
+            b.extend_from_slice(&c.function.to_le_bytes());
+            b.extend_from_slice(&c.parameter1.to_le_bytes());
+            b.extend_from_slice(&c.parameter2.to_le_bytes());
+            b.extend_from_slice(&c.run_on.to_le_bytes());
+            b.extend_from_slice(&c.reference.unwrap_or(0).to_le_bytes());
+            b
+        })
+        .collect();
+    session.doc.set_sub_list(fid, b"CTDA", payloads);
+}
+
+/// One entry in a leveled list, from the shared Leveled List Entry
+/// collection.
+///
+/// The collection is a run of `LVLO` (the base data) and an optional `COED`
+/// (the extra data). The `LVLO` subrecord repeats, so the entries are a
+/// list.
+#[derive(Debug, Clone, Default)]
+pub struct LeveledListEntry {
+    /// `LVLO` Level — the int16.
+    pub level: i16,
+    /// `LVLO` Reference — the FormID of the item.
+    pub reference: Option<u32>,
+    /// `LVLO` Count — the int16.
+    pub count: i16,
+    /// `LVLO`'s four unused bytes, carried through unchanged.
+    pub unused: [u8; 4],
+    /// `COED` Owner — the FormID of an `NPC_` or `FACT` record.
+    pub owner: Option<u32>,
+    /// `COED` Global Variable / Required Rank — the raw four bytes. The
+    /// value is a `GLOB` record's FormID, an integer rank, or null.
+    pub global_or_rank: u32,
+    /// `COED` Item Condition — the float32.
+    pub item_condition: f32,
+    /// Whether the entry carries a `COED` at all.
+    pub has_extra: bool,
+}
+
+/// One menu button on a `MESG` (Message) record.
+///
+/// The buttons are a run of `ITXT` (the text) and repeated `CTDA` (the
+/// conditions), and both repeat.
+#[derive(Debug, Clone, Default)]
+pub struct MessageButton {
+    /// `ITXT` Button Text — the cstring.
+    pub text: String,
+    /// The `CTDA` conditions — the repeated condition list.
+    pub conditions: Vec<Condition>,
+}
+
+/// One effect on a `SPEL` (Spell) record.
+///
+/// The effects are a run of `EFID` (the effect) and `EFIT` (the
+/// parameters), and both repeat.
+#[derive(Debug, Clone, Default)]
+pub struct SpellEffect {
+    /// `EFID` — the effect's FormID.
+    pub effect: Option<u32>,
+    /// `EFIT` — the effect's parameters, carried through unchanged: the
+    /// layout depends on the effect's own type.
+    pub parameters: Vec<u8>,
+}
+
+/// One collision part on a `SCOL` (Static Collision) record.
+///
+/// The record's collection is a run of `ONAM` (the static the part collides
+/// with) and `DATA` (the placements), so the parts are walked in file order.
+#[derive(Debug, Clone, Default)]
+pub struct ScolPart {
+    /// `ONAM` — the `STAT` record the part collides with.
+    pub static_ref: Option<u32>,
+    /// `DATA` — the placements, each a position, a rotation and a scale.
+    pub placements: Vec<[f32; 7]>,
+}
+
 /// One debris model on a `DEBR` (Debris) record.
 ///
 /// The record's collection is a run of `DATA` (the percentage, the model
@@ -1917,6 +2477,8 @@ impl ObjectEditorState {
         self.furn_destruction.clear();
         self.furn_marker_flags.clear();
         self.gras_model = ModelData::default();
+        self.idlm_animations.clear();
+        self.lscr_locations.clear();
         self.cams_model = ModelData::default();
         self.cpth_shots.clear();
         self.cpth_conditions.clear();
@@ -1972,8 +2534,25 @@ impl ObjectEditorState {
             if s.sig == *b"LVLO" && s.data.len() >= 12 {
                 let lvl = i16::from_le_bytes([s.data[0], s.data[1]]);
                 let r_fid = u32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
-                let cnt = i16::from_le_bytes([s.data[8], s.data[9]]);
-                self.lvl_entries.push((lvl, r_fid, cnt));
+                let cnt = i16::from_le_bytes([s.data[10], s.data[11]]);
+                self.lvl_entries.push(LeveledListEntry {
+                    level: lvl,
+                    reference: Some(r_fid),
+                    count: cnt,
+                    unused: [s.data[2], s.data[3], s.data[8], s.data[9]],
+                    has_extra: false,
+                    ..Default::default()
+                });
+            } else if s.sig == *b"COED" && s.data.len() >= 12 {
+                // The extra data belongs to the entry before it.
+                if let Some(entry) = self.lvl_entries.last_mut() {
+                    let b = &s.data;
+                    let owner = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+                    entry.owner = if owner == 0 { None } else { Some(owner) };
+                    entry.global_or_rank = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+                    entry.item_condition = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+                    entry.has_extra = true;
+                }
             }
             if s.sig == *b"CSDT" && s.data.len() >= 4 {
                 cur_csdt = Some(u32::from_le_bytes([
@@ -2142,7 +2721,7 @@ impl ObjectEditorState {
             b"FACT" => self.load_fact(&raw_subs),
             b"QUST" => self.load_qust(),
             b"PERK" => self.load_perk(),
-            b"SPEL" | b"ENCH" => self.load_spell(),
+            b"ENCH" => self.load_spell(),
             b"EXPL" => self.load_expl(),
             b"PROJ" => self.load_proj(),
             b"SOUN" => self.load_soun(),
@@ -2164,6 +2743,30 @@ impl ObjectEditorState {
             b"ARMA" => self.load_arma(&raw_subs),
             b"CAMS" => self.load_cams(&raw_subs),
             b"CHAL" => self.load_chal(),
+            b"FLST" => self.load_flst(&raw_subs),
+            b"MESG" => self.load_mesg(&raw_subs),
+            b"MISC" => self.load_misc(&raw_subs),
+            b"SPEL" => self.load_spel(&raw_subs),
+            b"STAT" => self.load_stat(&raw_subs),
+            b"IDLE" => self.load_idle(&raw_subs),
+            b"MSET" => self.load_mset(&raw_subs),
+            b"MSTT" => self.load_mstt(&raw_subs),
+            b"PWAT" => self.load_pwat(&raw_subs),
+            b"RCCT" => self.load_rcct(),
+            b"REPU" => self.load_repu(),
+            b"RGDL" => self.load_rgdl(),
+            b"TREE" => self.load_tree(&raw_subs),
+            b"TXST" => self.load_txst(&raw_subs),
+            b"VTYP" => self.load_vtyp(),
+            b"TACT" => self.load_tact(&raw_subs),
+            b"SCOL" => self.load_scol(&raw_subs),
+            b"IDLM" => self.load_idlm(&raw_subs),
+            b"IMGS" => self.load_imgs(),
+            b"LGTM" => self.load_lgtm(),
+            b"LSCR" => self.load_lscr(&raw_subs),
+            b"LSCT" => self.load_lsct(),
+            b"MICN" => self.load_micn(),
+            b"MUSC" => self.load_musc(),
             b"DEHY" => self.load_dehy(),
             b"DOBJ" => self.load_dobj(),
             b"ECZN" => self.load_ecnz(),
@@ -2186,7 +2789,9 @@ impl ObjectEditorState {
             b"HAIR" => self.load_hair(&raw_subs),
             b"HDPT" => self.load_hdpt(&raw_subs),
             b"BPTD" => self.load_bptd(&raw_subs),
-            _ => self.load_misc(),
+            // A type with no page of its own: the header panel still shows
+            // its name and FormID, but none of its fields are editable.
+            _ => {}
         }
 
         // The queued relations and ranks win over what is on disk: the mod is
@@ -2535,13 +3140,6 @@ impl ObjectEditorState {
             self.item_weight = f32::from_le_bytes([b[6], b[7], b[8], b[9]]);
         }
         self.book_text = self.get_string(b"DESC");
-    }
-
-    fn load_misc(&mut self) {
-        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 8) {
-            self.item_val = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
-            self.item_weight = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
-        }
     }
 
     /// Load a `FACT` (Faction) record.
@@ -3077,6 +3675,982 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load an `IDLM` (Idle Animation) record.
+    ///
+    /// The record is `EDID`, `OBND`, `IDLF` (a flag word), `IDLC` (the
+    /// animation count), `IDLT` (the idle timer) and `IDLA` (the list of
+    /// `IDLE` records). `IDLA` is a *repeated* subrecord, so the animations
+    /// are read in file order and kept as a list.
+    fn load_idlm(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.idlm_flags = 0;
+        self.idlm_animation_count = 0;
+        self.idlm_idlc_unused = [0; 3];
+        self.idlm_idle_timer = 0.0;
+        self.idlm_animations.clear();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"IDLF" if !s.data.is_empty() => self.idlm_flags = s.data[0],
+                b"IDLC" if !s.data.is_empty() => {
+                    self.idlm_animation_count = s.data[0];
+                    if s.data.len() >= 4 {
+                        self.idlm_idlc_unused = [s.data[1], s.data[2], s.data[3]];
+                    }
+                }
+                b"IDLT" if s.data.len() >= 4 => {
+                    self.idlm_idle_timer =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"IDLA" => {
+                    // The animation list is a run of four-byte FormIDs.
+                    for chunk in s.data.as_chunks::<4>().0 {
+                        self.idlm_animations
+                            .push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load an `IMGS` (Image Space) record.
+    ///
+    /// `DNAM` is version-dependent — 152 bytes on 67 of the game's records,
+    /// 148 on twelve and 132 on eleven. The schema names the first fourteen
+    /// HDR floats; everything after them depends on the record's form
+    /// version, so it is carried through as raw bytes rather than guessed
+    /// at.
+    fn load_imgs(&mut self) {
+        self.imgs_hdr = [0.0; 14];
+        self.imgs_rest.clear();
+        if let Some(b) = self.raw_subs.get(b"DNAM") {
+            for (i, chunk) in b.as_chunks::<4>().0.iter().take(14).enumerate() {
+                self.imgs_hdr[i] = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            }
+            if b.len() > 56 {
+                self.imgs_rest = b[56..].to_vec();
+            }
+        }
+    }
+
+    /// Load a `LGTM` (Lighting) record.
+    fn load_lgtm(&mut self) {
+        self.lgtm_ambient_color = [0; 4];
+        self.lgtm_directional_color = [0; 4];
+        self.lgtm_fog_color = [0; 4];
+        self.lgtm_fog_near = 0.0;
+        self.lgtm_fog_far = 0.0;
+        self.lgtm_directional_rotation_xy = 0;
+        self.lgtm_directional_rotation_z = 0;
+        self.lgtm_directional_fade = 0.0;
+        self.lgtm_fog_clip_distance = 0.0;
+        self.lgtm_fog_power = 0.0;
+
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 40) {
+            self.lgtm_ambient_color = [b[0], b[1], b[2], b[3]];
+            self.lgtm_directional_color = [b[4], b[5], b[6], b[7]];
+            self.lgtm_fog_color = [b[8], b[9], b[10], b[11]];
+            self.lgtm_fog_near = f32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+            self.lgtm_fog_far = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.lgtm_directional_rotation_xy = i32::from_le_bytes([b[20], b[21], b[22], b[23]]);
+            self.lgtm_directional_rotation_z = i32::from_le_bytes([b[24], b[25], b[26], b[27]]);
+            self.lgtm_directional_fade = f32::from_le_bytes([b[28], b[29], b[30], b[31]]);
+            self.lgtm_fog_clip_distance = f32::from_le_bytes([b[32], b[33], b[34], b[35]]);
+            self.lgtm_fog_power = f32::from_le_bytes([b[36], b[37], b[38], b[39]]);
+        }
+    }
+
+    /// Load an `LSCR` (Load Screen) record.
+    ///
+    /// The record's `LNAM` locations are *repeated* subrecords, so they are
+    /// read in file order and kept as a list.
+    fn load_lscr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.lscr_icon.clear();
+        self.lscr_mico.clear();
+        self.lscr_desc.clear();
+        self.lscr_load_screen_type = None;
+        self.lscr_locations.clear();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"ICON" => self.lscr_icon = zstring(&s.data),
+                b"MICO" => self.lscr_mico = zstring(&s.data),
+                b"DESC" => self.lscr_desc = zstring(&s.data),
+                b"WMI1" if s.data.len() >= 4 => {
+                    self.lscr_load_screen_type = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"LNAM" if s.data.len() >= 12 => {
+                    self.lscr_locations.push(LoadScreenLocation {
+                        direct: Some(u32::from_le_bytes([
+                            s.data[0], s.data[1], s.data[2], s.data[3],
+                        ])),
+                        indirect_world: Some(u32::from_le_bytes([
+                            s.data[4], s.data[5], s.data[6], s.data[7],
+                        ])),
+                        indirect_grid_y: i16::from_le_bytes([s.data[8], s.data[9]]),
+                        indirect_grid_x: i16::from_le_bytes([s.data[10], s.data[11]]),
+                    });
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load an `LSCT` (Load Screen Type) record.
+    ///
+    /// `DATA` is eighty-eight bytes: the type, the position and size, the
+    /// first font's settings and colour, the second font's settings and
+    /// colour, and the stats type.
+    fn load_lsct(&mut self) {
+        self.lsct_type = 0;
+        self.lsct_x = 0;
+        self.lsct_y = 0;
+        self.lsct_width = 0;
+        self.lsct_height = 0;
+        self.lsct_orientation = 0.0;
+        self.lsct_font1 = 0;
+        self.lsct_font1_color = [0.0; 3];
+        self.lsct_font1_alignment = 0;
+        self.lsct_font2 = 0;
+        self.lsct_font2_color = [0.0; 3];
+        self.lsct_font2_alignment = 0;
+        self.lsct_stats = 0;
+
+        // The layout, measured from the game's own record:
+        //   0  type          4  x            8  y           12 width
+        //  16  height       20  orientation 24 font 1      28 font 1 red
+        //  32  font 1 green 36  font 1 blue  40 font 1 align
+        //  44..64 the spec's twenty unknown bytes
+        //  64  font 2       68  font 2 red   72 font 2 green
+        //  76  font 2 blue  80 font 2 align 84 stats type
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 88) {
+            self.lsct_type = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.lsct_x = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.lsct_y = u32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            self.lsct_width = u32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+            self.lsct_height = u32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.lsct_orientation = f32::from_le_bytes([b[20], b[21], b[22], b[23]]);
+            self.lsct_font1 = u32::from_le_bytes([b[24], b[25], b[26], b[27]]);
+            self.lsct_font1_color[0] = f32::from_le_bytes([b[28], b[29], b[30], b[31]]);
+            self.lsct_font1_color[1] = f32::from_le_bytes([b[32], b[33], b[34], b[35]]);
+            self.lsct_font1_color[2] = f32::from_le_bytes([b[36], b[37], b[38], b[39]]);
+            self.lsct_font1_alignment = u32::from_le_bytes([b[40], b[41], b[42], b[43]]);
+            self.lsct_font2 = u32::from_le_bytes([b[64], b[65], b[66], b[67]]);
+            self.lsct_font2_color[0] = f32::from_le_bytes([b[68], b[69], b[70], b[71]]);
+            self.lsct_font2_color[1] = f32::from_le_bytes([b[72], b[73], b[74], b[75]]);
+            self.lsct_font2_color[2] = f32::from_le_bytes([b[76], b[77], b[78], b[79]]);
+            self.lsct_font2_alignment = u32::from_le_bytes([b[80], b[81], b[82], b[83]]);
+            self.lsct_stats = u32::from_le_bytes([b[84], b[85], b[86], b[87]]);
+        }
+    }
+
+    /// Load a `MICN` (Mission Icon) record.
+    fn load_micn(&mut self) {
+        self.micn_icon = self.get_string(b"ICON");
+        self.micn_mico = self.get_string(b"MICO");
+    }
+
+    /// Load a `MUSC` (Music) record.
+    fn load_musc(&mut self) {
+        self.musc_filename = self.get_string(b"FNAM");
+        self.musc_db = self.get_f32(b"ANAM").unwrap_or(0.0);
+    }
+
+    /// Load a `RCCT` (Recipe Category) record.
+    fn load_rcct(&mut self) {
+        self.rcct_flags = 0;
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| !b.is_empty()) {
+            self.rcct_flags = b[0];
+        }
+    }
+
+    /// Load a `REPU` (Reputation) record.
+    fn load_repu(&mut self) {
+        self.repu_value = self.get_f32(b"DATA").unwrap_or(0.0);
+        self.repu_icon = self.get_string(b"ICON");
+        self.repu_mico = self.get_string(b"MICO");
+    }
+
+    /// Load an `RGDL` (Ragdoll) record.
+    ///
+    /// `RAFD` and `RAPS` are documented but not decoded, so they are carried
+    /// through unchanged rather than guessed at.
+    fn load_rgdl(&mut self) {
+        self.rgdl_version = 0;
+        self.rgdl_dynamic_bone_count = 0;
+        self.rgdl_feedback_enabled = 0;
+        self.rgdl_foot_ik_enabled = 0;
+        self.rgdl_look_ik_enabled = 0;
+        self.rgdl_grab_ik_enabled = 0;
+        self.rgdl_pose_matching = 0;
+        self.rgdl_actor_base = None;
+        self.rgdl_body_part_data = None;
+        self.rgdl_death_pose.clear();
+        self.rgdl_feedback_bones.clear();
+        self.rgdl_dynamic_keyframe_blend = 0.0;
+        self.rgdl_hierarchy_gain = 0.0;
+        self.rgdl_position_gain = 0.0;
+        self.rgdl_velocity_gain = 0.0;
+        self.rgdl_acceleration_gain = 0.0;
+        self.rgdl_snap_gain = 0.0;
+        self.rgdl_velocity_damping = 0.0;
+        self.rgdl_snap_max_linear_velocity = 0.0;
+        self.rgdl_snap_max_angular_velocity = 0.0;
+        self.rgdl_snap_max_linear_distance = 0.0;
+        self.rgdl_snap_max_angular_distance = 0.0;
+        self.rgdl_position_max_linear_velocity = 0.0;
+        self.rgdl_position_max_angular_velocity = 0.0;
+        self.rgdl_projectile_position_max_velocity = 0;
+        self.rgdl_melee_position_max_velocity = 0;
+        self.rgdl_match_bone1 = 0;
+        self.rgdl_match_bone2 = 0;
+        self.rgdl_match_bone3 = 0;
+        self.rgdl_aps_flags = 0;
+        self.rgdl_motors_strength = 0.0;
+        self.rgdl_pose_activation_delay = 0.0;
+        self.rgdl_match_error_allowance = 0.0;
+        self.rgdl_displacement_to_disable = 0.0;
+
+        if let Some(b) = self.raw_subs.get(b"NVER").filter(|b| b.len() >= 4) {
+            self.rgdl_version = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+        }
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 14) {
+            self.rgdl_dynamic_bone_count = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.rgdl_feedback_enabled = b[8];
+            self.rgdl_foot_ik_enabled = b[9];
+            self.rgdl_look_ik_enabled = b[10];
+            self.rgdl_grab_ik_enabled = b[11];
+            self.rgdl_pose_matching = b[12];
+        }
+        if let Some(b) = self.raw_subs.get(b"XNAM").filter(|b| b.len() >= 4) {
+            self.rgdl_actor_base = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+        }
+        if let Some(b) = self.raw_subs.get(b"TNAM").filter(|b| b.len() >= 4) {
+            self.rgdl_body_part_data = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+        }
+        if let Some(b) = self.raw_subs.get(b"ANAM") {
+            self.rgdl_death_pose = zstring(b);
+        }
+        if let Some(b) = self.raw_subs.get(b"RAFB") {
+            for chunk in b.as_chunks::<2>().0 {
+                self.rgdl_feedback_bones
+                    .push(u16::from_le_bytes([chunk[0], chunk[1]]));
+            }
+        }
+        // RAFD is sixty bytes: thirteen float32s, then the two velocities.
+        if let Some(b) = self.raw_subs.get(b"RAFD").filter(|b| b.len() >= 60) {
+            let f = |i: usize| {
+                let at = i * 4;
+                f32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+            };
+            self.rgdl_dynamic_keyframe_blend = f(0);
+            self.rgdl_hierarchy_gain = f(1);
+            self.rgdl_position_gain = f(2);
+            self.rgdl_velocity_gain = f(3);
+            self.rgdl_acceleration_gain = f(4);
+            self.rgdl_snap_gain = f(5);
+            self.rgdl_velocity_damping = f(6);
+            self.rgdl_snap_max_linear_velocity = f(7);
+            self.rgdl_snap_max_angular_velocity = f(8);
+            self.rgdl_snap_max_linear_distance = f(9);
+            self.rgdl_snap_max_angular_distance = f(10);
+            self.rgdl_position_max_linear_velocity = f(11);
+            self.rgdl_position_max_angular_velocity = f(12);
+            self.rgdl_projectile_position_max_velocity =
+                i32::from_le_bytes([b[52], b[53], b[54], b[55]]);
+            self.rgdl_melee_position_max_velocity =
+                u32::from_le_bytes([b[56], b[57], b[58], b[59]]);
+        }
+        // RAPS is twenty-four bytes: three match bones, the flag word, an
+        // unused byte and four float32s.
+        if let Some(b) = self.raw_subs.get(b"RAPS").filter(|b| b.len() >= 24) {
+            self.rgdl_match_bone1 = u16::from_le_bytes([b[0], b[1]]);
+            self.rgdl_match_bone2 = u16::from_le_bytes([b[2], b[3]]);
+            self.rgdl_match_bone3 = u16::from_le_bytes([b[4], b[5]]);
+            self.rgdl_aps_flags = b[6];
+            self.rgdl_motors_strength = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            self.rgdl_pose_activation_delay = f32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+            self.rgdl_match_error_allowance = f32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+            self.rgdl_displacement_to_disable = f32::from_le_bytes([b[20], b[21], b[22], b[23]]);
+        }
+    }
+
+    /// Load a `TREE` (Tree) record.
+    fn load_tree(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.tree_seeds.clear();
+        self.tree_leaf_curvature = 0.0;
+        self.tree_min_leaf_angle = 0.0;
+        self.tree_max_leaf_angle = 0.0;
+        self.tree_branch_dimming = 0.0;
+        self.tree_leaf_dimming = 0.0;
+        self.tree_shadow_radius = 0;
+        self.tree_rock_speed = 0.0;
+        self.tree_rustle_speed = 0.0;
+        self.tree_billboard_width = 0.0;
+        self.tree_billboard_height = 0.0;
+        self.tree_icon = self.get_string(b"ICON");
+        self.tree_mico = self.get_string(b"MICO");
+        self.tree_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.tree_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.tree_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.tree_model.modt = sub.data.clone(),
+                b"MODS" => self.tree_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.tree_model.modd = sub.data.first().copied(),
+                _ => {}
+            }
+        }
+
+        for s in raw_subs {
+            match &s.sig {
+                b"SNAM" => {
+                    for chunk in s.data.as_chunks::<4>().0 {
+                        self.tree_seeds
+                            .push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+                    }
+                }
+                b"CNAM" if s.data.len() >= 32 => {
+                    let f = |i: usize| {
+                        let at = i * 4;
+                        f32::from_le_bytes([
+                            s.data[at],
+                            s.data[at + 1],
+                            s.data[at + 2],
+                            s.data[at + 3],
+                        ])
+                    };
+                    self.tree_leaf_curvature = f(0);
+                    self.tree_min_leaf_angle = f(1);
+                    self.tree_max_leaf_angle = f(2);
+                    self.tree_branch_dimming = f(3);
+                    self.tree_leaf_dimming = f(4);
+                    self.tree_shadow_radius = f(5) as i32;
+                    self.tree_rock_speed = f(6);
+                    self.tree_rustle_speed = f(7);
+                }
+                b"BNAM" if s.data.len() >= 8 => {
+                    self.tree_billboard_width =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    self.tree_billboard_height =
+                        f32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `TXST` (Texture) record.
+    fn load_txst(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.txst_textures = vec![String::new(); 6];
+        self.txst_flags = 0;
+        for s in raw_subs {
+            let idx = match &s.sig {
+                b"TX00" => 0,
+                b"TX01" => 1,
+                b"TX02" => 2,
+                b"TX03" => 3,
+                b"TX04" => 4,
+                b"TX05" => 5,
+                b"DNAM" => {
+                    if s.data.len() >= 2 {
+                        self.txst_flags = u16::from_le_bytes([s.data[0], s.data[1]]);
+                    }
+                    continue;
+                }
+                _ => continue,
+            };
+            self.txst_textures[idx] = zstring(&s.data);
+        }
+    }
+
+    /// Load a `VTYP` (Voice Type) record.
+    fn load_vtyp(&mut self) {
+        self.vtyp_flags = 0;
+        if let Some(b) = self.raw_subs.get(b"DNAM").filter(|b| !b.is_empty()) {
+            self.vtyp_flags = b[0];
+        }
+    }
+
+    /// Load a `TACT` (Talking Activator) record.
+    fn load_tact(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.tact_looping_sound = None;
+        self.tact_voice_type = None;
+        self.tact_radio_template = None;
+        self.tact_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.tact_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.tact_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.tact_model.modt = sub.data.clone(),
+                b"MODS" => self.tact_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.tact_model.modd = sub.data.first().copied(),
+                _ => {}
+            }
+        }
+        self.tact_destruction.clear();
+        self.tact_dest_health = 0;
+        self.tact_dest_flags = 0;
+
+        for s in raw_subs {
+            match &s.sig {
+                b"SNAM" if s.data.len() >= 4 => {
+                    self.tact_looping_sound = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"VNAM" if s.data.len() >= 4 => {
+                    self.tact_voice_type = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"INAM" if s.data.len() >= 4 => {
+                    self.tact_radio_template = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"SCRI" if s.data.len() >= 4 => {
+                    self.tact_script = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                b"DEST" => {
+                    self.tact_destruction = load_destruction(raw_subs);
+                    if s.data.len() >= 5 {
+                        self.tact_dest_health =
+                            i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                        self.tact_dest_flags = s.data[4];
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `SCOL` (Static Collision) record.
+    ///
+    /// The collection is a run of `ONAM` (the static) and `DATA` (the
+    /// placements). Both repeat, so the parts are walked in file order: a
+    /// `DATA` belongs to the `ONAM` before it.
+    fn load_scol(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.scol_parts.clear();
+        self.scol_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.scol_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.scol_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.scol_model.modt = sub.data.clone(),
+                b"MODS" => self.scol_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.scol_model.modd = sub.data.first().copied(),
+                _ => {}
+            }
+        }
+        let mut current: Option<ScolPart> = None;
+
+        for s in raw_subs {
+            match &s.sig {
+                b"ONAM" if s.data.len() >= 4 => {
+                    if let Some(part) = current.take() {
+                        self.scol_parts.push(part);
+                    }
+                    current = Some(ScolPart {
+                        static_ref: Some(u32::from_le_bytes([
+                            s.data[0], s.data[1], s.data[2], s.data[3],
+                        ])),
+                        placements: Vec::new(),
+                    });
+                }
+                b"DATA" => {
+                    // Each placement is a position, a rotation and a scale.
+                    let mut part = current.take().unwrap_or_default();
+                    for chunk in s.data.as_chunks::<28>().0 {
+                        let f = |i: usize| {
+                            let at = i * 4;
+                            f32::from_le_bytes([
+                                chunk[at],
+                                chunk[at + 1],
+                                chunk[at + 2],
+                                chunk[at + 3],
+                            ])
+                        };
+                        part.placements
+                            .push([f(0), f(1), f(2), f(3), f(4), f(5), f(6)]);
+                    }
+                    current = Some(part);
+                }
+                _ => {}
+            }
+        }
+        if let Some(part) = current {
+            self.scol_parts.push(part);
+        }
+    }
+
+    /// Load an `IDLE` (Idle Animation) record.
+    fn load_idle(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.idle_parent = None;
+        self.idle_previous_sibling = None;
+        self.idle_group_section = 0;
+        self.idle_looping_min = 0;
+        self.idle_looping_max = 0;
+        self.idle_replay_delay = 0;
+        self.idle_flags = 0;
+        self.idle_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.idle_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.idle_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.idle_model.modt = sub.data.clone(),
+                b"MODS" => self.idle_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.idle_model.modd = sub.data.first().copied(),
+                _ => {}
+            }
+        }
+
+        for sub in raw_subs {
+            match &sub.sig {
+                b"ANAM" if sub.data.len() >= 8 => {
+                    let parent =
+                        u32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    self.idle_parent = if parent == 0 { None } else { Some(parent) };
+                    let previous =
+                        u32::from_le_bytes([sub.data[4], sub.data[5], sub.data[6], sub.data[7]]);
+                    self.idle_previous_sibling = if previous == 0 { None } else { Some(previous) };
+                }
+                b"DATA" if sub.data.len() >= 8 => {
+                    self.idle_group_section = sub.data[0];
+                    self.idle_looping_min = sub.data[1];
+                    self.idle_looping_max = sub.data[2];
+                    self.idle_replay_delay = i16::from_le_bytes([sub.data[4], sub.data[5]]);
+                    self.idle_flags = sub.data[6];
+                }
+                _ => {}
+            }
+        }
+        self.idle_conditions = load_conditions(raw_subs);
+    }
+
+    /// Load an `MSET` (Media Set) record.
+    ///
+    /// The `JNAM` boundaries repeat, so they are walked in file order and
+    /// kept as a list. The six track names and the six track levels each
+    /// have their own signature, so they are read one by one.
+    fn load_mset(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.mset_type = -1;
+        self.mset_tracks = vec![String::new(); 6];
+        self.mset_levels = vec![0.0; 6];
+        self.mset_boundaries.clear();
+        self.mset_enable_flags = 0;
+        self.mset_wait_time = 0.0;
+        self.mset_loop_fade_out = 0.0;
+        self.mset_recovery_time = 0.0;
+        self.mset_nighttime_max = 0.0;
+        self.mset_intro = None;
+        self.mset_outro = None;
+
+        for s in raw_subs {
+            let track = match &s.sig {
+                b"NAM1" => {
+                    if s.data.len() >= 4 {
+                        self.mset_type =
+                            i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    }
+                    None
+                }
+                b"NAM2" => Some(0),
+                b"NAM3" => Some(1),
+                b"NAM4" => Some(2),
+                b"NAM5" => Some(3),
+                b"NAM6" => Some(4),
+                b"NAM7" => Some(5),
+                b"NAM8" => Some(0),
+                b"NAM9" => Some(1),
+                b"NAM0" => Some(2),
+                b"ANAM" => Some(3),
+                b"BNAM" => Some(4),
+                b"CNAM" => Some(5),
+                b"JNAM" => {
+                    // A boundary percentage. The subrecord repeats.
+                    if s.data.len() >= 4 {
+                        self.mset_boundaries.push(f32::from_le_bytes([
+                            s.data[0], s.data[1], s.data[2], s.data[3],
+                        ]));
+                    }
+                    None
+                }
+                b"PNAM" => {
+                    if !s.data.is_empty() {
+                        self.mset_enable_flags = s.data[0];
+                    }
+                    None
+                }
+                b"DNAM" => {
+                    self.mset_wait_time =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    None
+                }
+                b"ENAM" => {
+                    self.mset_loop_fade_out =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    None
+                }
+                b"FNAM" => {
+                    self.mset_recovery_time =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    None
+                }
+                b"GNAM" => {
+                    self.mset_nighttime_max =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    None
+                }
+                b"HNAM" => {
+                    if s.data.len() >= 4 {
+                        self.mset_intro = Some(u32::from_le_bytes([
+                            s.data[0], s.data[1], s.data[2], s.data[3],
+                        ]));
+                    }
+                    None
+                }
+                b"INAM" => {
+                    if s.data.len() >= 4 {
+                        self.mset_outro = Some(u32::from_le_bytes([
+                            s.data[0], s.data[1], s.data[2], s.data[3],
+                        ]));
+                    }
+                    None
+                }
+                _ => None,
+            };
+            if let Some(idx) = track {
+                if idx < 6 {
+                    // NAM2..NAM7 are cstrings; NAM8..CNAM are float32s.
+                    let is_name = matches!(
+                        &s.sig,
+                        b"NAM2" | b"NAM3" | b"NAM4" | b"NAM5" | b"NAM6" | b"NAM7"
+                    );
+                    if is_name {
+                        self.mset_tracks[idx] = zstring(&s.data);
+                    } else if s.data.len() >= 4 {
+                        self.mset_levels[idx] =
+                            f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Load an `MSTT` (Movable Static) record.
+    fn load_mstt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.mstt_data = 0;
+        self.mstt_sound = None;
+        self.mstt_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.mstt_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.mstt_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.mstt_model.modt = sub.data.clone(),
+                b"MODS" => self.mstt_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.mstt_model.modd = sub.data.first().copied(),
+                _ => {}
+            }
+        }
+
+        for sub in raw_subs {
+            match &sub.sig {
+                b"DATA" if !sub.data.is_empty() => self.mstt_data = sub.data[0],
+                b"SNAM" if sub.data.len() >= 4 => {
+                    self.mstt_sound = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"DEST" => {
+                    self.mstt_destruction = load_destruction(raw_subs);
+                    if sub.data.len() >= 5 {
+                        self.mstt_dest_health = i32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]);
+                        self.mstt_dest_flags = sub.data[4];
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `PWAT` (Water) record.
+    fn load_pwat(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.pwat_flags = 0;
+        self.pwat_water = None;
+        self.pwat_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.pwat_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.pwat_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.pwat_model.modt = sub.data.clone(),
+                b"MODS" => self.pwat_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.pwat_model.modd = sub.data.first().copied(),
+                b"DNAM" if sub.data.len() >= 8 => {
+                    self.pwat_flags =
+                        u32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    self.pwat_water = Some(u32::from_le_bytes([
+                        sub.data[4],
+                        sub.data[5],
+                        sub.data[6],
+                        sub.data[7],
+                    ]));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `FLST` (Form List) record.
+    ///
+    /// The `LNAM` subrecords repeat, so the list is walked in file order.
+    fn load_flst(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.flst_entries.clear();
+        for s in raw_subs {
+            if s.sig == *b"LNAM" && s.data.len() >= 4 {
+                self.flst_entries.push(u32::from_le_bytes([
+                    s.data[0], s.data[1], s.data[2], s.data[3],
+                ]));
+            }
+        }
+    }
+
+    /// Load an `LVLI` (Leveled Item) record.
+    ///
+    /// The leveled list entries are a run of `LVLO` and an optional `COED`,
+    /// so they are walked in file order: a `COED` belongs to the `LVLO`
+    /// before it.
+    /// Load an `LVLN` (Leveled NPC) record.
+    /// Load a `MESG` (Message) record.
+    ///
+    /// The menu buttons are a run of `ITXT` and repeated `CTDA`, so they are
+    /// walked in file order: the conditions belong to the button before them.
+    fn load_mesg(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.mesg_desc = self.get_string(b"DESC");
+        self.mesg_icon = self.get_fid(b"INAM");
+        self.mesg_flags = 0;
+        self.mesg_display_time = 0;
+        self.mesg_buttons.clear();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DNAM" if s.data.len() >= 4 => {
+                    self.mesg_flags =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"TNAM" if s.data.len() >= 4 => {
+                    self.mesg_display_time =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                _ => {}
+            }
+        }
+
+        let mut current: Option<MessageButton> = None;
+        for s in raw_subs {
+            match &s.sig {
+                b"ITXT" => {
+                    if let Some(button) = current.take() {
+                        self.mesg_buttons.push(button);
+                    }
+                    current = Some(MessageButton {
+                        text: zstring(&s.data),
+                        conditions: Vec::new(),
+                    });
+                }
+                b"CTDA" => {
+                    if let Some(button) = current.as_mut() {
+                        let mut cond = Condition::default();
+                        if s.data.len() >= 28 {
+                            cond.cond_type = s.data[0];
+                            cond.unused = [s.data[1], s.data[2], s.data[3]];
+                            cond.comparison_value =
+                                u32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                            cond.function =
+                                u32::from_le_bytes([s.data[8], s.data[9], s.data[10], s.data[11]]);
+                            cond.parameter1 = u32::from_le_bytes([
+                                s.data[12], s.data[13], s.data[14], s.data[15],
+                            ]);
+                            cond.parameter2 = u32::from_le_bytes([
+                                s.data[16], s.data[17], s.data[18], s.data[19],
+                            ]);
+                            cond.run_on = u32::from_le_bytes([
+                                s.data[20], s.data[21], s.data[22], s.data[23],
+                            ]);
+                            cond.reference = Some(u32::from_le_bytes([
+                                s.data[24], s.data[25], s.data[26], s.data[27],
+                            ]));
+                        }
+                        button.conditions.push(cond);
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(button) = current {
+            self.mesg_buttons.push(button);
+        }
+    }
+
+    /// Load a `MISC` (Miscellaneous) record.
+    fn load_misc(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.misc_value = 0;
+        self.misc_weight = 0.0;
+        self.misc_icon = self.get_string(b"ICON");
+        self.misc_mico = self.get_string(b"MICO");
+        self.misc_script = self.get_fid(b"SCRI");
+        self.misc_pickup_sound = self.get_fid(b"YNAM");
+        self.misc_drop_sound = self.get_fid(b"ZNAM");
+        self.misc_random_sound = self.get_fid(b"RNAM");
+        self.misc_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.misc_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.misc_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.misc_model.modt = sub.data.clone(),
+                b"MODS" => self.misc_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.misc_model.modd = sub.data.first().copied(),
+                _ => {}
+            }
+        }
+
+        for sub in raw_subs {
+            match &sub.sig {
+                b"DATA" if sub.data.len() >= 8 => {
+                    self.misc_value =
+                        i32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    self.misc_weight =
+                        f32::from_le_bytes([sub.data[4], sub.data[5], sub.data[6], sub.data[7]]);
+                }
+                b"DEST" => {
+                    self.misc_destruction = load_destruction(raw_subs);
+                    if sub.data.len() >= 5 {
+                        self.misc_dest_health = i32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]);
+                        self.misc_dest_flags = sub.data[4];
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load a `SPEL` (Spell) record.
+    ///
+    /// The effects are a run of `EFID` and `EFIT`, so they are walked in file
+    /// order: the parameters belong to the effect before them.
+    fn load_spel(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.spel_type = 0;
+        self.spel_cost = 0;
+        self.spel_level = 0;
+        self.spel_flags = 0;
+        self.spel_effects.clear();
+
+        for s in raw_subs {
+            if s.sig == *b"SPIT" && s.data.len() >= 16 {
+                self.spel_type = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                self.spel_cost = u32::from_le_bytes([s.data[4], s.data[5], s.data[6], s.data[7]]);
+                self.spel_level =
+                    u32::from_le_bytes([s.data[8], s.data[9], s.data[10], s.data[11]]);
+                self.spel_flags = s.data[12];
+            }
+        }
+
+        let mut current: Option<SpellEffect> = None;
+        for s in raw_subs {
+            match &s.sig {
+                b"EFID" if s.data.len() >= 4 => {
+                    if let Some(effect) = current.take() {
+                        self.spel_effects.push(effect);
+                    }
+                    current = Some(SpellEffect {
+                        effect: Some(u32::from_le_bytes([
+                            s.data[0], s.data[1], s.data[2], s.data[3],
+                        ])),
+                        parameters: Vec::new(),
+                    });
+                }
+                b"EFIT" => {
+                    if let Some(effect) = current.as_mut() {
+                        effect.parameters = s.data.clone();
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(effect) = current {
+            self.spel_effects.push(effect);
+        }
+    }
+
+    /// Load a `STAT` (Static) record.
+    fn load_stat(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.stat_passthrough = -1;
+        self.stat_looping_sound = None;
+        self.stat_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.stat_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.stat_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.stat_model.modt = sub.data.clone(),
+                b"MODS" => self.stat_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.stat_model.modd = sub.data.first().copied(),
+                b"BRUS" if !sub.data.is_empty() => {
+                    self.stat_passthrough = sub.data[0] as i8;
+                }
+                b"RNAM" if sub.data.len() >= 4 => {
+                    self.stat_looping_sound = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Load a `CHAL` (Challenge) record.
     ///
     /// The record is `EDID`, `FULL`, `ICON`, `MICO`, `SCRI`, `DESC`, a
@@ -3138,12 +4712,11 @@ impl ObjectEditorState {
                         s.data[0], s.data[1], s.data[2], s.data[3],
                     ]));
                 }
-                b"CTDA" => {
-                    self.cpth_conditions.push(s.clone());
-                }
+                b"CTDA" => {}
                 _ => {}
             }
         }
+        self.cpth_conditions = load_conditions(raw_subs);
     }
 
     /// Load a `CSNO` (Casino) record.
@@ -3942,7 +5515,7 @@ impl ObjectEditorState {
             b"FACT" => self.save_fact(session),
             b"QUST" => self.save_qust(session),
             b"PERK" => self.save_perk(session),
-            b"SPEL" | b"ENCH" => self.save_spell(session),
+            b"ENCH" => self.save_spell(session),
             b"EXPL" => self.save_expl(session),
             b"PROJ" => self.save_proj(session),
             b"SOUN" => self.save_soun(session),
@@ -3964,6 +5537,30 @@ impl ObjectEditorState {
             b"ARMA" => self.save_arma(session),
             b"CAMS" => self.save_cams(session),
             b"CHAL" => self.save_chal(session),
+            b"FLST" => self.save_flst(session),
+            b"MESG" => self.save_mesg(session),
+            b"MISC" => self.save_misc(session),
+            b"SPEL" => self.save_spel(session),
+            b"STAT" => self.save_stat(session),
+            b"IDLE" => self.save_idle(session),
+            b"MSET" => self.save_mset(session),
+            b"MSTT" => self.save_mstt(session),
+            b"PWAT" => self.save_pwat(session),
+            b"RCCT" => self.save_rcct(session),
+            b"REPU" => self.save_repu(session),
+            b"RGDL" => self.save_rgdl(session),
+            b"TREE" => self.save_tree(session),
+            b"TXST" => self.save_txst(session),
+            b"VTYP" => self.save_vtyp(session),
+            b"TACT" => self.save_tact(session),
+            b"SCOL" => self.save_scol(session),
+            b"IDLM" => self.save_idlm(session),
+            b"IMGS" => self.save_imgs(session),
+            b"LGTM" => self.save_lgtm(session),
+            b"LSCR" => self.save_lscr(session),
+            b"LSCT" => self.save_lsct(session),
+            b"MICN" => self.save_micn(session),
+            b"MUSC" => self.save_musc(session),
             b"DEHY" => self.save_dehy(session),
             b"DOBJ" => self.save_dobj(session),
             b"ECZN" => self.save_ecnz(session),
@@ -4610,14 +6207,6 @@ impl ObjectEditorState {
         }
     }
 
-    fn save_misc(&self, session: &mut crate::session::Session) {
-        let fid = self.form_id;
-        let mut d = vec![0u8; 8];
-        d[0..4].copy_from_slice(&self.item_val.to_le_bytes());
-        d[4..8].copy_from_slice(&self.item_weight.to_le_bytes());
-        session.doc.set_sub(fid, b"DATA", d);
-    }
-
     /// Save a `FACT` (Faction) record.
     ///
     /// The relations and the rank collection are both runs of repeating
@@ -4876,15 +6465,34 @@ impl ObjectEditorState {
             session.doc.remove_sub(fid, b"LVLG");
         }
 
-        let mut lvlo_buffers = Vec::new();
-        for (lvl, r_fid, cnt) in &self.lvl_entries {
+        // The entries are a run of `LVLO` and an optional `COED`, so they
+        // are written as one sequence: a pair of list edits would gather the
+        // LVLOs together and separate them from their extra data.
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for entry in &self.lvl_entries {
             let mut buf = vec![0u8; 12];
-            buf[0..2].copy_from_slice(&lvl.to_le_bytes());
-            buf[4..8].copy_from_slice(&r_fid.to_le_bytes());
-            buf[8..10].copy_from_slice(&cnt.to_le_bytes());
-            lvlo_buffers.push(buf);
+            buf[0..2].copy_from_slice(&entry.level.to_le_bytes());
+            buf[2..4].copy_from_slice(&entry.unused[0..2]);
+            buf[4..8].copy_from_slice(&entry.reference.unwrap_or(0).to_le_bytes());
+            buf[8..10].copy_from_slice(&entry.unused[2..4]);
+            buf[10..12].copy_from_slice(&entry.count.to_le_bytes());
+            seq.push((*b"LVLO", buf));
+            if entry.has_extra {
+                let mut coed = vec![0u8; 12];
+                coed[0..4].copy_from_slice(&entry.owner.unwrap_or(0).to_le_bytes());
+                coed[4..8].copy_from_slice(&entry.global_or_rank.to_le_bytes());
+                coed[8..12].copy_from_slice(&entry.item_condition.to_le_bytes());
+                seq.push((*b"COED", coed));
+            }
         }
-        session.doc.set_sub_list(fid, b"LVLO", lvlo_buffers);
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"LVLO");
+            session.doc.remove_sub(fid, b"COED");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"LVLO", *b"COED"], seq);
+        }
 
         if !self.model.is_empty() {
             let mut modl = self.model.as_bytes().to_vec();
@@ -5372,6 +6980,902 @@ impl ObjectEditorState {
         }
     }
 
+    /// Save an `IDLM` (Idle Animation) record.
+    ///
+    /// `IDLA` is a *repeated* subrecord, so the animation list is written with
+    /// a list edit: a per-subrecord edit would collapse the list onto its
+    /// last animation.
+    fn save_idlm(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        session.doc.set_sub(fid, b"IDLF", vec![self.idlm_flags]);
+
+        let mut idlc = vec![self.idlm_animation_count];
+        idlc.extend_from_slice(&self.idlm_idlc_unused);
+        session.doc.set_sub(fid, b"IDLC", idlc);
+
+        session
+            .doc
+            .set_sub(fid, b"IDLT", self.idlm_idle_timer.to_le_bytes().to_vec());
+
+        // One IDLA subrecord holds the whole list of FormIDs, so it is
+        // written as a single payload rather than as a list of subrecords.
+        if self.idlm_animations.is_empty() {
+            session.doc.remove_sub(fid, b"IDLA");
+        } else {
+            let mut payload = Vec::with_capacity(self.idlm_animations.len() * 4);
+            for a in &self.idlm_animations {
+                payload.extend_from_slice(&a.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"IDLA", payload);
+        }
+    }
+
+    /// Save an `IMGS` (Image Space) record.
+    ///
+    /// `DNAM` is written back over the record's own bytes, so the
+    /// version-dependent part — which depends on the record's form version —
+    /// survives an edit.
+    fn save_imgs(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let original = self.raw_subs.get(b"DNAM").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(152);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 152]);
+        data.resize(len, 0);
+        for (i, v) in self.imgs_hdr.iter().enumerate() {
+            let at = i * 4;
+            if at + 4 <= data.len() {
+                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+        }
+        session.doc.set_sub(fid, b"DNAM", data);
+    }
+
+    /// Save a `LGTM` (Lighting) record.
+    ///
+    /// `DATA` is forty bytes. Every one of the game's 31 LGTM records carries
+    /// exactly forty bytes, so a fixed write is byte-identical to what the
+    /// record had.
+    fn save_lgtm(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(40);
+        data.extend_from_slice(&self.lgtm_ambient_color);
+        data.extend_from_slice(&self.lgtm_directional_color);
+        data.extend_from_slice(&self.lgtm_fog_color);
+        data.extend_from_slice(&self.lgtm_fog_near.to_le_bytes());
+        data.extend_from_slice(&self.lgtm_fog_far.to_le_bytes());
+        data.extend_from_slice(&self.lgtm_directional_rotation_xy.to_le_bytes());
+        data.extend_from_slice(&self.lgtm_directional_rotation_z.to_le_bytes());
+        data.extend_from_slice(&self.lgtm_directional_fade.to_le_bytes());
+        data.extend_from_slice(&self.lgtm_fog_clip_distance.to_le_bytes());
+        data.extend_from_slice(&self.lgtm_fog_power.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save an `LSCR` (Load Screen) record.
+    ///
+    /// The `LNAM` locations are *repeated* subrecords, so they are written
+    /// with a list edit.
+    fn save_lscr(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        for (sig, text) in [
+            (b"ICON", &self.lscr_icon),
+            (b"MICO", &self.lscr_mico),
+            (b"DESC", &self.lscr_desc),
+        ] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        match self.lscr_load_screen_type {
+            Some(t) => session.doc.set_sub(fid, b"WMI1", t.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"WMI1"),
+        }
+
+        let locations: Vec<Vec<u8>> = self
+            .lscr_locations
+            .iter()
+            .map(|l| {
+                let mut b = Vec::with_capacity(12);
+                b.extend_from_slice(&l.direct.unwrap_or(0).to_le_bytes());
+                b.extend_from_slice(&l.indirect_world.unwrap_or(0).to_le_bytes());
+                b.extend_from_slice(&l.indirect_grid_y.to_le_bytes());
+                b.extend_from_slice(&l.indirect_grid_x.to_le_bytes());
+                b
+            })
+            .collect();
+        if locations.is_empty() {
+            session.doc.remove_sub(fid, b"LNAM");
+        } else {
+            session.doc.set_sub_list(fid, b"LNAM", locations);
+        }
+    }
+
+    /// Save an `LSCT` (Load Screen Type) record.
+    ///
+    /// `DATA` is eighty-eight bytes. The twenty unknown bytes the spec names
+    /// in the middle of the struct are carried through unchanged.
+    fn save_lsct(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(88);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 88]);
+        data.resize(len, 0);
+
+        let put_u32 = |data: &mut Vec<u8>, at: usize, v: u32| {
+            if data.len() >= at + 4 {
+                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+        };
+        let put_f32 = |data: &mut Vec<u8>, at: usize, v: f32| {
+            if data.len() >= at + 4 {
+                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+        };
+
+        put_u32(&mut data, 0, self.lsct_type);
+        put_u32(&mut data, 4, self.lsct_x);
+        put_u32(&mut data, 8, self.lsct_y);
+        put_u32(&mut data, 12, self.lsct_width);
+        put_u32(&mut data, 16, self.lsct_height);
+        put_f32(&mut data, 20, self.lsct_orientation);
+        put_u32(&mut data, 24, self.lsct_font1);
+        put_f32(&mut data, 28, self.lsct_font1_color[0]);
+        put_f32(&mut data, 32, self.lsct_font1_color[1]);
+        put_f32(&mut data, 36, self.lsct_font1_color[2]);
+        put_u32(&mut data, 40, self.lsct_font1_alignment);
+        put_u32(&mut data, 64, self.lsct_font2);
+        put_f32(&mut data, 68, self.lsct_font2_color[0]);
+        put_f32(&mut data, 72, self.lsct_font2_color[1]);
+        put_f32(&mut data, 76, self.lsct_font2_color[2]);
+        put_u32(&mut data, 80, self.lsct_font2_alignment);
+        put_u32(&mut data, 84, self.lsct_stats);
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save a `MICN` (Mission Icon) record.
+    fn save_micn(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        for (sig, text) in [(b"ICON", &self.micn_icon), (b"MICO", &self.micn_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+    }
+
+    /// Save a `MUSC` (Music) record.
+    fn save_musc(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        if self.musc_filename.trim().is_empty() {
+            session.doc.remove_sub(fid, b"FNAM");
+        } else {
+            session
+                .doc
+                .set_sub(fid, b"FNAM", encode_zstring(&self.musc_filename));
+        }
+        session
+            .doc
+            .set_sub(fid, b"ANAM", self.musc_db.to_le_bytes().to_vec());
+    }
+
+    /// Save a `RCCT` (Recipe Category) record.
+    fn save_rcct(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session.doc.set_sub(fid, b"DATA", vec![self.rcct_flags]);
+    }
+
+    /// Save a `REPU` (Reputation) record.
+    fn save_repu(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session
+            .doc
+            .set_sub(fid, b"DATA", self.repu_value.to_le_bytes().to_vec());
+        for (sig, text) in [(b"ICON", &self.repu_icon), (b"MICO", &self.repu_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+    }
+
+    /// Save an `RGDL` (Ragdoll) record.
+    ///
+    /// `RAFD` and `RAPS` are carried through unchanged: their layout is
+    /// documented but the editor does not decode them.
+    fn save_rgdl(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session
+            .doc
+            .set_sub(fid, b"NVER", self.rgdl_version.to_le_bytes().to_vec());
+
+        // DATA is fourteen bytes: the dynamic bone count, four unused bytes,
+        // the five enabled flags and one unused byte.
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(14);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 14]);
+        data.resize(len, 0);
+        if data.len() >= 14 {
+            data[0..4].copy_from_slice(&self.rgdl_dynamic_bone_count.to_le_bytes());
+            data[8] = self.rgdl_feedback_enabled;
+            data[9] = self.rgdl_foot_ik_enabled;
+            data[10] = self.rgdl_look_ik_enabled;
+            data[11] = self.rgdl_grab_ik_enabled;
+            data[12] = self.rgdl_pose_matching;
+        }
+        session.doc.set_sub(fid, b"DATA", data);
+
+        match self.rgdl_actor_base {
+            Some(v) => session.doc.set_sub(fid, b"XNAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"XNAM"),
+        }
+        match self.rgdl_body_part_data {
+            Some(v) => session.doc.set_sub(fid, b"TNAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"TNAM"),
+        }
+        if self.rgdl_death_pose.trim().is_empty() {
+            session.doc.remove_sub(fid, b"ANAM");
+        } else {
+            session
+                .doc
+                .set_sub(fid, b"ANAM", encode_zstring(&self.rgdl_death_pose));
+        }
+        if self.rgdl_feedback_bones.is_empty() {
+            session.doc.remove_sub(fid, b"RAFB");
+        } else {
+            let mut payload = Vec::with_capacity(self.rgdl_feedback_bones.len() * 2);
+            for b in &self.rgdl_feedback_bones {
+                payload.extend_from_slice(&b.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"RAFB", payload);
+        }
+        // RAFD is sixty bytes.
+        let mut rafd = Vec::with_capacity(60);
+        rafd.extend_from_slice(&self.rgdl_dynamic_keyframe_blend.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_hierarchy_gain.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_position_gain.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_velocity_gain.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_acceleration_gain.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_snap_gain.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_velocity_damping.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_snap_max_linear_velocity.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_snap_max_angular_velocity.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_snap_max_linear_distance.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_snap_max_angular_distance.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_position_max_linear_velocity.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_position_max_angular_velocity.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_projectile_position_max_velocity.to_le_bytes());
+        rafd.extend_from_slice(&self.rgdl_melee_position_max_velocity.to_le_bytes());
+        session.doc.set_sub(fid, b"RAFD", rafd);
+
+        // RAPS is twenty-four bytes. The unused byte the spec names is
+        // carried through unchanged.
+        let original = self.raw_subs.get(b"RAPS").cloned();
+        let mut raps = original.unwrap_or_else(|| vec![0u8; 24]);
+        raps.resize(24, 0);
+        raps[0..2].copy_from_slice(&self.rgdl_match_bone1.to_le_bytes());
+        raps[2..4].copy_from_slice(&self.rgdl_match_bone2.to_le_bytes());
+        raps[4..6].copy_from_slice(&self.rgdl_match_bone3.to_le_bytes());
+        raps[6] = self.rgdl_aps_flags;
+        raps[8..12].copy_from_slice(&self.rgdl_motors_strength.to_le_bytes());
+        raps[12..16].copy_from_slice(&self.rgdl_pose_activation_delay.to_le_bytes());
+        raps[16..20].copy_from_slice(&self.rgdl_match_error_allowance.to_le_bytes());
+        raps[20..24].copy_from_slice(&self.rgdl_displacement_to_disable.to_le_bytes());
+        session.doc.set_sub(fid, b"RAPS", raps);
+    }
+
+    /// Save a `TREE` (Tree) record.
+    fn save_tree(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        // The model data collection: MODL, MODB, MODT, MODS and MODD.
+        let tree_model = &self.tree_model;
+        if !tree_model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&tree_model.modl));
+        }
+        if let Some(modb) = tree_model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !tree_model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", tree_model.modt.clone());
+        }
+        if !tree_model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODS", write_mods(&tree_model.mods));
+        }
+        if let Some(modd) = tree_model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        for (sig, text) in [(b"ICON", &self.tree_icon), (b"MICO", &self.tree_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        if self.tree_seeds.is_empty() {
+            session.doc.remove_sub(fid, b"SNAM");
+        } else {
+            let mut payload = Vec::with_capacity(self.tree_seeds.len() * 4);
+            for s in &self.tree_seeds {
+                payload.extend_from_slice(&s.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"SNAM", payload);
+        }
+
+        // CNAM is thirty-two bytes: the eight floats and the shadow radius.
+        let original = self.raw_subs.get(b"CNAM").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(32);
+        let mut cnam = original.unwrap_or_else(|| vec![0u8; 32]);
+        cnam.resize(len, 0);
+        let mut cnam_bytes = Vec::with_capacity(32);
+        cnam_bytes.extend_from_slice(&self.tree_leaf_curvature.to_le_bytes());
+        cnam_bytes.extend_from_slice(&self.tree_min_leaf_angle.to_le_bytes());
+        cnam_bytes.extend_from_slice(&self.tree_max_leaf_angle.to_le_bytes());
+        cnam_bytes.extend_from_slice(&self.tree_branch_dimming.to_le_bytes());
+        cnam_bytes.extend_from_slice(&self.tree_leaf_dimming.to_le_bytes());
+        cnam_bytes.extend_from_slice(&self.tree_shadow_radius.to_le_bytes());
+        cnam_bytes.extend_from_slice(&self.tree_rock_speed.to_le_bytes());
+        cnam_bytes.extend_from_slice(&self.tree_rustle_speed.to_le_bytes());
+        for (i, byte) in cnam_bytes.iter().enumerate() {
+            if i < cnam.len() {
+                cnam[i] = *byte;
+            }
+        }
+        session.doc.set_sub(fid, b"CNAM", cnam);
+
+        let mut bnam = Vec::with_capacity(8);
+        bnam.extend_from_slice(&self.tree_billboard_width.to_le_bytes());
+        bnam.extend_from_slice(&self.tree_billboard_height.to_le_bytes());
+        session.doc.set_sub(fid, b"BNAM", bnam);
+    }
+
+    /// Save a `TXST` (Texture) record.
+    fn save_txst(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        const SIGS: [&[u8; 4]; 6] = [b"TX00", b"TX01", b"TX02", b"TX03", b"TX04", b"TX05"];
+        for (i, sig) in SIGS.iter().enumerate() {
+            let text = self.txst_textures.get(i).map(String::as_str).unwrap_or("");
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+        session
+            .doc
+            .set_sub(fid, b"DNAM", self.txst_flags.to_le_bytes().to_vec());
+
+        // DODT is thirty-six bytes: the seven floats, the parallax passes,
+        // the flag word, two unused bytes and the rgba colour.
+        if self.raw_subs.contains_key(b"DODT") {
+            let original = self.raw_subs.get(b"DODT").cloned();
+            let mut dodt = original.unwrap_or_else(|| vec![0u8; 36]);
+            dodt.resize(36, 0);
+            let floats = [
+                self.txst_dodt_min_width,
+                self.txst_dodt_max_width,
+                self.txst_dodt_min_height,
+                self.txst_dodt_max_height,
+                self.txst_dodt_depth,
+                self.txst_dodt_shininess,
+                self.txst_dodt_parallax_scale,
+            ];
+            for (i, v) in floats.iter().enumerate() {
+                let at = i * 4;
+                dodt[at..at + 4].copy_from_slice(&v.to_le_bytes());
+            }
+            dodt[28] = self.txst_dodt_parallax_passes;
+            dodt[29] = self.txst_dodt_flags;
+            dodt[32..36].copy_from_slice(&self.txst_dodt_color);
+            session.doc.set_sub(fid, b"DODT", dodt);
+        }
+    }
+
+    /// Save a `VTYP` (Voice Type) record.
+    fn save_vtyp(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session.doc.set_sub(fid, b"DNAM", vec![self.vtyp_flags]);
+    }
+
+    /// Save a `TACT` (Talking Activator) record.
+    fn save_tact(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        // The model data collection: MODL, MODB, MODT, MODS and MODD.
+        let tact_model = &self.tact_model;
+        if !tact_model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&tact_model.modl));
+        }
+        if let Some(modb) = tact_model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !tact_model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", tact_model.modt.clone());
+        }
+        if !tact_model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODS", write_mods(&tact_model.mods));
+        }
+        if let Some(modd) = tact_model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        for (sig, value) in [
+            (b"SNAM", self.tact_looping_sound),
+            (b"VNAM", self.tact_voice_type),
+            (b"INAM", self.tact_radio_template),
+            (b"SCRI", self.tact_script),
+        ] {
+            match value {
+                Some(v) => session.doc.set_sub(fid, sig, v.to_le_bytes().to_vec()),
+                None => session.doc.remove_sub(fid, sig),
+            }
+        }
+
+        if self.tact_destruction.is_empty() && self.tact_dest_health <= 0 {
+            session.doc.remove_sub(fid, b"DEST");
+            session.doc.remove_sub(fid, b"DSTD");
+        } else {
+            save_destruction(
+                session,
+                fid,
+                self.tact_dest_health,
+                self.tact_dest_flags,
+                &self.tact_destruction,
+            );
+        }
+    }
+
+    /// Save a `SCOL` (Static Collision) record.
+    ///
+    /// The `ONAM` and `DATA` subrecords both repeat, so they are written
+    /// with list edits: a per-subrecord edit would collapse the parts onto
+    /// their last entry.
+    fn save_scol(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        // The model data collection: MODL, MODB, MODT, MODS and MODD.
+        let scol_model = &self.scol_model;
+        if !scol_model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&scol_model.modl));
+        }
+        if let Some(modb) = scol_model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !scol_model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", scol_model.modt.clone());
+        }
+        if !scol_model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODS", write_mods(&scol_model.mods));
+        }
+        if let Some(modd) = scol_model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        // The collection interleaves ONAM and DATA, so it is written as one
+        // sequence rather than as two lists: a pair of list edits would
+        // gather the ONAMs together and separate them from their DATA.
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for part in &self.scol_parts {
+            let mut o = Vec::with_capacity(4);
+            o.extend_from_slice(&part.static_ref.unwrap_or(0).to_le_bytes());
+            seq.push((*b"ONAM", o));
+
+            let mut d = Vec::with_capacity(part.placements.len() * 28);
+            for p in &part.placements {
+                for v in p {
+                    d.extend_from_slice(&v.to_le_bytes());
+                }
+            }
+            seq.push((*b"DATA", d));
+        }
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"ONAM");
+            session.doc.remove_sub(fid, b"DATA");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"ONAM", *b"DATA"], seq);
+        }
+    }
+
+    /// Save an `IDLE` (Idle Animation) record.
+    fn save_idle(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        // The model data collection.
+        let model = &self.idle_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        // ANAM carries the parent and the previous sibling, and a null
+        // reference is written as zero.
+        let mut anam = Vec::with_capacity(8);
+        anam.extend_from_slice(&self.idle_parent.unwrap_or(0).to_le_bytes());
+        anam.extend_from_slice(&self.idle_previous_sibling.unwrap_or(0).to_le_bytes());
+        session.doc.set_sub(fid, b"ANAM", anam);
+
+        // DATA is eight bytes. The two unnamed bytes are carried through.
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(8);
+        let mut data = original.unwrap_or_else(|| vec![0u8; 8]);
+        data.resize(len, 0);
+        if data.len() >= 8 {
+            data[0] = self.idle_group_section;
+            data[1] = self.idle_looping_min;
+            data[2] = self.idle_looping_max;
+            data[4..6].copy_from_slice(&self.idle_replay_delay.to_le_bytes());
+            data[6] = self.idle_flags;
+        }
+        session.doc.set_sub(fid, b"DATA", data);
+
+        save_conditions(session, fid, &self.idle_conditions);
+    }
+
+    /// Save an `MSET` (Media Set) record.
+    fn save_mset(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        session
+            .doc
+            .set_sub(fid, b"NAM1", self.mset_type.to_le_bytes().to_vec());
+
+        const TRACK_SIGS: [&[u8; 4]; 6] = [b"NAM2", b"NAM3", b"NAM4", b"NAM5", b"NAM6", b"NAM7"];
+        const LEVEL_SIGS: [&[u8; 4]; 6] = [b"NAM8", b"NAM9", b"NAM0", b"ANAM", b"BNAM", b"CNAM"];
+
+        for (i, sig) in TRACK_SIGS.iter().enumerate() {
+            let text = self.mset_tracks.get(i).map(String::as_str).unwrap_or("");
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+        for (i, sig) in LEVEL_SIGS.iter().enumerate() {
+            let level = self.mset_levels.get(i).copied().unwrap_or(0.0);
+            session.doc.set_sub(fid, sig, level.to_le_bytes().to_vec());
+        }
+
+        // The boundaries repeat, so they are written with a list edit.
+        if self.mset_boundaries.is_empty() {
+            session.doc.remove_sub(fid, b"JNAM");
+        } else {
+            let payloads: Vec<Vec<u8>> = self
+                .mset_boundaries
+                .iter()
+                .map(|v| v.to_le_bytes().to_vec())
+                .collect();
+            session.doc.set_sub_list(fid, b"JNAM", payloads);
+        }
+
+        session
+            .doc
+            .set_sub(fid, b"PNAM", vec![self.mset_enable_flags]);
+        session
+            .doc
+            .set_sub(fid, b"DNAM", self.mset_wait_time.to_le_bytes().to_vec());
+        session
+            .doc
+            .set_sub(fid, b"ENAM", self.mset_loop_fade_out.to_le_bytes().to_vec());
+        session
+            .doc
+            .set_sub(fid, b"FNAM", self.mset_recovery_time.to_le_bytes().to_vec());
+        session
+            .doc
+            .set_sub(fid, b"GNAM", self.mset_nighttime_max.to_le_bytes().to_vec());
+
+        match self.mset_intro {
+            Some(v) => session.doc.set_sub(fid, b"HNAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"HNAM"),
+        }
+        match self.mset_outro {
+            Some(v) => session.doc.set_sub(fid, b"INAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"INAM"),
+        }
+    }
+
+    /// Save an `MSTT` (Movable Static) record.
+    fn save_mstt(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.mstt_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        session.doc.set_sub(fid, b"DATA", vec![self.mstt_data]);
+        match self.mstt_sound {
+            Some(v) => session.doc.set_sub(fid, b"SNAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"SNAM"),
+        }
+
+        if self.mstt_destruction.is_empty() && self.mstt_dest_health <= 0 {
+            session.doc.remove_sub(fid, b"DEST");
+            session.doc.remove_sub(fid, b"DSTD");
+        } else {
+            save_destruction(
+                session,
+                fid,
+                self.mstt_dest_health,
+                self.mstt_dest_flags,
+                &self.mstt_destruction,
+            );
+        }
+    }
+
+    /// Save a `PWAT` (Water) record.
+    fn save_pwat(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.pwat_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        let mut dnam = Vec::with_capacity(8);
+        dnam.extend_from_slice(&self.pwat_flags.to_le_bytes());
+        dnam.extend_from_slice(&self.pwat_water.unwrap_or(0).to_le_bytes());
+        session.doc.set_sub(fid, b"DNAM", dnam);
+    }
+
+    /// Save a `FLST` (Form List) record.
+    ///
+    /// The `LNAM` subrecords repeat, so they are written with a list edit.
+    fn save_flst(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        if self.flst_entries.is_empty() {
+            session.doc.remove_sub(fid, b"LNAM");
+        } else {
+            let payloads: Vec<Vec<u8>> = self
+                .flst_entries
+                .iter()
+                .map(|e| e.to_le_bytes().to_vec())
+                .collect();
+            session.doc.set_sub_list(fid, b"LNAM", payloads);
+        }
+    }
+
+    /// Save an `LVLI` (Leveled Item) record.
+    ///
+    /// The entries are a run of `LVLO` and an optional `COED`, so they are
+    /// written as one sequence: a pair of list edits would separate an
+    /// entry's extra data from the entry itself.
+    /// Save an `LVLN` (Leveled NPC) record.
+    /// Save a `MESG` (Message) record.
+    ///
+    /// The buttons are a run of `ITXT` and repeated `CTDA`, so they are
+    /// written as one sequence.
+    fn save_mesg(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        if self.mesg_desc.trim().is_empty() {
+            session.doc.remove_sub(fid, b"DESC");
+        } else {
+            session
+                .doc
+                .set_sub(fid, b"DESC", encode_zstring(&self.mesg_desc));
+        }
+        match self.mesg_icon {
+            Some(v) => session.doc.set_sub(fid, b"INAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"INAM"),
+        }
+        session
+            .doc
+            .set_sub(fid, b"DNAM", self.mesg_flags.to_le_bytes().to_vec());
+        session
+            .doc
+            .set_sub(fid, b"TNAM", self.mesg_display_time.to_le_bytes().to_vec());
+
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for button in &self.mesg_buttons {
+            seq.push((*b"ITXT", encode_zstring(&button.text)));
+            for cond in &button.conditions {
+                let mut b = Vec::with_capacity(28);
+                b.push(cond.cond_type);
+                b.extend_from_slice(&cond.unused);
+                b.extend_from_slice(&cond.comparison_value.to_le_bytes());
+                b.extend_from_slice(&cond.function.to_le_bytes());
+                b.extend_from_slice(&cond.parameter1.to_le_bytes());
+                b.extend_from_slice(&cond.parameter2.to_le_bytes());
+                b.extend_from_slice(&cond.run_on.to_le_bytes());
+                b.extend_from_slice(&cond.reference.unwrap_or(0).to_le_bytes());
+                seq.push((*b"CTDA", b));
+            }
+        }
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"ITXT");
+            session.doc.remove_sub(fid, b"CTDA");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"ITXT", *b"CTDA"], seq);
+        }
+    }
+
+    /// Save a `MISC` (Miscellaneous) record.
+    fn save_misc(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.misc_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        for (sig, text) in [(b"ICON", &self.misc_icon), (b"MICO", &self.misc_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        for (sig, value) in [
+            (b"SCRI", self.misc_script),
+            (b"YNAM", self.misc_pickup_sound),
+            (b"ZNAM", self.misc_drop_sound),
+            (b"RNAM", self.misc_random_sound),
+        ] {
+            match value {
+                Some(v) => session.doc.set_sub(fid, sig, v.to_le_bytes().to_vec()),
+                None => session.doc.remove_sub(fid, sig),
+            }
+        }
+
+        // DATA is eight bytes: the value and the weight.
+        let mut data = Vec::with_capacity(8);
+        data.extend_from_slice(&self.misc_value.to_le_bytes());
+        data.extend_from_slice(&self.misc_weight.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+
+        if self.misc_destruction.is_empty() && self.misc_dest_health <= 0 {
+            session.doc.remove_sub(fid, b"DEST");
+            session.doc.remove_sub(fid, b"DSTD");
+        } else {
+            save_destruction(
+                session,
+                fid,
+                self.misc_dest_health,
+                self.misc_dest_flags,
+                &self.misc_destruction,
+            );
+        }
+    }
+
+    /// Save a `SPEL` (Spell) record.
+    ///
+    /// The effects are a run of `EFID` and `EFIT`, so they are written as
+    /// one sequence.
+    fn save_spel(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let original = self.raw_subs.get(b"SPIT").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(16);
+        let mut spit = original.unwrap_or_else(|| vec![0u8; 16]);
+        spit.resize(len, 0);
+        if spit.len() >= 16 {
+            spit[0..4].copy_from_slice(&self.spel_type.to_le_bytes());
+            spit[4..8].copy_from_slice(&self.spel_cost.to_le_bytes());
+            spit[8..12].copy_from_slice(&self.spel_level.to_le_bytes());
+            spit[12] = self.spel_flags;
+        }
+        session.doc.set_sub(fid, b"SPIT", spit);
+
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for effect in &self.spel_effects {
+            let mut efid = Vec::with_capacity(4);
+            efid.extend_from_slice(&effect.effect.unwrap_or(0).to_le_bytes());
+            seq.push((*b"EFID", efid));
+            if !effect.parameters.is_empty() {
+                seq.push((*b"EFIT", effect.parameters.clone()));
+            }
+        }
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"EFID");
+            session.doc.remove_sub(fid, b"EFIT");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"EFID", *b"EFIT"], seq);
+        }
+    }
+
+    /// Save a `STAT` (Static) record.
+    fn save_stat(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.stat_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        session
+            .doc
+            .set_sub(fid, b"BRUS", vec![self.stat_passthrough as u8]);
+        match self.stat_looping_sound {
+            Some(v) => session.doc.set_sub(fid, b"RNAM", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"RNAM"),
+        }
+    }
+
     /// Save a `CHAL` (Challenge) record.
     ///
     /// `DATA` is a twenty-four-byte struct. Every one of the game's 105 CHAL
@@ -5451,16 +7955,7 @@ impl ObjectEditorState {
             session.doc.set_sub_list(fid, b"SNAM", shots);
         }
 
-        let conditions: Vec<Vec<u8>> = self
-            .cpth_conditions
-            .iter()
-            .map(|c| c.data.clone())
-            .collect();
-        if conditions.is_empty() {
-            session.doc.remove_sub(fid, b"CTDA");
-        } else {
-            session.doc.set_sub_list(fid, b"CTDA", conditions);
-        }
+        save_conditions(session, fid, &self.cpth_conditions);
     }
 
     /// Save a `CSNO` (Casino) record.
@@ -6354,6 +8849,30 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"ARMA" => "Armor Addon",
         b"CAMS" => "Camera Shot",
         b"CHAL" => "Challenge",
+        b"FLST" => "Form List",
+        b"MESG" => "Message",
+        b"MISC" => "Miscellaneous",
+        b"SPEL" => "Spell",
+        b"STAT" => "Static",
+        b"IDLE" => "Idle Animation",
+        b"MSET" => "Media Set",
+        b"MSTT" => "Movable Static",
+        b"PWAT" => "Water",
+        b"RCCT" => "Recipe Category",
+        b"REPU" => "Reputation",
+        b"RGDL" => "Ragdoll",
+        b"TREE" => "Tree",
+        b"TXST" => "Texture",
+        b"VTYP" => "Voice Type",
+        b"TACT" => "Talking Activator",
+        b"SCOL" => "Static Collision",
+        b"IDLM" => "Idle Animation",
+        b"IMGS" => "Image Space",
+        b"LGTM" => "Lighting",
+        b"LSCR" => "Load Screen",
+        b"LSCT" => "Load Screen Type",
+        b"MICN" => "Mission Icon",
+        b"MUSC" => "Music",
         b"DEHY" => "Dehydration",
         b"DOBJ" => "Default Object Manager",
         b"ECZN" => "Encounter Zone",
@@ -6631,6 +9150,184 @@ const ECZN_FLAGS: [(u8, &str); 2] = [
     (0x01, "Never Resets"),
     (0x02, "Match PC Below Minimum Level"),
 ];
+
+/// `IDLM` `IDLF` Flags, the u8 word from fopdoc's IDLM page.
+///
+/// The word is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const IDLM_FLAGS: [(u8, &str); 3] = [
+    (0x01, "Run In Sequence"),
+    (0x02, "Unknown 0x02"),
+    (0x04, "Do Once"),
+];
+
+/// `LSCT` `DATA` Type and Stats, the uint32 enum from fopdoc's LSCT page.
+const LSCT_TYPES: [(u32, &str); 5] = [
+    (0, "None"),
+    (1, "XP Progress"),
+    (2, "Objective"),
+    (3, "Tip"),
+    (4, "Stats"),
+];
+
+/// `LSCT` `DATA` Font, the uint32 enum from fopdoc's LSCT page.
+const LSCT_FONTS: [(u32, &str); 8] = [
+    (0, "Unknown"),
+    (1, "2"),
+    (2, "3"),
+    (3, "4"),
+    (4, "5"),
+    (5, "6"),
+    (6, "7"),
+    (7, "8"),
+];
+
+/// `LSCT` `DATA` Font Alignment, the uint32 enum from fopdoc's LSCT page.
+const LSCT_ALIGNMENTS: [(u32, &str); 5] = [
+    (0, "Unknown"),
+    (1, "Left"),
+    (2, "Center"),
+    (3, "Unknown"),
+    (4, "Right"),
+];
+
+/// `RCCT` `DATA` Flags, the u8 word from fopdoc's RCCT page.
+///
+/// The word is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const RCCT_FLAGS: [(u8, &str); 8] = [
+    (0x01, "Subcategory"),
+    (0x02, "Unknown 0x02"),
+    (0x04, "Unknown 0x04"),
+    (0x08, "Unknown 0x08"),
+    (0x10, "Unknown 0x10"),
+    (0x20, "Unknown 0x20"),
+    (0x40, "Unknown 0x40"),
+    (0x80, "Unknown 0x80"),
+];
+
+/// `MESG` `DNAM` Flags, the uint32 word from fopdoc's MESG page.
+const MESG_FLAGS: [(u32, &str); 2] = [(0x0000_0001, "Message Box"), (0x0000_0002, "Auto Display")];
+
+/// `SPEL` `SPIT` Type, the uint32 enum from fopdoc's SPEL page.
+const SPEL_TYPES: [(u32, &str); 11] = [
+    (0, "Actor Effect"),
+    (1, "Disease"),
+    (2, "Power"),
+    (3, "Lesser Power"),
+    (4, "Ability"),
+    (5, "Poison"),
+    (6, "Unknown 6"),
+    (7, "Unknown 7"),
+    (8, "Unknown 8"),
+    (9, "Unknown 9"),
+    (10, "Addiction"),
+];
+
+/// `SPEL` `SPIT` Flags, the u8 word from fopdoc's SPEL page.
+const SPEL_FLAGS: [(u8, &str); 8] = [
+    (0x01, "No Auto-Calc"),
+    (0x02, "Immune To Silence 1"),
+    (0x04, "PC Start Effect"),
+    (0x08, "Immune To Silence 2"),
+    (0x10, "Area Effect Ignores LOS"),
+    (0x20, "Script Effect Always Applies"),
+    (0x40, "Disable Absorb / Reflect"),
+    (0x80, "Force Touch Explode"),
+];
+
+/// `STAT` `BRUS` Passthrough Sound, the int8 enum from fopdoc's STAT page.
+const STAT_BUSHS: [(i8, &str); 11] = [
+    (-1, "None"),
+    (0, "BushA"),
+    (1, "BushB"),
+    (2, "BushC"),
+    (3, "BushD"),
+    (4, "BushE"),
+    (5, "BushF"),
+    (6, "BushG"),
+    (7, "BushH"),
+    (8, "BushI"),
+    (9, "BushJ"),
+];
+
+/// `IDLE` `DATA` Animation Group Section, the u8 enum from fopdoc's IDLE
+/// page.
+const IDLE_GROUPS: [(u8, &str); 6] = [
+    (0, "Idle"),
+    (1, "Movement"),
+    (2, "Left Arm"),
+    (3, "Left Hand"),
+    (4, "Weapon"),
+    (5, "Weapon Up"),
+];
+
+/// `MSET` `NAM1` Type, the int32 enum from fopdoc's MSET page.
+const MSET_TYPES: [(i32, &str); 5] = [
+    (-1, "No Set"),
+    (0, "Battle Set"),
+    (1, "Location Set"),
+    (2, "Dungeon Set"),
+    (3, "Incidental Set"),
+];
+
+/// `MSET` `PNAM` Enable Flags, the u8 word from fopdoc's MSET page.
+const MSET_ENABLE_FLAGS: [(u8, &str); 6] = [
+    (0x01, "Day Outer"),
+    (0x02, "Day Middle"),
+    (0x04, "Day Inner"),
+    (0x08, "Night Outer"),
+    (0x10, "Night Middle"),
+    (0x20, "Night Inner"),
+];
+
+/// `PWAT` `DNAM` Flags, the uint32 word from fopdoc's PWAT page.
+///
+/// The word is kept whole when saving, so a bit the spec does not name
+/// survives an edit.
+const PWAT_FLAGS: [(u32, &str); 18] = [
+    (0x0000_0001, "Reflects"),
+    (0x0000_0002, "Reflects - Actors"),
+    (0x0000_0004, "Reflects - Land"),
+    (0x0000_0008, "Reflects - LOD Land"),
+    (0x0000_0010, "Reflects - LOD Buildings"),
+    (0x0000_0020, "Reflects - Trees"),
+    (0x0000_0040, "Reflects - Sky"),
+    (0x0000_0080, "Reflects - Dynamic Objects"),
+    (0x0000_0100, "Reflects - Dead Bodies"),
+    (0x0000_0200, "Refracts"),
+    (0x0000_0400, "Refracts - Actors"),
+    (0x0000_0800, "Refracts - Land"),
+    (0x0000_1000, "Unknown 0x1000"),
+    (0x0000_2000, "Unknown 0x2000"),
+    (0x0000_4000, "Unknown 0x4000"),
+    (0x0000_8000, "Unknown 0x8000"),
+    (0x0001_0000, "Refracts - Dynamic Objects"),
+    (0x0002_0000, "Unknown 0x20000"),
+];
+
+/// `CTDA` Type — the comparison bits, from fopdoc's CTDA page.
+///
+/// The comparison lives in the high bits of the type word, so the editor
+/// masks the word rather than replacing it.
+const CTDA_COMPARISONS: [(u8, &str); 6] = [
+    (0x00, "Equal To"),
+    (0x20, "Not Equal To"),
+    (0x40, "Greater Than"),
+    (0x60, "Greater Than or Equal To"),
+    (0x80, "Less Than"),
+    (0xA0, "Less Than or Equal To"),
+];
+
+/// `TXST` `DODT` Flags, the u8 word from fopdoc's DODT page.
+const TXST_DODT_FLAGS: [(u8, &str); 3] = [
+    (0x01, "Parallax"),
+    (0x02, "Alpha - Blending"),
+    (0x04, "Alpha - Testing"),
+];
+
+/// `VTYP` `DNAM` Flags, the u8 word from fopdoc's VTYP page.
+const VTYP_FLAGS: [(u8, &str); 2] = [(0x01, "Allow Default Dialog"), (0x02, "Female")];
 
 /// `CHAL` `DATA` Type, the uint32 enum from fopdoc's CHAL page.
 const CHAL_TYPES: [(u32, &str); 14] = [
@@ -6928,7 +9625,7 @@ pub fn ui(
                 b"FACT" => draw_fact_ui(ui, &session, &mut state),
                 b"QUST" => draw_qust_ui(ui, &mut state),
                 b"PERK" => draw_perk_ui(ui, &mut state),
-                b"SPEL" | b"ENCH" => draw_spell_ui(ui, &mut state),
+                b"ENCH" => draw_spell_ui(ui, &mut state),
                 b"EXPL" => draw_expl_ui(ui, &mut state),
                 b"PROJ" => draw_proj_ui(ui, &mut state),
                 b"SOUN" => draw_soun_ui(ui, &mut state),
@@ -6950,6 +9647,29 @@ pub fn ui(
                 b"ARMA" => draw_arma_ui(ui, &mut state),
                 b"CAMS" => draw_cams_ui(ui, &session, &mut state),
                 b"CHAL" => draw_chal_ui(ui, &mut state),
+                b"FLST" => draw_flst_ui(ui, &mut state),
+                b"MESG" => draw_mesg_ui(ui, &session, &mut state),
+                b"SPEL" => draw_spel_ui(ui, &mut state),
+                b"STAT" => draw_stat_ui(ui, &session, &mut state),
+                b"IDLE" => draw_idle_ui(ui, &session, &mut state),
+                b"MSET" => draw_mset_ui(ui, &session, &mut state),
+                b"MSTT" => draw_mstt_ui(ui, &session, &mut state),
+                b"PWAT" => draw_pwat_ui(ui, &session, &mut state),
+                b"RCCT" => draw_rcct_ui(ui, &mut state),
+                b"REPU" => draw_repu_ui(ui, &mut state),
+                b"RGDL" => draw_rgdl_ui(ui, &session, &mut state),
+                b"TREE" => draw_tree_ui(ui, &mut state),
+                b"TXST" => draw_txst_ui(ui, &mut state),
+                b"VTYP" => draw_vtyp_ui(ui, &mut state),
+                b"TACT" => draw_tact_ui(ui, &session, &mut state),
+                b"SCOL" => draw_scol_ui(ui, &mut state),
+                b"IDLM" => draw_idlm_ui(ui, &session, &mut state),
+                b"IMGS" => draw_imgs_ui(ui, &mut state),
+                b"LGTM" => draw_lgtm_ui(ui, &mut state),
+                b"LSCR" => draw_lscr_ui(ui, &session, &mut state),
+                b"LSCT" => draw_lsct_ui(ui, &mut state),
+                b"MICN" => draw_micn_ui(ui, &mut state),
+                b"MUSC" => draw_musc_ui(ui, &mut state),
                 b"DEHY" => draw_need_ui(ui, &session, &mut state, "Dehydration"),
                 b"DOBJ" => draw_dobj_ui(ui, &mut state),
                 b"ECZN" => draw_ecnz_ui(ui, &session, &mut state),
@@ -6972,7 +9692,10 @@ pub fn ui(
                 b"HAIR" => draw_hair_ui(ui, &session, &mut state),
                 b"HDPT" => draw_hdpt_ui(ui, &session, &mut state),
                 b"BPTD" => draw_bptd_ui(ui, &session, &mut state),
-                _ => draw_misc_ui(ui, &mut state),
+                b"MISC" => draw_misc_ui(ui, &session, &mut state),
+                // A type with no page of its own shows nothing below the
+                // header panel.
+                _ => {}
             });
 
         ui.separator();
@@ -8514,23 +11237,6 @@ fn draw_book_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-fn draw_misc_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
-    ui.group(|ui| {
-        ui.strong("Item Value & Weight");
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.label("Value (Caps):");
-            ui.add(egui::DragValue::new(&mut state.item_val).range(0..=100000));
-            ui.label("Weight:");
-            ui.add(
-                egui::DragValue::new(&mut state.item_weight)
-                    .speed(0.1)
-                    .range(0.0..=1000.0),
-            );
-        });
-    });
-}
-
 fn draw_fact_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
@@ -9076,24 +11782,55 @@ fn draw_lvl_ui(
             ui.label(egui::RichText::new("No entries in this leveled list.").italics());
         } else {
             let mut remove_idx = None;
-            for (idx, (level, r_fid, count)) in state.lvl_entries.iter_mut().enumerate() {
+            for (idx, entry) in state.lvl_entries.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     if ui.button("✖").on_hover_text("Remove this entry").clicked() {
                         remove_idx = Some(idx);
                     }
                     ui.label("Level:");
-                    ui.add(egui::DragValue::new(level).range(1..=32767));
+                    ui.add(egui::DragValue::new(&mut entry.level).range(1..=32767));
                     ui.separator();
                     let name = candidates
                         .iter()
-                        .find(|(id, _)| *id == *r_fid)
+                        .find(|(id, _)| Some(*id) == entry.reference)
                         .map(|(_, n)| n.as_str())
                         .unwrap_or("Custom Object");
-                    ui.label(format!("{name} ({r_fid:08X})"));
+                    ui.label(format!("{name} ({:08X})", entry.reference.unwrap_or(0)));
                     ui.separator();
                     ui.label("Count:");
-                    ui.add(egui::DragValue::new(count).range(1..=32767));
+                    ui.add(egui::DragValue::new(&mut entry.count).range(1..=32767));
                 });
+
+                // The extra data: the owner, the global variable or required
+                // rank, and the item condition.
+                let mut has_extra = entry.has_extra;
+                if ui
+                    .checkbox(&mut has_extra, "Has extra data (COED)")
+                    .changed()
+                {
+                    entry.has_extra = has_extra;
+                }
+                if entry.has_extra {
+                    ui.horizontal(|ui| {
+                        ui.label("Owner:");
+                        ui.add(
+                            egui::TextEdit::singleline(
+                                &mut entry.owner.map(|v| format!("{v:08X}")).unwrap_or_default(),
+                            )
+                            .id_salt(format!("lvl_owner_{idx}"))
+                            .hint_text("00000000")
+                            .desired_width(110.0),
+                        );
+                        ui.label("Global / Required Rank:");
+                        ui.add(egui::DragValue::new(&mut entry.global_or_rank).range(0..=u32::MAX));
+                        ui.label("Item Condition:");
+                        ui.add(
+                            egui::DragValue::new(&mut entry.item_condition)
+                                .speed(0.01)
+                                .range(-100000.0..=100000.0),
+                        );
+                    });
+                }
             }
             if let Some(idx) = remove_idx {
                 state.lvl_entries.remove(idx);
@@ -9121,11 +11858,12 @@ fn draw_lvl_ui(
             ui.add(egui::DragValue::new(&mut state.lvl_entry_count_to_add).range(1..=32767));
             if ui.button("+ Add Entry").clicked() {
                 if let Some(fid) = state.lvl_entry_fid_to_add {
-                    state.lvl_entries.push((
-                        state.lvl_entry_level_to_add.max(1),
-                        fid,
-                        state.lvl_entry_count_to_add.max(1),
-                    ));
+                    state.lvl_entries.push(LeveledListEntry {
+                        level: state.lvl_entry_level_to_add.max(1),
+                        reference: Some(fid),
+                        count: state.lvl_entry_count_to_add.max(1),
+                        ..Default::default()
+                    });
                 }
             }
         });
@@ -10438,6 +13176,1656 @@ fn draw_gras_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
+/// Draw the Idle Animation (IDLM) editor body.
+fn draw_idlm_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Idle Animation");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in IDLM_FLAGS {
+                let mut set = (state.idlm_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.idlm_flags |= bit;
+                    } else {
+                        state.idlm_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Animation Count (IDLC):");
+            ui.add(egui::DragValue::new(&mut state.idlm_animation_count).range(0..=255));
+            ui.separator();
+            ui.label("Idle Timer Setting (IDLT):");
+            ui.add(
+                egui::DragValue::new(&mut state.idlm_idle_timer)
+                    .speed(0.1)
+                    .range(0.0..=3600.0),
+            );
+        });
+        ui.label(format!(
+            "IDLC unused bytes: {:02X?} — preserved as-is",
+            state.idlm_idlc_unused
+        ));
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Animations (IDLA) — {}",
+            state.idlm_animations.len()
+        ));
+        ui.add_space(4.0);
+        let idles = session.records_by_sig(*b"IDLE");
+        let mut remove_idx = None;
+        for (idx, anim) in state.idlm_animations.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("✖")
+                    .on_hover_text("Remove this animation")
+                    .clicked()
+                {
+                    remove_idx = Some(idx);
+                }
+                let mut fid = Some(*anim);
+                record_dropdown(ui, &format!("idlm_anim_{idx}"), &idles, &mut fid);
+                *anim = fid.unwrap_or(0);
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.idlm_animations.remove(idx);
+        }
+    });
+}
+
+/// Draw the Image Space (IMGS) editor body.
+fn draw_imgs_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Image Space");
+        ui.add_space(4.0);
+        let names = [
+            "HDR Eye Adapt Speed",
+            "HDR Blur Radius",
+            "HDR Blur Passes",
+            "HDR Emissive Multiplier",
+            "HDR Target LUM",
+            "HDR Upper LUM Clamp",
+            "HDR Bright Scale",
+            "HDR Bright Clamp",
+            "HDR LUM Ramp No Tex",
+            "HDR LUM Ramp Min",
+            "HDR LUM Ramp Max",
+            "HDR Sunlight Dimmer",
+            "HDR Grass Dimmer",
+            "HDR Tree Dimmer",
+        ];
+        for (i, name) in names.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(*name);
+                ui.add(
+                    egui::DragValue::new(&mut state.imgs_hdr[i])
+                        .speed(0.01)
+                        .range(-1000.0..=1000.0),
+                );
+            });
+        }
+        ui.label(format!(
+            "The rest of DNAM ({} bytes) depends on the record's form version — preserved as-is.",
+            state.imgs_rest.len()
+        ));
+    });
+}
+
+/// Draw the Lighting (LGTM) editor body.
+fn draw_lgtm_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Lighting");
+        ui.add_space(4.0);
+        for (name, color) in [
+            ("Ambient Color", &mut state.lgtm_ambient_color),
+            ("Directional Color", &mut state.lgtm_directional_color),
+            ("Fog Color", &mut state.lgtm_fog_color),
+        ] {
+            ui.horizontal(|ui| {
+                ui.label(name);
+                for c in color.iter_mut() {
+                    ui.add(egui::DragValue::new(c).range(0..=255));
+                }
+            });
+        }
+        ui.horizontal(|ui| {
+            ui.label("Fog Near:");
+            ui.add(
+                egui::DragValue::new(&mut state.lgtm_fog_near)
+                    .speed(0.1)
+                    .range(-100000.0..=100000.0),
+            );
+            ui.separator();
+            ui.label("Fog Far:");
+            ui.add(
+                egui::DragValue::new(&mut state.lgtm_fog_far)
+                    .speed(0.1)
+                    .range(-100000.0..=100000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Directional Rotation XY:");
+            ui.add(egui::DragValue::new(&mut state.lgtm_directional_rotation_xy).range(-360..=360));
+            ui.separator();
+            ui.label("Directional Rotation Z:");
+            ui.add(egui::DragValue::new(&mut state.lgtm_directional_rotation_z).range(-360..=360));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Directional Fade:");
+            ui.add(
+                egui::DragValue::new(&mut state.lgtm_directional_fade)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+            ui.separator();
+            ui.label("Fog Clip Distance:");
+            ui.add(
+                egui::DragValue::new(&mut state.lgtm_fog_clip_distance)
+                    .speed(0.1)
+                    .range(-100000.0..=100000.0),
+            );
+            ui.separator();
+            ui.label("Fog Power:");
+            ui.add(
+                egui::DragValue::new(&mut state.lgtm_fog_power)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+    });
+}
+
+/// Draw the Load Screen (LSCR) editor body.
+fn draw_lscr_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Load Screen");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.lscr_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.lscr_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Load Screen Type (WMI1):");
+            let types = session.records_by_sig(*b"LSCT");
+            let mut fid = state.lscr_load_screen_type;
+            record_dropdown(ui, "lscr_type", &types, &mut fid);
+            state.lscr_load_screen_type = fid;
+        });
+        ui.label("Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.lscr_desc)
+                .desired_rows(6)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Locations (LNAM) — {}", state.lscr_locations.len()));
+        ui.add_space(4.0);
+        let mut remove_idx = None;
+        for (idx, loc) in state.lscr_locations.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("✖")
+                    .on_hover_text("Remove this location")
+                    .clicked()
+                {
+                    remove_idx = Some(idx);
+                }
+                ui.label(format!("#{}", idx + 1));
+                ui.label("Direct:");
+                ui.add(
+                    egui::TextEdit::singleline(
+                        &mut loc.direct.map(|v| format!("{v:08X}")).unwrap_or_default(),
+                    )
+                    .id_salt(format!("lscr_direct_{idx}"))
+                    .hint_text("00000000")
+                    .desired_width(100.0),
+                );
+                ui.label("World:");
+                ui.add(
+                    egui::TextEdit::singleline(
+                        &mut loc
+                            .indirect_world
+                            .map(|v| format!("{v:08X}"))
+                            .unwrap_or_default(),
+                    )
+                    .id_salt(format!("lscr_world_{idx}"))
+                    .hint_text("00000000")
+                    .desired_width(100.0),
+                );
+                ui.label("Grid X/Y:");
+                ui.add(egui::DragValue::new(&mut loc.indirect_grid_x).range(-32768..=32767));
+                ui.add(egui::DragValue::new(&mut loc.indirect_grid_y).range(-32768..=32767));
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.lscr_locations.remove(idx);
+        }
+    });
+}
+
+/// Draw the Load Screen Type (LSCT) editor body.
+fn draw_lsct_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Load Screen Type");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt("lsct_type")
+                .selected_text(
+                    LSCT_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.lsct_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in LSCT_TYPES.iter() {
+                        ui.selectable_value(&mut state.lsct_type, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("X:");
+            ui.add(egui::DragValue::new(&mut state.lsct_x).range(0..=10000));
+            ui.separator();
+            ui.label("Y:");
+            ui.add(egui::DragValue::new(&mut state.lsct_y).range(0..=10000));
+            ui.separator();
+            ui.label("Width:");
+            ui.add(egui::DragValue::new(&mut state.lsct_width).range(0..=10000));
+            ui.separator();
+            ui.label("Height:");
+            ui.add(egui::DragValue::new(&mut state.lsct_height).range(0..=10000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Orientation:");
+            ui.add(
+                egui::DragValue::new(&mut state.lsct_orientation)
+                    .speed(0.01)
+                    .range(-360.0..=360.0),
+            );
+            ui.separator();
+            ui.label("Stats:");
+            egui::ComboBox::from_id_salt("lsct_stats")
+                .selected_text(
+                    LSCT_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.lsct_stats)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in LSCT_TYPES.iter() {
+                        ui.selectable_value(&mut state.lsct_stats, *v, *name);
+                    }
+                });
+        });
+        for (label, font, color, alignment) in [
+            (
+                "Font 1",
+                &mut state.lsct_font1,
+                &mut state.lsct_font1_color,
+                &mut state.lsct_font1_alignment,
+            ),
+            (
+                "Font 2",
+                &mut state.lsct_font2,
+                &mut state.lsct_font2_color,
+                &mut state.lsct_font2_alignment,
+            ),
+        ] {
+            ui.separator();
+            ui.strong(label);
+            ui.horizontal(|ui| {
+                ui.label("Font:");
+                egui::ComboBox::from_id_salt(format!("lsct_{label}"))
+                    .selected_text(
+                        LSCT_FONTS
+                            .iter()
+                            .find(|(v, _)| *v == *font)
+                            .map(|(_, n)| *n)
+                            .unwrap_or("Custom"),
+                    )
+                    .show_ui(ui, |ui| {
+                        for (v, name) in LSCT_FONTS.iter() {
+                            ui.selectable_value(font, *v, *name);
+                        }
+                    });
+                ui.separator();
+                ui.label("Alignment:");
+                egui::ComboBox::from_id_salt(format!("lsct_{label}_align"))
+                    .selected_text(
+                        LSCT_ALIGNMENTS
+                            .iter()
+                            .find(|(v, _)| *v == *alignment)
+                            .map(|(_, n)| *n)
+                            .unwrap_or("Custom"),
+                    )
+                    .show_ui(ui, |ui| {
+                        for (v, name) in LSCT_ALIGNMENTS.iter() {
+                            ui.selectable_value(alignment, *v, *name);
+                        }
+                    });
+            });
+            ui.horizontal(|ui| {
+                ui.label("Color:");
+                for c in color.iter_mut() {
+                    ui.add(egui::DragValue::new(c).speed(0.01).range(0.0..=255.0));
+                }
+            });
+        }
+    });
+}
+
+/// Draw the Mission Icon (MICN) editor body.
+fn draw_micn_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Mission Icon");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.micn_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.micn_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+    });
+}
+
+/// Draw the Music (MUSC) editor body.
+fn draw_musc_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Music");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Filename (FNAM):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.musc_filename)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("db (ANAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.musc_db)
+                    .speed(0.01)
+                    .range(-100.0..=100.0),
+            );
+            ui.label("A positive value makes the music loop.");
+        });
+    });
+}
+
+/// Draw the Recipe Category (RCCT) editor body.
+fn draw_rcct_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Recipe Category");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in RCCT_FLAGS {
+                let mut set = (state.rcct_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.rcct_flags |= bit;
+                    } else {
+                        state.rcct_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.label(format!(
+            "Unknown flag bits: 0x{:02X}",
+            state.rcct_flags & !0x01
+        ));
+    });
+}
+
+/// Draw the Reputation (REPU) editor body.
+fn draw_repu_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Reputation");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Value (DATA):");
+            ui.add(
+                egui::DragValue::new(&mut state.repu_value)
+                    .speed(0.1)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.repu_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.repu_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+    });
+}
+
+/// Draw the Ragdoll (RGDL) editor body.
+fn draw_rgdl_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Ragdoll");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Version (NVER):");
+            ui.add(egui::DragValue::new(&mut state.rgdl_version).range(0..=1000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Dynamic Bone Count (DATA):");
+            ui.add(egui::DragValue::new(&mut state.rgdl_dynamic_bone_count).range(0..=1000));
+        });
+        for (label, value) in [
+            ("Feedback Enabled", &mut state.rgdl_feedback_enabled),
+            ("Foot IK Enabled", &mut state.rgdl_foot_ik_enabled),
+            ("Look IK Enabled", &mut state.rgdl_look_ik_enabled),
+            ("Grab IK Enabled", &mut state.rgdl_grab_ik_enabled),
+            ("Pose Matching", &mut state.rgdl_pose_matching),
+        ] {
+            ui.horizontal(|ui| {
+                ui.label(label);
+                ui.selectable_value(value, 0, "No");
+                ui.selectable_value(value, 1, "Yes");
+            });
+        }
+        ui.horizontal(|ui| {
+            ui.label("Actor Base (XNAM):");
+            let mut actors: Vec<(u32, String)> = session.records_by_sig(*b"CREA").to_vec();
+            actors.extend(session.records_by_sig(*b"NPC_").iter().cloned());
+            let mut fid = state.rgdl_actor_base;
+            record_dropdown(ui, "rgdl_actor_base", &actors, &mut fid);
+            state.rgdl_actor_base = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Body Part Data (TNAM):");
+            let bptds = session.records_by_sig(*b"BPTD");
+            let mut fid = state.rgdl_body_part_data;
+            record_dropdown(ui, "rgdl_bptd", &bptds, &mut fid);
+            state.rgdl_body_part_data = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Death Pose (ANAM):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.rgdl_death_pose)
+                    .desired_width(ui.available_width() - 160.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Feedback Dynamic Bones (RAFB) — {}",
+            state.rgdl_feedback_bones.len()
+        ));
+        ui.add_space(4.0);
+        let mut remove_idx = None;
+        for (idx, bone) in state.rgdl_feedback_bones.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui.button("✖").on_hover_text("Remove").clicked() {
+                    remove_idx = Some(idx);
+                }
+                ui.label(format!("#{}", idx + 1));
+                ui.add(egui::DragValue::new(bone).range(0..=65535));
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.rgdl_feedback_bones.remove(idx);
+        }
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Feedback Data (RAFD)");
+        ui.add_space(4.0);
+        for (label, value) in [
+            (
+                "Dynamic / Keyframe Blend Amount",
+                &mut state.rgdl_dynamic_keyframe_blend,
+            ),
+            ("Hierarchy Gain", &mut state.rgdl_hierarchy_gain),
+            ("Position Gain", &mut state.rgdl_position_gain),
+            ("Velocity Gain", &mut state.rgdl_velocity_gain),
+            ("Acceleration Gain", &mut state.rgdl_acceleration_gain),
+            ("Snap Gain", &mut state.rgdl_snap_gain),
+            ("Velocity Damping", &mut state.rgdl_velocity_damping),
+            (
+                "Snap Max Linear Velocity",
+                &mut state.rgdl_snap_max_linear_velocity,
+            ),
+            (
+                "Snap Max Angular Velocity",
+                &mut state.rgdl_snap_max_angular_velocity,
+            ),
+            (
+                "Snap Max Linear Distance",
+                &mut state.rgdl_snap_max_linear_distance,
+            ),
+            (
+                "Snap Max Angular Distance",
+                &mut state.rgdl_snap_max_angular_distance,
+            ),
+            (
+                "Position Max Linear Velocity",
+                &mut state.rgdl_position_max_linear_velocity,
+            ),
+            (
+                "Position Max Angular Velocity",
+                &mut state.rgdl_position_max_angular_velocity,
+            ),
+        ] {
+            ui.horizontal(|ui| {
+                ui.label(label);
+                ui.add(
+                    egui::DragValue::new(value)
+                        .speed(0.01)
+                        .range(-100000.0..=100000.0),
+                );
+            });
+        }
+        ui.horizontal(|ui| {
+            ui.label("Projectile Position Max Velocity:");
+            ui.add(
+                egui::DragValue::new(&mut state.rgdl_projectile_position_max_velocity)
+                    .range(-1000000..=1000000),
+            );
+            ui.separator();
+            ui.label("Melee Position Max Velocity:");
+            ui.add(
+                egui::DragValue::new(&mut state.rgdl_melee_position_max_velocity)
+                    .range(0..=1000000),
+            );
+        });
+        ui.label("Both velocities are divided by 1000 by the game.");
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Pose Matching Data (RAPS)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Match Bones:");
+            ui.add(egui::DragValue::new(&mut state.rgdl_match_bone1).range(0..=65535));
+            ui.add(egui::DragValue::new(&mut state.rgdl_match_bone2).range(0..=65535));
+            ui.add(egui::DragValue::new(&mut state.rgdl_match_bone3).range(0..=65535));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Flags:");
+            let mut disable = (state.rgdl_aps_flags & 0x01) != 0;
+            if ui.checkbox(&mut disable, "Disable On Move").changed() {
+                if disable {
+                    state.rgdl_aps_flags |= 0x01;
+                } else {
+                    state.rgdl_aps_flags &= !0x01;
+                }
+            }
+            ui.label(format!("0x{:02X}", state.rgdl_aps_flags));
+        });
+        for (label, value) in [
+            ("Motors Strength", &mut state.rgdl_motors_strength),
+            (
+                "Pose Activation Delay Time",
+                &mut state.rgdl_pose_activation_delay,
+            ),
+            (
+                "Match Error Allowance",
+                &mut state.rgdl_match_error_allowance,
+            ),
+            (
+                "Displacement To Disable",
+                &mut state.rgdl_displacement_to_disable,
+            ),
+        ] {
+            ui.horizontal(|ui| {
+                ui.label(label);
+                ui.add(
+                    egui::DragValue::new(value)
+                        .speed(0.01)
+                        .range(-100000.0..=100000.0),
+                );
+            });
+        }
+    });
+}
+
+/// Draw the Tree (TREE) editor body.
+fn draw_tree_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Tree");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Leaf Curvature (CNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_leaf_curvature)
+                    .speed(0.01)
+                    .range(-100.0..=100.0),
+            );
+            ui.separator();
+            ui.label("Min Leaf Angle:");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_min_leaf_angle)
+                    .speed(0.01)
+                    .range(-360.0..=360.0),
+            );
+            ui.separator();
+            ui.label("Max Leaf Angle:");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_max_leaf_angle)
+                    .speed(0.01)
+                    .range(-360.0..=360.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Branch Dimming:");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_branch_dimming)
+                    .speed(0.01)
+                    .range(0.0..=10.0),
+            );
+            ui.separator();
+            ui.label("Leaf Dimming:");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_leaf_dimming)
+                    .speed(0.01)
+                    .range(0.0..=10.0),
+            );
+            ui.separator();
+            ui.label("Shadow Radius:");
+            ui.add(egui::DragValue::new(&mut state.tree_shadow_radius).range(-10000..=10000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Rock Speed:");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_rock_speed)
+                    .speed(0.01)
+                    .range(0.0..=100.0),
+            );
+            ui.separator();
+            ui.label("Rustle Speed:");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_rustle_speed)
+                    .speed(0.01)
+                    .range(0.0..=100.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Billboard Width (BNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_billboard_width)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+            ui.separator();
+            ui.label("Height:");
+            ui.add(
+                egui::DragValue::new(&mut state.tree_billboard_height)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.tree_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.tree_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "SpeedTree Seeds (SNAM) — {}",
+            state.tree_seeds.len()
+        ));
+        ui.add_space(4.0);
+        let mut remove_idx = None;
+        for (idx, seed) in state.tree_seeds.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui.button("✖").on_hover_text("Remove").clicked() {
+                    remove_idx = Some(idx);
+                }
+                ui.label(format!("#{}", idx + 1));
+                ui.add(egui::DragValue::new(seed).range(0..=999999999));
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.tree_seeds.remove(idx);
+        }
+    });
+}
+
+/// Draw the Texture (TXST) editor body.
+fn draw_txst_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Texture");
+        ui.add_space(4.0);
+        const SIGS: [&str; 6] = ["TX00", "TX01", "TX02", "TX03", "TX04", "TX05"];
+        const LABELS: [&str; 6] = [
+            "Base Image / Transparency",
+            "Normal Map / Specular",
+            "Environment Map Mask",
+            "Glow Map",
+            "Parallax Map",
+            "Environment Map",
+        ];
+        for i in 0..6 {
+            ui.horizontal(|ui| {
+                ui.label(format!("{} ({})", LABELS[i], SIGS[i]));
+                if let Some(text) = state.txst_textures.get_mut(i) {
+                    ui.add(
+                        egui::TextEdit::singleline(text)
+                            .desired_width(ui.available_width() - 240.0),
+                    );
+                }
+            });
+        }
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Flags (DNAM):");
+            let mut no_spec = (state.txst_flags & 0x0001) != 0;
+            if ui.checkbox(&mut no_spec, "No Specular Map").changed() {
+                if no_spec {
+                    state.txst_flags |= 0x0001;
+                } else {
+                    state.txst_flags &= !0x0001;
+                }
+            }
+            ui.label(format!("0x{:04X}", state.txst_flags));
+        });
+    });
+
+    if state.raw_subs.contains_key(b"DODT") {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Decal Data (DODT)");
+            ui.add_space(4.0);
+            for (label, value) in [
+                ("Min Width", &mut state.txst_dodt_min_width),
+                ("Max Width", &mut state.txst_dodt_max_width),
+                ("Min Height", &mut state.txst_dodt_min_height),
+                ("Max Height", &mut state.txst_dodt_max_height),
+                ("Depth", &mut state.txst_dodt_depth),
+                ("Shininess", &mut state.txst_dodt_shininess),
+                ("Parallax Scale", &mut state.txst_dodt_parallax_scale),
+            ] {
+                ui.horizontal(|ui| {
+                    ui.label(label);
+                    ui.add(
+                        egui::DragValue::new(value)
+                            .speed(0.01)
+                            .range(-100000.0..=100000.0),
+                    );
+                });
+            }
+            ui.horizontal(|ui| {
+                ui.label("Parallax Passes:");
+                ui.add(egui::DragValue::new(&mut state.txst_dodt_parallax_passes).range(0..=255));
+                ui.separator();
+                ui.label("Flags:");
+                for (bit, name) in TXST_DODT_FLAGS {
+                    let mut set = (state.txst_dodt_flags & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            state.txst_dodt_flags |= bit;
+                        } else {
+                            state.txst_dodt_flags &= !bit;
+                        }
+                    }
+                }
+                ui.label(format!("0x{:02X}", state.txst_dodt_flags));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Color:");
+                for c in state.txst_dodt_color.iter_mut() {
+                    ui.add(egui::DragValue::new(c).range(0..=255));
+                }
+            });
+        });
+    }
+}
+
+/// Draw the Voice Type (VTYP) editor body.
+fn draw_vtyp_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Voice Type");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in VTYP_FLAGS {
+                let mut set = (state.vtyp_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.vtyp_flags |= bit;
+                    } else {
+                        state.vtyp_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.label(format!(
+            "Unknown flag bits: 0x{:02X}",
+            state.vtyp_flags & !0x03
+        ));
+    });
+}
+
+/// Draw the Talking Activator (TACT) editor body.
+fn draw_tact_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Talking Activator");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Looping Sound (SNAM):");
+            let sounds = session.records_by_sig(*b"SOUN");
+            let mut fid = state.tact_looping_sound;
+            record_dropdown(ui, "tact_snam", &sounds, &mut fid);
+            state.tact_looping_sound = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Voice Type (VNAM):");
+            let vtypes = session.records_by_sig(*b"VTYP");
+            let mut fid = state.tact_voice_type;
+            record_dropdown(ui, "tact_vnam", &vtypes, &mut fid);
+            state.tact_voice_type = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Radio Template (INAM):");
+            let sounds = session.records_by_sig(*b"SOUN");
+            let mut fid = state.tact_radio_template;
+            record_dropdown(ui, "tact_inam", &sounds, &mut fid);
+            state.tact_radio_template = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Script (SCRI):");
+            let scripts = session.records_by_sig(*b"SCPT");
+            let mut fid = state.tact_script;
+            record_dropdown(ui, "tact_scri", &scripts, &mut fid);
+            state.tact_script = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Destruction Data — {} stage(s)",
+            state.tact_destruction.len()
+        ));
+        ui.add_space(4.0);
+        for (i, stage) in state.tact_destruction.iter().enumerate() {
+            ui.label(format!(
+                "  Stage {}: {} — destruction flag word 0x{:02X}",
+                i + 1,
+                stage.model,
+                stage.flags
+            ));
+        }
+    });
+}
+
+/// Draw the Static Collision (SCOL) editor body.
+fn draw_scol_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Static Collision");
+        ui.add_space(4.0);
+        ui.label(format!("{} collision part(s)", state.scol_parts.len()));
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.scol_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    for (idx, part) in state.scol_parts.iter_mut().enumerate() {
+        ui.add_space(4.0);
+        ui.group(|ui| {
+            ui.strong(format!("Part {}", idx + 1));
+            ui.horizontal(|ui| {
+                ui.label("Static (ONAM):");
+                ui.add(
+                    egui::TextEdit::singleline(
+                        &mut part
+                            .static_ref
+                            .map(|v| format!("{v:08X}"))
+                            .unwrap_or_default(),
+                    )
+                    .id_salt(format!("scol_onam_{idx}"))
+                    .hint_text("00000000")
+                    .desired_width(120.0),
+                );
+                ui.label(format!("{} placement(s)", part.placements.len()));
+            });
+            let mut remove_idx = None;
+            for (pidx, p) in part.placements.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button("✖").on_hover_text("Remove").clicked() {
+                        remove_idx = Some(pidx);
+                    }
+                    ui.label(format!("P{}", pidx + 1));
+                    const AXES: [&str; 7] = ["X", "Y", "Z", "RX", "RY", "RZ", "S"];
+                    for axis in 0..7 {
+                        ui.label(AXES[axis]);
+                        ui.add(
+                            egui::DragValue::new(&mut p[axis])
+                                .speed(0.01)
+                                .range(-100000.0..=100000.0),
+                        );
+                    }
+                });
+            }
+            if let Some(pidx) = remove_idx {
+                part.placements.remove(pidx);
+            }
+        });
+    }
+}
+
+/// Draw the Idle Animation (IDLE) editor body.
+fn draw_idle_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Idle Animation");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Parent Idle Animation (ANAM):");
+            let idles = session.records_by_sig(*b"IDLE");
+            let mut fid = state.idle_parent;
+            record_dropdown(ui, "idle_parent", &idles, &mut fid);
+            state.idle_parent = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Previous Sibling (ANAM):");
+            let idles = session.records_by_sig(*b"IDLE");
+            let mut fid = state.idle_previous_sibling;
+            record_dropdown(ui, "idle_previous", &idles, &mut fid);
+            state.idle_previous_sibling = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Animation Group Section (DATA):");
+            egui::ComboBox::from_id_salt("idle_group")
+                .selected_text(
+                    IDLE_GROUPS
+                        .iter()
+                        .find(|(v, _)| *v == state.idle_group_section)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in IDLE_GROUPS.iter() {
+                        ui.selectable_value(&mut state.idle_group_section, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Looping Min:");
+            ui.add(egui::DragValue::new(&mut state.idle_looping_min).range(0..=255));
+            ui.separator();
+            ui.label("Looping Max:");
+            ui.add(egui::DragValue::new(&mut state.idle_looping_max).range(0..=255));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Replay Delay:");
+            ui.add(egui::DragValue::new(&mut state.idle_replay_delay).range(-32768..=32767));
+            ui.separator();
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.idle_flags).range(0..=255));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.idle_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Conditions (CTDA) — {}",
+            state.idle_conditions.len()
+        ));
+        ui.add_space(4.0);
+        for (idx, cond) in state.idle_conditions.iter_mut().enumerate() {
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!("Condition {}", idx + 1));
+                let mut combine = (cond.cond_type & 0x01) != 0;
+                if ui.checkbox(&mut combine, "OR").changed() {
+                    if combine {
+                        cond.cond_type |= 0x01;
+                    } else {
+                        cond.cond_type &= !0x01;
+                    }
+                }
+                let mut on_target = (cond.cond_type & 0x02) != 0;
+                if ui.checkbox(&mut on_target, "Run On Target").changed() {
+                    if on_target {
+                        cond.cond_type |= 0x02;
+                    } else {
+                        cond.cond_type &= !0x02;
+                    }
+                }
+                let mut use_global = (cond.cond_type & 0x04) != 0;
+                if ui.checkbox(&mut use_global, "Use Global").changed() {
+                    if use_global {
+                        cond.cond_type |= 0x04;
+                    } else {
+                        cond.cond_type &= !0x04;
+                    }
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Comparison:");
+                egui::ComboBox::from_id_salt(format!("idle_ctda_cmp_{idx}"))
+                    .selected_text(
+                        CTDA_COMPARISONS
+                            .iter()
+                            .find(|(mask, _)| cond.cond_type & mask == *mask)
+                            .map(|(_, n)| *n)
+                            .unwrap_or("Custom"),
+                    )
+                    .show_ui(ui, |ui| {
+                        // The comparison bits are masked out and the new
+                        // comparison put in, so the flag bits below stay.
+                        let base = cond.cond_type & !0xE0;
+                        for (mask, name) in CTDA_COMPARISONS.iter() {
+                            ui.selectable_value(&mut cond.cond_type, base | mask, *name);
+                        }
+                    });
+                ui.separator();
+                ui.label("Function:");
+                ui.add(egui::DragValue::new(&mut cond.function).range(0..=999));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Comparison Value:");
+                ui.add(egui::DragValue::new(&mut cond.comparison_value).range(0..=u32::MAX));
+                ui.separator();
+                ui.label("Reference:");
+                let mut reference = cond.reference.unwrap_or(0);
+                ui.add(egui::DragValue::new(&mut reference).range(0..=u32::MAX));
+                cond.reference = Some(reference);
+            });
+            ui.horizontal(|ui| {
+                ui.label("Parameter 1:");
+                ui.add(egui::DragValue::new(&mut cond.parameter1).range(0..=u32::MAX));
+                ui.separator();
+                ui.label("Parameter 2:");
+                ui.add(egui::DragValue::new(&mut cond.parameter2).range(0..=u32::MAX));
+                ui.separator();
+                ui.label("Run On:");
+                ui.add(egui::DragValue::new(&mut cond.run_on).range(0..=u32::MAX));
+            });
+        }
+    });
+}
+
+/// Draw the Media Set (MSET) editor body.
+fn draw_mset_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Media Set");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type (NAM1):");
+            egui::ComboBox::from_id_salt("mset_type")
+                .selected_text(
+                    MSET_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.mset_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in MSET_TYPES.iter() {
+                        ui.selectable_value(&mut state.mset_type, *v, *name);
+                    }
+                });
+        });
+
+        const TRACK_LABELS: [&str; 6] = [
+            "Loop / Battle / Day Outer",
+            "Explore / Day Middle",
+            "Suspense / Day Inner",
+            "Night Outer",
+            "Night Middle",
+            "Night Inner",
+        ];
+        for (i, label) in TRACK_LABELS.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("{}:", label));
+                if let Some(text) = state.mset_tracks.get_mut(i) {
+                    ui.add(
+                        egui::TextEdit::singleline(text)
+                            .desired_width(ui.available_width() - 220.0),
+                    );
+                }
+                if let Some(level) = state.mset_levels.get_mut(i) {
+                    ui.add(egui::DragValue::new(level).speed(0.1).range(-100.0..=100.0));
+                }
+            });
+        }
+
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Enable Flags (PNAM):");
+            for (bit, name) in MSET_ENABLE_FLAGS {
+                let mut set = (state.mset_enable_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.mset_enable_flags |= bit;
+                    } else {
+                        state.mset_enable_flags &= !bit;
+                    }
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Wait Time / Min Time On (DNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.mset_wait_time)
+                    .speed(0.1)
+                    .range(-1000.0..=1000.0),
+            );
+            ui.separator();
+            ui.label("Loop Fade Out (ENAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.mset_loop_fade_out)
+                    .speed(0.1)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Recovery Time (FNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.mset_recovery_time)
+                    .speed(0.1)
+                    .range(-1000.0..=1000.0),
+            );
+            ui.separator();
+            ui.label("Nighttime Max (GNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.mset_nighttime_max)
+                    .speed(0.1)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Intro / Daytime (HNAM):");
+            let sounds = session.records_by_sig(*b"SOUN");
+            let mut fid = state.mset_intro;
+            record_dropdown(ui, "mset_hnam", &sounds, &mut fid);
+            state.mset_intro = fid;
+            ui.separator();
+            ui.label("Outro / Nighttime (INAM):");
+            let mut fid = state.mset_outro;
+            record_dropdown(ui, "mset_inam", &sounds, &mut fid);
+            state.mset_outro = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Boundaries (JNAM) — {}",
+            state.mset_boundaries.len()
+        ));
+        ui.add_space(4.0);
+        let mut remove_idx = None;
+        for (idx, boundary) in state.mset_boundaries.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                if ui.button("✖").on_hover_text("Remove").clicked() {
+                    remove_idx = Some(idx);
+                }
+                ui.label(format!("#{}", idx + 1));
+                ui.add(egui::DragValue::new(boundary).speed(0.1).range(0.0..=100.0));
+            });
+        }
+        if let Some(idx) = remove_idx {
+            state.mset_boundaries.remove(idx);
+        }
+    });
+}
+
+/// Draw the Movable Static (MSTT) editor body.
+fn draw_mstt_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Movable Static");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Unknown (DATA):");
+            ui.add(egui::DragValue::new(&mut state.mstt_data).range(0..=255));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Sound (SNAM):");
+            let sounds = session.records_by_sig(*b"SOUN");
+            let mut fid = state.mstt_sound;
+            record_dropdown(ui, "mstt_snam", &sounds, &mut fid);
+            state.mstt_sound = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.mstt_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Destruction Data — {} stage(s)",
+            state.mstt_destruction.len()
+        ));
+        ui.add_space(4.0);
+        for (i, stage) in state.mstt_destruction.iter().enumerate() {
+            ui.label(format!(
+                "  Stage {}: {} — destruction flag word 0x{:02X}",
+                i + 1,
+                stage.model,
+                stage.flags
+            ));
+        }
+    });
+}
+
+/// Draw the Water (PWAT) editor body.
+fn draw_pwat_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Water");
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            for (bit, name) in PWAT_FLAGS {
+                let mut set = (state.pwat_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.pwat_flags |= bit;
+                    } else {
+                        state.pwat_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Water (DNAM):");
+            let waters = session.records_by_sig(*b"WATR");
+            let mut fid = state.pwat_water;
+            record_dropdown(ui, "pwat_water", &waters, &mut fid);
+            state.pwat_water = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.pwat_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+}
+
+/// Draw the Form List (FLST) editor body.
+fn draw_flst_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Form List");
+        ui.add_space(4.0);
+        ui.label(format!("{} entry/entries", state.flst_entries.len()));
+    });
+
+    // The list holds FormIDs of any record type, so each entry is edited
+    // as a raw FormID and its name is looked up in the session.
+    let mut remove_idx = None;
+    for (idx, entry) in state.flst_entries.iter_mut().enumerate() {
+        ui.horizontal(|ui| {
+            if ui.button("✖").on_hover_text("Remove").clicked() {
+                remove_idx = Some(idx);
+            }
+            ui.label(format!("#{}", idx + 1));
+            let mut hex = format!("{entry:08X}");
+            if ui
+                .add(
+                    egui::TextEdit::singleline(&mut hex)
+                        .id_salt(format!("flst_{idx}"))
+                        .hint_text("00000000")
+                        .desired_width(110.0),
+                )
+                .changed()
+            {
+                if let Ok(v) = u32::from_str_radix(hex.trim(), 16) {
+                    *entry = v;
+                }
+            }
+        });
+    }
+    if let Some(idx) = remove_idx {
+        state.flst_entries.remove(idx);
+    }
+}
+
+/// Draw the Leveled Item (LVLI) editor body.
+/// Draw the Leveled NPC (LVLN) editor body.
+/// Draw the Message (MESG) editor body.
+fn draw_mesg_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Message");
+        ui.add_space(4.0);
+        ui.label("Description (DESC):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.mesg_desc)
+                .desired_rows(4)
+                .desired_width(ui.available_width() - 20.0),
+        );
+        ui.horizontal(|ui| {
+            ui.label("Icon (INAM):");
+            let icons = session.records_by_sig(*b"MICN");
+            let mut fid = state.mesg_icon;
+            record_dropdown(ui, "mesg_icon", &icons, &mut fid);
+            state.mesg_icon = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Flags (DNAM):");
+            for (bit, name) in MESG_FLAGS {
+                let mut set = (state.mesg_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.mesg_flags |= bit;
+                    } else {
+                        state.mesg_flags &= !bit;
+                    }
+                }
+            }
+            ui.label(format!("0x{:08X}", state.mesg_flags));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Display Time (TNAM):");
+            ui.add(egui::DragValue::new(&mut state.mesg_display_time).range(0..=100000));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Menu Buttons — {}", state.mesg_buttons.len()));
+        ui.add_space(4.0);
+        for (idx, button) in state.mesg_buttons.iter_mut().enumerate() {
+            ui.separator();
+            ui.horizontal(|ui| {
+                ui.label(format!("Button {}", idx + 1));
+                ui.add(
+                    egui::TextEdit::singleline(&mut button.text)
+                        .desired_width(ui.available_width() - 160.0),
+                );
+            });
+            ui.label(format!("{} condition(s)", button.conditions.len()));
+        }
+    });
+}
+
+/// Draw the Miscellaneous (MISC) editor body.
+fn draw_misc_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Miscellaneous");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Value (DATA):");
+            ui.add(egui::DragValue::new(&mut state.misc_value).range(-1000000..=1000000));
+            ui.separator();
+            ui.label("Weight:");
+            ui.add(
+                egui::DragValue::new(&mut state.misc_weight)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.misc_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.misc_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Script (SCRI):");
+            let scripts = session.records_by_sig(*b"SCPT");
+            let mut fid = state.misc_script;
+            record_dropdown(ui, "misc_scri", &scripts, &mut fid);
+            state.misc_script = fid;
+        });
+        for (label, value) in [
+            ("Sound - Pick Up (YNAM)", &mut state.misc_pickup_sound),
+            ("Sound - Drop (ZNAM)", &mut state.misc_drop_sound),
+            ("Sound - Random (RNAM)", &mut state.misc_random_sound),
+        ] {
+            ui.horizontal(|ui| {
+                ui.label(label);
+                let sounds = session.records_by_sig(*b"SOUN");
+                let mut fid = *value;
+                record_dropdown(ui, label, &sounds, &mut fid);
+                *value = fid;
+            });
+        }
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.misc_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Destruction Data — {} stage(s)",
+            state.misc_destruction.len()
+        ));
+        ui.add_space(4.0);
+        for (i, stage) in state.misc_destruction.iter().enumerate() {
+            ui.label(format!(
+                "  Stage {}: {} — destruction flag word 0x{:02X}",
+                i + 1,
+                stage.model,
+                stage.flags
+            ));
+        }
+    });
+}
+
+/// Draw the Spell (SPEL) editor body.
+fn draw_spel_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Spell");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type (SPIT):");
+            egui::ComboBox::from_id_salt("spel_type")
+                .selected_text(
+                    SPEL_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.spel_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in SPEL_TYPES.iter() {
+                        ui.selectable_value(&mut state.spel_type, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Cost:");
+            ui.add(egui::DragValue::new(&mut state.spel_cost).range(0..=1000000));
+            ui.separator();
+            ui.label("Level:");
+            ui.add(egui::DragValue::new(&mut state.spel_level).range(0..=1000));
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Flags:");
+            for (bit, name) in SPEL_FLAGS {
+                let mut set = (state.spel_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.spel_flags |= bit;
+                    } else {
+                        state.spel_flags &= !bit;
+                    }
+                }
+            }
+            ui.label(format!("0x{:02X}", state.spel_flags));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Effects — {}", state.spel_effects.len()));
+        ui.add_space(4.0);
+        for (idx, effect) in state.spel_effects.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("#{}", idx + 1));
+                ui.label("Effect (EFID):");
+                ui.add(
+                    egui::TextEdit::singleline(
+                        &mut effect
+                            .effect
+                            .map(|v| format!("{v:08X}"))
+                            .unwrap_or_default(),
+                    )
+                    .id_salt(format!("spel_efid_{idx}"))
+                    .hint_text("00000000")
+                    .desired_width(110.0),
+                );
+                ui.label(format!("{} parameter byte(s)", effect.parameters.len()));
+            });
+        }
+    });
+}
+
+/// Draw the Static (STAT) editor body.
+fn draw_stat_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Static");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Passthrough Sound (BRUS):");
+            egui::ComboBox::from_id_salt("stat_brus")
+                .selected_text(
+                    STAT_BUSHS
+                        .iter()
+                        .find(|(v, _)| *v == state.stat_passthrough)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in STAT_BUSHS.iter() {
+                        ui.selectable_value(&mut state.stat_passthrough, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Sound - Looping / Random (RNAM):");
+            let sounds = session.records_by_sig(*b"SOUN");
+            let mut fid = state.stat_looping_sound;
+            record_dropdown(ui, "stat_rnam", &sounds, &mut fid);
+            state.stat_looping_sound = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.stat_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+}
+
 /// Draw the Challenge (CHAL) editor body.
 fn draw_chal_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.group(|ui| {
@@ -10613,12 +15001,78 @@ fn draw_cpth_ui(
 
     ui.add_space(6.0);
     ui.group(|ui| {
-        ui.strong(format!("Conditions (CTDA) — {}", state.cpth_conditions.len()));
+        ui.strong(format!(
+            "Conditions (CTDA) — {}",
+            state.cpth_conditions.len()
+        ));
         ui.add_space(4.0);
-        ui.label("The conditions are shown as raw bytes: the editor does not decode a condition's fields.");
-        for (idx, cond) in state.cpth_conditions.iter().enumerate() {
-            let hex: String = cond.data.iter().map(|b| format!("{b:02X}")).collect();
-            ui.label(format!("#{idx}: {hex}"));
+        for (idx, cond) in state.cpth_conditions.iter_mut().enumerate() {
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!("Condition {}", idx + 1));
+                let mut combine = (cond.cond_type & 0x01) != 0;
+                if ui.checkbox(&mut combine, "OR").changed() {
+                    if combine {
+                        cond.cond_type |= 0x01;
+                    } else {
+                        cond.cond_type &= !0x01;
+                    }
+                }
+                let mut on_target = (cond.cond_type & 0x02) != 0;
+                if ui.checkbox(&mut on_target, "Run On Target").changed() {
+                    if on_target {
+                        cond.cond_type |= 0x02;
+                    } else {
+                        cond.cond_type &= !0x02;
+                    }
+                }
+                let mut use_global = (cond.cond_type & 0x04) != 0;
+                if ui.checkbox(&mut use_global, "Use Global").changed() {
+                    if use_global {
+                        cond.cond_type |= 0x04;
+                    } else {
+                        cond.cond_type &= !0x04;
+                    }
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Comparison:");
+                egui::ComboBox::from_id_salt(format!("ctda_cmp_{idx}"))
+                    .selected_text(
+                        CTDA_COMPARISONS
+                            .iter()
+                            .find(|(mask, _)| cond.cond_type & mask == *mask)
+                            .map(|(_, n)| *n)
+                            .unwrap_or("Custom"),
+                    )
+                    .show_ui(ui, |ui| {
+                        let base = cond.cond_type & !0xE0;
+                        for (mask, name) in CTDA_COMPARISONS.iter() {
+                            ui.selectable_value(&mut cond.cond_type, base | mask, *name);
+                        }
+                    });
+                ui.separator();
+                ui.label("Function:");
+                ui.add(egui::DragValue::new(&mut cond.function).range(0..=999));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Comparison Value:");
+                ui.add(egui::DragValue::new(&mut cond.comparison_value).range(0..=u32::MAX));
+                ui.separator();
+                ui.label("Reference:");
+                ui.add(egui::DragValue::new(&mut cond.reference.unwrap_or(0)).range(0..=u32::MAX));
+                cond.reference = Some(cond.reference.unwrap_or(0));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Parameter 1:");
+                ui.add(egui::DragValue::new(&mut cond.parameter1).range(0..=u32::MAX));
+                ui.separator();
+                ui.label("Parameter 2:");
+                ui.add(egui::DragValue::new(&mut cond.parameter2).range(0..=u32::MAX));
+                ui.separator();
+                ui.label("Run On:");
+                ui.add(egui::DragValue::new(&mut cond.run_on).range(0..=u32::MAX));
+            });
         }
     });
 }
