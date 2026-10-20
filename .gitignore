@@ -30,3 +30,8 @@ IDEA.md
 # Editor / OS cruft
 .DS_Store
 *.swp
+
+# Git worktrees used for parallel feature branches. Each holds a full checkout
+# plus a target/ directory, so committing one would add gigabytes of duplicate
+# build output and a second copy of the repository.
+.worktrees/
