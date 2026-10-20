@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/bsa105"]
 
 [workspace.package]
 version = "0.1.0"

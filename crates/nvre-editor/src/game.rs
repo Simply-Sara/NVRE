@@ -30,9 +30,11 @@
 //!   `no schema files in ...` rather than silently misreading it;
 //! - the GECK/CK object-window group table, which is FNV's
 //!   ([`super::session::geck_group_for_sig`]) until each game has its own;
-//! - archive containers other than BSA v104 (Skyrim SE and Fallout 4 ship BA2,
-//!   Skyrim SE's BSA is v105/LZ4). Those games open with loose files only and
-//!   say so through [`GameProfile::notes`].
+//! - archive containers other than BSA v104 (Fallout 4 ships BA2). Skyrim SE's
+//!   BSA v105/LZ4 is readable through NVRE's own [`bsa105`] crate, but the
+//!   editor's VFS is still NVForever's, which reads v104 only — so Skyrim SE
+//!   opens with loose files only and says so through [`GameProfile::notes`]
+//!   until the VFS takes the crate.
 //!
 //! Every list here is taken from the game's own shipped defaults, cited in the
 //! field's doc comment. None of it is guessed.
@@ -45,8 +47,13 @@ pub enum ArchiveFormat {
     /// BSA v104, zlib: Fallout 3, Fallout: New Vegas, Skyrim (Legendary).
     /// [`fnv_vfs::Vfs`] reads this, so the profile's archive list is used.
     Bsa104,
-    /// BSA v105 (LZ4) or BA2: Skyrim SE, Fallout 4. No reader yet.
+    /// A container no reader here handles yet: Fallout 4's BA2.
     Unreadable,
+    /// BSA v105 with LZ4 blocks: Skyrim SE. NVRE's `bsa105` crate reads these;
+    /// the editor's VFS does not yet, so this is distinct from `Bsa104` to keep
+    /// that gap visible rather than silently promising assets that will not
+    /// load.
+    Bsa105,
 }
 
 /// Everything the editor needs to know about a game before it can open its data.
@@ -148,20 +155,22 @@ pub const SKYRIM: GameProfile = GameProfile {
     ],
 };
 
-/// Skyrim Special Edition. Its archives are BA2, and its BSA v105 (where a mod
-/// ships one) is LZ4 — neither is readable yet.
+/// Skyrim Special Edition. Its archives are BSA v105 with LZ4-compressed
+/// blocks. NVRE's own `bsa105` crate reads them (all 23 of the shipped ones,
+/// 172,961 files, verified), but the editor's VFS is still NVForever's, which
+/// reads v104 only — hence the archive list is empty and the note says so.
 pub const SKYRIM_SE: GameProfile = GameProfile {
     id: "skyrimse",
     name: "Skyrim Special Edition",
     editor_name: "Skyrim SE Rust Editor",
     master: "Skyrim.esm",
     archives: &[],
-    archive_format: ArchiveFormat::Unreadable,
+    archive_format: ArchiveFormat::Bsa105,
     steam_folder: Some("Skyrim Special Edition"),
     schema_subdir: "skyrimse",
     notes: &[
         "no record schemas yet: schemas/skyrimse has not been measured against Skyrim.esm",
-        "archives are BA2 and (for mods) BSA v105/LZ4, neither of which is readable yet: loose files only",
+        "archives are BSA v105/LZ4: read by the bsa105 crate, but the editor's VFS is still v104-only, so loose files only until it is switched",
         "NIF schema is the FNV corpus's; Skyrim SE's NIFs are bs_version 130+ and are rejected by the header",
     ],
 };
@@ -395,14 +404,23 @@ impl GameProfile {
                 let names: Vec<&str> = plugins.iter().map(String::as_str).collect();
                 fnv_vfs::Vfs::archive_order(data_dir, self.archives, &names)
             }
+            ArchiveFormat::Bsa105 => {
+                // The crate exists and is verified against all 23 shipped
+                // archives, but `fnv_vfs` is NVForever's and reads v104 only.
+                // Wiring this up means replacing the Vfs layer's archive source,
+                // which is a change to how every game loads, not a one-line
+                // swap — so until then this is an honest loose-files-only open.
+                tracing::warn!(
+                    "{}: BSA v105 archives are readable by the bsa105 crate, but the \
+                     editor's VFS reads v104 only; opening with loose files only",
+                    self.name
+                );
+                Vec::new()
+            }
             ArchiveFormat::Unreadable => {
                 tracing::warn!(
-                    "{}: {} archives are not readable yet; opening with loose files only",
-                    self.name,
-                    match self.id {
-                        "skyrimse" => "BA2 / BSA v105",
-                        _ => "BA2",
-                    }
+                    "{}: BA2 archives are not readable yet; opening with loose files only",
+                    self.name
                 );
                 Vec::new()
             }

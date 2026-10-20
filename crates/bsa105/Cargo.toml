@@ -1,0 +1,30 @@
+[package]
+name = "bsa105"
+description = "Reader for Bethesda BSA v105 (Skyrim Special Edition): the v104 layout with two extra padding words per folder record, and LZ4-framed file blocks"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+# NVRE's own crate, not a fork. NVForever's fnv-bsa reads v104 only and
+# hard-rejects anything else (`if header.version != 104`), and it is not NVRE's
+# to extend — so this crate stands beside it and the workspace's `[patch]`
+# decides which one a consumer resolves.
+#
+# The diff from v104 is small and is documented rather than guessed at:
+#   * a folder record gains a u32 after `count` and a u32 after `offset`
+#     [documented: UESP, Skyrim Mod:Archive File Format, "Folder Record"];
+#   * a compressed file block's payload is an LZ4 frame where v104's is zlib
+#     [documented: same page, "Compressed File block"].
+# Everything else — header, file record, name block, flag bits, hash — is
+# v104's, and is restated here only because this crate does not depend on
+# fnv-bsa.
+
+[dependencies]
+fnv-util = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+flate2 = "1"
+lz4_flex = { version = "0.14", default-features = false, features = ["frame", "std"] }
+thiserror = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+proptest = "1"
