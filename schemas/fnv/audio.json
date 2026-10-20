@@ -1,197 +1,200 @@
 {
  "format": "fnv.schema/1",
  "records": {
-  "MUSC": {
-   "name": "Music Type",
+  "ALOC": {
    "confidence": "documented",
+   "name": "Media Location Controller",
    "subrecords": {
     "FNAM": {
-     "name": "FileName",
-     "type": "zstring",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MUSC record"
-    },
-    "ANAM": {
-     "name": "dB (positive = Loop)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MUSC record"
-    }
-   }
-  },
-  "ASPC": {
-   "name": "Acoustic Space",
-   "confidence": "documented",
-   "subrecords": {
-    "SNAM": {
-     "name": "Sound",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ASPC record: five in a row, by position Dawn / Default Loop, Afternoon, Dusk, Night, Walla (SOUN or null)"
-    },
-    "WNAM": {
-     "name": "Walla Trigger Count",
-     "type": "u32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ASPC record"
-    },
-    "RDAT": {
-     "name": "Use Sound from Region (Interiors Only)",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ASPC record"
-    },
-    "ANAM": {
-     "name": "Environment Type",
-     "type": {
-      "enum": "u32",
-      "values": {
-       "0": "None",
-       "1": "Default",
-       "2": "Generic",
-       "3": "Padded Cell",
-       "4": "Room",
-       "5": "Bathroom",
-       "6": "Livingroom",
-       "7": "Stone Room",
-       "8": "Auditorium",
-       "9": "Concerthall",
-       "10": "Cave",
-       "11": "Arena",
-       "12": "Hangar",
-       "13": "Carpeted Hallway",
-       "14": "Hallway",
-       "15": "Stone Corridor",
-       "16": "Alley",
-       "17": "Forest",
-       "18": "City",
-       "19": "Mountains",
-       "20": "Quarry",
-       "21": "Plain",
-       "22": "Parkinglot",
-       "23": "Sewerpipe",
-       "24": "Underwater",
-       "25": "Small Room",
-       "26": "Medium Room",
-       "27": "Large Room",
-       "28": "Medium Hall",
-       "29": "Large Hall",
-       "30": "Plate"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ASPC record"
-    },
-    "INAM": {
-     "name": "Is Interior",
-     "type": "u32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ASPC record"
-    }
-   }
-  },
-  "ALOC": {
-   "name": "Media Location Controller",
-   "confidence": "documented",
-   "subrecords": {
-    "NAM1": {
-     "name": "Flags and Enums, messily combined",
-     "type": "bytes",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record"
-    },
-    "NAM2": {
-     "name": "unknown_nam2",
-     "type": "bytes",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbUnknown)"
-    },
-    "NAM3": {
-     "name": "unknown_nam3",
-     "type": "bytes",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbUnknown)"
-    },
-    "NAM4": {
-     "name": "Location Delay",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record"
-    },
-    "NAM5": {
-     "name": "Day Start",
-     "type": "u32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbAlocTime: the value over 256 is the fraction of a day)"
-    },
-    "NAM6": {
-     "name": "Night Start",
-     "type": "u32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbAlocTime: the value over 256 is the fraction of a day)"
-    },
-    "NAM7": {
-     "name": "Retrigger Delay",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record"
-    },
-    "HNAM": {
-     "name": "Neutral Set",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)"
-    },
-    "ZNAM": {
-     "name": "Ally Set",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)"
-    },
-    "XNAM": {
-     "name": "Friend Set",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)"
-    },
-    "YNAM": {
-     "name": "Enemy Set",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)"
-    },
-    "LNAM": {
-     "name": "Location Set",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)"
+     "name": "unknown_fnam",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbUnknown)",
+     "type": "bytes"
     },
     "GNAM": {
-     "name": "Battle Set",
-     "type": "formid",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)"
+     "name": "Battle Set",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)",
+     "type": "formid"
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Neutral Set",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)",
+     "type": "formid"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Location Set",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)",
+     "type": "formid"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Flags and Enums, messily combined",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record",
+     "type": "bytes"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "unknown_nam2",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbUnknown)",
+     "type": "bytes"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "unknown_nam3",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbUnknown)",
+     "type": "bytes"
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "Location Delay",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record",
+     "type": "f32"
+    },
+    "NAM5": {
+     "confidence": "documented",
+     "name": "Day Start",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbAlocTime: the value over 256 is the fraction of a day)",
+     "type": "u32"
+    },
+    "NAM6": {
+     "confidence": "documented",
+     "name": "Night Start",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbAlocTime: the value over 256 is the fraction of a day)",
+     "type": "u32"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Retrigger Delay",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record",
+     "type": "f32"
     },
     "RNAM": {
+     "confidence": "documented",
      "name": "Conditional Faction",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record"
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record",
+     "type": "formid"
     },
-    "FNAM": {
-     "name": "unknown_fnam",
-     "type": "bytes",
+    "XNAM": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ALOC record (wbUnknown)"
+     "name": "Friend Set",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)",
+     "type": "formid"
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Enemy Set",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Ally Set",
+     "note": "xEdit wbDefinitionsFNV.pas ALOC record (repeated; MSET)",
+     "type": "formid"
     }
    }
   },
   "MSET": {
-   "name": "Media Set",
    "confidence": "documented",
+   "name": "Media Set",
    "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Night Outer dB (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Night Middle dB (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Night Inner dB (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "unknown_data",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record (wbUnknown)",
+     "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Wait Time (B) / Minimum Time On (D,L) / Daytime Min (I)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "ENAM": {
+     "confidence": "documented",
+     "name": "Loop Fade Out (B) / Looping/Random Crossfade Overlap (D,L) / Nighttime Min (I)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Recovery Time (B) / Layer Crossfade Time (D,L) / Daytime Max (I)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Nighttime Max (I)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Intro (B,D) / Daytime (I)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record (SOUN)",
+     "type": "formid"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Outro (B,D) / Nighttime (I)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record (SOUN)",
+     "type": "formid"
+    },
+    "JNAM": {
+     "confidence": "documented",
+     "name": "Day Outer Boundary % (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "KNAM": {
+     "confidence": "documented",
+     "name": "Day Middle Boundary % (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Day Inner Boundary % (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Night Outer Boundary % (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Suspense dB (D) / Day Inner dB (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
+    },
     "NAM1": {
+     "confidence": "documented",
      "name": "Type",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
      "type": {
       "enum": "i32",
       "values": {
@@ -201,122 +204,73 @@
        "2": "Dungeon Set",
        "3": "Incidental Set"
       }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     }
     },
     "NAM2": {
-     "name": "Loop (B) / Battle (D) / Day Outer (L)",
-     "type": "zstring",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Loop (B) / Battle (D) / Day Outer (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "zstring"
     },
     "NAM3": {
-     "name": "Explore (D) / Day Middle (L)",
-     "type": "zstring",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Explore (D) / Day Middle (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "zstring"
     },
     "NAM4": {
-     "name": "Suspense (D) / Day Inner (L)",
-     "type": "zstring",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Suspense (D) / Day Inner (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "zstring"
     },
     "NAM5": {
-     "name": "Night Outer (L)",
-     "type": "zstring",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Night Outer (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "zstring"
     },
     "NAM6": {
-     "name": "Night Middle (L)",
-     "type": "zstring",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Night Middle (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "zstring"
     },
     "NAM7": {
-     "name": "Night Inner (L)",
-     "type": "zstring",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Night Inner (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "zstring"
     },
     "NAM8": {
-     "name": "Loop dB (B) / Battle dB (D) / Day Outer dB (L)",
-     "type": "f32",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Loop dB (B) / Battle dB (D) / Day Outer dB (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
     },
     "NAM9": {
+     "confidence": "documented",
      "name": "Explore dB (D) / Day Middle dB (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "NAM0": {
-     "name": "Suspense dB (D) / Day Inner dB (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "ANAM": {
-     "name": "Night Outer dB (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "BNAM": {
-     "name": "Night Middle dB (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "CNAM": {
-     "name": "Night Inner dB (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "JNAM": {
-     "name": "Day Outer Boundary % (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "KNAM": {
-     "name": "Day Middle Boundary % (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "LNAM": {
-     "name": "Day Inner Boundary % (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "MNAM": {
-     "name": "Night Outer Boundary % (L)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
     },
     "NNAM": {
-     "name": "Night Middle Boundary % (L)",
-     "type": "f32",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Night Middle Boundary % (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
     },
     "ONAM": {
-     "name": "Night Inner Boundary % (L)",
-     "type": "f32",
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
+     "name": "Night Inner Boundary % (L)",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
+     "type": "f32"
     },
     "PNAM": {
+     "confidence": "documented",
      "name": "Enable Flags",
+     "note": "xEdit wbDefinitionsFNV.pas MSET record",
      "type": {
-      "flags": "u8",
       "bits": {
        "0": "Day Outer",
        "1": "Day Middle",
@@ -324,52 +278,9 @@
        "3": "Night Outer",
        "4": "Night Middle",
        "5": "Night Inner"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "DNAM": {
-     "name": "Wait Time (B) / Minimum Time On (D,L) / Daytime Min (I)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "ENAM": {
-     "name": "Loop Fade Out (B) / Looping/Random Crossfade Overlap (D,L) / Nighttime Min (I)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "FNAM": {
-     "name": "Recovery Time (B) / Layer Crossfade Time (D,L) / Daytime Max (I)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "GNAM": {
-     "name": "Nighttime Max (I)",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record"
-    },
-    "HNAM": {
-     "name": "Intro (B,D) / Daytime (I)",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record (SOUN)"
-    },
-    "INAM": {
-     "name": "Outro (B,D) / Nighttime (I)",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record (SOUN)"
-    },
-    "DATA": {
-     "name": "unknown_data",
-     "type": "bytes",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas MSET record (wbUnknown)"
+      },
+      "flags": "u8"
+     }
     }
    }
   }

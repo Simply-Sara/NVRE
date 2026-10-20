@@ -1,136 +1,157 @@
-# Record schemas
+# schemas — a shared base plus one directory per game
 
-NVRE's own copy of the Fallout: New Vegas record layouts, in the `fnv.schema/1`
-format (documented at the top of `fnv-esm`'s `crates/fnv-esm/src/schema.rs`).
-
-`fnv/*.json` started as a byte-for-byte copy of NVForever's
-`NVForever/schemas/fnv/`, which covers 86 of the 107 record types in the
-shipped masters. This directory adds the rest, so the editor can bind a
-property grid to every field it can read.
-
-## One directory per game
-
-`schemas/<game>/` is a game's record layout, read as an **overlay** on
-`schemas/fnv` rather than as a standalone directory: the container, the group
-tree and the FormID model are shared, so a second game describes only the
-records that differ and inherits the rest. The editor loads the merged result
-for the game the launcher chose (`crates/nvre-editor/src/game.rs`).
-
-A directory with no files of its own is not an error — it means the game shares
-every layout it uses, and it reads FNV's alone. A directory that does not exist
-yet is reported as `no schema files in ...` rather than guessed at.
-
-The format itself is game-neutral despite the `fnv` in its name: the container,
-the GRUP tree and the FormID numbering model are shared across Gamebryo and
-Creation engines, and only the record layouts differ. That is why one schema
-language serves every game.
-
-| Directory | Game | State |
-|---|---|---|
-| `fnv/` | Fallout: New Vegas | measured against all six shipped masters |
-| `fo3/` | Fallout 3 | **measured: 100.00% on all six shipped masters** — see [`fo3/README.md`](fo3/README.md) |
-| `skyrim/` | Skyrim (Legendary) | not started |
-| `skyrimse/` | Skyrim Special Edition | not started |
-| `fo4/` | Fallout 4 | not started |
-
-A new game is measured the same way FNV's was: point `coverage` and `rtcheck`
-at its master, read the undecoded subrecords off the report, and write each
-entry with a `confidence` and a `note` naming its source. Never transcribe a
-layout from FNV's and assume the field means the same thing — `NPC_`'s `DATA`
-differs between the two engines.
-
-Measure the *shared* schema against the new game first, before writing anything.
-Fallout 3 turned out to need four records rather than 107, because the container,
-the group tree and the FormID model are shared and only a handful of layouts
-differ. A directory that starts as a full copy of `fnv/` is a copy that will
-drift; a directory that holds the differences and overlays them does not.
-
-```bash
-cargo run --bin coverage -- --overlay schemas/fo3 schemas/fnv "$FO3"/Fallout3.esm
-cargo run --bin rtcheck   -- --overlay schemas/fo3 schemas/fnv "$FO3"/Fallout3.esm
+```text
+schemas/base/    the 63 record types every supported game uses, with a layout
+                 each of them decodes correctly. Empty of anything else.
+schemas/fnv/     Fallout: New Vegas's own types, and the records where its
+                 layout differs from the base's.
+schemas/fo3/     Fallout 3's own types and differences.
+schemas/skyrim/  Skyrim LE's own types and differences.
+schemas/skyrimse/Skyrim Special Edition's own types and differences.
+schemas/fo4/     Fallout 4's own types and differences.
 ```
 
-| File | Records |
-|---|---|
-| `common.json` | shared types and subrecords identical everywhere |
-| `world.json` | CELL, WRLD, LAND, LTEX, REFR, ACHR, ACRE |
-| `objects.json` | base objects (STAT, WEAP, ARMO, CONT, …) |
-| `combat.json` | PROJ, EXPL, BPTD, AMEF, ENCH, SPEL |
-| `gameplay.json` | GLOB, SCPT, QUST, DIAL, INFO, NPC_, CREA, RACE, … |
-| `ai.json` | PACK, IDLM |
-| `audio.json` | MUSC, MSET, ALOC, ASPC |
-| `effects.json` | EFSH |
-| `placed.json` | MSTT, GRAS, PWAT, ADDN, ANIO, IPCT, IPDS, TACT |
-| `sky.json` | CLMT, WTHR, WATR, IMGS |
-| `navmesh.json` | NAVM, NAVI — **NVRE addition** |
-| `gaps.json` | records upstream does not define, transcribed from xEdit — **NVRE addition** |
+Oblivion is not in this set. Its container revision predates the `TES4` layout
+the reader parses, so `Oblivion.esm` does not open at all; nothing measured for
+it can be called shared yet.
 
-`navmesh.json` and `gaps.json` are the two files NVRE has edited. Everything else
-is still a byte-for-byte copy of upstream — check with `diff -ru
-NVForever/schemas/fnv schemas/fnv`.
+The format is `fnv.schema/1`, documented at the top of
+`crates/fnv-esm/src/schema.rs`. The name is historical — the format is
+game-neutral, and the container, the GRUP tree and the FormID numbering model
+are shared across the Gamebryo and Creation engines. Only the record layouts
+differ, which is why one schema language serves every game.
 
-## Provenance
+## The rule
 
-Every entry carries `confidence` and a `note` naming its source. Upstream's
-entries are `documented`: layouts read from the xEdit project's public
-definitions (`Core/wbDefinitionsFNV.pas`, `Core/wbDefinitionsCommon.pas`,
-`Core/wbDefinitionsFO3.pas`, branch `dev-4.1.6`, Mozilla Public License 2.0,
-https://github.com/TES5Edit/TES5Edit) and re-expressed in this format; no xEdit
-code is included. NVRE's additions follow the same rule, and their `note` names
-the Pascal file and line they came from.
+A record belongs in `base` only when **every** supported game uses it **and**
+the base layout decodes it correctly in all of them. Both halves are required.
+"Present in every game" is not enough: `NPC_` is in all five, and FNV's layout
+reads Fallout 3's copy fine while reading Skyrim's as an error, because Skyrim's
+`DATA` is empty where FNV's is 11 bytes. A type in `base` is a claim about every
+engine that will read it.
+
+## How it was decided
+
+Measured over every game installed on this machine, base master only:
+
+| Game | Master | Types | Coverage of FNV's schema |
+|---|---|---|---|
+| Fallout: New Vegas | `FalloutNV.esm` | 107 | 100.00% (2,321,456) |
+| Fallout 3 | `Fallout3.esm` | 90 | 100.00% (2,634,084) |
+| Skyrim LE | `Skyrim.esm` | 118 | 66.75% |
+| Skyrim SE | `Skyrim.esm` | 118 | 67.65% |
+| Fallout 4 | `Fallout4.esm` | 137 | 60.14% |
+
+The intersection of all five is 77 types. Of those, 63 decode with zero
+unknowns and zero errors in every game and moved to `base`:
+
+```
+ACHR ACTI ADDN ALCH AMMO ANIO ARMA ASPC AVIF BOOK BPTD CAMS CLAS CLMT CONT
+CPTH CSTY DEBR DOBJ DOOR ECZN EFSH ENCH EXPL FACT FLST FURN GLOB GMST GRAS
+HDPT IDLE IDLM IMAD IMGS INGR IPCT KEYM LAND LGTM LIGH LSCR LTEX LVLI LVLN
+MESG MGEF MISC MSTT MUSC NAVI PERK PGRE PROJ SOUN SPEL TACT TREE TXST VTYP
+WATR WRLD WTHR
+```
+
+The other 14 are present everywhere but their layout is not shared, so they stay
+per-game:
+
+```
+ARMO CELL DIAL INFO IPDS NAVM NPC_ PACK QUST RACE REFR REGN STAT WEAP
+```
+
+The 63 is conservative in two ways. It uses each game's base master rather than
+every DLC, so a type only a DLC introduces does not shrink `base`. And it
+compares the *layout*, not just the signature, so a type that differs anywhere
+stays out.
+
+Skyrim loading `base + skyrimse` therefore never sees `CREA`, `HAIR`, `LVLC`,
+`NOTE`, `PWAT`, `RADS`, `RGDL`, `SCPT` or `TERM` — the types it does not have and
+would otherwise inherit a wrong layout for.
+
+## Loading
+
+```rust
+// The base first, then each game's differences over it.
+let schema = Schema::load_game("schemas/base", ["schemas/fnv", "schemas/fo3"])?;
+```
+
+`load_game` applies the directories in order, so a later one wins. A game
+directory that does not exist is not an error — it means that game shares every
+layout the base holds. Only a missing *base* is an error, because without it
+there is nothing to overlay onto.
+
+A game directory may carry a symlink to `../base`, which `load_game` detects by
+comparing canonical paths and skips, so the base's files never merge twice. That
+symlink is why `schemas/fo3` can also be handed to a tool that reads one
+directory and still see both halves.
+
+## Measuring a game
+
+```bash
+cargo run --bin coverage -- --overlay schemas/fnv --overlay schemas/fo3 \
+    schemas/base "$FO3"/Fallout3.esm
+cargo run --bin rtcheck   -- --overlay schemas/fnv --overlay schemas/fo3 \
+    schemas/base "$FO3"/Fallout3.esm
+```
+
+`--overlay` may be repeated and the directories after the last one are the base.
+`rtcheck` re-encodes every subrecord it decodes, which is the round-trip half of
+the check: `coverage` says a layout reads the bytes, `rtcheck` says it writes
+them back identically.
+
+Current numbers through the full chain:
+
+| Game | coverage | rtcheck |
+|---|---|---|
+| Fallout: New Vegas | 100.00% (2,321,456) | byte-identical |
+| Fallout 3 | 100.00% (2,634,084) | byte-identical (3,484,461) |
+| Skyrim LE | 66.75% | — |
+| Skyrim SE | 67.65% | — |
+| Fallout 4 | 60.14% | — |
+
+## Adding a record to `base`
+
+1. Run `coverage` against every game's master with the base and that game's
+   directory.
+2. If the record comes back `ok` in all of them with no `unknown`, `trailing` or
+   `error`, move it from `schemas/<game>/` into `schemas/base/shared.json`,
+   along with every `types` entry it transitively references.
+3. Re-run `coverage` for every game. All numbers must be unchanged.
+4. Say in the record's `note` which games confirmed it.
+
+## Adding a record to a game directory
+
+Write it in that game's directory with a `note` naming the source and the
+measured instance count. A record in a game directory replaces the base's whole
+definition, so it must be complete — a partial one silently drops the
+subrecords it did not repeat.
 
 ## Rules for editing
 
 - **Never change a layout to make the coverage number go up.** A layout change
   needs a cited source or an observation written up in a spec note.
 - Unknown fields are named `unknown_N` / `unused`, never guessed.
-- A record type may be defined in **exactly one file**. `Schema::merge_str`
-  rejects a duplicate with `record X defined twice`, so a record's subrecords
-  cannot be split across files — add to the file that already owns it.
-- Coverage is measured, not assumed. Check after every edit:
+- A record type may be defined in **exactly one file per directory**.
+  `Schema::merge_str` rejects a duplicate with `record X defined twice`, so a
+  record's subrecords cannot be split across files in one directory — add to the
+  file that already owns it. A *later directory* in the chain may replace it.
+- A record in `base` is a claim about every engine that reads it. The evidence
+  for that claim is the coverage run against each game's master, and it goes in
+  the record's `note`.
+- `ok_percent` should rise and `trailing` and `error` should stay at zero.
 
-```bash
-cargo run --bin coverage -- schemas/fnv "$NVRE_DATA"/FalloutNV.esm
-```
+## Provenance
 
-`fnvtool esm coverage --schema schemas/fnv` prints the same numbers, but
-`fnvtool` lives inside the NVForever submodule and links upstream's `fnv-esm`,
-so it cannot see NVRE's patched schema language (`len_string`, `count_prefix`,
-`count_field`). Use NVRE's own `coverage` binary for anything that uses them.
+Every entry carries `confidence` and a `note` naming its source. The original
+layouts came from the xEdit project's public definitions
+(`Core/wbDefinitionsFNV.pas`, `Core/wbDefinitionsCommon.pas`,
+`Core/wbDefinitionsFO3.pas`, branch `dev-4.1.6`, Mozilla Public License 2.0,
+https://github.com/TES5Edit/TES5Edit) and were re-expressed in this format; no
+xEdit code is included. NVRE's additions follow the same rule, and their `note`
+names the Pascal file and line they came from.
 
-`ok_percent` should rise and `trailing` and `error` should stay at zero.
-
-Measured 2026-10-17 across all six shipped masters, after the navmesh, gaps and
-schema-language additions: FalloutNV 99.81%, DeadMoney 99.79%, HonestHearts
-99.80%, OldWorldBlues 99.73%, LonesomeRoad 99.72%, GunRunnersArsenal 98.66%.
-`trailing` is 0 in all six; `error` is 0 in five and the two long-standing
-`QUST DATA` errors (`0001E5CA: unused: [0]: read of 1 bytes at offset 2 exceeds
-length 2`) in FalloutNV. The reasoning behind every layout, and the list of
-what is still unexpressible and why, is in
-`docs/spec-notes/schema-coverage.md`.
-
-## Re-importing from upstream
-
-This is a fork, so upstream fixes do not arrive on their own. After pulling
-NVForever:
-
-```bash
-# 1. What moved upstream?
-diff -ru NVForever/schemas/fnv schemas/fnv
-
-# 2. Take upstream's version of any file you have not changed, then re-apply
-#    your own additions on top.
-cp NVForever/schemas/fnv/world.json schemas/fnv/world.json
-# ... re-apply your entries to navmesh.json / gaps.json ...
-
-# 3. Prove it still decodes.
-cargo run --bin coverage -- schemas/fnv "$NVRE_DATA"/FalloutNV.esm
-```
-
-Files you have edited (`navmesh.json`, `gaps.json`, and any upstream file you
-have added subrecords to) need the diff reviewed by hand. Everything else is a
-straight copy.
-
-The check that keeps this honest: `ok_percent` must never drop, and `trailing`
-and `error` must stay at zero. If a re-import regresses either, the upstream
-change and NVRE's addition disagree about a layout and one of them is wrong.
+`fnvtool esm coverage` prints the same numbers, but it lives inside the
+NVForever submodule and links upstream's `fnv-esm`, so it cannot see NVRE's
+patched schema language (`len_string`, `count_prefix`, `count_field`,
+`sequence`). Use NVRE's own `coverage` binary for anything that uses them.

@@ -1,188 +1,45 @@
 {
  "format": "fnv.schema/1",
- "types": {
-  "LandQuadrant": {
-   "enum": "u8",
-   "values": {
-    "0": "Bottom Left",
-    "1": "Bottom Right",
-    "2": "Top Left",
-    "3": "Top Right"
-   }
-  },
-  "LandLayerHeader": {
-   "struct": [
-    {
-     "name": "texture",
-     "type": "formid"
-    },
-    {
-     "name": "quadrant",
-     "type": "LandQuadrant"
-    },
-    {
-     "name": "unused",
-     "type": {
-      "array": "u8",
-      "count": 1
-     }
-    },
-    {
-     "name": "layer",
-     "type": "i16"
-    }
-   ]
-  },
-  "LandAlphaCell": {
-   "struct": [
-    {
-     "name": "position",
-     "type": "u16"
-    },
-    {
-     "name": "unused",
-     "type": {
-      "array": "u8",
-      "count": 2
-     }
-    },
-    {
-     "name": "opacity",
-     "type": "f32"
-    }
-   ]
-  },
-  "RGB8": {
-   "struct": [
-    {
-     "name": "red",
-     "type": "u8"
-    },
-    {
-     "name": "green",
-     "type": "u8"
-    },
-    {
-     "name": "blue",
-     "type": "u8"
-    }
-   ]
-  },
-  "LandNormal": {
-   "struct": [
-    {
-     "name": "x",
-     "type": "u8"
-    },
-    {
-     "name": "y",
-     "type": "u8"
-    },
-    {
-     "name": "z",
-     "type": "u8"
-    }
-   ]
-  },
-  "WorldImpactMaterial": {
-   "enum": "u32",
-   "values": {
-    "0": "ConcSolid",
-    "1": "ConcBroken",
-    "2": "MetalSolid",
-    "3": "MetalHollow",
-    "4": "MetalSheet",
-    "5": "Wood",
-    "6": "Sand",
-    "7": "Dirt",
-    "8": "Grass",
-    "9": "Water"
-   }
-  },
-  "FootstepMaterials": {
-   "struct": [
-    {
-     "name": "conc_solid",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "conc_broken",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "metal_solid",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "metal_hollow",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "metal_sheet",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "wood",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "sand",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "dirt",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "grass",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    },
-    {
-     "name": "water",
-     "type": {
-      "array": "u8",
-      "count": 30
-     }
-    }
-   ]
-  }
- },
  "records": {
-  "CELL": {
-   "name": "Cell",
+  "ACRE": {
    "confidence": "documented",
+   "name": "Placed Creature",
    "subrecords": {
     "DATA": {
+     "confidence": "documented",
+     "name": "Position/Rotation",
+     "note": "xEdit wbDefinitionsFNV.pas ACRE record; wbVec3PosRot(DATA)",
+     "type": "PosRot"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Patrol Idle",
+     "note": "xEdit wbDefinitionsFNV.pas ACRE record",
+     "type": "formid"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base",
+     "note": "xEdit wbDefinitionsFNV.pas ACRE record",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Patrol Topic",
+     "note": "xEdit wbDefinitionsFNV.pas ACRE record",
+     "type": "formid"
+    }
+   }
+  },
+  "CELL": {
+   "confidence": "documented",
+   "name": "Cell",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
      "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
      "type": {
-      "flags": "u8",
       "bits": {
        "0": "Is Interior Cell",
        "1": "Has water",
@@ -191,13 +48,72 @@
        "5": "Public place",
        "6": "Hand changed",
        "7": "Behave like exterior"
-      }
-     },
+      },
+      "flags": "u8"
+     }
+    },
+    "IMPF": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
+     "name": "Footstep Materials",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record; 10 fixed-length 30-byte strings (wbString(...,30)); schema v1 has no fixed-length string so each is raw bytes",
+     "type": "FootstepMaterials"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Light Template Inherit Flags",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": {
+      "bits": {
+       "0": "Ambient Color",
+       "1": "Directional Color",
+       "2": "Fog Color",
+       "3": "Fog Near",
+       "4": "Fog Far",
+       "5": "Directional Rotation",
+       "6": "Directional Fade",
+       "7": "Clip Distance",
+       "8": "Fog Power"
+      },
+      "flags": "u32"
+     }
+    },
+    "LTMP": {
+     "confidence": "documented",
+     "name": "Light Template",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "formid"
+    },
+    "XCAS": {
+     "confidence": "documented",
+     "name": "Acoustic Space",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "formid"
+    },
+    "XCCM": {
+     "confidence": "documented",
+     "name": "Climate",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "formid"
+    },
+    "XCET": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record; wbUnused(XCET, 1)",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    },
+    "XCIM": {
+     "confidence": "documented",
+     "name": "Image Space",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "formid"
     },
     "XCLC": {
+     "confidence": "documented",
      "name": "Grid",
+     "note": "xEdit wbDefinitionsCommon.pas wbCellGrid; SetOptionalFrom(2); land flag names from wbLandFlags (non-FO4 bits)",
      "type": {
       "struct": [
        {
@@ -210,32 +126,32 @@
        },
        {
         "name": "land_flags",
+        "optional": true,
         "type": {
-         "flags": "u8",
          "bits": {
           "0": "Hide - Quad 1",
           "1": "Hide - Quad 2",
           "2": "Hide - Quad 3",
           "3": "Hide - Quad 4"
-         }
-        },
-        "optional": true
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 3
-        },
-        "optional": true
+        }
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbCellGrid; SetOptionalFrom(2); land flag names from wbLandFlags (non-FO4 bits)"
+     }
     },
     "XCLL": {
+     "confidence": "documented",
      "name": "Lighting",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record; SetOptionalFrom(7)",
      "type": {
       "struct": [
        {
@@ -268,406 +184,229 @@
        },
        {
         "name": "directional_fade",
-        "type": "f32",
-        "optional": true
+        "optional": true,
+        "type": "f32"
        },
        {
         "name": "fog_clip_dist",
-        "type": "f32",
-        "optional": true
+        "optional": true,
+        "type": "f32"
        },
        {
         "name": "fog_power",
-        "type": "f32",
-        "optional": true
+        "optional": true,
+        "type": "f32"
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record; SetOptionalFrom(7)"
-    },
-    "IMPF": {
-     "name": "Footstep Materials",
-     "type": "FootstepMaterials",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record; 10 fixed-length 30-byte strings (wbString(...,30)); schema v1 has no fixed-length string so each is raw bytes"
-    },
-    "LTMP": {
-     "name": "Light Template",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    },
-    "LNAM": {
-     "name": "Light Template Inherit Flags",
-     "type": {
-      "flags": "u32",
-      "bits": {
-       "0": "Ambient Color",
-       "1": "Directional Color",
-       "2": "Fog Color",
-       "3": "Fog Near",
-       "4": "Fog Far",
-       "5": "Directional Rotation",
-       "6": "Directional Fade",
-       "7": "Clip Distance",
-       "8": "Fog Power"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    },
-    "XCLW": {
-     "name": "Water Height",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    },
-    "XNAM": {
-     "name": "Water Noise Texture",
-     "type": "zstring",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
+     }
     },
     "XCLR": {
+     "confidence": "documented",
      "name": "Regions",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
      "type": {
       "array": "formid"
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
+     }
     },
-    "XCIM": {
-     "name": "Image Space",
-     "type": "formid",
+    "XCLW": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    },
-    "XCET": {
-     "name": "Unused",
-     "type": {
-      "array": "u8",
-      "count": 1
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record; wbUnused(XCET, 1)"
-    },
-    "XCCM": {
-     "name": "Climate",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    },
-    "XCWT": {
-     "name": "Water",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    },
-    "XCAS": {
-     "name": "Acoustic Space",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    },
-    "XCMT": {
-     "name": "Unused",
-     "type": {
-      "array": "u8",
-      "count": 1
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record; wbByteArray(XCMT, 'Unused', 1)"
+     "name": "Water Height",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "f32"
     },
     "XCMO": {
+     "confidence": "documented",
      "name": "Music Type",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CELL record"
-    }
-   }
-  },
-  "WRLD": {
-   "name": "Worldspace",
-   "confidence": "documented",
-   "subrecords": {
-    "WNAM": {
-     "name": "Parent World",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "formid"
     },
-    "PNAM": {
-     "name": "Parent Use Flags",
+    "XCMT": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas CELL record; wbByteArray(XCMT, 'Unused', 1)",
      "type": {
-      "flags": "u16",
-      "bits": {
-       "0": "Use Land Data",
-       "1": "Use LOD Data",
-       "2": "Use Map Data",
-       "3": "Use Water Data",
-       "4": "Use Climate Data",
-       "5": "Use Image Space Data"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
+      "array": "u8",
+      "count": 1
+     }
     },
-    "CNAM": {
-     "name": "Climate",
-     "type": "formid",
+    "XCWT": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
-    },
-    "NAM2": {
      "name": "Water",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
-    },
-    "NAM3": {
-     "name": "LOD Water",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldLODData"
-    },
-    "NAM4": {
-     "name": "LOD Water Height",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldLODData"
-    },
-    "DNAM": {
-     "name": "Land Data",
-     "type": {
-      "struct": [
-       {
-        "name": "default_land_height",
-        "type": "f32"
-       },
-       {
-        "name": "default_water_height",
-        "type": "f32"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldLandData"
-    },
-    "MNAM": {
-     "name": "World Map Data",
-     "type": {
-      "struct": [
-       {
-        "name": "usable_x",
-        "type": "i32"
-       },
-       {
-        "name": "usable_y",
-        "type": "i32"
-       },
-       {
-        "name": "nw_cell_x",
-        "type": "i16"
-       },
-       {
-        "name": "nw_cell_y",
-        "type": "i16"
-       },
-       {
-        "name": "se_cell_x",
-        "type": "i16"
-       },
-       {
-        "name": "se_cell_y",
-        "type": "i16"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldMapData; camera data is TES5-only"
-    },
-    "ONAM": {
-     "name": "World Map Offset Data",
-     "type": {
-      "struct": [
-       {
-        "name": "world_map_scale",
-        "type": "f32"
-       },
-       {
-        "name": "cell_x_offset",
-        "type": "f32"
-       },
-       {
-        "name": "cell_y_offset",
-        "type": "f32"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldMapOffset; Cell Z Offset omitted for wbIsFallout3 (FO3 and FNV per wbInterface.pas)"
-    },
-    "INAM": {
-     "name": "Image Space",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
-    },
-    "DATA": {
-     "name": "Flags",
-     "type": {
-      "flags": "u8",
-      "bits": {
-       "0": "Small World",
-       "1": "Can't Fast Travel",
-       "4": "No LOD Water",
-       "5": "No LOD Noise",
-       "6": "Don't Allow NPC Fall Damage",
-       "7": "Needs Water Adjustment"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
-    },
-    "NAM0": {
-     "name": "Worldspace Bounds Min",
-     "type": {
-      "struct": [
-       {
-        "name": "x",
-        "type": "f32"
-       },
-       {
-        "name": "y",
-        "type": "f32"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldObjectBounds"
-    },
-    "NAM9": {
-     "name": "Worldspace Bounds Max",
-     "type": {
-      "struct": [
-       {
-        "name": "x",
-        "type": "f32"
-       },
-       {
-        "name": "y",
-        "type": "f32"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldObjectBounds"
-    },
-    "ZNAM": {
-     "name": "Music",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
-    },
-    "NNAM": {
-     "name": "Canopy Shadow",
-     "type": "zstring",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "formid"
     },
     "XNAM": {
+     "confidence": "documented",
      "name": "Water Noise Texture",
-     "type": "zstring",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas WRLD record"
-    },
-    "IMPS": {
-     "name": "Impact Swap Data",
-     "type": {
-      "struct": [
-       {
-        "name": "material_type",
-        "type": "WorldImpactMaterial"
-       },
-       {
-        "name": "original_data",
-        "type": "formid"
-       },
-       {
-        "name": "new_data",
-        "type": "formid"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldSwapsImpactData"
-    },
-    "IMPF": {
-     "name": "Footstep Materials",
-     "type": "FootstepMaterials",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldSwapsImpactData; 10 fixed-length 30-byte strings; raw bytes in schema v1"
-    },
-    "OFST": {
-     "name": "Offsets",
-     "type": {
-      "array": "u32"
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbWorldOffsetData; rows of u32 cell offsets, flattened (row width is derived from bounds)"
+     "note": "xEdit wbDefinitionsFNV.pas CELL record",
+     "type": "zstring"
     }
    }
   },
-  "LAND": {
-   "name": "Landscape",
+  "REFR": {
    "confidence": "documented",
+   "name": "Placed Object",
    "subrecords": {
-    "DATA": {
-     "name": "Flags",
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Audio Flags",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
      "type": {
-      "flags": "u32",
       "bits": {
-       "0": "Has Vertex Normals/Height Map",
-       "1": "Has Vertex Colours",
-       "2": "Has Layers",
-       "3": "Unknown 4",
-       "4": "Auto-Calc Normals",
-       "10": "Ignored"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas LAND record"
-    },
-    "VNML": {
-     "name": "Vertex Normals",
-     "type": {
-      "array": {
-       "array": "LandNormal",
-       "count": 33
+       "0": "Use Controller Values"
       },
-      "count": 33
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbLandNormals"
+      "flags": "u32"
+     }
     },
-    "VHGT": {
-     "name": "Vertex Height Map",
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Audio Location",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Position/Rotation",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record; wbVec3PosRot(DATA)",
+     "type": "PosRot"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Map Marker Flags",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": {
+      "bits": {
+       "0": "Visible",
+       "1": "Can Travel To",
+       "2": "\"Show All\" Hidden"
+      },
+      "flags": "u8"
+     }
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Patrol Idle",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
+    },
+    "MMRK": {
+     "confidence": "documented",
+     "name": "Audio Marker",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "Empty"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Layer 2 Trigger %",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "f32"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Layer 3 Trigger %",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "f32"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Open by Default",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "Empty"
+    },
+    "RCLR": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record; wbByteArray(RCLR, 'Unused', 0)",
+     "type": "bytes"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Map Marker Type / Patrol Topic",
+     "note": "xEdit wbDefinitionsFNV.pas REFR: Map Marker's wbStruct(TNAM, '', [wbInteger('Type', itU8, wbEnum([...])), wbUnused(1)]) (2 bytes) and Patrol Data's wbFormIDCk(TNAM, 'Topic', [DIAL, NULL], False, cpNormal, True) (4 bytes). Size-decided: 189x2-byte (all preceded by XMRK/FNAM/FULL) and 1343x4-byte (all preceded by SCHR/SCRO/SCTX, i.e. an embedded script) in FalloutNV.esm; 2137 across the six masters",
+     "type": {
+      "union": [
+       {
+        "name": "Topic",
+        "size": 4,
+        "type": "formid"
+       },
+       {
+        "name": "Map Marker Type",
+        "size": 2,
+        "type": {
+         "struct": [
+          {
+           "name": "type",
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "None",
+             "1": "City",
+             "10": "Town Ruins",
+             "11": "Urban Ruins",
+             "12": "Sewer Ruins",
+             "13": "Metro",
+             "14": "Vault",
+             "2": "Settlement",
+             "3": "Encampment",
+             "4": "Natural Landmark",
+             "5": "Cave",
+             "6": "Factory",
+             "7": "Monument",
+             "8": "Military",
+             "9": "Office"
+            }
+           }
+          },
+          {
+           "name": "unused_1",
+           "type": "u8"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    "WMI1": {
+     "confidence": "documented",
+     "name": "Map Marker Reputation",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
+    },
+    "XAMC": {
+     "confidence": "documented",
+     "name": "Ammo Count",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "i32"
+    },
+    "XAMT": {
+     "confidence": "documented",
+     "name": "Ammo Type",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
+    },
+    "XCHG": {
+     "confidence": "documented",
+     "name": "Charge",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "f32"
+    },
+    "XLOC": {
+     "confidence": "documented",
+     "name": "Lock Data",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record; SetOptionalFrom(5): trailing 8 unknown bytes optional",
      "type": {
       "struct": [
        {
-        "name": "offset",
-        "type": "f32"
-       },
-       {
-        "name": "height_data",
-        "type": {
-         "array": {
-          "array": "i8",
-          "count": 33
-         },
-         "count": 33
-        }
+        "name": "level",
+        "type": "u8"
        },
        {
         "name": "unused",
@@ -675,205 +414,136 @@
          "array": "u8",
          "count": 3
         }
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbLandHeights"
-    },
-    "VCLR": {
-     "name": "Vertex Colors",
-     "type": {
-      "array": {
-       "array": "RGB8",
-       "count": 33
-      },
-      "count": 33
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbLandColors"
-    },
-    "BTXT": {
-     "name": "Base Layer",
-     "type": "LandLayerHeader",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbLandLayers"
-    },
-    "ATXT": {
-     "name": "Alpha Layer Header",
-     "type": "LandLayerHeader",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbLandLayers"
-    },
-    "VTXT": {
-     "name": "Alpha Layer Data",
-     "type": {
-      "array": "LandAlphaCell"
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbLandLayers"
-    }
-   }
-  },
-  "LTEX": {
-   "name": "Landscape Texture",
-   "confidence": "documented",
-   "subrecords": {
-    "TNAM": {
-     "name": "Texture",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas LTEX record"
-    },
-    "HNAM": {
-     "name": "Havok Data",
-     "type": {
-      "struct": [
+       },
        {
-        "name": "material_type",
+        "name": "key",
+        "type": "formid"
+       },
+       {
+        "name": "flags",
         "type": {
-         "enum": "u8",
-         "values": {
-          "0": "STONE",
-          "1": "CLOTH",
-          "2": "DIRT",
-          "3": "GLASS",
-          "4": "GRASS",
-          "5": "METAL",
-          "6": "ORGANIC",
-          "7": "SKIN",
-          "8": "WATER",
-          "9": "WOOD",
-          "10": "HEAVY STONE",
-          "11": "HEAVY METAL",
-          "12": "HEAVY WOOD",
-          "13": "CHAIN",
-          "14": "SNOW",
-          "15": "ELEVATOR",
-          "16": "HOLLOW METAL",
-          "17": "SHEET METAL",
-          "18": "SAND",
-          "19": "BRIKEN CONCRETE",
-          "20": "VEHILCE BODY",
-          "21": "VEHILCE PART SOLID",
-          "22": "VEHILCE PART HOLLOW",
-          "23": "BARREL",
-          "24": "BOTTLE",
-          "25": "SODA CAN",
-          "26": "PISTOL",
-          "27": "RIFLE",
-          "28": "SHOPPING CART",
-          "29": "LUNCHBOX",
-          "30": "BABY RATTLE",
-          "31": "RUBER BALL"
-         }
+         "bits": {
+          "2": "Leveled Lock"
+         },
+         "flags": "u8"
         }
        },
        {
-        "name": "friction",
-        "type": "u8"
+        "name": "unused2",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
        },
        {
-        "name": "restitution",
-        "type": "u8"
+        "name": "unknown",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 8
+        }
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas LTEX record; enum spellings as in xEdit"
+     }
     },
-    "SNAM": {
-     "name": "Texture Specular Exponent",
-     "type": "u8",
+    "XLRM": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas LTEX record"
+     "name": "Linked Room",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
     },
-    "GNAM": {
-     "name": "Grass",
-     "type": "formid",
+    "XLTW": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas LTEX record"
-    }
-   }
-  },
-  "ACHR": {
-   "name": "Placed NPC",
-   "confidence": "documented",
-   "subrecords": {
-    "NAME": {
-     "name": "Base",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACHR record"
+     "name": "Lit Water",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
     },
-    "INAM": {
-     "name": "Patrol Idle",
-     "type": "formid",
+    "XMBO": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACHR record"
+     "name": "Bound Half Extents",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "Vec3f"
     },
-    "TNAM": {
-     "name": "Patrol Topic",
-     "type": "formid",
+    "XMBP": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACHR record"
+     "name": "MultiBound Primitive Marker",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "Empty"
     },
-    "DATA": {
-     "name": "Position/Rotation",
-     "type": "PosRot",
+    "XMRK": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACHR record; wbVec3PosRot(DATA)"
-    }
-   }
-  },
-  "ACRE": {
-   "name": "Placed Creature",
-   "confidence": "documented",
-   "subrecords": {
-    "NAME": {
-     "name": "Base",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACRE record"
+     "name": "Map Marker Data",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "Empty"
     },
-    "INAM": {
-     "name": "Patrol Idle",
-     "type": "formid",
+    "XNDP": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACRE record"
+     "name": "Navmesh Door Link",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": {
+      "struct": [
+       {
+        "name": "navmesh",
+        "type": "formid"
+       },
+       {
+        "name": "triangle",
+        "type": "i16"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       }
+      ]
+     }
     },
-    "TNAM": {
-     "name": "Patrol Topic",
-     "type": "formid",
+    "XOCP": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACRE record"
+     "name": "Occlusion Plane Data",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record; xEdit wbDefinitionsCommon.pas wbSizePosRot",
+     "type": "SizePosRot"
     },
-    "DATA": {
-     "name": "Position/Rotation",
-     "type": "PosRot",
+    "XORD": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas ACRE record; wbVec3PosRot(DATA)"
-    }
-   }
-  },
-  "REFR": {
-   "name": "Placed Object",
-   "confidence": "documented",
-   "subrecords": {
-    "RCLR": {
-     "name": "Unused",
-     "type": "bytes",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record; wbByteArray(RCLR, 'Unused', 0)"
+     "name": "Linked Occlusion Planes",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": {
+      "struct": [
+       {
+        "name": "right",
+        "type": "formid"
+       },
+       {
+        "name": "left",
+        "type": "formid"
+       },
+       {
+        "name": "bottom",
+        "type": "formid"
+       },
+       {
+        "name": "top",
+        "type": "formid"
+       }
+      ]
+     }
     },
-    "NAME": {
-     "name": "Base",
-     "type": "formid",
+    "XPOD": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     "name": "Portal Data (Rooms)",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": {
+      "array": "formid",
+      "count": 2
+     }
     },
     "XPRM": {
+     "confidence": "documented",
      "name": "Primitive",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
      "type": {
       "struct": [
        {
@@ -897,240 +567,24 @@
         }
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     }
     },
-    "XTRI": {
-     "name": "Collision Layer",
-     "type": {
-      "enum": "u32",
-      "values": {
-       "0": "Unidentified",
-       "1": "Static",
-       "2": "AnimStatic",
-       "3": "Transparent",
-       "4": "Clutter",
-       "5": "Weapon",
-       "6": "Projectile",
-       "7": "Spell",
-       "8": "Biped",
-       "9": "Trees",
-       "10": "Props",
-       "11": "Water",
-       "12": "Trigger",
-       "13": "Terrain",
-       "14": "Trap",
-       "15": "Non Collidable",
-       "16": "Cloud Trap",
-       "17": "Ground",
-       "18": "Portal",
-       "19": "Debris Small",
-       "20": "Debris Large",
-       "21": "Acoustic Space",
-       "22": "Actor Zone",
-       "23": "Projectile Zone",
-       "24": "Gas Trap",
-       "25": "Shell Casing",
-       "26": "Transparent Small",
-       "27": "Invisible Wall",
-       "28": "Transparent Small Anim",
-       "29": "Dead Bip",
-       "30": "Char Controller",
-       "31": "Avoid Box",
-       "32": "Collision Box",
-       "33": "Camera Sphere",
-       "34": "Door Detection",
-       "35": "Camera Pick",
-       "36": "Item Pick",
-       "37": "Line Of Sight",
-       "38": "Path Pick",
-       "39": "Custom Pick 1",
-       "40": "Custom Pick 2",
-       "41": "Spell Explosion",
-       "42": "Dropping Pick"
-      }
-     },
+    "XPTL": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     "name": "Portal Data",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record; xEdit wbDefinitionsCommon.pas wbSizePosRot",
+     "type": "SizePosRot"
     },
-    "XMBP": {
-     "name": "MultiBound Primitive Marker",
-     "type": "Empty",
+    "XRAD": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XMBO": {
-     "name": "Bound Half Extents",
-     "type": "Vec3f",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XTEL": {
-     "name": "Teleport Destination",
-     "type": {
-      "struct": [
-       {
-        "name": "door",
-        "type": "formid"
-       },
-       {
-        "name": "pos_rot",
-        "type": "PosRot"
-       },
-       {
-        "name": "no_alarm",
-        "type": "BoolU32"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XMRK": {
-     "name": "Map Marker Data",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "FNAM": {
-     "name": "Map Marker Flags",
-     "type": {
-      "flags": "u8",
-      "bits": {
-       "0": "Visible",
-       "1": "Can Travel To",
-       "2": "\"Show All\" Hidden"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "WMI1": {
-     "name": "Map Marker Reputation",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "TNAM": {
-     "name": "Map Marker Type / Patrol Topic",
-     "type": {
-      "union": [
-       {
-        "name": "Topic",
-        "type": "formid",
-        "size": 4
-       },
-       {
-        "name": "Map Marker Type",
-        "type": {
-         "struct": [
-          {
-           "name": "type",
-           "type": {
-            "enum": "u8",
-            "values": {
-             "0": "None",
-             "1": "City",
-             "2": "Settlement",
-             "3": "Encampment",
-             "4": "Natural Landmark",
-             "5": "Cave",
-             "6": "Factory",
-             "7": "Monument",
-             "8": "Military",
-             "9": "Office",
-             "10": "Town Ruins",
-             "11": "Urban Ruins",
-             "12": "Sewer Ruins",
-             "13": "Metro",
-             "14": "Vault"
-            }
-           }
-          },
-          {
-           "name": "unused_1",
-           "type": "u8"
-          }
-         ]
-        },
-        "size": 2
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR: Map Marker's wbStruct(TNAM, '', [wbInteger('Type', itU8, wbEnum([...])), wbUnused(1)]) (2 bytes) and Patrol Data's wbFormIDCk(TNAM, 'Topic', [DIAL, NULL], False, cpNormal, True) (4 bytes). Size-decided: 189x2-byte (all preceded by XMRK/FNAM/FULL) and 1343x4-byte (all preceded by SCHR/SCRO/SCTX, i.e. an embedded script) in FalloutNV.esm; 2137 across the six masters"
-    },
-    "MMRK": {
-     "name": "Audio Marker",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "CNAM": {
-     "name": "Audio Location",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "BNAM": {
-     "name": "Audio Flags",
-     "type": {
-      "flags": "u32",
-      "bits": {
-       "0": "Use Controller Values"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "MNAM": {
-     "name": "Layer 2 Trigger %",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "NNAM": {
-     "name": "Layer 3 Trigger %",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XSRF": {
-     "name": "Special Rendering Flags",
-     "type": {
-      "flags": "u32",
-      "bits": {
-       "1": "Imposter",
-       "2": "Use Full Shader in LOD"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XSRD": {
-     "name": "Special Rendering Data",
-     "type": {
-      "array": "u8",
-      "count": 4
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XTRG": {
-     "name": "Target",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "INAM": {
-     "name": "Patrol Idle",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     "name": "Radiation",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "f32"
     },
     "XRDO": {
+     "confidence": "documented",
      "name": "Radio Data",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
      "type": {
       "struct": [
        {
@@ -1159,141 +613,12 @@
         "type": "formid"
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XLOC": {
-     "name": "Lock Data",
-     "type": {
-      "struct": [
-       {
-        "name": "level",
-        "type": "u8"
-       },
-       {
-        "name": "unused",
-        "type": {
-         "array": "u8",
-         "count": 3
-        }
-       },
-       {
-        "name": "key",
-        "type": "formid"
-       },
-       {
-        "name": "flags",
-        "type": {
-         "flags": "u8",
-         "bits": {
-          "2": "Leveled Lock"
-         }
-        }
-       },
-       {
-        "name": "unused2",
-        "type": {
-         "array": "u8",
-         "count": 3
-        }
-       },
-       {
-        "name": "unknown",
-        "type": {
-         "array": "u8",
-         "count": 8
-        },
-        "optional": true
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record; SetOptionalFrom(5): trailing 8 unknown bytes optional"
-    },
-    "XRAD": {
-     "name": "Radiation",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XCHG": {
-     "name": "Charge",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XAMT": {
-     "name": "Ammo Type",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XAMC": {
-     "name": "Ammo Count",
-     "type": "i32",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XLTW": {
-     "name": "Lit Water",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "ONAM": {
-     "name": "Open by Default",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XNDP": {
-     "name": "Navmesh Door Link",
-     "type": {
-      "struct": [
-       {
-        "name": "navmesh",
-        "type": "formid"
-       },
-       {
-        "name": "triangle",
-        "type": "i16"
-       },
-       {
-        "name": "unused",
-        "type": {
-         "array": "u8",
-         "count": 2
-        }
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XPOD": {
-     "name": "Portal Data (Rooms)",
-     "type": {
-      "array": "formid",
-      "count": 2
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
-    },
-    "XPTL": {
-     "name": "Portal Data",
-     "type": "SizePosRot",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record; xEdit wbDefinitionsCommon.pas wbSizePosRot"
-    },
-    "XSED": {
-     "name": "SpeedTree Seed",
-     "type": "u8",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     }
     },
     "XRMR": {
+     "confidence": "documented",
      "name": "Room Data Header",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
      "type": {
       "struct": [
        {
@@ -1308,84 +633,117 @@
         }
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     }
     },
-    "XLRM": {
-     "name": "Linked Room",
-     "type": "formid",
+    "XSED": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     "name": "SpeedTree Seed",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "u8"
     },
-    "XOCP": {
-     "name": "Occlusion Plane Data",
-     "type": "SizePosRot",
+    "XSRD": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record; xEdit wbDefinitionsCommon.pas wbSizePosRot"
+     "name": "Special Rendering Data",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
     },
-    "XORD": {
-     "name": "Linked Occlusion Planes",
+    "XSRF": {
+     "confidence": "documented",
+     "name": "Special Rendering Flags",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": {
+      "bits": {
+       "1": "Imposter",
+       "2": "Use Full Shader in LOD"
+      },
+      "flags": "u32"
+     }
+    },
+    "XTEL": {
+     "confidence": "documented",
+     "name": "Teleport Destination",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
      "type": {
       "struct": [
        {
-        "name": "right",
+        "name": "door",
         "type": "formid"
        },
        {
-        "name": "left",
-        "type": "formid"
+        "name": "pos_rot",
+        "type": "PosRot"
        },
        {
-        "name": "bottom",
-        "type": "formid"
-       },
-       {
-        "name": "top",
-        "type": "formid"
+        "name": "no_alarm",
+        "type": "BoolU32"
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record"
+     }
     },
-    "DATA": {
-     "name": "Position/Rotation",
-     "type": "PosRot",
+    "XTRG": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REFR record; wbVec3PosRot(DATA)"
-    }
-   }
-  },
-  "PGRE": {
-   "name": "Placed Grenade",
-   "confidence": "documented",
-   "subrecords": {
-    "NAME": {
-     "name": "Base",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas PGRE record (PROJ)"
+     "name": "Target",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": "formid"
     },
-    "INAM": {
-     "name": "Patrol Idle",
-     "type": "formid",
+    "XTRI": {
      "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas PGRE record"
-    },
-    "TNAM": {
-     "name": "Patrol Topic",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas PGRE record"
-    },
-    "DATA": {
-     "name": "Position/Rotation",
-     "type": "PosRot",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas PGRE record; wbVec3PosRot(DATA)"
+     "name": "Collision Layer",
+     "note": "xEdit wbDefinitionsFNV.pas REFR record",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Unidentified",
+       "1": "Static",
+       "10": "Props",
+       "11": "Water",
+       "12": "Trigger",
+       "13": "Terrain",
+       "14": "Trap",
+       "15": "Non Collidable",
+       "16": "Cloud Trap",
+       "17": "Ground",
+       "18": "Portal",
+       "19": "Debris Small",
+       "2": "AnimStatic",
+       "20": "Debris Large",
+       "21": "Acoustic Space",
+       "22": "Actor Zone",
+       "23": "Projectile Zone",
+       "24": "Gas Trap",
+       "25": "Shell Casing",
+       "26": "Transparent Small",
+       "27": "Invisible Wall",
+       "28": "Transparent Small Anim",
+       "29": "Dead Bip",
+       "3": "Transparent",
+       "30": "Char Controller",
+       "31": "Avoid Box",
+       "32": "Collision Box",
+       "33": "Camera Sphere",
+       "34": "Door Detection",
+       "35": "Camera Pick",
+       "36": "Item Pick",
+       "37": "Line Of Sight",
+       "38": "Path Pick",
+       "39": "Custom Pick 1",
+       "4": "Clutter",
+       "40": "Custom Pick 2",
+       "41": "Spell Explosion",
+       "42": "Dropping Pick",
+       "5": "Weapon",
+       "6": "Projectile",
+       "7": "Spell",
+       "8": "Biped",
+       "9": "Trees"
+      }
+     }
     }
    }
   }
- }
+ },
+ "types": {}
 }

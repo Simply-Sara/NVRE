@@ -1,0 +1,78 @@
+{
+ "format": "fnv.schema/1",
+ "types": {
+  "BoolU32": {
+   "enum": "u32",
+   "values": {
+    "0": "False",
+    "1": "True"
+   }
+  },
+  "FloatRGBA": {
+   "struct": [
+    {
+     "name": "red",
+     "type": "f32"
+    },
+    {
+     "name": "green",
+     "type": "f32"
+    },
+    {
+     "name": "blue",
+     "type": "f32"
+    },
+    {
+     "name": "alpha",
+     "type": "f32"
+    }
+   ]
+  },
+  "SizePosRot": {
+   "struct": [
+    {
+     "name": "size",
+     "type": {
+      "struct": [
+       {
+        "name": "width",
+        "type": "f32"
+       },
+       {
+        "name": "height",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "position",
+     "type": "Vec3f"
+    },
+    {
+     "name": "rotation_quaternion",
+     "type": {
+      "struct": [
+       {
+        "name": "q1",
+        "type": "f32"
+       },
+       {
+        "name": "q2",
+        "type": "f32"
+       },
+       {
+        "name": "q3",
+        "type": "f32"
+       },
+       {
+        "name": "q4",
+        "type": "f32"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

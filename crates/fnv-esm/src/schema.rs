@@ -1,5 +1,23 @@
 //! Schema-as-data: record/subrecord layouts loaded from JSON files at runtime, so
-//! definitions can be corrected without recompiling (spec section 7).
+//! definitions can be corrected without recompiling.
+//!
+//! # Two directories, not one
+//!
+//! A schema is loaded from a **base** directory and zero or more **game**
+//! directories, and the split is the point:
+//!
+//! ```text
+//! schemas/base/    the container, the group tree, the FormID model, and every
+//!                  layout the Gamebryo engines share. Loaded for every game.
+//! schemas/<game>/  only what that game does differently, replacing whole
+//!                  records in the base.
+//! ```
+//!
+//! This is NVRE's own layout, not NVForever's. Upstream ships a single flat
+//! directory per game with no notion of inheritance, so a second engine restated
+//! the shared half and drifted from it on every edit. The base directory is
+//! NVRE's answer to that, and it is also what made Fallout 3 four records instead
+//! of a copy of 107.
 //!
 //! File format (`fnv.schema/1`), any number of files merged from a directory:
 //!
@@ -171,6 +189,52 @@ pub struct RecordDef {
     /// Named bits of the record header's flags field, sorted by bit (`header_flags`).
     pub header_flags: Vec<(u32, String)>,
     pub header_flags_confidence: Option<String>,
+    /// Ordered-list structure, when the record's meaning is positional rather than
+    /// per-subrecord. `None` for every ordinary record.
+    pub sequence: Option<SequenceDef>,
+}
+
+/// A record whose subrecords are an ordered list with block openers.
+///
+/// Expresses what a per-subrecord decoder cannot: UESP's Skyrim `SCEN` says its
+/// three lists "have no terminator and simply repeat until a field designates
+/// that the next block is starting", `PACK`'s fields "occur multiple times and
+/// have different meanings depending upon where they occur", and `QUST`'s "order
+/// in which the fields appear provides important information".
+///
+/// `start` and `end` are ordinary signatures decoded as always. `blocks` names
+/// *block openers*: on reaching one of these signatures outside a block, a new
+/// block of that kind opens and every following subrecord is decoded in that
+/// block's context until another opener or `end` is reached. A signature listed
+/// under several blocks is decoded by the block it is currently inside, which is
+/// exactly the "different meaning depending on where it occurs" case.
+#[derive(Debug, Clone, Default)]
+pub struct SequenceDef {
+    /// Signatures that may appear before any block opens.
+    pub start: Vec<[u8; 4]>,
+    /// Block name -> the signature that opens a block of that kind.
+    pub blocks: Vec<(String, [u8; 4])>,
+    /// Signatures that may appear after the blocks end.
+    pub end: Vec<[u8; 4]>,
+}
+
+impl SequenceDef {
+    /// The block kind whose opener is `sig`, if any.
+    pub fn block_for(&self, sig: &[u8; 4]) -> Option<&str> {
+        self.blocks.iter().find(|(_, s)| s == sig).map(|(n, _)| n.as_str())
+    }
+    /// Whether `sig` is an opener of some block.
+    pub fn is_opener(&self, sig: &[u8; 4]) -> bool {
+        self.blocks.iter().any(|(_, s)| s == sig)
+    }
+    /// Whether `sig` is named as a start or end signature.
+    pub fn is_boundary(&self, sig: &[u8; 4]) -> bool {
+        self.start.contains(sig) || self.end.contains(sig)
+    }
+    /// Every signature the sequence names, for validation.
+    pub fn all_sigs(&self) -> impl Iterator<Item = [u8; 4]> + '_ {
+        self.start.iter().chain(self.end.iter()).chain(self.blocks.iter().map(|(_, s)| s)).copied()
+    }
 }
 
 impl RecordDef {
@@ -429,6 +493,54 @@ fn parse_header_flags(v: Option<&Value>, ctx: &str) -> Result<HeaderFlags, Schem
     Ok((out, v.get("confidence").and_then(Value::as_str).map(str::to_string)))
 }
 
+/// A record entry's `sequence`: `{"start": [...], "blocks": {"name": "SIG"}, "end": [...]}`.
+///
+/// `blocks` maps a block's *name* to the signature that opens it, which is the
+/// only place a block's identity lives: the subrecords inside it are decoded by
+/// the ordinary `subrecords` map, and the same signature may appear in several
+/// blocks. Two blocks may not share an opener signature, and an opener may not
+/// also be a start or end signature, because then it would be ambiguous whether
+/// a block had opened.
+fn parse_sequence(v: Option<&Value>, ctx: &str) -> Result<Option<SequenceDef>, SchemaError> {
+    let Some(v) = v else { return Ok(None) };
+    let sigs = |key: &str| -> Result<Vec<[u8; 4]>, SchemaError> {
+        let Some(a) = v.get(key) else { return Ok(Vec::new()) };
+        let a = a.as_array().ok_or_else(|| SchemaError(format!("{ctx}: {key} must be an array")))?;
+        let mut out = Vec::new();
+        for s in a {
+            let s = s.as_str().ok_or_else(|| SchemaError(format!("{ctx}: {key} entries must be strings")))?;
+            out.push(sig4(s, ctx)?);
+        }
+        Ok(out)
+    };
+    let start = sigs("start")?;
+    let end = sigs("end")?;
+    let mut blocks = Vec::new();
+    if let Some(Value::Object(m)) = v.get("blocks") {
+        for (name, sig) in m {
+            let sig = sig
+                .as_str()
+                .ok_or_else(|| SchemaError(format!("{ctx}: block {name:?} must name a signature string")))?;
+            blocks.push((name.clone(), sig4(sig, ctx)?));
+        }
+    }
+    let seq = SequenceDef { start, blocks, end };
+    for (_, opener) in &seq.blocks {
+        if seq.start.contains(opener) || seq.end.contains(opener) {
+            return Err(SchemaError(format!(
+                "{ctx}: block opener {opener:?} may not also be a start or end signature"
+            )));
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    for (_, opener) in &seq.blocks {
+        if !seen.insert(opener) {
+            return Err(SchemaError(format!("{ctx}: block opener {opener:?} names two blocks")));
+        }
+    }
+    Ok(Some(seq))
+}
+
 impl Schema {
     /// The mask of the named record-header flag for record type `rec`, if the schema
     /// names it (`header_flags`).
@@ -437,20 +549,129 @@ impl Schema {
     }
 
     /// Load and merge every `*.json` file under `dir` (sorted by path).
+    ///
+    /// Kept for a single flat directory — `schemas/base` on its own, a test
+    /// fixture, or a tool that takes one schema dir. A *game* is loaded with
+    /// [`Schema::load_game`], which layers the game's differences over the base.
+    ///
+    /// A game directory carries a symlink to the base (`schemas/fnv/base ->
+    /// ../base`) so it can be read on its own as well as layered. Reading one
+    /// therefore has to load the base's files **first** and then let the
+    /// directory's own files replace the records they name — the same overlay
+    /// rule [`Schema::load_game`] uses. Doing it the other way round leaves a
+    /// game directory unreadable on its own, because its own files redefine
+    /// records the base already defines and `merge_str` rejects a duplicate.
     pub fn load_dir(dir: impl AsRef<Path>) -> Result<Schema, SchemaError> {
+        let dir = dir.as_ref();
+        // Is `dir` a game directory? It is when it holds a `base` entry that
+        // resolves outside itself — the symlink. Then the base loads first and
+        // this directory's own files overlay it.
+        let linked_base = dir.join("base");
+        let base = if linked_base.is_dir()
+            && linked_base
+                .canonicalize()
+                .map(|c| c != dir.canonicalize().unwrap_or_default().join("base"))
+                .unwrap_or(false)
+        {
+            Some(linked_base.canonicalize().unwrap_or(linked_base))
+        } else {
+            None
+        };
+        let mut s = match &base {
+            Some(b) => Schema::load_dir(b)?,
+            None => Schema::default(),
+        };
         let mut files = Vec::new();
-        collect_json(dir.as_ref(), &mut files).map_err(|e| SchemaError(format!("{}: {e}", dir.as_ref().display())))?;
+        collect_json(dir, &mut files).map_err(|e| SchemaError(format!("{}: {e}", dir.display())))?;
         files.sort();
         if files.is_empty() {
-            return Err(SchemaError(format!("no schema files in {}", dir.as_ref().display())));
+            return Err(SchemaError(format!("no schema files in {}", dir.display())));
         }
-        let mut s = Schema::default();
+        let base_canon = base.as_deref();
         for f in &files {
+            // A file reached through the base symlink is already loaded.
+            if let Some(b) = base_canon {
+                if f.canonicalize().map(|c| c.starts_with(b)).unwrap_or(false) {
+                    continue;
+                }
+            }
             let text = std::fs::read_to_string(f).map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
-            s.merge_str(&text, &f.display().to_string())?;
+            if base_canon.is_some() {
+                s.merge_overlay_str(&text, &f.display().to_string())?;
+            } else {
+                s.merge_str(&text, &f.display().to_string())?;
+            }
         }
         s.validate()?;
         Ok(s)
+    }
+
+    /// Load the shared `base` directory, then every game directory over it.
+    ///
+    /// This is how a game's schema is assembled, and the split is the point: the
+    /// base holds the container, the group tree, the FormID model and every
+    /// layout the Gamebryo engines share, and a game directory holds only what
+    /// that game does differently. A game directory that is missing or empty is
+    /// **not** an error — it means the game shares every layout it uses — so the
+    /// result is simply the base. Only a missing *base* is an error, because
+    /// without it there is nothing to overlay onto.
+    ///
+    /// `games` are applied in order, so a later one wins over an earlier one.
+    /// Each one may redefine records the base already holds, and may redefine
+    /// records an earlier game directory defined; within one directory the rules
+    /// of [`Schema::merge_str`] still apply, so a record defined twice in the
+    /// same directory is still an error.
+    pub fn load_game(
+        base: impl AsRef<Path>,
+        games: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> Result<Schema, SchemaError> {
+        let base = base.as_ref();
+        let mut s = Schema::load_dir(base)?;
+        for g in games {
+            let g = g.as_ref();
+            if !g.is_dir() {
+                // A game with no directory shares every layout the base has.
+                continue;
+            }
+            s.merge_over_dir(g, base, false)?;
+        }
+        s.validate()?;
+        Ok(s)
+    }
+
+    /// Merge every `*.json` file under `dir` (sorted by path).
+    ///
+    /// `strict` selects the duplicate-record rule: `true` rejects a record the
+    /// schema already holds (one directory's own files must not repeat), `false`
+    /// replaces it (an overlay directory may redefine).
+    ///
+    /// A game directory commonly holds a symlink to the base so its files are
+    /// reachable through both paths. Those are already loaded, and merging them
+    /// twice would fail on the first duplicate type — so a file whose canonical
+    /// path is *inside the base* is skipped. The comparison must be against the
+    /// base, not against `dir` itself: comparing against `dir` marks every file
+    /// of the overlay as "already loaded" and silently merges nothing.
+    fn merge_over_dir(&mut self, dir: &Path, base: &Path, strict: bool) -> Result<(), SchemaError> {
+        let mut files = Vec::new();
+        collect_json(dir, &mut files).map_err(|e| SchemaError(format!("{}: {e}", dir.display())))?;
+        files.sort();
+        let base_canon = base.canonicalize().unwrap_or_else(|_| base.to_path_buf());
+        for f in &files {
+            let is_base = f
+                .canonicalize()
+                .map(|c| c.starts_with(&base_canon))
+                .unwrap_or(false);
+            if is_base {
+                continue;
+            }
+            let text = std::fs::read_to_string(f).map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
+            if strict {
+                self.merge_str(&text, &f.display().to_string())?;
+            } else {
+                self.merge_overlay_str(&text, &f.display().to_string())?;
+            }
+        }
+        Ok(())
     }
 
     /// Load `base`, then let `overlay`'s files merge **over** it.
@@ -468,30 +689,18 @@ impl Schema {
     ///
     /// Both directories are read recursively, so `schemas/fo3` holds its own
     /// files plus a symlink to `schemas/fnv` and the two load as one.
+    ///
+    /// [`Schema::load_game`] is the multi-game form; this is the two-directory
+    /// convenience wrapper the `coverage` and `rtcheck` tools take.
     pub fn load_overlay(
         base: impl AsRef<Path>,
         overlay: impl AsRef<Path>,
     ) -> Result<Schema, SchemaError> {
         let base = base.as_ref();
-        let overlay = overlay.as_ref();
         let mut s = Schema::load_dir(base)?;
-        let mut files = Vec::new();
-        collect_json(overlay, &mut files)
-            .map_err(|e| SchemaError(format!("{}: {e}", overlay.display())))?;
-        files.sort();
-        // The overlay directory commonly holds a symlink to the base, so its
-        // files are reachable through both paths. They are already loaded, and
-        // merging them twice would fail on the first duplicate type — so compare
-        // canonical paths, which resolve the symlink, rather than the text.
-        let base_canon = base.canonicalize().unwrap_or_else(|_| base.to_path_buf());
-        files.retain(|f| {
-            f.canonicalize()
-                .map(|c| !c.starts_with(&base_canon))
-                .unwrap_or(true)
-        });
-        for f in &files {
-            let text = std::fs::read_to_string(f).map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
-            s.merge_overlay_str(&text, &f.display().to_string())?;
+        let overlay = overlay.as_ref();
+        if overlay.is_dir() {
+            s.merge_over_dir(overlay, base, false)?;
         }
         s.validate()?;
         Ok(s)
@@ -533,6 +742,7 @@ impl Schema {
                     subrecords: subs,
                     header_flags,
                     header_flags_confidence,
+                    sequence: parse_sequence(d.get("sequence"), &format!("{label}:{sig}.sequence"))?,
                 };
                 if self.records.insert(k, rd).is_some() {
                     return Err(SchemaError(format!("{label}: record {sig} defined twice")));
@@ -590,6 +800,7 @@ impl Schema {
                     subrecords: subs,
                     header_flags,
                     header_flags_confidence,
+                    sequence: parse_sequence(d.get("sequence"), &format!("{label}:{sig}.sequence"))?,
                 };
                 self.records.insert(k, rd);
             }

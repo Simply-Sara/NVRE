@@ -1,22 +1,25 @@
 {
- "format": "fnv.schema/1",
  "_comment": "Fallout 3 record layouts. This directory is an overlay on schemas/fnv: it defines only the records whose layout differs, and everything else is read from FNV's. A record defined here is defined in full, because Schema::merge_str replaces a record rather than merging its subrecords, so a partial definition would silently drop the subrecords FNV knows.\n\nMeasured with NVRE's own coverage binary against all six shipped Fallout 3 masters (2026-10-20):\n\n  Fallout3.esm    2,634,084 subrecords  ok 2,634,080 (100.00%)  unknown 3  trailing 0  error 1\n  Anchorage.esm     177,986              ok   177,986 (100.00%)  unknown 0  trailing 0  error 0\n  ThePitt.esm       136,807              ok   136,807 (100.00%)  unknown 0  trailing 0  error 0\n  BrokenSteel.esm   174,525              ok   174,525 (100.00%)  unknown 0  trailing 0  error 0\n  PointLookout.esm  235,206              ok   235,201 (100.00%)  unknown 5  trailing 0  error 0\n  Zeta.esm          125,879              ok   125,879 (100.00%)  unknown 0  trailing 0  error 0\n\nThose numbers are FNV's schema reading FO3's files, which is why the overlay is four records and not 107: the container, the group tree, the FormID model and almost every layout are shared between the two engines. What differs is listed below, each with the measurement behind it.",
+ "format": "fnv.schema/1",
  "records": {
   "CONT": {
-   "name": "Container",
    "confidence": "documented",
+   "name": "Container",
+   "note": "Fallout 3 CONT: FNV's four subrecords plus MODS. Fallout 3's container carries the same alternate-texture list the other wbTexturedModel types do [documented: xEdit; observed: 5 instances in PointLookout.esm].",
    "subrecords": {
     "DATA": {
+     "confidence": "documented",
      "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
      "type": {
       "struct": [
        {
         "name": "flags",
         "type": {
-         "flags": "u8",
          "bits": {
           "1": "Respawns"
-         }
+         },
+         "flags": "u8"
         }
        },
        {
@@ -24,757 +27,46 @@
         "type": "f32"
        }
       ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CONT record"
-    },
-    "SNAM": {
-     "name": "Sound - Open",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CONT record"
-    },
-    "QNAM": {
-     "name": "Sound - Close",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CONT record"
-    },
-    "RNAM": {
-     "name": "Sound - Random/Looping",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas CONT record"
+     }
     },
     "MODS": {
+     "confidence": "documented",
      "name": "Biped Model Alternate Textures",
+     "note": "xEdit declares the MODS family under wbTexturedModel (ARMO, STAT, ACTI, DOOR, WEAP, ALCH, TERM, HDPT, ARMA) and CONT carries the same model collection. schemas/fnv defines MODS on nine types but not on CONT, so FO3's five instances in PointLookout.esm read as unknown. Layout verified against those five: u32 count, then per entry a len_string model name, a formid and an i32 index. e.g. 01 00 00 00 | 0f 00 00 00 | \"BurialMound03:0\" | d6 28 00 01 | 00 00 00 00.",
      "type": {
       "array": "AlternateTexture",
       "count_prefix": "u32"
-     },
+     }
+    },
+    "QNAM": {
      "confidence": "documented",
-     "note": "xEdit declares the MODS family under wbTexturedModel (ARMO, STAT, ACTI, DOOR, WEAP, ALCH, TERM, HDPT, ARMA) and CONT carries the same model collection. schemas/fnv defines MODS on nine types but not on CONT, so FO3's five instances in PointLookout.esm read as unknown. Layout verified against those five: u32 count, then per entry a len_string model name, a formid and an i32 index. e.g. 01 00 00 00 | 0f 00 00 00 | \"BurialMound03:0\" | d6 28 00 01 | 00 00 00 00."
+     "name": "Sound - Close",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
+     "type": "formid"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Sound - Random/Looping",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound - Open",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
+     "type": "formid"
     }
-   },
-   "note": "Fallout 3 CONT: FNV's four subrecords plus MODS. Fallout 3's container carries the same alternate-texture list the other wbTexturedModel types do [documented: xEdit; observed: 5 instances in PointLookout.esm]."
-  },
-  "REGN": {
-   "name": "Region",
-   "confidence": "documented",
-   "subrecords": {
-    "RCLR": {
-     "name": "Map Color",
-     "type": "ByteColor",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN record"
-    },
-    "WNAM": {
-     "name": "Worldspace",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN record (WNAM, WRLD)"
-    },
-    "RPLI": {
-     "name": "Edge Fall-off",
-     "type": "u32",
-     "confidence": "observed",
-     "note": "Starts each region area, before its RPLD points (xEdit wbRegionAreas, not read here). Observed: u32 1024 in VMapGoodspringsRegion; the name is xEdit's [hypothesis: not checked against the source]"
-    },
-    "RDMP": {
-     "name": "Map Name",
-     "type": "zstring",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN Map entry: wbString(RDMP, 'Map Name', 0, cpTranslate).SetDontShow(wbREGNMapDontShow). Verified: 55 instances in FalloutNV.esm, all NUL-terminated (e.g. 'Aerotech Office Park\\0', 'North Vegas Square\\0')"
-    },
-    "RDSD": {
-     "name": "Sounds",
-     "type": {
-      "array": {
-       "struct": [
-        {
-         "name": "sound",
-         "type": "formid"
-        },
-        {
-         "name": "flags",
-         "type": {
-          "flags": "u32",
-          "bits": {
-           "0": "Pleasant",
-           "1": "Cloudy",
-           "2": "Rainy",
-           "3": "Snowy"
-          }
-         }
-        },
-        {
-         "name": "chance",
-         "type": "f32"
-        }
-       ]
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbRegionSounds: wbArrayS(RDSD, 'Sounds', wbStructSK([0], 'Sound', [wbFormIDCk('Sound', [SNDR, SOUN, NULL]), wbInteger('Flags', itU32, wbFlags([Pleasant, Cloudy, Rainy, Snowy])), wbFloat('Chance')])). Verified: every RDSD size in FalloutNV.esm is a multiple of 12 (12..828), matching a u32 count plus 12-byte elements; no count prefix - the subrecord body is exactly N fixed-size elements (all sizes are multiples of 12)"
-    },
-    "RDOT": {
-     "name": "Objects",
-     "type": {
-      "array": {
-       "struct": [
-        {
-         "name": "object",
-         "type": "formid"
-        },
-        {
-         "name": "parent_index",
-         "type": "u16"
-        },
-        {
-         "name": "unused_2",
-         "type": "u16"
-        },
-        {
-         "name": "density",
-         "type": "f32"
-        },
-        {
-         "name": "clustering",
-         "type": "u8"
-        },
-        {
-         "name": "min_slope",
-         "type": "u8"
-        },
-        {
-         "name": "max_slope",
-         "type": "u8"
-        },
-        {
-         "name": "flags",
-         "type": {
-          "flags": "u8",
-          "bits": {
-           "0": "Conform to slope",
-           "1": "Paint Vertices",
-           "2": "Size Variance +/-",
-           "3": "X +/-",
-           "4": "Y +/-",
-           "5": "Z +/-",
-           "6": "Tree",
-           "7": "Huge Rock"
-          }
-         }
-        },
-        {
-         "name": "radius_wrt_parent",
-         "type": "u16"
-        },
-        {
-         "name": "radius",
-         "type": "u16"
-        },
-        {
-         "name": "min_height",
-         "type": "f32"
-        },
-        {
-         "name": "max_height",
-         "type": "f32"
-        },
-        {
-         "name": "sink",
-         "type": "f32"
-        },
-        {
-         "name": "sink_variance",
-         "type": "f32"
-        },
-        {
-         "name": "size_variance",
-         "type": "f32"
-        },
-        {
-         "name": "angle_variance_x",
-         "type": "u16"
-        },
-        {
-         "name": "angle_variance_y",
-         "type": "u16"
-        },
-        {
-         "name": "angle_variance_z",
-         "type": "u16"
-        },
-        {
-         "name": "unused_2b",
-         "type": "u16"
-        },
-        {
-         "name": "unknown_4",
-         "type": "bytes"
-        }
-       ]
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN Objects entry: wbArray(RDOT, 'Objects', wbStruct('Object', [wbFormIDCk('Object', [TREE, STAT, LTEX]), wbInteger('Parent Index', itU16, wbHideFFFF), wbUnused(2), wbFloat('Density'), wbInteger('Clustering', itU8), wbInteger('Min Slope', itU8), wbInteger('Max Slope', itU8), wbInteger('Flags', itU8, wbFlags([...])), wbInteger('Radius wrt Parent', itU16), wbInteger('Radius', itU16), wbFloat('Min Height'), wbFloat('Max Height'), wbFloat('Sink'), wbFloat('Sink Variance'), wbFloat('Size Variance'), wbStruct('Angle Variance', [itU16 X, Y, Z]), wbUnused(2), wbByteArray('Unknown', 4)])). Verified: every RDOT size in FalloutNV.esm is 52*n (52..520), plus one 0-byte and one 364 (7*52) case; no count prefix - the subrecord body is exactly N fixed-size elements (all sizes are multiples of 52)"
-    },
-    "RPLD": {
-     "name": "Region Points",
-     "type": {
-      "array": {
-       "struct": [
-        {
-         "name": "x",
-         "type": "f32"
-        },
-        {
-         "name": "y",
-         "type": "f32"
-        }
-       ]
-      }
-     },
-     "confidence": "observed",
-     "note": "One area's polygon in worldspace units: x, y pairs [documented: xEdit wbRPLDAfterLoad reads each entry's two elements as numbers; observed: VMapGoodspringsRegion's six points span x -76216..-67372, y -6064..10250, around Goodsprings]"
-    },
-    "RDAT": {
-     "name": "Data Header",
-     "type": "RegionDataHeader",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN wbRegionDataEntries: type (2 objects, 3 weather, 4 map, 5 land, 6 grass, 7 sound, 8 imposter), flags, priority; repeated, each followed by that type's data"
-    },
-    "RDWT": {
-     "name": "Weather Types",
-     "type": {
-      "array": "WeatherType"
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN RDWT: weather, chance, global (as CLMT WLST)"
-    },
-    "RDMO": {
-     "name": "Music",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN sound data entry (RDMO, MUSC)"
-    },
-    "RDSI": {
-     "name": "Incidental MediaSet",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN sound data entry (RDSI, MSET)"
-    },
-    "RDSB": {
-     "name": "Battle MediaSet",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas REGN sound data entry (repeated RDSB 'Battle MediaSets', MSET)"
-    },
-    "RDID": {
-     "name": "Imposters",
-     "type": {
-      "array": "formid"
-     },
-     "confidence": "observed",
-     "note": "The region's imposter list: the references with the REFR XSRF Imposter flag that are drawn always while the player is in the region [documented: GECK wiki 'Reference', owner's export]. Observed in FalloutNV.esm: present only after an RDAT of type 8, in 18 regions (StripImposter lists 222 references, StripImposterClose 10), each entry a REFR FormID; the subrecord name is not checked against xEdit"
-    },
-    "ICON": {
-     "name": "Large Icon",
-     "type": "zstring",
-     "confidence": "documented",
-     "note": "fopdoc Fallout3/REGN: ICON 'Large icon filename' cstring. Fallout 3's region carries an icon; New Vegas's does not declare one. Not observed in the six shipped masters, so the layout is fopdoc's, not measured."
-    },
-    "MICO": {
-     "name": "Small Icon",
-     "type": "zstring",
-     "confidence": "documented",
-     "note": "fopdoc Fallout3/REGN: MICO 'Small icon filename' cstring. As ICON: documented, not observed in the shipped masters."
-    },
-    "RDGS": {
-     "name": "Grasses",
-     "type": {
-      "array": {
-       "struct": [
-        {
-         "name": "grass",
-         "type": "formid"
-        },
-        {
-         "name": "unknown",
-         "type": {
-          "array": "u8",
-          "count": 4
-         }
-        }
-       ]
-      },
-      "count_prefix": "u32"
-     },
-     "confidence": "documented",
-     "note": "fopdoc Fallout3/REGN Region Data Entry: RDGS 'Grasses', an array of grass formid plus 4 unknown bytes. Fallout 3 only: New Vegas's REGN has no RDGS. Documented, not observed in the shipped masters."
-    },
-    "RDMD": {
-     "name": "Music Type",
-     "type": {
-      "enum": "u32",
-      "values": {
-       "0": "Default",
-       "1": "Public",
-       "2": "Dungeon"
-      }
-     },
-     "confidence": "documented",
-     "note": "fopdoc Fallout3/REGN Region Data Entry: RDMD 'Music Type' uint32 enum (0 Default, 1 Public, 2 Dungeon). Fallout 3 only; New Vegas's REGN defines RDMO/RDSI/RDSB for music but no RDMD. Observed: 2 instances in Fallout3.esm, both 4 bytes, both 0 (0001F959 and 00000A0B) \u2014 the enum's 'Default'. FNV's schema does not define RDMD at all, which is why those two read as unknown."
-    }
-   },
-   "note": "Fallout 3 REGN: FNV's subrecords plus ICON, MICO, RDGS and RDMD, all four Fallout-3-only per fopdoc Fallout3/REGN."
-  },
-  "PACK": {
-   "name": "Package",
-   "header_flags": {
-    "bits": {
-     "27": "Unknown 27"
-    },
-    "confidence": "documented",
-    "note": "xEdit wbDefinitionsFNV.pas PACK record"
-   },
-   "subrecords": {
-    "PKDT": {
-     "name": "General",
-     "type": {
-      "struct": [
-       {
-        "name": "general_flags",
-        "type": {
-         "flags": "u32",
-         "bits": {
-          "0": "Offers Services",
-          "1": "Must Reach Location",
-          "2": "Must Complete",
-          "3": "Lock Doors At Package Start",
-          "4": "Lock Doors At Package End",
-          "5": "Lock Doors At Location",
-          "6": "Unlock Doors At Package Start",
-          "7": "Unlock Doors At Package End",
-          "8": "Unlock Doors At Location",
-          "9": "Continue If PC Near",
-          "10": "Once Per Day",
-          "12": "Skip Fallout Behavior",
-          "13": "Always Run",
-          "17": "Always Sneak",
-          "18": "Allow Swimming",
-          "19": "Allow Falls",
-          "20": "Head-Tracking Off",
-          "21": "Weapons Unequipped",
-          "22": "Defensive Combat",
-          "23": "Weapon Drawn",
-          "24": "No Idle Anims",
-          "25": "Pretend In Combat",
-          "26": "Continue During Combat",
-          "27": "No Combat Alert",
-          "28": "No Warn/Attack Behavior"
-         }
-        }
-       },
-       {
-        "name": "type",
-        "type": {
-         "enum": "u8",
-         "values": {
-          "0": "Find",
-          "1": "Follow",
-          "2": "Escort",
-          "3": "Eat",
-          "4": "Sleep",
-          "5": "Wander",
-          "6": "Travel",
-          "7": "Accompany",
-          "8": "Use Item At",
-          "9": "Ambush",
-          "10": "Flee Not Combat",
-          "12": "Sandbox",
-          "13": "Patrol",
-          "14": "Guard",
-          "15": "Dialogue",
-          "16": "Use Weapon"
-         }
-        }
-       },
-       {
-        "name": "unused",
-        "type": {
-         "array": "u8",
-         "count": 1
-        },
-        "optional": true
-       },
-       {
-        "name": "fallout_behavior_flags",
-        "type": {
-         "flags": "u16",
-         "bits": {
-          "0": "Hellos To Player",
-          "1": "Random Conversations",
-          "2": "Observe Combat Behavior",
-          "3": "Unknown 4",
-          "4": "Reaction To Player Actions",
-          "5": "Friendly Fire Comments",
-          "6": "Aggro Radius Behavior",
-          "7": "Allow Idle Chatter",
-          "8": "Avoid Radiation"
-         }
-        },
-        "optional": true
-       },
-       {
-        "name": "type_specific_flags_raw",
-        "type": "u16",
-        "optional": true
-       },
-       {
-        "name": "unused2",
-        "type": {
-         "array": "u8",
-         "count": 2
-        },
-        "optional": true
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsFNV.pas PACK PKDT, SetOptionalFrom(2); flag names from wbDefinitionsCommon.pas wbPackageFlags (the FO3 names apply to FNV, wbIsFallout3 covers both games). Bit 20 is 'Head-Tracking Off' there and in the GECK wiki's flag list, 'Armor Unequipped' in JIP's GetPackageFlag list. The type-specific flags are a union decided by the package type (wbPKDTSpecificFlagsDecider): Find/Escort/Eat bits 8-10 Allow Buying/Killing/Stealing; Wander/Sandbox bits 0-5 No Eating/Sleeping/Conversation/Idle Markers/Furniture/Wandering; Use Item At bit 2 Sit Down plus 8-10; Ambush bit 0 Hide While Ambushing; Guard bit 3 Remain Near Reference to Guard. Kept as u16 here; fnv-ai reads it by type."
-    },
-    "PLDT": {
-     "name": "Location 1",
-     "type": "PackageLocation",
-     "confidence": "documented",
-     "note": "xEdit PACK PLDT; the location field is a union decided by the type (wbPxDTLocationDecider): 0 reference FormID, 1 cell FormID, 4 base object FormID, 5 object type (wbObjectTypeEnum), otherwise unused. Kept as u32; fnv-ai maps FormIDs by type."
-    },
-    "PLD2": {
-     "name": "Location 2",
-     "type": "PackageLocation",
-     "confidence": "documented",
-     "note": "xEdit PACK PLD2 (it appears twice in xEdit's list, the second as 'Location 2 (again??)'), same layout as PLDT"
-    },
-    "PSDT": {
-     "name": "Schedule",
-     "type": {
-      "struct": [
-       {
-        "name": "month",
-        "type": "i8"
-       },
-       {
-        "name": "day_of_week",
-        "type": {
-         "enum": "i8",
-         "values": {
-          "-1": "Any",
-          "0": "Sunday",
-          "1": "Monday",
-          "2": "Tuesday",
-          "3": "Wednesday",
-          "4": "Thursday",
-          "5": "Friday",
-          "6": "Saturday",
-          "7": "Weekdays (MTWTF)",
-          "8": "Weekends (SS)",
-          "9": "Monday, Wednesday, Friday",
-          "10": "Tuesday, Thursday"
-         }
-        }
-       },
-       {
-        "name": "date",
-        "type": "i8"
-       },
-       {
-        "name": "time",
-        "type": "i8"
-       },
-       {
-        "name": "duration_hours",
-        "type": "u32"
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit PACK PSDT: month -1 Any, 0-11 January-December, 12-15 Spring/Summer/Autumn/Winter (records of form version below 122 store it zero-based; FNV records are version 15); date 0 Any, else day of month; time -1 Any, else 0-23 hour"
-    },
-    "PTDT": {
-     "name": "Target 1",
-     "type": "PackageTarget",
-     "confidence": "documented",
-     "note": "xEdit PACK PTDT, SetOptionalFrom(3); the target field is a union decided by the type: 0 reference FormID, 1 base object FormID, 2 object type (wbObjectTypeEnum), 3 unused (linked reference)"
-    },
-    "PTD2": {
-     "name": "Target 2",
-     "type": "PackageTarget",
-     "confidence": "documented",
-     "note": "xEdit PACK PTD2, same layout as PTDT"
-    },
-    "IDLF": {
-     "name": "Idle Flags",
-     "type": {
-      "flags": "u8",
-      "bits": {
-       "0": "Run In Sequence",
-       "2": "Do Once"
-      }
-     },
-     "confidence": "documented",
-     "note": "xEdit wbDefinitionsCommon.pas wbIdleAnimation (FO3/FNV names)"
-    },
-    "IDLC": {
-     "name": "Idle Count",
-     "type": "IdleCount",
-     "confidence": "documented",
-     "note": "xEdit wbIdleAnimation; 3 unused bytes only below form version 14"
-    },
-    "IDLT": {
-     "name": "Idle Timer Setting",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit wbIdleAnimation"
-    },
-    "IDLA": {
-     "name": "Animations",
-     "type": {
-      "array": "formid"
-     },
-     "confidence": "documented",
-     "note": "xEdit wbIdleAnimation: IDLE FormIDs"
-    },
-    "CNAM": {
-     "name": "Combat Style",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit PACK CNAM (CSTY)"
-    },
-    "PKED": {
-     "name": "Eat Marker",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit PACK PKED"
-    },
-    "PKE2": {
-     "name": "Escort Distance",
-     "type": "u32",
-     "confidence": "documented",
-     "note": "xEdit PACK PKE2"
-    },
-    "PKFD": {
-     "name": "Follow - Start Location - Trigger Radius",
-     "type": "f32",
-     "confidence": "documented",
-     "note": "xEdit PACK PKFD"
-    },
-    "PKPT": {
-     "name": "Patrol Flags",
-     "type": {
-      "struct": [
-       {
-        "name": "repeatable",
-        "type": "BoolU8"
-       },
-       {
-        "name": "unused",
-        "type": {
-         "array": "u8",
-         "count": 1
-        },
-        "optional": true
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit PACK PKPT, SetOptionalFrom(1)"
-    },
-    "PKW3": {
-     "name": "Use Weapon Data",
-     "type": {
-      "struct": [
-       {
-        "name": "flags",
-        "type": {
-         "flags": "u32",
-         "bits": {
-          "0": "Always Hit",
-          "8": "Do No Damage",
-          "16": "Crouch To Reload",
-          "24": "Hold Fire When Blocked"
-         }
-        }
-       },
-       {
-        "name": "fire_rate",
-        "type": {
-         "enum": "u8",
-         "values": {
-          "0": "Auto Fire",
-          "1": "Volley Fire"
-         }
-        }
-       },
-       {
-        "name": "fire_count",
-        "type": {
-         "enum": "u8",
-         "values": {
-          "0": "Number of Bursts",
-          "1": "Repeat Fire"
-         }
-        }
-       },
-       {
-        "name": "number_of_bursts",
-        "type": "u16"
-       },
-       {
-        "name": "shots_per_volley_min",
-        "type": "u16"
-       },
-       {
-        "name": "shots_per_volley_max",
-        "type": "u16"
-       },
-       {
-        "name": "pause_between_volleys_min",
-        "type": "f32"
-       },
-       {
-        "name": "pause_between_volleys_max",
-        "type": "f32"
-       },
-       {
-        "name": "unused",
-        "type": {
-         "array": "u8",
-         "count": 4
-        }
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit PACK PKW3"
-    },
-    "PUID": {
-     "name": "Use Item Marker",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit PACK PUID"
-    },
-    "PKAM": {
-     "name": "Ambush Marker",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit PACK PKAM"
-    },
-    "PKDD": {
-     "name": "Dialogue Data",
-     "type": {
-      "struct": [
-       {
-        "name": "fov",
-        "type": "f32"
-       },
-       {
-        "name": "topic",
-        "type": "formid"
-       },
-       {
-        "name": "flags",
-        "type": {
-         "flags": "u32",
-         "bits": {
-          "0": "No Headtracking",
-          "8": "Don't Control Target Movement"
-         }
-        }
-       },
-       {
-        "name": "unused",
-        "type": {
-         "array": "u8",
-         "count": 4
-        },
-        "optional": true
-       },
-       {
-        "name": "dialogue_type",
-        "type": {
-         "enum": "u32",
-         "values": {
-          "0": "Conversation",
-          "1": "Say To"
-         }
-        },
-        "optional": true
-       },
-       {
-        "name": "unknown",
-        "type": {
-         "array": "u8",
-         "count": 4
-        },
-        "optional": true
-       }
-      ]
-     },
-     "confidence": "documented",
-     "note": "xEdit PACK PKDD, SetOptionalFrom(3)"
-    },
-    "POBA": {
-     "name": "OnBegin Marker",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit PACK OnBegin group: POBA, then INAM idle, an embedded script, TNAM topic"
-    },
-    "POEA": {
-     "name": "OnEnd Marker",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit PACK OnEnd group, as OnBegin"
-    },
-    "POCA": {
-     "name": "OnChange Marker",
-     "type": "Empty",
-     "confidence": "documented",
-     "note": "xEdit PACK OnChange group, as OnBegin"
-    },
-    "INAM": {
-     "name": "Idle",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit PACK OnBegin/OnEnd/OnChange INAM (IDLE or null)"
-    },
-    "TNAM": {
-     "name": "Topic",
-     "type": "formid",
-     "confidence": "documented",
-     "note": "xEdit PACK OnBegin/OnEnd/OnChange TNAM (DIAL or null)"
-    },
-    "IDLB": {
-     "name": "Unused",
-     "type": {
-      "array": "u8",
-      "count": 4
-     },
-     "confidence": "documented",
-     "note": "fopdoc Fallout3/PACK and FalloutNV/PACK both list IDLB 'Unused' byte[4] after IDLA, but schemas/fnv omits it. Observed: 1 instance in Fallout3.esm (000207E5), 4 bytes, value 1 \u2014 the field is named Unused and the game wrote 1 in it, so the bytes are copied through rather than assumed zero. Both games' packages carry it; adding it here fixes FNV's coverage too, but FNV's own masters happen not to use it."
-    }
-   },
-   "confidence": "documented",
-   "note": "Fallout 3 PACK: FNV's subrecords plus IDLB. Fallout 3 has no PKPT/PKW3/PUID/PKAM/PKDD/PLD2 \u2014 those are New Vegas additions \u2014 and an unused subrecord on a record is simply absent rather than an error, so FNV's superset reads FO3's packages cleanly."
+   }
   },
   "DOBJ": {
-   "name": "DOBJ",
    "confidence": "observed",
+   "name": "DOBJ",
    "note": "Fallout 3 DOBJ: 21 default objects where New Vegas has 34. The subrecord's own length is the field count, so a save writes 84 bytes rather than growing the record to New Vegas's 136.",
    "subrecords": {
     "DATA": {
+     "confidence": "observed",
      "name": "Default Objects",
+     "note": "Fallout 3's DOBJ DATA is 21 formids = 84 bytes, where New Vegas's is 34 = 136. fopdoc Fallout3/DOBJ lists 23 fields, which would be 92 bytes; the shipped record is 84, so the record wins over the spec \u2014 the game writes 21 of the 23 it documents, and the two it omits are not distinguishable from the bytes alone. Observed: the single instance in Fallout3.esm (00000031, 84 bytes) resolves field-for-field against fopdoc's order, every value a plausible FormID or a legitimate 0. The 13 New Vegas fields it lacks are Miss Fortune, the meltdown explosion, the five unarmed pickup-animations, the spotter/item-detected/cateye effects \u2014 all New Vegas additions.",
      "type": {
       "struct": [
        {
@@ -862,11 +154,720 @@
         "type": "formid"
        }
       ]
-     },
+     }
+    }
+   }
+  },
+  "PACK": {
+   "confidence": "documented",
+   "header_flags": {
+    "bits": {
+     "27": "Unknown 27"
+    },
+    "confidence": "documented",
+    "note": "xEdit wbDefinitionsFNV.pas PACK record"
+   },
+   "name": "Package",
+   "note": "Fallout 3 PACK: FNV's subrecords plus IDLB. Fallout 3 has no PKPT/PKW3/PUID/PKAM/PKDD/PLD2 \u2014 those are New Vegas additions \u2014 and an unused subrecord on a record is simply absent rather than an error, so FNV's superset reads FO3's packages cleanly.",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Combat Style",
+     "note": "xEdit PACK CNAM (CSTY)",
+     "type": "formid"
+    },
+    "IDLA": {
+     "confidence": "documented",
+     "name": "Animations",
+     "note": "xEdit wbIdleAnimation: IDLE FormIDs",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "IDLB": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "fopdoc Fallout3/PACK and FalloutNV/PACK both list IDLB 'Unused' byte[4] after IDLA, but schemas/fnv omits it. Observed: 1 instance in Fallout3.esm (000207E5), 4 bytes, value 1 \u2014 the field is named Unused and the game wrote 1 in it, so the bytes are copied through rather than assumed zero. Both games' packages carry it; adding it here fixes FNV's coverage too, but FNV's own masters happen not to use it.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    "IDLC": {
+     "confidence": "documented",
+     "name": "Idle Count",
+     "note": "xEdit wbIdleAnimation; 3 unused bytes only below form version 14",
+     "type": "IdleCount"
+    },
+    "IDLF": {
+     "confidence": "documented",
+     "name": "Idle Flags",
+     "note": "xEdit wbDefinitionsCommon.pas wbIdleAnimation (FO3/FNV names)",
+     "type": {
+      "bits": {
+       "0": "Run In Sequence",
+       "2": "Do Once"
+      },
+      "flags": "u8"
+     }
+    },
+    "IDLT": {
+     "confidence": "documented",
+     "name": "Idle Timer Setting",
+     "note": "xEdit wbIdleAnimation",
+     "type": "f32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Idle",
+     "note": "xEdit PACK OnBegin/OnEnd/OnChange INAM (IDLE or null)",
+     "type": "formid"
+    },
+    "PKAM": {
+     "confidence": "documented",
+     "name": "Ambush Marker",
+     "note": "xEdit PACK PKAM",
+     "type": "Empty"
+    },
+    "PKDD": {
+     "confidence": "documented",
+     "name": "Dialogue Data",
+     "note": "xEdit PACK PKDD, SetOptionalFrom(3)",
+     "type": {
+      "struct": [
+       {
+        "name": "fov",
+        "type": "f32"
+       },
+       {
+        "name": "topic",
+        "type": "formid"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "No Headtracking",
+          "8": "Don't Control Target Movement"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "unused",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 4
+        }
+       },
+       {
+        "name": "dialogue_type",
+        "optional": true,
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Conversation",
+          "1": "Say To"
+         }
+        }
+       },
+       {
+        "name": "unknown",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 4
+        }
+       }
+      ]
+     }
+    },
+    "PKDT": {
+     "confidence": "documented",
+     "name": "General",
+     "note": "xEdit wbDefinitionsFNV.pas PACK PKDT, SetOptionalFrom(2); flag names from wbDefinitionsCommon.pas wbPackageFlags (the FO3 names apply to FNV, wbIsFallout3 covers both games). Bit 20 is 'Head-Tracking Off' there and in the GECK wiki's flag list, 'Armor Unequipped' in JIP's GetPackageFlag list. The type-specific flags are a union decided by the package type (wbPKDTSpecificFlagsDecider): Find/Escort/Eat bits 8-10 Allow Buying/Killing/Stealing; Wander/Sandbox bits 0-5 No Eating/Sleeping/Conversation/Idle Markers/Furniture/Wandering; Use Item At bit 2 Sit Down plus 8-10; Ambush bit 0 Hide While Ambushing; Guard bit 3 Remain Near Reference to Guard. Kept as u16 here; fnv-ai reads it by type.",
+     "type": {
+      "struct": [
+       {
+        "name": "general_flags",
+        "type": {
+         "bits": {
+          "0": "Offers Services",
+          "1": "Must Reach Location",
+          "10": "Once Per Day",
+          "12": "Skip Fallout Behavior",
+          "13": "Always Run",
+          "17": "Always Sneak",
+          "18": "Allow Swimming",
+          "19": "Allow Falls",
+          "2": "Must Complete",
+          "20": "Head-Tracking Off",
+          "21": "Weapons Unequipped",
+          "22": "Defensive Combat",
+          "23": "Weapon Drawn",
+          "24": "No Idle Anims",
+          "25": "Pretend In Combat",
+          "26": "Continue During Combat",
+          "27": "No Combat Alert",
+          "28": "No Warn/Attack Behavior",
+          "3": "Lock Doors At Package Start",
+          "4": "Lock Doors At Package End",
+          "5": "Lock Doors At Location",
+          "6": "Unlock Doors At Package Start",
+          "7": "Unlock Doors At Package End",
+          "8": "Unlock Doors At Location",
+          "9": "Continue If PC Near"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "type",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Find",
+          "1": "Follow",
+          "10": "Flee Not Combat",
+          "12": "Sandbox",
+          "13": "Patrol",
+          "14": "Guard",
+          "15": "Dialogue",
+          "16": "Use Weapon",
+          "2": "Escort",
+          "3": "Eat",
+          "4": "Sleep",
+          "5": "Wander",
+          "6": "Travel",
+          "7": "Accompany",
+          "8": "Use Item At",
+          "9": "Ambush"
+         }
+        }
+       },
+       {
+        "name": "unused",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       },
+       {
+        "name": "fallout_behavior_flags",
+        "optional": true,
+        "type": {
+         "bits": {
+          "0": "Hellos To Player",
+          "1": "Random Conversations",
+          "2": "Observe Combat Behavior",
+          "3": "Unknown 4",
+          "4": "Reaction To Player Actions",
+          "5": "Friendly Fire Comments",
+          "6": "Aggro Radius Behavior",
+          "7": "Allow Idle Chatter",
+          "8": "Avoid Radiation"
+         },
+         "flags": "u16"
+        }
+       },
+       {
+        "name": "type_specific_flags_raw",
+        "optional": true,
+        "type": "u16"
+       },
+       {
+        "name": "unused2",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       }
+      ]
+     }
+    },
+    "PKE2": {
+     "confidence": "documented",
+     "name": "Escort Distance",
+     "note": "xEdit PACK PKE2",
+     "type": "u32"
+    },
+    "PKED": {
+     "confidence": "documented",
+     "name": "Eat Marker",
+     "note": "xEdit PACK PKED",
+     "type": "Empty"
+    },
+    "PKFD": {
+     "confidence": "documented",
+     "name": "Follow - Start Location - Trigger Radius",
+     "note": "xEdit PACK PKFD",
+     "type": "f32"
+    },
+    "PKPT": {
+     "confidence": "documented",
+     "name": "Patrol Flags",
+     "note": "xEdit PACK PKPT, SetOptionalFrom(1)",
+     "type": {
+      "struct": [
+       {
+        "name": "repeatable",
+        "type": "BoolU8"
+       },
+       {
+        "name": "unused",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    "PKW3": {
+     "confidence": "documented",
+     "name": "Use Weapon Data",
+     "note": "xEdit PACK PKW3",
+     "type": {
+      "struct": [
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Always Hit",
+          "16": "Crouch To Reload",
+          "24": "Hold Fire When Blocked",
+          "8": "Do No Damage"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "fire_rate",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Auto Fire",
+          "1": "Volley Fire"
+         }
+        }
+       },
+       {
+        "name": "fire_count",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Number of Bursts",
+          "1": "Repeat Fire"
+         }
+        }
+       },
+       {
+        "name": "number_of_bursts",
+        "type": "u16"
+       },
+       {
+        "name": "shots_per_volley_min",
+        "type": "u16"
+       },
+       {
+        "name": "shots_per_volley_max",
+        "type": "u16"
+       },
+       {
+        "name": "pause_between_volleys_min",
+        "type": "f32"
+       },
+       {
+        "name": "pause_between_volleys_max",
+        "type": "f32"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 4
+        }
+       }
+      ]
+     }
+    },
+    "PLD2": {
+     "confidence": "documented",
+     "name": "Location 2",
+     "note": "xEdit PACK PLD2 (it appears twice in xEdit's list, the second as 'Location 2 (again??)'), same layout as PLDT",
+     "type": "PackageLocation"
+    },
+    "PLDT": {
+     "confidence": "documented",
+     "name": "Location 1",
+     "note": "xEdit PACK PLDT; the location field is a union decided by the type (wbPxDTLocationDecider): 0 reference FormID, 1 cell FormID, 4 base object FormID, 5 object type (wbObjectTypeEnum), otherwise unused. Kept as u32; fnv-ai maps FormIDs by type.",
+     "type": "PackageLocation"
+    },
+    "POBA": {
+     "confidence": "documented",
+     "name": "OnBegin Marker",
+     "note": "xEdit PACK OnBegin group: POBA, then INAM idle, an embedded script, TNAM topic",
+     "type": "Empty"
+    },
+    "POCA": {
+     "confidence": "documented",
+     "name": "OnChange Marker",
+     "note": "xEdit PACK OnChange group, as OnBegin",
+     "type": "Empty"
+    },
+    "POEA": {
+     "confidence": "documented",
+     "name": "OnEnd Marker",
+     "note": "xEdit PACK OnEnd group, as OnBegin",
+     "type": "Empty"
+    },
+    "PSDT": {
+     "confidence": "documented",
+     "name": "Schedule",
+     "note": "xEdit PACK PSDT: month -1 Any, 0-11 January-December, 12-15 Spring/Summer/Autumn/Winter (records of form version below 122 store it zero-based; FNV records are version 15); date 0 Any, else day of month; time -1 Any, else 0-23 hour",
+     "type": {
+      "struct": [
+       {
+        "name": "month",
+        "type": "i8"
+       },
+       {
+        "name": "day_of_week",
+        "type": {
+         "enum": "i8",
+         "values": {
+          "-1": "Any",
+          "0": "Sunday",
+          "1": "Monday",
+          "10": "Tuesday, Thursday",
+          "2": "Tuesday",
+          "3": "Wednesday",
+          "4": "Thursday",
+          "5": "Friday",
+          "6": "Saturday",
+          "7": "Weekdays (MTWTF)",
+          "8": "Weekends (SS)",
+          "9": "Monday, Wednesday, Friday"
+         }
+        }
+       },
+       {
+        "name": "date",
+        "type": "i8"
+       },
+       {
+        "name": "time",
+        "type": "i8"
+       },
+       {
+        "name": "duration_hours",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    "PTD2": {
+     "confidence": "documented",
+     "name": "Target 2",
+     "note": "xEdit PACK PTD2, same layout as PTDT",
+     "type": "PackageTarget"
+    },
+    "PTDT": {
+     "confidence": "documented",
+     "name": "Target 1",
+     "note": "xEdit PACK PTDT, SetOptionalFrom(3); the target field is a union decided by the type: 0 reference FormID, 1 base object FormID, 2 object type (wbObjectTypeEnum), 3 unused (linked reference)",
+     "type": "PackageTarget"
+    },
+    "PUID": {
+     "confidence": "documented",
+     "name": "Use Item Marker",
+     "note": "xEdit PACK PUID",
+     "type": "Empty"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Topic",
+     "note": "xEdit PACK OnBegin/OnEnd/OnChange TNAM (DIAL or null)",
+     "type": "formid"
+    }
+   }
+  },
+  "REGN": {
+   "confidence": "documented",
+   "name": "Region",
+   "note": "Fallout 3 REGN: FNV's subrecords plus ICON, MICO, RDGS and RDMD, all four Fallout-3-only per fopdoc Fallout3/REGN.",
+   "subrecords": {
+    "ICON": {
+     "confidence": "documented",
+     "name": "Large Icon",
+     "note": "fopdoc Fallout3/REGN: ICON 'Large icon filename' cstring. Fallout 3's region carries an icon; New Vegas's does not declare one. Not observed in the six shipped masters, so the layout is fopdoc's, not measured.",
+     "type": "zstring"
+    },
+    "MICO": {
+     "confidence": "documented",
+     "name": "Small Icon",
+     "note": "fopdoc Fallout3/REGN: MICO 'Small icon filename' cstring. As ICON: documented, not observed in the shipped masters.",
+     "type": "zstring"
+    },
+    "RCLR": {
+     "confidence": "documented",
+     "name": "Map Color",
+     "note": "xEdit wbDefinitionsFNV.pas REGN record",
+     "type": "ByteColor"
+    },
+    "RDAT": {
+     "confidence": "documented",
+     "name": "Data Header",
+     "note": "xEdit wbDefinitionsFNV.pas REGN wbRegionDataEntries: type (2 objects, 3 weather, 4 map, 5 land, 6 grass, 7 sound, 8 imposter), flags, priority; repeated, each followed by that type's data",
+     "type": "RegionDataHeader"
+    },
+    "RDGS": {
+     "confidence": "documented",
+     "name": "Grasses",
+     "note": "fopdoc Fallout3/REGN Region Data Entry: RDGS 'Grasses', an array of grass formid plus 4 unknown bytes. Fallout 3 only: New Vegas's REGN has no RDGS. Documented, not observed in the shipped masters.",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "grass",
+         "type": "formid"
+        },
+        {
+         "name": "unknown",
+         "type": {
+          "array": "u8",
+          "count": 4
+         }
+        }
+       ]
+      },
+      "count_prefix": "u32"
+     }
+    },
+    "RDID": {
      "confidence": "observed",
-     "note": "Fallout 3's DOBJ DATA is 21 formids = 84 bytes, where New Vegas's is 34 = 136. fopdoc Fallout3/DOBJ lists 23 fields, which would be 92 bytes; the shipped record is 84, so the record wins over the spec \u2014 the game writes 21 of the 23 it documents, and the two it omits are not distinguishable from the bytes alone. Observed: the single instance in Fallout3.esm (00000031, 84 bytes) resolves field-for-field against fopdoc's order, every value a plausible FormID or a legitimate 0. The 13 New Vegas fields it lacks are Miss Fortune, the meltdown explosion, the five unarmed pickup-animations, the spotter/item-detected/cateye effects \u2014 all New Vegas additions."
+     "name": "Imposters",
+     "note": "The region's imposter list: the references with the REFR XSRF Imposter flag that are drawn always while the player is in the region [documented: GECK wiki 'Reference', owner's export]. Observed in FalloutNV.esm: present only after an RDAT of type 8, in 18 regions (StripImposter lists 222 references, StripImposterClose 10), each entry a REFR FormID; the subrecord name is not checked against xEdit",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "RDMD": {
+     "confidence": "documented",
+     "name": "Music Type",
+     "note": "fopdoc Fallout3/REGN Region Data Entry: RDMD 'Music Type' uint32 enum (0 Default, 1 Public, 2 Dungeon). Fallout 3 only; New Vegas's REGN defines RDMO/RDSI/RDSB for music but no RDMD. Observed: 2 instances in Fallout3.esm, both 4 bytes, both 0 (0001F959 and 00000A0B) \u2014 the enum's 'Default'. FNV's schema does not define RDMD at all, which is why those two read as unknown.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Default",
+       "1": "Public",
+       "2": "Dungeon"
+      }
+     }
+    },
+    "RDMO": {
+     "confidence": "documented",
+     "name": "Music",
+     "note": "xEdit wbDefinitionsFNV.pas REGN sound data entry (RDMO, MUSC)",
+     "type": "formid"
+    },
+    "RDMP": {
+     "confidence": "documented",
+     "name": "Map Name",
+     "note": "xEdit wbDefinitionsFNV.pas REGN Map entry: wbString(RDMP, 'Map Name', 0, cpTranslate).SetDontShow(wbREGNMapDontShow). Verified: 55 instances in FalloutNV.esm, all NUL-terminated (e.g. 'Aerotech Office Park\\0', 'North Vegas Square\\0')",
+     "type": "zstring"
+    },
+    "RDOT": {
+     "confidence": "documented",
+     "name": "Objects",
+     "note": "xEdit wbDefinitionsFNV.pas REGN Objects entry: wbArray(RDOT, 'Objects', wbStruct('Object', [wbFormIDCk('Object', [TREE, STAT, LTEX]), wbInteger('Parent Index', itU16, wbHideFFFF), wbUnused(2), wbFloat('Density'), wbInteger('Clustering', itU8), wbInteger('Min Slope', itU8), wbInteger('Max Slope', itU8), wbInteger('Flags', itU8, wbFlags([...])), wbInteger('Radius wrt Parent', itU16), wbInteger('Radius', itU16), wbFloat('Min Height'), wbFloat('Max Height'), wbFloat('Sink'), wbFloat('Sink Variance'), wbFloat('Size Variance'), wbStruct('Angle Variance', [itU16 X, Y, Z]), wbUnused(2), wbByteArray('Unknown', 4)])). Verified: every RDOT size in FalloutNV.esm is 52*n (52..520), plus one 0-byte and one 364 (7*52) case; no count prefix - the subrecord body is exactly N fixed-size elements (all sizes are multiples of 52)",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "object",
+         "type": "formid"
+        },
+        {
+         "name": "parent_index",
+         "type": "u16"
+        },
+        {
+         "name": "unused_2",
+         "type": "u16"
+        },
+        {
+         "name": "density",
+         "type": "f32"
+        },
+        {
+         "name": "clustering",
+         "type": "u8"
+        },
+        {
+         "name": "min_slope",
+         "type": "u8"
+        },
+        {
+         "name": "max_slope",
+         "type": "u8"
+        },
+        {
+         "name": "flags",
+         "type": {
+          "bits": {
+           "0": "Conform to slope",
+           "1": "Paint Vertices",
+           "2": "Size Variance +/-",
+           "3": "X +/-",
+           "4": "Y +/-",
+           "5": "Z +/-",
+           "6": "Tree",
+           "7": "Huge Rock"
+          },
+          "flags": "u8"
+         }
+        },
+        {
+         "name": "radius_wrt_parent",
+         "type": "u16"
+        },
+        {
+         "name": "radius",
+         "type": "u16"
+        },
+        {
+         "name": "min_height",
+         "type": "f32"
+        },
+        {
+         "name": "max_height",
+         "type": "f32"
+        },
+        {
+         "name": "sink",
+         "type": "f32"
+        },
+        {
+         "name": "sink_variance",
+         "type": "f32"
+        },
+        {
+         "name": "size_variance",
+         "type": "f32"
+        },
+        {
+         "name": "angle_variance_x",
+         "type": "u16"
+        },
+        {
+         "name": "angle_variance_y",
+         "type": "u16"
+        },
+        {
+         "name": "angle_variance_z",
+         "type": "u16"
+        },
+        {
+         "name": "unused_2b",
+         "type": "u16"
+        },
+        {
+         "name": "unknown_4",
+         "type": "bytes"
+        }
+       ]
+      }
+     }
+    },
+    "RDSB": {
+     "confidence": "documented",
+     "name": "Battle MediaSet",
+     "note": "xEdit wbDefinitionsFNV.pas REGN sound data entry (repeated RDSB 'Battle MediaSets', MSET)",
+     "type": "formid"
+    },
+    "RDSD": {
+     "confidence": "documented",
+     "name": "Sounds",
+     "note": "xEdit wbDefinitionsCommon.pas wbRegionSounds: wbArrayS(RDSD, 'Sounds', wbStructSK([0], 'Sound', [wbFormIDCk('Sound', [SNDR, SOUN, NULL]), wbInteger('Flags', itU32, wbFlags([Pleasant, Cloudy, Rainy, Snowy])), wbFloat('Chance')])). Verified: every RDSD size in FalloutNV.esm is a multiple of 12 (12..828), matching a u32 count plus 12-byte elements; no count prefix - the subrecord body is exactly N fixed-size elements (all sizes are multiples of 12)",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "sound",
+         "type": "formid"
+        },
+        {
+         "name": "flags",
+         "type": {
+          "bits": {
+           "0": "Pleasant",
+           "1": "Cloudy",
+           "2": "Rainy",
+           "3": "Snowy"
+          },
+          "flags": "u32"
+         }
+        },
+        {
+         "name": "chance",
+         "type": "f32"
+        }
+       ]
+      }
+     }
+    },
+    "RDSI": {
+     "confidence": "documented",
+     "name": "Incidental MediaSet",
+     "note": "xEdit wbDefinitionsFNV.pas REGN sound data entry (RDSI, MSET)",
+     "type": "formid"
+    },
+    "RDWT": {
+     "confidence": "documented",
+     "name": "Weather Types",
+     "note": "xEdit wbDefinitionsFNV.pas REGN RDWT: weather, chance, global (as CLMT WLST)",
+     "type": {
+      "array": "WeatherType"
+     }
+    },
+    "RPLD": {
+     "confidence": "observed",
+     "name": "Region Points",
+     "note": "One area's polygon in worldspace units: x, y pairs [documented: xEdit wbRPLDAfterLoad reads each entry's two elements as numbers; observed: VMapGoodspringsRegion's six points span x -76216..-67372, y -6064..10250, around Goodsprings]",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "x",
+         "type": "f32"
+        },
+        {
+         "name": "y",
+         "type": "f32"
+        }
+       ]
+      }
+     }
+    },
+    "RPLI": {
+     "confidence": "observed",
+     "name": "Edge Fall-off",
+     "note": "Starts each region area, before its RPLD points (xEdit wbRegionAreas, not read here). Observed: u32 1024 in VMapGoodspringsRegion; the name is xEdit's [hypothesis: not checked against the source]",
+     "type": "u32"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Worldspace",
+     "note": "xEdit wbDefinitionsFNV.pas REGN record (WNAM, WRLD)",
+     "type": "formid"
     }
    }
   }
- }
+ },
+ "types": {}
 }

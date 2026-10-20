@@ -1,0 +1,8158 @@
+{
+ "common": {
+  "BIPL": {
+   "confidence": "documented",
+   "name": "Biped Model List",
+   "note": "xEdit wbDefinitionsFNV.pas wbBIPL helper record",
+   "type": "formid"
+  },
+  "CNTO": {
+   "confidence": "documented",
+   "name": "Item",
+   "note": "xEdit wbDefinitionsFNV.pas wbCNTO helper record",
+   "type": {
+    "struct": [
+     {
+      "name": "item",
+      "type": "formid"
+     },
+     {
+      "name": "count",
+      "type": "i32"
+     }
+    ]
+   }
+  },
+  "COED": {
+   "confidence": "documented",
+   "name": "Item Extra Data",
+   "note": "xEdit wbDefinitionsFNV.pas wbCOED helper record; field 2 is an xEdit union (unused / GLOB FormID / s32 required rank, chosen by owner type), decoded as raw u32",
+   "type": {
+    "struct": [
+     {
+      "name": "owner",
+      "type": "formid"
+     },
+     {
+      "name": "global_or_rank_raw",
+      "type": "u32"
+     },
+     {
+      "name": "item_condition",
+      "type": "f32"
+     }
+    ]
+   }
+  },
+  "CTDA": {
+   "confidence": "documented",
+   "name": "Condition",
+   "note": "xEdit wbDefinitionsFNV.pas wbConditions helper record; Comparison Value (float or GLOB FormID, chosen by a Type flag), Parameter #1/#2 (function-dependent) and Reference (FormID or unused, depends on Run On) are xEdit unions of 4-byte alternatives, decoded here as raw u32; Run On/Reference optional per SetOptionalFrom(7); Type is a custom-formatted u8 (comparison operator + flags)",
+   "type": "Condition"
+  },
+  "DESC": {
+   "confidence": "documented",
+   "name": "Description",
+   "note": "xEdit wbDefinitionsFNV.pas wbDESC helper record",
+   "type": "zstring"
+  },
+  "DEST": {
+   "confidence": "documented",
+   "name": "Destructible Header",
+   "note": "xEdit wbDefinitionsFNV.pas wbDEST helper record",
+   "type": {
+    "struct": [
+     {
+      "name": "health",
+      "type": "i32"
+     },
+     {
+      "name": "count",
+      "type": "u8"
+     },
+     {
+      "name": "flags",
+      "type": {
+       "bits": {
+        "0": "VATS Targetable"
+       },
+       "flags": "u8"
+      }
+     },
+     {
+      "name": "unused",
+      "type": {
+       "array": "u8",
+       "count": 2
+      }
+     }
+    ]
+   }
+  },
+  "DMDL": {
+   "confidence": "documented",
+   "name": "Destruction Stage Model FileName",
+   "note": "xEdit wbDefinitionsFNV.pas wbDEST helper record",
+   "type": "zstring"
+  },
+  "DMDT": {
+   "confidence": "documented",
+   "name": "Destruction Stage Model Texture Hashes",
+   "note": "xEdit wbDefinitionsCommon.pas wbModelInfo",
+   "type": {
+    "array": "TextureHash"
+   }
+  },
+  "DODT": {
+   "confidence": "documented",
+   "name": "Decal Data",
+   "note": "xEdit wbDefinitionsFNV.pas wbDODT helper record",
+   "type": {
+    "struct": [
+     {
+      "name": "min_width",
+      "type": "f32"
+     },
+     {
+      "name": "max_width",
+      "type": "f32"
+     },
+     {
+      "name": "min_height",
+      "type": "f32"
+     },
+     {
+      "name": "max_height",
+      "type": "f32"
+     },
+     {
+      "name": "depth",
+      "type": "f32"
+     },
+     {
+      "name": "shininess",
+      "type": "f32"
+     },
+     {
+      "name": "parallax_scale",
+      "type": "f32"
+     },
+     {
+      "name": "parallax_passes",
+      "type": "u8"
+     },
+     {
+      "name": "flags",
+      "type": {
+       "bits": {
+        "0": "Parallax",
+        "1": "Alpha - Blending",
+        "2": "Alpha - Testing"
+       },
+       "flags": "u8"
+      }
+     },
+     {
+      "name": "unused",
+      "type": {
+       "array": "u8",
+       "count": 2
+      }
+     },
+     {
+      "name": "color",
+      "type": "ByteColor"
+     }
+    ]
+   }
+  },
+  "DSTD": {
+   "confidence": "documented",
+   "name": "Destruction Stage Data",
+   "note": "xEdit wbDefinitionsFNV.pas wbDEST helper record",
+   "type": {
+    "struct": [
+     {
+      "name": "health_percent",
+      "type": "u8"
+     },
+     {
+      "name": "index",
+      "type": "u8"
+     },
+     {
+      "name": "damage_stage",
+      "type": "u8"
+     },
+     {
+      "name": "flags",
+      "type": {
+       "bits": {
+        "0": "Cap Damage",
+        "1": "Disable",
+        "2": "Destroy"
+       },
+       "flags": "u8"
+      }
+     },
+     {
+      "name": "self_damage_per_second",
+      "type": "i32"
+     },
+     {
+      "name": "explosion",
+      "type": "formid"
+     },
+     {
+      "name": "debris",
+      "type": "formid"
+     },
+     {
+      "name": "debris_count",
+      "type": "i32"
+     }
+    ]
+   }
+  },
+  "DSTF": {
+   "confidence": "documented",
+   "name": "Destruction Stage End Marker",
+   "note": "xEdit wbDefinitionsFNV.pas wbDEST helper record; wbEmpty",
+   "type": "Empty"
+  },
+  "EDID": {
+   "confidence": "documented",
+   "name": "Editor ID",
+   "note": "xEdit wbDefinitionsFNV.pas wbEDID helper (all records) record",
+   "type": "zstring"
+  },
+  "EFID": {
+   "confidence": "documented",
+   "name": "Base Effect",
+   "note": "xEdit wbDefinitionsFNV.pas wbEFID helper record",
+   "type": "formid"
+  },
+  "EFIT": {
+   "confidence": "documented",
+   "name": "Effect Item",
+   "note": "xEdit wbDefinitionsFNV.pas wbEFIT helper record; type enum from wbDefinitionsCommon.pas wbEffectTypeEnum",
+   "type": {
+    "struct": [
+     {
+      "name": "magnitude",
+      "type": "u32"
+     },
+     {
+      "name": "area",
+      "type": "u32"
+     },
+     {
+      "name": "duration",
+      "type": "u32"
+     },
+     {
+      "name": "type",
+      "type": {
+       "enum": "u32",
+       "values": {
+        "0": "Self",
+        "1": "Touch",
+        "2": "Target"
+       }
+      }
+     },
+     {
+      "name": "actor_value",
+      "type": "ActorValue"
+     }
+    ]
+   }
+  },
+  "EITM": {
+   "confidence": "documented",
+   "name": "Unarmed Attack Effect",
+   "note": "xEdit wbDefinitionsFNV.pas NPC_/CREA record; only FNV use of EITM",
+   "type": "formid"
+  },
+  "ETYP": {
+   "confidence": "documented",
+   "name": "Equipment Type",
+   "note": "xEdit wbDefinitionsFNV.pas wbETYP helper record; enum from wbDefinitionsCommon.pas wbEquipTypeEnum",
+   "type": "EquipType"
+  },
+  "FULL": {
+   "confidence": "documented",
+   "name": "Name",
+   "note": "xEdit wbDefinitionsFNV.pas wbFULL helper (all records) record",
+   "type": "zstring"
+  },
+  "ICO2": {
+   "confidence": "documented",
+   "name": "Icon 2 FileName",
+   "note": "xEdit wbDefinitionsFNV.pas ARMO/EFSH/CSNO record; zstring in every FNV use",
+   "type": "zstring"
+  },
+  "ICON": {
+   "confidence": "documented",
+   "name": "Large Icon FileName",
+   "note": "xEdit wbDefinitionsFNV.pas wbICON helper record; all FNV ICON uses are wbString",
+   "type": "zstring"
+  },
+  "MIC2": {
+   "confidence": "documented",
+   "name": "Message Icon 2 FileName",
+   "note": "xEdit wbDefinitionsFNV.pas ARMO record",
+   "type": "zstring"
+  },
+  "MICO": {
+   "confidence": "documented",
+   "name": "Small Icon FileName",
+   "note": "xEdit wbDefinitionsFNV.pas wbICON helper record; all FNV MICO uses are wbString",
+   "type": "zstring"
+  },
+  "MO2T": {
+   "confidence": "documented",
+   "name": "Model 2 Texture Hashes",
+   "note": "xEdit wbDefinitionsCommon.pas wbModelInfo; via wbTexturedModel (ARMO/WEAP)",
+   "type": {
+    "array": "TextureHash"
+   }
+  },
+  "MO3T": {
+   "confidence": "documented",
+   "name": "Model 3 Texture Hashes",
+   "note": "xEdit wbDefinitionsCommon.pas wbModelInfo; via wbTexturedModel (ARMO/WEAP)",
+   "type": {
+    "array": "TextureHash"
+   }
+  },
+  "MO4T": {
+   "confidence": "documented",
+   "name": "Model 4 Texture Hashes",
+   "note": "xEdit wbDefinitionsCommon.pas wbModelInfo; via wbTexturedModel (ARMO/WEAP)",
+   "type": {
+    "array": "TextureHash"
+   }
+  },
+  "MOD2": {
+   "confidence": "documented",
+   "name": "Model 2 FileName",
+   "note": "xEdit wbDefinitionsFNV.pas ARMO/WEAP wbTexturedModel, CSNO record; zstring in every FNV use",
+   "type": "zstring"
+  },
+  "MOD3": {
+   "confidence": "documented",
+   "name": "Model 3 FileName",
+   "note": "xEdit wbDefinitionsFNV.pas ARMO/WEAP wbTexturedModel, CSNO record; zstring in every FNV use",
+   "type": "zstring"
+  },
+  "MOD4": {
+   "confidence": "documented",
+   "name": "Model 4 FileName",
+   "note": "xEdit wbDefinitionsFNV.pas ARMO/WEAP wbTexturedModel, CSNO record; zstring in every FNV use",
+   "type": "zstring"
+  },
+  "MODB": {
+   "confidence": "documented",
+   "name": "Model Unknown",
+   "note": "xEdit wbDefinitionsFNV.pas wbGenericModel record; wbByteArray(MODB, 'Unknown', 4)",
+   "type": {
+    "array": "u8",
+    "count": 4
+   }
+  },
+  "MODD": {
+   "confidence": "documented",
+   "name": "FaceGen Model Flags",
+   "note": "xEdit wbDefinitionsFNV.pas wbMODD helper record",
+   "type": {
+    "bits": {
+     "0": "Head",
+     "1": "Torso",
+     "2": "Right Hand",
+     "3": "Left Hand"
+    },
+    "flags": "u8"
+   }
+  },
+  "MODL": {
+   "confidence": "documented",
+   "name": "Model FileName",
+   "note": "xEdit wbDefinitionsFNV.pas wbGenericModel / wbTexturedModel record",
+   "type": "zstring"
+  },
+  "MODT": {
+   "confidence": "documented",
+   "name": "Model Texture Hashes",
+   "note": "xEdit wbDefinitionsCommon.pas wbModelInfo; pre-TES5 branch: array of 24-byte texture hash structs (CSNO overrides MODT as a string)",
+   "type": {
+    "array": "TextureHash"
+   }
+  },
+  "MOSD": {
+   "confidence": "documented",
+   "name": "FaceGen Model Flags (female)",
+   "note": "xEdit wbDefinitionsFNV.pas wbMOSD helper record",
+   "type": {
+    "bits": {
+     "0": "Head",
+     "1": "Torso",
+     "2": "Right Hand",
+     "3": "Left Hand"
+    },
+    "flags": "u8"
+   }
+  },
+  "OBND": {
+   "confidence": "documented",
+   "name": "Object Bounds",
+   "note": "xEdit wbDefinitionsCommon.pas wbObjectBounds; non-Starfield branch: two wbVec3Int (3x s16)",
+   "type": "ObjectBounds"
+  },
+  "REPL": {
+   "confidence": "documented",
+   "name": "Repair List",
+   "note": "xEdit wbDefinitionsFNV.pas wbREPL helper record",
+   "type": "formid"
+  },
+  "SCDA": {
+   "confidence": "documented",
+   "name": "Compiled Script",
+   "note": "xEdit wbDefinitionsFNV.pas SCPT / wbEmbeddedScript record",
+   "type": "bytes"
+  },
+  "SCHR": {
+   "confidence": "documented",
+   "name": "Basic Script Data",
+   "note": "xEdit wbDefinitionsFNV.pas wbSCHRReq helper record",
+   "type": "ScriptHeader"
+  },
+  "SCRI": {
+   "confidence": "documented",
+   "name": "Script",
+   "note": "xEdit wbDefinitionsFNV.pas wbSCRI helper record",
+   "type": "formid"
+  },
+  "SCRO": {
+   "confidence": "documented",
+   "name": "Global Reference",
+   "note": "xEdit wbDefinitionsFNV.pas wbSCROs helper record",
+   "type": "formid"
+  },
+  "SCRV": {
+   "confidence": "documented",
+   "name": "Local Variable Reference",
+   "note": "xEdit wbDefinitionsFNV.pas wbSCROs helper record",
+   "type": "u32"
+  },
+  "SCTX": {
+   "confidence": "documented",
+   "name": "Script Source",
+   "note": "xEdit wbDefinitionsFNV.pas SCPT / wbEmbeddedScript record; wbStringScript",
+   "type": "string"
+  },
+  "SCVR": {
+   "confidence": "documented",
+   "name": "Local Variable Name",
+   "note": "xEdit wbDefinitionsFNV.pas SCPT / wbEmbeddedScript record",
+   "type": "zstring"
+  },
+  "SLSD": {
+   "confidence": "documented",
+   "name": "Local Variable Data",
+   "note": "xEdit wbDefinitionsFNV.pas wbSLSD helper record",
+   "type": "ScriptLocalVar"
+  },
+  "XACT": {
+   "confidence": "documented",
+   "name": "Action Flag",
+   "note": "xEdit wbDefinitionsCommon.pas wbActionFlag",
+   "type": {
+    "bits": {
+     "0": "Use Default",
+     "1": "Activate",
+     "2": "Open",
+     "3": "Open by Default"
+    },
+    "flags": "u32"
+   }
+  },
+  "XAPD": {
+   "confidence": "documented",
+   "name": "Parent Activate Only",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "BoolU8"
+  },
+  "XAPR": {
+   "confidence": "documented",
+   "name": "Activate Parent Ref",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": {
+    "struct": [
+     {
+      "name": "reference",
+      "type": "formid"
+     },
+     {
+      "name": "delay",
+      "type": "f32"
+     }
+    ]
+   }
+  },
+  "XATO": {
+   "confidence": "documented",
+   "name": "Activation Prompt",
+   "note": "xEdit wbDefinitionsFNV.pas ACTI and placed refs record",
+   "type": "zstring"
+  },
+  "XCLP": {
+   "confidence": "documented",
+   "name": "Linked Reference Color",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": {
+    "struct": [
+     {
+      "name": "link_start_color",
+      "type": "ByteColor"
+     },
+     {
+      "name": "link_end_color",
+      "type": "ByteColor"
+     }
+    ]
+   }
+  },
+  "XCNT": {
+   "confidence": "documented",
+   "name": "Count",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "i32"
+  },
+  "XDCR": {
+   "confidence": "documented",
+   "name": "Linked Decal",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record; trailing wbUnknown",
+   "type": {
+    "struct": [
+     {
+      "name": "reference",
+      "type": "formid"
+     },
+     {
+      "name": "unknown",
+      "type": "bytes"
+     }
+    ]
+   }
+  },
+  "XEMI": {
+   "confidence": "documented",
+   "name": "Emittance",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "formid"
+  },
+  "XESP": {
+   "confidence": "documented",
+   "name": "Enable Parent",
+   "note": "xEdit wbDefinitionsFNV.pas wbXESP helper record",
+   "type": {
+    "struct": [
+     {
+      "name": "reference",
+      "type": "formid"
+     },
+     {
+      "name": "flags",
+      "type": {
+       "bits": {
+        "0": "Set Enable State to Opposite of Parent",
+        "1": "Pop In"
+       },
+       "flags": "u8"
+      }
+     },
+     {
+      "name": "unused",
+      "type": {
+       "array": "u8",
+       "count": 3
+      }
+     }
+    ]
+   }
+  },
+  "XEZN": {
+   "confidence": "documented",
+   "name": "Encounter Zone",
+   "note": "xEdit wbDefinitionsFNV.pas ACHR/ACRE/PGRE/PMIS/PBEA/REFR/CELL/WRLD record",
+   "type": "formid"
+  },
+  "XHLP": {
+   "confidence": "documented",
+   "name": "Health",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "f32"
+  },
+  "XIBS": {
+   "confidence": "documented",
+   "name": "Ignored By Sandbox",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "Empty"
+  },
+  "XLCM": {
+   "confidence": "documented",
+   "name": "Level Modifier",
+   "note": "xEdit wbDefinitionsFNV.pas wbXLCM helper record",
+   "type": "i32"
+  },
+  "XLKR": {
+   "confidence": "documented",
+   "name": "Linked Reference",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "formid"
+  },
+  "XLOD": {
+   "confidence": "documented",
+   "name": "Distant LOD Data",
+   "note": "xEdit wbDefinitionsCommon.pas wbXLOD",
+   "type": {
+    "array": "f32",
+    "count": 3
+   }
+  },
+  "XMBR": {
+   "confidence": "documented",
+   "name": "MultiBound Reference",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "formid"
+  },
+  "XMRC": {
+   "confidence": "documented",
+   "name": "Merchant Container",
+   "note": "xEdit wbDefinitionsFNV.pas ACHR/ACRE record",
+   "type": "formid"
+  },
+  "XOWN": {
+   "confidence": "documented",
+   "name": "Owner",
+   "note": "xEdit wbDefinitionsCommon.pas wbOwnership; non-FO4 branch: FormID FACT/NPC_",
+   "type": "formid"
+  },
+  "XPPA": {
+   "confidence": "documented",
+   "name": "Patrol Script Marker",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs patrol data record",
+   "type": "Empty"
+  },
+  "XPRD": {
+   "confidence": "documented",
+   "name": "Patrol Idle Time",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs patrol data record",
+   "type": "f32"
+  },
+  "XPWR": {
+   "confidence": "documented",
+   "name": "Reflected/Refracted By",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": {
+    "struct": [
+     {
+      "name": "reference",
+      "type": "formid"
+     },
+     {
+      "name": "type",
+      "type": {
+       "bits": {
+        "0": "Reflection",
+        "1": "Refraction"
+       },
+       "flags": "u32"
+      }
+     }
+    ]
+   }
+  },
+  "XRDS": {
+   "confidence": "documented",
+   "name": "Radius",
+   "note": "xEdit wbDefinitionsFNV.pas placed refs record",
+   "type": "f32"
+  },
+  "XRGB": {
+   "confidence": "documented",
+   "name": "Ragdoll Biped Rotation",
+   "note": "xEdit wbDefinitionsCommon.pas wbRagdoll; non-TES4 branch",
+   "type": "Vec3f"
+  },
+  "XRGD": {
+   "confidence": "documented",
+   "name": "Ragdoll Bones",
+   "note": "xEdit wbDefinitionsCommon.pas wbRagdoll",
+   "type": {
+    "array": "RagdollBone"
+   }
+  },
+  "XRNK": {
+   "confidence": "documented",
+   "name": "Faction rank",
+   "note": "xEdit wbDefinitionsCommon.pas wbOwnership",
+   "type": "i32"
+  },
+  "XSCL": {
+   "confidence": "documented",
+   "name": "Scale",
+   "note": "xEdit wbDefinitionsFNV.pas wbXSCL helper record",
+   "type": "f32"
+  }
+ },
+ "format": "fnv.schema/1",
+ "records": {
+  "ACHR": {
+   "confidence": "documented",
+   "name": "Placed NPC",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Position/Rotation",
+     "note": "xEdit wbDefinitionsFNV.pas ACHR record; wbVec3PosRot(DATA)",
+     "type": "PosRot"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Patrol Idle",
+     "note": "xEdit wbDefinitionsFNV.pas ACHR record",
+     "type": "formid"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base",
+     "note": "xEdit wbDefinitionsFNV.pas ACHR record",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Patrol Topic",
+     "note": "xEdit wbDefinitionsFNV.pas ACHR record",
+     "type": "formid"
+    }
+   }
+  },
+  "ACTI": {
+   "confidence": "documented",
+   "name": "Activator",
+   "subrecords": {
+    "INAM": {
+     "confidence": "documented",
+     "name": "Radio Template",
+     "note": "xEdit wbDefinitionsFNV.pas ACTI record",
+     "type": "formid"
+    },
+    "MO2S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO3S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO4S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MODS": {
+     "confidence": "observed",
+     "name": "Biped Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Radio Station",
+     "note": "xEdit wbDefinitionsFNV.pas ACTI record",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound - Looping",
+     "note": "xEdit wbDefinitionsFNV.pas ACTI record",
+     "type": "formid"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Sound - Activation",
+     "note": "xEdit wbDefinitionsFNV.pas ACTI record",
+     "type": "formid"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Water Type",
+     "note": "xEdit wbDefinitionsFNV.pas ACTI record",
+     "type": "formid"
+    }
+   }
+  },
+  "ADDN": {
+   "confidence": "documented",
+   "name": "Addon Node",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Node Index",
+     "note": "xEdit wbDefinitionsFNV.pas ADDN record",
+     "type": "i32"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas ADDN record",
+     "type": {
+      "struct": [
+       {
+        "name": "master_particle_system_cap",
+        "type": "u16"
+       },
+       {
+        "name": "unknown",
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       }
+      ]
+     }
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "xEdit wbDefinitionsFNV.pas ADDN record",
+     "type": "formid"
+    }
+   }
+  },
+  "ALCH": {
+   "confidence": "documented",
+   "header_flags": {
+    "bits": {
+     "10": "Quest Item"
+    },
+    "confidence": "documented",
+    "note": "xEdit wbDefinitionsFNV.pas (dev-4.1.6), wbRecord(ALCH) flag list; bit index = bit number (wbInterface.pas wbFlagsList). Bit 10 (0x400) is also 'Quest item' in the GECK wiki GetFormFlag bit table [owner export 2026-10-07]."
+   },
+   "name": "Ingestible",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Weight",
+     "note": "xEdit wbDefinitionsFNV.pas ALCH record",
+     "type": "f32"
+    },
+    "ENIT": {
+     "confidence": "documented",
+     "name": "Effect Data",
+     "note": "xEdit wbDefinitionsFNV.pas ALCH record",
+     "type": {
+      "struct": [
+       {
+        "name": "value",
+        "type": "i32"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "No Auto-Calc (Unused)",
+          "1": "Food Item",
+          "2": "Medicine"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       },
+       {
+        "name": "withdrawal_effect",
+        "type": "formid"
+       },
+       {
+        "name": "addiction_chance",
+        "type": "f32"
+       },
+       {
+        "name": "sound_consume",
+        "type": "formid"
+       }
+      ]
+     }
+    },
+    "MO2S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO3S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO4S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MODS": {
+     "confidence": "observed",
+     "name": "Biped Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Sound - Pick Up",
+     "note": "xEdit wbDefinitionsFNV.pas ALCH record (wbYNAM)",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Sound - Drop",
+     "note": "xEdit wbDefinitionsFNV.pas ALCH record (wbZNAM)",
+     "type": "formid"
+    }
+   }
+  },
+  "AMMO": {
+   "confidence": "documented",
+   "header_flags": {
+    "bits": {
+     "10": "Quest Item"
+    },
+    "confidence": "documented",
+    "note": "GECK wiki IsQuestItem / SetQuestObject [owner export 2026-10-07]: Ammo (41) is among the form types that can be quest items, and GetFormFlag gives bit 10 (1024) as 'Quest item'. xEdit gives AMMO no record flag list, so the bit is unnamed there."
+   },
+   "name": "Ammunition",
+   "subrecords": {
+    "DAT2": {
+     "confidence": "documented",
+     "name": "Data 2",
+     "note": "xEdit wbDefinitionsFNV.pas AMMO record; SetOptionalFrom(3)",
+     "type": {
+      "struct": [
+       {
+        "name": "projectiles_per_shot",
+        "type": "u32"
+       },
+       {
+        "name": "projectile",
+        "type": "formid"
+       },
+       {
+        "name": "weight",
+        "type": "f32"
+       },
+       {
+        "name": "consumed_ammo",
+        "optional": true,
+        "type": "formid"
+       },
+       {
+        "name": "consumed_percentage",
+        "optional": true,
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas AMMO record",
+     "type": {
+      "struct": [
+       {
+        "name": "speed",
+        "type": "f32"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Ignores Normal Weapon Resistance",
+          "1": "Non-Playable"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       },
+       {
+        "name": "value",
+        "type": "i32"
+       },
+       {
+        "name": "clip_rounds",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Short Name",
+     "note": "xEdit wbDefinitionsFNV.pas AMMO record",
+     "type": "zstring"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Abbrev.",
+     "note": "xEdit wbDefinitionsFNV.pas AMMO record",
+     "type": "zstring"
+    },
+    "RCIL": {
+     "confidence": "documented",
+     "name": "Ammo Effect",
+     "note": "xEdit wbDefinitionsFNV.pas AMMO record",
+     "type": "formid"
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Sound - Pick Up",
+     "note": "xEdit wbDefinitionsFNV.pas AMMO record (wbYNAM)",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Sound - Drop",
+     "note": "xEdit wbDefinitionsFNV.pas AMMO record (wbZNAM)",
+     "type": "formid"
+    }
+   }
+  },
+  "ANIO": {
+   "confidence": "documented",
+   "name": "Animated Object",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Animation",
+     "note": "xEdit wbDefinitionsFNV.pas ANIO record",
+     "type": "formid"
+    }
+   }
+  },
+  "ARMA": {
+   "confidence": "documented",
+   "name": "Armor Addon",
+   "note": "xEdit wbDefinitionsFNV.pas ARMA record",
+   "subrecords": {
+    "BMDT": {
+     "confidence": "documented",
+     "name": "Biped Data",
+     "note": "xEdit wbDefinitionsFNV.pas wbBMDT helper record, used by both ARMO and ARMA (wbRecord(ARMA, ...) includes wbBMDT at line 4004). Same layout on both: [u32 biped flags][u8 general flags][3 unused]. Verified over 520 instances in the shipped masters, all exactly 8 bytes.",
+     "type": {
+      "struct": [
+       {
+        "name": "biped_flags",
+        "type": {
+         "bits": {
+          "0": "Head",
+          "1": "Hair",
+          "10": "Hat",
+          "11": "Eye Glasses",
+          "12": "Nose Ring",
+          "13": "Earrings",
+          "14": "Mask",
+          "15": "Choker",
+          "16": "Mouth Object",
+          "17": "Body AddOn 1",
+          "18": "Body AddOn 2",
+          "19": "Body AddOn 3",
+          "2": "Upper Body",
+          "3": "Left Hand",
+          "4": "Right Hand",
+          "5": "Weapon",
+          "6": "PipBoy",
+          "7": "Backpack",
+          "8": "Necklace",
+          "9": "Headband"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "general_flags",
+        "type": {
+         "bits": {
+          "0": "unknown_0x01",
+          "1": "unknown_0x02",
+          "2": "Has Backpack",
+          "3": "Medium",
+          "4": "unknown_0x10",
+          "5": "Power Armor",
+          "6": "Non-Playable",
+          "7": "Heavy"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       }
+      ]
+     }
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas ARMA wbStruct(DATA): Value, Max Condition (itS32), Weight (f32). 131 instances all exactly 12 bytes.",
+     "type": "ArmorAddonData"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas ARMA wbStruct(DNAM) with SetOptionalFrom(2): DR (itS16), Modulates Voice flag (itU16), DT (f32), 4 unused bytes. SetOptionalFrom(2) makes everything from index 2 optional, so a 4-byte DNAM is DR+Flags only and a 12-byte one is all four fields; 115 of 131 instances are 4 bytes, 16 are 12. DT and the trailing bytes are both optional here.",
+     "type": "ArmorAddonDnam"
+    },
+    "MO2S": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "xEdit wbDefinitionsFNV.pas wbMO2S = wbArrayS(MO2S, 'Alternate Textures', wbAlternateTexture, -1); same element as MODS, applied to the World Model ([MOD2, MO2T])",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO3S": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "xEdit wbDefinitionsFNV.pas wbMO3S = wbArrayS(MO3S, 'Alternate Textures', wbAlternateTexture, -1); same element as MODS, applied to the Biped Model ([MOD3, MO3T])",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO4S": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "xEdit wbDefinitionsFNV.pas wbMO4S = wbArrayS(MO4S, 'Alternate Textures', wbAlternateTexture, -1); same element as MODS",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "xEdit wbDefinitionsFNV.pas wbMODS = wbArrayS(MODS, 'Alternate Textures', wbAlternateTexture, -1), i.e. a u32 count then that many (len_string 3D Name, TXST FormID, i32 3D Index). Verified against real bytes on every ARMA MODS: e.g. 01000000 0b000000 'PARightHand' 00060c00 00000000 parses exactly with zero bytes left.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    }
+   }
+  },
+  "ASPC": {
+   "confidence": "documented",
+   "name": "Acoustic Space",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Environment Type",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Default",
+       "10": "Cave",
+       "11": "Arena",
+       "12": "Hangar",
+       "13": "Carpeted Hallway",
+       "14": "Hallway",
+       "15": "Stone Corridor",
+       "16": "Alley",
+       "17": "Forest",
+       "18": "City",
+       "19": "Mountains",
+       "2": "Generic",
+       "20": "Quarry",
+       "21": "Plain",
+       "22": "Parkinglot",
+       "23": "Sewerpipe",
+       "24": "Underwater",
+       "25": "Small Room",
+       "26": "Medium Room",
+       "27": "Large Room",
+       "28": "Medium Hall",
+       "29": "Large Hall",
+       "3": "Padded Cell",
+       "30": "Plate",
+       "4": "Room",
+       "5": "Bathroom",
+       "6": "Livingroom",
+       "7": "Stone Room",
+       "8": "Auditorium",
+       "9": "Concerthall"
+      }
+     }
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Is Interior",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record",
+     "type": "u32"
+    },
+    "RDAT": {
+     "confidence": "documented",
+     "name": "Use Sound from Region (Interiors Only)",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record: five in a row, by position Dawn / Default Loop, Afternoon, Dusk, Night, Walla (SOUN or null)",
+     "type": "formid"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Walla Trigger Count",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record",
+     "type": "u32"
+    }
+   }
+  },
+  "AVIF": {
+   "confidence": "documented",
+   "name": "ActorValue Information",
+   "note": "xEdit wbDefinitionsFNV.pas AVIF record",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Short Name",
+     "note": "xEdit wbDefinitionsFNV.pas AVIF wbStringKC(ANAM, 'Short Name', 0, cpTranslate); a plain string in every FNV use. Measured sizes vary from 4 to 12 bytes, consistent with a null-terminated string rather than a fixed-size field.",
+     "type": "zstring"
+    }
+   }
+  },
+  "BOOK": {
+   "confidence": "documented",
+   "header_flags": {
+    "bits": {
+     "10": "Quest Item"
+    },
+    "confidence": "documented",
+    "note": "xEdit wbDefinitionsFNV.pas (dev-4.1.6), wbRecord(BOOK) flag list; bit index = bit number (wbInterface.pas wbFlagsList). Bit 10 (0x400) is also 'Quest item' in the GECK wiki GetFormFlag bit table [owner export 2026-10-07]."
+   },
+   "name": "Book",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas BOOK record; skill enum from wbSkillEnum",
+     "type": {
+      "struct": [
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Scroll",
+          "1": "Can't be Taken"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "skill",
+        "type": "Skill"
+       },
+       {
+        "name": "value",
+        "type": "i32"
+       },
+       {
+        "name": "weight",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Sound - Pick Up",
+     "note": "xEdit wbDefinitionsFNV.pas BOOK record (wbYNAM)",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Sound - Drop",
+     "note": "xEdit wbDefinitionsFNV.pas BOOK record (wbZNAM)",
+     "type": "formid"
+    }
+   }
+  },
+  "BPTD": {
+   "confidence": "documented",
+   "name": "Body Part Data",
+   "subrecords": {
+    "BPND": {
+     "confidence": "documented",
+     "name": "Node Data",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record; part_type is wbBodyLocationEnum (wbDefinitionsCommon.pas)",
+     "type": "BodyPartNodeData"
+    },
+    "BPNI": {
+     "confidence": "documented",
+     "name": "IK Data - Start Node",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record",
+     "type": "zstring"
+    },
+    "BPNN": {
+     "confidence": "documented",
+     "name": "Part Node",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record",
+     "type": "zstring"
+    },
+    "BPNT": {
+     "confidence": "documented",
+     "name": "VATS Target",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record",
+     "type": "zstring"
+    },
+    "BPTN": {
+     "confidence": "documented",
+     "name": "Part Name",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record; a part is BPTN (optional) BPNN BPNT BPNI BPND NAM1 NAM4 NAM5, repeated per part",
+     "type": "zstring"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Limb Replacement Model",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record",
+     "type": "zstring"
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "Gore Effects - Target Bone",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record",
+     "type": "zstring"
+    },
+    "NAM5": {
+     "confidence": "documented",
+     "name": "Limb Replacement Model Texture Hashes",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record: wbModelInfo(NAM5), the same layout as MODT",
+     "type": {
+      "array": "TextureHash"
+     }
+    },
+    "RAGA": {
+     "confidence": "documented",
+     "name": "Ragdoll",
+     "note": "xEdit wbDefinitionsFNV.pas BPTD record (RGDL)",
+     "type": "formid"
+    }
+   }
+  },
+  "CAMS": {
+   "confidence": "documented",
+   "name": "Camera Shot",
+   "note": "xEdit wbDefinitionsFNV.pas CAMS record",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas CAMS wbStruct(DATA): Action/Location/Target enums (itU32), Flags (itU32), Player/Target/Global time multipliers (f32), then Max Time, Min Time, Target % Between Actors (f32). 272 of 276 instances are 40 bytes; 4 are 36 bytes, missing only the final float, expressed here as a size-decided union so neither size errors.",
+     "type": "CameraShotData"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Image Space Modifier",
+     "note": "xEdit wbDefinitionsCommon.pas wbGenericModel (ISMod entry); 275 instances all exactly 4 bytes",
+     "type": "formid"
+    }
+   }
+  },
+  "CLAS": {
+   "confidence": "documented",
+   "name": "Class",
+   "subrecords": {
+    "ATTR": {
+     "confidence": "documented",
+     "name": "Attributes",
+     "note": "xEdit wbDefinitionsFNV.pas CLAS record",
+     "type": "Attributes7"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas CLAS record; service flag names from wbServiceFlags (FO3/FNV branch)",
+     "type": {
+      "struct": [
+       {
+        "name": "tag_skills",
+        "type": {
+         "array": "ActorValue",
+         "count": 4
+        }
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Playable",
+          "1": "Guard"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "services",
+        "type": "ServiceFlags"
+       },
+       {
+        "name": "teaches",
+        "type": "Skill"
+       },
+       {
+        "name": "maximum_training_level",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  "CLMT": {
+   "confidence": "documented",
+   "name": "Climate",
+   "subrecords": {
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Sun Texture",
+     "note": "xEdit wbDefinitionsFNV.pas CLMT record",
+     "type": "zstring"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Sun Glare Texture",
+     "note": "xEdit wbDefinitionsFNV.pas CLMT record",
+     "type": "zstring"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Timing",
+     "note": "xEdit wbDefinitionsCommon.pas wbClimateTiming; times in 10-minute units (wbClmtTime)",
+     "type": "ClimateTiming"
+    },
+    "WLST": {
+     "confidence": "documented",
+     "name": "Weather Types",
+     "note": "xEdit wbDefinitionsFNV.pas CLMT record",
+     "type": {
+      "array": "WeatherType"
+     }
+    }
+   }
+  },
+  "CONT": {
+   "confidence": "documented",
+   "name": "Container",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
+     "type": {
+      "struct": [
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "1": "Respawns"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "weight",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Sound - Close",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
+     "type": "formid"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Sound - Random/Looping",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound - Open",
+     "note": "xEdit wbDefinitionsFNV.pas CONT record",
+     "type": "formid"
+    }
+   }
+  },
+  "CPTH": {
+   "confidence": "documented",
+   "name": "Camera Path",
+   "note": "xEdit wbDefinitionsFNV.pas CPTH record",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Camera Paths",
+     "note": "xEdit wbDefinitionsFNV.pas CPTH wbStruct(ANAM): Parent and Previous, both CPTH-or-NULL FormIDs. 418 instances all measured exactly 8 bytes.",
+     "type": "CameraPathLink"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Camera Zoom",
+     "note": "xEdit wbDefinitionsFNV.pas CPTH wbInteger(DATA, 'Camera Zoom', itU8); 418 instances all exactly 1 byte",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Default",
+       "1": "Disable",
+       "2": "Shot List"
+      }
+     }
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Camera Shot",
+     "note": "xEdit wbDefinitionsFNV.pas CPTH wbRArray('Camera Shots', wbFormIDCk(SNAM, 'Camera Shot', [CAMS])); 484 instances all exactly 4 bytes",
+     "type": "formid"
+    }
+   }
+  },
+  "CSTY": {
+   "name": "Combat Style",
+   "subrecords": {
+    "CSAD": {
+     "confidence": "documented",
+     "name": "Advanced - Advanced",
+     "note": "xEdit wbDefinitionsFNV.pas CSTY record (dev-4.1.6); meanings: GECK wiki Combat Style",
+     "type": {
+      "struct": [
+       {
+        "name": "dodge_fatigue_mod_mult",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_fatigue_mod_base",
+        "type": "f32"
+       },
+       {
+        "name": "encumbered_speed_mod_base",
+        "type": "f32"
+       },
+       {
+        "name": "encumbered_speed_mod_mult",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_while_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_not_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_back_while_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_back_not_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_forward_while_attacking_mult",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_forward_not_attacking_mult",
+        "type": "f32"
+       },
+       {
+        "name": "block_skill_modifier_mult",
+        "type": "f32"
+       },
+       {
+        "name": "block_skill_modifier_base",
+        "type": "f32"
+       },
+       {
+        "name": "block_while_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "block_not_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "attack_skill_modifier_mult",
+        "type": "f32"
+       },
+       {
+        "name": "attack_skill_modifier_base",
+        "type": "f32"
+       },
+       {
+        "name": "attack_while_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "attack_not_under_attack_mult",
+        "type": "f32"
+       },
+       {
+        "name": "attack_during_block_mult",
+        "type": "f32"
+       },
+       {
+        "name": "power_attack_fatigue_mod_base",
+        "type": "f32"
+       },
+       {
+        "name": "power_attack_fatigue_mod_mult",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "CSSD": {
+     "confidence": "documented",
+     "name": "Simple",
+     "note": "xEdit wbDefinitionsFNV.pas CSTY record (dev-4.1.6); meanings: GECK wiki Combat Style",
+     "type": {
+      "struct": [
+       {
+        "name": "cover_search_radius",
+        "type": "f32"
+       },
+       {
+        "name": "take_cover_chance",
+        "type": "f32"
+       },
+       {
+        "name": "wait_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "wait_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "wait_to_fire_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "wait_to_fire_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "fire_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "fire_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "ranged_weapon_range_mult_min",
+        "type": "f32"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 4
+        }
+       },
+       {
+        "name": "weapon_restrictions",
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "None",
+          "1": "Melee Only",
+          "2": "Ranged Only"
+         }
+        }
+       },
+       {
+        "name": "ranged_weapon_range_mult_max",
+        "type": "f32"
+       },
+       {
+        "name": "max_targeting_fov",
+        "type": "f32"
+       },
+       {
+        "name": "combat_radius",
+        "type": "f32"
+       },
+       {
+        "name": "semi_auto_firing_delay_mult_min",
+        "type": "f32"
+       },
+       {
+        "name": "semi_auto_firing_delay_mult_max",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "CSTD": {
+     "confidence": "documented",
+     "name": "Advanced - Standard",
+     "note": "xEdit wbDefinitionsFNV.pas CSTY record (dev-4.1.6); meanings: GECK wiki Combat Style",
+     "type": {
+      "struct": [
+       {
+        "name": "dodge_chance",
+        "type": "u8"
+       },
+       {
+        "name": "left_right_chance",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       },
+       {
+        "name": "dodge_lr_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_lr_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_forward_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_forward_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_back_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "dodge_back_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "idle_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "idle_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "block_chance",
+        "type": "u8"
+       },
+       {
+        "name": "attack_chance",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       },
+       {
+        "name": "recoil_stagger_bonus_to_attack",
+        "type": "f32"
+       },
+       {
+        "name": "unconscious_bonus_to_attack",
+        "type": "f32"
+       },
+       {
+        "name": "hand_to_hand_bonus_to_attack",
+        "type": "f32"
+       },
+       {
+        "name": "power_attack_chance",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       },
+       {
+        "name": "recoil_stagger_bonus_to_power",
+        "type": "f32"
+       },
+       {
+        "name": "unconscious_bonus_to_power_attack",
+        "type": "f32"
+       },
+       {
+        "name": "power_attack_normal",
+        "type": "u8"
+       },
+       {
+        "name": "power_attack_forward",
+        "type": "u8"
+       },
+       {
+        "name": "power_attack_back",
+        "type": "u8"
+       },
+       {
+        "name": "power_attack_left",
+        "type": "u8"
+       },
+       {
+        "name": "power_attack_right",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       },
+       {
+        "name": "hold_timer_min",
+        "type": "f32"
+       },
+       {
+        "name": "hold_timer_max",
+        "type": "f32"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Choose Attack using % Chance",
+          "1": "Melee Alert OK",
+          "2": "Flee Based on Personal Survival",
+          "4": "Ignore Threats",
+          "5": "Ignore Damaging Self",
+          "6": "Ignore Damaging Group",
+          "7": "Ignore Damaging Spectators",
+          "8": "Cannot Use Stealthboy"
+         },
+         "flags": "u16"
+        }
+       },
+       {
+        "name": "unused",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       },
+       {
+        "name": "acrobatic_dodge_chance",
+        "optional": true,
+        "type": "u8"
+       },
+       {
+        "name": "rushing_attack_chance",
+        "optional": true,
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       },
+       {
+        "name": "rushing_attack_distance_mult",
+        "optional": true,
+        "type": "f32"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "DEBR": {
+   "confidence": "documented",
+   "name": "Debris",
+   "note": "xEdit wbDefinitionsFNV.pas DEBR record: wbRArray('Models', wbDebrisModel(wbModelInfo(MODT)), cpNormal, True), i.e. a repeating (DATA, MODT) pair",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsCommon.pas wbDebrisModel: wbStruct(DATA, 'Data', [wbInteger('Percentage', itU8), wbString('Model FileName'), wbInteger('Has Collision', itU8, wbBoolEnum)]).SetRequired. The middle string is xEdit's plain wbString (NUL-terminated, not rest-of-field), which the new `cstring` primitive expresses. Verified: all 26 instances in FalloutNV.esm follow [u8][NUL-terminated name][u8] exactly (e.g. 0f 'Gore\\RoboBit01.NIF' 01)",
+     "type": {
+      "struct": [
+       {
+        "name": "percentage",
+        "type": "u8"
+       },
+       {
+        "name": "model_file_name",
+        "type": "cstring"
+       },
+       {
+        "name": "has_collision",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "No",
+          "1": "Yes"
+         }
+        }
+       }
+      ]
+     }
+    },
+    "MODT": {
+     "confidence": "documented",
+     "name": "Model Texture Hashes",
+     "note": "xEdit wbDefinitionsCommon.pas wbModelInfo, passed to wbDebrisModel; same 24-byte-per-entry layout as the common MODT",
+     "type": {
+      "array": "TextureHash"
+     }
+    }
+   }
+  },
+  "DOBJ": {
+   "confidence": "documented",
+   "name": "DOBJ",
+   "note": "xEdit wbDefinitionsFNV.pas DOBJ record; no header flags declared",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Default Objects",
+     "note": "xEdit wbDefinitionsFNV.pas DOBJ record: wbStruct(DATA, 'Default Objects', [34x wbFormIDCk(...)]). Verified: 1 instance, exactly 136 bytes = 34 formids",
+     "type": {
+      "struct": [
+       {
+        "name": "stimpak",
+        "type": "formid"
+       },
+       {
+        "name": "super_stimpak",
+        "type": "formid"
+       },
+       {
+        "name": "rad_x",
+        "type": "formid"
+       },
+       {
+        "name": "rad_away",
+        "type": "formid"
+       },
+       {
+        "name": "morphine",
+        "type": "formid"
+       },
+       {
+        "name": "perk_paralysis",
+        "type": "formid"
+       },
+       {
+        "name": "player_faction",
+        "type": "formid"
+       },
+       {
+        "name": "mysterious_stranger_npc",
+        "type": "formid"
+       },
+       {
+        "name": "mysterious_stranger_faction",
+        "type": "formid"
+       },
+       {
+        "name": "default_music",
+        "type": "formid"
+       },
+       {
+        "name": "battle_music",
+        "type": "formid"
+       },
+       {
+        "name": "death_music",
+        "type": "formid"
+       },
+       {
+        "name": "success_music",
+        "type": "formid"
+       },
+       {
+        "name": "level_up_music",
+        "type": "formid"
+       },
+       {
+        "name": "player_voice_male",
+        "type": "formid"
+       },
+       {
+        "name": "player_voice_male_child",
+        "type": "formid"
+       },
+       {
+        "name": "player_voice_female",
+        "type": "formid"
+       },
+       {
+        "name": "player_voice_female_child",
+        "type": "formid"
+       },
+       {
+        "name": "eat_package_default_food",
+        "type": "formid"
+       },
+       {
+        "name": "every_actor_ability",
+        "type": "formid"
+       },
+       {
+        "name": "drug_wears_off_image_space",
+        "type": "formid"
+       },
+       {
+        "name": "doctor_s_bag",
+        "type": "formid"
+       },
+       {
+        "name": "miss_fortune_npc",
+        "type": "formid"
+       },
+       {
+        "name": "miss_fortune_faction",
+        "type": "formid"
+       },
+       {
+        "name": "meltdown_explosion",
+        "type": "formid"
+       },
+       {
+        "name": "unarmed_forward_pa",
+        "type": "formid"
+       },
+       {
+        "name": "unarmed_backward_pa",
+        "type": "formid"
+       },
+       {
+        "name": "unarmed_left_pa",
+        "type": "formid"
+       },
+       {
+        "name": "unarmed_right_pa",
+        "type": "formid"
+       },
+       {
+        "name": "unarmed_crouch_pa",
+        "type": "formid"
+       },
+       {
+        "name": "unarmed_counter_pa",
+        "type": "formid"
+       },
+       {
+        "name": "spotter_effect",
+        "type": "formid"
+       },
+       {
+        "name": "item_detected_effect",
+        "type": "formid"
+       },
+       {
+        "name": "cateye_mobile_effect_nyi",
+        "type": "formid"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "DOOR": {
+   "confidence": "documented",
+   "name": "Door",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Sound - Close",
+     "note": "xEdit wbDefinitionsFNV.pas DOOR record",
+     "type": "formid"
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Sound - Looping",
+     "note": "xEdit wbDefinitionsFNV.pas DOOR record",
+     "type": "formid"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas DOOR record",
+     "type": {
+      "bits": {
+       "1": "Automatic Door",
+       "2": "Hidden",
+       "3": "Minimal Use",
+       "4": "Sliding Door"
+      },
+      "flags": "u8"
+     }
+    },
+    "MO2S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO3S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO4S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MODS": {
+     "confidence": "observed",
+     "name": "Biped Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound - Open",
+     "note": "xEdit wbDefinitionsFNV.pas DOOR record",
+     "type": "formid"
+    }
+   }
+  },
+  "ECZN": {
+   "confidence": "documented",
+   "name": "Encounter Zone",
+   "note": "xEdit wbDefinitionsFNV.pas ECZN record",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas ECZN wbStruct(DATA): Owner (NPC_/FACT/NULL FormID), Rank (itS8), Minimum Level (itS8), Flags (itU8: Never Resets, Match PC Below Minimum Level), 1 unused byte. 17 instances all exactly 8 bytes.",
+     "type": "EncounterZoneData"
+    }
+   }
+  },
+  "EFSH": {
+   "confidence": "documented",
+   "name": "Effect Shader",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas EFSH record (dev-4.1.6; blend, blend-operation and z-test values from wbBlendModeEnum, wbBlendOpEnum, wbZTestFuncEnum in wbDefinitionsCommon.pas; fields from element 57 on optional, SetOptionalFrom(57)) [documented]; meanings in docs/spec-notes/effect-shaders.md",
+     "type": {
+      "struct": [
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "No Membrane Shader",
+          "3": "No Particle Shader",
+          "4": "Edge Effect - Inverse",
+          "5": "Membrane Shader - Affect Skin Only"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       },
+       {
+        "name": "membrane_source_blend",
+        "type": "EfshBlend"
+       },
+       {
+        "name": "membrane_blend_op",
+        "type": "EfshBlendOp"
+       },
+       {
+        "name": "membrane_z_test",
+        "type": "EfshZTest"
+       },
+       {
+        "name": "fill_color",
+        "type": "ByteColor"
+       },
+       {
+        "name": "fill_alpha_fade_in_time",
+        "type": "f32"
+       },
+       {
+        "name": "fill_full_alpha_time",
+        "type": "f32"
+       },
+       {
+        "name": "fill_alpha_fade_out_time",
+        "type": "f32"
+       },
+       {
+        "name": "fill_persistent_alpha_ratio",
+        "type": "f32"
+       },
+       {
+        "name": "fill_alpha_pulse_amplitude",
+        "type": "f32"
+       },
+       {
+        "name": "fill_alpha_pulse_frequency",
+        "type": "f32"
+       },
+       {
+        "name": "fill_texture_speed_u",
+        "type": "f32"
+       },
+       {
+        "name": "fill_texture_speed_v",
+        "type": "f32"
+       },
+       {
+        "name": "edge_fall_off",
+        "type": "f32"
+       },
+       {
+        "name": "edge_color",
+        "type": "ByteColor"
+       },
+       {
+        "name": "edge_alpha_fade_in_time",
+        "type": "f32"
+       },
+       {
+        "name": "edge_full_alpha_time",
+        "type": "f32"
+       },
+       {
+        "name": "edge_alpha_fade_out_time",
+        "type": "f32"
+       },
+       {
+        "name": "edge_persistent_alpha_ratio",
+        "type": "f32"
+       },
+       {
+        "name": "edge_alpha_pulse_amplitude",
+        "type": "f32"
+       },
+       {
+        "name": "edge_alpha_pulse_frequency",
+        "type": "f32"
+       },
+       {
+        "name": "fill_full_alpha_ratio",
+        "type": "f32"
+       },
+       {
+        "name": "edge_full_alpha_ratio",
+        "type": "f32"
+       },
+       {
+        "name": "membrane_dest_blend",
+        "type": "EfshBlend"
+       },
+       {
+        "name": "particle_source_blend",
+        "type": "EfshBlend"
+       },
+       {
+        "name": "particle_blend_op",
+        "type": "EfshBlendOp"
+       },
+       {
+        "name": "particle_z_test",
+        "type": "EfshZTest"
+       },
+       {
+        "name": "particle_dest_blend",
+        "type": "EfshBlend"
+       },
+       {
+        "name": "particle_birth_ramp_up_time",
+        "type": "f32"
+       },
+       {
+        "name": "full_particle_birth_time",
+        "type": "f32"
+       },
+       {
+        "name": "particle_birth_ramp_down_time",
+        "type": "f32"
+       },
+       {
+        "name": "full_particle_birth_ratio",
+        "type": "f32"
+       },
+       {
+        "name": "persistent_particle_birth_ratio",
+        "type": "f32"
+       },
+       {
+        "name": "particle_lifetime",
+        "type": "f32"
+       },
+       {
+        "name": "particle_lifetime_range",
+        "type": "f32"
+       },
+       {
+        "name": "initial_speed_along_normal",
+        "type": "f32"
+       },
+       {
+        "name": "acceleration_along_normal",
+        "type": "f32"
+       },
+       {
+        "name": "initial_velocity_x",
+        "type": "f32"
+       },
+       {
+        "name": "initial_velocity_y",
+        "type": "f32"
+       },
+       {
+        "name": "initial_velocity_z",
+        "type": "f32"
+       },
+       {
+        "name": "acceleration_x",
+        "type": "f32"
+       },
+       {
+        "name": "acceleration_y",
+        "type": "f32"
+       },
+       {
+        "name": "acceleration_z",
+        "type": "f32"
+       },
+       {
+        "name": "scale_key_1",
+        "type": "f32"
+       },
+       {
+        "name": "scale_key_2",
+        "type": "f32"
+       },
+       {
+        "name": "scale_key_1_time",
+        "type": "f32"
+       },
+       {
+        "name": "scale_key_2_time",
+        "type": "f32"
+       },
+       {
+        "name": "color_key_1",
+        "type": "ByteColor"
+       },
+       {
+        "name": "color_key_2",
+        "type": "ByteColor"
+       },
+       {
+        "name": "color_key_3",
+        "type": "ByteColor"
+       },
+       {
+        "name": "color_key_1_alpha",
+        "type": "f32"
+       },
+       {
+        "name": "color_key_2_alpha",
+        "type": "f32"
+       },
+       {
+        "name": "color_key_3_alpha",
+        "type": "f32"
+       },
+       {
+        "name": "color_key_1_time",
+        "type": "f32"
+       },
+       {
+        "name": "color_key_2_time",
+        "type": "f32"
+       },
+       {
+        "name": "color_key_3_time",
+        "type": "f32"
+       },
+       {
+        "name": "initial_speed_along_normal_range",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "initial_rotation_deg",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "initial_rotation_deg_range",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "rotation_speed_deg",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "rotation_speed_deg_range",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "addon_models",
+        "optional": true,
+        "type": "formid"
+       },
+       {
+        "name": "holes_start_time",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "holes_end_time",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "holes_start_value",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "holes_end_value",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "edge_width_alpha_units",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "edge_color_2",
+        "optional": true,
+        "type": "ByteColor"
+       },
+       {
+        "name": "explosion_wind_speed",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "texture_count_u",
+        "optional": true,
+        "type": "u32"
+       },
+       {
+        "name": "texture_count_v",
+        "optional": true,
+        "type": "u32"
+       },
+       {
+        "name": "addon_models_fade_in_time",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "addon_models_fade_out_time",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "addon_models_scale_start",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "addon_models_scale_end",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "addon_models_scale_in_time",
+        "optional": true,
+        "type": "f32"
+       },
+       {
+        "name": "addon_models_scale_out_time",
+        "optional": true,
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "ICO2": {
+     "confidence": "documented",
+     "name": "Particle Shader Texture",
+     "note": "xEdit wbDefinitionsFNV.pas EFSH record",
+     "type": "zstring"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Fill Texture",
+     "note": "xEdit wbDefinitionsFNV.pas EFSH record",
+     "type": "zstring"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Holes Texture",
+     "note": "xEdit wbDefinitionsFNV.pas EFSH record",
+     "type": "zstring"
+    }
+   }
+  },
+  "ENCH": {
+   "confidence": "documented",
+   "name": "Object Effect",
+   "subrecords": {
+    "ENIT": {
+     "confidence": "documented",
+     "name": "Effect Data",
+     "note": "xEdit wbDefinitionsFNV.pas ENCH record; type values 0 and 1 are unnamed in xEdit and left out; effects are the shared EFID/EFIT/CTDA",
+     "type": "EnchantmentData"
+    }
+   }
+  },
+  "EXPL": {
+   "confidence": "documented",
+   "name": "Explosion",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas EXPL record; radiation is a nested struct there (level, dissipation time, radius), flattened here",
+     "type": "ExplosionData"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Placed Impact Object",
+     "note": "xEdit wbDefinitionsFNV.pas EXPL record",
+     "type": "formid"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Image Space Modifier",
+     "note": "xEdit wbDefinitionsFNV.pas EXPL record (IMAD)",
+     "type": "formid"
+    }
+   }
+  },
+  "FACT": {
+   "confidence": "documented",
+   "name": "Faction",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas FACT record; wbFloat(CNAM, 'Unused')",
+     "type": "f32"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas FACT record; SetOptionalFrom(1)",
+     "type": {
+      "struct": [
+       {
+        "name": "flags1",
+        "type": {
+         "bits": {
+          "0": "Hidden from PC",
+          "1": "Evil",
+          "2": "Special Combat"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "flags2",
+        "optional": true,
+        "type": {
+         "bits": {
+          "0": "Track Crime",
+          "1": "Allow Sell"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       }
+      ]
+     }
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Rank Female Title",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "zstring"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Rank Insignia (Unused)",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "zstring"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Rank Male Title",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "zstring"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Rank#",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "i32"
+    },
+    "WMI1": {
+     "confidence": "documented",
+     "name": "Reputation",
+     "note": "xEdit wbDefinitionsFNV.pas FACT record",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Relation",
+     "note": "xEdit wbDefinitionsCommon.pas wbFactionRelations via xEdit wbDefinitionsFNV.pas FACT record; non-TES4 branch with Group Combat Reaction",
+     "type": "FactionRelation"
+    }
+   }
+  },
+  "FLST": {
+   "confidence": "documented",
+   "name": "FormID List",
+   "subrecords": {
+    "LNAM": {
+     "confidence": "documented",
+     "name": "FormID",
+     "note": "xEdit wbDefinitionsFNV.pas FLST record",
+     "type": "formid"
+    }
+   }
+  },
+  "FURN": {
+   "confidence": "documented",
+   "name": "Furniture",
+   "subrecords": {
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Marker Flags",
+     "note": "xEdit wbDefinitionsFNV.pas FURN record; wbByteArray(MNAM, 'Marker Flags') with no fixed size",
+     "type": "bytes"
+    }
+   }
+  },
+  "GLOB": {
+   "confidence": "documented",
+   "name": "Global",
+   "subrecords": {
+    "FLTV": {
+     "confidence": "documented",
+     "name": "Value",
+     "note": "xEdit wbDefinitionsFNV.pas GLOB record",
+     "type": "f32"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Type",
+     "note": "xEdit wbDefinitionsFNV.pas GLOB record",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "102": "Float",
+       "108": "Long",
+       "115": "Short"
+      }
+     }
+    }
+   }
+  },
+  "GMST": {
+   "confidence": "documented",
+   "name": "Game Setting",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Value",
+     "note": "xEdit wbDefinitionsFNV.pas GMST record: a union decided by the Editor ID's first letter (f: f32, i: i32, s: zstring; observed: 459 f and 61 i settings are all 4 bytes). Schema v1 has no unions, so the bytes are kept and interpreted by fnv-sim (settings.rs).",
+     "type": "bytes"
+    }
+   }
+  },
+  "GRAS": {
+   "confidence": "documented",
+   "name": "Grass",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas GRAS record",
+     "type": "GrassData"
+    }
+   }
+  },
+  "HDPT": {
+   "confidence": "documented",
+   "name": "Head Part",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Playable",
+     "note": "xEdit wbDefinitionsFNV.pas HDPT record (wbBoolEnum)",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "False",
+       "1": "True"
+      }
+     }
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Extra Part",
+     "note": "xEdit wbDefinitionsFNV.pas HDPT record; repeated, one HDPT per subrecord",
+     "type": "formid"
+    },
+    "MO2S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO3S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MO4S": {
+     "confidence": "observed",
+     "name": "World Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    },
+    "MODS": {
+     "confidence": "observed",
+     "name": "Biped Model Alternate Textures",
+     "note": "xEdit declares MODS-family only under wbTexturedModel (ARMO, ARMA, WEAP), but the shipped masters carry it here too. The bytes parse identically everywhere as [u32 count] x (len_string 3D Name, TXST FormID, i32 3D Index) - verified over 675 instances across all six masters with zero mismatches - so the same layout applies wherever the signature appears. See gaps.json types.AlternateTexture; len_string is an NVRE fork addition.",
+     "type": {
+      "array": "AlternateTexture",
+      "count_prefix": "u32"
+     }
+    }
+   }
+  },
+  "IDLE": {
+   "confidence": "documented",
+   "name": "Idle Animation",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Animations",
+     "note": "xEdit wbDefinitionsFNV.pas IDLE record; Parent and Previous, each an IDLE or NULL",
+     "type": {
+      "struct": [
+       {
+        "name": "parent",
+        "type": "formid"
+       },
+       {
+        "name": "previous",
+        "type": "formid"
+       }
+      ]
+     }
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas IDLE record; Flags and the last unused byte optional (SetOptionalFrom(4)); Animation Group Section is a u8 whose low six bits name the section (wbIdleAnam: 0 Idle, 1 Movement, 2 Left Arm, 3 Left Hand, 4 Weapon, 5 Weapon Up, 6 Weapon Down, 7 Special Idle, 20 Whole Body, 21 Upper Body) and whose bits 0x40/0x80 xEdit labels Loose Idle / (clear) Must return a file; kept raw here",
+     "type": {
+      "struct": [
+       {
+        "name": "animation_group_section",
+        "type": "u8"
+       },
+       {
+        "name": "loop_min",
+        "type": "u8"
+       },
+       {
+        "name": "loop_max",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": "u8"
+       },
+       {
+        "name": "replay_delay",
+        "type": "i16"
+       },
+       {
+        "name": "flags",
+        "optional": true,
+        "type": {
+         "bits": {
+          "0": "No attacking"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused2",
+        "optional": true,
+        "type": "u8"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "IDLM": {
+   "name": "Idle Marker",
+   "subrecords": {
+    "IDLA": {
+     "confidence": "documented",
+     "name": "Animations",
+     "note": "xEdit wbIdleAnimation: IDLE FormIDs",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "IDLC": {
+     "confidence": "documented",
+     "name": "Idle Count",
+     "note": "xEdit wbIdleAnimation",
+     "type": "IdleCount"
+    },
+    "IDLF": {
+     "confidence": "documented",
+     "name": "Idle Flags",
+     "note": "xEdit wbIdleAnimation",
+     "type": {
+      "bits": {
+       "0": "Run In Sequence",
+       "2": "Do Once"
+      },
+      "flags": "u8"
+     }
+    },
+    "IDLT": {
+     "confidence": "documented",
+     "name": "Idle Timer Setting",
+     "note": "xEdit wbIdleAnimation",
+     "type": "f32"
+    }
+   }
+  },
+  "IMAD": {
+   "confidence": "documented",
+   "name": "Image Space Adapter",
+   "subrecords": {
+    "\u0000IAD": {
+     "confidence": "documented",
+     "name": "Eye Adapt Speed Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_00_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0001IAD": {
+     "confidence": "documented",
+     "name": "Blur Radius Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_01_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0002IAD": {
+     "confidence": "documented",
+     "name": "Skin Dimmer Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_02_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0003IAD": {
+     "confidence": "documented",
+     "name": "Emissive Mult Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_03_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0004IAD": {
+     "confidence": "documented",
+     "name": "Target LUM Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_04_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0005IAD": {
+     "confidence": "documented",
+     "name": "Upper LUM Clamp Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_05_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0006IAD": {
+     "confidence": "documented",
+     "name": "Bright Scale Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_06_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0007IAD": {
+     "confidence": "documented",
+     "name": "Bright Clamp Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_07_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\bIAD": {
+     "confidence": "documented",
+     "name": "LUM Ramp No Tex Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_08_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\tIAD": {
+     "confidence": "documented",
+     "name": "LUM Ramp Min Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_09_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\nIAD": {
+     "confidence": "documented",
+     "name": "LUM Ramp Max Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_0A_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u000bIAD": {
+     "confidence": "documented",
+     "name": "Sunlight Dimmer Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_0B_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\fIAD": {
+     "confidence": "documented",
+     "name": "Grass Dimmer Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_0C_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\rIAD": {
+     "confidence": "documented",
+     "name": "Tree Dimmer Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_0D_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u000eIAD": {
+     "confidence": "documented",
+     "name": "Bloom Blur Radius Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_0E_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u000fIAD": {
+     "confidence": "documented",
+     "name": "Bloom Alpha Mult Interior Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_0F_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0010IAD": {
+     "confidence": "documented",
+     "name": "Bloom Alpha Mult Exterior Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_10_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0011IAD": {
+     "confidence": "documented",
+     "name": "Cinematic Saturation Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_11_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0012IAD": {
+     "confidence": "documented",
+     "name": "Cinematic Contrast Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_12_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0013IAD": {
+     "confidence": "documented",
+     "name": "Cinematic Contrast Avg Lum Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_13_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "\u0014IAD": {
+     "confidence": "documented",
+     "name": "Cinematic Brightness Mult",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_14_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "@IAD": {
+     "confidence": "documented",
+     "name": "Eye Adapt Speed Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_40_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "AIAD": {
+     "confidence": "documented",
+     "name": "Blur Radius Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_41_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "BIAD": {
+     "confidence": "documented",
+     "name": "Skin Dimmer Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_42_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Blur Radius",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(BNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "CIAD": {
+     "confidence": "documented",
+     "name": "Emissive Mult Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_43_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "DIAD": {
+     "confidence": "documented",
+     "name": "Target LUM Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_44_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD DNAM: animatable, duration, then per-parameter mult/add key counts and effect settings (kept as rest)",
+     "type": "ImageSpaceAdapterHeader"
+    },
+    "EIAD": {
+     "confidence": "documented",
+     "name": "Upper LUM Clamp Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_45_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "FIAD": {
+     "confidence": "documented",
+     "name": "Bright Scale Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_46_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "GIAD": {
+     "confidence": "documented",
+     "name": "Bright Clamp Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_47_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "HIAD": {
+     "confidence": "documented",
+     "name": "LUM Ramp No Tex Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_48_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "IIAD": {
+     "confidence": "documented",
+     "name": "LUM Ramp Min Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_49_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "JIAD": {
+     "confidence": "documented",
+     "name": "LUM Ramp Max Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_4A_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "KIAD": {
+     "confidence": "documented",
+     "name": "Sunlight Dimmer Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_4B_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "LIAD": {
+     "confidence": "documented",
+     "name": "Grass Dimmer Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_4C_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "MIAD": {
+     "confidence": "documented",
+     "name": "Tree Dimmer Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_4D_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Radial Blur Ramp Down",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(NAM1): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Radial Blur Down Start",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(NAM2): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "Fade Color",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD NAM3",
+     "type": {
+      "array": "ColorKey"
+     }
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "Motion Blur Strength",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(NAM4): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "NIAD": {
+     "confidence": "documented",
+     "name": "Bloom Blur Radius Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_4E_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "OIAD": {
+     "confidence": "documented",
+     "name": "Bloom Alpha Mult Interior Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_4F_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "PIAD": {
+     "confidence": "documented",
+     "name": "Bloom Alpha Mult Exterior Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_50_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "QIAD": {
+     "confidence": "documented",
+     "name": "Cinematic Saturation Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_51_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "RDSD": {
+     "confidence": "documented",
+     "name": "Sound - Intro",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD record: wbFormIDCk(RDSD, 'Sound - Intro', [SOUN])",
+     "type": "formid"
+    },
+    "RDSI": {
+     "confidence": "documented",
+     "name": "Sound - Outro",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD record: wbFormIDCk(RDSI, 'Sound - Outro', [SOUN])",
+     "type": "formid"
+    },
+    "RIAD": {
+     "confidence": "documented",
+     "name": "Cinematic Contrast Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_52_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Radial Blur Strength",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(RNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "SIAD": {
+     "confidence": "documented",
+     "name": "Cinematic Contrast Avg Lum Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_53_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Radial Blur Ramp Up",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(SNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "TIAD": {
+     "confidence": "documented",
+     "name": "Cinematic Brightness Add",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolatorsMultAdd(_54_IAD): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Tint Color",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD TNAM wbColorInterpolator: time, RGBA",
+     "type": {
+      "array": "ColorKey"
+     }
+    },
+    "UNAM": {
+     "confidence": "documented",
+     "name": "Radial Blur Start",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(UNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Double Vision Strength",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(VNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Depth of Field Strength",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(WNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Depth of Field Distance",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(XNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Depth of Field Range",
+     "note": "xEdit wbDefinitionsFNV.pas IMAD wbTimeInterpolators(YNAM): time, value",
+     "type": {
+      "array": "TimeKey"
+     }
+    }
+   }
+  },
+  "IMGS": {
+   "confidence": "documented",
+   "name": "Image Space",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas IMGS DNAM: 14 HDR floats, then (form version 10+) skin dimmer, then bloom (3), get hit (3), night eye (tint RGB, brightness), cinematic (saturation, contrast avg lum, contrast, brightness, tint RGB, tint value), 4 unknown bytes, (version 10+) 12 unused, (version 13+) a flags byte and 3 unused. Observed sizes 152 (69 records), 148 (12), 132 (11, no skin dimmer); the version-dependent part stays in rest and fnv_world::imagespace reads it by form version",
+     "type": "ImageSpaceData"
+    }
+   }
+  },
+  "INGR": {
+   "confidence": "documented",
+   "name": "INGR",
+   "note": "xEdit wbDefinitionsFNV.pas INGR record; no header flags declared",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Weight",
+     "note": "xEdit wbDefinitionsFNV.pas INGR record: wbFloat(DATA, 'Weight', cpNormal, True). Verified: 1 instance, exactly 4 bytes",
+     "type": "f32"
+    },
+    "ENIT": {
+     "confidence": "documented",
+     "name": "Effect Data",
+     "note": "xEdit wbDefinitionsFNV.pas INGR record: wbStruct(ENIT, 'Effect Data', [wbInteger('Value', itS32), wbInteger('Flags', itU8, wbFlags(['No auto-calculation', 'Food item'])), wbUnused(3)], cpNormal, True). Verified: 1 instance, exactly 8 bytes",
+     "type": {
+      "struct": [
+       {
+        "name": "value",
+        "type": "i32"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "No auto-calculation",
+          "1": "Food item"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused_3",
+        "type": "bytes"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "IPCT": {
+   "confidence": "documented",
+   "name": "Impact",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas IPCT record",
+     "type": "ImpactData"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Texture Set",
+     "note": "xEdit wbDefinitionsFNV.pas IPCT record",
+     "type": "formid"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Sound 2",
+     "note": "xEdit wbDefinitionsFNV.pas IPCT record",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound 1",
+     "note": "xEdit wbDefinitionsFNV.pas IPCT record",
+     "type": "formid"
+    }
+   }
+  },
+  "KEYM": {
+   "confidence": "documented",
+   "header_flags": {
+    "bits": {
+     "10": "Quest Item"
+    },
+    "confidence": "documented",
+    "note": "xEdit wbDefinitionsFNV.pas (dev-4.1.6), wbRecord(KEYM) flag list; bit index = bit number (wbInterface.pas wbFlagsList). Bit 10 (0x400) is also 'Quest item' in the GECK wiki GetFormFlag bit table [owner export 2026-10-07]."
+   },
+   "name": "Key",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas KEYM record",
+     "type": "ValueWeight"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Sound - Random/Looping",
+     "note": "xEdit wbDefinitionsFNV.pas KEYM record",
+     "type": "formid"
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Sound - Pick Up",
+     "note": "xEdit wbDefinitionsFNV.pas KEYM record (wbYNAM)",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Sound - Drop",
+     "note": "xEdit wbDefinitionsFNV.pas KEYM record (wbZNAM)",
+     "type": "formid"
+    }
+   }
+  },
+  "LAND": {
+   "confidence": "documented",
+   "name": "Landscape",
+   "subrecords": {
+    "ATXT": {
+     "confidence": "documented",
+     "name": "Alpha Layer Header",
+     "note": "xEdit wbDefinitionsCommon.pas wbLandLayers",
+     "type": "LandLayerHeader"
+    },
+    "BTXT": {
+     "confidence": "documented",
+     "name": "Base Layer",
+     "note": "xEdit wbDefinitionsCommon.pas wbLandLayers",
+     "type": "LandLayerHeader"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas LAND record",
+     "type": {
+      "bits": {
+       "0": "Has Vertex Normals/Height Map",
+       "1": "Has Vertex Colours",
+       "10": "Ignored",
+       "2": "Has Layers",
+       "3": "Unknown 4",
+       "4": "Auto-Calc Normals"
+      },
+      "flags": "u32"
+     }
+    },
+    "VCLR": {
+     "confidence": "documented",
+     "name": "Vertex Colors",
+     "note": "xEdit wbDefinitionsCommon.pas wbLandColors",
+     "type": {
+      "array": {
+       "array": "RGB8",
+       "count": 33
+      },
+      "count": 33
+     }
+    },
+    "VHGT": {
+     "confidence": "documented",
+     "name": "Vertex Height Map",
+     "note": "xEdit wbDefinitionsCommon.pas wbLandHeights",
+     "type": {
+      "struct": [
+       {
+        "name": "offset",
+        "type": "f32"
+       },
+       {
+        "name": "height_data",
+        "type": {
+         "array": {
+          "array": "i8",
+          "count": 33
+         },
+         "count": 33
+        }
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       }
+      ]
+     }
+    },
+    "VNML": {
+     "confidence": "documented",
+     "name": "Vertex Normals",
+     "note": "xEdit wbDefinitionsCommon.pas wbLandNormals",
+     "type": {
+      "array": {
+       "array": "LandNormal",
+       "count": 33
+      },
+      "count": 33
+     }
+    },
+    "VTXT": {
+     "confidence": "documented",
+     "name": "Alpha Layer Data",
+     "note": "xEdit wbDefinitionsCommon.pas wbLandLayers",
+     "type": {
+      "array": "LandAlphaCell"
+     }
+    }
+   }
+  },
+  "LGTM": {
+   "confidence": "documented",
+   "name": "Lighting Template",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Lighting",
+     "note": "xEdit wbDefinitionsFNV.pas LGTM record",
+     "type": "LightingData"
+    }
+   }
+  },
+  "LIGH": {
+   "confidence": "documented",
+   "header_flags": {
+    "bits": {
+     "10": "Quest Item",
+     "16": "Random Anim Start",
+     "25": "Obstacle"
+    },
+    "confidence": "documented",
+    "note": "xEdit wbDefinitionsFNV.pas (dev-4.1.6), wbRecord(LIGH) flag list; bit index = bit number (wbInterface.pas wbFlagsList). Bit 10 (0x400) is also 'Quest item' in the GECK wiki GetFormFlag bit table [owner export 2026-10-07]."
+   },
+   "name": "Light",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas LIGH record",
+     "type": {
+      "struct": [
+       {
+        "name": "time",
+        "type": "i32"
+       },
+       {
+        "name": "radius",
+        "type": "u32"
+       },
+       {
+        "name": "color",
+        "type": "ByteColor"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Dynamic",
+          "1": "Can be Carried",
+          "10": "Spot Shadow",
+          "2": "Negative",
+          "3": "Flicker",
+          "4": "Unused",
+          "5": "Off By Default",
+          "6": "Flicker Slow",
+          "7": "Pulse",
+          "8": "Pulse Slow",
+          "9": "Spot Light"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "falloff_exponent",
+        "type": "f32"
+       },
+       {
+        "name": "fov",
+        "type": "f32"
+       },
+       {
+        "name": "value",
+        "type": "u32"
+       },
+       {
+        "name": "weight",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Fade value",
+     "note": "xEdit wbDefinitionsFNV.pas LIGH record",
+     "type": "f32"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "xEdit wbDefinitionsFNV.pas LIGH record",
+     "type": "formid"
+    }
+   }
+  },
+  "LSCR": {
+   "confidence": "documented",
+   "name": "Load Screen",
+   "subrecords": {
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Location",
+     "note": "fopdoc FalloutNV/Records/LSCR (tes5edit.github.io/fopdoc, from xEdit wbDefinitionsFNV.pas); direct is a CELL or WRLD, or null; indirect names a worldspace and a grid square (y first). Observed: 12 bytes, 0 to 4 per record, 23 in FalloutNV.esm (see docs/spec-notes/loading-screens.md)",
+     "type": {
+      "struct": [
+       {
+        "name": "direct",
+        "type": "formid"
+       },
+       {
+        "name": "indirect_world",
+        "type": "formid"
+       },
+       {
+        "name": "indirect_grid_y",
+        "type": "i16"
+       },
+       {
+        "name": "indirect_grid_x",
+        "type": "i16"
+       }
+      ]
+     }
+    },
+    "WMI1": {
+     "confidence": "documented",
+     "name": "Load Screen Type",
+     "note": "fopdoc FalloutNV/Records/LSCR (tes5edit.github.io/fopdoc, from xEdit wbDefinitionsFNV.pas); an LSCT record. Observed: every LSCR of FalloutNV.esm names StandardLoadingTip",
+     "type": "formid"
+    }
+   }
+  },
+  "LTEX": {
+   "confidence": "documented",
+   "name": "Landscape Texture",
+   "subrecords": {
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Grass",
+     "note": "xEdit wbDefinitionsFNV.pas LTEX record",
+     "type": "formid"
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Havok Data",
+     "note": "xEdit wbDefinitionsFNV.pas LTEX record; enum spellings as in xEdit",
+     "type": {
+      "struct": [
+       {
+        "name": "material_type",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "STONE",
+          "1": "CLOTH",
+          "10": "HEAVY STONE",
+          "11": "HEAVY METAL",
+          "12": "HEAVY WOOD",
+          "13": "CHAIN",
+          "14": "SNOW",
+          "15": "ELEVATOR",
+          "16": "HOLLOW METAL",
+          "17": "SHEET METAL",
+          "18": "SAND",
+          "19": "BRIKEN CONCRETE",
+          "2": "DIRT",
+          "20": "VEHILCE BODY",
+          "21": "VEHILCE PART SOLID",
+          "22": "VEHILCE PART HOLLOW",
+          "23": "BARREL",
+          "24": "BOTTLE",
+          "25": "SODA CAN",
+          "26": "PISTOL",
+          "27": "RIFLE",
+          "28": "SHOPPING CART",
+          "29": "LUNCHBOX",
+          "3": "GLASS",
+          "30": "BABY RATTLE",
+          "31": "RUBER BALL",
+          "4": "GRASS",
+          "5": "METAL",
+          "6": "ORGANIC",
+          "7": "SKIN",
+          "8": "WATER",
+          "9": "WOOD"
+         }
+        }
+       },
+       {
+        "name": "friction",
+        "type": "u8"
+       },
+       {
+        "name": "restitution",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Texture Specular Exponent",
+     "note": "xEdit wbDefinitionsFNV.pas LTEX record",
+     "type": "u8"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Texture",
+     "note": "xEdit wbDefinitionsFNV.pas LTEX record",
+     "type": "formid"
+    }
+   }
+  },
+  "LVLI": {
+   "confidence": "documented",
+   "name": "Leveled Item",
+   "subrecords": {
+    "LVLD": {
+     "confidence": "documented",
+     "name": "Chance none",
+     "note": "xEdit wbDefinitionsFNV.pas LVLI record",
+     "type": "u8"
+    },
+    "LVLF": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas LVLI record",
+     "type": {
+      "bits": {
+       "0": "Calculate from all levels <= player's level",
+       "1": "Calculate for each item in count",
+       "2": "Use All"
+      },
+      "flags": "u8"
+     }
+    },
+    "LVLG": {
+     "confidence": "documented",
+     "name": "Global",
+     "note": "xEdit wbDefinitionsFNV.pas LVLI record",
+     "type": "formid"
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "Leveled List Entry",
+     "note": "xEdit wbDefinitionsCommon.pas wbLeveledListEntry via xEdit wbDefinitionsFNV.pas LVLI record; SetOptionalFrom(3); pre-FO4 branch ends with wbUnused(2)",
+     "type": "LeveledListEntry"
+    }
+   }
+  },
+  "LVLN": {
+   "confidence": "documented",
+   "name": "Leveled NPC",
+   "subrecords": {
+    "LVLD": {
+     "confidence": "documented",
+     "name": "Chance none",
+     "note": "xEdit wbDefinitionsFNV.pas LVLN record",
+     "type": "u8"
+    },
+    "LVLF": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas LVLN record",
+     "type": {
+      "bits": {
+       "0": "Calculate from all levels <= player's level",
+       "1": "Calculate for each item in count"
+      },
+      "flags": "u8"
+     }
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "Leveled List Entry",
+     "note": "xEdit wbDefinitionsCommon.pas wbLeveledListEntry via xEdit wbDefinitionsFNV.pas LVLN record; SetOptionalFrom(3); pre-FO4 branch ends with wbUnused(2)",
+     "type": "LeveledListEntry"
+    }
+   }
+  },
+  "MESG": {
+   "confidence": "documented",
+   "name": "Message",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record",
+     "type": {
+      "bits": {
+       "0": "Message Box",
+       "1": "Auto Display"
+      },
+      "flags": "u32"
+     }
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Icon",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record",
+     "type": "formid"
+    },
+    "ITXT": {
+     "confidence": "documented",
+     "name": "Button Text",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record",
+     "type": "zstring"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM0, 0)",
+     "type": "bytes"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM1, 0)",
+     "type": "bytes"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM2, 0)",
+     "type": "bytes"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM3, 0)",
+     "type": "bytes"
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM4, 0)",
+     "type": "bytes"
+    },
+    "NAM5": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM5, 0)",
+     "type": "bytes"
+    },
+    "NAM6": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM6, 0)",
+     "type": "bytes"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM7, 0)",
+     "type": "bytes"
+    },
+    "NAM8": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM8, 0)",
+     "type": "bytes"
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM9, 0)",
+     "type": "bytes"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Display Time",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record",
+     "type": "u32"
+    }
+   }
+  },
+  "MGEF": {
+   "confidence": "documented",
+   "name": "Base Effect",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas MGEF record (field order and archetype values from wbArchtypeEnum in wbDefinitionsCommon.pas); associated_item is a union chosen by the archetype: 1 Script (SCPT), 18 Bound Item, 19 Summon Creature (wbMGEFFAssocItemDecider); base cost, magic school and the two constant-effect factors are unused in this game [documented]. Observed: 72 bytes; PoisonRemovalEffect (archetype 1) names the effect script SCPT 0x0016198D",
+     "type": {
+      "struct": [
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Hostile",
+          "1": "Recover",
+          "10": "FX Persist",
+          "12": "Gory Visuals",
+          "13": "Display Name Only",
+          "15": "Radio Broadcast ??",
+          "19": "Use skill",
+          "2": "Detrimental",
+          "20": "Use attribute",
+          "24": "Painless",
+          "25": "Spray projectile type",
+          "26": "Bolt projectile type",
+          "27": "No Hit Effect",
+          "28": "No Death Dispel",
+          "29": "????",
+          "4": "Self",
+          "5": "Touch",
+          "6": "Target",
+          "7": "No Duration",
+          "8": "No Magnitude",
+          "9": "No Area"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "base_cost",
+        "type": "f32"
+       },
+       {
+        "name": "associated_item",
+        "type": "formid"
+       },
+       {
+        "name": "magic_school",
+        "type": "i32"
+       },
+       {
+        "name": "resistance_type",
+        "type": "ActorValue"
+       },
+       {
+        "name": "counter_effect_count",
+        "type": "u16"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       },
+       {
+        "name": "light",
+        "type": "formid"
+       },
+       {
+        "name": "projectile_speed",
+        "type": "f32"
+       },
+       {
+        "name": "effect_shader",
+        "type": "formid"
+       },
+       {
+        "name": "object_display_shader",
+        "type": "formid"
+       },
+       {
+        "name": "effect_sound",
+        "type": "formid"
+       },
+       {
+        "name": "bolt_sound",
+        "type": "formid"
+       },
+       {
+        "name": "hit_sound",
+        "type": "formid"
+       },
+       {
+        "name": "area_sound",
+        "type": "formid"
+       },
+       {
+        "name": "constant_effect_enchantment_factor",
+        "type": "f32"
+       },
+       {
+        "name": "constant_effect_barter_factor",
+        "type": "f32"
+       },
+       {
+        "name": "archetype",
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Value Modifier",
+          "1": "Script",
+          "11": "Invisibility",
+          "12": "Chameleon",
+          "13": "Light",
+          "16": "Lock",
+          "17": "Open",
+          "18": "Bound Item",
+          "19": "Summon Creature",
+          "2": "Dispel",
+          "24": "Paralysis",
+          "3": "Cure Disease",
+          "30": "Cure Paralysis",
+          "31": "Cure Addiction",
+          "32": "Cure Poison",
+          "33": "Concussion",
+          "34": "Value And Parts",
+          "35": "Limb Condition",
+          "36": "Turbo"
+         }
+        }
+       },
+       {
+        "name": "actor_value",
+        "type": "ActorValue"
+       }
+      ]
+     }
+    },
+    "ESCE": {
+     "confidence": "documented",
+     "name": "Counter Effects",
+     "note": "xEdit wbDefinitionsFNV.pas MGEF record",
+     "type": {
+      "array": "formid"
+     }
+    }
+   }
+  },
+  "MISC": {
+   "confidence": "documented",
+   "header_flags": {
+    "bits": {
+     "10": "Quest Item"
+    },
+    "confidence": "documented",
+    "note": "xEdit wbDefinitionsFNV.pas (dev-4.1.6), wbRecord(MISC) flag list; bit index = bit number (wbInterface.pas wbFlagsList). Bit 10 (0x400) is also 'Quest item' in the GECK wiki GetFormFlag bit table [owner export 2026-10-07]."
+   },
+   "name": "Misc. Item",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas MISC record",
+     "type": "ValueWeight"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Sound - Random/Looping",
+     "note": "xEdit wbDefinitionsFNV.pas MISC record",
+     "type": "formid"
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Sound - Pick Up",
+     "note": "xEdit wbDefinitionsFNV.pas MISC record (wbYNAM)",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Sound - Drop",
+     "note": "xEdit wbDefinitionsFNV.pas MISC record (wbZNAM)",
+     "type": "formid"
+    }
+   }
+  },
+  "MSTT": {
+   "confidence": "documented",
+   "name": "Moveable Static",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "On Local Map",
+     "note": "xEdit wbDefinitionsFNV.pas MSTT record",
+     "type": "BoolU8"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "xEdit wbDefinitionsFNV.pas MSTT record",
+     "type": "formid"
+    }
+   }
+  },
+  "MUSC": {
+   "confidence": "documented",
+   "name": "Music Type",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "dB (positive = Loop)",
+     "note": "xEdit wbDefinitionsFNV.pas MUSC record",
+     "type": "f32"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "FileName",
+     "note": "xEdit wbDefinitionsFNV.pas MUSC record",
+     "type": "zstring"
+    }
+   }
+  },
+  "NAVI": {
+   "confidence": "documented",
+   "name": "Navmesh Info Map",
+   "note": "xEdit wbDefinitionsFNV.pas NAVI record: NVER then repeating NVMI (Navmesh Info) and NVCI (Connection) subrecords",
+   "subrecords": {
+    "NVCI": {
+     "confidence": "documented",
+     "name": "Connection",
+     "note": "xEdit wbDefinitionsFNV.pas NAVI wbRArrayS('Navmesh Connections', wbStructSK(NVCI, [0], 'Connection', [...])): NAVM FormID, then three u32-counted FormID arrays (Standard, Preferred, Door Links), each wbArrayS(..., -1). Verified against real bytes: all 4,771 NVCI subrecords in FalloutNV.esm parse exactly with zero bytes left over.",
+     "type": "NavConnection"
+    },
+    "NVER": {
+     "confidence": "documented",
+     "name": "Version",
+     "note": "xEdit wbDefinitionsFNV.pas NAVI wbInteger(NVER, 'Version', itU32)",
+     "type": "u32"
+    },
+    "NVMI": {
+     "confidence": "documented",
+     "name": "Navmesh Info",
+     "note": "xEdit wbDefinitionsFNV.pas NAVI wbRArrayS('Navmesh Infos', wbStructSK(NVMI, [1], 'Navmesh Info', [...])): u32 Flags, NAVM FormID, CELL/WRLD FormID Location, Grid Y/X (i16), Vec3 Approx Location, Island Data, then f32 Preferred %. The island branch is decided by wbNAVINVMIDecider reading bit 5 of Flags, which fnv.schema/1 cannot express as a value-decided union, so it is expressed here as a size-decided union instead: a plain (non-island) Navmesh Info is exactly 32 bytes, and every island one is larger. Verified against real bytes: all 4,771 NVMI subrecords in FalloutNV.esm parse exactly, 1,687 taking the island branch.",
+     "type": "NavMeshInfo"
+    }
+   }
+  },
+  "PERK": {
+   "confidence": "documented",
+   "name": "Perk",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "PERK carries two meanings for DATA. xEdit wbDefinitionsFNV.pas PERK: the record-level wbStruct(DATA, 'Data', [Trait, Min Level, Num Ranks, Playable, Hidden]).SetOptionalFrom(4) \u2014 3 bytes normally, 4 or 5 with the trailing optional bytes; and inside wbRStructSK('Effect', ...) the union wbUnion(DATA, 'Effect Data', wbPerkDATADecider, [Quest + Stage (8 bytes: QUST FormID, u16 stage, 2 unused), Ability (SPEL FormID), Entry Point (u8 Entry Point enum, u8 Function enum, u8 Perk Condition Tab Count)]). wbPerkDATADecider reads PRKE.Type from the enclosing record and returns 0 when no PRKE precedes the DATA, so the record-level struct is the union's default. Verified across all six masters: 36x8, 72x4 (PRKE 1), 261x3 (PRKE 2), and 3/4/5-byte record-level forms; the entry point enum is left unnamed because the 74-entry table would dwarf the schema",
+     "type": {
+      "cases": {
+       "0": 0,
+       "1": 1,
+       "2": 2
+      },
+      "default": 3,
+      "switch_on": "type",
+      "union": [
+       {
+        "name": "Quest + Stage",
+        "type": {
+         "struct": [
+          {
+           "name": "quest",
+           "type": "formid"
+          },
+          {
+           "name": "quest_stage",
+           "type": "u16"
+          },
+          {
+           "name": "unused_2",
+           "type": "bytes"
+          }
+         ]
+        }
+       },
+       {
+        "name": "Ability",
+        "type": "formid"
+       },
+       {
+        "name": "Entry Point",
+        "type": {
+         "struct": [
+          {
+           "name": "entry_point",
+           "type": {
+            "enum": "u8",
+            "values": {}
+           }
+          },
+          {
+           "name": "function",
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Unknown",
+             "1": "Set Value",
+             "2": "Add Value",
+             "3": "Multiply Value",
+             "4": "Add Range To Value",
+             "5": "Add Actor Value Mult",
+             "6": "Absolute Value",
+             "7": "Negative Absolute Value",
+             "8": "Add Leveled List",
+             "9": "Add Activate Choice"
+            }
+           }
+          },
+          {
+           "name": "perk_condition_tab_count",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "type": {
+         "union": [
+          {
+           "size": 3,
+           "type": {
+            "struct": [
+             {
+              "name": "trait",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "min_level",
+              "type": "u8"
+             },
+             {
+              "name": "num_ranks",
+              "type": "u8"
+             }
+            ]
+           }
+          },
+          {
+           "size": 4,
+           "type": {
+            "struct": [
+             {
+              "name": "trait",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "min_level",
+              "type": "u8"
+             },
+             {
+              "name": "num_ranks",
+              "type": "u8"
+             },
+             {
+              "name": "playable",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             }
+            ]
+           }
+          },
+          {
+           "size": 5,
+           "type": {
+            "struct": [
+             {
+              "name": "trait",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "min_level",
+              "type": "u8"
+             },
+             {
+              "name": "num_ranks",
+              "type": "u8"
+             },
+             {
+              "name": "playable",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "hidden",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    "EPF2": {
+     "confidence": "documented",
+     "name": "Button Label",
+     "note": "xEdit wbDefinitionsFNV.pas PERK record",
+     "type": "zstring"
+    },
+    "EPF3": {
+     "confidence": "documented",
+     "name": "Run Immediately",
+     "note": "xEdit wbDefinitionsFNV.pas PERK record",
+     "type": {
+      "enum": "u16",
+      "values": {
+       "0": "False",
+       "1": "True"
+      }
+     }
+    },
+    "EPFD": {
+     "confidence": "documented",
+     "name": "Entry Point Function Parameter Data",
+     "note": "xEdit wbDefinitionsFNV.pas PERK wbUnion(EPFD, 'Data', wbEPFDDecider, [wbByteArray('Unknown'), wbFloat('Float'), wbStruct('Float, Float', [..]), wbFormIDCk('Leveled Item', [LVLI]), wbEmpty('None (Script)'), wbStruct('Actor Value, Float', [Actor Value, Float])]); decider reads the sibling EPFT, and remaps 2 -> 5 when the effect's Function is 5; verified 252x4-byte (EPFT=1) and 2x4-byte (EPFT=3) across the six masters",
+     "type": {
+      "cases": {
+       "1": 1,
+       "2": 2,
+       "3": 3,
+       "4": 4,
+       "5": 5,
+       "6": 5
+      },
+      "default": 0,
+      "switch_on": "EPFT",
+      "union": [
+       {
+        "name": "Unknown",
+        "type": "bytes"
+       },
+       {
+        "name": "Float",
+        "type": "f32"
+       },
+       {
+        "name": "Float, Float",
+        "type": {
+         "struct": [
+          {
+           "name": "float_1",
+           "type": "f32"
+          },
+          {
+           "name": "float_2",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "Leveled Item",
+        "type": "formid"
+       },
+       {
+        "name": "None (Script)",
+        "type": {
+         "struct": []
+        }
+       },
+       {
+        "name": "Actor Value, Float",
+        "type": {
+         "struct": [
+          {
+           "name": "actor_value",
+           "type": "u32"
+          },
+          {
+           "name": "float",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    "EPFT": {
+     "confidence": "documented",
+     "expose": true,
+     "name": "Entry Point Function Parameter Type",
+     "note": "xEdit wbDefinitionsFNV.pas PERK wbInteger(EPFT, 'Type', itU8, wbPerkEPFTToStr, wbPerkEPFTToInt).SetDontShow; `expose` on the value: the EPFD union below switches on it (wbEPFDDecider reads sibling EPFT)",
+     "type": "u8"
+    },
+    "PRKC": {
+     "confidence": "documented",
+     "name": "Perk Condition Run On",
+     "note": "xEdit wbDefinitionsFNV.pas PERK record; custom-formatted s8 (wbPRKCToStr)",
+     "type": "i8"
+    },
+    "PRKE": {
+     "confidence": "documented",
+     "name": "Effect Header",
+     "note": "xEdit wbDefinitionsFNV.pas PERK wbRStructSK(PRKE, [1,2,0], 'Header', [wbPerkEffectType, Rank, Priority]); type enum from wbDefinitionsCommon.pas wbPerkEffectType. `expose` on type: the DATA union below switches on it (wbPerkDATADecider reads PRKE.Type from the record)",
+     "type": {
+      "struct": [
+       {
+        "expose": true,
+        "name": "type",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Quest + Stage",
+          "1": "Ability",
+          "2": "Entry Point"
+         }
+        }
+       },
+       {
+        "name": "rank",
+        "type": "u8"
+       },
+       {
+        "name": "priority",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    "PRKF": {
+     "confidence": "documented",
+     "name": "End Marker",
+     "note": "xEdit wbDefinitionsFNV.pas PERK record",
+     "type": "Empty"
+    }
+   }
+  },
+  "PGRE": {
+   "confidence": "documented",
+   "name": "Placed Grenade",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Position/Rotation",
+     "note": "xEdit wbDefinitionsFNV.pas PGRE record; wbVec3PosRot(DATA)",
+     "type": "PosRot"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Patrol Idle",
+     "note": "xEdit wbDefinitionsFNV.pas PGRE record",
+     "type": "formid"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base",
+     "note": "xEdit wbDefinitionsFNV.pas PGRE record (PROJ)",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Patrol Topic",
+     "note": "xEdit wbDefinitionsFNV.pas PGRE record",
+     "type": "formid"
+    }
+   }
+  },
+  "PROJ": {
+   "confidence": "documented",
+   "name": "Projectile",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas PROJ record (dev-4.1.6); SetOptionalFrom(18): rotation and bouncy_mult may be absent; flag bit 4 is unnamed in xEdit and left out; type values 1/2/4/8/16 as xEdit's sparse enum",
+     "type": "ProjectileData"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Muzzle Flash Model FileName",
+     "note": "xEdit wbDefinitionsFNV.pas PROJ record (Muzzle Flash Model)",
+     "type": "zstring"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Muzzle Flash Model Texture Hashes",
+     "note": "xEdit wbDefinitionsFNV.pas PROJ record: wbModelInfo(NAM2), the same layout as MODT",
+     "type": {
+      "array": "TextureHash"
+     }
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Sound Level",
+     "note": "xEdit wbDefinitionsFNV.pas PROJ record",
+     "type": "SoundLevel"
+    }
+   }
+  },
+  "SOUN": {
+   "confidence": "documented",
+   "name": "Sound",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Attenuation Curve",
+     "note": "xEdit wbDefinitionsFNV.pas SOUN record",
+     "type": {
+      "array": "i16",
+      "count": 5
+     }
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Sound FileName",
+     "note": "xEdit wbDefinitionsFNV.pas SOUN record",
+     "type": "zstring"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Reverb Attenuation Control",
+     "note": "xEdit wbDefinitionsFNV.pas SOUN record",
+     "type": "i16"
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Priority",
+     "note": "xEdit wbDefinitionsFNV.pas SOUN record",
+     "type": "i32"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Random Chance %",
+     "note": "xEdit wbDefinitionsFNV.pas SOUN record",
+     "type": "u8"
+    },
+    "SNDD": {
+     "confidence": "documented",
+     "name": "Sound Data",
+     "note": "xEdit wbDefinitionsFNV.pas SOUN record; min/max attenuation stored /5 and /100 (wbMul)",
+     "type": {
+      "struct": [
+       {
+        "name": "min_attenuation_distance",
+        "type": "u8"
+       },
+       {
+        "name": "max_attenuation_distance",
+        "type": "u8"
+       },
+       {
+        "name": "frequency_adjustment_percent",
+        "type": "i8"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Random Frequency Shift",
+          "1": "Play At Random",
+          "10": "Envelope Slow",
+          "11": "2D Radius",
+          "12": "Mute When Submerged",
+          "13": "Start at Random Position",
+          "2": "Environment Ignored",
+          "3": "Random Location",
+          "4": "Loop",
+          "5": "Menu Sound",
+          "6": "2D",
+          "7": "360 LFE",
+          "8": "Dialogue Sound",
+          "9": "Envelope Fast"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "static_attenuation_cdb",
+        "type": "i16"
+       },
+       {
+        "name": "stop_time",
+        "type": "u8"
+       },
+       {
+        "name": "start_time",
+        "type": "u8"
+       },
+       {
+        "name": "attenuation_curve",
+        "type": {
+         "array": "i16",
+         "count": 5
+        }
+       },
+       {
+        "name": "reverb_attenuation_control",
+        "type": "i16"
+       },
+       {
+        "name": "priority",
+        "type": "i32"
+       },
+       {
+        "name": "loop_begin",
+        "type": "i32"
+       },
+       {
+        "name": "loop_end",
+        "type": "i32"
+       }
+      ]
+     }
+    },
+    "SNDX": {
+     "confidence": "documented",
+     "name": "Sound Data (old)",
+     "note": "xEdit wbDefinitionsFNV.pas SOUN record",
+     "type": {
+      "struct": [
+       {
+        "name": "min_attenuation_distance",
+        "type": "u8"
+       },
+       {
+        "name": "max_attenuation_distance",
+        "type": "u8"
+       },
+       {
+        "name": "frequency_adjustment_percent",
+        "type": "i8"
+       },
+       {
+        "name": "unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Random Frequency Shift",
+          "1": "Play At Random",
+          "10": "Envelope Slow",
+          "11": "2D Radius",
+          "12": "Mute When Submerged",
+          "2": "Environment Ignored",
+          "3": "Random Location",
+          "4": "Loop",
+          "5": "Menu Sound",
+          "6": "2D",
+          "7": "360 LFE",
+          "8": "Dialogue Sound",
+          "9": "Envelope Fast"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "static_attenuation_cdb",
+        "type": "i16"
+       },
+       {
+        "name": "stop_time",
+        "type": "u8"
+       },
+       {
+        "name": "start_time",
+        "type": "u8"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "SPEL": {
+   "confidence": "documented",
+   "name": "Actor Effect",
+   "subrecords": {
+    "SPIT": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas SPEL record; type values 6-9 are unnamed in xEdit and left out; effects are the shared EFID/EFIT/CTDA",
+     "type": "ActorEffectData"
+    }
+   }
+  },
+  "TACT": {
+   "confidence": "documented",
+   "name": "Talking Activator",
+   "subrecords": {
+    "INAM": {
+     "confidence": "documented",
+     "name": "Radio Template",
+     "note": "xEdit wbDefinitionsFNV.pas TACT record",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Looping Sound",
+     "note": "xEdit wbDefinitionsFNV.pas TACT record",
+     "type": "formid"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Voice Type",
+     "note": "xEdit wbDefinitionsFNV.pas TACT record",
+     "type": "formid"
+    }
+   }
+  },
+  "TREE": {
+   "confidence": "documented",
+   "name": "Tree",
+   "subrecords": {
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Billboard Dimensions",
+     "note": "xEdit wbDefinitionsFNV.pas TREE record",
+     "type": {
+      "struct": [
+       {
+        "name": "width",
+        "type": "f32"
+       },
+       {
+        "name": "height",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Tree Data",
+     "note": "xEdit wbDefinitionsFNV.pas TREE record",
+     "type": {
+      "struct": [
+       {
+        "name": "leaf_curvature",
+        "type": "f32"
+       },
+       {
+        "name": "min_leaf_angle",
+        "type": "f32"
+       },
+       {
+        "name": "max_leaf_angle",
+        "type": "f32"
+       },
+       {
+        "name": "branch_dimming",
+        "type": "f32"
+       },
+       {
+        "name": "leaf_dimming",
+        "type": "f32"
+       },
+       {
+        "name": "shadow_radius",
+        "type": "i32"
+       },
+       {
+        "name": "rock_speed",
+        "type": "f32"
+       },
+       {
+        "name": "rustle_speed",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "SpeedTree Seeds",
+     "note": "xEdit wbDefinitionsFNV.pas TREE record",
+     "type": {
+      "array": "u32"
+     }
+    }
+   }
+  },
+  "TXST": {
+   "confidence": "documented",
+   "name": "Texture Set",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas TXST record",
+     "type": {
+      "bits": {
+       "0": "No Specular Map"
+      },
+      "flags": "u16"
+     }
+    },
+    "TX00": {
+     "confidence": "documented",
+     "name": "Base Image / Transparency",
+     "note": "xEdit wbDefinitionsFNV.pas TXST record",
+     "type": "zstring"
+    },
+    "TX01": {
+     "confidence": "documented",
+     "name": "Normal Map / Specular",
+     "note": "xEdit wbDefinitionsFNV.pas TXST record",
+     "type": "zstring"
+    },
+    "TX02": {
+     "confidence": "documented",
+     "name": "Environment Map Mask / ?",
+     "note": "xEdit wbDefinitionsFNV.pas TXST record",
+     "type": "zstring"
+    },
+    "TX03": {
+     "confidence": "documented",
+     "name": "Glow Map / Unused",
+     "note": "xEdit wbDefinitionsFNV.pas TXST record",
+     "type": "zstring"
+    },
+    "TX04": {
+     "confidence": "documented",
+     "name": "Parallax Map / Unused",
+     "note": "xEdit wbDefinitionsFNV.pas TXST record",
+     "type": "zstring"
+    },
+    "TX05": {
+     "confidence": "documented",
+     "name": "Environment Map / Unused",
+     "note": "xEdit wbDefinitionsFNV.pas TXST record",
+     "type": "zstring"
+    }
+   }
+  },
+  "VTYP": {
+   "confidence": "documented",
+   "name": "Voice Type",
+   "note": "xEdit wbDefinitionsFNV.pas VTYP record",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas VTYP wbInteger(DNAM, 'Flags', itU8); 91 instances all exactly 1 byte",
+     "type": {
+      "bits": {
+       "0": "Allow Default Dialog",
+       "1": "Female"
+      },
+      "flags": "u8"
+     }
+    }
+   }
+  },
+  "WATR": {
+   "confidence": "documented",
+   "name": "Water",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Opacity",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": "u8"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Damage / Visual Data (old format)",
+     "note": "xEdit wbDefinitionsFNV.pas WATR: wbInteger(DATA, 'Damage', itU16).SetSizeMatch, or (wbRUnion 'Visual Data') wbStruct(DATA) = the DNAM fields up to the noise-layer UV scales, then 'Damage (Old Format)' u16 (186 bytes); 70 FalloutNV.esm records have the 2-byte form, 8 (none with DNAM) the 186-byte form [observed]",
+     "type": {
+      "union": [
+       {
+        "size": 2,
+        "type": "u16"
+       },
+       {
+        "size": 186,
+        "type": "WaterVisualOldData"
+       }
+      ]
+     }
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Visual Data",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record (optional from field 46)",
+     "type": "WaterVisual"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": {
+      "bits": {
+       "0": "Causes Damage",
+       "1": "Reflective"
+      },
+      "flags": "u8"
+     }
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Related Waters",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": {
+      "struct": [
+       {
+        "name": "daytime",
+        "type": "formid"
+       },
+       {
+        "name": "nighttime",
+        "type": "formid"
+       },
+       {
+        "name": "underwater",
+        "type": "formid"
+       }
+      ]
+     }
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Material ID",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": "zstring"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Noise Map",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": "zstring"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Actor Effect",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": "formid"
+    }
+   }
+  },
+  "WRLD": {
+   "confidence": "documented",
+   "name": "Worldspace",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Climate",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": "formid"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": {
+      "bits": {
+       "0": "Small World",
+       "1": "Can't Fast Travel",
+       "4": "No LOD Water",
+       "5": "No LOD Noise",
+       "6": "Don't Allow NPC Fall Damage",
+       "7": "Needs Water Adjustment"
+      },
+      "flags": "u8"
+     }
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Land Data",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldLandData",
+     "type": {
+      "struct": [
+       {
+        "name": "default_land_height",
+        "type": "f32"
+       },
+       {
+        "name": "default_water_height",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "IMPF": {
+     "confidence": "documented",
+     "name": "Footstep Materials",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldSwapsImpactData; 10 fixed-length 30-byte strings; raw bytes in schema v1",
+     "type": "FootstepMaterials"
+    },
+    "IMPS": {
+     "confidence": "documented",
+     "name": "Impact Swap Data",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldSwapsImpactData",
+     "type": {
+      "struct": [
+       {
+        "name": "material_type",
+        "type": "WorldImpactMaterial"
+       },
+       {
+        "name": "original_data",
+        "type": "formid"
+       },
+       {
+        "name": "new_data",
+        "type": "formid"
+       }
+      ]
+     }
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Image Space",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": "formid"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "World Map Data",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldMapData; camera data is TES5-only",
+     "type": {
+      "struct": [
+       {
+        "name": "usable_x",
+        "type": "i32"
+       },
+       {
+        "name": "usable_y",
+        "type": "i32"
+       },
+       {
+        "name": "nw_cell_x",
+        "type": "i16"
+       },
+       {
+        "name": "nw_cell_y",
+        "type": "i16"
+       },
+       {
+        "name": "se_cell_x",
+        "type": "i16"
+       },
+       {
+        "name": "se_cell_y",
+        "type": "i16"
+       }
+      ]
+     }
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Worldspace Bounds Min",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldObjectBounds",
+     "type": {
+      "struct": [
+       {
+        "name": "x",
+        "type": "f32"
+       },
+       {
+        "name": "y",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Water",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": "formid"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "LOD Water",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldLODData",
+     "type": "formid"
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "LOD Water Height",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldLODData",
+     "type": "f32"
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "Worldspace Bounds Max",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldObjectBounds",
+     "type": {
+      "struct": [
+       {
+        "name": "x",
+        "type": "f32"
+       },
+       {
+        "name": "y",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Canopy Shadow",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": "zstring"
+    },
+    "OFST": {
+     "confidence": "documented",
+     "name": "Offsets",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldOffsetData; rows of u32 cell offsets, flattened (row width is derived from bounds)",
+     "type": {
+      "array": "u32"
+     }
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "World Map Offset Data",
+     "note": "xEdit wbDefinitionsCommon.pas wbWorldMapOffset; Cell Z Offset omitted for wbIsFallout3 (FO3 and FNV per wbInterface.pas)",
+     "type": {
+      "struct": [
+       {
+        "name": "world_map_scale",
+        "type": "f32"
+       },
+       {
+        "name": "cell_x_offset",
+        "type": "f32"
+       },
+       {
+        "name": "cell_y_offset",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent Use Flags",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": {
+      "bits": {
+       "0": "Use Land Data",
+       "1": "Use LOD Data",
+       "2": "Use Map Data",
+       "3": "Use Water Data",
+       "4": "Use Climate Data",
+       "5": "Use Image Space Data"
+      },
+      "flags": "u16"
+     }
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Parent World",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Water Noise Texture",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": "zstring"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Music",
+     "note": "xEdit wbDefinitionsFNV.pas WRLD record",
+     "type": "formid"
+    }
+   }
+  },
+  "WTHR": {
+   "confidence": "documented",
+   "name": "Weather",
+   "subrecords": {
+    "\u0000IAD": {
+     "confidence": "documented",
+     "name": "Sunrise Image Space Adapter",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR wbFormIDCk(_00_IAD, IMAD)",
+     "type": "formid"
+    },
+    "\u0001IAD": {
+     "confidence": "documented",
+     "name": "Day Image Space Adapter",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR wbFormIDCk(_01_IAD, IMAD)",
+     "type": "formid"
+    },
+    "\u0002IAD": {
+     "confidence": "documented",
+     "name": "Sunset Image Space Adapter",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR wbFormIDCk(_02_IAD, IMAD)",
+     "type": "formid"
+    },
+    "\u0003IAD": {
+     "confidence": "documented",
+     "name": "Night Image Space Adapter",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR wbFormIDCk(_03_IAD, IMAD)",
+     "type": "formid"
+    },
+    "\u0004IAD": {
+     "confidence": "documented",
+     "name": "High Noon Image Space Adapter",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR wbFormIDCk(_04_IAD, IMAD)",
+     "type": "formid"
+    },
+    "\u0005IAD": {
+     "confidence": "documented",
+     "name": "Midnight Image Space Adapter",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR wbFormIDCk(_05_IAD, IMAD)",
+     "type": "formid"
+    },
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer 2",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherCloudTextures (FO3/FNV form)",
+     "type": "zstring"
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer 3",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherCloudTextures (FO3/FNV form)",
+     "type": "zstring"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer 1",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherCloudTextures (FO3/FNV form)",
+     "type": "zstring"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR record",
+     "type": "WeatherData"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer 0",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherCloudTextures (FO3/FNV form)",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Fog Distance",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherFogDistance (FNV: six floats)",
+     "type": "WeatherFog"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR record wbUnused(INAM, 304)",
+     "type": "bytes"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Max Cloud Layers",
+     "note": "xEdit wbDefinitionsFNV.pas WTHR record",
+     "type": "u32"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Weather Colors",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherColors/wbWeatherTimeOfDay: 10 colour types (sky upper, fog, unused, ambient, sunlight, sun, stars, sky lower, horizon, effect lighting), each one colour per time of day (sunrise, day, sunset, night[, high noon, midnight]); observed 240 bytes (x 6) in 90 records, 160 (x 4) in 8. Expressed as a flat list because schema v1 has no size-selected union",
+     "type": {
+      "array": "ByteColor"
+     }
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Cloud Speeds",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherCloudSpeed (FO3/FNV form)",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Cloud Colors",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherCloudColors: per cloud layer, one colour per time of day; observed 96 bytes (4 layers x 6 times) or 64 (x 4 times)",
+     "type": {
+      "array": "ByteColor"
+     }
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "xEdit wbDefinitionsCommon.pas wbWeatherSounds",
+     "type": {
+      "struct": [
+       {
+        "name": "sound",
+        "type": "formid"
+       },
+       {
+        "name": "type",
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Default",
+          "1": "Precipitation",
+          "2": "Wind",
+          "3": "Thunder"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ },
+ "types": {
+  "ActorEffectData": {
+   "struct": [
+    {
+     "name": "type",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Actor Effect",
+       "1": "Disease",
+       "10": "Addiction",
+       "2": "Power",
+       "3": "Lesser Power",
+       "4": "Ability",
+       "5": "Poison"
+      }
+     }
+    },
+    {
+     "name": "cost_unused",
+     "type": "u32"
+    },
+    {
+     "name": "level_unused",
+     "type": "u32"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "No Auto-Calc",
+       "1": "Immune to Silence 1?",
+       "2": "PC Start Effect",
+       "3": "Immune to Silence 2?",
+       "4": "Area Effect Ignores LOS",
+       "5": "Script Effect Always Applies",
+       "6": "Disable Absorb/Reflect",
+       "7": "Force Touch Explode"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unused_0",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "ActorValue": {
+   "enum": "i32",
+   "values": {
+    "-1": "None",
+    "0": "Aggression",
+    "1": "Confidence",
+    "10": "Agility",
+    "11": "Luck",
+    "12": "Action Points",
+    "13": "Carry Weight",
+    "14": "Critical Chance",
+    "15": "Heal Rate",
+    "16": "Health",
+    "17": "Melee Damage",
+    "18": "Damage Resistance",
+    "19": "Poison Resistance",
+    "2": "Energy",
+    "20": "Rad Resistance",
+    "21": "Speed Multiplier",
+    "22": "Fatigue",
+    "23": "Karma",
+    "24": "XP",
+    "25": "Perception Condition",
+    "26": "Endurance Condition",
+    "27": "Left Attack Condition",
+    "28": "Right Attack Condition",
+    "29": "Left Mobility Condition",
+    "3": "Responsibility",
+    "30": "Right Mobility Condition",
+    "31": "Brain Condition",
+    "32": "Barter",
+    "33": "Big Guns",
+    "34": "Energy Weapons",
+    "35": "Explosives",
+    "36": "Lockpick",
+    "37": "Medicine",
+    "38": "Melee Weapons",
+    "39": "Repair",
+    "4": "Mood",
+    "40": "Science",
+    "41": "Guns",
+    "42": "Sneak",
+    "43": "Speech",
+    "44": "Survival",
+    "45": "Unarmed",
+    "46": "Inventory Weight",
+    "47": "Paralysis",
+    "48": "Invisibility",
+    "49": "Chameleon",
+    "5": "Strength",
+    "50": "Night Eye",
+    "51": "Turbo",
+    "52": "Fire Resistance",
+    "53": "Water Breathing",
+    "54": "Rad Level",
+    "55": "Bloody Mess",
+    "56": "Unarmed Damage",
+    "57": "Assistance",
+    "58": "Electric Resistance",
+    "59": "Frost Resistance",
+    "6": "Perception",
+    "60": "Energy Resistance",
+    "61": "EMP Resistance",
+    "62": "Variable01",
+    "63": "Variable02",
+    "64": "Variable03",
+    "65": "Variable04",
+    "66": "Variable05",
+    "67": "Variable06",
+    "68": "Variable07",
+    "69": "Variable08",
+    "7": "Endurance",
+    "70": "Variable09",
+    "71": "Variable10",
+    "72": "Ignore Crippled Limbs",
+    "73": "Dehydration",
+    "74": "Hunger",
+    "75": "Sleep Deprivation",
+    "76": "Damage Threshold",
+    "8": "Charisma",
+    "9": "Intelligence"
+   }
+  },
+  "ActorValueI8": {
+   "enum": "i8",
+   "values": {
+    "-1": "None",
+    "0": "Aggression",
+    "1": "Confidence",
+    "10": "Agility",
+    "11": "Luck",
+    "12": "Action Points",
+    "13": "Carry Weight",
+    "14": "Critical Chance",
+    "15": "Heal Rate",
+    "16": "Health",
+    "17": "Melee Damage",
+    "18": "Damage Resistance",
+    "19": "Poison Resistance",
+    "2": "Energy",
+    "20": "Rad Resistance",
+    "21": "Speed Multiplier",
+    "22": "Fatigue",
+    "23": "Karma",
+    "24": "XP",
+    "25": "Perception Condition",
+    "26": "Endurance Condition",
+    "27": "Left Attack Condition",
+    "28": "Right Attack Condition",
+    "29": "Left Mobility Condition",
+    "3": "Responsibility",
+    "30": "Right Mobility Condition",
+    "31": "Brain Condition",
+    "32": "Barter",
+    "33": "Big Guns",
+    "34": "Energy Weapons",
+    "35": "Explosives",
+    "36": "Lockpick",
+    "37": "Medicine",
+    "38": "Melee Weapons",
+    "39": "Repair",
+    "4": "Mood",
+    "40": "Science",
+    "41": "Guns",
+    "42": "Sneak",
+    "43": "Speech",
+    "44": "Survival",
+    "45": "Unarmed",
+    "46": "Inventory Weight",
+    "47": "Paralysis",
+    "48": "Invisibility",
+    "49": "Chameleon",
+    "5": "Strength",
+    "50": "Night Eye",
+    "51": "Turbo",
+    "52": "Fire Resistance",
+    "53": "Water Breathing",
+    "54": "Rad Level",
+    "55": "Bloody Mess",
+    "56": "Unarmed Damage",
+    "57": "Assistance",
+    "58": "Electric Resistance",
+    "59": "Frost Resistance",
+    "6": "Perception",
+    "60": "Energy Resistance",
+    "61": "EMP Resistance",
+    "62": "Variable01",
+    "63": "Variable02",
+    "64": "Variable03",
+    "65": "Variable04",
+    "66": "Variable05",
+    "67": "Variable06",
+    "68": "Variable07",
+    "69": "Variable08",
+    "7": "Endurance",
+    "70": "Variable09",
+    "71": "Variable10",
+    "72": "Ignore Crippled Limbs",
+    "73": "Dehydration",
+    "74": "Hunger",
+    "75": "Sleep Deprivation",
+    "76": "Damage Threshold",
+    "8": "Charisma",
+    "9": "Intelligence"
+   }
+  },
+  "AlternateTexture": {
+   "struct": [
+    {
+     "name": "model_3d_name",
+     "type": "len_string"
+    },
+    {
+     "name": "new_texture",
+     "type": "formid"
+    },
+    {
+     "name": "index_3d",
+     "type": "i32"
+    }
+   ]
+  },
+  "ArmorAddonData": {
+   "struct": [
+    {
+     "name": "value",
+     "type": "i32"
+    },
+    {
+     "name": "max_condition",
+     "type": "i32"
+    },
+    {
+     "name": "weight",
+     "type": "f32"
+    }
+   ]
+  },
+  "ArmorAddonDnam": {
+   "struct": [
+    {
+     "name": "dr",
+     "type": "i16"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Modulates Voice"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "dt",
+     "optional": true,
+     "type": "f32"
+    },
+    {
+     "name": "unused",
+     "optional": true,
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    }
+   ]
+  },
+  "Attributes7": {
+   "struct": [
+    {
+     "name": "strength",
+     "type": "u8"
+    },
+    {
+     "name": "perception",
+     "type": "u8"
+    },
+    {
+     "name": "endurance",
+     "type": "u8"
+    },
+    {
+     "name": "charisma",
+     "type": "u8"
+    },
+    {
+     "name": "intelligence",
+     "type": "u8"
+    },
+    {
+     "name": "agility",
+     "type": "u8"
+    },
+    {
+     "name": "luck",
+     "type": "u8"
+    }
+   ]
+  },
+  "BodyLocation": {
+   "enum": "i8",
+   "values": {
+    "-1": "None",
+    "0": "Torso",
+    "1": "Head 1",
+    "10": "Right Leg 1",
+    "11": "Right Leg 2",
+    "12": "Right Leg 3",
+    "13": "Brain",
+    "14": "Weapon",
+    "2": "Head 2",
+    "3": "Left Arm 1",
+    "4": "Left Arm 2",
+    "5": "Right Arm 1",
+    "6": "Right Arm 2",
+    "7": "Left Leg 1",
+    "8": "Left Leg 2",
+    "9": "Left Leg 3"
+   }
+  },
+  "BodyPartNodeData": {
+   "struct": [
+    {
+     "name": "damage_mult",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Severable",
+       "1": "IK Data",
+       "2": "IK Data - Biped Data",
+       "3": "Explodable",
+       "4": "IK Data - Is Head",
+       "5": "IK Data - Headtracking",
+       "6": "To Hit Chance - Absolute"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "part_type",
+     "type": "BodyLocation"
+    },
+    {
+     "name": "health_percent",
+     "type": "u8"
+    },
+    {
+     "name": "actor_value",
+     "type": "ActorValueI8"
+    },
+    {
+     "name": "to_hit_chance",
+     "type": "u8"
+    },
+    {
+     "name": "explodable_explosion_chance_percent",
+     "type": "u8"
+    },
+    {
+     "name": "explodable_debris_count",
+     "type": "u16"
+    },
+    {
+     "name": "explodable_debris",
+     "type": "formid"
+    },
+    {
+     "name": "explodable_explosion",
+     "type": "formid"
+    },
+    {
+     "name": "tracking_max_angle",
+     "type": "f32"
+    },
+    {
+     "name": "explodable_debris_scale",
+     "type": "f32"
+    },
+    {
+     "name": "severable_debris_count",
+     "type": "i32"
+    },
+    {
+     "name": "severable_debris",
+     "type": "formid"
+    },
+    {
+     "name": "severable_explosion",
+     "type": "formid"
+    },
+    {
+     "name": "severable_debris_scale",
+     "type": "f32"
+    },
+    {
+     "name": "gore_effects_positioning",
+     "type": "PosRot"
+    },
+    {
+     "name": "severable_impact_dataset",
+     "type": "formid"
+    },
+    {
+     "name": "explodable_impact_dataset",
+     "type": "formid"
+    },
+    {
+     "name": "severable_decal_count",
+     "type": "u8"
+    },
+    {
+     "name": "explodable_decal_count",
+     "type": "u8"
+    },
+    {
+     "name": "unused_0",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "limb_replacement_scale",
+     "type": "f32"
+    }
+   ]
+  },
+  "BoolU8": {
+   "enum": "u8",
+   "values": {
+    "0": "False",
+    "1": "True"
+   }
+  },
+  "ByteColor": {
+   "struct": [
+    {
+     "name": "red",
+     "type": "u8"
+    },
+    {
+     "name": "green",
+     "type": "u8"
+    },
+    {
+     "name": "blue",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    }
+   ]
+  },
+  "CameraPathLink": {
+   "struct": [
+    {
+     "name": "parent",
+     "type": "formid"
+    },
+    {
+     "name": "previous",
+     "type": "formid"
+    }
+   ]
+  },
+  "CameraShotData": {
+   "union": [
+    {
+     "size": 40,
+     "type": "CameraShotDataFull"
+    },
+    {
+     "type": "CameraShotDataShort"
+    }
+   ]
+  },
+  "CameraShotDataFull": {
+   "struct": [
+    {
+     "name": "action",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Shoot",
+       "1": "Fly",
+       "2": "Hit",
+       "3": "Zoom"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "target",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Position Follows Location",
+       "1": "Rotation Follows Target",
+       "2": "Don't Follow Bone",
+       "3": "First Person Camera",
+       "4": "No Tracer",
+       "5": "Start At Time Zero"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "time_multipliers",
+     "type": {
+      "struct": [
+       {
+        "name": "player",
+        "type": "f32"
+       },
+       {
+        "name": "target",
+        "type": "f32"
+       },
+       {
+        "name": "global",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "max_time",
+     "type": "f32"
+    },
+    {
+     "name": "min_time",
+     "type": "f32"
+    },
+    {
+     "name": "target_percent_between_actors",
+     "type": "f32"
+    }
+   ]
+  },
+  "CameraShotDataShort": {
+   "struct": [
+    {
+     "name": "action",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Shoot",
+       "1": "Fly",
+       "2": "Hit",
+       "3": "Zoom"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "target",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Attacker",
+       "1": "Projectile",
+       "2": "Target"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Position Follows Location",
+       "1": "Rotation Follows Target",
+       "2": "Don't Follow Bone",
+       "3": "First Person Camera",
+       "4": "No Tracer",
+       "5": "Start At Time Zero"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "time_multipliers",
+     "type": {
+      "struct": [
+       {
+        "name": "player",
+        "type": "f32"
+       },
+       {
+        "name": "target",
+        "type": "f32"
+       },
+       {
+        "name": "global",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "max_time",
+     "type": "f32"
+    },
+    {
+     "name": "min_time",
+     "type": "f32"
+    }
+   ]
+  },
+  "ClimateTiming": {
+   "struct": [
+    {
+     "name": "sunrise_begin",
+     "type": "u8"
+    },
+    {
+     "name": "sunrise_end",
+     "type": "u8"
+    },
+    {
+     "name": "sunset_begin",
+     "type": "u8"
+    },
+    {
+     "name": "sunset_end",
+     "type": "u8"
+    },
+    {
+     "name": "volatility",
+     "type": "u8"
+    },
+    {
+     "name": "moons_phase_length",
+     "type": "u8"
+    }
+   ]
+  },
+  "ColorKey": {
+   "struct": [
+    {
+     "name": "time",
+     "type": "f32"
+    },
+    {
+     "name": "red",
+     "type": "f32"
+    },
+    {
+     "name": "green",
+     "type": "f32"
+    },
+    {
+     "name": "blue",
+     "type": "f32"
+    },
+    {
+     "name": "alpha",
+     "type": "f32"
+    }
+   ]
+  },
+  "Condition": {
+   "struct": [
+    {
+     "name": "type",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "comparison_value_raw",
+     "type": "u32"
+    },
+    {
+     "name": "function",
+     "type": "u16"
+    },
+    {
+     "name": "unused2",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "parameter1_raw",
+     "type": "u32"
+    },
+    {
+     "name": "parameter2_raw",
+     "type": "u32"
+    },
+    {
+     "name": "run_on",
+     "optional": true,
+     "type": "u32"
+    },
+    {
+     "name": "reference_raw",
+     "optional": true,
+     "type": "u32"
+    }
+   ]
+  },
+  "EfshBlend": {
+   "enum": "u32",
+   "values": {
+    "1": "Zero",
+    "10": "Dest Inverse Color",
+    "11": "Source Alpha SAT",
+    "2": "One",
+    "3": "Source Color",
+    "4": "Source Inverse Color",
+    "5": "Source Alpha",
+    "6": "Source Inverted Alpha",
+    "7": "Dest Alpha",
+    "8": "Dest Inverted Alpha",
+    "9": "Dest Color"
+   }
+  },
+  "EfshBlendOp": {
+   "enum": "u32",
+   "values": {
+    "1": "Add",
+    "2": "Subtract",
+    "3": "Reverse Subtract",
+    "4": "Minimum",
+    "5": "Maximum"
+   }
+  },
+  "EfshZTest": {
+   "enum": "u32",
+   "values": {
+    "3": "Equal To",
+    "4": "Normal",
+    "5": "Greater Than",
+    "7": "Greater Than or Equal To",
+    "8": "Always Show"
+   }
+  },
+  "Empty": {
+   "struct": []
+  },
+  "EnchantmentData": {
+   "struct": [
+    {
+     "name": "type",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "2": "Weapon",
+       "3": "Apparel"
+      }
+     }
+    },
+    {
+     "name": "unused_0",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "unused_1",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "No Auto-Calc",
+       "1": "Auto Calculate",
+       "2": "Hide Effect"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unused_2",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "EncounterZoneData": {
+   "struct": [
+    {
+     "name": "owner",
+     "type": "formid"
+    },
+    {
+     "name": "rank",
+     "type": "i8"
+    },
+    {
+     "name": "minimum_level",
+     "type": "i8"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Never Resets",
+       "1": "Match PC Below Minimum Level"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    }
+   ]
+  },
+  "EquipType": {
+   "enum": "i32",
+   "values": {
+    "-1": "None",
+    "0": "Big Guns",
+    "1": "Energy Weapons",
+    "10": "Chems",
+    "11": "Stimpak",
+    "12": "Food",
+    "13": "Alcohol",
+    "2": "Small Guns",
+    "3": "Melee Weapons",
+    "4": "Unarmed Weapon",
+    "5": "Thrown Weapons",
+    "6": "Mine",
+    "7": "Body Wear",
+    "8": "Head Wear",
+    "9": "Hand Wear"
+   }
+  },
+  "ExplosionData": {
+   "struct": [
+    {
+     "name": "force",
+     "type": "f32"
+    },
+    {
+     "name": "damage",
+     "type": "f32"
+    },
+    {
+     "name": "radius",
+     "type": "f32"
+    },
+    {
+     "name": "light",
+     "type": "formid"
+    },
+    {
+     "name": "sound_1",
+     "type": "formid"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Radius in BS Units",
+       "1": "Always Uses World Orientation",
+       "2": "Knock Down - Always",
+       "3": "Knock Down - By Formula",
+       "4": "Ignore LOS Check",
+       "5": "Push Explosion Source Ref Only",
+       "6": "Ignore Image Space Swap"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "is_radius",
+     "type": "f32"
+    },
+    {
+     "name": "impact_dataset",
+     "type": "formid"
+    },
+    {
+     "name": "sound_2",
+     "type": "formid"
+    },
+    {
+     "name": "radiation_level",
+     "type": "f32"
+    },
+    {
+     "name": "radiation_dissipation_time",
+     "type": "f32"
+    },
+    {
+     "name": "radiation_radius",
+     "type": "f32"
+    },
+    {
+     "name": "sound_level",
+     "type": "SoundLevel"
+    }
+   ]
+  },
+  "FactionRelation": {
+   "struct": [
+    {
+     "name": "faction",
+     "type": "formid"
+    },
+    {
+     "name": "modifier",
+     "type": "i32"
+    },
+    {
+     "name": "group_combat_reaction",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Neutral",
+       "1": "Enemy",
+       "2": "Ally",
+       "3": "Friend"
+      }
+     }
+    }
+   ]
+  },
+  "FloatRGB": {
+   "struct": [
+    {
+     "name": "red",
+     "type": "f32"
+    },
+    {
+     "name": "green",
+     "type": "f32"
+    },
+    {
+     "name": "blue",
+     "type": "f32"
+    }
+   ]
+  },
+  "FootstepMaterials": {
+   "struct": [
+    {
+     "name": "conc_solid",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "conc_broken",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "metal_solid",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "metal_hollow",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "metal_sheet",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "wood",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "sand",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "dirt",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "grass",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    },
+    {
+     "name": "water",
+     "type": {
+      "array": "u8",
+      "count": 30
+     }
+    }
+   ]
+  },
+  "GrassData": {
+   "struct": [
+    {
+     "name": "density",
+     "type": "u8"
+    },
+    {
+     "name": "min_slope",
+     "type": "u8"
+    },
+    {
+     "name": "max_slope",
+     "type": "u8"
+    },
+    {
+     "name": "unused_0",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    },
+    {
+     "name": "unit_from_water_amount",
+     "type": "u16"
+    },
+    {
+     "name": "unused_1",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "unit_from_water_type",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Above - At Least",
+       "1": "Above - At Most",
+       "2": "Below - At Least",
+       "3": "Below - At Most",
+       "4": "Either - At Least",
+       "5": "Either - At Most",
+       "6": "Either - At Most Above",
+       "7": "Either - At Most Below"
+      }
+     }
+    },
+    {
+     "name": "position_range",
+     "type": "f32"
+    },
+    {
+     "name": "height_range",
+     "type": "f32"
+    },
+    {
+     "name": "color_range",
+     "type": "f32"
+    },
+    {
+     "name": "wave_period",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Vertex Lighting",
+       "1": "Uniform Scaling",
+       "2": "Fit to Slope"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unused_2",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "IdleCount": {
+   "struct": [
+    {
+     "name": "animation_count",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "optional": true,
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "ImageSpaceAdapterHeader": {
+   "struct": [
+    {
+     "name": "animatable",
+     "type": "u32"
+    },
+    {
+     "name": "duration",
+     "type": "f32"
+    },
+    {
+     "name": "rest",
+     "type": "bytes"
+    }
+   ]
+  },
+  "ImageSpaceData": {
+   "struct": [
+    {
+     "name": "eye_adapt_speed",
+     "type": "f32"
+    },
+    {
+     "name": "blur_radius",
+     "type": "f32"
+    },
+    {
+     "name": "blur_passes",
+     "type": "f32"
+    },
+    {
+     "name": "emissive_mult",
+     "type": "f32"
+    },
+    {
+     "name": "target_lum",
+     "type": "f32"
+    },
+    {
+     "name": "upper_lum_clamp",
+     "type": "f32"
+    },
+    {
+     "name": "bright_scale",
+     "type": "f32"
+    },
+    {
+     "name": "bright_clamp",
+     "type": "f32"
+    },
+    {
+     "name": "lum_ramp_no_tex",
+     "type": "f32"
+    },
+    {
+     "name": "lum_ramp_min",
+     "type": "f32"
+    },
+    {
+     "name": "lum_ramp_max",
+     "type": "f32"
+    },
+    {
+     "name": "sunlight_dimmer",
+     "type": "f32"
+    },
+    {
+     "name": "grass_dimmer",
+     "type": "f32"
+    },
+    {
+     "name": "tree_dimmer",
+     "type": "f32"
+    },
+    {
+     "name": "rest",
+     "type": "bytes"
+    }
+   ]
+  },
+  "ImpactData": {
+   "struct": [
+    {
+     "name": "effect_duration",
+     "type": "f32"
+    },
+    {
+     "name": "effect_orientation",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Surface Normal",
+       "1": "Projectile Vector",
+       "2": "Projectile Reflection"
+      }
+     }
+    },
+    {
+     "name": "angle_threshold",
+     "type": "f32"
+    },
+    {
+     "name": "placement_radius",
+     "type": "f32"
+    },
+    {
+     "name": "sound_level",
+     "type": "SoundLevel"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "No Decal Data"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
+  "LandAlphaCell": {
+   "struct": [
+    {
+     "name": "position",
+     "type": "u16"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "opacity",
+     "type": "f32"
+    }
+   ]
+  },
+  "LandLayerHeader": {
+   "struct": [
+    {
+     "name": "texture",
+     "type": "formid"
+    },
+    {
+     "name": "quadrant",
+     "type": "LandQuadrant"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 1
+     }
+    },
+    {
+     "name": "layer",
+     "type": "i16"
+    }
+   ]
+  },
+  "LandNormal": {
+   "struct": [
+    {
+     "name": "x",
+     "type": "u8"
+    },
+    {
+     "name": "y",
+     "type": "u8"
+    },
+    {
+     "name": "z",
+     "type": "u8"
+    }
+   ]
+  },
+  "LandQuadrant": {
+   "enum": "u8",
+   "values": {
+    "0": "Bottom Left",
+    "1": "Bottom Right",
+    "2": "Top Left",
+    "3": "Top Right"
+   }
+  },
+  "LeveledListEntry": {
+   "struct": [
+    {
+     "name": "level",
+     "type": "u16"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "reference",
+     "type": "formid"
+    },
+    {
+     "name": "count",
+     "optional": true,
+     "type": "u16"
+    },
+    {
+     "name": "unused2",
+     "optional": true,
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "LightingData": {
+   "struct": [
+    {
+     "name": "ambient_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "directional_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "fog_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "fog_near",
+     "type": "f32"
+    },
+    {
+     "name": "fog_far",
+     "type": "f32"
+    },
+    {
+     "name": "directional_rotation_xy",
+     "type": "i32"
+    },
+    {
+     "name": "directional_rotation_z",
+     "type": "i32"
+    },
+    {
+     "name": "directional_fade",
+     "type": "f32"
+    },
+    {
+     "name": "fog_clip_dist",
+     "type": "f32"
+    },
+    {
+     "name": "fog_power",
+     "type": "f32"
+    }
+   ]
+  },
+  "NavConnection": {
+   "struct": [
+    {
+     "name": "navmesh",
+     "type": "formid"
+    },
+    {
+     "name": "standard",
+     "type": {
+      "array": "formid",
+      "count_prefix": "u32"
+     }
+    },
+    {
+     "name": "preferred",
+     "type": {
+      "array": "formid",
+      "count_prefix": "u32"
+     }
+    },
+    {
+     "name": "door_links",
+     "type": {
+      "array": "formid",
+      "count_prefix": "u32"
+     }
+    }
+   ]
+  },
+  "NavMeshInfo": {
+   "union": [
+    {
+     "size": 32,
+     "type": "NavMeshInfoPlain"
+    },
+    {
+     "type": "NavMeshInfoIsland"
+    }
+   ]
+  },
+  "NavMeshInfoIsland": {
+   "struct": [
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "4": "Initially Disabled",
+       "5": "Is Island"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "navmesh",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "type": "formid"
+    },
+    {
+     "name": "grid_y",
+     "type": "i16"
+    },
+    {
+     "name": "grid_x",
+     "type": "i16"
+    },
+    {
+     "name": "approx_location",
+     "type": {
+      "struct": [
+       {
+        "name": "x",
+        "type": "f32"
+       },
+       {
+        "name": "y",
+        "type": "f32"
+       },
+       {
+        "name": "z",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "island_bounds",
+     "type": {
+      "struct": [
+       {
+        "name": "min",
+        "type": {
+         "struct": [
+          {
+           "name": "x",
+           "type": "f32"
+          },
+          {
+           "name": "y",
+           "type": "f32"
+          },
+          {
+           "name": "z",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "max",
+        "type": {
+         "struct": [
+          {
+           "name": "x",
+           "type": "f32"
+          },
+          {
+           "name": "y",
+           "type": "f32"
+          },
+          {
+           "name": "z",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "island_vertex_count",
+     "note": "xEdit wbInteger('Vertex Count', itU16) with .SetCountPath('Vertex Count', True): the count is a stored field, read once, and island_vertices below uses it via count_field.",
+     "type": "u16"
+    },
+    {
+     "name": "island_triangle_count",
+     "note": "xEdit wbInteger('Triangle Count', itU16) with .SetCountPath('Triangle Count', True). Stored next to the vertex count, before either array.",
+     "type": "u16"
+    },
+    {
+     "name": "island_vertices",
+     "note": "xEdit wbArray('Vertices', wbVec3('Vertex')).SetCountPath('Vertex Count', True): the element count is the sibling island_vertex_count field, not a prefix in the data.",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "x",
+         "type": "f32"
+        },
+        {
+         "name": "y",
+         "type": "f32"
+        },
+        {
+         "name": "z",
+         "type": "f32"
+        }
+       ]
+      },
+      "count_field": "island_vertex_count"
+     }
+    },
+    {
+     "name": "island_triangles",
+     "note": "xEdit wbArray('Triangles', wbStruct('Triangle', [Vertex 0/1/2])).SetCountPath('Triangle Count', True).",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "vertex_0",
+         "type": "u16"
+        },
+        {
+         "name": "vertex_1",
+         "type": "u16"
+        },
+        {
+         "name": "vertex_2",
+         "type": "u16"
+        }
+       ]
+      },
+      "count_field": "island_triangle_count"
+     }
+    },
+    {
+     "name": "preferred_percent",
+     "type": "f32"
+    }
+   ]
+  },
+  "NavMeshInfoPlain": {
+   "struct": [
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "4": "Initially Disabled",
+       "5": "Is Island"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "navmesh",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "type": "formid"
+    },
+    {
+     "name": "grid_y",
+     "type": "i16"
+    },
+    {
+     "name": "grid_x",
+     "type": "i16"
+    },
+    {
+     "name": "approx_location",
+     "type": {
+      "struct": [
+       {
+        "name": "x",
+        "type": "f32"
+       },
+       {
+        "name": "y",
+        "type": "f32"
+       },
+       {
+        "name": "z",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "preferred_percent",
+     "type": "f32"
+    }
+   ]
+  },
+  "ObjectBounds": {
+   "struct": [
+    {
+     "name": "min",
+     "type": "Vec3i16"
+    },
+    {
+     "name": "max",
+     "type": "Vec3i16"
+    }
+   ]
+  },
+  "PackageLocation": {
+   "struct": [
+    {
+     "name": "type",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Near reference",
+       "1": "In cell",
+       "2": "Near current location",
+       "3": "Near editor location",
+       "4": "Object ID",
+       "5": "Object Type",
+       "6": "Near linked reference",
+       "7": "At package location"
+      }
+     }
+    },
+    {
+     "name": "location_raw",
+     "type": "u32"
+    },
+    {
+     "name": "radius",
+     "type": "i32"
+    }
+   ]
+  },
+  "PackageTarget": {
+   "struct": [
+    {
+     "name": "type",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Specific Reference",
+       "1": "Object ID",
+       "2": "Object Type",
+       "3": "Linked Reference"
+      }
+     }
+    },
+    {
+     "name": "target_raw",
+     "type": "u32"
+    },
+    {
+     "name": "count_distance",
+     "type": "i32"
+    },
+    {
+     "name": "unknown",
+     "optional": true,
+     "type": "f32"
+    }
+   ]
+  },
+  "PosRot": {
+   "struct": [
+    {
+     "name": "position",
+     "type": "Vec3f"
+    },
+    {
+     "name": "rotation_radians",
+     "type": "Vec3f"
+    }
+   ]
+  },
+  "ProjectileData": {
+   "struct": [
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Hitscan",
+       "1": "Explosion",
+       "10": "Detonates",
+       "11": "Rotation",
+       "2": "Alt. Trigger",
+       "3": "Muzzle Flash",
+       "5": "Can Be Disabled",
+       "6": "Can Be Picked Up",
+       "7": "Supersonic",
+       "8": "Pins Limbs",
+       "9": "Pass Through Small Transparent"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "type",
+     "type": {
+      "enum": "u16",
+      "values": {
+       "1": "Missile",
+       "16": "Continuous Beam",
+       "2": "Lobber",
+       "4": "Beam",
+       "8": "Flame"
+      }
+     }
+    },
+    {
+     "name": "gravity",
+     "type": "f32"
+    },
+    {
+     "name": "speed",
+     "type": "f32"
+    },
+    {
+     "name": "range",
+     "type": "f32"
+    },
+    {
+     "name": "light",
+     "type": "formid"
+    },
+    {
+     "name": "muzzle_flash_light",
+     "type": "formid"
+    },
+    {
+     "name": "tracer_chance",
+     "type": "f32"
+    },
+    {
+     "name": "explosion_alt_trigger_proximity",
+     "type": "f32"
+    },
+    {
+     "name": "explosion_alt_trigger_timer",
+     "type": "f32"
+    },
+    {
+     "name": "explosion",
+     "type": "formid"
+    },
+    {
+     "name": "sound",
+     "type": "formid"
+    },
+    {
+     "name": "muzzle_flash_duration",
+     "type": "f32"
+    },
+    {
+     "name": "fade_duration",
+     "type": "f32"
+    },
+    {
+     "name": "impact_force",
+     "type": "f32"
+    },
+    {
+     "name": "sound_countdown",
+     "type": "formid"
+    },
+    {
+     "name": "sound_disable",
+     "type": "formid"
+    },
+    {
+     "name": "default_weapon_source",
+     "type": "formid"
+    },
+    {
+     "name": "rotation",
+     "optional": true,
+     "type": "Vec3f"
+    },
+    {
+     "name": "bouncy_mult",
+     "optional": true,
+     "type": "f32"
+    }
+   ]
+  },
+  "RGB8": {
+   "struct": [
+    {
+     "name": "red",
+     "type": "u8"
+    },
+    {
+     "name": "green",
+     "type": "u8"
+    },
+    {
+     "name": "blue",
+     "type": "u8"
+    }
+   ]
+  },
+  "RagdollBone": {
+   "struct": [
+    {
+     "name": "bone_id",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "pos_rot",
+     "type": "PosRot"
+    }
+   ]
+  },
+  "RegionDataHeader": {
+   "struct": [
+    {
+     "name": "type",
+     "type": "u32"
+    },
+    {
+     "name": "flags",
+     "type": "u8"
+    },
+    {
+     "name": "priority",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "ScriptHeader": {
+   "struct": [
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "ref_count",
+     "type": "u32"
+    },
+    {
+     "name": "compiled_size",
+     "type": "u32"
+    },
+    {
+     "name": "variable_count",
+     "type": "u32"
+    },
+    {
+     "name": "type",
+     "type": {
+      "enum": "u16",
+      "values": {
+       "0": "Object",
+       "1": "Quest",
+       "256": "Effect"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Enabled"
+      },
+      "flags": "u16"
+     }
+    }
+   ]
+  },
+  "ScriptLocalVar": {
+   "struct": [
+    {
+     "name": "index",
+     "type": "u32"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 12
+     }
+    },
+    {
+     "name": "type",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "FloatOrRef",
+       "1": "Integer",
+       "2": "String (xNVSE)",
+       "3": "Array (xNVSE)",
+       "4": "Ref (xNVSE)",
+       "5": "Invalid (xNVSE)"
+      }
+     }
+    },
+    {
+     "name": "unused2",
+     "type": {
+      "array": "u8",
+      "count": 7
+     }
+    }
+   ]
+  },
+  "ServiceFlags": {
+   "bits": {
+    "0": "Weapons",
+    "1": "Armor",
+    "10": "Miscellaneous",
+    "14": "Training",
+    "16": "Recharge",
+    "17": "Repair",
+    "2": "Alcohol",
+    "3": "Books",
+    "4": "Food",
+    "5": "Chems",
+    "6": "Stimpaks"
+   },
+   "flags": "u32"
+  },
+  "Skill": {
+   "enum": "i8",
+   "values": {
+    "-1": "None",
+    "0": "Barter",
+    "1": "Big Guns",
+    "10": "Sneak",
+    "11": "Speech",
+    "12": "Survival",
+    "13": "Unarmed",
+    "2": "Energy Weapons",
+    "3": "Explosives",
+    "4": "Lockpick",
+    "5": "Medicine",
+    "6": "Melee Weapons",
+    "7": "Repair",
+    "8": "Science",
+    "9": "Guns"
+   }
+  },
+  "SoundLevel": {
+   "enum": "u32",
+   "values": {
+    "0": "Loud",
+    "1": "Normal",
+    "2": "Silent"
+   }
+  },
+  "TextureHash": {
+   "struct": [
+    {
+     "name": "file_hash_pc",
+     "type": "u64"
+    },
+    {
+     "name": "file_hash_console",
+     "type": "u64"
+    },
+    {
+     "name": "folder_hash",
+     "type": "u64"
+    }
+   ]
+  },
+  "TimeKey": {
+   "struct": [
+    {
+     "name": "time",
+     "type": "f32"
+    },
+    {
+     "name": "value",
+     "type": "f32"
+    }
+   ]
+  },
+  "ValueWeight": {
+   "struct": [
+    {
+     "name": "value",
+     "type": "i32"
+    },
+    {
+     "name": "weight",
+     "type": "f32"
+    }
+   ]
+  },
+  "Vec3f": {
+   "struct": [
+    {
+     "name": "x",
+     "type": "f32"
+    },
+    {
+     "name": "y",
+     "type": "f32"
+    },
+    {
+     "name": "z",
+     "type": "f32"
+    }
+   ]
+  },
+  "Vec3i16": {
+   "struct": [
+    {
+     "name": "x",
+     "type": "i16"
+    },
+    {
+     "name": "y",
+     "type": "i16"
+    },
+    {
+     "name": "z",
+     "type": "i16"
+    }
+   ]
+  },
+  "WaterVisual": {
+   "struct": [
+    {
+     "name": "unknown_0",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_1",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_2",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_3",
+     "type": "f32"
+    },
+    {
+     "name": "sun_power",
+     "type": "f32"
+    },
+    {
+     "name": "reflectivity_amount",
+     "type": "f32"
+    },
+    {
+     "name": "fresnel_amount",
+     "type": "f32"
+    },
+    {
+     "name": "unused_0",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "above_fog_near",
+     "type": "f32"
+    },
+    {
+     "name": "above_fog_far",
+     "type": "f32"
+    },
+    {
+     "name": "shallow_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "deep_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "reflection_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "unused_1",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "rain_force",
+     "type": "f32"
+    },
+    {
+     "name": "rain_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "rain_falloff",
+     "type": "f32"
+    },
+    {
+     "name": "rain_dampner",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_starting_size",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_force",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_falloff",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_dampner",
+     "type": "f32"
+    },
+    {
+     "name": "rain_starting_size",
+     "type": "f32"
+    },
+    {
+     "name": "noise_normals_scale",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer1_wind_direction",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer2_wind_direction",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer3_wind_direction",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer1_wind_speed",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer2_wind_speed",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer3_wind_speed",
+     "type": "f32"
+    },
+    {
+     "name": "noise_depth_falloff_start",
+     "type": "f32"
+    },
+    {
+     "name": "noise_depth_falloff_end",
+     "type": "f32"
+    },
+    {
+     "name": "above_fog_amount",
+     "type": "f32"
+    },
+    {
+     "name": "noise_normals_uv_scale",
+     "type": "f32"
+    },
+    {
+     "name": "under_fog_amount",
+     "type": "f32"
+    },
+    {
+     "name": "under_fog_near",
+     "type": "f32"
+    },
+    {
+     "name": "under_fog_far",
+     "type": "f32"
+    },
+    {
+     "name": "distortion_amount",
+     "type": "f32"
+    },
+    {
+     "name": "shininess",
+     "type": "f32"
+    },
+    {
+     "name": "reflection_hdr_multiplier",
+     "type": "f32"
+    },
+    {
+     "name": "light_radius",
+     "type": "f32"
+    },
+    {
+     "name": "light_brightness",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer1_uv_scale",
+     "optional": true,
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer2_uv_scale",
+     "optional": true,
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer3_uv_scale",
+     "optional": true,
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer1_amplitude",
+     "optional": true,
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer2_amplitude",
+     "optional": true,
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer3_amplitude",
+     "optional": true,
+     "type": "f32"
+    }
+   ]
+  },
+  "WaterVisualOldData": {
+   "struct": [
+    {
+     "name": "unknown_0",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_1",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_2",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_3",
+     "type": "f32"
+    },
+    {
+     "name": "sun_power",
+     "type": "f32"
+    },
+    {
+     "name": "reflectivity_amount",
+     "type": "f32"
+    },
+    {
+     "name": "fresnel_amount",
+     "type": "f32"
+    },
+    {
+     "name": "unused_0",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "above_fog_near",
+     "type": "f32"
+    },
+    {
+     "name": "above_fog_far",
+     "type": "f32"
+    },
+    {
+     "name": "shallow_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "deep_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "reflection_color",
+     "type": "ByteColor"
+    },
+    {
+     "name": "unused_1",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "rain_force",
+     "type": "f32"
+    },
+    {
+     "name": "rain_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "rain_falloff",
+     "type": "f32"
+    },
+    {
+     "name": "rain_dampner",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_starting_size",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_force",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_falloff",
+     "type": "f32"
+    },
+    {
+     "name": "displacement_dampner",
+     "type": "f32"
+    },
+    {
+     "name": "rain_starting_size",
+     "type": "f32"
+    },
+    {
+     "name": "noise_normals_scale",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer1_wind_direction",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer2_wind_direction",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer3_wind_direction",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer1_wind_speed",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer2_wind_speed",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer3_wind_speed",
+     "type": "f32"
+    },
+    {
+     "name": "noise_depth_falloff_start",
+     "type": "f32"
+    },
+    {
+     "name": "noise_depth_falloff_end",
+     "type": "f32"
+    },
+    {
+     "name": "above_fog_amount",
+     "type": "f32"
+    },
+    {
+     "name": "noise_normals_uv_scale",
+     "type": "f32"
+    },
+    {
+     "name": "under_fog_amount",
+     "type": "f32"
+    },
+    {
+     "name": "under_fog_near",
+     "type": "f32"
+    },
+    {
+     "name": "under_fog_far",
+     "type": "f32"
+    },
+    {
+     "name": "distortion_amount",
+     "type": "f32"
+    },
+    {
+     "name": "shininess",
+     "type": "f32"
+    },
+    {
+     "name": "reflection_hdr_multiplier",
+     "type": "f32"
+    },
+    {
+     "name": "light_radius",
+     "type": "f32"
+    },
+    {
+     "name": "light_brightness",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer1_uv_scale",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer2_uv_scale",
+     "type": "f32"
+    },
+    {
+     "name": "noise_layer3_uv_scale",
+     "type": "f32"
+    },
+    {
+     "name": "damage",
+     "type": "u16"
+    }
+   ]
+  },
+  "WeatherData": {
+   "struct": [
+    {
+     "name": "wind_speed",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "trans_delta",
+     "type": "u8"
+    },
+    {
+     "name": "sun_glare",
+     "type": "u8"
+    },
+    {
+     "name": "sun_damage",
+     "type": "u8"
+    },
+    {
+     "name": "precipitation_begin_fade_in",
+     "type": "u8"
+    },
+    {
+     "name": "precipitation_end_fade_out",
+     "type": "u8"
+    },
+    {
+     "name": "lightning_begin_fade_in",
+     "type": "u8"
+    },
+    {
+     "name": "lightning_end_fade_out",
+     "type": "u8"
+    },
+    {
+     "name": "lightning_frequency",
+     "type": "u8"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Pleasant",
+       "1": "Cloudy",
+       "2": "Rainy",
+       "3": "Snow"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "lightning_color",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "WeatherFog": {
+   "struct": [
+    {
+     "name": "day_near",
+     "type": "f32"
+    },
+    {
+     "name": "day_far",
+     "type": "f32"
+    },
+    {
+     "name": "night_near",
+     "type": "f32"
+    },
+    {
+     "name": "night_far",
+     "type": "f32"
+    },
+    {
+     "name": "day_power",
+     "type": "f32"
+    },
+    {
+     "name": "night_power",
+     "type": "f32"
+    }
+   ]
+  },
+  "WeatherType": {
+   "struct": [
+    {
+     "name": "weather",
+     "type": "formid"
+    },
+    {
+     "name": "chance",
+     "type": "i32"
+    },
+    {
+     "name": "global",
+     "type": "formid"
+    }
+   ]
+  },
+  "WorldImpactMaterial": {
+   "enum": "u32",
+   "values": {
+    "0": "ConcSolid",
+    "1": "ConcBroken",
+    "2": "MetalSolid",
+    "3": "MetalHollow",
+    "4": "MetalSheet",
+    "5": "Wood",
+    "6": "Sand",
+    "7": "Dirt",
+    "8": "Grass",
+    "9": "Water"
+   }
+  }
+ }
+}

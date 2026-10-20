@@ -1,0 +1,161 @@
+{
+  "format": "fnv.schema/1",
+  "records": {
+    "NPC_": {
+      "name": "Non-Player Character",
+      "confidence": "documented",
+      "note": "Skyrim's NPC_ is FNV's with an empty DATA and a different RNAM. Measured on Skyrim.esm (5,118 instances, record versions 40 and 44): ACBS is 24 bytes in both games and decodes field-for-field with FNV's, so it is not restated. DATA is 0 bytes here against FNV's 11 (base_health i32 + 7 attributes + 14 unused in old versions): Skyrim carries base health in RNAM instead, and has no attributes to store, so the subrecord is present but empty. RNAM is a u32 against FNV's formid array. [observed: every DATA in the six shipped Skyrim masters is 0 bytes; every RNAM is exactly 4]",
+      "subrecords": {
+        "DATA": {
+          "name": "Data",
+          "confidence": "observed",
+          "note": "Empty in Skyrim, present in Fallout. FNV's DATA is base_health i32 + 7 attributes + trailing unused; Skyrim moved base health into RNAM and has no attribute bytes, leaving the subrecord at zero length. Kept defined rather than dropped so a save writes the empty subrecord back rather than losing it. [observed: 0 bytes in all 5,118 Skyrim.esm instances and across Dawnguard/Dragonborn/HearthFires]",
+          "type": "bytes"
+        },
+        "RNAM": {
+          "name": "Base Health",
+          "confidence": "observed",
+          "note": "A u32 where FNV's RNAM is a formid array of race and body-part overrides. Skyrim stores the actor's base health here and has no race/part structure. [observed: exactly 4 bytes in every Skyrim.esm NPC_; FNV's is a counted array and its instances are 6-24 bytes]",
+          "type": "u32"
+        },
+        "TINI": {
+          "name": "Tinting Index",
+          "confidence": "observed",
+          "note": "Index of the tint entry this layer refers to, or 0xFFFF when the layer is empty. Part of the Tinting list, which is a flat run of TIAS/TINC/TINI/TINV with no count header: the count is implied by the subrecords present, so a reader must stop at the first subrecord that is not one of the four. [observed: 2 bytes in all 33,050 instances; the 0xFFFF empty marker appears in 8,113 of them]",
+          "type": "u16"
+        },
+        "TINC": {
+          "name": "Tinting Color",
+          "confidence": "observed",
+          "note": "ARGB, 0-255 per channel, of this tint layer. [observed: 4 bytes in all 33,050 instances]",
+          "type": {
+            "struct": [
+              {
+                "name": "alpha",
+                "type": "u8"
+              },
+              {
+                "name": "red",
+                "type": "u8"
+              },
+              {
+                "name": "green",
+                "type": "u8"
+              },
+              {
+                "name": "blue",
+                "type": "u8"
+              }
+            ]
+          }
+        },
+        "TINV": {
+          "name": "Tinting Value",
+          "confidence": "observed",
+          "note": "The tint's preset value: which entry in the referenced TintPreset the layer selects. 0 when the layer is unset. [observed: 4 bytes in all 33,050 instances]",
+          "type": "u32"
+        },
+        "TIAS": {
+          "name": "Tinting Flags",
+          "confidence": "observed",
+          "note": "Bitfield, one bit per tint layer slot. Bit n set means slot n of this actor's tint list is populated. The slot count is not fixed by the format, so the flags word is the only place the used-slot count can be read from. [observed: 2 bytes in all 33,050 instances]",
+          "type": {
+            "flags": "u16",
+            "bits": {
+              "0": "Slot 0 used",
+              "1": "Slot 1 used",
+              "2": "Slot 2 used",
+              "3": "Slot 3 used",
+              "4": "Slot 4 used",
+              "5": "Slot 5 used",
+              "6": "Slot 6 used",
+              "7": "Slot 7 used",
+              "8": "Slot 8 used",
+              "9": "Slot 9 used",
+              "10": "Slot 10 used",
+              "11": "Slot 11 used",
+              "12": "Slot 12 used",
+              "13": "Slot 13 used",
+              "14": "Slot 14 used",
+              "15": "Slot 15 used"
+            }
+          }
+        }
+      }
+    },
+    "WEAP": {
+      "name": "Weapon",
+      "confidence": "documented",
+      "note": "Skyrim's WEAP is FNV's with a shorter DATA. Measured on Skyrim.esm (2,484 instances, record versions 40 and 44): DATA is 10 bytes against FNV's, where the schema's `weight` field reads past the end. FNV's DATA is value u32, weight f32, damage u16, then the game-specific tail; Skyrim's stops after 10 bytes, so the schema's trailing fields are dropped here rather than guessed at. DNAM is 100 bytes and decodes with FNV's layout unchanged — only its `aim_arc` offset in FNV's copy is one byte short of the subrecord, which is an FNV schema gap, not a Skyrim difference. [observed: 10B x2,484]",
+      "subrecords": {
+        "DATA": {
+          "name": "Data",
+          "confidence": "observed",
+          "note": "10 bytes in Skyrim against FNV's 12+: value u32, weight f32, damage u16. The schema's base DATA declares more fields than the subrecord carries, so the union below reads exactly 10 and leaves nothing unread. [observed: 10 bytes in all 2,484 Skyrim.esm instances]",
+          "type": {
+            "union": [
+              {
+                "name": "Skyrim",
+                "type": {
+                  "struct": [
+                    {
+                      "name": "value",
+                      "type": "u32"
+                    },
+                    {
+                      "name": "weight",
+                      "type": "f32"
+                    },
+                    {
+                      "name": "damage",
+                      "type": "u16"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "Fallout",
+                "type": "bytes"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "ARMO": {
+      "name": "Armor",
+      "confidence": "observed",
+      "note": "Skyrim's ARMO is FNV's with a shorter DATA. Measured on Skyrim.esm (2,762 instances): DATA is 8 bytes against FNV's, where the schema's `weight` field reads past the end. 8 bytes is value u32 + weight f32; the damage and armor-rating fields FNV declares are absent. [observed: 8B x2,762]",
+      "subrecords": {
+        "DATA": {
+          "name": "Data",
+          "confidence": "observed",
+          "note": "8 bytes: value u32, weight f32. FNV's schema declares more fields than Skyrim's subrecord carries. [observed: 8 bytes in all 2,762 Skyrim.esm instances]",
+          "type": {
+            "union": [
+              {
+                "name": "Skyrim",
+                "type": {
+                  "struct": [
+                    {
+                      "name": "value",
+                      "type": "u32"
+                    },
+                    {
+                      "name": "weight",
+                      "type": "f32"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "Fallout",
+                "type": "bytes"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -10,25 +10,30 @@ use fnv_esm::{Plugin, Schema};
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    // `--overlay <dir>`: load `<dir>` as an overlay over `schemas/fnv` instead
-    // of reading a directory on its own. A game that shares most of another
-    // game's layouts describes only the records that differ, so its coverage is
-    // measured against the merged result rather than against a directory that
-    // would have to restate all 107 record types.
-    let mut overlay: Option<String> = None;
+    // `--overlay <dir>`: layer `<dir>` over `--base` instead of reading one
+    // directory on its own. A game that shares most of another game's layouts
+    // describes only the records that differ, so its coverage is measured
+    // against the merged result rather than against a directory that would have
+    // to restate every record type.
+    //
+    // The chain is `base -> <game dirs>`, and each game directory may carry a
+    // symlink to `../base` so it can also be read on its own. `load_game`
+    // skips files reached through that symlink, so nothing merges twice.
+    let mut overlays: Vec<String> = Vec::new();
     let schema_dir = loop {
         match args.next().as_deref() {
-            Some("--overlay") => {
-                overlay = args.next();
-            }
+            Some("--overlay") => match args.next() {
+                Some(d) => overlays.push(d.to_string()),
+                None => panic!("--overlay needs a directory"),
+            },
             Some(dir) => break dir.to_string(),
             None => break "../../schemas/fnv".to_string(),
         }
     };
     let plugins: Vec<String> = args.collect();
-    let schema = match &overlay {
-        Some(ov) => Schema::load_overlay(&schema_dir, ov),
-        None => Schema::load_dir(&schema_dir),
+    let schema = match &overlays {
+        _ if !overlays.is_empty() => Schema::load_game(&schema_dir, &overlays),
+        _ => Schema::load_dir(&schema_dir),
     };
     let schema = match schema {
         Ok(s) => s,
