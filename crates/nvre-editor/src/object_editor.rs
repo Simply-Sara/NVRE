@@ -5288,6 +5288,8 @@ impl ObjectEditorState {
                 self.actor_agility = b[15];
                 self.actor_luck = b[16];
             }
+            // The body part data is the creature's: on an NPC_ the `PNAM`
+            // is the head-part list, which is read separately.
             self.actor_body_part_data = self.get_fid(b"PNAM");
             self.crea_impact_dataset = self.get_fid(b"CNAM");
         } else if self.sig == *b"NPC_" {
@@ -5344,8 +5346,10 @@ impl ObjectEditorState {
         self.actor_sound_level = self.get_u32(b"NAM5").unwrap_or(1);
         self.actor_unarmed_effect = self.get_fid(b"EITM");
         self.crea_unarmed_anim = self.get_u16(b"EAMT").unwrap_or(255);
-        self.actor_body_part_data = self.get_fid(b"PNAM");
         if self.sig == *b"CREA" {
+            // The body part data is the creature's: on an NPC_ the `PNAM`
+            // is the head-part list, which is read separately.
+            self.actor_body_part_data = self.get_fid(b"PNAM");
             self.crea_impact_dataset = self.get_fid(b"CNAM");
         }
     }
@@ -9769,9 +9773,15 @@ impl ObjectEditorState {
             } else {
                 session.doc.remove_sub(fid, b"HNAM");
             }
-            session
-                .doc
-                .set_sub(fid, b"LNAM", self.npc_hair_length.to_le_bytes().to_vec());
+            // The hair length is only written when the record carries it:
+            // a save must not add a subrecord the record never had.
+            if self.raw_subs.contains_key(b"LNAM") {
+                session
+                    .doc
+                    .set_sub(fid, b"LNAM", self.npc_hair_length.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"LNAM");
+            }
 
             if let Some(e) = self.npc_eyes {
                 session.doc.set_sub(fid, b"ENAM", e.to_le_bytes().to_vec());
@@ -9885,9 +9895,13 @@ impl ObjectEditorState {
             session
                 .doc
                 .set_sub(fid, b"RNAM", vec![self.crea_attack_reach]);
-            session
-                .doc
-                .set_sub(fid, b"BNAM", self.actor_base_scale.to_le_bytes().to_vec());
+            if self.raw_subs.contains_key(b"BNAM") {
+                session
+                    .doc
+                    .set_sub(fid, b"BNAM", self.actor_base_scale.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"BNAM");
+            }
             session
                 .doc
                 .set_sub(fid, b"TNAM", self.crea_turning_speed.to_le_bytes().to_vec());
@@ -9913,12 +9927,16 @@ impl ObjectEditorState {
             } else {
                 session.doc.remove_sub(fid, b"EITM");
             }
-            if let Some(bptd) = self.actor_body_part_data {
-                session
-                    .doc
-                    .set_sub(fid, b"PNAM", bptd.to_le_bytes().to_vec());
-            } else {
-                session.doc.remove_sub(fid, b"PNAM");
+            // The body part data is the creature's: on an NPC_ the `PNAM`
+            // is the head-part list, which that branch writes.
+            if self.sig == *b"CREA" {
+                if let Some(bptd) = self.actor_body_part_data {
+                    session
+                        .doc
+                        .set_sub(fid, b"PNAM", bptd.to_le_bytes().to_vec());
+                } else {
+                    session.doc.remove_sub(fid, b"PNAM");
+                }
             }
             if let Some(ipds) = self.crea_impact_dataset {
                 session
@@ -9928,9 +9946,15 @@ impl ObjectEditorState {
                 session.doc.remove_sub(fid, b"CNAM");
             }
         } else if self.sig == *b"NPC_" {
-            session
-                .doc
-                .set_sub(fid, b"BNAM", self.actor_base_scale.to_le_bytes().to_vec());
+            // The base scale is only written when the record carries it: a
+            // save must not add a subrecord the record never had.
+            if self.raw_subs.contains_key(b"BNAM") {
+                session
+                    .doc
+                    .set_sub(fid, b"BNAM", self.actor_base_scale.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, b"BNAM");
+            }
             if let Some(eff) = self.actor_unarmed_effect {
                 session
                     .doc
@@ -9938,12 +9962,16 @@ impl ObjectEditorState {
             } else {
                 session.doc.remove_sub(fid, b"EITM");
             }
-            if let Some(bptd) = self.actor_body_part_data {
-                session
-                    .doc
-                    .set_sub(fid, b"PNAM", bptd.to_le_bytes().to_vec());
-            } else {
-                session.doc.remove_sub(fid, b"PNAM");
+            // The body part data is the creature's: on an NPC_ the `PNAM`
+            // is the head-part list, which that branch writes.
+            if self.sig == *b"CREA" {
+                if let Some(bptd) = self.actor_body_part_data {
+                    session
+                        .doc
+                        .set_sub(fid, b"PNAM", bptd.to_le_bytes().to_vec());
+                } else {
+                    session.doc.remove_sub(fid, b"PNAM");
+                }
             }
         }
 
