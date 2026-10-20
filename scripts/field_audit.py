@@ -230,6 +230,26 @@ def words_of(text):
 
 # Words the spec uses to qualify a field that the editor names without
 # them.
+# The spec's field name and the editor's name for the same field, where
+# the editor's is shorter. Each pair was checked against the page by
+# hand: the spec names a field, the page shows it under another name.
+ALIASES = {
+    "DOBJ": {"Item Detected Efect": "DOBJ_FIELDS"},
+    "IMAD": {
+        "Depth of Field Strength": "dof_strength",
+        "Depth of Field Distance": "dof_distance",
+        "Depth of Field Range": "dof_range",
+        "Depth of Field Flags": "dof_flags",
+    },
+    "PACK": {
+        "Pause Between Volleys (Min)": "pause_min",
+        "Pause Between Volleys (Max)": "pause_max",
+    },
+    "TERM": {"Base Hacking Difficulty": "term_difficulty"},
+    "CLAS": {"Maximum Training Level": "clas_max_train"},
+    "TES4": {"numRecords": "tes4_num_records", "nextObjectId": "tes4_next_object_id"},
+}
+
 QUALIFIERS = {
     "shader", "texture", "effect", "properties", "simulator", "noise",
     "properties", "layer", "normals", "one", "two", "three", "key",
@@ -312,7 +332,7 @@ def field_size(typ):
     return 0
 
 
-def covered(field, words):
+def covered(field, words, sig=None, code_words=None):
     """Is a spec field named in the type's own code?
 
     A field counts as covered when each of its significant words appears
@@ -321,8 +341,17 @@ def covered(field, words):
     """
     # A markdown link's text is the field's name: `[Skill](Values/...)`.
     field = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", field)
+    # The editor's own name for a field the spec names differently. The
+    # alias is matched exactly, so it cannot make the check looser.
+    alias = ALIASES.get(sig, {}).get(field) if sig is not None else None
+    if alias is not None:
+        return alias in words or alias in code_words
     parts = [w.lower() for w in re.split(r"[^A-Za-z0-9]+", field) if w]
     parts = [p for p in parts if p not in SKIP]
+    # A field the spec numbers — "Tag Skill 1", "Attenuation Point 3" —
+    # is one field the editor holds in a list, so the number is not a
+    # word of its own.
+    parts = [p for p in parts if not p.isdigit()]
     if not parts:
         return True
     if all(p in words for p in parts):
@@ -389,6 +418,9 @@ def main():
         total_fields += len(fields)
         code = type_code(src, sig)
         words = words_of(code)
+        # The identifiers the type's code names, so an alias can be matched
+        # exactly rather than by its words.
+        code_words = set(re.findall(r"\b\w+\b", code))
         miss = []
         for s, n in subrecords:
             if s.lower() not in code.lower():
@@ -442,7 +474,7 @@ def main():
             continue
 
         for s, n in fields:
-            if not covered(n, words):
+            if not covered(n, words, sig, code_words):
                 miss.append(f"{s}.{n}")
         if miss:
             missing[sig] = miss
