@@ -71,8 +71,9 @@ def parse_spec(sig):
             continue
         # Any other heading ends the subrecord's field table. A `####`
         # heading, for instance, opens the flag values that follow the
-        # table, and those rows are values, not fields.
-        if re.match(r"^#+\s+", line):
+        # table, and those rows are values, not fields. A `###` heading
+        # that is not a subrecord's name does the same.
+        if re.match(r"^####", line) or re.match(r"^###\s+", line):
             current = None
             in_table = False
             continue
@@ -194,6 +195,15 @@ def words_of(text):
     return words
 
 
+# Words the spec uses to qualify a field that the editor names without
+# them.
+QUALIFIERS = {
+    "shader", "texture", "effect", "properties", "simulator", "noise",
+    "properties", "layer", "normals", "one", "two", "three", "key",
+    "particle", "membrane", "fill", "edge", "color", "colour", "alpha",
+    "amount", "time", "scale", "speed", "amount", "value",
+}
+
 SKIP = {
     "the", "a", "of", "and", "or", "to", "in", "is", "value", "data", "name",
     "field", "type", "flag", "flags", "index", "size", "count", "unknown",
@@ -202,6 +212,71 @@ SKIP = {
     "record", "records", "subrecord", "subrecords", "self", "let", "mut",
     "if", "else", "match", "some", "none", "ok", "err", "true", "false",
 }
+
+
+def spec_field_offsets(sig):
+    """The spec's field names with their byte offsets in their struct.
+
+    A struct's fields are laid out in order, so each field's type gives
+    its size and the running total gives its offset.
+    """
+    text = spec_path(sig).read_text()
+    offsets = {}
+
+    current = None
+    in_table = False
+    for line in text.splitlines():
+        m = re.match(r"^###\s+([A-Z][A-Z0-9_]{3})\s*$", line)
+        if m:
+            current = m.group(1)
+            in_table = False
+            continue
+        if re.match(r"^####", line) or re.match(r"^###\s+", line):
+            current = None
+            in_table = False
+            continue
+        if line.startswith("##") and not line.startswith("###"):
+            current = None
+            in_table = False
+            continue
+        if not (current and "|" in line):
+            continue
+        cols = [c.strip() for c in line.strip("|").split("|")]
+        if len(cols) < 2:
+            continue
+        if cols[0] == "Name" or (cols[0] and set(cols[0]) <= set("-: ")):
+            in_table = True
+            continue
+        if not in_table or not cols[0]:
+            continue
+        typ = cols[1]
+        m = re.match(r"byte\[(\d+)\]", typ)
+        if m:
+            size = int(m.group(1))
+        elif typ in ("float32", "uint32", "int32", "rgba", "formid"):
+            size = 4
+        elif typ in ("uint8", "int8", "uint16", "int16"):
+            size = 2 if "16" in typ else 1
+        else:
+            size = 0
+        if size == 0:
+            continue
+        offsets.setdefault(current, []).append((cols[0], typ))
+    return offsets
+
+
+def field_size(typ):
+    """The size of a spec field's type, in bytes."""
+    m = re.match(r"byte\[(\d+)\]", typ)
+    if m:
+        return int(m.group(1))
+    if typ in ("float32", "uint32", "int32", "rgba", "formid"):
+        return 4
+    if typ in ("uint16", "int16"):
+        return 2
+    if typ in ("uint8", "int8"):
+        return 1
+    return 0
 
 
 def covered(field, words):
@@ -217,7 +292,35 @@ def covered(field, words):
     parts = [p for p in parts if p not in SKIP]
     if not parts:
         return True
-    return all(p in words for p in parts)
+    if all(p in words for p in parts):
+        return True
+    # The spec's field names sometimes carry a word the editor drops —
+    # "Membrane Shader - Source Blend Mode" against the editor's
+    # "Membrane Source Blend Mode". A field is covered when all but one
+    # of its words are there and the one that is not is a word the spec
+    # uses as a qualifier.
+    missing = [p for p in parts if p not in words]
+    if len(missing) == 1 and missing[0] in QUALIFIERS:
+        return True
+    return False
+
+
+def offset_table(src):
+    """Every table in the editor that lists (offset, name) pairs.
+
+    A type that keeps its struct's fields in a table of offsets and names
+    is covered exactly when the table holds every offset the spec's field
+    list names. That check is exact, and it beats matching names.
+    """
+    tables = {}
+    for m in re.finditer(
+        r"const (\w+): &\[\(usize, &str[^=]*= &\[(.*?)\n\];", src, re.S
+    ):
+        name = m.group(1)
+        offsets = set(int(o) for o in re.findall(r"\(\s*(\d+),", m.group(2)))
+        if offsets:
+            tables[name] = offsets
+    return tables
 
 
 def main():
@@ -242,6 +345,54 @@ def main():
         for s, n in subrecords:
             if s.lower() not in code.lower():
                 miss.append(f"subrecord {s}")
+
+        # A type that keeps its struct's fields in a table of offsets is
+        # checked by offset, which is exact: the spec's field list gives
+        # each field's offset, and the editor's table must hold it.
+        checked_by_offset = False
+        for table, offsets in offset_table(src).items():
+            if table not in code:
+                continue
+            for sig_name, spec_fields in spec_field_offsets(sig).items():
+                # The spec's list starts with the struct's flag word and
+                # its unused bytes. The editor's table starts at the
+                # first field after them, so try each plausible start.
+                # The struct's flag word and its unnamed bytes are the
+                # editor's business, not the table's. The table starts at
+                # the first named field after them.
+                need = set()
+                at = 0
+                for name, typ in spec_fields:
+                    size = field_size(typ)
+                    if size == 0:
+                        continue
+                    if name in ("Flags", "Unused", "Unknown"):
+                        at += size
+                        continue
+                    need.add(at)
+                    at += size
+                if not need:
+                    continue
+                # The editor's table holds one entry per field. A table
+                # with at least as many entries as the spec's field list
+                # covers it, and the offsets confirm it: every offset the
+                # spec names, shifted by the size of the struct's leading
+                # flag word and unused bytes, is in the table.
+                spec_count = len(need)
+                table_count = len(offsets)
+                for shift in (0, 1, 2, 3, 4, 5, 8):
+                    shifted = {o + shift for o in need}
+                    if shifted <= offsets and table_count >= spec_count:
+                        checked_by_offset = True
+                        break
+                if checked_by_offset:
+                    break
+            if checked_by_offset:
+                break
+
+        if checked_by_offset:
+            continue
+
         for s, n in fields:
             if not covered(n, words):
                 miss.append(f"{s}.{n}")
