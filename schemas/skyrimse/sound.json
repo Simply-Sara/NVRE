@@ -54,7 +54,7 @@
   "IPDS": {
    "confidence": "documented",
    "name": "Impact Data Set",
-   "note": "UESP, Skyrim Mod:Mod File Format/IPDS. [measured: 11,636 PNAM fields in Skyrim.esm]",
+   "note": "UESP, Skyrim Mod:Mod File Format/IPDS. An impact data set is a paired list of material type and impact data. [measured: 11,636 PNAM fields in Skyrim.esm, each 8 bytes, which is one pair]",
    "subrecords": {
     "DATA": {
      "confidence": "documented",
@@ -64,9 +64,9 @@
     },
     "PNAM": {
      "confidence": "documented",
-     "name": "Unknown",
-     "note": "An unknown field.",
-     "type": "u32"
+     "name": "Pair",
+     "note": "A material type and the impact data that goes with it. There is one pair per material.",
+     "type": "IPDS_PNAM"
     }
    }
   },
@@ -270,6 +270,20 @@
       },
       "flags": "u32"
      }
+    }
+   ]
+  },
+  "IPDS_PNAM": {
+   "struct": [
+    {
+     "name": "material",
+     "note": "The material type (MATT).",
+     "type": "formid"
+    },
+    {
+     "name": "impact",
+     "note": "The impact data (IPCT), which is generally the same for all the pairs.",
+     "type": "formid"
     }
    ]
   },

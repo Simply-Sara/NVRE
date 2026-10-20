@@ -104,9 +104,12 @@
     },
     "KWDA": {
      "confidence": "documented",
+     "count_from": "KSIZ",
      "name": "Keyword",
-     "note": "A KYWD record. There is one per KSIZ.",
-     "type": "formid"
+     "note": "The keywords. There is one per KSIZ, and KSIZ is a sibling subrecord rather than a count in the data, so the count comes from it.",
+     "type": {
+      "array": "formid"
+     }
     },
     "MIC2": {
      "confidence": "documented",
@@ -280,14 +283,14 @@
     },
     "XCCM": {
      "confidence": "documented",
-     "name": "Unknown",
-     "note": "An unknown field.",
+     "name": "Climate",
+     "note": "The climate, for an interior cell that behaves like an exterior one. It is only in interior cells.",
      "type": "formid"
     },
     "XCIM": {
      "confidence": "documented",
-     "name": "Unknown",
-     "note": "An unknown field.",
+     "name": "Climate",
+     "note": "The climate (CLMT).",
      "type": "formid"
     },
     "XCLC": {
@@ -301,6 +304,14 @@
      "name": "Lighting",
      "note": "The cell's lighting, 92 bytes in most cells and 64 in one. The layout is not documented in full, so it is left opaque.",
      "type": "bytes"
+    },
+    "XCLR": {
+     "confidence": "documented",
+     "name": "Regions",
+     "note": "The regions containing the cell. It is a run of formids with no count of its own.",
+     "type": {
+      "array": "formid"
+     }
     },
     "XCLW": {
      "confidence": "documented",
@@ -316,8 +327,8 @@
     },
     "XCWT": {
      "confidence": "documented",
-     "name": "Unknown",
-     "note": "An unknown field.",
+     "name": "Water",
+     "note": "The water (WATR) for this cell.",
      "type": "formid"
     },
     "XEZN": {
@@ -329,7 +340,7 @@
     "XILL": {
      "confidence": "documented",
      "name": "Unknown",
-     "note": "An unknown field.",
+     "note": "The id of an NPC_ or a FLST. It is only in interior cells.",
      "type": "formid"
     },
     "XLCN": {
@@ -347,14 +358,20 @@
     "XOWN": {
      "confidence": "documented",
      "name": "Owner",
-     "note": "The cell's owner.",
+     "note": "The owning NPC or faction. It is only in interior cells.",
      "type": "formid"
+    },
+    "XWCN": {
+     "confidence": "documented",
+     "name": "Water Current Size",
+     "note": "The size of the XWCU divided by sixteen. Only one occurrence, with the value 0x04.",
+     "type": "u32"
     },
     "XWCS": {
      "confidence": "documented",
-     "name": "Unknown",
-     "note": "An unknown field.",
-     "type": "formid"
+     "name": "Water Current Size",
+     "note": "The size of the XWCU divided by sixteen. The CK changes this into the use of XWCN, and it always has the value three in Skyrim.esm.",
+     "type": "u32"
     },
     "XWCU": {
      "confidence": "documented",
@@ -364,8 +381,33 @@
     },
     "XWEM": {
      "confidence": "documented",
-     "name": "Weather",
-     "note": "The cell's weather, whose layout is not documented.",
+     "name": "Water Environment Map",
+     "note": "The water environment map. It is only in interior cells.",
+     "type": "zstring"
+    }
+   }
+  },
+  "NAVI": {
+   "confidence": "hypothesis",
+   "name": "Navmesh Info",
+   "note": "Skyrim's NAVI holds one NVMI per navmesh triangle group. The layout is not documented: UESP's NAVM page gives only the signature, and Fallout's layout does not fit. Measured on Skyrim.esm, the 15,462 NVMI records run from 49 to 3,021 bytes, and a field four bytes in at offset 24 counts up in step with the length, but no field explains the length on its own. The contents are therefore read as raw bytes rather than decoded field by field.",
+   "subrecords": {
+    "NVCI": {
+     "confidence": "hypothesis",
+     "name": "Connection",
+     "note": "The navmesh's connections. The layout is not documented, so it is read as raw bytes.",
+     "type": "bytes"
+    },
+    "NVER": {
+     "confidence": "hypothesis",
+     "name": "Version",
+     "note": "The navmesh's version.",
+     "type": "u32"
+    },
+    "NVMI": {
+     "confidence": "hypothesis",
+     "name": "Navmesh Info",
+     "note": "The navmesh's geometry. The layout is not documented, so it is read as raw bytes.",
      "type": "bytes"
     }
    }

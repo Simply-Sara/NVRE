@@ -68,6 +68,15 @@ pub struct DecodeCtx<'a> {
     /// The subrecord definitions of the current block's chosen variant, when
     /// the block has variants keyed by the opener's value.
     pub block_variant: Option<HashMap<[u8; 4], crate::schema::SubDef>>,
+    /// The value each counted subrecord's element count came from.
+    ///
+    /// A subrecord can take its element count from a sibling: Skyrim's `KSIZ`
+    /// holds the number of keywords and `KWDA` holds them all. The count is
+    /// keyed by the subrecord that holds the count.
+    pub counts: HashMap<[u8; 4], u64>,
+    /// The sibling subrecord that holds the element count for the subrecord
+    /// being decoded, when it has one.
+    pub count_from: Option<[u8; 4]>,
 }
 
 impl<'a> DecodeCtx<'a> {
@@ -82,6 +91,8 @@ impl<'a> DecodeCtx<'a> {
             block: None,
             block_value: None,
             block_variant: None,
+            counts: HashMap::new(),
+            count_from: None,
         }
     }
 }
@@ -340,6 +351,22 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 // can hold is an error, never a short array: silently reading fewer
                 // elements than the data says is how a layout bug hides.
                 None => {
+                    // A count given by a sibling subrecord takes the place of
+                    // a prefix: the count was read from an earlier subrecord,
+                    // not from the bytes in front of the elements.
+                    if let Some(from) = ctx.count_from {
+                        let n = ctx.counts.get(&from).copied().unwrap_or(0) as usize;
+                        for i in 0..n {
+                            let before = c.pos;
+                            out.push(
+                                decode_type(elem, c, ctx).map_err(|e| format!("[{i}]: {e}"))?,
+                            );
+                            if c.pos == before {
+                                return Err("array element consumed no bytes".into());
+                            }
+                        }
+                        return Ok(Value::Array(out));
+                    }
                     let n = match count_prefix {
                         Some(p) => read_int(*p, c)? as usize,
                         None => {
@@ -432,7 +459,13 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
     };
     let opaque = matches!(ctx.schema.resolve(&def.ty), TypeDef::Prim(Prim::Bytes));
     let mut c = Cursor::new(&s.data);
-    match decode_type(&def.ty, &mut c, ctx) {
+    // The subrecord's own element count may come from a sibling, which the
+    // array decoder needs to know before it reads the elements.
+    let saved_from = ctx.count_from;
+    ctx.count_from = def.count_from;
+    let decoded = decode_type(&def.ty, &mut c, ctx);
+    ctx.count_from = saved_from;
+    match decoded {
         Ok(v) => {
             // A bare (non-struct) subrecord may itself be exposed so a sibling
             // subrecord's union can switch on it (xEdit's `wbEPFDDecider`
@@ -443,6 +476,12 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
                 if let Some(i) = switch_int(ctx.schema, &def.ty, &v) {
                     ctx.exposed.insert((ctx.rec_sig, s.sig_str()), i);
                 }
+            }
+            // A subrecord's value is remembered under its own signature, so a
+            // later subrecord can take its element count from it (Skyrim's
+            // KSIZ holding the keyword count and KWDA holding the keywords).
+            if let Some(i) = switch_int(ctx.schema, &def.ty, &v) {
+                ctx.counts.insert(s.sig, i);
             }
             if c.is_empty() {
                 DecodedSub {

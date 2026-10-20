@@ -1,82 +1,6 @@
 {
  "format": "fnv.schema/1",
  "records": {
-  "ACTI": {
-   "confidence": "hypothesis",
-   "name": "ACTI",
-   "note": "Generated from the UESP field table for ACTI; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorId",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Editor id",
-     "type": "zstring"
-    },
-    "FNAM": {
-     "confidence": "hypothesis",
-     "name": "Flags",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. There are only two flags here. The rest appear in the header.",
-     "type": "u16"
-    },
-    "FULL": {
-     "confidence": "hypothesis",
-     "name": "ingame name",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Full (in-game) name",
-     "type": "u32"
-    },
-    "KNAM": {
-     "confidence": "hypothesis",
-     "name": "Interaction Keyword",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. KYWD formID for interaction purposes",
-     "type": "formid"
-    },
-    "KSIZ": {
-     "confidence": "hypothesis",
-     "name": "count",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Number of formids in the following KWDA subrecord",
-     "type": "u32"
-    },
-    "KWDA": {
-     "confidence": "hypothesis",
-     "name": "keywords",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Formid array of keywords",
-     "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
-     }
-    },
-    "PNAM": {
-     "confidence": "hypothesis",
-     "name": "Marker Color",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Default Primitive Color",
-     "type": "bytes"
-    },
-    "RNAM": {
-     "confidence": "hypothesis",
-     "name": "Activate Text Override",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Custom \"verb\" seen ingame when targeting the activator, e.g. 'Mine', 'Place', etc.",
-     "type": "u32"
-    },
-    "SNAM": {
-     "confidence": "hypothesis",
-     "name": "Sound - Looping",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. FormID of SNDR nirnroot has the wow-wow sound here",
-     "type": "formid"
-    },
-    "VNAM": {
-     "confidence": "hypothesis",
-     "name": "Sound - Activation",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. FormID of SNDR when activated",
-     "type": "formid"
-    },
-    "WNAM": {
-     "confidence": "hypothesis",
-     "name": "Water Type",
-     "note": "UESP, Skyrim Mod:Mod File Format/ACTI. WATR rare",
-     "type": "formid"
-    }
-   }
-  },
   "ALCH": {
    "confidence": "hypothesis",
    "name": "ALCH",
@@ -132,11 +56,11 @@
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "KWDA",
      "note": "UESP, Skyrim Mod:Mod File Format/ALCH. Array of KYWD formids",
      "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
+      "array": "formid"
      }
     },
     "MICO": {
@@ -198,15 +122,15 @@
      "confidence": "hypothesis",
      "name": "numKeywords",
      "note": "UESP, Skyrim Mod:Mod File Format/AMMO. KYWD Count.",
-     "type": "bytes"
+     "type": "u32"
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/AMMO. [KYWD 0x000917E7] VendorItemArrow, [KYWD 0x0010D501] WeapTypeBoundArrow",
      "type": {
-      "array": "bytes",
-      "count_field": "KSIZ"
+      "array": "bytes"
      }
     },
     "MICO": {
@@ -368,184 +292,6 @@
     }
    }
   },
-  "ARMO": {
-   "confidence": "hypothesis",
-   "name": "ARMO",
-   "note": "Generated from the UESP field table for ARMO; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "BAMT": {
-     "confidence": "hypothesis",
-     "name": "bash material",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. MATT (only shields)",
-     "type": "formid"
-    },
-    "BIDS": {
-     "confidence": "hypothesis",
-     "name": "bash impact data set",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. IPDS (only shields)",
-     "type": "formid"
-    },
-    "BMCT": {
-     "confidence": "hypothesis",
-     "name": "Ragdoll",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Ragdoll Constraint Template, not found in original (PC) datafiles",
-     "type": "bytes"
-    },
-    "BODT": {
-     "confidence": "hypothesis",
-     "name": "Body Template",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. 8- or 12-byte struct Body Template",
-     "type": "bytes"
-    },
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "data",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. 8-byte struct",
-     "type": "bytes"
-    },
-    "DESC": {
-     "confidence": "hypothesis",
-     "name": "description",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Usually 0 unless the enchantment isn't standard like Archmage Robes.",
-     "type": "u32"
-    },
-    "DNAM": {
-     "confidence": "hypothesis",
-     "name": "armor rating",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Base armor rating * 100. (Note: despite being a uint32, only the lower uint16 is used.)",
-     "type": "u32"
-    },
-    "EAMT": {
-     "confidence": "hypothesis",
-     "name": "Enchantment Amount",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Enchantment Amount",
-     "type": "u16"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorID",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Max\u00a0::0x200 bytes, including null terminator.",
-     "type": "zstring"
-    },
-    "EITM": {
-     "confidence": "hypothesis",
-     "name": "enchantment",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Enchanment (ENCH). Note there can be only 1 of these.",
-     "type": "formid"
-    },
-    "ETYP": {
-     "confidence": "hypothesis",
-     "name": "equip slot",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. EQUP (only shields)",
-     "type": "formid"
-    },
-    "FULL": {
-     "confidence": "hypothesis",
-     "name": "full name",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Full (in-game) name",
-     "type": "u32"
-    },
-    "ICO2": {
-     "confidence": "hypothesis",
-     "name": "Inventory Image",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Female Inventory Image Filename",
-     "type": "zstring"
-    },
-    "ICON": {
-     "confidence": "hypothesis",
-     "name": "Inventory Image",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Inventory Image Filename",
-     "type": "zstring"
-    },
-    "KSIZ": {
-     "confidence": "hypothesis",
-     "name": "KSIZ",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. keyword count",
-     "type": "u32"
-    },
-    "KWDA": {
-     "confidence": "hypothesis",
-     "name": "KWDA",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. KYWD array",
-     "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
-     }
-    },
-    "MIC2": {
-     "confidence": "hypothesis",
-     "name": "Message Image",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Female Message Image Filename",
-     "type": "zstring"
-    },
-    "MICO": {
-     "confidence": "hypothesis",
-     "name": "Message Image",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Message Image Filename",
-     "type": "zstring"
-    },
-    "MO2S": {
-     "confidence": "hypothesis",
-     "name": "alternate textures",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Used when overriding textures in a nif file with texture sets",
-     "type": "bytes"
-    },
-    "MO2T": {
-     "confidence": "hypothesis",
-     "name": "model data",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. (MODT)",
-     "type": "bytes"
-    },
-    "MO4S": {
-     "confidence": "hypothesis",
-     "name": "alternate textures",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Used when overriding textures in a nif file with texture sets",
-     "type": "bytes"
-    },
-    "MO4T": {
-     "confidence": "hypothesis",
-     "name": "model data",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. (MODT)",
-     "type": "bytes"
-    },
-    "MOD2": {
-     "confidence": "hypothesis",
-     "name": "male model",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Male Models\\ relative .nif",
-     "type": "zstring"
-    },
-    "MOD4": {
-     "confidence": "hypothesis",
-     "name": "female model",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Female Models\\ relative .nif",
-     "type": "zstring"
-    },
-    "RNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. RACE (0x19 DefaultRace for most except race-specific skins)",
-     "type": "formid"
-    },
-    "TNAM": {
-     "confidence": "hypothesis",
-     "name": "template",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Points to another ARMO record to use as a template",
-     "type": "formid"
-    },
-    "YNAM": {
-     "confidence": "hypothesis",
-     "name": "pickupSound",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Sound(SNDR) played when picked up",
-     "type": "formid"
-    },
-    "ZNAM": {
-     "confidence": "hypothesis",
-     "name": "dropSound",
-     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Sound(SNDR) played when dropped",
-     "type": "formid"
-    }
-   }
-  },
   "AVIF": {
    "confidence": "hypothesis",
    "name": "AVIF",
@@ -692,11 +438,11 @@
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "KWDA",
      "note": "UESP, Skyrim Mod:Mod File Format/BOOK. Array of KYWD formids",
      "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
+      "array": "formid"
      }
     },
     "MICO": {
@@ -716,163 +462,6 @@
      "name": "dropSound",
      "note": "UESP, Skyrim Mod:Mod File Format/BOOK. Sound SNDR played when dropped",
      "type": "formid"
-    }
-   }
-  },
-  "CELL": {
-   "confidence": "hypothesis",
-   "name": "CELL",
-   "note": "Generated from the UESP field table for CELL; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "uint16",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "zstring",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "FULL": {
-     "confidence": "hypothesis",
-     "name": "lstring",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "LNAM": {
-     "confidence": "hypothesis",
-     "name": "4 bytes",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "LTMP": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "TVDT": {
-     "confidence": "hypothesis",
-     "name": "684 bytes",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCAS": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCCM": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCGD": {
-     "confidence": "hypothesis",
-     "name": "struct",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCIM": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCLC": {
-     "confidence": "hypothesis",
-     "name": "struct",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCLL": {
-     "confidence": "hypothesis",
-     "name": "struct",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCLR": {
-     "confidence": "hypothesis",
-     "name": "formID[]",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCLW": {
-     "confidence": "hypothesis",
-     "name": "float",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCMO": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XCWT": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XEZN": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XILL": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XLCN": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XNAM": {
-     "confidence": "hypothesis",
-     "name": "1 byte",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XOWN": {
-     "confidence": "hypothesis",
-     "name": "formID",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XWCN": {
-     "confidence": "hypothesis",
-     "name": "uint32",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XWCS": {
-     "confidence": "hypothesis",
-     "name": "uint32",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XWCU": {
-     "confidence": "hypothesis",
-     "name": "struct[]",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
-    },
-    "XWEM": {
-     "confidence": "hypothesis",
-     "name": "zstring",
-     "note": "UESP, Skyrim Mod:Mod File Format/CELL.",
-     "type": "bytes"
     }
    }
   },
@@ -922,43 +511,6 @@
      "name": "outputQuantity",
      "note": "UESP, Skyrim Mod:Mod File Format/COBJ. Quantity of the output object created by the recipe.",
      "type": "u16"
-    }
-   }
-  },
-  "DLBR": {
-   "confidence": "hypothesis",
-   "name": "DLBR",
-   "note": "Generated from the UESP field table for DLBR; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "DNAM": {
-     "confidence": "hypothesis",
-     "name": "Flags",
-     "note": "UESP, Skyrim Mod:Mod File Format/DLBR. Bits 0-1:",
-     "type": "u32"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "Editor ID",
-     "note": "UESP, Skyrim Mod:Mod File Format/DLBR.",
-     "type": "zstring"
-    },
-    "QNAM": {
-     "confidence": "hypothesis",
-     "name": "Parent Quest",
-     "note": "UESP, Skyrim Mod:Mod File Format/DLBR. Reference to the QUST record to which the dialogue branch belongs.",
-     "type": "formid"
-    },
-    "SNAM": {
-     "confidence": "hypothesis",
-     "name": "Start Dialogue",
-     "note": "UESP, Skyrim Mod:Mod File Format/DLBR. Reference to a DIAL.",
-     "type": "formid"
-    },
-    "TNAM": {
-     "confidence": "hypothesis",
-     "name": "Unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/DLBR. Dialogue Tab",
-     "type": "u32"
     }
    }
   },
@@ -1139,11 +691,11 @@
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/FLOR. Formid array of keywords",
      "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
+      "array": "formid"
      }
     },
     "PFIG": {
@@ -1229,15 +781,15 @@
      "confidence": "hypothesis",
      "name": "keyword count",
      "note": "UESP, Skyrim Mod:Mod File Format/FURN. Keyword count",
-     "type": "bytes"
+     "type": "u32"
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/FURN. KYWD[]",
      "type": {
-      "array": "bytes",
-      "count_field": "KSIZ"
+      "array": "bytes"
      }
     },
     "MNAM": {
@@ -1345,43 +897,6 @@
     }
    }
   },
-  "IDLE": {
-   "confidence": "hypothesis",
-   "name": "IDLE",
-   "note": "Generated from the UESP field table for IDLE; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "ANAM": {
-     "confidence": "hypothesis",
-     "name": "animations",
-     "note": "UESP, Skyrim Mod:Mod File Format/IDLE. 2 formids",
-     "type": "formid"
-    },
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/IDLE. 6 bytes, usually 00-00-00/01, 4th byte almost never empty, 00-00",
-     "type": "bytes"
-    },
-    "DNAM": {
-     "confidence": "hypothesis",
-     "name": "havok file",
-     "note": "UESP, Skyrim Mod:Mod File Format/IDLE. Path to .hkx",
-     "type": "zstring"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorId",
-     "note": "UESP, Skyrim Mod:Mod File Format/IDLE. Editor id",
-     "type": "zstring"
-    },
-    "ENAM": {
-     "confidence": "hypothesis",
-     "name": "Anim Event",
-     "note": "UESP, Skyrim Mod:Mod File Format/IDLE. eg 'HorseExitSwim', 'NPCshoutStart'",
-     "type": "zstring"
-    }
-   }
-  },
   "KEYM": {
    "confidence": "hypothesis",
    "name": "KEYM",
@@ -1409,15 +924,15 @@
      "confidence": "hypothesis",
      "name": "numKeywords",
      "note": "UESP, Skyrim Mod:Mod File Format/KEYM. KYWD Count.",
-     "type": "bytes"
+     "type": "u32"
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/KEYM. [KYWD 0x000914EF] VendorItemKey",
      "type": {
-      "array": "bytes",
-      "count_field": "KSIZ"
+      "array": "bytes"
      }
     },
     "YNAM": {
@@ -1467,15 +982,15 @@
      "confidence": "hypothesis",
      "name": "keyword count",
      "note": "UESP, Skyrim Mod:Mod File Format/LCTN. Keyword count",
-     "type": "bytes"
+     "type": "u32"
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/LCTN. Keywords array",
      "type": {
-      "array": "bytes",
-      "count_field": "KSIZ"
+      "array": "bytes"
      }
     },
     "MNAM": {
@@ -1506,7 +1021,9 @@
      "confidence": "hypothesis",
      "name": "population refs",
      "note": "UESP, Skyrim Mod:Mod File Format/LCTN. Actors - there is only one instance of this in the game data, in the Dawnguard version of MilitaryCampRiftImperialLocation",
-     "type": "formid"
+     "type": {
+      "array": "formid"
+     }
     },
     "RNAM": {
      "confidence": "hypothesis",
@@ -1565,43 +1082,6 @@
     }
    }
   },
-  "LVLI": {
-   "confidence": "hypothesis",
-   "name": "LVLI",
-   "note": "Generated from the UESP field table for LVLI; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorId",
-     "note": "UESP, Skyrim Mod:Mod File Format/LVLI. Editor id",
-     "type": "zstring"
-    },
-    "LLCT": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/LVLI. The number of entries in the list (the number of LVLO entries, essentially).",
-     "type": "i8"
-    },
-    "LVLD": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/LVLI. Chance for an item on this list to not be spawned at all (for example, 75 means there's a 25% to spawn an item).",
-     "type": "i8"
-    },
-    "LVLF": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/LVLI. Flags:",
-     "type": "i8"
-    },
-    "LVLG": {
-     "confidence": "hypothesis",
-     "name": "Global",
-     "note": "UESP, Skyrim Mod:Mod File Format/LVLI. Points to a global record. If this is set, the value of the global is used instead of LVLD for chance none.",
-     "type": "formid"
-    }
-   }
-  },
   "MGEF": {
    "confidence": "hypothesis",
    "name": "MGEF",
@@ -1645,11 +1125,11 @@
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/MGEF.",
      "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
+      "array": "formid"
      }
     },
     "MDOB": {
@@ -1703,11 +1183,11 @@
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/MISC. Formid array of keywords",
      "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
+      "array": "formid"
      }
     },
     "MICO": {
@@ -1727,341 +1207,6 @@
      "name": "dropSound",
      "note": "UESP, Skyrim Mod:Mod File Format/MISC. Sound(SNDR) played when dropped",
      "type": "formid"
-    }
-   }
-  },
-  "NAVM": {
-   "confidence": "hypothesis",
-   "name": "NAVM",
-   "note": "Generated from the UESP field table for NAVM; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "NNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/NAVM. Undefined information",
-     "type": {
-      "array": "bytes",
-      "count_field": "QNAM"
-     }
-    },
-    "NVNM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/NAVM. Navmesh geometry.",
-     "type": "bytes"
-    },
-    "ONAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/NAVM. Undefined information",
-     "type": "bytes"
-    },
-    "PNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/NAVM. Undefined information",
-     "type": "bytes"
-    }
-   }
-  },
-  "REFR": {
-   "confidence": "hypothesis",
-   "name": "REFR",
-   "note": "Generated from the UESP field table for REFR; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "locational data",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 24 byte",
-     "type": "bytes"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "Editor ID",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. editor id",
-     "type": "zstring"
-    },
-    "FNAM": {
-     "confidence": "hypothesis",
-     "name": "Marker Flags",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "u8"
-    },
-    "FULL": {
-     "confidence": "hypothesis",
-     "name": "ingame name",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Name of the Marker",
-     "type": "u32"
-    },
-    "INAM": {
-     "confidence": "hypothesis",
-     "name": "image space",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. INAM is used differently in a different context (see below)",
-     "type": "formid"
-    },
-    "LNAM": {
-     "confidence": "hypothesis",
-     "name": "lighting template",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "formid"
-    },
-    "NAME": {
-     "confidence": "hypothesis",
-     "name": "basic object",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Formid of anything as the base object.",
-     "type": "formid"
-    },
-    "ONAM": {
-     "confidence": "hypothesis",
-     "name": "ONAM",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. zero length, appears together with XACT if \"Open by Default\" is set",
-     "type": "bytes"
-    },
-    "SCHR": {
-     "confidence": "hypothesis",
-     "name": "Old Script",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Old scripting field.",
-     "type": "bytes"
-    },
-    "TNAM": {
-     "confidence": "hypothesis",
-     "name": "Marker Type",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. The Icon for the Map Marker - Enum",
-     "type": "u16"
-    },
-    "XACT": {
-     "confidence": "hypothesis",
-     "name": "XACT",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. always value 0x0d, appears together with ONAM if \"Open by Default\" is set",
-     "type": "u32"
-    },
-    "XALP": {
-     "confidence": "hypothesis",
-     "name": "Alpha Cutoff",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 2-byte struct",
-     "type": "u8"
-    },
-    "XAPD": {
-     "confidence": "hypothesis",
-     "name": "activation parent flags",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 0x01 - Parent Activate Only",
-     "type": "u8"
-    },
-    "XAPR": {
-     "confidence": "hypothesis",
-     "name": "activation parent",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 8-byte struct",
-     "type": "bytes"
-    },
-    "XCNT": {
-     "confidence": "hypothesis",
-     "name": "item count",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. if more than 1 (eg arrows)",
-     "type": "u32"
-    },
-    "XCVL": {
-     "confidence": "hypothesis",
-     "name": "XCVL",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. X, Y, Z - Water Current Linear Velocity (only found in one instance)",
-     "type": "f32"
-    },
-    "XCVR": {
-     "confidence": "hypothesis",
-     "name": "XCVR",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. X, Y, Z - Water Current Rotational Velocity (no instance found)",
-     "type": "f32"
-    },
-    "XCZA": {
-     "confidence": "hypothesis",
-     "name": "XCZA",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "bytes"
-    },
-    "XCZC": {
-     "confidence": "hypothesis",
-     "name": "XCZC",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "bytes"
-    },
-    "XEMI": {
-     "confidence": "hypothesis",
-     "name": "emitted light",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. LIGH",
-     "type": "formid"
-    },
-    "XESP": {
-     "confidence": "hypothesis",
-     "name": "enable parent",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 8-byte struct",
-     "type": "bytes"
-    },
-    "XEZN": {
-     "confidence": "hypothesis",
-     "name": "XEZN",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Encounter Zone",
-     "type": "formid"
-    },
-    "XFVC": {
-     "confidence": "hypothesis",
-     "name": "Favor Cost",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "f32"
-    },
-    "XHTW": {
-     "confidence": "hypothesis",
-     "name": "Head-Tracking Weight",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "bytes"
-    },
-    "XIS2": {
-     "confidence": "hypothesis",
-     "name": "XIS2",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. zero length, present if \"Ignored By Sandbox\" is checked",
-     "type": "bytes"
-    },
-    "XLCM": {
-     "confidence": "hypothesis",
-     "name": "type?",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. only values seen are 0x00, 0x02, 0x03",
-     "type": "bytes"
-    },
-    "XLIB": {
-     "confidence": "hypothesis",
-     "name": "leveled item base",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. LVLI of objects using this as a base",
-     "type": "formid"
-    },
-    "XLIG": {
-     "confidence": "hypothesis",
-     "name": "light data",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 16- or 20-byte struct",
-     "type": "bytes"
-    },
-    "XLKR": {
-     "confidence": "hypothesis",
-     "name": "linked ref",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 8-byte struct",
-     "type": "bytes"
-    },
-    "XLOC": {
-     "confidence": "hypothesis",
-     "name": "lock information (door/cont)",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 20 bytes",
-     "type": "bytes"
-    },
-    "XLRL": {
-     "confidence": "hypothesis",
-     "name": "XLRL",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. LCTN, not found in .esms, added by CK 1.8 when edited",
-     "type": "formid"
-    },
-    "XLRM": {
-     "confidence": "hypothesis",
-     "name": "location room marker",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. REFR usually to a STAT",
-     "type": "formid"
-    },
-    "XLRT": {
-     "confidence": "hypothesis",
-     "name": "location ref type",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. LCRT",
-     "type": "formid"
-    },
-    "XMBO": {
-     "confidence": "hypothesis",
-     "name": "model bounds?",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. X, Y, Z bounds, usually same as XPRM bounds (CK 1.8+ throws error if not equal)",
-     "type": "f32"
-    },
-    "XMBR": {
-     "confidence": "hypothesis",
-     "name": "XMBR",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. MultiBound Reference",
-     "type": "formid"
-    },
-    "XNDP": {
-     "confidence": "hypothesis",
-     "name": "door pivot?",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 8-byte struct",
-     "type": "bytes"
-    },
-    "XOCP": {
-     "confidence": "hypothesis",
-     "name": "XOCP",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "bytes"
-    },
-    "XOWN": {
-     "confidence": "hypothesis",
-     "name": "owner",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. usually FACT but horse/dog has NPC_",
-     "type": "formid"
-    },
-    "XPOD": {
-     "confidence": "hypothesis",
-     "name": "portal destination",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. origin/dest REFR",
-     "type": "formid"
-    },
-    "XPRM": {
-     "confidence": "hypothesis",
-     "name": "primitive",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 32 byte struct",
-     "type": "bytes"
-    },
-    "XPWR": {
-     "confidence": "hypothesis",
-     "name": "XPWR",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Reflected by",
-     "type": "formid"
-    },
-    "XRDS": {
-     "confidence": "hypothesis",
-     "name": "Radius",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. ~1.25. Controls the radii on objects like lights.",
-     "type": "f32"
-    },
-    "XRGD": {
-     "confidence": "hypothesis",
-     "name": "ragdoll data",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. A long binary stream whose contents are not understood at this time.",
-     "type": "bytes"
-    },
-    "XRMR": {
-     "confidence": "hypothesis",
-     "name": "reference marker",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR.",
-     "type": "bytes"
-    },
-    "XSCL": {
-     "confidence": "hypothesis",
-     "name": "scale",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. setScale",
-     "type": "f32"
-    },
-    "XTEL": {
-     "confidence": "hypothesis",
-     "name": "door teleport",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. 32-byte struct",
-     "type": "bytes"
-    },
-    "XTRI": {
-     "confidence": "hypothesis",
-     "name": "XTRI",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Primitive: Collision Layer, selected by matching BNAM field of COLL form",
-     "type": "u32"
-    },
-    "XWCN": {
-     "confidence": "hypothesis",
-     "name": "XWCN",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Size of XWCU/16",
-     "type": "u32"
-    },
-    "XWCU": {
-     "confidence": "hypothesis",
-     "name": "XWCU",
-     "note": "UESP, Skyrim Mod:Mod File Format/REFR. Water Current, series of 16 byte structures seems to be 3 structures always",
-     "type": "bytes"
     }
    }
   },
@@ -2120,11 +1265,11 @@
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "KWDA",
      "note": "UESP, Skyrim Mod:Mod File Format/SCRL. Array of KYWD formids",
      "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
+      "array": "formid"
      }
     },
     "MDOB": {
@@ -2174,15 +1319,15 @@
      "confidence": "hypothesis",
      "name": "numKeywords",
      "note": "UESP, Skyrim Mod:Mod File Format/SLGM. KYWD Count.",
-     "type": "bytes"
+     "type": "u32"
     },
     "KWDA": {
      "confidence": "hypothesis",
+     "count_from": "KSIZ",
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/SLGM. [KYWD 0x000937A3] VendorItemSoulGem",
      "type": {
-      "array": "bytes",
-      "count_field": "KSIZ"
+      "array": "bytes"
      }
     },
     "NAM0": {
@@ -2207,137 +1352,6 @@
      "confidence": "hypothesis",
      "name": "sound",
      "note": "UESP, Skyrim Mod:Mod File Format/SLGM. found in Soul Gems Differ",
-     "type": "formid"
-    }
-   }
-  },
-  "SMQN": {
-   "confidence": "hypothesis",
-   "name": "SMQN",
-   "note": "Generated from the UESP field table for SMQN; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "CIS2": {
-     "confidence": "hypothesis",
-     "name": "variable name",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. Optional variable name eg \"::playerAllegiance_var\" may be passed to next CTDA only?",
-     "type": "zstring"
-    },
-    "CITC": {
-     "confidence": "hypothesis",
-     "name": "CTDA count",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. Count of CTDA entries",
-     "type": "u32"
-    },
-    "DNAM": {
-     "confidence": "hypothesis",
-     "name": "flags",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. Flags, 0x01 and also very large (0x10000, 0x100000)",
-     "type": "u32"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "Editor ID",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN.",
-     "type": "zstring"
-    },
-    "NNAM": {
-     "confidence": "hypothesis",
-     "name": "Quest node",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. QUST formids (QNAM count, each optionally followed by RNAM)",
-     "type": {
-      "array": "formid",
-      "count_field": "QNAM"
-     }
-    },
-    "PNAM": {
-     "confidence": "hypothesis",
-     "name": "Parent",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. Reference to parent SMQN, SMBN or SMEN",
-     "type": "formid"
-    },
-    "QNAM": {
-     "confidence": "hypothesis",
-     "name": "NNAM count",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. Count of NNAM (QUST) entries",
-     "type": "u32"
-    },
-    "RNAM": {
-     "confidence": "hypothesis",
-     "name": "reset time",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. Hours[verification needed] till reset CK shows value divided by 24 labeled as hours till reset, but that should probably be days",
-     "type": "f32"
-    },
-    "SNAM": {
-     "confidence": "hypothesis",
-     "name": "sibling",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. 0 (If first child) or reference to prior sibling",
-     "type": "formid"
-    },
-    "XNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/SMQN. Always 0",
-     "type": "bytes"
-    }
-   }
-  },
-  "SNDR": {
-   "confidence": "hypothesis",
-   "name": "SNDR",
-   "note": "Generated from the UESP field table for SNDR; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "ANAM": {
-     "confidence": "hypothesis",
-     "name": "a track",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR. path to .wav",
-     "type": "zstring"
-    },
-    "BNAM": {
-     "confidence": "hypothesis",
-     "name": "BNAM",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR.",
-     "type": "bytes"
-    },
-    "CNAM": {
-     "confidence": "hypothesis",
-     "name": "sound descriptor type",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR. CRC32 hash of the class name (i.e. \"BGSStandardSoundDef\") Note that Bethesda uses a non standard CRC.",
-     "type": "u32"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorId",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR. Editor id",
-     "type": "zstring"
-    },
-    "FNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR.",
-     "type": "bytes"
-    },
-    "GNAM": {
-     "confidence": "hypothesis",
-     "name": "category",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR. Sound Category (SNCT) formid",
-     "type": "formid"
-    },
-    "LNAM": {
-     "confidence": "hypothesis",
-     "name": "LNAM",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR.",
-     "type": "bytes"
-    },
-    "ONAM": {
-     "confidence": "hypothesis",
-     "name": "output model",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR. Output Model (SOPM) formid",
-     "type": "formid"
-    },
-    "SNAM": {
-     "confidence": "hypothesis",
-     "name": "sound",
-     "note": "UESP, Skyrim Mod:Mod File Format/SNDR. reference to another (SNDR) formid",
      "type": "formid"
     }
    }
@@ -2467,450 +1481,6 @@
      "confidence": "hypothesis",
      "name": "use sound",
      "note": "UESP, Skyrim Mod:Mod File Format/TREE. FormID of SNDR when activated",
-     "type": "formid"
-    }
-   }
-  },
-  "WEAP": {
-   "confidence": "hypothesis",
-   "name": "WEAP",
-   "note": "Generated from the UESP field table for WEAP; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "BAMT": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Alternate block material. Points to a MATT.",
-     "type": "formid"
-    },
-    "BIDS": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Block bash impact data set. Points to a IPDS.",
-     "type": "formid"
-    },
-    "CNAM": {
-     "confidence": "hypothesis",
-     "name": "template",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Points to another WEAP record to use as a template",
-     "type": "formid"
-    },
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "data",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP.",
-     "type": "bytes"
-    },
-    "DESC": {
-     "confidence": "hypothesis",
-     "name": "description",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP.",
-     "type": "u32"
-    },
-    "DNAM": {
-     "confidence": "hypothesis",
-     "name": "Weapon data",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP.",
-     "type": "bytes"
-    },
-    "EAMT": {
-     "confidence": "hypothesis",
-     "name": "Enchantment Charge Amount",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP.",
-     "type": "u16"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorID",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Max 0x200 bytes, including null terminator.",
-     "type": "zstring"
-    },
-    "EITM": {
-     "confidence": "hypothesis",
-     "name": "Enchantment",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Points to a ENCH.",
-     "type": "formid"
-    },
-    "ETYP": {
-     "confidence": "hypothesis",
-     "name": "Equip Type",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Specifies which equipment slot is used by the weapon (typically \"BothHands\" or \"EitherHand\"). Points to a EQUP.",
-     "type": "formid"
-    },
-    "FULL": {
-     "confidence": "hypothesis",
-     "name": "Name",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP.",
-     "type": "u32"
-    },
-    "INAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Normal weapon swing impact set. Points to a IPDS.",
-     "type": "formid"
-    },
-    "KSIZ": {
-     "confidence": "hypothesis",
-     "name": "keywordCount",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP.",
-     "type": "u32"
-    },
-    "KWDA": {
-     "confidence": "hypothesis",
-     "name": "keywords",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP.",
-     "type": {
-      "array": "formid",
-      "count_field": "KSIZ"
-     }
-    },
-    "NAM7": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Attack Loop Sound (SNDR) Not found in original files",
-     "type": "formid"
-    },
-    "NAM8": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. UnEquip Sound (SNDR)",
-     "type": "formid"
-    },
-    "NAM9": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Equip Sound (SNDR).",
-     "type": "formid"
-    },
-    "NNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Embedded Weapon Node",
-     "type": {
-      "array": "zstring",
-      "count_field": "QNAM"
-     }
-    },
-    "SNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Attack Sound (Trap Fire) (SNDR)",
-     "type": "formid"
-    },
-    "TNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Attack Fail Sound (SNDR).",
-     "type": "formid"
-    },
-    "UNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Idle Sound (SNDR)",
-     "type": "formid"
-    },
-    "VNAM": {
-     "confidence": "hypothesis",
-     "name": "Sound Detection Level",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. The amount of sound using the weapon generates, seems to be used in determining nearby NPCs detection of the actor using the weapon. 2(0x02) = Silent, 1(0x01) = Normal, 0(0x00) = Loud, 3(0x03) = Very Loud.",
-     "type": "u32"
-    },
-    "WNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. 1st Person Model Object. Points to a STAT. Affects the Inventory Item display.",
-     "type": "formid"
-    },
-    "XNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Attack Sound (2D) (SNDR) found in Dawnguard.esm",
-     "type": "formid"
-    },
-    "YNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Pickup Sound (SNDR) not found in original files",
-     "type": "formid"
-    },
-    "ZNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. Putdown Sound (SNDR) not found in original files",
-     "type": "formid"
-    }
-   }
-  },
-  "WRLD": {
-   "confidence": "hypothesis",
-   "name": "WRLD",
-   "note": "Generated from the UESP field table for WRLD; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "CNAM": {
-     "confidence": "hypothesis",
-     "name": "Climate",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. CLMT reference.",
-     "type": "formid"
-    },
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "flags",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Flags",
-     "type": "u8"
-    },
-    "DNAM": {
-     "confidence": "hypothesis",
-     "name": "Land Data",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Default land- and oceanwater-levels (-27000 & -14000.0 for Tamriel)",
-     "type": "f32"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "EditorID",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. The name of this worldspace used in the construction kit",
-     "type": "zstring"
-    },
-    "FULL": {
-     "confidence": "hypothesis",
-     "name": "Name",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. The name of this worldspace used in the game",
-     "type": "u32"
-    },
-    "LTMP": {
-     "confidence": "hypothesis",
-     "name": "Lighting Template",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Interior Lighting LGTM",
-     "type": "formid"
-    },
-    "MNAM": {
-     "confidence": "hypothesis",
-     "name": "Map size",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. 16 or 28 byte structure",
-     "type": "bytes"
-    },
-    "NAM0": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Coordinates for the bottom left corner of the worldspace (assumed from Oblivion)",
-     "type": "i32"
-    },
-    "NAM2": {
-     "confidence": "hypothesis",
-     "name": "Water Type",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Water WATR",
-     "type": "formid"
-    },
-    "NAM3": {
-     "confidence": "hypothesis",
-     "name": "LOD Water Type",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. LOD water-type, always a WATR form ID",
-     "type": "formid"
-    },
-    "NAM4": {
-     "confidence": "hypothesis",
-     "name": "LOD Water Height",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. LOD oceanwater-level (-14000.0 for Tamriel)",
-     "type": "f32"
-    },
-    "NAM9": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Coordinates for the top right corner of the worldspace (assumed from Oblivion)",
-     "type": "i32"
-    },
-    "NAMA": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Distant LOD Multiplier",
-     "type": "f32"
-    },
-    "OFST": {
-     "confidence": "hypothesis",
-     "name": "Offsets",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Contains an ordered array of Relative Absolute file offsets to each Cell record under the Worldspace. 4 bytes are all 00 if the cell the entry in the array relates to, is not present in the plugin in question. When Present, the engine direct loads the Cell and its References from the Offset, instead of seeking down the Blocks/Sub-Blocks to find them. Is Not a Rule-Of-One Sub-Record, nor does it Merge at Runtime, it is a \"Local\" sub-record unique to each plugin/override.",
-     "type": "bytes"
-    },
-    "ONAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. This field specifies where map markers will appear in relation to the parent",
-     "type": "f32"
-    },
-    "PNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Use flags - Set if parts are inherited from parent worldspace WNAM",
-     "type": "u16"
-    },
-    "RNAM": {
-     "confidence": "hypothesis",
-     "name": "Large References",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. (int16's are Cell Grid Coordinates, FormIDs are References that place a Base Object that is of Object Size 512 or greater. Such Reference transition from Full Model to LOD at uGrids=11 instead of 5, by default)",
-     "type": "bytes"
-    },
-    "TNAM": {
-     "confidence": "hypothesis",
-     "name": "HD LOD Diffuse",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. The name of a texture file.",
-     "type": "zstring"
-    },
-    "UNAM": {
-     "confidence": "hypothesis",
-     "name": "HD LOD Normal",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. The name of the normals file matching the TNAM.",
-     "type": "zstring"
-    },
-    "WCTR": {
-     "confidence": "hypothesis",
-     "name": "Fixed Dimension Center Cell",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. X, Y",
-     "type": "i16"
-    },
-    "WNAM": {
-     "confidence": "hypothesis",
-     "name": "Parent worldspace",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Form ID of the parent worldspace.",
-     "type": "formid"
-    },
-    "XEZN": {
-     "confidence": "hypothesis",
-     "name": "Encounter Zone",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Encounter Zone ECZN",
-     "type": "formid"
-    },
-    "XLCN": {
-     "confidence": "hypothesis",
-     "name": "Location",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Location LCTN",
-     "type": "formid"
-    },
-    "XWEM": {
-     "confidence": "hypothesis",
-     "name": "XWEM",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. Water Environment Map",
-     "type": "zstring"
-    },
-    "ZNAM": {
-     "confidence": "hypothesis",
-     "name": "music",
-     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. always a MUSC form ID",
-     "type": "formid"
-    }
-   }
-  },
-  "WTHR": {
-   "confidence": "hypothesis",
-   "name": "WTHR",
-   "note": "Generated from the UESP field table for WTHR; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "DALC": {
-     "confidence": "hypothesis",
-     "name": "lighting data",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Directional Ambient, 4 fields for Sunrise, Day, Sunset, Night, usually 32 bytes, but just 24 in one case (TESTCloudyRain)",
-     "type": "bytes"
-    },
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 19 byte structure - several uint8 are displayed as float by the CK, see the ranges given",
-     "type": "bytes"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorId",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Editor id",
-     "type": "zstring"
-    },
-    "FNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 32 byte structure - Fog Distance",
-     "type": "bytes"
-    },
-    "IMSP": {
-     "confidence": "hypothesis",
-     "name": "image spaces",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Array of 4 (IMGS) formIDs (Sunrise/Day/Sunset/Night)",
-     "type": "formid"
-    },
-    "JNAM": {
-     "confidence": "hypothesis",
-     "name": "cloud texture alpha",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 512 bytes, 32 structs of 16 bytes, one for each layer",
-     "type": "bytes"
-    },
-    "LNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Number of Texture Layers always 0x04 or 0x1d",
-     "type": "u32"
-    },
-    "MNAM": {
-     "confidence": "hypothesis",
-     "name": "precipitation",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Precipitation - SPGD formID",
-     "type": "formid"
-    },
-    "NAM0": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 208/224/272 bytes, structs of 16 bytes, color definitions",
-     "type": "bytes"
-    },
-    "NAM1": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Disabled flags - bit n corresponds to layer n, set if disabled",
-     "type": "u32"
-    },
-    "NAM2": {
-     "confidence": "hypothesis",
-     "name": "NAM2",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. unknown - appears together with NAM3, either four times 0x00ffffff or 0xffffffff, probably responsible for some of the default whites in NAM0. Only found in a couple of older forms, goes away when saving in CK.",
-     "type": "u32"
-    },
-    "NAM3": {
-     "confidence": "hypothesis",
-     "name": "NAM3",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. unknown - same as NAM2",
-     "type": "u32"
-    },
-    "NNAM": {
-     "confidence": "hypothesis",
-     "name": "visual effect",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Visual Effect (RFCT)",
-     "type": {
-      "array": "formid",
-      "count_field": "QNAM"
-     }
-    },
-    "PNAM": {
-     "confidence": "hypothesis",
-     "name": "cloud texture color",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 512 bytes, 32 structs of 16 bytes, one for each layer",
-     "type": "bytes"
-    },
-    "QNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 32 bytes, Cloud Speed X (-0.1 - 0.1), byte n corresponds to layer n, encoding as above",
-     "type": "bytes"
-    },
-    "RNAM": {
-     "confidence": "hypothesis",
-     "name": "unknown",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 32 bytes, Cloud Speed Y (-0.1 - 0.1), byte n corresponds to layer n, float encoded as uint8: 0x00->-0.1, 0x7f->0, 0xfe->0.1",
-     "type": "bytes"
-    },
-    "SNAM": {
-     "confidence": "hypothesis",
-     "name": "ambient sounds",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. 8-byte struct",
-     "type": "bytes"
-    },
-    "TNAM": {
-     "confidence": "hypothesis",
-     "name": "sky statics",
-     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. Static (STAT) formID",
      "type": "formid"
     }
    }

@@ -59,6 +59,12 @@
      "note": "The LCTN record the actor is in.",
      "type": "formid"
     },
+    "XLKR": {
+     "confidence": "documented",
+     "name": "Linked Reference",
+     "note": "The keyword and the REFR the reference is linked to, usually a STAT. [measured: 12,778 of the 12,782 XLKR fields in Skyrim.esm are 8 bytes]",
+     "type": "REFR_XLKR"
+    },
     "XLRT": {
      "confidence": "documented",
      "name": "Location Ref Type",
@@ -195,9 +201,12 @@
     },
     "KWDA": {
      "confidence": "documented",
+     "count_from": "KSIZ",
      "name": "Keyword",
-     "note": "A KYWD record. There is one per KSIZ.",
-     "type": "formid"
+     "note": "The keywords. There is one per KSIZ, and KSIZ is a sibling subrecord rather than a count in the data, so the count comes from it.",
+     "type": {
+      "array": "formid"
+     }
     },
     "MODL": {
      "confidence": "documented",
@@ -298,6 +307,20 @@
     {
      "name": "location_ref_type",
      "note": "The LCRT record.",
+     "type": "formid"
+    }
+   ]
+  },
+  "REFR_XLKR": {
+   "struct": [
+    {
+     "name": "keyword",
+     "note": "Zero, or a KYWD \u2014 usually LinkCarryStart or LinkCarryEnd.",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "A REFR, usually to a STAT. FURN also appears here.",
      "type": "formid"
     }
    ]

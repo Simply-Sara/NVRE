@@ -183,9 +183,12 @@
     },
     "KWDA": {
      "confidence": "documented",
+     "count_from": "KSIZ",
      "name": "Keyword",
-     "note": "A KYWD record. There is one per KSIZ.",
-     "type": "formid"
+     "note": "The keywords. There is one per KSIZ, and KSIZ is a sibling subrecord rather than a count in the data, so the count comes from it.",
+     "type": {
+      "array": "formid"
+     }
     },
     "LNAM": {
      "confidence": "documented",

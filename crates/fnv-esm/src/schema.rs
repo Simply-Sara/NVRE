@@ -210,6 +210,16 @@ pub struct SubDef {
     /// decoding, so a later subrecord of the same record can switch a union on
     /// it (xEdit's `Container.ElementNativeValues['EPFT']` decider).
     pub expose: bool,
+    /// The sibling subrecord whose value is this subrecord's element count.
+    ///
+    /// Some records carry a count in one subrecord and the elements in
+    /// another: Skyrim's `KSIZ` holds the number of keywords and `KWDA` holds
+    /// them all in one subrecord. The count is in a different subrecord from
+    /// the elements, so it cannot be a struct's `count_field`.
+    ///
+    /// The named subrecord must come *before* this one in the record, since
+    /// the count has to have been read by the time the elements are.
+    pub count_from: Option<[u8; 4]>,
 }
 
 #[derive(Debug, Clone)]
@@ -590,7 +600,12 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
 }
 
 fn parse_subdef(v: &Value, ctx: &str) -> Result<SubDef, SchemaError> {
+    let count_from = match v.get("count_from").and_then(Value::as_str) {
+        Some(sig) => Some(sig4(sig, ctx)?),
+        None => None,
+    };
     Ok(SubDef {
+        count_from,
         name: v
             .get("name")
             .and_then(Value::as_str)

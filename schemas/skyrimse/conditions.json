@@ -117,8 +117,8 @@
         },
         {
          "name": "extension",
-         "note": "The texture's file extension, which is \"dds\" in every shipped record.",
-         "type": "zstring"
+         "note": "The texture's file extension, which is \"dds\" in every shipped record. It is a NUL-terminated string, so it is read as one and the cursor is left just past the terminator.",
+         "type": "cstring"
         },
         {
          "name": "hash2",

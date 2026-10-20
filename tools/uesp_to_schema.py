@@ -98,6 +98,9 @@ COUNT_FIELD_ARRAYS = {
 def type_of(typ, note):
     """The schema type for a UESP type and note."""
     base = typ.split("[")[0].strip()
+    # A formID array is a run of formids with no count of its own.
+    if typ.strip() == "formID[]":
+        return {"array": "formid"}
     if base in ("formID", "formid"):
         return "formid"
     if base == "zstring":
@@ -118,7 +121,19 @@ def type_of(typ, note):
         return "u32"
     if base.startswith("struct"):
         return "bytes"
+    # Some pages put the field's own name in the type column rather than a
+    # type. KSIZ is always the keyword count, a uint32.
+    if base == "KSIZ":
+        return "u32"
     return "bytes"
+
+
+# The records these files define by hand. The generator leaves them alone.
+HAND_WRITTEN = {
+    "SCEN", "PACK", "QUST", "DIAL", "INFO", "RACE", "NPC_",
+    "WEAP", "ACHR", "LVLI", "ACTI", "IDLE", "SMQN", "WTHR", "SNDR",
+    "NAVM", "IPDS", "DLBR", "DLVW", "WRLD", "CELL", "REFR", "ARMO", "STAT",
+}
 
 
 def main():
@@ -126,7 +141,7 @@ def main():
     records = {}
     for path in sorted(SCRATCH.glob("*.txt")):
         rec = path.stem
-        if rec in {"SCEN", "PACK", "QUST", "DIAL", "INFO", "RACE", "NPC_"}:
+        if rec in HAND_WRITTEN:
             continue  # already written by hand
         text = path.read_text()
         rows = parse_table(text)
@@ -137,20 +152,23 @@ def main():
             if sig in SKIP_SIGS or sig in NAMED:
                 continue
             field_type = type_of(typ, note)
+            entry = {
+                "name": name or sig,
+                "confidence": "hypothesis",
+                "note": f"UESP, Skyrim Mod:Mod File Format/{rec}. {note}".strip(),
+                "type": field_type,
+            }
             if sig in COUNT_FIELD_ARRAYS:
-                field_type = {
-                    "array": field_type,
-                    "count_field": COUNT_FIELD_ARRAYS[sig],
-                }
-            subs.setdefault(
-                sig,
-                {
-                    "name": name or sig,
-                    "confidence": "hypothesis",
-                    "note": f"UESP, Skyrim Mod:Mod File Format/{rec}. {note}".strip(),
-                    "type": field_type,
-                },
-            )
+                count_from = COUNT_FIELD_ARRAYS[sig]
+                if "count_field" in str(field_type):
+                    # The count is a field of the same struct.
+                    entry["type"]["count_field"] = count_from
+                else:
+                    # The count is a sibling subrecord, so the array takes it
+                    # from there rather than from the data in front of it.
+                    entry["type"] = {"array": field_type}
+                    entry["count_from"] = count_from
+            subs.setdefault(sig, entry)
         if subs:
             records[rec] = {
                 "name": rec,
