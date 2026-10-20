@@ -1,0 +1,457 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "DLBR": {
+   "confidence": "documented",
+   "name": "Dialogue Branch",
+   "note": "UESP, Skyrim Mod:Mod File Format/DLBR. [measured: 3,061 of each of DNAM, QNAM, SNAM and TNAM in Skyrim.esm]",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    }
+   }
+  },
+  "DLVW": {
+   "confidence": "documented",
+   "name": "Dialogue View",
+   "note": "UESP, Skyrim Mod:Mod File Format/DLVW. [measured: 2,738 BNAM fields in Skyrim.esm]",
+   "subrecords": {
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    }
+   }
+  },
+  "IPDS": {
+   "confidence": "documented",
+   "name": "Impact Data Set",
+   "note": "UESP, Skyrim Mod:Mod File Format/IPDS. [measured: 11,636 PNAM fields in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The impact data set's contents.",
+     "type": "bytes"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    }
+   }
+  },
+  "LVLI": {
+   "confidence": "documented",
+   "name": "Leveled Item",
+   "note": "UESP, Skyrim Mod:Mod File Format/LVLI. [measured: 3,056 LLCT fields in Skyrim.esm]",
+   "subrecords": {
+    "LLCT": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "Leveled Object",
+     "note": "The leveled item's contents.",
+     "type": "bytes"
+    }
+   }
+  },
+  "NAVM": {
+   "confidence": "documented",
+   "name": "Navmesh",
+   "note": "UESP, Skyrim Mod:Mod File Format/NAVM. The navmesh geometry is not documented field by field and is left opaque here. [measured: 15,966 NAVM records in Skyrim.esm, with NVNM running from 130 to 3,578 bytes]",
+   "subrecords": {
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Undefined information; the size varies.",
+     "type": "bytes"
+    },
+    "NVNM": {
+     "confidence": "documented",
+     "name": "Navmesh Geometry",
+     "note": "The navmesh's geometry. The layout is not documented, so it is read as raw bytes.",
+     "type": "bytes"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Undefined information; the size varies.",
+     "type": "bytes"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Undefined information; the size varies.",
+     "type": "bytes"
+    }
+   }
+  },
+  "SNDR": {
+   "confidence": "documented",
+   "name": "Sound",
+   "note": "UESP, Skyrim Mod:Mod File Format/SNDR. A sound carries a descriptor, a category, its tracks and the conditions under which it plays. [measured: 4,951 ANAM tracks in Skyrim.esm, and the FNAM field is 4 bytes]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Track",
+     "note": "The path to a .wav.",
+     "type": "zstring"
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Settings",
+     "note": "The sound's frequency, priority and attenuation.",
+     "type": "SNDR_BNAM"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Sound Descriptor Type",
+     "note": "A CRC32 hash of the class name, for example \"BGSStandardSoundDef\". Bethesda uses a non-standard CRC.",
+     "type": "u32"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Conditions",
+     "note": "The conditions under which the sound plays.",
+     "type": "Condition"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Category",
+     "note": "The sound category (SNCT).",
+     "type": "formid"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Settings",
+     "note": "The sound's flags and rumble level.",
+     "type": "SNDR_LNAM"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Output Model",
+     "note": "The output model (SOPM).",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "Another SNDR to take the sound from.",
+     "type": "formid"
+    }
+   }
+  }
+ },
+ "types": {
+  "ARMO_BOD2": {
+   "struct": [
+    {
+     "name": "biped_object_flags",
+     "note": "The biped object flags.",
+     "type": "u32"
+    },
+    {
+     "name": "general_flags",
+     "note": "The general flags.",
+     "type": "u32"
+    },
+    {
+     "name": "armor_type",
+     "note": "The armor type. Clothing is the default when it is not given.",
+     "type": "u32"
+    }
+   ]
+  },
+  "CELL_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "The cell's flags. The field is sometimes only one byte long. The Can't Travel From Here flag is only valid for interior cells.",
+     "type": {
+      "bits": {
+       "0": "Interior",
+       "1": "Has Water",
+       "2": "Can't Travel From Here",
+       "3": "No LOD Water",
+       "5": "Public Area",
+       "6": "Hand Changed",
+       "7": "Show Sky",
+       "8": "Use Sky Lighting"
+      },
+      "flags": "u16"
+     }
+    }
+   ]
+  },
+  "CELL_MHDT": {
+   "struct": [
+    {
+     "name": "anchor",
+     "note": "The vertical reference, usually near the cell's terrain minimum.",
+     "type": "f32"
+    },
+    {
+     "name": "grid",
+     "note": "A 32 by 32 grid of per-quad height ceilings, column-major. The byte at index col * 32 + row covers the 128 by 128 game unit quad at (col, row), with col 0 the west edge and row 0 the south edge. Each byte is the maximum height for that quad above the anchor, and vanilla cells use roughly 110 game units per step. The terrain rendering does not use this; LAND's VHGT gives the ground geometry separately.",
+     "type": {
+      "array": "i8",
+      "count": 1024
+     }
+    }
+   ]
+  },
+  "CELL_XCLC": {
+   "struct": [
+    {
+     "name": "x",
+     "note": "The cell's x coordinate in the grid.",
+     "type": "i32"
+    },
+    {
+     "name": "y",
+     "note": "The cell's y coordinate in the grid.",
+     "type": "i32"
+    },
+    {
+     "name": "flags",
+     "note": "The high bits look random.",
+     "type": {
+      "bits": {
+       "0": "Force Hide Land Quad 1",
+       "1": "Force Hide Land Quad 2",
+       "2": "Force Hide Land Quad 3",
+       "3": "Force Hide Land Quad 4"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
+  "REFR_XAPR": {
+   "struct": [
+    {
+     "name": "reference",
+     "note": "A REFR, usually to a STAT.",
+     "type": "formid"
+    },
+    {
+     "name": "delay",
+     "note": "The delay.",
+     "type": "f32"
+    }
+   ]
+  },
+  "REFR_XLIG": {
+   "struct": [
+    {
+     "name": "fov_offset",
+     "note": "The field of view offset from the base object, in degrees.",
+     "type": "f32"
+    },
+    {
+     "name": "fade_offset",
+     "note": "The fade offset from the base object.",
+     "type": "f32"
+    },
+    {
+     "name": "end_distance_cap",
+     "note": "The end distance cap.",
+     "type": "f32"
+    },
+    {
+     "name": "shadow_depth_bias",
+     "note": "The shadow depth bias.",
+     "type": "f32"
+    },
+    {
+     "name": "unknown",
+     "note": "Four bytes that are not a float. Seen in Dawnguard and Hearthfire.",
+     "type": "u32"
+    }
+   ]
+  },
+  "REFR_XLKR": {
+   "struct": [
+    {
+     "name": "keyword",
+     "note": "Zero, or a KYWD \u2014 usually LinkCarryStart or LinkCarryEnd.",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "A REFR, usually to a STAT. FURN also appears here.",
+     "type": "formid"
+    }
+   ]
+  },
+  "REFR_XLOC": {
+   "struct": [
+    {
+     "name": "level",
+     "note": "The lock's level: -1 requires a key, 0 is Novice, 25 is Apprentice, 50 is Adept, 75 is Expert and 100 is Master.",
+     "type": "i8"
+    },
+    {
+     "name": "flags1",
+     "note": "Flags, whose meaning is not known.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "key",
+     "note": "The KEYM record.",
+     "type": "formid"
+    },
+    {
+     "name": "flags2",
+     "note": "Flags, whose meaning is mostly not known.",
+     "type": {
+      "bits": {
+       "2": "Leveled"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "flags3",
+     "note": "Flags, whose meaning is not known.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "unused",
+     "note": "Zero.",
+     "type": {
+      "array": "u8",
+      "count": 8
+     }
+    }
+   ]
+  },
+  "REFR_XLRT": {
+   "struct": [
+    {
+     "name": "location_ref_type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    }
+   ]
+  },
+  "SNDR_BNAM": {
+   "struct": [
+    {
+     "name": "frequency_shift",
+     "note": "The percentage frequency shift.",
+     "type": "i8"
+    },
+    {
+     "name": "frequency_variance",
+     "note": "The percentage frequency variance.",
+     "type": "u8"
+    },
+    {
+     "name": "priority",
+     "note": "The priority. The default is 128.",
+     "type": "u8"
+    },
+    {
+     "name": "db_variance",
+     "note": "The decibel variance.",
+     "type": "u8"
+    },
+    {
+     "name": "static_attenuation",
+     "note": "The static attenuation in decibels. The stored value is a hundred times the actual value.",
+     "type": "u16"
+    }
+   ]
+  },
+  "SNDR_LNAM": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "At most one of the looping flags can be set.",
+     "type": {
+      "bits": {
+       "1": "Unknown 1",
+       "11": "Looping: Loop",
+       "12": "Looping: Envelope Fast",
+       "13": "Looping: Envelope Slow",
+       "2": "Unknown 2"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "unused",
+     "note": "Unused.",
+     "type": "u8"
+    },
+    {
+     "name": "rumble_send",
+     "note": "The rumble's send level. The small value is seven times the lower four bits and the big value seven times the upper four bits.",
+     "type": "u8"
+    }
+   ]
+  },
+  "WRLD_RNAM": {
+   "struct": [
+    {
+     "name": "unknown",
+     "note": "The world data's contents, whose layout is not documented.",
+     "type": "bytes"
+    }
+   ]
+  }
+ }
+}
