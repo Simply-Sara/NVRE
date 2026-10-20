@@ -24,11 +24,6 @@ pub struct Game(pub &'static crate::game::GameProfile);
 
 /// The game's Data folder, as a resource.
 ///
-/// The launcher's file dialog starts here, so picking a plugin does not mean
-/// navigating to the Steam folder every time.
-#[derive(Resource)]
-pub struct DataDir(pub std::path::PathBuf);
-
 /// Raised by the launcher's Open button: open the chosen file.
 ///
 /// A message rather than a call, because the launcher draws the UI and opening a

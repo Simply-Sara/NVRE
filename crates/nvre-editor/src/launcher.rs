@@ -42,12 +42,12 @@ impl Launcher {
     /// partial install gives only the masters it holds, and a mod master the
     /// user has installed comes along. `for_game` is called once at startup,
     /// which is when the game is known.
-    pub fn for_game(game: &crate::game::GameProfile, data_dir: &std::path::Path) -> Launcher {
+    pub fn for_game(game: &crate::game::GameProfile) -> Launcher {
         Launcher {
             tab: LauncherTab::OpenExisting,
             active: None,
             required: Vec::new(),
-            masters: game.masters_in(data_dir),
+            masters: game.masters_in(&game.data_dir().unwrap_or_default()),
             new_name: "NewPlugin.esp".to_string(),
             new_is_master: false,
             adding: String::new(),
@@ -60,9 +60,7 @@ impl Launcher {
 
 impl Default for Launcher {
     fn default() -> Self {
-        let game = &crate::game::FNV;
-        let dir = game.data_dir().unwrap_or_default();
-        Launcher::for_game(game, &dir)
+        Launcher::for_game(&crate::game::FNV)
     }
 }
 
@@ -119,11 +117,19 @@ impl GameChoice {
     /// A game with no install found starts with no path: the launcher shows the
     /// field empty for the user to fill, which is the honest state rather than a
     /// guess.
+    ///
+    /// The pick is remembered, so the next run starts on the same game without
+    /// being told which one to use.
     pub fn new(game: &'static crate::game::GameProfile) -> GameChoice {
+        let data_dir = game.data_dir();
+        let folder_edit = data_dir
+            .clone()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
         GameChoice {
             game,
-            data_dir: game.data_dir(),
-            folder_edit: String::new(),
+            data_dir,
+            folder_edit,
         }
     }
 
@@ -139,12 +145,11 @@ impl GameChoice {
             .unwrap_or_default();
     }
 
-    /// The Data folder in use, falling back to the one the editor was started
-    /// with when the pick has no install of its own.
-    pub fn active_dir(&self, fallback: &std::path::Path) -> std::path::PathBuf {
-        self.data_dir
-            .clone()
-            .unwrap_or_else(|| fallback.to_path_buf())
+    /// The Data folder in use: the game's own install, or the folder the user
+    /// typed into the field. A game with no install and no typed path has no
+    /// folder, which the caller reports rather than guessing at.
+    pub fn active_dir(&self) -> Option<std::path::PathBuf> {
+        self.data_dir.clone()
     }
 
     /// Commit the field's text as the Data folder, and remember it.
@@ -175,7 +180,6 @@ impl Default for GameChoice {
 pub fn ui(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<bevy_egui::PrimaryEguiContext>>,
     mut launcher: ResMut<Launcher>,
-    data: Res<crate::DataDir>,
     mut choice: ResMut<GameChoice>,
     mut open: MessageWriter<crate::OpenRequested>,
     failed: Option<Res<crate::OpenFailed>>,
@@ -186,13 +190,16 @@ pub fn ui(
     // every frame and a probe is a directory stat per library.
     let mut installed: std::collections::HashMap<&str, bool> = std::collections::HashMap::new();
 
-    // The plugins in the Data folder, listed by name. The folder is the picker's:
-    // the game's Steam install when it has one, otherwise the folder the editor
-    // was started with until the user names their own.
-    let active_dir = choice.active_dir(&data.0);
-    if launcher.listing_dir.as_deref() != Some(active_dir.as_path()) {
-        launcher.listing_dir = Some(active_dir.clone());
-        launcher.listing = list_plugins(&active_dir);
+    // The plugins in the Data folder, listed by name. The folder is the
+    // picker's: the game's own install, or the one typed into the field. A game
+    // with no folder yet lists nothing until one is named.
+    let active_dir = choice.active_dir();
+    if launcher.listing_dir.as_deref() != active_dir.as_deref() {
+        launcher.listing_dir = active_dir.clone();
+        launcher.listing = match &active_dir {
+            Some(d) => list_plugins(d),
+            None => Vec::new(),
+        };
     }
 
     let listing = launcher.listing.clone();
@@ -294,7 +301,8 @@ pub fn ui(
                                     // The plugin list and masters are re-read
                                     // from the new game's own folder: a partial
                                     // install gives only the masters it holds.
-                                    let dir = choice.active_dir(&data.0);
+                                    let dir =
+                                        choice.active_dir().unwrap_or_default();
                                     launcher.masters = choice.game.masters_in(&dir);
                                     launcher.listing_dir = None;
                                     launcher.listing.clear();
@@ -331,12 +339,23 @@ pub fn ui(
                 if let Some(dir) = &choice.data_dir {
                     ui.label(format!("{}", dir.display()));
                 }
-                let active_dir = choice.active_dir(&data.0);
-                if !active_dir.join(choice.game.master).exists() {
-                    ui.colored_label(
-                        egui::Color32::RED,
-                        format!("no {} in {}", choice.game.master, active_dir.display()),
-                    );
+                // A game with no Data folder yet says so, rather than
+                // opening a session that reads nothing.
+                match choice.active_dir() {
+                    Some(dir) => {
+                        if !dir.join(choice.game.master).exists() {
+                            ui.colored_label(
+                                egui::Color32::RED,
+                                format!("no {} in {}", choice.game.master, dir.display()),
+                            );
+                        }
+                    }
+                    None => {
+                        ui.colored_label(
+                            egui::Color32::RED,
+                            format!("no Data folder for {}: type one above", choice.game.name),
+                        );
+                    }
                 }
                 // What the picked game cannot do yet, said plainly here rather
                 // than shown as an empty viewport that looks like a bug.

@@ -205,9 +205,17 @@ impl GameProfile {
 
     /// Which game `data_dir` holds, or [`FNV`] when it holds none of them.
     ///
-    /// Detection is by the master the game ships, not by an executable name
-    /// where the data alone says it: Skyrim LE and SE both ship `Skyrim.esm`,
-    /// and only the SE launcher tells them apart, so that pair is checked first.
+    /// Detection is by what the folder ships, not by an executable name that
+    /// lives outside it. Skyrim LE and SE both ship `Skyrim.esm`, so the pair is
+    /// told apart by the archives: SE splits its large ones into numbered
+    /// files (`Skyrim - Meshes0.bsa`, `Meshes1.bsa`, …) where LE ships one
+    /// (`Skyrim - Meshes.bsa`). That is a difference in what the game ships
+    /// rather than in what a modder added, so it holds however the folder was
+    /// put together.
+    ///
+    /// A `.esl` plugin also marks SE — LE has no such format — but a mod may
+    /// bring one, so it is not used to decide. The executable check is kept for
+    /// a folder that has one, but a Data folder normally does not.
     pub fn detect(data_dir: &Path) -> &'static GameProfile {
         let has = |name: &str| data_dir.join(name).exists();
         if has("FalloutNV.esm") {
@@ -223,6 +231,10 @@ impl GameProfile {
             return &SKYRIM_SE;
         }
         if has("Skyrim.esm") {
+            // SE numbers its split archives; LE does not.
+            if has("Skyrim - Meshes0.bsa") || has("Skyrim - Textures0.bsa") {
+                return &SKYRIM_SE;
+            }
             return &SKYRIM;
         }
         &FNV

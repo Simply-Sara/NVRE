@@ -23,14 +23,6 @@ use std::path::PathBuf;
 #[derive(Parser, Clone, Resource)]
 #[command(name = "nvre-editor", version)]
 struct Args {
-    /// Which game's Data folder this is. Detected from the folder's masters
-    /// when not given (`game.rs`), so the default is right for an install that
-    /// holds one game and only needs naming when it holds several.
-    #[arg(long)]
-    game: Option<String>,
-    /// The game's Data folder (read-only). Defaults to $NVRE_DATA.
-    #[arg(long, env = "NVRE_DATA")]
-    data: PathBuf,
     /// Record schema directory. NVRE's own: upstream's layouts plus the records
     /// and subrecords they do not define (`schemas/README.md`). Defaults to the
     /// detected game's own `schemas/<game>`.
@@ -67,18 +59,55 @@ struct Args {
     radius: i32,
 }
 
-/// The game to edit: `--game` when named, otherwise detected from `--data`.
+/// The game the launcher's dropdown starts on.
 ///
-/// Detection is by the master the folder holds, so an install of one game needs
-/// no flag at all — which is the case for every existing invocation.
-fn resolve_game(args: &Args) -> Result<&'static game::GameProfile, String> {
-    match &args.game {
-        Some(id) => game::GameProfile::by_id(id).ok_or_else(|| {
-            let known: Vec<&str> = game::ALL.iter().map(|g| g.id).collect();
-            format!("unknown game {id:?} (known: {})", known.join(", "))
-        }),
-        None => Ok(game::GameProfile::detect(&args.data)),
+/// The editor opens to the launcher so the user can choose what to work on, so
+/// this is only where the dropdown starts pointing. It is the first game with
+/// an install, and it is not remembered between runs: the picker is the point
+/// of the window, so a run does not carry a prior choice into it.
+///
+/// A machine with no install at all still opens the launcher, with the field
+/// empty for the user to fill — the editor is a front door, and having nothing
+/// to open yet is not a reason to refuse to open.
+fn launcher_game() -> Result<&'static game::GameProfile, String> {
+    let found: Vec<&'static game::GameProfile> =
+        game::ALL.iter().filter(|g| g.data_dir().is_some()).collect();
+    match found.as_slice() {
+        [] => Ok(&game::FNV),
+        many => Ok(many[0]),
     }
+}
+
+/// The plugin `--check` opens, and the game it is.
+///
+/// A plugin is a path, and the game is detected from the folder it lives in —
+/// the same detection a session does for itself. So `--check` needs no game
+/// flag: point it at a plugin and the game follows.
+fn check_target(args: &Args) -> Result<(std::path::PathBuf, &'static game::GameProfile), String> {
+    let path = match &args.plugin {
+        Some(p) => std::path::PathBuf::from(p),
+        None => {
+            // No plugin named: use the master of whichever game has an
+            // install. A machine with several installed is ambiguous, and
+            // saying so is better than opening the wrong one.
+            let found: Vec<&'static game::GameProfile> =
+                game::ALL.iter().filter(|g| g.data_dir().is_some()).collect();
+            match found.as_slice() {
+                [one] => one.data_dir().unwrap_or_default().join(one.master),
+                [] => return Err("no game install found; name a plugin to check".to_string()),
+                many => {
+                    let names: Vec<&str> = many.iter().map(|g| g.id).collect();
+                    return Err(format!(
+                        "several games installed ({}); name a plugin to check",
+                        names.join(", ")
+                    ));
+                }
+            }
+        }
+    };
+    let dir = path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf();
+    let detected = game::GameProfile::detect(&dir);
+    Ok((path, detected))
 }
 
 /// The record schemas: `--esm-schema` when named, otherwise the game's own.
@@ -90,21 +119,32 @@ fn resolve_schema_dir(args: &Args, game: &game::GameProfile) -> PathBuf {
     })
 }
 
-/// The default plugin and masters for the game, overridden by flags.
+/// The masters the session will depend on, overridden by the flag.
 ///
-/// The masters are read from the game's Data folder, so a partial install
-/// yields only what it holds and a mod master the user installed is included.
-fn resolve_targets(args: &Args, game: &game::GameProfile) -> (String, Vec<String>) {
-    let plugin = args
-        .plugin
-        .clone()
-        .unwrap_or_else(|| game.master.to_string());
-    let masters = if args.masters.is_empty() {
-        game.masters_in(&args.data)
+/// The masters are read from the Data folder the plugin lives in, so a partial
+/// install yields only what it holds and a mod master the user installed is
+/// included.
+fn resolve_masters(
+    args: &Args,
+    game: &game::GameProfile,
+    data_dir: &std::path::Path,
+) -> Vec<String> {
+    if args.masters.is_empty() {
+        game.masters_in(data_dir)
     } else {
         args.masters.clone()
-    };
-    (plugin, masters)
+    }
+}
+
+/// Keep the `Game` resource in step with the launcher's pick.
+///
+/// The launcher is the only thing that chooses a game, and it can change its
+/// mind, so the resource the panels read is updated from it rather than
+/// frozen at startup.
+fn sync_game_resource(choice: Res<launcher::GameChoice>, mut game: ResMut<nvre_editor::Game>) {
+    if game.0 != choice.game {
+        game.0 = choice.game;
+    }
 }
 
 /// Report what the session loaded, without opening a window.
@@ -145,28 +185,26 @@ fn check(game: &game::GameProfile, mut session: session::Session) {
 fn main() {
     let args = Args::parse();
 
-    let profile = match resolve_game(&args) {
-        Ok(g) => g,
-        Err(e) => {
-            eprintln!("error: {e}");
-            std::process::exit(1);
-        }
-    };
-    let schema_dir = resolve_schema_dir(&args, profile);
-    let (plugin_name, masters) = resolve_targets(&args, profile);
-
     // The launcher runs first: nothing is loaded until a file is chosen, the way
     // GECK asks what to work on before it opens anything. `--check` still loads
     // headlessly, which is how the data path is verified without a display.
     if args.check {
-        let mut session =
-            match session::Session::open(&args.data.join(&plugin_name), &schema_dir, masters) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("error: {e}");
-                    std::process::exit(1);
-                }
-            };
+        let (path, profile) = match check_target(&args) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        };
+        let schema_dir = resolve_schema_dir(&args, profile);
+        let masters = resolve_masters(&args, profile, path.parent().unwrap_or(std::path::Path::new(".")));
+        let mut session = match session::Session::open(&path, &schema_dir, masters) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        };
         if let Some(cell) = &args.cell {
             let fid = u32::from_str_radix(cell.trim_start_matches("0x"), 16)
                 .ok()
@@ -186,6 +224,17 @@ fn main() {
         }
         return check(profile, session);
     }
+
+    // The launcher starts on a game. Which one is the first with an install,
+    // and the user picks another from the dropdown — the launcher does not
+    // remember a prior pick, because the picker is the point of the window.
+    let profile = match launcher_game() {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    };
 
     // The asset layer opens when a game is chosen, not before: the launcher is
     // the front door, and the game it picks decides which archives and which
@@ -222,10 +271,13 @@ fn main() {
         // the launcher has been through.
         .add_plugins(nvf_assets::nif_material::NifMaterialPlugin)
         .insert_resource(args.clone())
-        .insert_resource(nvre_editor::DataDir(args.data.clone()))
         .insert_resource(nvre_editor::Game(profile))
+        // The `Game` resource is refreshed from the launcher's pick whenever it
+        // changes, so every panel that names the game names the one being
+        // edited rather than the one present at startup.
+        .add_systems(Update, sync_game_resource.run_if(in_state(EditorState::Launching)))
         .insert_resource(launcher::GameChoice::new(profile))
-        .insert_resource(launcher::Launcher::for_game(profile, &args.data))
+        .insert_resource(launcher::Launcher::for_game(profile))
         .insert_resource(panels::Filters {
             exterior_radius: args.radius,
             ..default()
@@ -379,9 +431,16 @@ fn open_selected(
 ) {
     // The launcher's Open button raises this; the event carries what to open.
     let game = choice.game;
-    // The Data folder the picker names: the game's Steam install when it has
-    // one, otherwise the folder the editor was started with.
-    let data_dir = choice.active_dir(&args.data);
+    // The Data folder the picker names: the game's own install, or the one the
+    // user typed into the field. There is no command-line fallback any more, so
+    // a game with neither is reported rather than opened against nothing.
+    let Some(data_dir) = choice.active_dir() else {
+        commands.insert_resource(nvre_editor::OpenFailed(format!(
+            "{}: no Data folder; type one into the launcher's folder field",
+            game.name
+        )));
+        return;
+    };
     let schema_dir = resolve_schema_dir(&args, game);
     for _ in events.read() {
         // The game's archives and NIF schema, opened once for the session.
