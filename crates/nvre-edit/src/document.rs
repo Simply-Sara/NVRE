@@ -504,7 +504,19 @@ fn apply_edits(r: &mut Record, edits: &[Edit]) {
                         _ => {}
                     }
                 }
-                r.raw = fnv_esm::raw::write_subrecords(&subs).into();
+                let payload = fnv_esm::raw::write_subrecords(&subs);
+                // A compressed record stores `u32 decompressed size` + a zlib
+                // stream. The subrecords were decoded from the decompressed
+                // form, so writing them back uncompressed would leave the
+                // COMPRESSED flag set on plain bytes and make the record
+                // unreadable. Recompress, and keep the stored size.
+                r.raw = if r.is_compressed() {
+                    let mut v = (payload.len() as u32).to_le_bytes().to_vec();
+                    v.extend_from_slice(&fnv_inflate::zlib_store(&payload));
+                    v.into()
+                } else {
+                    payload.into()
+                };
             }
             Err(e) => {
                 // A payload that cannot be split into subrecords is left exactly as
