@@ -49,6 +49,39 @@ pub struct Filters {
     pub exterior_radius: i32,
     /// When true, renders the full worldspace terrain horizon across all surrounding cells.
     pub full_terrain: bool,
+    /// The "new cell" form's fields.
+    ///
+    /// The form's state has to live somewhere that survives the frame: an
+    /// egui text field built from a local string is discarded unread, so
+    /// whatever the user types would vanish as soon as they clicked elsewhere.
+    pub new_cell: NewCellForm,
+    pub new_cell_full: String,
+    /// The worldspace the new cell goes in. `None` makes it an interior cell.
+    pub new_cell_world: Option<u32>,
+    pub new_cell_grid_x: i32,
+    pub new_cell_grid_y: i32,
+    pub new_cell_with_land: bool,
+    /// Whether the "new cell" form is showing.
+    pub new_cell_open: bool,
+    /// The "new worldspace" form's fields.
+    pub new_world: NewWorldForm,
+    pub new_world_full: String,
+    pub new_world_land: f32,
+    pub new_world_water: f32,
+    /// Whether the "new worldspace" form is showing.
+    pub new_world_open: bool,
+}
+
+/// The Editor ID of a cell the user is creating.
+#[derive(Debug, Clone, Default)]
+pub struct NewCellForm {
+    pub edid: String,
+}
+
+/// The Editor ID of a worldspace the user is creating.
+#[derive(Debug, Clone, Default)]
+pub struct NewWorldForm {
+    pub edid: String,
 }
 
 impl Default for Filters {
@@ -61,6 +94,18 @@ impl Default for Filters {
             cell_scope: CellScope::default(),
             exterior_radius: 2,
             full_terrain: true,
+            new_cell: NewCellForm::default(),
+            new_cell_full: String::new(),
+            new_cell_world: None,
+            new_cell_grid_x: 0,
+            new_cell_grid_y: 0,
+            new_cell_with_land: true,
+            new_cell_open: false,
+            new_world: NewWorldForm::default(),
+            new_world_full: String::new(),
+            new_world_land: -2500.0,
+            new_world_water: -2300.0,
+            new_world_open: false,
         }
     }
 }
@@ -138,6 +183,11 @@ pub fn cells(
         ui.heading("Cells");
         let worlds = session.worldspaces();
         let scope = filters.cell_scope;
+        // The create buttons go first, above the cell list: the list is a
+        // scroll area that fills the window, so anything after it is out of
+        // sight.
+        new_cell_ui(ui, &mut session, &mut filters, &worlds);
+        ui.separator();
         egui::ComboBox::from_id_salt("cell_scope")
             .selected_text(scope.label(&worlds))
             .width(ui.available_width())
@@ -242,7 +292,203 @@ pub fn cells(
         ));
         ui.label("filter");
         ui.text_edit_singleline(&mut filters.cell);
+        ui.separator();
+        // What the session has staged, so the user can see what a save will
+        // write. A staged cell is not in the cell list yet — the list reads
+        // the load order, and the cell only exists in the file once it is
+        // saved — so it is listed here instead.
+        let staged_cells: Vec<(String, String)> = session
+            .staged_cells()
+            .iter()
+            .map(|c| {
+                let where_ = match (c.spec.world, c.spec.grid) {
+                    (Some(_), Some((x, y))) => format!("grid {x}, {y}"),
+                    (Some(_), None) => "exterior".to_string(),
+                    _ => "interior".to_string(),
+                };
+                (c.spec.edid.clone(), where_)
+            })
+            .collect();
+        let staged_worlds: Vec<String> = session
+            .staged_worldspaces()
+            .iter()
+            .map(|w| w.spec.edid.clone())
+            .collect();
+        if !staged_worlds.is_empty() {
+            ui.label(egui::RichText::new("New worldspaces (not yet saved)").strong());
+            for w in &staged_worlds {
+                ui.label(format!("  {w}"));
+            }
+        }
+        if !staged_cells.is_empty() {
+            ui.label(egui::RichText::new("New cells (not yet saved)").strong());
+            for (edid, where_) in &staged_cells {
+                ui.label(format!("  {edid}  ({where_})"));
+            }
+        }
     });
+}
+
+/// The "new cell" and "new worldspace" controls.
+///
+/// GECK's Cell View has a "Create" button that makes a new cell in the
+/// current worldspace. This is the same: two buttons that open a form, and
+/// the form that stages the cell or worldspace for the next save.
+///
+/// The buttons sit at the **top** of the Cells window, next to the scope
+/// dropdown, because the cell list below is a scroll area that fills the
+/// window — anything after it is pushed out of sight.
+fn new_cell_ui(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    filters: &mut Filters,
+    worlds: &[crate::session::WorldspaceRow],
+) {
+    let mut new = filters.new_cell.clone();
+    let mut world = filters.new_cell_world;
+    let mut grid_x = filters.new_cell_grid_x;
+    let mut grid_y = filters.new_cell_grid_y;
+    let mut with_land = filters.new_cell_with_land;
+    let mut full = filters.new_cell_full.clone();
+    let mut cell_open = filters.new_cell_open;
+    let mut world_open = filters.new_world_open;
+
+    // The two buttons, in a row.
+    ui.horizontal(|ui| {
+        if ui
+            .selectable_label(cell_open, egui::RichText::new("+ New cell").strong())
+            .clicked()
+        {
+            cell_open = !cell_open;
+            if cell_open {
+                world_open = false;
+            }
+        }
+        if ui
+            .selectable_label(world_open, egui::RichText::new("+ New worldspace").strong())
+            .clicked()
+        {
+            world_open = !world_open;
+            if world_open {
+                cell_open = false;
+            }
+        }
+    });
+
+    if cell_open {
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Editor ID");
+            ui.text_edit_singleline(&mut new.edid);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Name");
+            ui.text_edit_singleline(&mut full);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Worldspace");
+            // The dropdown offers the interiors and every worldspace, and the
+            // scope the cell browser is showing is the natural default.
+            egui::ComboBox::from_id_salt("new_cell_world")
+                .selected_text(match world {
+                    None => "Interior".to_string(),
+                    Some(w) => worlds
+                        .iter()
+                        .find(|x| x.form_id == w)
+                        .map(|x| x.label.clone())
+                        .unwrap_or_else(|| format!("{w:08X}")),
+                })
+                .width(ui.available_width())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut world, None, "Interior");
+                    for w in worlds {
+                        ui.selectable_value(&mut world, Some(w.form_id), &w.label);
+                    }
+                });
+        });
+        // The grid is only meaningful for an exterior cell: the game reads a
+        // cell's grid to place it, and an interior cell has none.
+        if world.is_some() {
+            ui.horizontal(|ui| {
+                ui.label("Grid");
+                ui.add(egui::DragValue::new(&mut grid_x).range(-1000..=1000));
+                ui.label(",");
+                ui.add(egui::DragValue::new(&mut grid_y).range(-1000..=1000));
+            });
+            ui.checkbox(&mut with_land, "Give it terrain (LAND)");
+        }
+        let exterior = world.is_some();
+        if ui.button("Create cell").clicked() {
+            let name = if full.trim().is_empty() {
+                None
+            } else {
+                Some(full.clone())
+            };
+            let grid = world.map(|_| (grid_x, grid_y));
+            match session.create_cell(&new.edid, name, world, grid, with_land && exterior) {
+                Ok(fid) => {
+                    new.edid.clear();
+                    full.clear();
+                    cell_open = false;
+                    session.status = format!("created cell {:08X}; save to write it", fid);
+                }
+                Err(e) => session.status = format!("could not create the cell: {e}"),
+            }
+        }
+    }
+
+    if world_open {
+        ui.separator();
+        let mut new_world = filters.new_world.clone();
+        let mut world_full = filters.new_world_full.clone();
+        let mut land = filters.new_world_land;
+        let mut water = filters.new_world_water;
+        ui.horizontal(|ui| {
+            ui.label("Editor ID");
+            ui.text_edit_singleline(&mut new_world.edid);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Name");
+            ui.text_edit_singleline(&mut world_full);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Land height");
+            ui.add(egui::DragValue::new(&mut land).speed(10.0));
+            ui.label("Water height");
+            ui.add(egui::DragValue::new(&mut water).speed(10.0));
+        });
+        if ui.button("Create worldspace").clicked() {
+            let name = if world_full.trim().is_empty() {
+                None
+            } else {
+                Some(world_full.clone())
+            };
+            match session.create_worldspace(&new_world.edid, name, land, water) {
+                Ok(fid) => {
+                    new_world.edid.clear();
+                    world_full.clear();
+                    world_open = false;
+                    session.status = format!("created worldspace {:08X}; save to write it", fid);
+                }
+                Err(e) => session.status = format!("could not create the worldspace: {e}"),
+            }
+        }
+        // Keep what the user typed: the form's fields are state, not local
+        // variables that vanish when the frame ends.
+        filters.new_world = new_world;
+        filters.new_world_full = world_full;
+        filters.new_world_land = land;
+        filters.new_world_water = water;
+    }
+
+    filters.new_cell = new;
+    filters.new_cell_full = full;
+    filters.new_cell_world = world;
+    filters.new_cell_grid_x = grid_x;
+    filters.new_cell_grid_y = grid_y;
+    filters.new_cell_with_land = with_land;
+    filters.new_cell_open = cell_open;
+    filters.new_world_open = world_open;
 }
 
 /// The references in the open cell: a table, a search box and a type filter.

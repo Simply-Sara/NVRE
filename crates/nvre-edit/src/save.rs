@@ -34,6 +34,10 @@ pub struct SaveReport {
     pub inserted: usize,
     /// Records marked deleted by this session.
     pub deleted: usize,
+    /// Cells created by this session.
+    pub added_cells: usize,
+    /// Worldspaces created by this session.
+    pub added_worldspaces: usize,
     /// Subrecords whose FormIDs were rewritten.
     pub remapped_subs: usize,
     /// FormIDs rewritten inside those subrecords.
@@ -334,6 +338,13 @@ pub fn write_plugin_with_load_order(
     report.inserted = doc.inserted().len();
     report.deleted = doc.deleted().len();
 
+    // The session's new cells and worldspaces. Each needs the group tree the
+    // engine walks to find it, so they are written as whole trees rather than
+    // as loose records.
+    report.added_cells = doc.added_cells().len();
+    report.added_worldspaces = doc.added_worldspaces().len();
+    write_new_worlds_and_cells(&mut nodes, doc, schema, &map, &mut report, &mut problems);
+
     // Allocate FormIDs for the session's inserts and append them.
     //
     // A staged record carries FormID 0, and the session's edits on it are keyed
@@ -361,6 +372,224 @@ pub fn write_plugin_with_load_order(
     report.bytes = bytes.len();
     std::fs::write(out_path, &bytes).map_err(|e| e.to_string())?;
     Ok(report)
+}
+
+/// Write the session's new worldspaces and cells into the node tree.
+///
+/// A new cell is not a loose record: the engine finds it by walking the group
+/// tree, so the cell and its worldspace are written as whole trees. The
+/// trees are built from the cell's own FormID and grid, so the block and
+/// sub-block labels come out where the engine expects them.
+///
+/// The FormIDs the records carry are remapped into the new plugin's numbering
+/// first, and the *group labels* are remapped with them: a label is a
+/// FormID, and a label left in the old numbering names a cell the engine
+/// cannot find.
+fn write_new_worlds_and_cells(
+    nodes: &mut Vec<Node>,
+    doc: &crate::Document,
+    schema: &Schema,
+    map: &HashMap<u32, u32>,
+    report: &mut SaveReport,
+    problems: &mut Vec<String>,
+) {
+    use crate::cell;
+
+    // A new record's FormID is *plugin-local*: its top byte is the plugin's
+    // own index in its own master list. The save moves it into the new
+    // plugin's numbering, and the group labels move with it — a label is a
+    // FormID, and a label left in the old numbering names a cell the engine
+    // cannot find.
+    let to_new = |local: u32| -> u32 { remap_form_id(local, map) };
+
+    // The new worldspaces first: an exterior cell hangs off one of them.
+    for w in doc.added_worldspaces() {
+        let mut rec = cell::make_worldspace(&w.spec);
+        // The record's own FormID in the new numbering, which is what the
+        // world-children group has to be labelled with.
+        let new_fid = to_new(w.form_id);
+        rec.header.form_id = new_fid;
+        remap_record(&mut rec, schema, map, report, problems);
+        // A plugin has one `TOP: WRLD` group holding every worldspace, and a
+        // worldspace's record is followed by its own world-children group.
+        let children = cell::worldspace_children(new_fid, rec);
+        append_to_top_group(nodes, children, *b"WRLD");
+        report.records += 1;
+    }
+    for c in doc.added_cells() {
+        let mut rec = cell::make_cell(&c.spec);
+        let new_fid = to_new(c.form_id);
+        rec.header.form_id = new_fid;
+        remap_record(&mut rec, schema, map, report, problems);
+
+        // The terrain, when the cell has any.
+        let mut land = None;
+        if let Some(land_fid) = c.land_form_id {
+            let mut l = cell::make_land(0.0);
+            l.header.form_id = to_new(land_fid);
+            remap_record(&mut l, schema, map, report, problems);
+            land = Some(l);
+        }
+
+        match (c.spec.world, c.spec.grid) {
+            (Some(world), Some(grid)) => {
+                // The worldspace's own numbering, so the world-children group
+                // is found. The reference is plugin-local — the numbering of
+                // the plugin that defines the worldspace — and the save
+                // remaps it into the new plugin's numbering.
+                let new_world = to_new(world);
+                let block = cell::exterior_block_group(grid, new_fid, rec);
+                // Put the block group into the worldspace's world-children
+                // group. The group may not be there yet: a mod that adds a
+                // cell to a worldspace its master defines has to create the
+                // group itself, labelled with the worldspace's FormID, and
+                // the worldspace's own record is *not* repeated — the master
+                // already defines it.
+                if !has_world_children(nodes, new_world) {
+                    // No group yet: create one under the top-level WRLD group.
+                    let mut wc = fnv_esm::raw::Group {
+                        header: fnv_esm::raw::GroupHeader {
+                            size: 0,
+                            label: new_world.to_le_bytes(),
+                            group_type: fnv_esm::raw::group_type::WORLD_CHILDREN,
+                            stamp: 0,
+                            unknown1: 0,
+                            version: 0,
+                            unknown2: 0,
+                        },
+                        children: Vec::new(),
+                        offset: 0,
+                    };
+                    wc.children.push(Node::Group(block));
+                    append_to_top_group(nodes, vec![Node::Group(wc)], *b"WRLD");
+                } else {
+                    put_in_world_children(nodes, new_world, block);
+                }
+            }
+            _ => {
+                let block = cell::interior_block_group(new_fid, rec);
+                // The interior cell's block group goes into the plugin's one
+                // `TOP: CELL` group, which holds every interior cell.
+                append_to_top_group(nodes, vec![Node::Group(block)], *b"CELL");
+            }
+        }
+
+        // The terrain goes into the cell's temporary-children group, which the
+        // block group already holds.
+        if let Some(land) = land {
+            if let Some(leaf) = find_temporary_children_mut(nodes, new_fid) {
+                leaf.push(Node::Record(land));
+                report.records += 1;
+            }
+        }
+        report.records += 1;
+    }
+}
+
+/// A FormID moved into the new plugin's numbering, or unchanged when it is
+/// already there.
+fn remap_form_id(form_id: u32, map: &HashMap<u32, u32>) -> u32 {
+    let idx = form_id >> 24;
+    let low = form_id & 0x00FF_FFFF;
+    match map.get(&idx) {
+        Some(new_idx) => (new_idx << 24) | low,
+        None => form_id,
+    }
+}
+
+/// Put nodes under the top-level group with the given label, creating that
+/// top-level group when the plugin has none.
+///
+/// The top-level groups of a Bethesda plugin are one per record type, and a
+/// plugin carries at most one of each, so an existing group is reused.
+fn append_to_top_group(nodes: &mut Vec<Node>, children: Vec<Node>, label: [u8; 4]) {
+    if let Some(Node::Group(top)) = nodes.iter_mut().find(|n| match n {
+        Node::Group(g) => {
+            g.header.group_type == fnv_esm::raw::group_type::TOP && g.header.label == label
+        }
+        _ => false,
+    }) {
+        top.children.extend(children);
+        return;
+    }
+    nodes.push(Node::Group(fnv_esm::raw::Group {
+        header: fnv_esm::raw::GroupHeader {
+            size: 0,
+            label,
+            group_type: fnv_esm::raw::group_type::TOP,
+            stamp: 0,
+            unknown1: 0,
+            version: 0,
+            unknown2: 0,
+        },
+        children,
+        offset: 0,
+    }));
+}
+
+/// Whether a world-children group for this worldspace exists already.
+fn has_world_children(nodes: &[Node], world_form_id: u32) -> bool {
+    nodes.iter().any(|n| match n {
+        Node::Group(top) => {
+            top.header.group_type == fnv_esm::raw::group_type::TOP
+                && &top.header.label == b"WRLD"
+                && top.children.iter().any(|c| match c {
+                    Node::Group(wc) => {
+                        wc.header.group_type == fnv_esm::raw::group_type::WORLD_CHILDREN
+                            && wc.header.label_u32() == world_form_id
+                    }
+                    _ => false,
+                })
+        }
+        _ => false,
+    })
+}
+
+/// Put an exterior cell's block group into its worldspace's world-children
+/// group.
+///
+/// The world-children group is labelled with the worldspace's FormID, so it
+/// is found by that label and not by its position.
+fn put_in_world_children(
+    nodes: &mut [Node],
+    world_form_id: u32,
+    block: fnv_esm::raw::Group,
+) -> bool {
+    for n in nodes.iter_mut() {
+        let Node::Group(top) = n else { continue };
+        if top.header.group_type != fnv_esm::raw::group_type::TOP || &top.header.label != b"WRLD" {
+            continue;
+        }
+        for c in &mut top.children {
+            let Node::Group(wc) = c else { continue };
+            if wc.header.group_type == fnv_esm::raw::group_type::WORLD_CHILDREN
+                && wc.header.label_u32() == world_form_id
+            {
+                wc.children.push(Node::Group(block));
+                return true;
+            }
+        }
+    }
+    false
+}
+/// The cell's temporary-children group, where its terrain and its placed
+/// references live.
+fn find_temporary_children_mut(nodes: &mut [Node], cell_form_id: u32) -> Option<&mut Vec<Node>> {
+    fn go(nodes: &mut [Node], cell_form_id: u32) -> Option<&mut Vec<Node>> {
+        for n in nodes.iter_mut() {
+            let Node::Group(g) = n else { continue };
+            if g.header.group_type == fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
+                && g.header.label_u32() == cell_form_id
+            {
+                return Some(&mut g.children);
+            }
+            if let Some(found) = go(&mut g.children, cell_form_id) {
+                return Some(found);
+            }
+        }
+        None
+    }
+    go(nodes, cell_form_id)
 }
 
 /// Replace the TES4 header record with one naming the new master list.
