@@ -353,16 +353,15 @@ impl GameProfile {
 
     /// Where this game's record schemas live, and what they overlay.
     ///
-    /// Most of a second game's layouts are the first game's: the container, the
-    /// group tree, the FormID model and most record types are shared, so a
-    /// game's directory holds only the records that differ and overlays them on
-    /// `schemas/fnv`. `fnv` is its own base and has no overlay.
+    /// The schema directories for this game: `schemas/base` and, unless this is
+    /// FNV itself, this game's own directory.
     ///
-    /// A missing overlay directory is reported by the loader rather than
-    /// guessed at, and `schemas/fo3` exists with its four records measured; the
-    /// others do not yet and fail with `no schema files in ...`.
+    /// A game with no directory of its own is not an error — it shares every
+    /// layout the base holds. `load_game` skips a directory that does not
+    /// exist, so a game whose schemas have not been written yet reads the base
+    /// alone and its coverage is whatever that gives.
     pub fn schema_dirs(&self) -> (PathBuf, Option<PathBuf>) {
-        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv");
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/base");
         if self.id == "fnv" {
             return (base, None);
         }
@@ -372,13 +371,32 @@ impl GameProfile {
         (base, Some(overlay))
     }
 
-    /// Load this game's record schema: its overlay over `schemas/fnv`.
+    /// Load this game's record schema: `schemas/base` plus this game's
+    /// directory over it.
+    ///
+    /// The chain is `base -> fnv -> <game>`: a game's own records may reference
+    /// a type another game's directory defines, so FNV's directory is in the
+    /// chain for every game rather than being the base itself. `load_game`
+    /// takes them in order and a later one wins.
+    ///
+    /// A game's directory carries a `base -> ../base` symlink, so it is also
+    /// readable on its own; `load_game` skips the files reached through that
+    /// symlink, which is what keeps the base from merging twice.
     pub fn load_schema(&self) -> Result<fnv_esm::Schema, String> {
         let (base, overlay) = self.schema_dirs();
         match overlay {
-            Some(ov) => fnv_esm::Schema::load_overlay(&base, &ov).map_err(|e| e.to_string()),
-            None => fnv_esm::Schema::load_dir(&base).map_err(|e| e.to_string()),
+            Some(ov) => fnv_esm::Schema::load_game(&base, [self.fnv_dir(), ov])
+                .map_err(|e| e.to_string()),
+            None => fnv_esm::Schema::load_game(&base, [self.fnv_dir()])
+                .map_err(|e| e.to_string()),
         }
+    }
+
+    /// `schemas/fnv`: the Fallout: New Vegas directory, which sits in the chain
+    /// for every game because a second game's records may reference a type it
+    /// defines.
+    fn fnv_dir(&self) -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv")
     }
 
     /// Open the game's assets: its archive set over `data_dir`, plus the NIF

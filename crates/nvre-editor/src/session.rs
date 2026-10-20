@@ -16,18 +16,20 @@ use std::sync::{Arc, RwLock};
 ///
 /// A session is opened with a directory, because that is what a caller passes
 /// on the command line or in a test, and with a game detected from the plugin's
-/// folder. The two together decide the schema: FNV reads its directory alone,
-/// and Fallout 3 reads its directory over FNV's. Reading FNV's directory alone
-/// for a Fallout 3 session would decode 3 subrecords as unknown and error on
-/// one more — the numbers that led to the overlay existing.
+/// folder. The two together decide the schema: every game reads
+/// `schemas/base` plus its own directory, and FNV additionally carries the
+/// Fallout directory because a second game's records may reference a type it
+/// defines.
+///
+/// The chain is built by [`crate::game::GameProfile::load_schema`], which owns
+/// the directory layout. Reading the base alone for a Fallout 3 session would
+/// decode 3 subrecords as unknown and error on one more — the numbers that led
+/// to the game directories existing.
 fn load_schema(
-    schema_dir: &std::path::Path,
+    _schema_dir: &std::path::Path,
     game: &crate::game::GameProfile,
 ) -> Result<Schema, String> {
-    match game.schema_dirs().1 {
-        Some(overlay) => Schema::load_overlay(schema_dir, &overlay).map_err(|e| e.to_string()),
-        None => Schema::load_dir(schema_dir).map_err(|e| e.to_string()),
-    }
+    game.load_schema()
 }
 
 type CachedRecordList = Arc<[(u32, String)]>;
