@@ -4242,7 +4242,11 @@ impl ObjectEditorState {
         match &sig {
             b"WEAP" => self.load_weap(),
             b"ARMO" => self.load_armo(),
-            b"NPC_" | b"CREA" => {
+            b"CREA" => {
+                self.load_actor();
+                self.load_actor_destruction(&raw_subs);
+            }
+            b"NPC_" => {
                 self.load_actor();
                 self.load_actor_destruction(&raw_subs);
             }
@@ -4262,7 +4266,9 @@ impl ObjectEditorState {
             b"PROJ" => self.load_proj(),
             b"SOUN" => self.load_soun(),
             b"NOTE" => self.load_note(),
-            b"LVLI" | b"LVLN" | b"LVLC" => self.load_lvl(),
+            b"LVLC" => self.load_lvl(),
+            b"LVLN" => self.load_lvl(),
+            b"LVLI" => self.load_lvl(),
             b"IMOD" => self.load_imod(),
             b"CLAS" => self.load_clas(),
             b"CSTY" => self.load_csty(),
@@ -8115,7 +8121,8 @@ impl ObjectEditorState {
         match &self.sig {
             b"WEAP" => self.save_weap(session),
             b"ARMO" => self.save_armo(session),
-            b"NPC_" | b"CREA" => self.save_actor(session),
+            b"CREA" => self.save_actor(session),
+            b"NPC_" => self.save_actor(session),
             b"ALCH" => self.save_alch(session),
             b"AMMO" => self.save_ammo(session),
             b"CONT" => self.save_cont(session),
@@ -8132,7 +8139,9 @@ impl ObjectEditorState {
             b"PROJ" => self.save_proj(session),
             b"SOUN" => self.save_soun(session),
             b"NOTE" => self.save_note(session),
-            b"LVLI" | b"LVLN" | b"LVLC" => self.save_lvl(session),
+            b"LVLC" => self.save_lvl(session),
+            b"LVLN" => self.save_lvl(session),
+            b"LVLI" => self.save_lvl(session),
             b"IMOD" => self.save_imod(session),
             b"CLAS" => self.save_clas(session),
             b"CSTY" => self.save_csty(session),
@@ -13621,7 +13630,8 @@ pub fn ui(
             .show(ui, |ui| match &state.sig {
                 b"WEAP" => draw_weap_ui(ui, &session, &mut state),
                 b"ARMO" => draw_armo_ui(ui, &session, &mut state),
-                b"NPC_" | b"CREA" => draw_actor_ui(ui, &session, &mut state),
+                b"CREA" => draw_crea_ui(ui, &session, &mut state),
+                b"NPC_" => draw_npc_ui(ui, &session, &mut state),
                 b"ALCH" => draw_alch_ui(ui, &mut state),
                 b"AMMO" => draw_ammo_ui(ui, &mut state),
                 b"CONT" => draw_cont_ui(ui, &mut state),
@@ -13638,7 +13648,9 @@ pub fn ui(
                 b"PROJ" => draw_proj_ui(ui, &mut state),
                 b"SOUN" => draw_soun_ui(ui, &mut state),
                 b"NOTE" => draw_note_ui(ui, &mut state),
-                b"LVLI" | b"LVLN" | b"LVLC" => draw_lvl_ui(ui, &session, &mut state),
+                b"LVLC" => draw_lvlc_ui(ui, &session, &mut state),
+                b"LVLN" => draw_lvln_ui(ui, &session, &mut state),
+                b"LVLI" => draw_lvli_ui(ui, &session, &mut state),
                 b"IMOD" => draw_imod_ui(ui, &mut state),
                 b"CLAS" => draw_clas_ui(ui, &mut state),
                 b"CSTY" => draw_csty_ui(ui, &mut state),
@@ -13691,14 +13703,14 @@ pub fn ui(
                 b"LSCT" => draw_lsct_ui(ui, &mut state),
                 b"MICN" => draw_micn_ui(ui, &mut state),
                 b"MUSC" => draw_musc_ui(ui, &mut state),
-                b"DEHY" => draw_need_ui(ui, &session, &mut state, "Dehydration"),
+                b"DEHY" => draw_dehy_ui(ui, &session, &mut state),
                 b"DOBJ" => draw_dobj_ui(ui, &mut state),
                 b"ECZN" => draw_ecnz_ui(ui, &session, &mut state),
                 b"FURN" => draw_furn_ui(ui, &mut state),
                 b"GRAS" => draw_gras_ui(ui, &mut state),
-                b"HUNG" => draw_need_ui(ui, &session, &mut state, "Hunger"),
-                b"RADS" => draw_need_ui(ui, &session, &mut state, "Radiation"),
-                b"SLPD" => draw_need_ui(ui, &session, &mut state, "Sleep Deprivation"),
+                b"HUNG" => draw_hung_ui(ui, &session, &mut state),
+                b"RADS" => draw_rads_ui(ui, &session, &mut state),
+                b"SLPD" => draw_slpd_ui(ui, &session, &mut state),
                 b"CPTH" => draw_cpth_ui(ui, &session, &mut state),
                 b"CSNO" => draw_csno_ui(ui, &session, &mut state),
                 b"DEBR" => draw_debr_ui(ui, &mut state),
@@ -14181,46 +14193,48 @@ const NPC_SKILL_NAMES: [&str; 14] = [
     "Unarmed",
 ];
 
-fn draw_actor_ui(
+/// Draw the creature classification and skills section.
+fn draw_actor_crea_class(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
     state: &mut ObjectEditorState,
 ) {
-    if state.sig == *b"CREA" {
-        ui.group(|ui| {
-            ui.strong("Creature Classification & Skills");
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Creature Type:");
-                let cur_type = (state.crea_type as usize).min(CREATURE_TYPES.len() - 1);
-                let cur_lbl = CREATURE_TYPES.get(cur_type).copied().unwrap_or("Unknown");
-                egui::ComboBox::from_id_salt("crea_type")
-                    .selected_text(cur_lbl)
-                    .show_ui(ui, |ui| {
-                        for (i, &name) in CREATURE_TYPES.iter().enumerate() {
-                            ui.selectable_value(&mut state.crea_type, i as u8, name);
-                        }
-                    });
-                ui.separator();
-                ui.label("Combat Skill:");
-                ui.add(egui::DragValue::new(&mut state.crea_combat_skill).range(0..=100));
-                ui.label("Magic Skill:");
-                ui.add(egui::DragValue::new(&mut state.crea_magic_skill).range(0..=100));
-                ui.label("Stealth Skill:");
-                ui.add(egui::DragValue::new(&mut state.crea_stealth_skill).range(0..=100));
-            });
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Weapon List (FormList):");
-                form_list_dropdown(ui, "crea_weap_list", session, &mut state.crea_weapon_list);
-                ui.separator();
-                ui.label("Inherits Sounds From (CSCR FormID):");
-                formid_field(ui, "crea_sound_inherit", &mut state.crea_sound_inherit);
-            });
+    ui.group(|ui| {
+        ui.strong("Creature Classification & Skills");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Creature Type:");
+            let cur_type = (state.crea_type as usize).min(CREATURE_TYPES.len() - 1);
+            let cur_lbl = CREATURE_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("crea_type")
+                .selected_text(cur_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in CREATURE_TYPES.iter().enumerate() {
+                        ui.selectable_value(&mut state.crea_type, i as u8, name);
+                    }
+                });
+            ui.separator();
+            ui.label("Combat Skill:");
+            ui.add(egui::DragValue::new(&mut state.crea_combat_skill).range(0..=100));
+            ui.label("Magic Skill:");
+            ui.add(egui::DragValue::new(&mut state.crea_magic_skill).range(0..=100));
+            ui.label("Stealth Skill:");
+            ui.add(egui::DragValue::new(&mut state.crea_stealth_skill).range(0..=100));
         });
-        ui.add_space(6.0);
-    }
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Weapon List (FormList):");
+            form_list_dropdown(ui, "crea_weap_list", session, &mut state.crea_weapon_list);
+            ui.separator();
+            ui.label("Inherits Sounds From (CSCR FormID):");
+            formid_field(ui, "crea_sound_inherit", &mut state.crea_sound_inherit);
+        });
+    });
+    ui.add_space(6.0);
+}
 
+/// Draw the leveling and vital statistics section.
+fn draw_actor_vitals(ui: &mut egui::Ui, state: &mut ObjectEditorState, is_creature: bool) {
     ui.group(|ui| {
         ui.strong("Leveling & Vital Stats");
         ui.add_space(4.0);
@@ -14243,7 +14257,7 @@ fn draw_actor_ui(
         ui.horizontal(|ui| {
             ui.label("Health (HP):");
             ui.add(egui::DragValue::new(&mut state.actor_health).range(1..=50000));
-            if state.sig == *b"CREA" {
+            if is_creature {
                 ui.label("Damage:");
                 ui.add(egui::DragValue::new(&mut state.actor_damage).range(0..=10000));
             }
@@ -14297,8 +14311,10 @@ fn draw_actor_ui(
             ui.add(egui::DragValue::new(&mut state.actor_disp_base).range(-100..=100));
         });
     });
+}
 
-    ui.add_space(6.0);
+/// Draw the S.P.E.C.I.A.L. attributes section.
+fn draw_actor_special(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.group(|ui| {
         ui.strong("S.P.E.C.I.A.L. Attributes");
         ui.add_space(4.0);
@@ -14319,260 +14335,394 @@ fn draw_actor_ui(
             ui.add(egui::DragValue::new(&mut state.actor_luck).range(1..=10));
         });
     });
+}
 
-    if state.sig == *b"NPC_" {
-        ui.add_space(6.0);
-        ui.group(|ui| {
-            ui.strong("NPC Skills & Offsets (DNAM)");
-            ui.add_space(4.0);
-            egui::Grid::new("npc_skills_grid")
-                .striped(true)
-                .min_col_width(80.0)
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new("Skill").strong());
-                    ui.label(egui::RichText::new("Base Value").strong());
-                    ui.label(egui::RichText::new("Offset").strong());
-                    ui.label(egui::RichText::new("Skill").strong());
-                    ui.label(egui::RichText::new("Base Value").strong());
-                    ui.label(egui::RichText::new("Offset").strong());
-                    ui.end_row();
-
-                    for row in 0..7 {
-                        // Left column
-                        let idx1 = row;
-                        ui.label(NPC_SKILL_NAMES[idx1]);
-                        ui.add(egui::DragValue::new(&mut state.npc_skills[idx1]).range(0..=100));
-                        ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx1]));
-
-                        // Right column
-                        let idx2 = row + 7;
-                        ui.label(NPC_SKILL_NAMES[idx2]);
-                        ui.add(egui::DragValue::new(&mut state.npc_skills[idx2]).range(0..=100));
-                        ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx2]));
-                        ui.end_row();
-                    }
-                });
-        });
-
-        ui.add_space(6.0);
-        ui.group(|ui| {
-            ui.strong("Appearance, Hair & Head Parts");
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Height (NAM6):");
-                ui.add(
-                    egui::DragValue::new(&mut state.npc_height)
-                        .speed(0.01)
-                        .range(0.1..=2.5),
-                );
-                ui.separator();
-                ui.label("Weight (NAM7):");
-                ui.add(
-                    egui::DragValue::new(&mut state.npc_weight)
-                        .speed(0.01)
-                        .range(0.1..=2.5),
-                );
-            });
-
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Hair (HNAM):");
-                let hairs = session.records_by_sig(*b"HAIR");
-                record_dropdown(ui, "npc_hair", &hairs, &mut state.npc_hair);
-                ui.separator();
-                ui.label("Hair Length (LNAM):");
-                ui.add(
-                    egui::DragValue::new(&mut state.npc_hair_length)
-                        .speed(0.01)
-                        .range(0.0..=1.0),
-                );
-            });
-
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Eyes (ENAM):");
-                let eyes = session.records_by_sig(*b"EYES");
-                record_dropdown(ui, "npc_eyes", &eyes, &mut state.npc_eyes);
-                ui.separator();
-                ui.label("Hair Color (RGBA):");
-                ui.color_edit_button_srgba_unmultiplied(&mut state.npc_hair_color);
-            });
-
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new("Head Parts (PNAM):").underline());
-            let hdpts_all = session.records_by_sig(*b"HDPT");
-            let mut remove_hp = None;
-            for (idx, &fid) in state.npc_head_parts.iter().enumerate() {
-                ui.horizontal(|ui| {
-                    if ui.button("✖").clicked() {
-                        remove_hp = Some(idx);
-                    }
-                    let name = hdpts_all
-                        .iter()
-                        .find(|(id, _)| *id == fid)
-                        .map(|(_, n)| n.as_str())
-                        .unwrap_or("Custom Head Part");
-                    ui.label(format!("• {name} ({fid:08X})"));
-                });
-            }
-            if let Some(idx) = remove_hp {
-                state.npc_head_parts.remove(idx);
-            }
-            ui.horizontal(|ui| {
-                record_dropdown(ui, "npc_add_hdpt", &hdpts_all, &mut state.head_part_to_add);
-                if ui.button("+ Add Head Part").clicked() {
-                    if let Some(fid) = state.head_part_to_add {
-                        if !state.npc_head_parts.contains(&fid) {
-                            state.npc_head_parts.push(fid);
-                        }
-                    }
-                }
-            });
-        });
-    }
-
+/// Draw the NPC skills and offsets section.
+fn draw_actor_npc_skills(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.add_space(6.0);
     ui.group(|ui| {
-        ui.strong(if state.sig == *b"CREA" {
-            "Creature Flags, Movement & Traits"
-        } else {
-            "Actor Flags & Traits"
-        });
+        ui.strong("NPC Skills & Offsets (DNAM)");
         ui.add_space(4.0);
+        egui::Grid::new("npc_skills_grid")
+            .striped(true)
+            .min_col_width(80.0)
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new("Skill").strong());
+                ui.label(egui::RichText::new("Base Value").strong());
+                ui.label(egui::RichText::new("Offset").strong());
+                ui.label(egui::RichText::new("Skill").strong());
+                ui.label(egui::RichText::new("Base Value").strong());
+                ui.label(egui::RichText::new("Offset").strong());
+                ui.end_row();
 
-        ui.label(egui::RichText::new("Flags:").underline());
-        ui.horizontal_wrapped(|ui| {
-            ui.checkbox(&mut state.actor_essential, "Essential");
-            ui.checkbox(&mut state.actor_respawn, "Respawn");
-            ui.checkbox(&mut state.quest_item, "Quest Item");
-            ui.checkbox(&mut state.actor_invulnerable, "Invulnerable");
-            ui.checkbox(&mut state.actor_is_ghost, "Is Ghost");
-            ui.checkbox(&mut state.actor_no_knockdowns, "No Knockdowns");
-            ui.checkbox(&mut state.actor_no_low_level_proc, "No Level Processing");
-            ui.checkbox(&mut state.actor_no_vats_melee, "No VATS Melee");
-            ui.checkbox(&mut state.actor_allow_pickpocket, "Allow Pickpocket");
-            if state.sig == *b"CREA" {
-                ui.checkbox(&mut state.actor_allow_pc_dialogue, "Allow PC Dialogue");
-                ui.checkbox(&mut state.actor_cant_open_doors, "Can't Open Doors");
-                ui.checkbox(&mut state.crea_no_head_track, "No Head-Track");
-            } else {
-                ui.checkbox(&mut state.actor_female, "Female");
-            }
-        });
+                for row in 0..7 {
+                    // Left column
+                    let idx1 = row;
+                    ui.label(NPC_SKILL_NAMES[idx1]);
+                    ui.add(egui::DragValue::new(&mut state.npc_skills[idx1]).range(0..=100));
+                    ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx1]));
 
-        if state.sig == *b"CREA" {
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new("Movement & Combat:").underline());
-            ui.horizontal(|ui| {
-                ui.checkbox(&mut state.crea_biped, "Biped");
-                ui.checkbox(&mut state.crea_walks, "Walks");
-                ui.checkbox(&mut state.crea_swims, "Swims");
-                ui.checkbox(&mut state.crea_flies, "Flies");
-                ui.checkbox(&mut state.crea_weapon_shield, "Weapon & Shield");
+                    // Right column
+                    let idx2 = row + 7;
+                    ui.label(NPC_SKILL_NAMES[idx2]);
+                    ui.add(egui::DragValue::new(&mut state.npc_skills[idx2]).range(0..=100));
+                    ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx2]));
+                    ui.end_row();
+                }
             });
-        }
-
-        if state.sig == *b"NPC_" {
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Race:");
-                let races = session.records_by_sig(*b"RACE");
-                record_dropdown(ui, "act_race", &races, &mut state.actor_race);
-                ui.separator();
-                ui.label("Class:");
-                let classes = session.records_by_sig(*b"CLAS");
-                record_dropdown(ui, "act_class", &classes, &mut state.actor_class);
-            });
-        }
     });
 
     ui.add_space(6.0);
+
+    ui.add_space(6.0);
     ui.group(|ui| {
-        ui.strong(if state.sig == *b"CREA" {
-            "Physical & Combat Parameters (CREA)"
-        } else {
-            "Physical & Combat Parameters"
-        });
+        ui.strong("NPC Skills & Offsets (DNAM)");
+        ui.add_space(4.0);
+        egui::Grid::new("npc_skills_grid")
+            .striped(true)
+            .min_col_width(80.0)
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new("Skill").strong());
+                ui.label(egui::RichText::new("Base Value").strong());
+                ui.label(egui::RichText::new("Offset").strong());
+                ui.label(egui::RichText::new("Skill").strong());
+                ui.label(egui::RichText::new("Base Value").strong());
+                ui.label(egui::RichText::new("Offset").strong());
+                ui.end_row();
+
+                for row in 0..7 {
+                    // Left column
+                    let idx1 = row;
+                    ui.label(NPC_SKILL_NAMES[idx1]);
+                    ui.add(egui::DragValue::new(&mut state.npc_skills[idx1]).range(0..=100));
+                    ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx1]));
+
+                    // Right column
+                    let idx2 = row + 7;
+                    ui.label(NPC_SKILL_NAMES[idx2]);
+                    ui.add(egui::DragValue::new(&mut state.npc_skills[idx2]).range(0..=100));
+                    ui.add(egui::DragValue::new(&mut state.npc_skill_offsets[idx2]));
+                    ui.end_row();
+                }
+            });
+    });
+
+    ui.add_space(6.0);
+}
+
+/// Draw the NPC appearance, hair and head parts section.
+fn draw_actor_npc_appearance(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Appearance, Hair & Head Parts");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            if state.sig == *b"CREA" {
-                ui.label("Attack Reach (RNAM):");
-                ui.add(egui::DragValue::new(&mut state.crea_attack_reach).range(0..=255));
-                ui.label("Turning Speed (TNAM):");
-                ui.add(
-                    egui::DragValue::new(&mut state.crea_turning_speed)
-                        .speed(1.0)
-                        .range(0.0..=500.0),
-                );
-                ui.label("Foot Weight (WNAM):");
-                ui.add(
-                    egui::DragValue::new(&mut state.crea_foot_weight)
-                        .speed(1.0)
-                        .range(0.0..=1000.0),
-                );
-            }
-            ui.label("Base Scale (BNAM):");
+            ui.label("Height (NAM6):");
             ui.add(
-                egui::DragValue::new(&mut state.actor_base_scale)
-                    .speed(0.05)
-                    .range(0.1..=10.0),
+                egui::DragValue::new(&mut state.npc_height)
+                    .speed(0.01)
+                    .range(0.1..=2.5),
+            );
+            ui.separator();
+            ui.label("Weight (NAM7):");
+            ui.add(
+                egui::DragValue::new(&mut state.npc_weight)
+                    .speed(0.01)
+                    .range(0.1..=2.5),
             );
         });
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Impact Material (NAM4):");
-            let cur_mat = (state.actor_impact_material as usize).min(IMPACT_MATERIALS.len() - 1);
-            let mat_lbl = IMPACT_MATERIALS.get(cur_mat).copied().unwrap_or("Unknown");
-            egui::ComboBox::from_id_salt("actor_mat")
-                .selected_text(mat_lbl)
-                .show_ui(ui, |ui| {
-                    for (i, &name) in IMPACT_MATERIALS.iter().enumerate() {
-                        ui.selectable_value(&mut state.actor_impact_material, i as u32, name);
-                    }
-                });
-
+            ui.label("Hair (HNAM):");
+            let hairs = session.records_by_sig(*b"HAIR");
+            record_dropdown(ui, "npc_hair", &hairs, &mut state.npc_hair);
             ui.separator();
-            ui.label("Sound Level (NAM5):");
-            let cur_snd = (state.actor_sound_level as usize).min(SOUND_LEVELS.len() - 1);
-            let snd_lbl = SOUND_LEVELS.get(cur_snd).copied().unwrap_or("Unknown");
-            egui::ComboBox::from_id_salt("actor_snd_lvl")
-                .selected_text(snd_lbl)
-                .show_ui(ui, |ui| {
-                    for (i, &name) in SOUND_LEVELS.iter().enumerate() {
-                        ui.selectable_value(&mut state.actor_sound_level, i as u32, name);
-                    }
-                });
+            ui.label("Hair Length (LNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.npc_hair_length)
+                    .speed(0.01)
+                    .range(0.0..=1.0),
+            );
         });
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Body Part Data (PNAM):");
-            let bptds = session.records_by_sig(*b"BPTD");
-            record_dropdown(ui, "actor_pnam", &bptds, &mut state.actor_body_part_data);
-            if state.sig == *b"CREA" {
-                ui.separator();
-                ui.label("Impact Dataset (CNAM):");
-                let ipds = session.records_by_sig(*b"IPDS");
-                record_dropdown(ui, "crea_cnam", &ipds, &mut state.crea_impact_dataset);
+            ui.label("Eyes (ENAM):");
+            let eyes = session.records_by_sig(*b"EYES");
+            record_dropdown(ui, "npc_eyes", &eyes, &mut state.npc_eyes);
+            ui.separator();
+            ui.label("Hair Color (RGBA):");
+            ui.color_edit_button_srgba_unmultiplied(&mut state.npc_hair_color);
+        });
+
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Head Parts (PNAM):").underline());
+        let hdpts_all = session.records_by_sig(*b"HDPT");
+        let mut remove_hp = None;
+        for (idx, &fid) in state.npc_head_parts.iter().enumerate() {
+            ui.horizontal(|ui| {
+                if ui.button("✖").clicked() {
+                    remove_hp = Some(idx);
+                }
+                let name = hdpts_all
+                    .iter()
+                    .find(|(id, _)| *id == fid)
+                    .map(|(_, n)| n.as_str())
+                    .unwrap_or("Custom Head Part");
+                ui.label(format!("• {name} ({fid:08X})"));
+            });
+        }
+        if let Some(idx) = remove_hp {
+            state.npc_head_parts.remove(idx);
+        }
+        ui.horizontal(|ui| {
+            record_dropdown(ui, "npc_add_hdpt", &hdpts_all, &mut state.head_part_to_add);
+            if ui.button("+ Add Head Part").clicked() {
+                if let Some(fid) = state.head_part_to_add {
+                    if !state.npc_head_parts.contains(&fid) {
+                        state.npc_head_parts.push(fid);
+                    }
+                }
             }
         });
+    });
+}
+
+/// Draw the creature sound type overrides section.
+fn draw_actor_crea_sounds(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Sound Type Overrides (CSDT / CSDI / CSDC)");
+        ui.add_space(4.0);
+
+        let sounds_all = session.records_by_sig(*b"SOUN");
+
+        if state.crea_sounds.is_empty() {
+            ui.label(
+                egui::RichText::new("No sound overrides (inheriting all base sounds).").italics(),
+            );
+        } else {
+            let mut remove_idx = None;
+            for (idx, (stype, sfid, chance)) in state.crea_sounds.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this sound override")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    let t_name = CSDT_TYPES.get(*stype as usize).copied().unwrap_or("Custom");
+                    let s_name = sounds_all
+                        .iter()
+                        .find(|(id, _)| *id == *sfid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Sound");
+                    ui.label(format!("• {t_name}: {s_name} ({sfid:08X})"));
+                    ui.separator();
+                    ui.label("Chance %:");
+                    ui.add(egui::DragValue::new(chance).range(0..=100));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.crea_sounds.remove(idx);
+            }
+        }
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Unarmed Attack Effect (EITM):");
-            let spells = session.spells_and_enchantments();
-            record_dropdown(ui, "actor_eitm", &spells, &mut state.actor_unarmed_effect);
-
-            if state.sig == *b"CREA" {
-                ui.separator();
-                ui.label("Unarmed Attack Anim (EAMT):");
-                ui.add(egui::DragValue::new(&mut state.crea_unarmed_anim).range(0..=255));
+            ui.label("Add Sound:");
+            let cur_type = (state.sound_type_to_add as usize).min(CSDT_TYPES.len() - 1);
+            let cur_lbl = CSDT_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("crea_add_csdt")
+                .selected_text(cur_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in CSDT_TYPES.iter().enumerate() {
+                        ui.selectable_value(&mut state.sound_type_to_add, i as u32, name);
+                    }
+                });
+            record_dropdown(
+                ui,
+                "crea_add_csdi",
+                &sounds_all,
+                &mut state.sound_fid_to_add,
+            );
+            ui.label("Chance %:");
+            ui.add(egui::DragValue::new(&mut state.sound_chance_to_add).range(0..=100));
+            if ui.button("+ Add").clicked() {
+                if let Some(fid) = state.sound_fid_to_add {
+                    state.crea_sounds.push((
+                        state.sound_type_to_add,
+                        fid,
+                        state.sound_chance_to_add.max(1),
+                    ));
+                }
             }
         });
     });
 
     ui.add_space(6.0);
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Sound Type Overrides (CSDT / CSDI / CSDC)");
+        ui.add_space(4.0);
+
+        let sounds_all = session.records_by_sig(*b"SOUN");
+
+        if state.crea_sounds.is_empty() {
+            ui.label(
+                egui::RichText::new("No sound overrides (inheriting all base sounds).").italics(),
+            );
+        } else {
+            let mut remove_idx = None;
+            for (idx, (stype, sfid, chance)) in state.crea_sounds.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .button("✖")
+                        .on_hover_text("Remove this sound override")
+                        .clicked()
+                    {
+                        remove_idx = Some(idx);
+                    }
+                    let t_name = CSDT_TYPES.get(*stype as usize).copied().unwrap_or("Custom");
+                    let s_name = sounds_all
+                        .iter()
+                        .find(|(id, _)| *id == *sfid)
+                        .map(|(_, n)| n.as_str())
+                        .unwrap_or("Custom Sound");
+                    ui.label(format!("• {t_name}: {s_name} ({sfid:08X})"));
+                    ui.separator();
+                    ui.label("Chance %:");
+                    ui.add(egui::DragValue::new(chance).range(0..=100));
+                });
+            }
+            if let Some(idx) = remove_idx {
+                state.crea_sounds.remove(idx);
+            }
+        }
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Add Sound:");
+            let cur_type = (state.sound_type_to_add as usize).min(CSDT_TYPES.len() - 1);
+            let cur_lbl = CSDT_TYPES.get(cur_type).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("crea_add_csdt")
+                .selected_text(cur_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in CSDT_TYPES.iter().enumerate() {
+                        ui.selectable_value(&mut state.sound_type_to_add, i as u32, name);
+                    }
+                });
+            record_dropdown(
+                ui,
+                "crea_add_csdi",
+                &sounds_all,
+                &mut state.sound_fid_to_add,
+            );
+            ui.label("Chance %:");
+            ui.add(egui::DragValue::new(&mut state.sound_chance_to_add).range(0..=100));
+            if ui.button("+ Add").clicked() {
+                if let Some(fid) = state.sound_fid_to_add {
+                    state.crea_sounds.push((
+                        state.sound_type_to_add,
+                        fid,
+                        state.sound_chance_to_add.max(1),
+                    ));
+                }
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+}
+
+/// Draw the creature model list and animations section.
+fn draw_actor_crea_models(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Model List & Animations (NIFZ / KFFZ)");
+        ui.add_space(4.0);
+
+        ui.label(egui::RichText::new("Alternate Models (NIFZ):").underline());
+        let mut remove_m = None;
+        for (idx, m) in state.crea_models.iter().enumerate() {
+            ui.horizontal(|ui| {
+                if ui.button("✖").clicked() {
+                    remove_m = Some(idx);
+                }
+                ui.label(format!("• {m}"));
+            });
+        }
+        if let Some(idx) = remove_m {
+            state.crea_models.remove(idx);
+        }
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut state.model_to_add)
+                    .hint_text("model.nif")
+                    .desired_width(180.0),
+            );
+            if ui.button("+ Add Model").clicked() {
+                let trimmed = state.model_to_add.trim();
+                if !trimmed.is_empty() && !state.crea_models.contains(&trimmed.to_string()) {
+                    state.crea_models.push(trimmed.to_string());
+                    state.model_to_add.clear();
+                }
+            }
+        });
+
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Animations (KFFZ):").underline());
+        let mut remove_a = None;
+        for (idx, a) in state.crea_animations.iter().enumerate() {
+            ui.horizontal(|ui| {
+                if ui.button("✖").clicked() {
+                    remove_a = Some(idx);
+                }
+                ui.label(format!("• {a}"));
+            });
+        }
+        if let Some(idx) = remove_a {
+            state.crea_animations.remove(idx);
+        }
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut state.anim_to_add)
+                    .hint_text("anim.kf")
+                    .desired_width(180.0),
+            );
+            if ui.button("+ Add Animation").clicked() {
+                let trimmed = state.anim_to_add.trim();
+                if !trimmed.is_empty() && !state.crea_animations.contains(&trimmed.to_string()) {
+                    state.crea_animations.push(trimmed.to_string());
+                    state.anim_to_add.clear();
+                }
+            }
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Destruction Health Stage (DEST):");
+            ui.add(egui::DragValue::new(&mut state.dest_health).range(0..=50000));
+        });
+    });
+}
+
+/// Draw the AI behaviour, combat and voice section.
+fn draw_actor_ai(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+    is_creature: bool,
+) {
     ui.group(|ui| {
         ui.strong("AI Behavior, Combat & Voice");
         ui.add_space(4.0);
@@ -14626,7 +14776,7 @@ fn draw_actor_ui(
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Template (TPLT):");
-            let templates = if state.sig == *b"CREA" {
+            let templates = if is_creature {
                 session.creature_templates()
             } else {
                 session.npc_templates()
@@ -14689,8 +14839,14 @@ fn draw_actor_ui(
             );
         });
     });
+}
 
-    ui.add_space(6.0);
+/// Draw the actor effects and spells section.
+fn draw_actor_effects(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Actor Effects & Spells (SPLO)");
         ui.add_space(4.0);
@@ -14732,8 +14888,14 @@ fn draw_actor_ui(
             }
         });
     });
+}
 
-    ui.add_space(6.0);
+/// Draw the faction memberships section.
+fn draw_actor_factions(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Faction Memberships (SNAM)");
         ui.add_space(4.0);
@@ -14789,8 +14951,14 @@ fn draw_actor_ui(
             }
         });
     });
+}
 
-    ui.add_space(6.0);
+/// Draw the AI packages section.
+fn draw_actor_packages(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("AI Packages (PKID)");
         ui.add_space(4.0);
@@ -14841,8 +15009,14 @@ fn draw_actor_ui(
             }
         });
     });
+}
 
-    ui.add_space(6.0);
+/// Draw the inventory section.
+fn draw_actor_inventory(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Inventory Items (CNTO)");
         ui.add_space(4.0);
@@ -14895,152 +15069,10 @@ fn draw_actor_ui(
             }
         });
     });
+}
 
-    if state.sig == *b"CREA" {
-        ui.add_space(6.0);
-        ui.group(|ui| {
-            ui.strong("Sound Type Overrides (CSDT / CSDI / CSDC)");
-            ui.add_space(4.0);
-
-            let sounds_all = session.records_by_sig(*b"SOUN");
-
-            if state.crea_sounds.is_empty() {
-                ui.label(
-                    egui::RichText::new("No sound overrides (inheriting all base sounds).")
-                        .italics(),
-                );
-            } else {
-                let mut remove_idx = None;
-                for (idx, (stype, sfid, chance)) in state.crea_sounds.iter_mut().enumerate() {
-                    ui.horizontal(|ui| {
-                        if ui
-                            .button("✖")
-                            .on_hover_text("Remove this sound override")
-                            .clicked()
-                        {
-                            remove_idx = Some(idx);
-                        }
-                        let t_name = CSDT_TYPES.get(*stype as usize).copied().unwrap_or("Custom");
-                        let s_name = sounds_all
-                            .iter()
-                            .find(|(id, _)| *id == *sfid)
-                            .map(|(_, n)| n.as_str())
-                            .unwrap_or("Custom Sound");
-                        ui.label(format!("• {t_name}: {s_name} ({sfid:08X})"));
-                        ui.separator();
-                        ui.label("Chance %:");
-                        ui.add(egui::DragValue::new(chance).range(0..=100));
-                    });
-                }
-                if let Some(idx) = remove_idx {
-                    state.crea_sounds.remove(idx);
-                }
-            }
-
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Add Sound:");
-                let cur_type = (state.sound_type_to_add as usize).min(CSDT_TYPES.len() - 1);
-                let cur_lbl = CSDT_TYPES.get(cur_type).copied().unwrap_or("Unknown");
-                egui::ComboBox::from_id_salt("crea_add_csdt")
-                    .selected_text(cur_lbl)
-                    .show_ui(ui, |ui| {
-                        for (i, &name) in CSDT_TYPES.iter().enumerate() {
-                            ui.selectable_value(&mut state.sound_type_to_add, i as u32, name);
-                        }
-                    });
-                record_dropdown(
-                    ui,
-                    "crea_add_csdi",
-                    &sounds_all,
-                    &mut state.sound_fid_to_add,
-                );
-                ui.label("Chance %:");
-                ui.add(egui::DragValue::new(&mut state.sound_chance_to_add).range(0..=100));
-                if ui.button("+ Add").clicked() {
-                    if let Some(fid) = state.sound_fid_to_add {
-                        state.crea_sounds.push((
-                            state.sound_type_to_add,
-                            fid,
-                            state.sound_chance_to_add.max(1),
-                        ));
-                    }
-                }
-            });
-        });
-
-        ui.add_space(6.0);
-        ui.group(|ui| {
-            ui.strong("Model List & Animations (NIFZ / KFFZ)");
-            ui.add_space(4.0);
-
-            ui.label(egui::RichText::new("Alternate Models (NIFZ):").underline());
-            let mut remove_m = None;
-            for (idx, m) in state.crea_models.iter().enumerate() {
-                ui.horizontal(|ui| {
-                    if ui.button("✖").clicked() {
-                        remove_m = Some(idx);
-                    }
-                    ui.label(format!("• {m}"));
-                });
-            }
-            if let Some(idx) = remove_m {
-                state.crea_models.remove(idx);
-            }
-            ui.horizontal(|ui| {
-                ui.add(
-                    egui::TextEdit::singleline(&mut state.model_to_add)
-                        .hint_text("model.nif")
-                        .desired_width(180.0),
-                );
-                if ui.button("+ Add Model").clicked() {
-                    let trimmed = state.model_to_add.trim();
-                    if !trimmed.is_empty() && !state.crea_models.contains(&trimmed.to_string()) {
-                        state.crea_models.push(trimmed.to_string());
-                        state.model_to_add.clear();
-                    }
-                }
-            });
-
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new("Animations (KFFZ):").underline());
-            let mut remove_a = None;
-            for (idx, a) in state.crea_animations.iter().enumerate() {
-                ui.horizontal(|ui| {
-                    if ui.button("✖").clicked() {
-                        remove_a = Some(idx);
-                    }
-                    ui.label(format!("• {a}"));
-                });
-            }
-            if let Some(idx) = remove_a {
-                state.crea_animations.remove(idx);
-            }
-            ui.horizontal(|ui| {
-                ui.add(
-                    egui::TextEdit::singleline(&mut state.anim_to_add)
-                        .hint_text("anim.kf")
-                        .desired_width(180.0),
-                );
-                if ui.button("+ Add Animation").clicked() {
-                    let trimmed = state.anim_to_add.trim();
-                    if !trimmed.is_empty() && !state.crea_animations.contains(&trimmed.to_string())
-                    {
-                        state.crea_animations.push(trimmed.to_string());
-                        state.anim_to_add.clear();
-                    }
-                }
-            });
-
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Destruction Health Stage (DEST):");
-                ui.add(egui::DragValue::new(&mut state.dest_health).range(0..=50000));
-            });
-        });
-    }
-
-    ui.add_space(6.0);
+/// Draw the object bounds section.
+fn draw_actor_bounds(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     ui.group(|ui| {
         ui.strong("Object Bounds (OBND)");
         ui.add_space(4.0);
@@ -15060,6 +15092,282 @@ fn draw_actor_ui(
             ui.add(egui::DragValue::new(&mut state.obnd_max[2]));
         });
     });
+}
+
+/// Draw the flags and traits section of a creature's page.
+fn draw_crea_flags(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Creature Flags, Movement & Traits");
+        ui.add_space(4.0);
+
+        ui.label(egui::RichText::new("Flags:").underline());
+        ui.horizontal_wrapped(|ui| {
+            ui.checkbox(&mut state.actor_essential, "Essential");
+            ui.checkbox(&mut state.actor_respawn, "Respawn");
+            ui.checkbox(&mut state.quest_item, "Quest Item");
+            ui.checkbox(&mut state.actor_invulnerable, "Invulnerable");
+            ui.checkbox(&mut state.actor_is_ghost, "Is Ghost");
+            ui.checkbox(&mut state.actor_no_knockdowns, "No Knockdowns");
+            ui.checkbox(&mut state.actor_no_low_level_proc, "No Level Processing");
+            ui.checkbox(&mut state.actor_no_vats_melee, "No VATS Melee");
+            ui.checkbox(&mut state.actor_allow_pickpocket, "Allow Pickpocket");
+            ui.checkbox(&mut state.actor_allow_pc_dialogue, "Allow PC Dialogue");
+            ui.checkbox(&mut state.actor_cant_open_doors, "Can't Open Doors");
+            ui.checkbox(&mut state.crea_no_head_track, "No Head-Track");
+        });
+
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Movement & Combat:").underline());
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut state.crea_biped, "Biped");
+            ui.checkbox(&mut state.crea_walks, "Walks");
+            ui.checkbox(&mut state.crea_swims, "Swims");
+            ui.checkbox(&mut state.crea_flies, "Flies");
+            ui.checkbox(&mut state.crea_weapon_shield, "Weapon & Shield");
+        });
+    });
+}
+
+/// Draw the flags and traits section of an NPC's page.
+fn draw_npc_flags(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Actor Flags & Traits");
+        ui.add_space(4.0);
+
+        ui.label(egui::RichText::new("Flags:").underline());
+        ui.horizontal_wrapped(|ui| {
+            ui.checkbox(&mut state.actor_essential, "Essential");
+            ui.checkbox(&mut state.actor_respawn, "Respawn");
+            ui.checkbox(&mut state.quest_item, "Quest Item");
+            ui.checkbox(&mut state.actor_invulnerable, "Invulnerable");
+            ui.checkbox(&mut state.actor_is_ghost, "Is Ghost");
+            ui.checkbox(&mut state.actor_no_knockdowns, "No Knockdowns");
+            ui.checkbox(&mut state.actor_no_low_level_proc, "No Level Processing");
+            ui.checkbox(&mut state.actor_no_vats_melee, "No VATS Melee");
+            ui.checkbox(&mut state.actor_allow_pickpocket, "Allow Pickpocket");
+            ui.checkbox(&mut state.actor_female, "Female");
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Race:");
+            let races = session.records_by_sig(*b"RACE");
+            record_dropdown(ui, "act_race", &races, &mut state.actor_race);
+            ui.separator();
+            ui.label("Class:");
+            let classes = session.records_by_sig(*b"CLAS");
+            record_dropdown(ui, "act_class", &classes, &mut state.actor_class);
+        });
+    });
+}
+
+/// Draw the physical and combat parameters section of a creature's page.
+fn draw_crea_physical(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Physical & Combat Parameters (CREA)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Attack Reach (RNAM):");
+            ui.add(egui::DragValue::new(&mut state.crea_attack_reach).range(0..=255));
+            ui.label("Turning Speed (TNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.crea_turning_speed)
+                    .speed(1.0)
+                    .range(0.0..=500.0),
+            );
+            ui.label("Foot Weight (WNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.crea_foot_weight)
+                    .speed(1.0)
+                    .range(0.0..=1000.0),
+            );
+            ui.label("Base Scale (BNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.actor_base_scale)
+                    .speed(0.05)
+                    .range(0.1..=10.0),
+            );
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Impact Material (NAM4):");
+            let cur_mat = (state.actor_impact_material as usize).min(IMPACT_MATERIALS.len() - 1);
+            let mat_lbl = IMPACT_MATERIALS.get(cur_mat).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_mat")
+                .selected_text(mat_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in IMPACT_MATERIALS.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_impact_material, i as u32, name);
+                    }
+                });
+
+            ui.separator();
+            ui.label("Sound Level (NAM5):");
+            let cur_snd = (state.actor_sound_level as usize).min(SOUND_LEVELS.len() - 1);
+            let snd_lbl = SOUND_LEVELS.get(cur_snd).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_snd_lvl")
+                .selected_text(snd_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in SOUND_LEVELS.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_sound_level, i as u32, name);
+                    }
+                });
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Body Part Data (PNAM):");
+            let bptds = session.records_by_sig(*b"BPTD");
+            record_dropdown(ui, "actor_pnam", &bptds, &mut state.actor_body_part_data);
+            ui.separator();
+            ui.label("Impact Dataset (CNAM):");
+            let ipds = session.records_by_sig(*b"IPDS");
+            record_dropdown(ui, "crea_cnam", &ipds, &mut state.crea_impact_dataset);
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Unarmed Attack Effect (EITM):");
+            let spells = session.spells_and_enchantments();
+            record_dropdown(ui, "actor_eitm", &spells, &mut state.actor_unarmed_effect);
+            ui.separator();
+            ui.label("Unarmed Attack Anim (EAMT):");
+            ui.add(egui::DragValue::new(&mut state.crea_unarmed_anim).range(0..=255));
+        });
+    });
+}
+
+/// Draw the physical and combat parameters section of an NPC's page.
+fn draw_npc_physical(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Physical & Combat Parameters");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Base Scale (BNAM):");
+            ui.add(
+                egui::DragValue::new(&mut state.actor_base_scale)
+                    .speed(0.05)
+                    .range(0.1..=10.0),
+            );
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Impact Material (NAM4):");
+            let cur_mat = (state.actor_impact_material as usize).min(IMPACT_MATERIALS.len() - 1);
+            let mat_lbl = IMPACT_MATERIALS.get(cur_mat).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_mat")
+                .selected_text(mat_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in IMPACT_MATERIALS.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_impact_material, i as u32, name);
+                    }
+                });
+
+            ui.separator();
+            ui.label("Sound Level (NAM5):");
+            let cur_snd = (state.actor_sound_level as usize).min(SOUND_LEVELS.len() - 1);
+            let snd_lbl = SOUND_LEVELS.get(cur_snd).copied().unwrap_or("Unknown");
+            egui::ComboBox::from_id_salt("actor_snd_lvl")
+                .selected_text(snd_lbl)
+                .show_ui(ui, |ui| {
+                    for (i, &name) in SOUND_LEVELS.iter().enumerate() {
+                        ui.selectable_value(&mut state.actor_sound_level, i as u32, name);
+                    }
+                });
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Body Part Data (PNAM):");
+            let bptds = session.records_by_sig(*b"BPTD");
+            record_dropdown(ui, "actor_pnam", &bptds, &mut state.actor_body_part_data);
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Unarmed Attack Effect (EITM):");
+            let spells = session.spells_and_enchantments();
+            record_dropdown(ui, "actor_eitm", &spells, &mut state.actor_unarmed_effect);
+        });
+    });
+}
+
+/// Draw the creature (CREA) editor body.
+fn draw_crea_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    draw_actor_crea_class(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_vitals(ui, state, true);
+    ui.add_space(6.0);
+    draw_actor_special(ui, state);
+    ui.add_space(6.0);
+    draw_crea_flags(ui, state);
+    ui.add_space(6.0);
+    draw_crea_physical(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_ai(ui, session, state, true);
+    ui.add_space(6.0);
+    draw_actor_effects(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_factions(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_packages(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_inventory(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_crea_sounds(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_crea_models(ui, state);
+    ui.add_space(6.0);
+    draw_actor_bounds(ui, state);
+}
+
+/// Draw the NPC (NPC_) editor body.
+fn draw_npc_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    draw_actor_vitals(ui, state, false);
+    ui.add_space(6.0);
+    draw_actor_special(ui, state);
+    ui.add_space(6.0);
+    draw_actor_npc_skills(ui, state);
+    ui.add_space(6.0);
+    draw_actor_npc_appearance(ui, session, state);
+    ui.add_space(6.0);
+    draw_npc_flags(ui, session, state);
+    ui.add_space(6.0);
+    draw_npc_physical(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_ai(ui, session, state, false);
+    ui.add_space(6.0);
+    draw_actor_effects(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_factions(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_packages(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_inventory(ui, session, state);
+    ui.add_space(6.0);
+    draw_actor_bounds(ui, state);
 }
 
 fn draw_alch_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
@@ -15789,10 +16097,17 @@ fn draw_note_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
+/// Draw the leveled list's settings and entries.
+///
+/// The three leveled list types share a format, but each gets its own page
+/// so the title, the candidate list and the settings can be set up
+/// independently.
 fn draw_lvl_ui(
     ui: &mut egui::Ui,
-    session: &crate::session::Session,
     state: &mut ObjectEditorState,
+    entries_title: &str,
+    candidates: &[(u32, String)],
+    use_all: bool,
 ) {
     ui.group(|ui| {
         ui.strong("Leveled List Settings");
@@ -15810,7 +16125,7 @@ fn draw_lvl_ui(
                 "Calculate from all levels <= player's level",
             );
             ui.checkbox(&mut state.lvl_each_item, "Calculate for each item in count");
-            if state.sig == *b"LVLI" {
+            if use_all {
                 ui.checkbox(&mut state.lvl_use_all, "Use All");
             }
         });
@@ -15818,19 +16133,8 @@ fn draw_lvl_ui(
 
     ui.add_space(6.0);
     ui.group(|ui| {
-        let title = match &state.sig {
-            b"LVLC" => "Leveled Creature Entries (LVLO)",
-            b"LVLN" => "Leveled NPC Entries (LVLO)",
-            _ => "Leveled Item Entries (LVLO)",
-        };
-        ui.strong(title);
+        ui.strong(entries_title);
         ui.add_space(4.0);
-
-        let candidates = match &state.sig {
-            b"LVLC" => session.creature_templates(),
-            b"LVLN" => session.npc_templates(),
-            _ => session.inventory_items(),
-        };
 
         if state.lvl_entries.is_empty() {
             ui.label(egui::RichText::new("No entries in this leveled list.").italics());
@@ -15905,7 +16209,7 @@ fn draw_lvl_ui(
             record_dropdown(
                 ui,
                 "lvl_add_ref",
-                &candidates,
+                candidates,
                 &mut state.lvl_entry_fid_to_add,
             );
             ui.label("Count:");
@@ -15940,6 +16244,42 @@ fn draw_lvl_ui(
             ui.add(egui::DragValue::new(&mut state.obnd_max[2]));
         });
     });
+}
+
+/// Draw the leveled creature (LVLC) editor body.
+fn draw_lvlc_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    let candidates = session.creature_templates();
+    draw_lvl_ui(
+        ui,
+        state,
+        "Leveled Creature Entries (LVLO)",
+        &candidates,
+        false,
+    );
+}
+
+/// Draw the leveled NPC (LVLN) editor body.
+fn draw_lvln_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    let candidates = session.npc_templates();
+    draw_lvl_ui(ui, state, "Leveled NPC Entries (LVLO)", &candidates, false);
+}
+
+/// Draw the leveled item (LVLI) editor body.
+fn draw_lvli_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    let candidates = session.inventory_items();
+    draw_lvl_ui(ui, state, "Leveled Item Entries (LVLO)", &candidates, true);
 }
 
 fn draw_imod_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
@@ -16967,23 +17307,15 @@ fn draw_eyes_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
 ///
 /// All four have the same two-field `DATA`: a trigger threshold and the
 /// actor effect the trigger applies.
-fn draw_need_ui(
+/// Draw the dehydration (DEHY) editor body.
+fn draw_dehy_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
     state: &mut ObjectEditorState,
-    title: &str,
 ) {
-    // The threshold and the effect are read out before the widgets borrow the
-    // state, so the two never hold overlapping borrows.
-    let (mut threshold, mut effect) = match title {
-        "Dehydration" => (state.dehyd_trigger_threshold, state.dehyd_actor_effect),
-        "Hunger" => (state.hung_trigger_threshold, state.hung_actor_effect),
-        "Radiation" => (state.rads_trigger_threshold, state.rads_actor_effect),
-        _ => (state.slpd_trigger_threshold, state.slpd_actor_effect),
-    };
-
+    let (mut threshold, mut effect) = (state.dehyd_trigger_threshold, state.dehyd_actor_effect);
     ui.group(|ui| {
-        ui.strong(title);
+        ui.strong("Dehydration");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.label("Trigger Threshold:");
@@ -16992,30 +17324,83 @@ fn draw_need_ui(
         ui.horizontal(|ui| {
             ui.label("Actor Effect:");
             let spells = session.records_by_sig(*b"SPEL");
-            let mut fid = effect;
-            record_dropdown(ui, &format!("need_effect_{title}"), &spells, &mut fid);
-            effect = fid;
+            record_dropdown(ui, "dehy_effect", &spells, &mut effect);
         });
     });
+    state.dehyd_trigger_threshold = threshold;
+    state.dehyd_actor_effect = effect;
+}
 
-    match title {
-        "Dehydration" => {
-            state.dehyd_trigger_threshold = threshold;
-            state.dehyd_actor_effect = effect;
-        }
-        "Hunger" => {
-            state.hung_trigger_threshold = threshold;
-            state.hung_actor_effect = effect;
-        }
-        "Radiation" => {
-            state.rads_trigger_threshold = threshold;
-            state.rads_actor_effect = effect;
-        }
-        _ => {
-            state.slpd_trigger_threshold = threshold;
-            state.slpd_actor_effect = effect;
-        }
-    }
+/// Draw the hunger (HUNG) editor body.
+fn draw_hung_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    let (mut threshold, mut effect) = (state.hung_trigger_threshold, state.hung_actor_effect);
+    ui.group(|ui| {
+        ui.strong("Hunger");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Trigger Threshold:");
+            ui.add(egui::DragValue::new(&mut threshold).range(0..=1000000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Actor Effect:");
+            let spells = session.records_by_sig(*b"SPEL");
+            record_dropdown(ui, "hung_effect", &spells, &mut effect);
+        });
+    });
+    state.hung_trigger_threshold = threshold;
+    state.hung_actor_effect = effect;
+}
+
+/// Draw the radiation (RADS) editor body.
+fn draw_rads_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    let (mut threshold, mut effect) = (state.rads_trigger_threshold, state.rads_actor_effect);
+    ui.group(|ui| {
+        ui.strong("Radiation");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Trigger Threshold:");
+            ui.add(egui::DragValue::new(&mut threshold).range(0..=1000000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Actor Effect:");
+            let spells = session.records_by_sig(*b"SPEL");
+            record_dropdown(ui, "rads_effect", &spells, &mut effect);
+        });
+    });
+    state.rads_trigger_threshold = threshold;
+    state.rads_actor_effect = effect;
+}
+
+/// Draw the sleep (SLPD) editor body.
+fn draw_slpd_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    let (mut threshold, mut effect) = (state.slpd_trigger_threshold, state.slpd_actor_effect);
+    ui.group(|ui| {
+        ui.strong("Sleep Deprivation");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Trigger Threshold:");
+            ui.add(egui::DragValue::new(&mut threshold).range(0..=1000000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Actor Effect:");
+            let spells = session.records_by_sig(*b"SPEL");
+            record_dropdown(ui, "slpd_effect", &spells, &mut effect);
+        });
+    });
+    state.slpd_trigger_threshold = threshold;
+    state.slpd_actor_effect = effect;
 }
 
 /// Draw the Encounter Zone (ECZN) editor body.
