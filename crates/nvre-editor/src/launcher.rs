@@ -87,18 +87,18 @@ fn list_plugins(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     out
 }
 
-/// Which game the launcher is pointed at, and which one the editor is using.
+/// Which game the launcher is pointed at, and where its data lives.
 ///
-/// `chosen` is the user's pick from the dropdown; it starts as the detected game
-/// so the launcher is right without a click. `applied` is the game the running
-/// editor actually is: changing the pick does not switch the editor until Apply
-/// is pressed, because switching re-opens the asset layer.
+/// One field, not two. There is nothing to stage a pick against: nothing is
+/// built from the game until Open is pressed, and the launcher's own lists are
+/// re-read from the folder on the spot. A `chosen`/`applied` pair with an Apply
+/// button between them only creates the trap of picking one game and opening
+/// another.
 #[derive(Resource)]
 pub struct GameChoice {
-    /// The game the user has selected in the launcher.
-    pub chosen: &'static crate::game::GameProfile,
-    /// The game the editor is running as, until Apply is pressed.
-    pub applied: &'static crate::game::GameProfile,
+    /// The game selected in the dropdown. Starts as the detected game, so the
+    /// launcher is right without a click.
+    pub game: &'static crate::game::GameProfile,
     /// The Data folder in use. Starts as the game's Steam install when it has
     /// one, and as nothing when it does not — the user fills it in. Held here
     /// rather than derived every frame, because it is what the editor opened
@@ -121,8 +121,7 @@ impl GameChoice {
     /// guess.
     pub fn new(game: &'static crate::game::GameProfile) -> GameChoice {
         GameChoice {
-            chosen: game,
-            applied: game,
+            game,
             data_dir: game.data_dir(),
             folder_edit: String::new(),
         }
@@ -130,7 +129,7 @@ impl GameChoice {
 
     /// Point at `game`, re-resolving its Steam install.
     pub fn choose(&mut self, game: &'static crate::game::GameProfile) {
-        self.chosen = game;
+        self.game = game;
         self.data_dir = game.data_dir();
         // The field shows the new folder, so the buffer follows it.
         self.folder_edit = self
@@ -138,11 +137,6 @@ impl GameChoice {
             .clone()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_default();
-    }
-
-    /// True when the pick differs from the running game.
-    pub fn pending(&self) -> bool {
-        !std::ptr::eq(self.chosen, self.applied)
     }
 
     /// The Data folder in use, falling back to the one the editor was started
@@ -166,7 +160,7 @@ impl GameChoice {
             Some(std::path::PathBuf::from(text))
         };
         if let Some(dir) = &self.data_dir {
-            crate::game::save_data_dir(self.applied.id, dir);
+            crate::game::save_data_dir(self.game.id, dir);
         }
     }
 }
@@ -271,17 +265,18 @@ pub fn ui(
 
                 // The game picker: what to mod. Picking a game re-resolves its
                 // Steam install, so the folder field fills in when Steam has it
-                // and stays empty when it does not.
+                // and stays empty when it does not, and the plugin and master
+                // lists follow the folder it names.
                 ui.horizontal(|ui| {
                     ui.label("Game:");
-                    let selected = choice.chosen;
+                    let selected = choice.game;
                     egui::ComboBox::from_id_salt("game_pick")
                         .selected_text(selected.name)
                         .show_ui(ui, |ui| {
                             for g in &crate::game::ALL {
-                                // Whether Steam has this install is a disk
-                                // probe, and a dropdown is redrawn every frame,
-                                // so the answer is cached per game for the
+                                // Whether this game's Data folder was found is a
+                                // disk probe, and a dropdown is redrawn every
+                                // frame, so the answer is cached for the
                                 // launcher's lifetime.
                                 let found = installed
                                     .entry(g.id)
@@ -291,30 +286,23 @@ pub fn ui(
                                 } else {
                                     format!("{} ({}) — no Data folder found", g.name, g.master)
                                 };
-                                if ui.selectable_value(&mut choice.chosen, g, label).clicked()
-                                    && !std::ptr::eq(choice.chosen, selected)
+                                if ui.selectable_value(&mut choice.game, g, label).clicked()
+                                    && !std::ptr::eq(choice.game, selected)
                                 {
-                                    let picked = choice.chosen;
+                                    let picked = choice.game;
                                     choice.choose(picked);
+                                    // The plugin list and masters are re-read
+                                    // from the new game's own folder: a partial
+                                    // install gives only the masters it holds.
+                                    let dir = choice.active_dir(&data.0);
+                                    launcher.masters = choice.game.masters_in(&dir);
+                                    launcher.listing_dir = None;
+                                    launcher.listing.clear();
+                                    launcher.active = None;
+                                    launcher.required.clear();
                                 }
                             }
                         });
-                    if choice.pending() {
-                        if ui.button("Apply").clicked() {
-                            choice.applied = choice.chosen;
-                            // The plugin list and masters are re-read from the
-                            // new game's own folder: a partial install gives
-                            // only the masters it actually holds.
-                            let dir = choice.active_dir(&data.0);
-                            launcher.masters = choice.applied.masters_in(&dir);
-                            launcher.listing_dir = None;
-                            launcher.listing.clear();
-                            launcher.active = None;
-                            launcher.required.clear();
-                        }
-                    } else {
-                        ui.label(format!("editing {}", choice.applied.name));
-                    }
                 });
 
                 // The Data folder. Filled from Steam when the install is there;
@@ -344,15 +332,15 @@ pub fn ui(
                     ui.label(format!("{}", dir.display()));
                 }
                 let active_dir = choice.active_dir(&data.0);
-                if !active_dir.join(choice.chosen.master).exists() {
+                if !active_dir.join(choice.game.master).exists() {
                     ui.colored_label(
                         egui::Color32::RED,
-                        format!("no {} in {}", choice.chosen.master, active_dir.display()),
+                        format!("no {} in {}", choice.game.master, active_dir.display()),
                     );
                 }
                 // What the picked game cannot do yet, said plainly here rather
                 // than shown as an empty viewport that looks like a bug.
-                for note in choice.chosen.notes {
+                for note in choice.game.notes {
                     ui.colored_label(egui::Color32::from_rgb(0xd0, 0xa0, 0x40), *note);
                 }
 

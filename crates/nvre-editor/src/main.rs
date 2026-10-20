@@ -376,7 +376,7 @@ fn open_selected(
     mut events: MessageReader<nvre_editor::OpenRequested>,
 ) {
     // The launcher's Open button raises this; the event carries what to open.
-    let game = choice.applied;
+    let game = choice.game;
     // The Data folder the picker names: the game's Steam install when it has
     // one, otherwise the folder the editor was started with.
     let data_dir = choice.active_dir(&args.data);
