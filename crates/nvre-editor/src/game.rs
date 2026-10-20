@@ -6,11 +6,17 @@
 //! baked into it as a default. This module is where the game becomes a value
 //! instead of a constant.
 //!
-//! A profile names: the game's master and DLC masters (the default load order),
-//! the `SArchiveList` the game reads its assets from, which archive container
-//! those are, and where that game's record schemas live. Everything else — the
-//! TES4 container, the GRUP tree, the FormID numbering model — is shared, so a
-//! profile is deliberately small.
+//! A profile names: the folder Steam installs the game into, the game's master,
+//! its own masters in load order, the `SArchiveList` it reads its assets from,
+//! which archive container those are, and where that game's record schemas
+//! live. Everything else — the TES4 container, the GRUP tree, the FormID
+//! numbering model — is shared, so a profile is deliberately small.
+//!
+//! The masters a *session* uses are read from the game's own Data folder
+//! ([`GameProfile::masters_in`]), not from the profile: the profile says which
+//! order the game's own masters load in and which are its DLC, and only the
+//! ones the install actually holds become masters. A profile is therefore
+//! correct for a partial install, and picks up a mod master the user added.
 //!
 //! What a profile does **not** carry, because it is not implemented yet:
 //!
@@ -61,6 +67,11 @@ pub struct GameProfile {
     pub archives: &'static [&'static str],
     /// The container those archives are in.
     pub archive_format: ArchiveFormat,
+    /// The folder Steam installs this game into, under `steamapps/common/`.
+    /// `None` for a game with no Steam install. The folder name is the game's
+    /// own, not a guess at it: `Skyrim Special Edition` installs into that
+    /// name rather than `Skyrim`, and the profile says so.
+    pub steam_folder: Option<&'static str>,
     /// This game's record schemas, as a subdirectory of the repo's `schemas/`.
     pub schema_subdir: &'static str,
     /// What this game cannot do yet, for the UI to say plainly rather than
@@ -96,6 +107,7 @@ pub const FNV: GameProfile = GameProfile {
         "Fallout - Misc.bsa",
     ],
     archive_format: ArchiveFormat::Bsa104,
+    steam_folder: Some("Fallout New Vegas"),
     schema_subdir: "fnv",
     notes: &[],
 };
@@ -127,6 +139,7 @@ pub const FO3: GameProfile = GameProfile {
         "Fallout - Misc.bsa",
     ],
     archive_format: ArchiveFormat::Bsa104,
+    steam_folder: Some("Fallout 3"),
     schema_subdir: "fo3",
     notes: &["no record schemas yet: schemas/fo3 has not been measured against Fallout3.esm"],
 };
@@ -156,6 +169,7 @@ pub const SKYRIM: GameProfile = GameProfile {
         "Skyrim - Sounds.bsa",
     ],
     archive_format: ArchiveFormat::Bsa104,
+    steam_folder: Some("Skyrim"),
     schema_subdir: "skyrim",
     notes: &[
         "no record schemas yet: schemas/skyrim has not been measured against Skyrim.esm",
@@ -179,6 +193,7 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     ],
     archives: &[],
     archive_format: ArchiveFormat::Unreadable,
+    steam_folder: Some("Skyrim Special Edition"),
     schema_subdir: "skyrimse",
     notes: &[
         "no record schemas yet: schemas/skyrimse has not been measured against Skyrim.esm",
@@ -206,6 +221,7 @@ pub const FALLOUT_4: GameProfile = GameProfile {
     ],
     archives: &[],
     archive_format: ArchiveFormat::Unreadable,
+    steam_folder: Some("Fallout 4"),
     schema_subdir: "fo4",
     notes: &[
         "no record schemas yet: schemas/fo4 has not been measured against Fallout4.esm",
@@ -249,9 +265,67 @@ impl GameProfile {
         &FNV
     }
 
-    /// The default load order for this game, as file names.
-    pub fn default_masters(&self) -> Vec<String> {
-        self.masters.iter().map(|m| m.to_string()).collect()
+    /// The game's Steam install, if it has one: the `Data` folder under
+    /// `steamapps/common/<folder>/`.
+    ///
+    /// Each profile names the folder Steam installs it into, and this checks
+    /// that folder for the game's own master in every Steam library. It is an
+    /// existence check, not a discovery: a folder Steam named differently is
+    /// simply not found, and the launcher leaves the path empty for the user to
+    /// fill in — which is the honest answer rather than a guess that might
+    /// point at the wrong install.
+    pub fn steam_data_dir(&self) -> Option<PathBuf> {
+        let folder = self.steam_folder?;
+        for lib in steam_libraries() {
+            let data = lib.join("steamapps/common").join(folder).join("Data");
+            if data.join(self.master).exists() {
+                return Some(data);
+            }
+        }
+        None
+    }
+
+    /// The masters present in `data_dir`, in the game's own load order.
+    ///
+    /// The game's shipped masters come first in the order the game loads them,
+    /// then any other `.esm` in the folder in name order — a mod master the
+    /// user has installed, which the game loads after its own. `.esp` files are
+    /// not masters and are never included.
+    ///
+    /// Reading the folder rather than a fixed list is what makes this correct
+    /// for a partial install: only Fallout 3's DLC the user actually owns
+    /// appears, and a folder holding only the base game gives a one-master
+    /// list instead of five names the game cannot load.
+    pub fn masters_in(&self, data_dir: &Path) -> Vec<String> {
+        let Ok(entries) = std::fs::read_dir(data_dir) else {
+            return Vec::new();
+        };
+        // Present in the folder, by exact name.
+        let present: Vec<String> = entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| {
+                let l = n.to_ascii_lowercase();
+                l.ends_with(".esm") || l.ends_with(".esl")
+            })
+            .collect();
+        let has = |name: &str| present.iter().any(|p| p.eq_ignore_ascii_case(name));
+        // The game's own order first; a shipped master the install lacks is
+        // skipped rather than offered as a master that cannot be loaded.
+        let mut out: Vec<String> = Vec::new();
+        for m in self.masters {
+            if has(m) {
+                out.push((*m).to_string());
+            }
+        }
+        // Then everything else the folder holds, in name order.
+        let mut extra: Vec<String> = present
+            .into_iter()
+            .filter(|p| !out.iter().any(|o| o.eq_ignore_ascii_case(p)))
+            .collect();
+        extra.sort_by_key(|n| n.to_ascii_lowercase());
+        out.extend(extra);
+        out
     }
 
     /// Where this game's record schemas live: the repo's `schemas/<game>`.
@@ -314,4 +388,57 @@ impl GameProfile {
             _ => None,
         }
     }
+}
+
+/// Every Steam library folder, in no particular order.
+///
+/// Steam writes `libraryfolders.vdf` under its own `steamapps/`, and each entry
+/// there carries a `path` — one per library. The default library's own path is
+/// the folder Steam itself lives in, and it is always entry `0`. A second
+/// library on another drive is another entry, which is why a game is found
+/// wherever it was installed rather than only on the system drive.
+///
+/// The file is read as text and its `path` fields picked out with a scan: it is
+/// Valve's KeyValues format, and only this one field is needed.
+fn steam_libraries() -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    let Some(home) = std::env::var_os("HOME") else {
+        return out;
+    };
+    // The documented Linux location. Steam on another platform writes the same
+    // file under its own install root; this covers the common case and returns
+    // nothing rather than guessing when it is absent.
+    let root = PathBuf::from(home).join(".local/share/Steam");
+    let vdf = root.join("steamapps/libraryfolders.vdf");
+    if let Ok(text) = std::fs::read_to_string(&vdf) {
+        out.push(root.clone());
+        for path in vdf_paths(&text) {
+            if !out.contains(&path) {
+                out.push(path);
+            }
+        }
+    }
+    out
+}
+
+/// Every `path` value in a `libraryfolders.vdf`.
+fn vdf_paths(text: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if !line.starts_with("\"path\"") {
+            continue;
+        }
+        if let Some(v) = vdf_value(line) {
+            out.push(PathBuf::from(v));
+        }
+    }
+    out
+}
+
+/// The value of a VDF `"key" "value"` line: the text inside the second pair of
+/// quotes.
+fn vdf_value(line: &str) -> Option<String> {
+    let mut parts = line.split('"').skip(2).step_by(2);
+    parts.next().map(|s| s.to_string())
 }

@@ -89,13 +89,16 @@ fn resolve_schema_dir(args: &Args, game: &game::GameProfile) -> PathBuf {
 }
 
 /// The default plugin and masters for the game, overridden by flags.
+///
+/// The masters are read from the game's Data folder, so a partial install
+/// yields only what it holds and a mod master the user installed is included.
 fn resolve_targets(args: &Args, game: &game::GameProfile) -> (String, Vec<String>) {
     let plugin = args
         .plugin
         .clone()
         .unwrap_or_else(|| game.master.to_string());
     let masters = if args.masters.is_empty() {
-        game.default_masters()
+        game.masters_in(&args.data)
     } else {
         args.masters.clone()
     };
@@ -220,7 +223,7 @@ fn main() {
         .insert_resource(nvre_editor::DataDir(args.data.clone()))
         .insert_resource(nvre_editor::Game(profile))
         .insert_resource(launcher::GameChoice::new(profile))
-        .insert_resource(launcher::Launcher::for_game(profile))
+        .insert_resource(launcher::Launcher::for_game(profile, &args.data))
         .insert_resource(panels::Filters {
             exterior_radius: args.radius,
             ..default()
@@ -374,10 +377,9 @@ fn open_selected(
 ) {
     // The launcher's Open button raises this; the event carries what to open.
     let game = choice.applied;
-    let data_dir = choice
-        .data_override
-        .clone()
-        .unwrap_or_else(|| args.data.clone());
+    // The Data folder the picker names: the game's Steam install when it has
+    // one, otherwise the folder the editor was started with.
+    let data_dir = choice.active_dir(&args.data);
     let schema_dir = resolve_schema_dir(&args, game);
     for _ in events.read() {
         // The game's archives and NIF schema, opened once for the session.

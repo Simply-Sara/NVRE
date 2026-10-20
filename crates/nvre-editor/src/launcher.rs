@@ -36,18 +36,18 @@ pub struct Launcher {
 }
 
 impl Launcher {
-    /// A fresh launcher for `game`.
+    /// A fresh launcher for `game`, whose masters are read from `data_dir`.
     ///
-    /// The default master list is the game's own load order, so a Fallout 3
-    /// session starts with `Fallout3.esm` rather than FNV's master — but the
-    /// resource is only defaulted once at startup, which is when the game is
-    /// known.
-    pub fn for_game(game: &crate::game::GameProfile) -> Launcher {
+    /// The master list is the game's own Data folder, not a fixed table: a
+    /// partial install gives only the masters it holds, and a mod master the
+    /// user has installed comes along. `for_game` is called once at startup,
+    /// which is when the game is known.
+    pub fn for_game(game: &crate::game::GameProfile, data_dir: &std::path::Path) -> Launcher {
         Launcher {
             tab: LauncherTab::OpenExisting,
             active: None,
             required: Vec::new(),
-            masters: game.default_masters(),
+            masters: game.masters_in(data_dir),
             new_name: "NewPlugin.esp".to_string(),
             new_is_master: false,
             adding: String::new(),
@@ -60,7 +60,9 @@ impl Launcher {
 
 impl Default for Launcher {
     fn default() -> Self {
-        Launcher::for_game(&crate::game::FNV)
+        let game = &crate::game::FNV;
+        let dir = game.steam_data_dir().unwrap_or_default();
+        Launcher::for_game(game, &dir)
     }
 }
 
@@ -97,33 +99,50 @@ pub struct GameChoice {
     pub chosen: &'static crate::game::GameProfile,
     /// The game the editor is running as, until Apply is pressed.
     pub applied: &'static crate::game::GameProfile,
-    /// Set when a game needs its Data folder pointed somewhere else first.
-    pub data_override: Option<std::path::PathBuf>,
-}
-
-impl Default for GameChoice {
-    fn default() -> Self {
-        GameChoice {
-            chosen: &crate::game::FNV,
-            applied: &crate::game::FNV,
-            data_override: None,
-        }
-    }
+    /// The Data folder in use. Starts as the game's Steam install when it has
+    /// one, and as nothing when it does not — the user fills it in. Held here
+    /// rather than derived every frame, because it is what the editor opened
+    /// with and must not change under it.
+    pub data_dir: Option<std::path::PathBuf>,
 }
 
 impl GameChoice {
-    /// A fresh choice for `game`, with nothing pending.
+    /// A fresh choice for `game`, pointing at its Steam install if it has one.
+    ///
+    /// A game with no install found starts with no path: the launcher shows the
+    /// field empty for the user to fill, which is the honest state rather than a
+    /// guess.
     pub fn new(game: &'static crate::game::GameProfile) -> GameChoice {
         GameChoice {
             chosen: game,
             applied: game,
-            data_override: None,
+            data_dir: game.steam_data_dir(),
         }
+    }
+
+    /// Point at `game`, re-resolving its Steam install.
+    pub fn choose(&mut self, game: &'static crate::game::GameProfile) {
+        self.chosen = game;
+        self.data_dir = game.steam_data_dir();
     }
 
     /// True when the pick differs from the running game.
     pub fn pending(&self) -> bool {
         !std::ptr::eq(self.chosen, self.applied)
+    }
+
+    /// The Data folder in use, falling back to the one the editor was started
+    /// with when the pick has no install of its own.
+    pub fn active_dir(&self, fallback: &std::path::Path) -> std::path::PathBuf {
+        self.data_dir
+            .clone()
+            .unwrap_or_else(|| fallback.to_path_buf())
+    }
+}
+
+impl Default for GameChoice {
+    fn default() -> Self {
+        GameChoice::new(&crate::game::FNV)
     }
 }
 
@@ -138,12 +157,14 @@ pub fn ui(
 ) {
     let ctx = ctx.get_mut();
 
-    // The plugins in the Data folder, listed by name. The folder is the one
-    // the picker names, which is the game's own when no override is set.
-    let active_dir = choice
-        .data_override
-        .clone()
-        .unwrap_or_else(|| data.0.clone());
+    // Which games Steam has an install for, probed once: the dropdown is redrawn
+    // every frame and a probe is a directory stat per library.
+    let mut installed: std::collections::HashMap<&str, bool> = std::collections::HashMap::new();
+
+    // The plugins in the Data folder, listed by name. The folder is the picker's:
+    // the game's Steam install when it has one, otherwise the folder the editor
+    // was started with until the user names their own.
+    let active_dir = choice.active_dir(&data.0);
     if launcher.listing_dir.as_deref() != Some(active_dir.as_path()) {
         launcher.listing_dir = Some(active_dir.clone());
         launcher.listing = list_plugins(&active_dir);
@@ -217,7 +238,9 @@ pub fn ui(
                 // Top Header
                 ui.heading("Select a game");
 
-                // The game picker: what to mod, and where its data lives.
+                // The game picker: what to mod. Picking a game re-resolves its
+                // Steam install, so the folder field fills in when Steam has it
+                // and stays empty when it does not.
                 ui.horizontal(|ui| {
                     ui.label("Game:");
                     let selected = choice.chosen;
@@ -225,37 +248,51 @@ pub fn ui(
                         .selected_text(selected.name)
                         .show_ui(ui, |ui| {
                             for g in &crate::game::ALL {
-                                ui.selectable_value(
-                                    &mut choice.chosen,
-                                    g,
-                                    format!("{} ({})", g.name, g.master),
-                                );
+                                // Whether Steam has this install is a disk
+                                // probe, and a dropdown is redrawn every frame,
+                                // so the answer is cached per game for the
+                                // launcher's lifetime.
+                                let installed = installed
+                                    .entry(g.id)
+                                    .or_insert_with(|| g.steam_data_dir().is_some());
+                                let label = if *installed {
+                                    format!("{} ({})", g.name, g.master)
+                                } else {
+                                    format!("{} ({}) — not installed", g.name, g.master)
+                                };
+                                if ui.selectable_value(&mut choice.chosen, g, label).clicked()
+                                    && !std::ptr::eq(choice.chosen, selected)
+                                {
+                                    let picked = choice.chosen;
+                                    choice.choose(picked);
+                                }
                             }
                         });
                     if choice.pending() {
                         if ui.button("Apply").clicked() {
                             choice.applied = choice.chosen;
-                            // The plugin list and master defaults are the game's.
+                            // The plugin list and masters are re-read from the
+                            // new game's own folder: a partial install gives
+                            // only the masters it actually holds.
+                            let dir = choice.active_dir(&data.0);
+                            launcher.masters = choice.applied.masters_in(&dir);
                             launcher.listing_dir = None;
                             launcher.listing.clear();
                             launcher.active = None;
                             launcher.required.clear();
-                            launcher.masters = choice.applied.default_masters();
                         }
                     } else {
                         ui.label(format!("editing {}", choice.applied.name));
                     }
                 });
 
-                // The Data folder: detected per game, overridable when several
-                // games are installed and the folder named on the command line
-                // is not the picked game's.
+                // The Data folder. Filled from Steam when the install is there;
+                // empty for the user to fill when it is not.
                 let mut folder = choice
-                    .data_override
+                    .data_dir
                     .clone()
-                    .unwrap_or_else(|| data.0.clone())
-                    .to_string_lossy()
-                    .into_owned();
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_default();
                 ui.horizontal(|ui| {
                     ui.label("Data folder:");
                     let resp = ui.add(
@@ -264,17 +301,14 @@ pub fn ui(
                             .hint_text("/path/to/<Game>/Data"),
                     );
                     if resp.lost_focus() {
-                        choice.data_override = if folder.trim().is_empty() {
+                        choice.data_dir = if folder.trim().is_empty() {
                             None
                         } else {
                             Some(std::path::PathBuf::from(folder.trim()))
                         };
                     }
                 });
-                let active_dir = choice
-                    .data_override
-                    .clone()
-                    .unwrap_or_else(|| data.0.clone());
+                let active_dir = choice.active_dir(&data.0);
                 if !active_dir.join(choice.chosen.master).exists() {
                     ui.colored_label(
                         egui::Color32::RED,
