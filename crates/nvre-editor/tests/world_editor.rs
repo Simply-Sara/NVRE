@@ -362,7 +362,7 @@ fn every_field_of_a_real_static_collision_is_loaded() {
 
     // --- MODL: the model ---
     assert_eq!(
-        state.scol_model.modl, "SCOL\\\\SCOLGoodpringsFenceB01.NIF",
+        state.scol_model.modl, "SCOL\\SCOLGoodpringsFenceB01.NIF",
         "MODL: the model path"
     );
 }
@@ -567,7 +567,11 @@ fn the_texture_keeps_its_decal_data() {
     // the record's own bytes, so the unnamed bytes survive.
     let with_dodt: Vec<u32> = common::fids_of(&s, b"TXST")
         .into_iter()
-        .filter(|fid| payload(&subs(&s, *fid), b"DODT").len() == 36)
+        .filter(|fid| {
+            common::payloads(&subs(&s, *fid), b"DODT")
+                .first()
+                .is_some_and(|d| d.len() == 36)
+        })
         .collect();
     assert_eq!(with_dodt.len(), 3, "three textures carry decal data");
 
@@ -601,7 +605,8 @@ fn the_window_title_names_the_record_type() {
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, TACT_RADPACK, *b"TACT");
     let title = nvre_editor::object_editor::window_title(&state.sig, &state.edid, &state.full_name);
-    assert_eq!(title, "Talking Activator - TopsRadPackRadio");
+    // The title carries the record's name as well as its editor id.
+    assert_eq!(title, "Talking Activator - TopsRadPackRadio (rad pack)");
 }
 
 #[test]
