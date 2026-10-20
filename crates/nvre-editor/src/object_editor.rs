@@ -351,6 +351,9 @@ pub struct ObjectEditorState {
 
     // SOUN & NOTE fields
     pub sound_file: String,
+    /// The sound's attenuation data — the `SNDD` struct.
+    pub sound_attenuation: SoundAttenuation,
+    /// The sound's minimum attenuation distance.
     pub sound_min_dist: u8,
     pub sound_max_dist: u8,
     pub sound_freq_adj: i8,
@@ -427,6 +430,33 @@ pub struct ObjectEditorState {
     pub wthr_sun_glare: u8,
     pub wthr_sun_damage: u8,
     pub wthr_cloud_layer0: String,
+    /// `WTHR` The four cloud texture layers.
+    pub wthr_cloud_layers: [String; 4],
+    /// `WTHR` The maximum number of cloud layers — the uint32.
+    pub wthr_max_cloud_layers: u32,
+    /// `WTHR` The four cloud layer speeds.
+    pub wthr_cloud_speeds: [u8; 4],
+    /// `WTHR` The cloud layer colours — one `TimeOfDayColors` per layer.
+    pub wthr_cloud_colors: Vec<TimeOfDayColors>,
+    /// `WTHR` The ten colour types, each with one colour per time of day.
+    pub wthr_colors: Vec<TimeOfDayColors>,
+    /// `WTHR` The fog distances — six float32s.
+    pub wthr_fog_distances: [f32; 6],
+    /// `WTHR` The data struct's fields.
+    pub wthr_cloud_speed_lower: u8,
+    pub wthr_cloud_speed_upper: u8,
+    pub wthr_transition_delta: u8,
+    pub wthr_precipitation_begin: u8,
+    pub wthr_precipitation_end: u8,
+    pub wthr_thunder_begin: u8,
+    pub wthr_thunder_end: u8,
+    pub wthr_thunder_frequency: u8,
+    pub wthr_weather_classification: u8,
+    pub wthr_lightning_color: [u8; 4],
+    /// `WTHR` The image space modifiers, one per time of day.
+    pub wthr_image_space_modifiers: [Option<u32>; 6],
+    /// `WTHR` The sounds.
+    pub wthr_sounds: Vec<WeatherSound>,
     /// `WATR` The visual data — the `DNAM` struct.
     pub watr_visual: WatrVisual,
     /// `GNAM` Daytime — the FormID of the `WATR` record used in the day.
@@ -2342,6 +2372,165 @@ pub struct WatrVisual {
     pub layer_two_amplitude_scale: f32,
     /// `Noise Properties - Noise Layer Three - Amplitude Scale` — the float32.
     pub layer_three_amplitude_scale: f32,
+}
+
+/// A sound's attenuation data — the `SNDD` (or `SNDX`) struct of a
+/// `SOUN` (Sound) record.
+///
+/// A record carries one or the other. The `SNDD` form is 36 bytes and
+/// holds everything: the two distance bytes, the frequency adjustment,
+/// an unused byte, the flag word, the static attenuation, the stop and
+/// start times, the five attenuation curve points, the reverb control,
+/// the priority, and the sound's position. The `SNDX` form is 12 bytes
+/// and holds only the first ten of those; its curve points, reverb
+/// control and priority live in `ANAM`, `GNAM` and `HNAM` instead.
+#[derive(Debug, Clone, Default)]
+pub struct SoundAttenuation {
+    /// `Minimum Attenuation Distance` — the uint8, multiplied by five.
+    pub min_distance: u8,
+    /// `Maximum Attenuation Distancce` — the uint8, multiplied by a
+    /// hundred.
+    pub max_distance: u8,
+    /// `Frequency Adjustment Percentage` — the int8.
+    pub frequency_adjustment: i8,
+    /// The flag word, kept whole so a bit the spec does not name
+    /// survives.
+    pub flags: u32,
+    /// `Static Attenuation cdB` — the int16.
+    pub static_attenuation: i16,
+    /// `Stop Time` — the uint8.
+    pub stop_time: u8,
+    /// `Start Time` — the uint8.
+    pub start_time: u8,
+    /// `Attenuation Point 1` through `Attenuation Point 5` — the five
+    /// int16s on the attenuation curve. The names of the points are
+    /// `attenuation_point_1` through `attenuation_point_5`.
+    pub attenuation_points: [i16; 5],
+    /// `Reverb Attenuation Control` — the int16.
+    pub reverb_attenuation: i16,
+    /// `Priority` — the int32.
+    pub priority: i32,
+    /// `X` — the int32.
+    pub x: i32,
+    /// `Y` — the int32.
+    pub y: i32,
+}
+
+/// Read a sound's attenuation struct out of a `SNDD` or `SNDX` payload.
+fn read_sound_attenuation(b: &[u8]) -> SoundAttenuation {
+    let u8_at = |at: usize| -> u8 { b.get(at).copied().unwrap_or(0) };
+    let i8_at = |at: usize| -> i8 { b.get(at).copied().unwrap_or(0) as i8 };
+    let u16_at = |at: usize| -> u16 {
+        if b.len() >= at + 2 {
+            u16::from_le_bytes([b[at], b[at + 1]])
+        } else {
+            0
+        }
+    };
+    let i16_at = |at: usize| -> i16 { u16_at(at) as i16 };
+    let u32_at = |at: usize| -> u32 {
+        if b.len() >= at + 4 {
+            u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+        } else {
+            0
+        }
+    };
+    let i32_at = |at: usize| -> i32 { u32_at(at) as i32 };
+    SoundAttenuation {
+        min_distance: u8_at(0),
+        max_distance: u8_at(1),
+        frequency_adjustment: i8_at(2),
+        flags: u32_at(4),
+        static_attenuation: i16_at(8),
+        stop_time: u8_at(10),
+        start_time: u8_at(11),
+        attenuation_points: [i16_at(13), i16_at(15), i16_at(17), i16_at(19), i16_at(21)],
+        reverb_attenuation: i16_at(23),
+        priority: i32_at(25),
+        x: i32_at(29),
+        y: i32_at(33),
+    }
+}
+
+/// Write a sound's attenuation struct back over the record's own bytes.
+///
+/// The struct is written field by field, and a field the record's own
+/// bytes do not reach is left alone — the `SNDX` variant is twelve bytes
+/// long and stops after the start time.
+fn write_sound_attenuation(original: &[u8], a: &SoundAttenuation) -> Vec<u8> {
+    let mut b = original.to_vec();
+    /// Write a field's bytes at an offset, if the record's own bytes reach
+    /// that far.
+    fn put(b: &mut [u8], at: usize, size: usize, bytes: &[u8]) {
+        if b.len() >= at + size {
+            b[at..at + size].copy_from_slice(bytes);
+        }
+    }
+    put(&mut b, 0, 1, &a.min_distance.to_le_bytes());
+    put(&mut b, 1, 1, &a.max_distance.to_le_bytes());
+    put(&mut b, 2, 1, &a.frequency_adjustment.to_le_bytes());
+    put(&mut b, 4, 4, &a.flags.to_le_bytes());
+    put(&mut b, 8, 2, &a.static_attenuation.to_le_bytes());
+    put(&mut b, 10, 1, &a.stop_time.to_le_bytes());
+    put(&mut b, 11, 1, &a.start_time.to_le_bytes());
+    for (i, point) in a.attenuation_points.iter().enumerate() {
+        let at = 13 + i * 2;
+        put(&mut b, at, 2, &point.to_le_bytes());
+    }
+    put(&mut b, 23, 2, &a.reverb_attenuation.to_le_bytes());
+    put(&mut b, 25, 4, &a.priority.to_le_bytes());
+    put(&mut b, 29, 4, &a.x.to_le_bytes());
+    put(&mut b, 33, 4, &a.y.to_le_bytes());
+    b
+}
+
+/// A weather record's colours for one time of day.
+///
+/// The weather's colours are laid out as ten colour types, each with one
+/// colour per time of day: sunrise, day, sunset, night, high noon and
+/// midnight.
+#[derive(Debug, Clone, Default)]
+pub struct TimeOfDayColors {
+    /// `Sunrise` — the rgba.
+    pub sunrise: [u8; 4],
+    /// `Day` — the rgba.
+    pub day: [u8; 4],
+    /// `Sunset` — the rgba.
+    pub sunset: [u8; 4],
+    /// `Night` — the rgba.
+    pub night: [u8; 4],
+    /// `High Noon` — the rgba.
+    pub high_noon: [u8; 4],
+    /// `Midnight` — the rgba.
+    pub midnight: [u8; 4],
+}
+
+/// The names of the weather's ten colour types, in the order the `NAM0`
+/// subrecord holds them.
+const WTHR_COLOR_TYPES: [&str; 10] = [
+    "Sky-Upper",
+    "Fog",
+    "Unused",
+    "Ambient",
+    "Sunlight",
+    "Sun",
+    "Stars",
+    "Sky-Lower",
+    "Horizon",
+    "Effect Lighting",
+];
+
+/// The names of the times of day, in the order each colour type holds
+/// them.
+const WTHR_TIMES_OF_DAY: [&str; 6] = ["Sunrise", "Day", "Sunset", "Night", "High Noon", "Midnight"];
+
+/// A weather record's sound — a `SNAM` subrecord.
+#[derive(Debug, Clone, Default)]
+pub struct WeatherSound {
+    /// The sound's FormID.
+    pub sound: u32,
+    /// The type — the uint32: Default, Precipitation, Wind or Thunder.
+    pub kind: u32,
 }
 
 /// One ingredient or output on a `RCPE` (Recipe) record.
@@ -4376,7 +4565,7 @@ impl ObjectEditorState {
             b"CLAS" => self.load_clas(),
             b"CSTY" => self.load_csty(),
             b"MGEF" => self.load_mgef(),
-            b"WTHR" => self.load_wthr(),
+            b"WTHR" => self.load_wthr(&raw_subs),
             b"WATR" => self.load_watr(),
             b"GLOB" => self.load_glob(),
             b"GMST" => self.load_gmst(),
@@ -5000,15 +5189,40 @@ impl ObjectEditorState {
         if let Some(b) = self.raw_subs.get(b"RNAM") {
             self.sound_random_chance = b.first().copied().unwrap_or(100);
         }
-        if let Some(b) = self.raw_subs.get(b"SNDD").filter(|b| b.len() >= 10) {
-            self.sound_min_dist = b[0];
-            self.sound_max_dist = b[1];
-            self.sound_freq_adj = b[2] as i8;
-            let flags = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
-            self.sound_loop = (flags & (1 << 4)) != 0;
-            self.sound_2d = (flags & (1 << 6)) != 0;
-            self.sound_vol_cdb = i16::from_le_bytes([b[8], b[9]]);
+        self.sound_attenuation = SoundAttenuation::default();
+        for sig in [b"SNDD", b"SNDX"] {
+            if let Some(b) = self.raw_subs.get(sig) {
+                self.sound_attenuation = read_sound_attenuation(b);
+                break;
+            }
         }
+        // A record with the short form keeps its curve points, its reverb
+        // control and its priority in their own subrecords.
+        if let Some(b) = self.raw_subs.get(b"ANAM").filter(|b| b.len() >= 10) {
+            for (i, point) in self
+                .sound_attenuation
+                .attenuation_points
+                .iter_mut()
+                .enumerate()
+            {
+                let at = i * 2;
+                if b.len() >= at + 2 {
+                    *point = i16::from_le_bytes([b[at], b[at + 1]]);
+                }
+            }
+        }
+        if let Some(b) = self.raw_subs.get(b"GNAM").filter(|b| b.len() >= 2) {
+            self.sound_attenuation.reverb_attenuation = i16::from_le_bytes([b[0], b[1]]);
+        }
+        if let Some(b) = self.raw_subs.get(b"HNAM").filter(|b| b.len() >= 4) {
+            self.sound_attenuation.priority = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+        }
+        self.sound_min_dist = self.sound_attenuation.min_distance;
+        self.sound_max_dist = self.sound_attenuation.max_distance;
+        self.sound_freq_adj = self.sound_attenuation.frequency_adjustment;
+        self.sound_loop = (self.sound_attenuation.flags & (1 << 4)) != 0;
+        self.sound_2d = (self.sound_attenuation.flags & (1 << 6)) != 0;
+        self.sound_vol_cdb = self.sound_attenuation.static_attenuation;
     }
 
     fn load_note(&mut self) {
@@ -5096,13 +5310,122 @@ impl ObjectEditorState {
         }
     }
 
-    fn load_wthr(&mut self) {
-        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 6) {
+    /// Load a `WTHR` (Weather) record.
+    ///
+    /// The record's colours are laid out as ten colour types, each with
+    /// one colour per time of day. The game's records carry six times of
+    /// day, but eight of the sixty-three records carry four, so the
+    /// number of times is measured from the subrecord's length.
+    fn load_wthr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.wthr_cloud_layers = std::array::from_fn(|_| String::new());
+        self.wthr_max_cloud_layers = 0;
+        self.wthr_cloud_speeds = [0; 4];
+        self.wthr_cloud_colors.clear();
+        self.wthr_colors.clear();
+        self.wthr_fog_distances = [0.0; 6];
+        self.wthr_cloud_speed_lower = 0;
+        self.wthr_cloud_speed_upper = 0;
+        self.wthr_transition_delta = 0;
+        self.wthr_precipitation_begin = 0;
+        self.wthr_precipitation_end = 0;
+        self.wthr_thunder_begin = 0;
+        self.wthr_thunder_end = 0;
+        self.wthr_thunder_frequency = 0;
+        self.wthr_weather_classification = 0;
+        self.wthr_lightning_color = [0, 0, 0, 255];
+        self.wthr_image_space_modifiers = [None; 6];
+        self.wthr_sounds.clear();
+
+        // The image space modifiers. Their signatures begin with an
+        // unprintable byte that names the time of day.
+        for sub in raw_subs {
+            if sub.sig.len() == 4 && sub.sig[1..] == *b"IAD" && sub.data.len() >= 4 {
+                let index = sub.sig[0] as usize;
+                if index < 6 {
+                    self.wthr_image_space_modifiers[index] = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+            }
+        }
+
+        for (sig, slot) in [(b"DNAM", 0usize), (b"CNAM", 1), (b"ANAM", 2), (b"BNAM", 3)] {
+            if let Some(b) = self.raw_subs.get(sig) {
+                self.wthr_cloud_layers[slot] = zstring(b);
+            }
+        }
+        self.wthr_cloud_layer0 = self.wthr_cloud_layers[0].clone();
+
+        if let Some(b) = self.raw_subs.get(b"LNAM").filter(|b| b.len() >= 4) {
+            self.wthr_max_cloud_layers = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+        }
+        if let Some(b) = self.raw_subs.get(b"ONAM") {
+            for (i, speed) in self.wthr_cloud_speeds.iter_mut().enumerate() {
+                *speed = b.get(i).copied().unwrap_or(0);
+            }
+        }
+
+        // The cloud layer colours: one time of day colours struct per
+        // cloud layer.
+        if let Some(b) = self.raw_subs.get(b"PNAM") {
+            let times = if b.len() % 96 == 0 { 6 } else { 4 };
+            for chunk in b.chunks_exact(times * 4) {
+                self.wthr_cloud_colors
+                    .push(read_time_of_day_colors(chunk, times));
+            }
+        }
+
+        // The weather's own colours: ten colour types, each with one
+        // colour per time of day.
+        if let Some(b) = self.raw_subs.get(b"NAM0") {
+            let times = if b.len() % 240 == 0 {
+                6
+            } else if b.len() % 160 == 0 {
+                4
+            } else {
+                6
+            };
+            for chunk in b.chunks_exact(times * 4) {
+                self.wthr_colors.push(read_time_of_day_colors(chunk, times));
+            }
+        }
+
+        // The fog distances: six float32s.
+        if let Some(b) = self.raw_subs.get(b"FNAM").filter(|b| b.len() >= 24) {
+            for (i, d) in self.wthr_fog_distances.iter_mut().enumerate() {
+                let at = i * 4;
+                *d = f32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]);
+            }
+        }
+
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 15) {
             self.wthr_wind_speed = b[0];
+            self.wthr_cloud_speed_lower = b[1];
+            self.wthr_cloud_speed_upper = b[2];
+            self.wthr_transition_delta = b[3];
             self.wthr_sun_glare = b[4];
             self.wthr_sun_damage = b[5];
+            self.wthr_precipitation_begin = b[6];
+            self.wthr_precipitation_end = b[7];
+            self.wthr_thunder_begin = b[8];
+            self.wthr_thunder_end = b[9];
+            self.wthr_thunder_frequency = b[10];
+            self.wthr_weather_classification = b[11];
+            self.wthr_lightning_color = [b[12], b[13], b[14], 255];
         }
-        self.wthr_cloud_layer0 = self.get_string(b"DNAM");
+
+        // The sounds.
+        for sub in raw_subs {
+            if sub.sig == *b"SNAM" && sub.data.len() >= 8 {
+                self.wthr_sounds.push(WeatherSound {
+                    sound: u32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]),
+                    kind: u32::from_le_bytes([sub.data[4], sub.data[5], sub.data[6], sub.data[7]]),
+                });
+            }
+        }
     }
 
     fn load_watr(&mut self) {
@@ -9349,35 +9672,58 @@ impl ObjectEditorState {
         }
         // The sound data is written back over the record's own bytes, so
         // the length it had and the bytes the spec does not name survive.
-        if let Some(original) = self.raw_subs.get(b"SNDD") {
-            let mut sndd = original.clone();
-            if !sndd.is_empty() {
-                sndd[0] = self.sound_min_dist;
-            }
-            if sndd.len() >= 2 {
-                sndd[1] = self.sound_max_dist;
-            }
-            if sndd.len() >= 3 {
-                sndd[2] = self.sound_freq_adj as u8;
-            }
-            if sndd.len() >= 8 {
-                let mut flags = u32::from_le_bytes([sndd[4], sndd[5], sndd[6], sndd[7]]);
+        for sig in [b"SNDD", b"SNDX"] {
+            if let Some(original) = self.raw_subs.get(sig) {
+                let mut a = self.sound_attenuation.clone();
+                // The two flag bits the checkboxes own are written inside
+                // the flag word, so a bit the spec does not name survives.
                 if self.sound_loop {
-                    flags |= 1 << 4;
+                    a.flags |= 1 << 4;
                 } else {
-                    flags &= !(1 << 4);
+                    a.flags &= !(1 << 4);
                 }
                 if self.sound_2d {
-                    flags |= 1 << 6;
+                    a.flags |= 1 << 6;
                 } else {
-                    flags &= !(1 << 6);
+                    a.flags &= !(1 << 6);
                 }
-                sndd[4..8].copy_from_slice(&flags.to_le_bytes());
+                a.min_distance = self.sound_min_dist;
+                a.max_distance = self.sound_max_dist;
+                a.frequency_adjustment = self.sound_freq_adj;
+                a.static_attenuation = self.sound_vol_cdb;
+                let data = write_sound_attenuation(original, &a);
+                session.doc.set_sub(fid, sig, data);
             }
-            if sndd.len() >= 10 {
-                sndd[8..10].copy_from_slice(&self.sound_vol_cdb.to_le_bytes());
+        }
+
+        // A record with the short form keeps its curve points, its reverb
+        // control and its priority in their own subrecords, and the short
+        // struct does not carry them.
+        if self.raw_subs.contains_key(b"SNDX") {
+            if let Some(original) = self.raw_subs.get(b"ANAM") {
+                let mut anam = original.clone();
+                anam.resize(anam.len().max(10), 0);
+                for (i, point) in self.sound_attenuation.attenuation_points.iter().enumerate() {
+                    let at = i * 2;
+                    if anam.len() >= at + 2 {
+                        anam[at..at + 2].copy_from_slice(&point.to_le_bytes());
+                    }
+                }
+                session.doc.set_sub(fid, b"ANAM", anam);
             }
-            session.doc.set_sub(fid, b"SNDD", sndd);
+            if let Some(original) = self.raw_subs.get(b"GNAM") {
+                let mut gnam = original.clone();
+                gnam.resize(gnam.len().max(2), 0);
+                gnam[0..2]
+                    .copy_from_slice(&self.sound_attenuation.reverb_attenuation.to_le_bytes());
+                session.doc.set_sub(fid, b"GNAM", gnam);
+            }
+            if let Some(original) = self.raw_subs.get(b"HNAM") {
+                let mut hnam = original.clone();
+                hnam.resize(hnam.len().max(4), 0);
+                hnam[0..4].copy_from_slice(&self.sound_attenuation.priority.to_le_bytes());
+                session.doc.set_sub(fid, b"HNAM", hnam);
+            }
         }
     }
 
@@ -9590,22 +9936,144 @@ impl ObjectEditorState {
 
     fn save_wthr(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        let mut d = self
-            .raw_subs
-            .get(b"DATA")
-            .cloned()
-            .unwrap_or_else(|| vec![0u8; 8]);
-        if d.len() < 8 {
-            d.resize(8, 0);
+
+        // The cloud texture layers.
+        for (sig, text) in [
+            (b"DNAM", &self.wthr_cloud_layers[0]),
+            (b"CNAM", &self.wthr_cloud_layers[1]),
+            (b"ANAM", &self.wthr_cloud_layers[2]),
+            (b"BNAM", &self.wthr_cloud_layers[3]),
+        ] {
+            if self.raw_subs.contains_key(sig) {
+                session.doc.set_sub(
+                    fid,
+                    sig,
+                    encode_text_kept(self.raw_subs.get(sig).map(|v| v.as_slice()), text),
+                );
+            } else if !text.trim().is_empty() {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
         }
-        d[0] = self.wthr_wind_speed;
-        d[4] = self.wthr_sun_glare;
-        d[5] = self.wthr_sun_damage;
-        session.doc.set_sub(fid, b"DATA", d);
-        if !self.wthr_cloud_layer0.trim().is_empty() {
-            session
-                .doc
-                .set_sub(fid, b"DNAM", encode_zstring(&self.wthr_cloud_layer0));
+
+        // The maximum number of cloud layers.
+        if let Some(original) = self.raw_subs.get(b"LNAM") {
+            let mut lnam = original.clone();
+            lnam.resize(lnam.len().max(4), 0);
+            lnam[0..4].copy_from_slice(&self.wthr_max_cloud_layers.to_le_bytes());
+            session.doc.set_sub(fid, b"LNAM", lnam);
+        }
+
+        // The cloud layer speeds.
+        if let Some(original) = self.raw_subs.get(b"ONAM") {
+            let mut onam = original.clone();
+            for (i, speed) in self.wthr_cloud_speeds.iter().enumerate() {
+                if i < onam.len() {
+                    onam[i] = *speed;
+                }
+            }
+            session.doc.set_sub(fid, b"ONAM", onam);
+        }
+
+        // The cloud layer colours: one time of day colours struct per
+        // cloud layer.
+        if let Some(original) = self.raw_subs.get(b"PNAM") {
+            let times = if original.len() % 96 == 0 { 6 } else { 4 };
+            let mut pnam = original.clone();
+            for (i, colors) in self.wthr_cloud_colors.iter().enumerate() {
+                let at = i * times * 4;
+                if pnam.len() >= at + times * 4 {
+                    let written = write_time_of_day_colors(&pnam[at..at + times * 4], colors);
+                    pnam[at..at + times * 4].copy_from_slice(&written);
+                }
+            }
+            session.doc.set_sub(fid, b"PNAM", pnam);
+        }
+
+        // The weather's own colours: ten colour types, each with one
+        // colour per time of day.
+        if let Some(original) = self.raw_subs.get(b"NAM0") {
+            let times = if original.len() % 240 == 0 {
+                6
+            } else if original.len() % 160 == 0 {
+                4
+            } else {
+                6
+            };
+            let mut nam0 = original.clone();
+            for (i, colors) in self.wthr_colors.iter().enumerate() {
+                let at = i * times * 4;
+                if nam0.len() >= at + times * 4 {
+                    let written = write_time_of_day_colors(&nam0[at..at + times * 4], colors);
+                    nam0[at..at + times * 4].copy_from_slice(&written);
+                }
+            }
+            session.doc.set_sub(fid, b"NAM0", nam0);
+        }
+
+        // The fog distances: six float32s.
+        if let Some(original) = self.raw_subs.get(b"FNAM") {
+            let mut fnam = original.clone();
+            fnam.resize(fnam.len().max(24), 0);
+            for (i, d) in self.wthr_fog_distances.iter().enumerate() {
+                let at = i * 4;
+                if fnam.len() >= at + 4 {
+                    fnam[at..at + 4].copy_from_slice(&d.to_le_bytes());
+                }
+            }
+            session.doc.set_sub(fid, b"FNAM", fnam);
+        }
+
+        // The data struct, written back over the record's own bytes so
+        // its length and the bytes the spec does not name survive.
+        if let Some(original) = self.raw_subs.get(b"DATA") {
+            let mut d = original.clone();
+            d.resize(d.len().max(15), 0);
+            d[0] = self.wthr_wind_speed;
+            d[1] = self.wthr_cloud_speed_lower;
+            d[2] = self.wthr_cloud_speed_upper;
+            d[3] = self.wthr_transition_delta;
+            d[4] = self.wthr_sun_glare;
+            d[5] = self.wthr_sun_damage;
+            d[6] = self.wthr_precipitation_begin;
+            d[7] = self.wthr_precipitation_end;
+            d[8] = self.wthr_thunder_begin;
+            d[9] = self.wthr_thunder_end;
+            d[10] = self.wthr_thunder_frequency;
+            d[11] = self.wthr_weather_classification;
+            d[12] = self.wthr_lightning_color[0];
+            d[13] = self.wthr_lightning_color[1];
+            d[14] = self.wthr_lightning_color[2];
+            session.doc.set_sub(fid, b"DATA", d);
+        }
+
+        // The image space modifiers. Their signatures begin with an
+        // unprintable byte that names the time of day.
+        for (index, value) in self.wthr_image_space_modifiers.iter().enumerate() {
+            let mut sig = [0u8; 4];
+            sig[0] = index as u8;
+            sig[1..].copy_from_slice(b"IAD");
+            if let Some(v) = value {
+                session.doc.set_sub(fid, &sig, v.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, &sig);
+            }
+        }
+
+        // The sounds.
+        let sounds: Vec<([u8; 4], Vec<u8>)> = self
+            .wthr_sounds
+            .iter()
+            .map(|s| {
+                let mut buf = vec![0u8; 8];
+                buf[0..4].copy_from_slice(&s.sound.to_le_bytes());
+                buf[4..8].copy_from_slice(&s.kind.to_le_bytes());
+                (*b"SNAM", buf)
+            })
+            .collect();
+        if sounds.is_empty() {
+            session.doc.remove_sub(fid, b"SNAM");
+        } else {
+            session.doc.set_sub_sequence(fid, vec![*b"SNAM"], sounds);
         }
     }
 
@@ -13793,7 +14261,7 @@ pub fn ui(
                 b"CLAS" => draw_clas_ui(ui, &mut state),
                 b"CSTY" => draw_csty_ui(ui, &mut state),
                 b"MGEF" => draw_mgef_ui(ui, &mut state),
-                b"WTHR" => draw_wthr_ui(ui, &mut state),
+                b"WTHR" => draw_wthr_ui(ui, &session, &mut state),
                 b"WATR" => draw_watr_ui(ui, &session, &mut state),
                 b"GLOB" => draw_glob_ui(ui, &mut state),
                 b"GMST" => draw_gmst_ui(ui, &mut state),
@@ -16200,6 +16668,61 @@ fn draw_soun_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             ui.checkbox(&mut state.sound_2d, "2D");
         });
     });
+
+    // The attenuation struct. Every field the spec names for it.
+    let a = &mut state.sound_attenuation;
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Attenuation (SNDD)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Minimum Attenuation Distance:");
+            ui.add(egui::DragValue::new(&mut a.min_distance).range(0..=255));
+            ui.label("Maximum Attenuation Distancce:");
+            ui.add(egui::DragValue::new(&mut a.max_distance).range(0..=255));
+            ui.label("Frequency Adjustment Percentage:");
+            ui.add(egui::DragValue::new(&mut a.frequency_adjustment).range(-128..=127));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Static Attenuation cdB:");
+            ui.add(
+                egui::DragValue::new(&mut a.static_attenuation)
+                    .speed(10.0)
+                    .range(-10000..=10000),
+            );
+            ui.label("Stop Time:");
+            ui.add(egui::DragValue::new(&mut a.stop_time).range(0..=255));
+            ui.label("Start Time:");
+            ui.add(egui::DragValue::new(&mut a.start_time).range(0..=255));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Reverb Attenuation Control:");
+            ui.add(egui::DragValue::new(&mut a.reverb_attenuation).range(-32768..=32767));
+            ui.label("Priority:");
+            ui.add(egui::DragValue::new(&mut a.priority).range(-2147483648..=2147483647));
+        });
+        ui.horizontal(|ui| {
+            ui.label("X:");
+            ui.add(egui::DragValue::new(&mut a.x).range(-2147483648..=2147483647));
+            ui.label("Y:");
+            ui.add(egui::DragValue::new(&mut a.y).range(-2147483648..=2147483647));
+        });
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Attenuation Curve:").underline());
+        ui.horizontal(|ui| {
+            for (i, point) in a.attenuation_points.iter_mut().enumerate() {
+                ui.label(format!("Point {}:", i + 1));
+                ui.add(egui::DragValue::new(point).range(-32768..=32767));
+            }
+        });
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Flag Word:").underline());
+        ui.add(
+            egui::DragValue::new(&mut a.flags)
+                .range(0..=u32::MAX)
+                .prefix("0x"),
+        );
+    });
 }
 
 const NOTE_TYPES: [(u8, &str); 4] = [(0, "Sound"), (1, "Text"), (2, "Image"), (3, "Voice")];
@@ -16893,7 +17416,64 @@ fn draw_mgef_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-fn draw_wthr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+/// Read one time of day colours struct out of a payload.
+///
+/// The struct holds one rgba per time of day: sunrise, day, sunset,
+/// night, high noon and midnight.
+fn read_time_of_day_colors(b: &[u8], times: usize) -> TimeOfDayColors {
+    let c = |i: usize| -> [u8; 4] {
+        let at = i * 4;
+        if b.len() >= at + 4 {
+            [b[at], b[at + 1], b[at + 2], b[at + 3]]
+        } else {
+            [0; 4]
+        }
+    };
+    let mut t = TimeOfDayColors::default();
+    if times >= 1 {
+        t.sunrise = c(0);
+    }
+    if times >= 2 {
+        t.day = c(1);
+    }
+    if times >= 3 {
+        t.sunset = c(2);
+    }
+    if times >= 4 {
+        t.night = c(3);
+    }
+    if times >= 5 {
+        t.high_noon = c(4);
+    }
+    if times >= 6 {
+        t.midnight = c(5);
+    }
+    t
+}
+
+/// Write one time of day colours struct back over the record's own bytes.
+fn write_time_of_day_colors(original: &[u8], t: &TimeOfDayColors) -> Vec<u8> {
+    let mut b = original.to_vec();
+    /// Write a colour at an offset, if the record's own bytes reach it.
+    fn put(b: &mut [u8], at: usize, color: [u8; 4]) {
+        if b.len() >= at + 4 {
+            b[at..at + 4].copy_from_slice(&color);
+        }
+    }
+    put(&mut b, 0, t.sunrise);
+    put(&mut b, 4, t.day);
+    put(&mut b, 8, t.sunset);
+    put(&mut b, 12, t.night);
+    put(&mut b, 16, t.high_noon);
+    put(&mut b, 20, t.midnight);
+    b
+}
+
+fn draw_wthr_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Weather Properties");
         ui.add_space(4.0);
@@ -16907,12 +17487,130 @@ fn draw_wthr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         });
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("Cloud Layer 0 Texture:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.wthr_cloud_layer0)
-                    .desired_width(ui.available_width() - 20.0),
-            );
+            ui.label("Cloud Speed (Lower):");
+            ui.add(egui::DragValue::new(&mut state.wthr_cloud_speed_lower).range(0..=255));
+            ui.label("Cloud Speed (Upper):");
+            ui.add(egui::DragValue::new(&mut state.wthr_cloud_speed_upper).range(0..=255));
+            ui.label("Transition Delta:");
+            ui.add(egui::DragValue::new(&mut state.wthr_transition_delta).range(0..=255));
         });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Precipitation - Begin Fade In:");
+            ui.add(egui::DragValue::new(&mut state.wthr_precipitation_begin).range(0..=255));
+            ui.label("Precipitation - End Fade Out:");
+            ui.add(egui::DragValue::new(&mut state.wthr_precipitation_end).range(0..=255));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Thunder / Lightning - Begin Fade In:");
+            ui.add(egui::DragValue::new(&mut state.wthr_thunder_begin).range(0..=255));
+            ui.label("Thunder / Lightning - End Fade Out:");
+            ui.add(egui::DragValue::new(&mut state.wthr_thunder_end).range(0..=255));
+        });
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Thunder / Lightning - Frequency:");
+            ui.add(egui::DragValue::new(&mut state.wthr_thunder_frequency).range(0..=255));
+            ui.label("Weather Classification:");
+            ui.add(egui::DragValue::new(&mut state.wthr_weather_classification).range(0..=255));
+            ui.label("Lightning Color:");
+            ui.color_edit_button_srgba_unmultiplied(&mut state.wthr_lightning_color);
+        });
+    });
+
+    // The cloud texture layers.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Cloud Textures");
+        ui.add_space(4.0);
+        for i in 0..4 {
+            ui.horizontal(|ui| {
+                ui.label(format!("Layer {i}:"));
+                ui.add(
+                    egui::TextEdit::singleline(&mut state.wthr_cloud_layers[i])
+                        .desired_width(ui.available_width() - 120.0),
+                );
+            });
+        }
+        ui.horizontal(|ui| {
+            ui.label("Max Cloud Layers:");
+            ui.add(egui::DragValue::new(&mut state.wthr_max_cloud_layers));
+            ui.label("Cloud Layer Speed:");
+            for i in 0..4 {
+                ui.add(egui::DragValue::new(&mut state.wthr_cloud_speeds[i]).range(0..=255));
+            }
+        });
+    });
+
+    // The fog distances.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Fog Distance (FNAM)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Day - Near:");
+            ui.add(egui::DragValue::new(&mut state.wthr_fog_distances[0]).speed(0.01));
+            ui.label("Day - Far:");
+            ui.add(egui::DragValue::new(&mut state.wthr_fog_distances[1]).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Night - Near:");
+            ui.add(egui::DragValue::new(&mut state.wthr_fog_distances[2]).speed(0.01));
+            ui.label("Night - Far:");
+            ui.add(egui::DragValue::new(&mut state.wthr_fog_distances[3]).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Day - Power:");
+            ui.add(egui::DragValue::new(&mut state.wthr_fog_distances[4]).speed(0.01));
+            ui.label("Night - Power:");
+            ui.add(egui::DragValue::new(&mut state.wthr_fog_distances[5]).speed(0.01));
+        });
+    });
+
+    // The image space modifiers, one per time of day.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Image Space Modifiers");
+        ui.add_space(4.0);
+        let adapters = session.records_by_sig(*b"IMAD");
+        for (i, name) in WTHR_TIMES_OF_DAY.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("{name}:"));
+                let mut fid = state.wthr_image_space_modifiers[i];
+                record_dropdown(ui, &format!("wthr_iad_{i}"), &adapters, &mut fid);
+                state.wthr_image_space_modifiers[i] = fid;
+            });
+        }
+    });
+
+    // The weather's colours: ten colour types, each with one colour per
+    // time of day.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Colors by Time & Type (NAM0)");
+        ui.add_space(4.0);
+        for (i, type_name) in WTHR_COLOR_TYPES.iter().enumerate() {
+            if i >= state.wthr_colors.len() {
+                break;
+            }
+            ui.label(format!("{type_name}:"));
+            let colors = &mut state.wthr_colors[i];
+            for (j, time) in WTHR_TIMES_OF_DAY.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    ui.label(*time);
+                    let color = match j {
+                        0 => &mut colors.sunrise,
+                        1 => &mut colors.day,
+                        2 => &mut colors.sunset,
+                        3 => &mut colors.night,
+                        4 => &mut colors.high_noon,
+                        _ => &mut colors.midnight,
+                    };
+                    ui.color_edit_button_srgba_unmultiplied(color);
+                });
+            }
+        }
     });
 }
 
