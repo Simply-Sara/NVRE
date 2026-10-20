@@ -428,6 +428,22 @@ pub struct ObjectEditorState {
     pub clmt_sun_texture: String,
     pub clmt_sun_glare_texture: String,
 
+    // ADDN (Addon Node) fields
+    /// `DATA` Node Index — the int32 index of the node in the master particle
+    /// system.
+    pub addn_node_index: i32,
+    /// `DNAM` Master Particle System Cap — the uint16 cap.
+    pub addn_master_cap: u16,
+    /// `DNAM`'s two unknown bytes, carried through unchanged.
+    pub addn_dnam_unknown: [u8; 2],
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    ///
+    /// The collection is a set of subrecords that always appear together, so
+    /// it is kept as one struct rather than as loose fields. `MODT`'s texture
+    /// hashes are kept as raw bytes: the editor cannot author a file hash, and
+    /// rewriting one would corrupt the mod.
+    pub addn_model: ModelData,
+
     // AVIF fields
     pub avif_desc: String,
     pub avif_short_name: String,
@@ -1313,6 +1329,10 @@ impl ObjectEditorState {
         self.hair_model = ModelData::default();
         self.hdpt_model = ModelData::default();
         self.hdpt_extra_parts.clear();
+        self.addn_model = ModelData::default();
+        self.addn_node_index = 0;
+        self.addn_master_cap = 0;
+        self.addn_dnam_unknown = [0, 0];
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -1528,6 +1548,7 @@ impl ObjectEditorState {
             b"GMST" => self.load_gmst(),
             b"RACE" => self.load_race(),
             b"CLMT" => self.load_clmt(),
+            b"ADDN" => self.load_addn(&raw_subs),
             b"AVIF" => self.load_avif(),
             b"EYES" => self.load_eyes(),
             b"HAIR" => self.load_hair(&raw_subs),
@@ -2276,6 +2297,44 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load an `ADDN` (Addon Node) record.
+    ///
+    /// The record is `EDID`, `OBND`, the model data collection (`MODL`,
+    /// `MODT`, and optionally `MODB`, `MODS` and `MODD`), a four-byte `DATA`
+    /// holding the node index, and a four-byte `DNAM` holding the master
+    /// particle system cap and two bytes the spec does not name.
+    ///
+    /// The model collection's subrecords are read from the record's own
+    /// subrecord list rather than from `raw_subs`, which holds one value per
+    /// signature.
+    fn load_addn(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.addn_node_index = 0;
+        self.addn_master_cap = 0;
+        self.addn_dnam_unknown = [0, 0];
+        self.addn_model = ModelData::default();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"DATA" if s.data.len() >= 4 => {
+                    self.addn_node_index =
+                        i32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"DNAM" if s.data.len() >= 4 => {
+                    self.addn_master_cap = u16::from_le_bytes([s.data[0], s.data[1]]);
+                    self.addn_dnam_unknown = [s.data[2], s.data[3]];
+                }
+                b"MODL" => self.addn_model.modl = zstring(&s.data),
+                b"MODB" if s.data.len() >= 4 => {
+                    self.addn_model.modb = Some([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"MODT" => self.addn_model.modt = s.data.clone(),
+                b"MODS" => self.addn_model.mods = parse_mods(&s.data),
+                b"MODD" => self.addn_model.modd = s.data.first().copied(),
+                _ => {}
+            }
+        }
+    }
+
     fn load_avif(&mut self) {
         self.avif_desc = self.get_string(b"DESC");
         self.avif_short_name = self.get_string(b"ANAM");
@@ -2441,6 +2500,7 @@ impl ObjectEditorState {
             b"GMST" => self.save_gmst(session),
             b"RACE" => self.save_race(session),
             b"CLMT" => self.save_clmt(session),
+            b"ADDN" => self.save_addn(session),
             b"AVIF" => self.save_avif(session),
             b"EYES" => self.save_eyes(session),
             b"HAIR" => self.save_hair(session),
@@ -3654,6 +3714,62 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", vec![self.hair_flags]);
     }
 
+    /// Save an `ADDN` (Addon Node) record.
+    ///
+    /// `DATA` is a four-byte node index and `DNAM` a four-byte master
+    /// particle system cap plus two bytes the spec does not name. Both are
+    /// written at the length the record already had: every one of the game's
+    /// ADDN records carries four bytes of each, so a fixed four-byte write is
+    /// byte-identical to what the record had.
+    ///
+    /// The model data collection's subrecords are written individually, in
+    /// the order the game writes them. `MODT`'s texture hashes and `MODB`'s
+    /// unknown bytes are copied through unchanged — the editor cannot author
+    /// a file hash, and rewriting one would corrupt the mod.
+    fn save_addn(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.addn_model;
+        let sigs = model.instance_sigs();
+
+        // The original instance's MODL is the common "Model Path" field the
+        // header panel owns and has already written, so it is not written
+        // again here. A numbered instance's model path has no such field, so
+        // it is written from the collection.
+        if model.instance > 0 && !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.modl, encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            if model.instance == 0 {
+                session.doc.set_sub(fid, b"MODB", modb.to_vec());
+            }
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, &sigs.modt, model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session
+                .doc
+                .set_sub(fid, &sigs.mods, write_mods(&model.mods));
+        }
+        if let (Some(modd), Some(sig)) = (model.modd, sigs.modd) {
+            session.doc.set_sub(fid, &sig, vec![modd]);
+        }
+
+        // DATA: the node index.
+        session
+            .doc
+            .set_sub(fid, b"DATA", self.addn_node_index.to_le_bytes().to_vec());
+
+        // DNAM: the master particle system cap, and the two bytes the spec
+        // does not name, carried through unchanged.
+        let mut dnam = Vec::with_capacity(4);
+        dnam.extend_from_slice(&self.addn_master_cap.to_le_bytes());
+        dnam.extend_from_slice(&self.addn_dnam_unknown);
+        session.doc.set_sub(fid, b"DNAM", dnam);
+    }
+
     /// Save a `HDPT` (Head Part) record.
     ///
     /// The model data collection's subrecords are written individually, in the
@@ -3842,6 +3958,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"LVLI" => "Leveled Item",
         b"LVLN" => "Leveled NPC",
         b"LVLC" => "Leveled Creature",
+        b"ADDN" => "Addon Node",
         b"AVIF" => "Actor Value",
         b"EYES" => "Eyes",
         b"HAIR" => "Hair",
@@ -4158,6 +4275,7 @@ pub fn ui(
                 b"GMST" => draw_gmst_ui(ui, &mut state),
                 b"RACE" => draw_race_ui(ui, &mut state),
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
+                b"ADDN" => draw_addn_ui(ui, &mut state),
                 b"AVIF" => draw_avif_ui(ui, &mut state),
                 b"EYES" => draw_eyes_ui(ui, &mut state),
                 b"HAIR" => draw_hair_ui(ui, &session, &mut state),
@@ -7358,6 +7476,94 @@ fn draw_eyes_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .range(0..=u8::MAX as i64)
                     .speed(1.0),
             );
+        });
+    });
+}
+
+/// Draw the Addon Node (ADDN) editor body.
+///
+/// The spec's `DNAM` names a "Master Particle System Cap" and two unknown
+/// bytes. The unknown bytes are reported and carried through unchanged: the
+/// editor cannot know what they mean, and zeroing them would change bytes the
+/// game wrote.
+fn draw_addn_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Addon Node");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Node Index (DATA):");
+            ui.add(egui::DragValue::new(&mut state.addn_node_index).range(-1..=100000));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Master Particle System Cap (DNAM):");
+            ui.add(egui::DragValue::new(&mut state.addn_master_cap).range(0..=65535));
+        });
+        ui.horizontal(|ui| {
+            ui.label("DNAM unknown bytes:");
+            ui.label(format!("{:?} — preserved as-is", state.addn_dnam_unknown));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Model Data");
+        ui.add_space(4.0);
+
+        let model = &mut state.addn_model;
+
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            if model.instance == 0 {
+                // The original instance's model path is the header panel's
+                // "Model Path" field, so it is edited there.
+                ui.label(egui::RichText::new("edit the Model Path in the header above").weak());
+            } else {
+                ui.add(
+                    egui::TextEdit::singleline(&mut model.modl)
+                        .desired_width(ui.available_width() - 200.0),
+                );
+            }
+        });
+
+        // MODT's texture hashes are file hashes the editor cannot compute or
+        // author, so it reports what is there rather than offering to change
+        // it: rewriting one would corrupt the mod.
+        let hashes = model.modt.len() / 24;
+        ui.label(format!(
+            "Texture File Hashes (MODT): {hashes} hash(es), {} bytes — preserved as-is",
+            model.modt.len()
+        ));
+
+        // MODB is four unknown bytes. They are reported, and copied through.
+        ui.horizontal(|ui| {
+            ui.label("MODB:");
+            match &model.modb {
+                Some(b) => ui.label(format!("{b:?} — preserved as-is")),
+                None => ui.label(egui::RichText::new("absent").italics()),
+            }
+        });
+
+        // MODD: the FaceGen model flags.
+        ui.horizontal(|ui| {
+            let mut has = model.modd.is_some();
+            if ui
+                .checkbox(&mut has, "Record has MODD (FaceGen flags)")
+                .changed()
+            {
+                model.modd = if has { Some(0) } else { None };
+            }
+            if let Some(modd) = model.modd.as_mut() {
+                for (bit, name) in MODD_FLAGS {
+                    let mut set = (*modd & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            *modd |= bit;
+                        } else {
+                            *modd &= !bit;
+                        }
+                    }
+                }
+            }
         });
     });
 }
