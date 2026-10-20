@@ -10,11 +10,15 @@ property grid to every field it can read.
 
 ## One directory per game
 
-`schemas/<game>/` is the record layout for one game. The editor picks the
-directory from the game the launcher chose (`crates/nvre-editor/src/game.rs`),
-so a session over Fallout 3 reads `schemas/fo3/` and never FNV's. A directory
-that does not exist yet is reported as `no schema files in ...` — the editor
-refuses to guess another game's layout out of FNV's.
+`schemas/<game>/` is a game's record layout, read as an **overlay** on
+`schemas/fnv` rather than as a standalone directory: the container, the group
+tree and the FormID model are shared, so a second game describes only the
+records that differ and inherits the rest. The editor loads the merged result
+for the game the launcher chose (`crates/nvre-editor/src/game.rs`).
+
+A directory with no files of its own is not an error — it means the game shares
+every layout it uses, and it reads FNV's alone. A directory that does not exist
+yet is reported as `no schema files in ...` rather than guessed at.
 
 The format itself is game-neutral despite the `fnv` in its name: the container,
 the GRUP tree and the FormID numbering model are shared across Gamebryo and
@@ -24,7 +28,7 @@ language serves every game.
 | Directory | Game | State |
 |---|---|---|
 | `fnv/` | Fallout: New Vegas | measured against all six shipped masters |
-| `fo3/` | Fallout 3 | not started |
+| `fo3/` | Fallout 3 | **measured: 100.00% on all six shipped masters** — see [`fo3/README.md`](fo3/README.md) |
 | `skyrim/` | Skyrim (Legendary) | not started |
 | `skyrimse/` | Skyrim Special Edition | not started |
 | `fo4/` | Fallout 4 | not started |
@@ -34,6 +38,17 @@ at its master, read the undecoded subrecords off the report, and write each
 entry with a `confidence` and a `note` naming its source. Never transcribe a
 layout from FNV's and assume the field means the same thing — `NPC_`'s `DATA`
 differs between the two engines.
+
+Measure the *shared* schema against the new game first, before writing anything.
+Fallout 3 turned out to need four records rather than 107, because the container,
+the group tree and the FormID model are shared and only a handful of layouts
+differ. A directory that starts as a full copy of `fnv/` is a copy that will
+drift; a directory that holds the differences and overlays them does not.
+
+```bash
+cargo run --bin coverage -- --overlay schemas/fo3 schemas/fnv "$FO3"/Fallout3.esm
+cargo run --bin rtcheck   -- --overlay schemas/fo3 schemas/fnv "$FO3"/Fallout3.esm
+```
 
 | File | Records |
 |---|---|

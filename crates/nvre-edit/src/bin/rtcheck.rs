@@ -8,9 +8,23 @@ use nvre_edit::encode::roundtrips;
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let schema_dir = args.next().unwrap();
+    // `--overlay <dir>` reads `<dir>` over `schema_dir`, the same flag
+    // `coverage` takes, so a game's round-trip is checked against the merged
+    // schema rather than a directory that restates every record.
+    let mut overlay = None;
+    let schema_dir = loop {
+        match args.next().as_deref() {
+            Some("--overlay") => overlay = args.next(),
+            Some(dir) => break dir.to_string(),
+            None => panic!("usage: rtcheck [--overlay <dir>] <schema-dir> <plugin>..."),
+        }
+    };
     let plugins: Vec<String> = args.collect();
-    let schema = Schema::load_dir(&schema_dir).expect("schema");
+    let schema = match &overlay {
+        Some(ov) => Schema::load_overlay(&schema_dir, ov),
+        None => Schema::load_dir(&schema_dir),
+    }
+    .expect("schema");
     let mut checked = 0usize;
     let mut gaps: std::collections::BTreeMap<String, usize> = Default::default();
     for path in &plugins {

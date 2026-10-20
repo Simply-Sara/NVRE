@@ -10,11 +10,27 @@ use fnv_esm::{Plugin, Schema};
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let schema_dir = args
-        .next()
-        .unwrap_or_else(|| "../../schemas/fnv".to_string());
+    // `--overlay <dir>`: load `<dir>` as an overlay over `schemas/fnv` instead
+    // of reading a directory on its own. A game that shares most of another
+    // game's layouts describes only the records that differ, so its coverage is
+    // measured against the merged result rather than against a directory that
+    // would have to restate all 107 record types.
+    let mut overlay: Option<String> = None;
+    let schema_dir = loop {
+        match args.next().as_deref() {
+            Some("--overlay") => {
+                overlay = args.next();
+            }
+            Some(dir) => break dir.to_string(),
+            None => break "../../schemas/fnv".to_string(),
+        }
+    };
     let plugins: Vec<String> = args.collect();
-    let schema = match Schema::load_dir(&schema_dir) {
+    let schema = match &overlay {
+        Some(ov) => Schema::load_overlay(&schema_dir, ov),
+        None => Schema::load_dir(&schema_dir),
+    };
+    let schema = match schema {
         Ok(s) => s,
         Err(e) => {
             eprintln!("schema error: {e}");

@@ -453,6 +453,50 @@ impl Schema {
         Ok(s)
     }
 
+    /// Load `base`, then let `overlay`'s files merge **over** it.
+    ///
+    /// [`Schema::load_dir`] rejects a record defined twice, which is right for a
+    /// single game's files — a layout in two places is a bug waiting to happen.
+    /// A second game is a different situation: Fallout 3's container is Fallout:
+    /// New Vegas's container plus a subrecord, and restating the other 103
+    /// records to change four would drift the moment FNV's own schema moves.
+    ///
+    /// So an overlay *replaces* the records it names and leaves the rest of the
+    /// base's alone. A record named here is defined in full, because a
+    /// replacement is not a merge: the base's subrecords for that record are
+    /// dropped, which is why an overlay file carries a complete record.
+    ///
+    /// Both directories are read recursively, so `schemas/fo3` holds its own
+    /// files plus a symlink to `schemas/fnv` and the two load as one.
+    pub fn load_overlay(
+        base: impl AsRef<Path>,
+        overlay: impl AsRef<Path>,
+    ) -> Result<Schema, SchemaError> {
+        let base = base.as_ref();
+        let overlay = overlay.as_ref();
+        let mut s = Schema::load_dir(base)?;
+        let mut files = Vec::new();
+        collect_json(overlay, &mut files)
+            .map_err(|e| SchemaError(format!("{}: {e}", overlay.display())))?;
+        files.sort();
+        // The overlay directory commonly holds a symlink to the base, so its
+        // files are reachable through both paths. They are already loaded, and
+        // merging them twice would fail on the first duplicate type — so compare
+        // canonical paths, which resolve the symlink, rather than the text.
+        let base_canon = base.canonicalize().unwrap_or_else(|_| base.to_path_buf());
+        files.retain(|f| {
+            f.canonicalize()
+                .map(|c| !c.starts_with(&base_canon))
+                .unwrap_or(true)
+        });
+        for f in &files {
+            let text = std::fs::read_to_string(f).map_err(|e| SchemaError(format!("{}: {e}", f.display())))?;
+            s.merge_overlay_str(&text, &f.display().to_string())?;
+        }
+        s.validate()?;
+        Ok(s)
+    }
+
     pub fn merge_str(&mut self, text: &str, label: &str) -> Result<(), SchemaError> {
         let v = parse_strict(text).map_err(|e| SchemaError(format!("{label}: {e}")))?;
         if v.get("format").and_then(Value::as_str) != Some("fnv.schema/1") {
@@ -493,6 +537,61 @@ impl Schema {
                 if self.records.insert(k, rd).is_some() {
                     return Err(SchemaError(format!("{label}: record {sig} defined twice")));
                 }
+            }
+        }
+        self.files.push(label.to_string());
+        Ok(())
+    }
+
+    /// [`Schema::merge_str`] for a file that may redefine records already loaded.
+    ///
+    /// The only difference is the last check: a record the schema already holds
+    /// is **replaced** rather than rejected. Everything else — the format tag,
+    /// the types, the common subrecords — stays strict, so a typo in an overlay
+    /// is still an error rather than a silent second definition.
+    ///
+    /// A replacement is whole, not a merge: the base's subrecords for that
+    /// record are dropped, so an overlay file names every subrecord its record
+    /// has. That is the point — an overlay that only listed the differences
+    /// would silently delete the subrecords it did not repeat.
+    pub fn merge_overlay_str(&mut self, text: &str, label: &str) -> Result<(), SchemaError> {
+        let v = parse_strict(text).map_err(|e| SchemaError(format!("{label}: {e}")))?;
+        if v.get("format").and_then(Value::as_str) != Some("fnv.schema/1") {
+            return Err(SchemaError(format!("{label}: missing \"format\": \"fnv.schema/1\"")));
+        }
+        if let Some(Value::Object(types)) = v.get("types") {
+            for (name, t) in types {
+                if self.types.insert(name.clone(), parse_type(t, &format!("{label}:types.{name}"))?).is_some() {
+                    return Err(SchemaError(format!("{label}: type {name} defined twice")));
+                }
+            }
+        }
+        if let Some(Value::Object(common)) = v.get("common") {
+            for (sig, d) in common {
+                let k = sig4(sig, label)?;
+                if self.common.insert(k, parse_subdef(d, &format!("{label}:common.{sig}"))?).is_some() {
+                    return Err(SchemaError(format!("{label}: common subrecord {sig} defined twice")));
+                }
+            }
+        }
+        if let Some(Value::Object(recs)) = v.get("records") {
+            for (sig, d) in recs {
+                let k = sig4(sig, label)?;
+                let mut subs = HashMap::new();
+                if let Some(Value::Object(sm)) = d.get("subrecords") {
+                    for (ss, sd) in sm {
+                        subs.insert(sig4(ss, label)?, parse_subdef(sd, &format!("{label}:{sig}.{ss}"))?);
+                    }
+                }
+                let (header_flags, header_flags_confidence) = parse_header_flags(d.get("header_flags"), &format!("{label}:{sig}.header_flags"))?;
+                let rd = RecordDef {
+                    name: d.get("name").and_then(Value::as_str).unwrap_or("").to_string(),
+                    confidence: d.get("confidence").and_then(Value::as_str).unwrap_or("hypothesis").to_string(),
+                    subrecords: subs,
+                    header_flags,
+                    header_flags_confidence,
+                };
+                self.records.insert(k, rd);
             }
         }
         self.files.push(label.to_string());

@@ -25,9 +25,9 @@
 //!   (`NVForever/schemas/nif`, versions 20.0.0.4–20.2.0.7, `bs_version` 11–34),
 //!   so a non-FNV game's meshes are decoded with the wrong version's
 //!   conditions until a per-game overlay exists;
-//! - the record schemas themselves: only `schemas/fnv` is measured, so opening
-//!   another game's master fails with `no schema files in ...` rather than
-//!   silently misreading it;
+//! - the record schemas for the games other than FNV and Fallout 3: those two
+//!   are measured, so opening another game's master fails with
+//!   `no schema files in ...` rather than silently misreading it;
 //! - the GECK/CK object-window group table, which is FNV's
 //!   ([`super::session::geck_group_for_sig`]) until each game has its own;
 //! - archive containers other than BSA v104 (Skyrim SE and Fallout 4 ship BA2,
@@ -119,7 +119,7 @@ pub const FO3: GameProfile = GameProfile {
     archive_format: ArchiveFormat::Bsa104,
     steam_folder: Some("Fallout 3"),
     schema_subdir: "fo3",
-    notes: &["no record schemas yet: schemas/fo3 has not been measured against Fallout3.esm"],
+    notes: &[],
 };
 
 /// Skyrim (Legendary Edition). BSA v104, like FNV and Fallout 3.
@@ -342,15 +342,34 @@ impl GameProfile {
         out
     }
 
-    /// Where this game's record schemas live: the repo's `schemas/<game>`.
+    /// Where this game's record schemas live, and what they overlay.
     ///
-    /// A missing directory is reported by `Schema::load_dir` as
-    /// `no schema files in ...`, which is the honest answer for a game whose
-    /// layouts have not been measured yet.
-    pub fn esm_schema_dir(&self) -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
+    /// Most of a second game's layouts are the first game's: the container, the
+    /// group tree, the FormID model and most record types are shared, so a
+    /// game's directory holds only the records that differ and overlays them on
+    /// `schemas/fnv`. `fnv` is its own base and has no overlay.
+    ///
+    /// A missing overlay directory is reported by the loader rather than
+    /// guessed at, and `schemas/fo3` exists with its four records measured; the
+    /// others do not yet and fail with `no schema files in ...`.
+    pub fn schema_dirs(&self) -> (PathBuf, Option<PathBuf>) {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv");
+        if self.id == "fnv" {
+            return (base, None);
+        }
+        let overlay = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../schemas")
-            .join(self.schema_subdir)
+            .join(self.schema_subdir);
+        (base, Some(overlay))
+    }
+
+    /// Load this game's record schema: its overlay over `schemas/fnv`.
+    pub fn load_schema(&self) -> Result<fnv_esm::Schema, String> {
+        let (base, overlay) = self.schema_dirs();
+        match overlay {
+            Some(ov) => fnv_esm::Schema::load_overlay(&base, &ov).map_err(|e| e.to_string()),
+            None => fnv_esm::Schema::load_dir(&base).map_err(|e| e.to_string()),
+        }
     }
 
     /// Open the game's assets: its archive set over `data_dir`, plus the NIF

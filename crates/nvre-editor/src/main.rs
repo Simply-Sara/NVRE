@@ -83,9 +83,11 @@ fn resolve_game(args: &Args) -> Result<&'static game::GameProfile, String> {
 
 /// The record schemas: `--esm-schema` when named, otherwise the game's own.
 fn resolve_schema_dir(args: &Args, game: &game::GameProfile) -> PathBuf {
-    args.esm_schema
-        .clone()
-        .unwrap_or_else(|| game.esm_schema_dir())
+    args.esm_schema.clone().unwrap_or_else(|| {
+        // The base FNV directory, which is what a session loads when the game
+        // has no overlay of its own.
+        game.schema_dirs().0
+    })
 }
 
 /// The default plugin and masters for the game, overridden by flags.

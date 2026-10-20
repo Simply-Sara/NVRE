@@ -11,6 +11,25 @@ use nvre_edit::Document;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+/// The schema a session reads records with: `schema_dir`, overlaid with `game`'s
+/// own differences when it has any.
+///
+/// A session is opened with a directory, because that is what a caller passes
+/// on the command line or in a test, and with a game detected from the plugin's
+/// folder. The two together decide the schema: FNV reads its directory alone,
+/// and Fallout 3 reads its directory over FNV's. Reading FNV's directory alone
+/// for a Fallout 3 session would decode 3 subrecords as unknown and error on
+/// one more — the numbers that led to the overlay existing.
+fn load_schema(
+    schema_dir: &std::path::Path,
+    game: &crate::game::GameProfile,
+) -> Result<Schema, String> {
+    match game.schema_dirs().1 {
+        Some(overlay) => Schema::load_overlay(schema_dir, &overlay).map_err(|e| e.to_string()),
+        None => Schema::load_dir(schema_dir).map_err(|e| e.to_string()),
+    }
+}
+
 type CachedRecordList = Arc<[(u32, String)]>;
 
 /// The open editing session.
@@ -87,7 +106,7 @@ impl Session {
         // The plugin's own folder is the Data folder the launcher chose.
         let dir = path.parent().unwrap_or(std::path::Path::new("."));
         let game = crate::game::GameProfile::detect(dir);
-        let schema = Schema::load_dir(schema_dir).map_err(|e| e.to_string())?;
+        let schema = load_schema(schema_dir, game)?;
         // Masters are named as file names and resolved beside the plugin being
         // edited, so `--masters FalloutNV.esm` works whatever the working folder.
         let mut plugins: Vec<fnv_esm::Plugin> = Vec::new();
@@ -164,7 +183,7 @@ impl Session {
         masters: Vec<String>,
     ) -> Result<Session, String> {
         let game = crate::game::GameProfile::detect(data_dir);
-        let schema = Schema::load_dir(schema_dir).map_err(|e| e.to_string())?;
+        let schema = load_schema(schema_dir, game)?;
         let mut plugins: Vec<fnv_esm::Plugin> = Vec::new();
         for m in &masters {
             let p = data_dir.join(m);
