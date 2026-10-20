@@ -6,17 +6,18 @@
 //! baked into it as a default. This module is where the game becomes a value
 //! instead of a constant.
 //!
-//! A profile names: the folder Steam installs the game into, the game's master,
-//! its own masters in load order, the `SArchiveList` it reads its assets from,
-//! which archive container those are, and where that game's record schemas
-//! live. Everything else — the TES4 container, the GRUP tree, the FormID
-//! numbering model — is shared, so a profile is deliberately small.
+//! A profile names: the folder Steam installs the game into, the game's own
+//! master, the `SArchiveList` it reads its assets from, which archive container
+//! those are, and where that game's record schemas live. Everything else — the
+//! TES4 container, the GRUP tree, the FormID numbering model — is shared, so a
+//! profile is deliberately small.
 //!
-//! The masters a *session* uses are read from the game's own Data folder
-//! ([`GameProfile::masters_in`]), not from the profile: the profile says which
-//! order the game's own masters load in and which are its DLC, and only the
-//! ones the install actually holds become masters. A profile is therefore
-//! correct for a partial install, and picks up a mod master the user added.
+//! Nothing here lists the game's masters. A session's master list is read from
+//! the game's own Data folder and ordered by a topological sort of the plugins'
+//! own `MAST` headers ([`GameProfile::masters_in`]): the order is on disk, in
+//! the files, so the profile does not restate it. That keeps a profile correct
+//! for a partial install, for a mod master the user added, and for an install
+//! whose DLC set is not the shipped one.
 //!
 //! What a profile does **not** carry, because it is not implemented yet:
 //!
@@ -60,9 +61,6 @@ pub struct GameProfile {
     pub editor_name: &'static str,
     /// The base game's master, and the default plugin a session opens.
     pub master: &'static str,
-    /// Base game and DLC masters in the order the game loads them. This is the
-    /// default load order, so a session opened over a master sees its own game.
-    pub masters: &'static [&'static str],
     /// The `SArchiveList` the shipped INI names, lowest precedence first.
     pub archives: &'static [&'static str],
     /// The container those archives are in.
@@ -86,18 +84,6 @@ pub const FNV: GameProfile = GameProfile {
     name: "Fallout: New Vegas",
     editor_name: "New Vegas Rust Editor",
     master: "FalloutNV.esm",
-    masters: &[
-        "FalloutNV.esm",
-        "DeadMoney.esm",
-        "HonestHearts.esm",
-        "OldWorldBlues.esm",
-        "LonesomeRoad.esm",
-        "GunRunnersArsenal.esm",
-        "ClassicPack.esm",
-        "MercenaryPack.esm",
-        "TribalPack.esm",
-        "CaravanPack.esm",
-    ],
     archives: &[
         "Fallout - Textures.bsa",
         "Fallout - Textures2.bsa",
@@ -119,14 +105,6 @@ pub const FO3: GameProfile = GameProfile {
     name: "Fallout 3",
     editor_name: "Fallout 3 Rust Editor",
     master: "Fallout3.esm",
-    masters: &[
-        "Fallout3.esm",
-        "Anchorage.esm",
-        "ThePitt.esm",
-        "BrokenSteel.esm",
-        "PointLookout.esm",
-        "Zeta.esm",
-    ],
     // The shipped `Fallout_default.ini`'s `SArchiveList` [documented: Bethesda,
     // Fallout 3 `Fallout_default.ini`; the same six names the GECK wiki's BSA
     // page and every archive-invalidation guide quote].
@@ -150,13 +128,6 @@ pub const SKYRIM: GameProfile = GameProfile {
     name: "Skyrim",
     editor_name: "Skyrim Rust Editor",
     master: "Skyrim.esm",
-    masters: &[
-        "Skyrim.esm",
-        "Update.esm",
-        "Dawnguard.esm",
-        "HearthFires.esm",
-        "Dragonborn.esm",
-    ],
     // The shipped `Skyrim.ini`'s `sResourceArchiveList` [documented: Bethesda,
     // Skyrim `Skyrim.ini`; the same list STEP's INI guide quotes].
     archives: &[
@@ -184,13 +155,6 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     name: "Skyrim Special Edition",
     editor_name: "Skyrim SE Rust Editor",
     master: "Skyrim.esm",
-    masters: &[
-        "Skyrim.esm",
-        "Update.esm",
-        "Dawnguard.esm",
-        "HearthFires.esm",
-        "Dragonborn.esm",
-    ],
     archives: &[],
     archive_format: ArchiveFormat::Unreadable,
     steam_folder: Some("Skyrim Special Edition"),
@@ -209,16 +173,6 @@ pub const FALLOUT_4: GameProfile = GameProfile {
     name: "Fallout 4",
     editor_name: "Fallout 4 Rust Editor",
     master: "Fallout4.esm",
-    masters: &[
-        "Fallout4.esm",
-        "DLCRobot.esm",
-        "DLCworkshop01.esm",
-        "DLCCoast.esm",
-        "DLCWorkshop02.esm",
-        "DLCWorkshop03.esm",
-        "DLCNukaWorld.esm",
-        "DLCUltraHighResolution.esm",
-    ],
     archives: &[],
     archive_format: ArchiveFormat::Unreadable,
     steam_folder: Some("Fallout 4"),
@@ -300,46 +254,91 @@ impl GameProfile {
         None
     }
 
-    /// The masters present in `data_dir`, in the game's own load order.
+    /// The masters present in `data_dir`, in a load order the game accepts.
     ///
-    /// The game's shipped masters come first in the order the game loads them,
-    /// then any other `.esm` in the folder in name order — a mod master the
-    /// user has installed, which the game loads after its own. `.esp` files are
-    /// not masters and are never included.
+    /// The order is **derived from the plugins themselves**, not from a table.
+    /// Every plugin's `MAST` header names the masters it needs, and a master
+    /// must load before whatever depends on it — so those headers are the edges
+    /// of a dependency graph, and a topological sort of it is a load order.
+    /// Masters nothing constrains against each other (Fallout: New Vegas's DLC
+    /// all declare only `FalloutNV.esm`, so their mutual order is on no disk)
+    /// are ordered by name, which is a valid order even though it is not the
+    /// game's canonical one.
     ///
     /// Reading the folder rather than a fixed list is what makes this correct
-    /// for a partial install: only Fallout 3's DLC the user actually owns
-    /// appears, and a folder holding only the base game gives a one-master
-    /// list instead of five names the game cannot load.
+    /// for a partial install: only the DLC the user actually owns appears, and a
+    /// folder holding only the base game gives a one-master list. It also picks
+    /// up a mod master the user installed, which a fixed list could not see, and
+    /// places it after everything it depends on rather than in front of it.
+    ///
+    /// `.esp` files are not masters and are never included.
     pub fn masters_in(&self, data_dir: &Path) -> Vec<String> {
-        let Ok(entries) = std::fs::read_dir(data_dir) else {
-            return Vec::new();
+        // Every `.esm`/`.esl` in the folder, lower-cased for lookups.
+        let present: Vec<String> = match std::fs::read_dir(data_dir) {
+            Ok(rd) => rd
+                .filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| {
+                    let l = n.to_ascii_lowercase();
+                    l.ends_with(".esm") || l.ends_with(".esl")
+                })
+                .collect(),
+            Err(_) => return Vec::new(),
         };
-        // Present in the folder, by exact name.
-        let present: Vec<String> = entries
-            .filter_map(|e| e.ok())
-            .map(|e| e.file_name().to_string_lossy().into_owned())
-            .filter(|n| {
-                let l = n.to_ascii_lowercase();
-                l.ends_with(".esm") || l.ends_with(".esl")
-            })
-            .collect();
-        let has = |name: &str| present.iter().any(|p| p.eq_ignore_ascii_case(name));
-        // The game's own order first; a shipped master the install lacks is
-        // skipped rather than offered as a master that cannot be loaded.
-        let mut out: Vec<String> = Vec::new();
-        for m in self.masters {
-            if has(m) {
-                out.push((*m).to_string());
-            }
+        let lower: Vec<String> = present.iter().map(|n| n.to_ascii_lowercase()).collect();
+
+        // The edges: for each plugin, the masters it names that are present.
+        // A header naming a master the folder lacks is skipped — that plugin is
+        // a mod whose dependency is not installed, and the launcher's own
+        // checks report that rather than this ordering guessing at it.
+        let mut needs: Vec<(usize, Vec<usize>)> = Vec::with_capacity(present.len());
+        for (i, name) in present.iter().enumerate() {
+            let deps = match fnv_esm::Plugin::open(data_dir.join(name)) {
+                Ok(p) => p
+                    .header
+                    .masters
+                    .iter()
+                    .filter_map(|m| {
+                        let l = m.name.to_ascii_lowercase();
+                        // The master must be present, and a plugin naming itself
+                        // is not a dependency edge.
+                        lower.iter().position(|n| *n == l && *n != lower[i])
+                    })
+                    .collect::<Vec<_>>(),
+                // An unreadable file is still a master the folder holds; with no
+                // header to read it simply constrains nothing.
+                Err(_) => Vec::new(),
+            };
+            needs.push((i, deps));
         }
-        // Then everything else the folder holds, in name order.
-        let mut extra: Vec<String> = present
-            .into_iter()
-            .filter(|p| !out.iter().any(|o| o.eq_ignore_ascii_case(p)))
+
+        // Kahn's algorithm. Which ready master goes next is decided by how many
+        // plugins depend on it, most first, then by name: a master many plugins
+        // need is the one the game loads early, and the name keeps the result
+        // deterministic rather than dependent on directory order. Nothing on
+        // disk pins the order among Fallout: New Vegas's DLC — every one of
+        // them declares only `FalloutNV.esm` — so this is a valid load order
+        // that is not necessarily the game's canonical one.
+        let dependents: Vec<usize> = (0..present.len())
+            .map(|i| needs.iter().filter(|(_, d)| d.contains(&i)).count())
             .collect();
-        extra.sort_by_key(|n| n.to_ascii_lowercase());
-        out.extend(extra);
+        let mut done: Vec<bool> = vec![false; present.len()];
+        let mut out: Vec<String> = Vec::with_capacity(present.len());
+        while out.len() < present.len() {
+            let next = (0..present.len())
+                .filter(|&i| !done[i])
+                .filter(|&i| needs[i].1.iter().all(|&d| done[d]))
+                .min_by_key(|&i| (std::cmp::Reverse(dependents[i]), lower[i].clone()))
+                .or_else(|| {
+                    // Nothing is ready: a cycle among the headers (a mod pair
+                    // that depend on each other), which the game cannot load
+                    // either. Take the first remaining rather than looping.
+                    (0..present.len()).find(|&i| !done[i])
+                });
+            let Some(i) = next else { break };
+            done[i] = true;
+            out.push(present[i].clone());
+        }
         out
     }
 
@@ -369,7 +368,13 @@ impl GameProfile {
     ) -> Result<nvf_assets::GameData, String> {
         let order = match self.archive_format {
             ArchiveFormat::Bsa104 => {
-                fnv_vfs::Vfs::archive_order(data_dir, self.archives, self.masters)
+                // The plugins in the folder, so each one's own archives
+                // (`<plugin>.bsa`, `<plugin> - *.bsa`) are found however many
+                // the install holds. Read here rather than from a list, for the
+                // same reason `masters_in` reads it.
+                let plugins = self.masters_in(data_dir);
+                let names: Vec<&str> = plugins.iter().map(String::as_str).collect();
+                fnv_vfs::Vfs::archive_order(data_dir, self.archives, &names)
             }
             ArchiveFormat::Unreadable => {
                 tracing::warn!(
