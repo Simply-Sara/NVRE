@@ -276,6 +276,18 @@ pub struct BlockDef {
     /// so the order is a cycle rather than a single pass: the next expected slot
     /// after the last one is the first again.
     pub order: Vec<[u8; 4]>,
+    /// The block's own subrecords, chosen by the opener's *value*.
+    ///
+    /// Some records have a block whose meaning depends on what the opener
+    /// says, not just which signature it is. Skyrim's `PACK` opens a public
+    /// activity with `ANAM`, whose value is a string naming the activity's
+    /// type — "Bool", "Float", "Location", "Topic" — and the field that
+    /// follows is a `CNAM` for the first three and a `PLDT` or `PDTO` for the
+    /// rest. The opener's value selects which fields the block holds.
+    ///
+    /// `variants` maps the opener's value to that variant's subrecords. A
+    /// value not listed falls back to `subrecords`, the block's default.
+    pub variants: Vec<(String, HashMap<[u8; 4], SubDef>)>,
 }
 
 impl SequenceDef {
@@ -681,11 +693,29 @@ fn parse_sequence(v: Option<&Value>, ctx: &str) -> Result<Option<SequenceDef>, S
                     subs.insert(sig4(ss, &bctx)?, parse_subdef(sd, &format!("{bctx}.{ss}"))?);
                 }
             }
+            // `variants` chooses the block's subrecords by the opener's value.
+            let mut variants = Vec::new();
+            if let Some(Value::Object(vm)) = b.get("variants") {
+                for (v, vd) in vm {
+                    let vctx = format!("{bctx}.variants.{v}");
+                    let mut vsubs = HashMap::new();
+                    if let Some(Value::Object(sm)) = vd.get("subrecords") {
+                        for (ss, sd) in sm {
+                            vsubs.insert(
+                                sig4(ss, &vctx)?,
+                                parse_subdef(sd, &format!("{vctx}.{ss}"))?,
+                            );
+                        }
+                    }
+                    variants.push((v.clone(), vsubs));
+                }
+            }
             blocks.push(BlockDef {
                 name: name.clone(),
                 opener: sig4(opener, &bctx)?,
                 subrecords: subs,
                 order: sigs_of(b, "order", &bctx)?,
+                variants,
             });
         }
     }

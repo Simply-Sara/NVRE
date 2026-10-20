@@ -242,3 +242,59 @@ fn a_block_definition_wins_over_the_record_map() {
     let names = decoded_names(&p, &s);
     assert_eq!(names, vec!["Actor Alias", "Actor Flags"]);
 }
+
+/// A block whose layout is chosen by the opener's *value* — the case Skyrim's
+/// `PACK` needs, where an `ANAM` names the activity's type and the field that
+/// follows is decoded against that type.
+#[test]
+fn a_block_may_choose_its_layout_by_the_opener_value() {
+    let schema_json = r#"{
+      "format": "fnv.schema/1",
+      "records": {
+        "TEST": {
+          "name": "Test",
+          "confidence": "documented",
+          "sequence": {
+            "start": [],
+            "blocks": {
+              "activity": {
+                "opener": "ANAM",
+                "order": ["CNAM", "PLDT"],
+                "subrecords": {
+                  "ANAM": { "name": "Activity Type", "confidence": "documented", "type": "zstring" }
+                },
+                "variants": {
+                  "Bool": { "subrecords": {
+                    "CNAM": { "name": "Bool Value", "confidence": "documented", "type": "u8" } } },
+                  "Location": { "subrecords": {
+                    "PLDT": { "name": "Location Value", "confidence": "documented", "type": "u32" } } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }"#;
+    let mut s = Schema::default();
+    s.merge_overlay_str(schema_json, "test").unwrap();
+
+    // A Bool activity, then a Location one: the field after each ANAM is
+    // decoded against that activity's own type.
+    let subs = vec![
+        sub(b"ANAM", b"Bool\0"),
+        sub(b"CNAM", &1u8.to_le_bytes()),
+        sub(b"ANAM", b"Location\0"),
+        sub(b"PLDT", &2u32.to_le_bytes()),
+    ];
+    let p = plugin(&subs);
+    let names = decoded_names(&p, &s);
+    assert_eq!(
+        names,
+        vec![
+            "Activity Type",
+            "Bool Value",
+            "Activity Type",
+            "Location Value"
+        ]
+    );
+}

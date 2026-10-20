@@ -1,0 +1,915 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "PACK": {
+   "confidence": "documented",
+   "name": "Package",
+   "note": "UESP, Skyrim Mod:Mod File Format/PACK. A PACK record is four sections: a header, the Public Package Data (a list of ANAM activities and their values, then a list of UNAM activity ids), optionally the Procedure Tree (only in template packages), the Procedure Data (UNAM/BNAM/PNAM triples), and always the Begin/End/Change actions. The same signature means different things in different sections: ANAM opens a public activity or a tree branch, and UNAM is an activity id in the public data and a section marker in the procedure data. [observed: 5,961 PACK records in Skyrim.esm; the public activity's ANAM value names the type of the field that follows it, so the block's layout is chosen by the opener's value].",
+   "sequence": {
+    "blocks": {
+     "anam": {
+      "opener": "ANAM",
+      "order": [
+       "CNAM",
+       "PLDT",
+       "PDTO",
+       "PTDA",
+       "TPIC",
+       "CITC",
+       "CTDA",
+       "CIS1",
+       "CIS2",
+       "PRCB",
+       "PNAM",
+       "FNAM",
+       "PKC2",
+       "PFO2",
+       "PFOR"
+      ],
+      "subrecords": {
+       "ANAM": {
+        "confidence": "documented",
+        "name": "Activity Type",
+        "note": "The name of the activity's type, and in the procedure tree the kind of branch. The field that follows holds that type's value, so the same signature means different things depending on this string. [observed in Skyrim.esm: Bool 33,485, Float 5,644, Location 6,838, SingleRef 2,253, TargetSelector 1,578, ObjectList 1,343, Int 1,209, Procedure 878, Topic 354, Stacked 194, Sequence 162, Simultaneous 117, Random 8]",
+        "type": "zstring"
+       }
+      },
+      "variants": {
+       "Bool": {
+        "subrecords": {
+         "CNAM": {
+          "confidence": "documented",
+          "name": "Bool Value",
+          "note": "The activity's flag: 1 or 0.",
+          "type": "u8"
+         }
+        }
+       },
+       "Float": {
+        "subrecords": {
+         "CNAM": {
+          "confidence": "documented",
+          "name": "Float Value",
+          "note": "The activity's value.",
+          "type": "f32"
+         }
+        }
+       },
+       "Int": {
+        "subrecords": {
+         "CNAM": {
+          "confidence": "documented",
+          "name": "Int Value",
+          "note": "The activity's value.",
+          "type": "i32"
+         }
+        }
+       },
+       "Location": {
+        "subrecords": {
+         "PLDT": {
+          "confidence": "documented",
+          "name": "Location Value",
+          "note": "Where the activity happens.",
+          "type": "PLDT"
+         }
+        }
+       },
+       "ObjectList": {
+        "subrecords": {
+         "CNAM": {
+          "confidence": "documented",
+          "name": "Object List Value",
+          "note": "The activity's value. UESP lists this as a float-typed CNAM; in the shipped data it is 4 bytes.",
+          "type": "f32"
+         }
+        }
+       },
+       "Procedure": {
+        "subrecords": {
+         "ANAM": {
+          "confidence": "documented",
+          "name": "Branch Type",
+          "note": "The kind of branch: Procedure is the only non-branch element; Random, Sequence, Simultaneous and Stacked are top-level branches that hold procedures. The fields that follow differ from the public activity's.",
+          "type": "zstring"
+         },
+         "CIS1": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its first argument. A variable name rather than a value.",
+          "type": "zstring"
+         },
+         "CIS2": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its second argument.",
+          "type": "zstring"
+         },
+         "CITC": {
+          "confidence": "documented",
+          "name": "Condition Count",
+          "note": "How many CTDA conditions this branch has. Zero means there are none.",
+          "type": "u32"
+         },
+         "CTDA": {
+          "confidence": "documented",
+          "name": "Conditions",
+          "note": "The conditions under which this branch is active. The package's own conditions are the CTDA in the header.",
+          "type": "Condition"
+         },
+         "FNAM": {
+          "confidence": "documented",
+          "name": "Success Completes Package",
+          "note": "A flag: 0x01 means success completes the package.",
+          "type": "u32"
+         },
+         "PFO2": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 16-byte struct.",
+          "type": "bytes"
+         },
+         "PFOR": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 12-byte struct.",
+          "type": "bytes"
+         },
+         "PKC2": {
+          "confidence": "documented",
+          "name": "Activity ID",
+          "note": "An activity id in this branch. The same id may appear in more than one branch.",
+          "type": "u8"
+         },
+         "PNAM": {
+          "confidence": "documented",
+          "name": "Procedure Type",
+          "note": "The procedure's type, a string. This is a different PNAM from the one in the procedure data section, which is a uint32 flag.",
+          "type": "zstring"
+         }
+        }
+       },
+       "Random": {
+        "subrecords": {
+         "CIS1": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its first argument. A variable name rather than a value.",
+          "type": "zstring"
+         },
+         "CIS2": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its second argument.",
+          "type": "zstring"
+         },
+         "CITC": {
+          "confidence": "documented",
+          "name": "Condition Count",
+          "note": "How many CTDA conditions this branch has. Zero means there are none.",
+          "type": "u32"
+         },
+         "CTDA": {
+          "confidence": "documented",
+          "name": "Conditions",
+          "note": "The conditions under which this branch is active. The package's own conditions are the CTDA in the header.",
+          "type": "Condition"
+         },
+         "PFO2": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 16-byte struct.",
+          "type": "bytes"
+         },
+         "PFOR": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 12-byte struct.",
+          "type": "bytes"
+         },
+         "PKC2": {
+          "confidence": "documented",
+          "name": "Activity ID",
+          "note": "An activity id in this branch. The same id may appear in more than one branch.",
+          "type": "u8"
+         },
+         "PRCB": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "Two uint32 values.",
+          "type": {
+           "struct": [
+            {
+             "name": "a",
+             "type": "u32"
+            },
+            {
+             "name": "b",
+             "type": "u32"
+            }
+           ]
+          }
+         }
+        }
+       },
+       "Sequence": {
+        "subrecords": {
+         "CIS1": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its first argument. A variable name rather than a value.",
+          "type": "zstring"
+         },
+         "CIS2": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its second argument.",
+          "type": "zstring"
+         },
+         "CITC": {
+          "confidence": "documented",
+          "name": "Condition Count",
+          "note": "How many CTDA conditions this branch has. Zero means there are none.",
+          "type": "u32"
+         },
+         "CTDA": {
+          "confidence": "documented",
+          "name": "Conditions",
+          "note": "The conditions under which this branch is active. The package's own conditions are the CTDA in the header.",
+          "type": "Condition"
+         },
+         "PFO2": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 16-byte struct.",
+          "type": "bytes"
+         },
+         "PFOR": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 12-byte struct.",
+          "type": "bytes"
+         },
+         "PKC2": {
+          "confidence": "documented",
+          "name": "Activity ID",
+          "note": "An activity id in this branch. The same id may appear in more than one branch.",
+          "type": "u8"
+         },
+         "PRCB": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "Two uint32 values.",
+          "type": {
+           "struct": [
+            {
+             "name": "a",
+             "type": "u32"
+            },
+            {
+             "name": "b",
+             "type": "u32"
+            }
+           ]
+          }
+         }
+        }
+       },
+       "Simultaneous": {
+        "subrecords": {
+         "CIS1": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its first argument. A variable name rather than a value.",
+          "type": "zstring"
+         },
+         "CIS2": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its second argument.",
+          "type": "zstring"
+         },
+         "CITC": {
+          "confidence": "documented",
+          "name": "Condition Count",
+          "note": "How many CTDA conditions this branch has. Zero means there are none.",
+          "type": "u32"
+         },
+         "CTDA": {
+          "confidence": "documented",
+          "name": "Conditions",
+          "note": "The conditions under which this branch is active. The package's own conditions are the CTDA in the header.",
+          "type": "Condition"
+         },
+         "PFO2": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 16-byte struct.",
+          "type": "bytes"
+         },
+         "PFOR": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 12-byte struct.",
+          "type": "bytes"
+         },
+         "PKC2": {
+          "confidence": "documented",
+          "name": "Activity ID",
+          "note": "An activity id in this branch. The same id may appear in more than one branch.",
+          "type": "u8"
+         },
+         "PRCB": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "Two uint32 values.",
+          "type": {
+           "struct": [
+            {
+             "name": "a",
+             "type": "u32"
+            },
+            {
+             "name": "b",
+             "type": "u32"
+            }
+           ]
+          }
+         }
+        }
+       },
+       "SingleRef": {
+        "subrecords": {
+         "PTDA": {
+          "confidence": "documented",
+          "name": "Single Reference Value",
+          "note": "The activity's target.",
+          "type": "PTDA"
+         }
+        }
+       },
+       "Stacked": {
+        "subrecords": {
+         "CIS1": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its first argument. A variable name rather than a value.",
+          "type": "zstring"
+         },
+         "CIS2": {
+          "confidence": "documented",
+          "name": "Variable Name",
+          "note": "The auxiliary data for the CTDA, replacing its second argument.",
+          "type": "zstring"
+         },
+         "CITC": {
+          "confidence": "documented",
+          "name": "Condition Count",
+          "note": "How many CTDA conditions this branch has. Zero means there are none.",
+          "type": "u32"
+         },
+         "CTDA": {
+          "confidence": "documented",
+          "name": "Conditions",
+          "note": "The conditions under which this branch is active. The package's own conditions are the CTDA in the header.",
+          "type": "Condition"
+         },
+         "PFO2": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 16-byte struct.",
+          "type": "bytes"
+         },
+         "PFOR": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "A 12-byte struct.",
+          "type": "bytes"
+         },
+         "PKC2": {
+          "confidence": "documented",
+          "name": "Activity ID",
+          "note": "An activity id in this branch. The same id may appear in more than one branch.",
+          "type": "u8"
+         },
+         "PRCB": {
+          "confidence": "documented",
+          "name": "Unknown",
+          "note": "Two uint32 values.",
+          "type": {
+           "struct": [
+            {
+             "name": "a",
+             "type": "u32"
+            },
+            {
+             "name": "b",
+             "type": "u32"
+            }
+           ]
+          }
+         }
+        }
+       },
+       "TargetSelector": {
+        "subrecords": {
+         "PTDA": {
+          "confidence": "documented",
+          "name": "Target Selector Value",
+          "note": "The activity's target.",
+          "type": "PTDA"
+         }
+        }
+       },
+       "Topic": {
+        "subrecords": {
+         "PDTO": {
+          "confidence": "documented",
+          "name": "Topic Value",
+          "note": "The topic the activity uses. A DIAL formid, or a four-character subtype string.",
+          "type": "PDTO"
+         },
+         "TPIC": {
+          "confidence": "documented",
+          "name": "Topic Reference",
+          "note": "The DIAL record, used for exactly one of the Topic activities in a PACK.",
+          "type": "formid"
+         }
+        }
+       }
+      }
+     },
+     "on begin": {
+      "opener": "POBA",
+      "order": [
+       "INAM",
+       "SCHR",
+       "TNAM",
+       "PDTO"
+      ],
+      "subrecords": {
+       "INAM": {
+        "confidence": "documented",
+        "name": "Idle",
+        "note": "The IDLE record. Always present, but zero when there is no idle action.",
+        "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "Topic",
+        "note": "The topic. Always present, and entirely zero when there is no topic. The same struct as the public data's topic value.",
+        "type": "PDTO"
+       },
+       "POBA": {
+        "confidence": "documented",
+        "name": "On Begin",
+        "note": "Marks the start of the On Begin actions. Zero-length.",
+        "type": "bytes"
+       },
+       "POCA": {
+        "confidence": "documented",
+        "name": "On Change",
+        "note": "Marks the start of the On Change actions. Zero-length.",
+        "type": "bytes"
+       },
+       "POEA": {
+        "confidence": "documented",
+        "name": "On End",
+        "note": "Marks the start of the On End actions. Zero-length.",
+        "type": "bytes"
+       },
+       "SCHR": {
+        "confidence": "documented",
+        "name": "Old Script",
+        "note": "The old scripting field.",
+        "type": "bytes"
+       },
+       "TNAM": {
+        "confidence": "documented",
+        "name": "Unknown",
+        "note": "Seen only on one PACK record in the shipped data, and always zero.",
+        "type": "i32"
+       }
+      }
+     },
+     "on change": {
+      "name": "on change",
+      "opener": "POCA",
+      "order": [
+       "INAM",
+       "SCHR",
+       "TNAM",
+       "PDTO"
+      ],
+      "subrecords": {
+       "INAM": {
+        "confidence": "documented",
+        "name": "Idle",
+        "note": "The IDLE record. Always present, but zero when there is no idle action.",
+        "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "Topic",
+        "note": "The topic. Always present, and entirely zero when there is no topic. The same struct as the public data's topic value.",
+        "type": "PDTO"
+       },
+       "POBA": {
+        "confidence": "documented",
+        "name": "On Begin",
+        "note": "Marks the start of the On Begin actions. Zero-length.",
+        "type": "bytes"
+       },
+       "POCA": {
+        "confidence": "documented",
+        "name": "On Change",
+        "note": "Marks the start of the On Change actions. Zero-length.",
+        "type": "bytes"
+       },
+       "POEA": {
+        "confidence": "documented",
+        "name": "On End",
+        "note": "Marks the start of the On End actions. Zero-length.",
+        "type": "bytes"
+       },
+       "SCHR": {
+        "confidence": "documented",
+        "name": "Old Script",
+        "note": "The old scripting field.",
+        "type": "bytes"
+       },
+       "TNAM": {
+        "confidence": "documented",
+        "name": "Unknown",
+        "note": "Seen only on one PACK record in the shipped data, and always zero.",
+        "type": "i32"
+       }
+      }
+     },
+     "on end": {
+      "name": "on end",
+      "opener": "POEA",
+      "order": [
+       "INAM",
+       "SCHR",
+       "TNAM",
+       "PDTO"
+      ],
+      "subrecords": {
+       "INAM": {
+        "confidence": "documented",
+        "name": "Idle",
+        "note": "The IDLE record. Always present, but zero when there is no idle action.",
+        "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "Topic",
+        "note": "The topic. Always present, and entirely zero when there is no topic. The same struct as the public data's topic value.",
+        "type": "PDTO"
+       },
+       "POBA": {
+        "confidence": "documented",
+        "name": "On Begin",
+        "note": "Marks the start of the On Begin actions. Zero-length.",
+        "type": "bytes"
+       },
+       "POCA": {
+        "confidence": "documented",
+        "name": "On Change",
+        "note": "Marks the start of the On Change actions. Zero-length.",
+        "type": "bytes"
+       },
+       "POEA": {
+        "confidence": "documented",
+        "name": "On End",
+        "note": "Marks the start of the On End actions. Zero-length.",
+        "type": "bytes"
+       },
+       "SCHR": {
+        "confidence": "documented",
+        "name": "Old Script",
+        "note": "The old scripting field.",
+        "type": "bytes"
+       },
+       "TNAM": {
+        "confidence": "documented",
+        "name": "Unknown",
+        "note": "Seen only on one PACK record in the shipped data, and always zero.",
+        "type": "i32"
+       }
+      }
+     },
+     "procedure data": {
+      "opener": "UNAM",
+      "order": [
+       "BNAM",
+       "PNAM"
+      ],
+      "subrecords": {
+       "BNAM": {
+        "confidence": "documented",
+        "name": "Activity Name",
+        "note": "The activity's name as shown in the CK.",
+        "type": "zstring"
+       },
+       "PNAM": {
+        "confidence": "documented",
+        "name": "Unknown",
+        "note": "A flag. Only the values 0 and 1 occur. This PNAM is a uint32, unlike the procedure tree's PNAM, which is a string.",
+        "type": "u32"
+       },
+       "UNAM": {
+        "confidence": "documented",
+        "name": "Activity ID",
+        "note": "The activity id, as a byte. It matches an activity id in the public data; the extra ids are for activities that were deleted from the package and are no longer in the CK.",
+        "type": "u8"
+       }
+      }
+     }
+    },
+    "end": [
+     "XNAM"
+    ],
+    "start": [
+     "EDID",
+     "VMAD",
+     "CTDA",
+     "CIS1",
+     "CIS2",
+     "IDLC",
+     "IDLA",
+     "IDLF",
+     "IDLT",
+     "QNAM",
+     "PKCU"
+    ]
+   },
+   "subrecords": {
+    "CIS1": {
+     "confidence": "documented",
+     "name": "Variable Name",
+     "note": "The auxiliary data for the CTDA, replacing its first argument.",
+     "type": "zstring"
+    },
+    "CIS2": {
+     "confidence": "documented",
+     "name": "Variable Name",
+     "note": "The auxiliary data for the CTDA, replacing its second argument.",
+     "type": "zstring"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Conditions",
+     "note": "The conditions under which the package can be active. The procedure tree's CTDA is the same struct, but is specific to its branch.",
+     "type": "Condition"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "IDLA": {
+     "confidence": "documented",
+     "name": "Idle",
+     "note": "The idle's formid. There is one per IDLC.",
+     "type": "formid"
+    },
+    "IDLC": {
+     "confidence": "documented",
+     "name": "Idle Count",
+     "note": "How many IDLE formids follow.",
+     "type": "u8"
+    },
+    "IDLF": {
+     "confidence": "documented",
+     "name": "Idle Flags",
+     "note": "0x01 = Run In Sequence (otherwise random), 0x04 = Do Once, 0x08 = unknown.",
+     "type": "u8"
+    },
+    "IDLT": {
+     "confidence": "documented",
+     "name": "Idle Time",
+     "note": "The idle's time.",
+     "type": "f32"
+    },
+    "PKCU": {
+     "confidence": "documented",
+     "name": "Package Control",
+     "note": "The package's control struct: flags, the template package, and more flags.",
+     "type": "PKCU"
+    },
+    "PKDT": {
+     "confidence": "documented",
+     "name": "Package Flags",
+     "note": "The package's flags, type, speed and interrupt behaviour.",
+     "type": "PKDT"
+    },
+    "PSDT": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "A 12-byte struct whose meaning is not documented.",
+     "type": "bytes"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Owner Quest",
+     "note": "The package's owning quest. Appears once in the header, and again in the begin/end/change section with a different meaning.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The attached script's info.",
+     "type": "bytes"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "A signed byte ranging from -77 to 99. There is always one, at the end of the public package data section.",
+     "type": "i8"
+    }
+   }
+  }
+ },
+ "types": {
+  "PDTO": {
+   "struct": [
+    {
+     "name": "type",
+     "note": "What the topic value is.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Dialogue",
+       "1": "Topic Subtype"
+      }
+     }
+    },
+    {
+     "name": "value",
+     "note": "A DIAL formid when the type is Dialogue; otherwise a four-character string such as \"HELO\" for the Hello subtype.",
+     "type": "u32"
+    }
+   ]
+  },
+  "PKCU": {
+   "struct": [
+    {
+     "name": "unknown",
+     "note": "Possibly flags. The values range from 1 to 34.",
+     "type": "u32"
+    },
+    {
+     "name": "package_template",
+     "note": "The PACK record used as a template. Only a record whose package type is Package Template may be used, and only in a record whose type is Package.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown2",
+     "note": "Possibly flags. The values range from 0 to 29.",
+     "type": "u32"
+    }
+   ]
+  },
+  "PKDT": {
+   "struct": [
+    {
+     "name": "misc_flags",
+     "note": "Only the flags with a visible effect in the CK are listed. Many others are set in the game data and are probably holdovers from Oblivion.",
+     "type": {
+      "bits": {
+       "10": "Once Per Day",
+       "13": "Preferred Speed",
+       "17": "Always Sneak",
+       "18": "Allow Swimming",
+       "2": "Must Complete",
+       "20": "Ignore Combat",
+       "21": "Weapons Unequipped",
+       "23": "Weapon Drawn",
+       "27": "No Combat Alert",
+       "29": "Wear Sleep Outfit",
+       "3": "Maintain Speed At Goal",
+       "6": "At Package Start Unlock Doors",
+       "7": "On Package Change Unlock Doors"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "package_type",
+     "note": "Only the first bit is relevant: set means Package Template, clear means Package. The value 0x12 is always set, so the byte is usually 0x12.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "1": "Package Template"
+      }
+     }
+    },
+    {
+     "name": "interrupt_override",
+     "note": "Only the values 0 (None) and 4 (Combat) are observed.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "None",
+       "4": "Combat"
+      }
+     }
+    },
+    {
+     "name": "preferred_speed",
+     "note": "Only relevant when the Preferred Speed flag (0x2000) is set.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Walk",
+       "1": "Jog",
+       "2": "Run",
+       "3": "Fast Walk"
+      }
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "Possibly padding.",
+     "type": "u8"
+    },
+    {
+     "name": "interrupt_flags",
+     "note": "The interrupt behaviour flags.",
+     "type": {
+      "bits": {
+       "0": "Hellos To Player",
+       "1": "Random Conversations",
+       "2": "Observe Combat Behavior",
+       "3": "Greet Corpse Behavior"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
+  "PLDT": {
+   "struct": [
+    {
+     "name": "type",
+     "note": "What kind of location this is.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Near Reference",
+       "1": "In Cell",
+       "12": "Near Self",
+       "2": "Near Package Start Location",
+       "3": "Near Editor Location",
+       "6": "Near Linked Reference",
+       "8": "Alias (Reference)",
+       "9": "Alias (Location)"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "note": "The location. A formid for Near Reference, In Cell and Near Linked Reference; an alias id for Alias (Reference); a formid for Alias (Location); unused otherwise.",
+     "type": "u32"
+    },
+    {
+     "name": "radius",
+     "note": "The radius around the location.",
+     "type": "i32"
+    }
+   ]
+  },
+  "PTDA": {
+   "struct": [
+    {
+     "name": "type",
+     "note": "What kind of target this is.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Specific Reference",
+       "1": "Object ID",
+       "2": "Object Type",
+       "3": "Linked Reference",
+       "4": "Ref Alias",
+       "6": "Self"
+      }
+     }
+    },
+    {
+     "name": "target",
+     "note": "The target: a formid for Specific Reference, Object ID and Linked Reference; a lookup value for Object Type (11 = Weapons: Any); an alias id for Ref Alias; unused for Self.",
+     "type": "u32"
+    },
+    {
+     "name": "count",
+     "note": "Always 0 in the shipped Skyrim records.",
+     "type": "i32"
+    }
+   ]
+  }
+ }
+}

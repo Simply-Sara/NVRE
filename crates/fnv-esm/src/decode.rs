@@ -59,6 +59,15 @@ pub struct DecodeCtx<'a> {
     /// depends on which block the subrecord is in. This is the block's index
     /// into the record's `sequence.blocks`.
     pub block: Option<usize>,
+    /// The decoded value of the block's opener, when the block chooses its
+    /// layout by that value (`PACK`'s `ANAM` names the activity's type).
+    ///
+    /// The walker sets it while it decodes the opener, and reads it to pick
+    /// the block's variant.
+    pub block_value: Option<String>,
+    /// The subrecord definitions of the current block's chosen variant, when
+    /// the block has variants keyed by the opener's value.
+    pub block_variant: Option<HashMap<[u8; 4], crate::schema::SubDef>>,
 }
 
 impl<'a> DecodeCtx<'a> {
@@ -71,6 +80,8 @@ impl<'a> DecodeCtx<'a> {
             rec_sig,
             switch_on: None,
             block: None,
+            block_value: None,
+            block_variant: None,
         }
     }
 }
@@ -393,7 +404,21 @@ pub struct DecodedSub {
 }
 
 pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> DecodedSub {
-    let def = match ctx.schema.lookup_in_block(rec_sig, &s.sig, ctx.block) {
+    // A block's chosen variant wins over the block's own map: the opener's
+    // value says which fields the block holds.
+    // The definition is cloned out of the context: `decode_type` needs the
+    // context mutably, and the definition may live in it.
+    let found = ctx
+        .block_variant
+        .as_ref()
+        .and_then(|v| v.get(&s.sig))
+        .cloned()
+        .or_else(|| {
+            ctx.schema
+                .lookup_in_block(rec_sig, &s.sig, ctx.block)
+                .cloned()
+        });
+    let def = match found {
         Some(d) => d,
         None => {
             return DecodedSub {
@@ -471,6 +496,9 @@ pub fn walk_sequence(
         .and_then(|rd| rd.sequence.as_ref());
     let mut block: Option<usize> = None;
     for s in subs {
+        // Whether the current block expects this signature, which is what
+        // tells a block's own field from a new block's opener.
+        let mut expected_here = false;
         if let Some(seq) = seq {
             // The signature opens a block only when the current block does not
             // expect it. That is what tells `SCEN`'s `ALID` — which both opens
@@ -478,18 +506,70 @@ pub fn walk_sequence(
             // is where the action's order says it should be, so it continues
             // that block; at the head of the actor list it is not expected, so
             // it opens one.
-            let expected_here = block
+            expected_here = block
                 .and_then(|b| seq.blocks.get(b))
                 .map(|bd| bd.order.contains(&s.sig))
                 .unwrap_or(false);
             if !expected_here {
                 if let Some(i) = seq.blocks.iter().position(|b| b.opener == s.sig) {
                     block = Some(i);
+                    // A new block starts with no variant chosen; the opener's
+                    // value picks one below.
+                    ctx.block_variant = None;
+                }
+            }
+        }
+        // A block that switches on its opener's value keeps that choice for
+        // the whole block, not just for the opener itself: `PACK`'s `ANAM`
+        // names the activity's type, and the field *after* it is decoded
+        // against that type's definition.
+        let opens_a_block = block
+            .and_then(|b| seq.and_then(|q| q.blocks.get(b)))
+            .map(|bd| bd.opener == s.sig)
+            .unwrap_or(false)
+            && !expected_here;
+        if opens_a_block {
+            // The context's block must already be the block this subrecord
+            // opens, so the opener's own definition is found in it.
+            ctx.block = block;
+            let opener_value = opener_value_of(rec_sig, s, schema, ctx);
+            if let (Some(bd), Some(ov)) = (
+                block.and_then(|b| seq.and_then(|q| q.blocks.get(b))),
+                opener_value,
+            ) {
+                if let Some((_, vars)) = bd.variants.iter().find(|(v, _)| *v == ov) {
+                    ctx.block_variant = Some(vars.clone());
                 }
             }
         }
         ctx.block = block;
         f(s, ctx);
+    }
+}
+
+/// The value of a block's opener, read from its own bytes.
+///
+/// A block that switches on the opener's value — `PACK`'s `ANAM`, whose value
+/// names the activity's type — needs that value before the block's fields can
+/// be decoded, so it is read straight from the opener's bytes rather than
+/// from a decoded result.
+fn opener_value_of(
+    rec_sig: &[u8; 4],
+    s: &crate::raw::Subrecord,
+    schema: &Schema,
+    ctx: &mut DecodeCtx,
+) -> Option<String> {
+    let def = schema
+        .lookup_in_block(rec_sig, &s.sig, ctx.block)
+        .or_else(|| schema.lookup(rec_sig, &s.sig))?;
+    // Only a string opener can name a variant.
+    match schema.resolve(&def.ty) {
+        TypeDef::Prim(Prim::ZString) => {
+            let bytes: &[u8] = &s.data;
+            let end = bytes.iter().position(|b| *b == 0).unwrap_or(bytes.len());
+            Some(String::from_utf8_lossy(&bytes[..end]).into_owned())
+        }
+        _ => None,
     }
 }
 

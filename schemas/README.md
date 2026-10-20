@@ -191,6 +191,23 @@ The decoder walks the sequence and records the block each subrecord is in
 definition. `Coverage` uses the same walk, so a sequence record is measured
 against its blocks.
 
+A block may also choose its layout by the opener's **value**, not just by its
+signature. Skyrim's `PACK` opens a public activity with an `ANAM` whose value
+names the activity's type — "Bool", "Float", "Location", "Topic" — and the
+field that follows is a `CNAM` for the first and a `PLDT` or `PDTO` for the
+rest:
+
+```json
+"variants": {
+  "Bool":     { "subrecords": { "CNAM": { "name": "Bool Value", "type": "u8" } } },
+  "Location": { "subrecords": { "PLDT": { "name": "Location Value", "type": "PLDT" } } }
+}
+```
+
+A value that is not listed falls back to the block's own `subrecords`. The
+choice holds for the whole block, not just the opener, so the field *after*
+the opener is decoded against the variant the opener named.
+
 ## Overlays replace, they do not merge
 
 A later directory in the chain **replaces** a record, a `common` subrecord or a
