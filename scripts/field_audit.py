@@ -143,12 +143,33 @@ def type_code(src, sig):
 
     # The type's own functions, under every naming the editor uses.
     # The editor names a type's functions after the type, in lower case.
+    # A few types share a page with a related one, and the shared name is
+    # listed here: the creature and the NPC share the actor's load and
+    # save, and the three leveled lists share the leveled list's.
+    SHARED = {
+        "npc_": ["load_actor", "save_actor", "draw_actor_vitals",
+                 "draw_actor_special", "draw_actor_npc_skills",
+                 "draw_actor_npc_appearance", "draw_npc_flags",
+                 "draw_npc_physical", "draw_actor_ai", "draw_actor_effects",
+                 "draw_actor_factions", "draw_actor_packages",
+                 "draw_actor_inventory", "draw_actor_bounds"],
+        "crea": ["load_actor", "save_actor", "draw_actor_vitals",
+                 "draw_actor_special", "draw_actor_crea_class",
+                 "draw_crea_flags", "draw_crea_physical", "draw_actor_ai",
+                 "draw_actor_effects", "draw_actor_factions",
+                 "draw_actor_packages", "draw_actor_inventory",
+                 "draw_actor_crea_sounds", "draw_actor_crea_models",
+                 "draw_actor_bounds"],
+        "lvlc": ["load_lvl", "save_lvl", "draw_lvl_ui"],
+        "lvln": ["load_lvl", "save_lvl", "draw_lvl_ui"],
+        "lvli": ["load_lvl", "save_lvl", "draw_lvl_ui"],
+    }
     for name in (
         f"load_{low}",
         f"load_{low}_record",
         f"save_{low}",
         f"draw_{low}_ui",
-    ):
+    ) + tuple(SHARED.get(low, [])):
         parts.append(function_span(src, name))
         parts.append(method_span(src, name))
 
