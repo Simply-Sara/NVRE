@@ -470,6 +470,37 @@ pub struct ObjectEditorState {
     pub mgef_target: bool,
     pub mgef_base_cost: f32,
     pub mgef_assoc_item: Option<u32>,
+    /// `DATA` The flag word, kept whole so a bit the spec does not name
+    /// survives.
+    pub mgef_flags: u32,
+    /// `DATA` Magic School — the int32.
+    pub mgef_magic_school: i32,
+    /// `DATA` Resistance Type — the int32.
+    pub mgef_resistance_type: i32,
+    /// `DATA` Light — the FormID of the `LIGH` record.
+    pub mgef_light: Option<u32>,
+    /// `DATA` Projectile Speed — the float32.
+    pub mgef_projectile_speed: f32,
+    /// `DATA` Effect Shader — the FormID of the `EFSH` record.
+    pub mgef_effect_shader: Option<u32>,
+    /// `DATA` Object Display Shader — the FormID of the `EFSH` record.
+    pub mgef_object_display_shader: Option<u32>,
+    /// `DATA` Effect Sound — the FormID of the `SOUN` record.
+    pub mgef_effect_sound: Option<u32>,
+    /// `DATA` Bold Sound — the FormID of the `SOUN` record.
+    pub mgef_bold_sound: Option<u32>,
+    /// `DATA` Hit Sound — the FormID of the `SOUN` record.
+    pub mgef_hit_sound: Option<u32>,
+    /// `DATA` Area Sound — the FormID of the `SOUN` record.
+    pub mgef_area_sound: Option<u32>,
+    /// `DATA` Constant Effect Enchantment Factor — the float32.
+    pub mgef_enchantment_factor: f32,
+    /// `DATA` Constant Effect Barter Factor — the float32.
+    pub mgef_barter_factor: f32,
+    /// `DATA` Archtype — the uint32.
+    pub mgef_archtype: u32,
+    /// `DATA` Actor Value — the int32.
+    pub mgef_actor_value: i32,
 
     // WTHR & WATR fields
     pub wthr_wind_speed: u8,
@@ -5578,8 +5609,24 @@ impl ObjectEditorState {
     }
 
     fn load_mgef(&mut self) {
+        self.mgef_flags = 0;
+        self.mgef_magic_school = 0;
+        self.mgef_resistance_type = 0;
+        self.mgef_light = None;
+        self.mgef_projectile_speed = 0.0;
+        self.mgef_effect_shader = None;
+        self.mgef_object_display_shader = None;
+        self.mgef_effect_sound = None;
+        self.mgef_bold_sound = None;
+        self.mgef_hit_sound = None;
+        self.mgef_area_sound = None;
+        self.mgef_enchantment_factor = 0.0;
+        self.mgef_barter_factor = 0.0;
+        self.mgef_archtype = 0;
+        self.mgef_actor_value = 0;
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 12) {
             let f = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.mgef_flags = f;
             self.mgef_hostile = (f & (1 << 0)) != 0;
             self.mgef_recover = (f & (1 << 1)) != 0;
             self.mgef_detrimental = (f & (1 << 2)) != 0;
@@ -5588,6 +5635,41 @@ impl ObjectEditorState {
             self.mgef_target = (f & (1 << 6)) != 0;
             self.mgef_base_cost = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
             self.mgef_assoc_item = Some(u32::from_le_bytes([b[8], b[9], b[10], b[11]]));
+            let fid = |at: usize| -> Option<u32> {
+                if b.len() >= at + 4 {
+                    Some(u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]))
+                } else {
+                    None
+                }
+            };
+            let f32_at = |at: usize| -> f32 {
+                if b.len() >= at + 4 {
+                    f32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+                } else {
+                    0.0
+                }
+            };
+            let i32_at = |at: usize| -> i32 {
+                if b.len() >= at + 4 {
+                    i32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+                } else {
+                    0
+                }
+            };
+            self.mgef_magic_school = i32_at(12);
+            self.mgef_resistance_type = i32_at(16);
+            self.mgef_light = fid(24);
+            self.mgef_projectile_speed = f32_at(28);
+            self.mgef_effect_shader = fid(32);
+            self.mgef_object_display_shader = fid(36);
+            self.mgef_effect_sound = fid(40);
+            self.mgef_bold_sound = fid(44);
+            self.mgef_hit_sound = fid(48);
+            self.mgef_area_sound = fid(52);
+            self.mgef_enchantment_factor = f32_at(56);
+            self.mgef_barter_factor = f32_at(60);
+            self.mgef_archtype = u32::from_le_bytes([b[64], b[65], b[66], b[67]]);
+            self.mgef_actor_value = i32_at(68);
         }
     }
 
@@ -10277,15 +10359,23 @@ impl ObjectEditorState {
 
     fn save_mgef(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
+        // The data struct is written back over the record's own bytes, so
+        // its length and the bytes the spec does not name survive.
         let mut d = self
             .raw_subs
             .get(b"DATA")
             .cloned()
-            .unwrap_or_else(|| vec![0u8; 16]);
-        if d.len() < 16 {
-            d.resize(16, 0);
+            .unwrap_or_else(|| vec![0u8; 72]);
+        /// Write four bytes at an offset, if the record's own bytes reach
+        /// it.
+        fn put4(d: &mut [u8], at: usize, bytes: [u8; 4]) {
+            if d.len() >= at + 4 {
+                d[at..at + 4].copy_from_slice(&bytes);
+            }
         }
-        let mut f = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
+        // The flag word is kept whole, and the named bits are written
+        // inside it.
+        let mut f = self.mgef_flags;
         if self.mgef_hostile {
             f |= 1 << 0;
         } else {
@@ -10316,11 +10406,39 @@ impl ObjectEditorState {
         } else {
             f &= !(1 << 6);
         }
-        d[0..4].copy_from_slice(&f.to_le_bytes());
-        d[4..8].copy_from_slice(&self.mgef_base_cost.to_le_bytes());
+        put4(&mut d, 0, f.to_le_bytes());
+        put4(&mut d, 4, self.mgef_base_cost.to_le_bytes());
         if let Some(it) = self.mgef_assoc_item {
-            d[8..12].copy_from_slice(&it.to_le_bytes());
+            put4(&mut d, 8, it.to_le_bytes());
         }
+        put4(&mut d, 12, self.mgef_magic_school.to_le_bytes());
+        put4(&mut d, 16, self.mgef_resistance_type.to_le_bytes());
+        if let Some(v) = self.mgef_light {
+            put4(&mut d, 24, v.to_le_bytes());
+        }
+        put4(&mut d, 28, self.mgef_projectile_speed.to_le_bytes());
+        if let Some(v) = self.mgef_effect_shader {
+            put4(&mut d, 32, v.to_le_bytes());
+        }
+        if let Some(v) = self.mgef_object_display_shader {
+            put4(&mut d, 36, v.to_le_bytes());
+        }
+        if let Some(v) = self.mgef_effect_sound {
+            put4(&mut d, 40, v.to_le_bytes());
+        }
+        if let Some(v) = self.mgef_bold_sound {
+            put4(&mut d, 44, v.to_le_bytes());
+        }
+        if let Some(v) = self.mgef_hit_sound {
+            put4(&mut d, 48, v.to_le_bytes());
+        }
+        if let Some(v) = self.mgef_area_sound {
+            put4(&mut d, 52, v.to_le_bytes());
+        }
+        put4(&mut d, 56, self.mgef_enchantment_factor.to_le_bytes());
+        put4(&mut d, 60, self.mgef_barter_factor.to_le_bytes());
+        put4(&mut d, 64, self.mgef_archtype.to_le_bytes());
+        put4(&mut d, 68, self.mgef_actor_value.to_le_bytes());
         session.doc.set_sub(fid, b"DATA", d);
     }
 
@@ -18133,6 +18251,68 @@ fn draw_mgef_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             ui.checkbox(&mut state.mgef_self, "Self");
             ui.checkbox(&mut state.mgef_touch, "Touch");
             ui.checkbox(&mut state.mgef_target, "Target");
+        });
+    });
+
+    // The rest of the data struct.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Magic Effect Data");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Magic School:");
+            ui.add(
+                egui::DragValue::new(&mut state.mgef_magic_school).range(-2147483648..=2147483647),
+            );
+            ui.label("Resistance Type:");
+            ui.add(
+                egui::DragValue::new(&mut state.mgef_resistance_type)
+                    .range(-2147483648..=2147483647),
+            );
+            ui.label("Archtype:");
+            ui.add(egui::DragValue::new(&mut state.mgef_archtype).range(0..=u32::MAX));
+            ui.label("Actor Value:");
+            ui.add(
+                egui::DragValue::new(&mut state.mgef_actor_value).range(-2147483648..=2147483647),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Light:");
+            formid_field(ui, "mgef_light", &mut state.mgef_light);
+            ui.label("Projectile Speed:");
+            ui.add(egui::DragValue::new(&mut state.mgef_projectile_speed).speed(1.0));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Effect Shader:");
+            formid_field(ui, "mgef_effect_shader", &mut state.mgef_effect_shader);
+            ui.label("Object Display Shader:");
+            formid_field(
+                ui,
+                "mgef_object_shader",
+                &mut state.mgef_object_display_shader,
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Effect Sound:");
+            formid_field(ui, "mgef_effect_sound", &mut state.mgef_effect_sound);
+            ui.label("Bold Sound:");
+            formid_field(ui, "mgef_bold_sound", &mut state.mgef_bold_sound);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Hit Sound:");
+            formid_field(ui, "mgef_hit_sound", &mut state.mgef_hit_sound);
+            ui.label("Area Sound:");
+            formid_field(ui, "mgef_area_sound", &mut state.mgef_area_sound);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Constant Effect Enchantment Factor:");
+            ui.add(egui::DragValue::new(&mut state.mgef_enchantment_factor).speed(0.01));
+            ui.label("Constant Effect Barter Factor:");
+            ui.add(egui::DragValue::new(&mut state.mgef_barter_factor).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Flag Word:");
+            ui.add(egui::DragValue::new(&mut state.mgef_flags).range(0..=u32::MAX));
         });
     });
 }
