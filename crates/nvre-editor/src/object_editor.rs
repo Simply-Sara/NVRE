@@ -428,6 +428,37 @@ pub struct ObjectEditorState {
     pub clmt_sun_texture: String,
     pub clmt_sun_glare_texture: String,
 
+    // ALOC (Media Location Controller) fields
+    /// `NAM1` — four bytes the spec calls "possibly a combination of flags and
+    /// enums". The bytes are kept whole and offered raw.
+    pub aloc_nam1: [u8; 4],
+    /// `NAM2` — four unknown bytes, carried through unchanged.
+    pub aloc_nam2: [u8; 4],
+    /// `NAM3` — four unknown bytes, carried through unchanged.
+    pub aloc_nam3: [u8; 4],
+    /// `NAM4` Location Delay, in seconds.
+    pub aloc_location_delay: f32,
+    /// `NAM5` Day Start — the uint32 the game stores as an hour, with the
+    /// fraction of a day over 256.
+    pub aloc_day_start: u32,
+    /// `NAM6` Night Start — the same encoding as `NAM5`.
+    pub aloc_night_start: u32,
+    /// `NAM7` Retrigger Delay, in seconds.
+    pub aloc_retrigger_delay: f32,
+    /// `FNAM` — four unknown bytes, carried through unchanged.
+    pub aloc_fnam: [u8; 4],
+    /// `RNAM` Conditional Faction — the FormID of a `FACT` record.
+    pub aloc_conditional_faction: Option<u32>,
+    /// The six media-set lists: `HNAM` (neutral), `ZNAM` (ally), `XNAM`
+    /// (friend), `YNAM` (enemy), `LNAM` (location) and `GNAM` (battle).
+    ///
+    /// Each is a *repeated* subrecord, so each is a list. A per-subrecord
+    /// edit would collapse the list onto its last entry.
+    pub aloc_sets: Vec<AlocSet>,
+    /// The media set to add, and which list it goes on.
+    pub aloc_set_to_add: Option<u32>,
+    pub aloc_set_list_to_add: usize,
+
     // ADDN (Addon Node) fields
     /// `DATA` Node Index — the int32 index of the node in the master particle
     /// system.
@@ -771,6 +802,35 @@ fn model_sig(
         _ => *base,
     }
 }
+
+/// One media-set list on an `ALOC` (Media Location Controller) record.
+///
+/// The record carries six lists of `MSET` records, one per relationship to the
+/// player: neutral, ally, friend, enemy, location and battle. Each list is a
+/// *repeated* subrecord, so each is a list rather than a single value.
+#[derive(Debug, Clone, Default)]
+pub struct AlocSet {
+    /// The subrecord signature this list is written to.
+    pub sig: [u8; 4],
+    /// What the list is called in the editor.
+    pub label: &'static str,
+    /// The `MSET` records on the list, in the order the record stores them.
+    pub entries: Vec<u32>,
+}
+
+/// The six media-set lists an `ALOC` record carries, in the order the record
+/// stores them.
+///
+/// The signatures are the spec's: `HNAM` neutral, `ZNAM` ally, `XNAM` friend,
+/// `YNAM` enemy, `LNAM` location, `GNAM` battle.
+pub const ALOC_SET_LISTS: [([u8; 4], &str); 6] = [
+    (*b"HNAM", "Neutral"),
+    (*b"ZNAM", "Ally"),
+    (*b"XNAM", "Friend"),
+    (*b"YNAM", "Enemy"),
+    (*b"LNAM", "Location"),
+    (*b"GNAM", "Battle"),
+];
 
 /// One alternate texture in a `MODS` subrecord.
 ///
@@ -1333,6 +1393,10 @@ impl ObjectEditorState {
         self.addn_node_index = 0;
         self.addn_master_cap = 0;
         self.addn_dnam_unknown = [0, 0];
+        self.aloc_sets.clear();
+        self.aloc_conditional_faction = None;
+        self.aloc_set_to_add = None;
+        self.aloc_set_list_to_add = 0;
         let mut cur_csdt = None;
         let mut cur_csdi = None;
         for s in &raw_subs {
@@ -1549,6 +1613,7 @@ impl ObjectEditorState {
             b"RACE" => self.load_race(),
             b"CLMT" => self.load_clmt(),
             b"ADDN" => self.load_addn(&raw_subs),
+            b"ALOC" => self.load_aloc(&raw_subs),
             b"AVIF" => self.load_avif(),
             b"EYES" => self.load_eyes(),
             b"HAIR" => self.load_hair(&raw_subs),
@@ -2297,6 +2362,86 @@ impl ObjectEditorState {
         }
     }
 
+    /// Load an `ALOC` (Media Location Controller) record.
+    ///
+    /// The record is `EDID`, `FULL`, seven `NAM` fields, six media-set lists
+    /// and `FNAM`. The six lists (`HNAM`, `ZNAM`, `XNAM`, `YNAM`, `LNAM` and
+    /// `GNAM`) are *repeated* subrecords, so they cannot be read out of
+    /// `raw_subs`, which holds one value per signature and would collapse
+    /// every list onto its last entry. The subrecords are walked in file order
+    /// instead, so each list keeps the order the record stores it in.
+    ///
+    /// `NAM1`, `NAM2`, `NAM3` and `FNAM` are four bytes each that the spec
+    /// does not name. They are kept whole and carried through unchanged.
+    fn load_aloc(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.aloc_nam1 = [0; 4];
+        self.aloc_nam2 = [0; 4];
+        self.aloc_nam3 = [0; 4];
+        self.aloc_fnam = [0; 4];
+        self.aloc_location_delay = 0.0;
+        self.aloc_day_start = 0;
+        self.aloc_night_start = 0;
+        self.aloc_retrigger_delay = 0.0;
+        self.aloc_conditional_faction = None;
+
+        self.aloc_sets = ALOC_SET_LISTS
+            .iter()
+            .map(|(sig, label)| AlocSet {
+                sig: *sig,
+                label,
+                entries: Vec::new(),
+            })
+            .collect();
+
+        for s in raw_subs {
+            match &s.sig {
+                b"NAM1" if s.data.len() >= 4 => {
+                    self.aloc_nam1 = [s.data[0], s.data[1], s.data[2], s.data[3]];
+                }
+                b"NAM2" if s.data.len() >= 4 => {
+                    self.aloc_nam2 = [s.data[0], s.data[1], s.data[2], s.data[3]];
+                }
+                b"NAM3" if s.data.len() >= 4 => {
+                    self.aloc_nam3 = [s.data[0], s.data[1], s.data[2], s.data[3]];
+                }
+                b"NAM4" if s.data.len() >= 4 => {
+                    self.aloc_location_delay =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"NAM5" if s.data.len() >= 4 => {
+                    self.aloc_day_start =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"NAM6" if s.data.len() >= 4 => {
+                    self.aloc_night_start =
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"NAM7" if s.data.len() >= 4 => {
+                    self.aloc_retrigger_delay =
+                        f32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                }
+                b"FNAM" if s.data.len() >= 4 => {
+                    self.aloc_fnam = [s.data[0], s.data[1], s.data[2], s.data[3]];
+                }
+                b"RNAM" if s.data.len() >= 4 => {
+                    self.aloc_conditional_faction = Some(u32::from_le_bytes([
+                        s.data[0], s.data[1], s.data[2], s.data[3],
+                    ]));
+                }
+                _ => {
+                    // One of the six media-set lists.
+                    if let Some(list) = self.aloc_sets.iter_mut().find(|l| l.sig == s.sig) {
+                        if s.data.len() >= 4 {
+                            list.entries.push(u32::from_le_bytes([
+                                s.data[0], s.data[1], s.data[2], s.data[3],
+                            ]));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// Load an `ADDN` (Addon Node) record.
     ///
     /// The record is `EDID`, `OBND`, the model data collection (`MODL`,
@@ -2501,6 +2646,7 @@ impl ObjectEditorState {
             b"RACE" => self.save_race(session),
             b"CLMT" => self.save_clmt(session),
             b"ADDN" => self.save_addn(session),
+            b"ALOC" => self.save_aloc(session),
             b"AVIF" => self.save_avif(session),
             b"EYES" => self.save_eyes(session),
             b"HAIR" => self.save_hair(session),
@@ -3714,6 +3860,71 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", vec![self.hair_flags]);
     }
 
+    /// Save an `ALOC` (Media Location Controller) record.
+    ///
+    /// The six media-set lists are *repeated* subrecords, so each is written
+    /// with a list edit: a per-subrecord edit would collapse the list onto its
+    /// last entry, and the game would read one media set where the record had
+    /// sixteen.
+    ///
+    /// `NAM1`, `NAM2`, `NAM3` and `FNAM` are four bytes each that the spec
+    /// does not name. They are written back exactly as the record had them.
+    fn save_aloc(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        let mut nam1 = self.aloc_nam1.to_vec();
+        let mut nam2 = self.aloc_nam2.to_vec();
+        let mut nam3 = self.aloc_nam3.to_vec();
+        nam1.resize(4, 0);
+        nam2.resize(4, 0);
+        nam3.resize(4, 0);
+        session.doc.set_sub(fid, b"NAM1", nam1);
+        session.doc.set_sub(fid, b"NAM2", nam2);
+        session.doc.set_sub(fid, b"NAM3", nam3);
+
+        session.doc.set_sub(
+            fid,
+            b"NAM4",
+            self.aloc_location_delay.to_le_bytes().to_vec(),
+        );
+        session
+            .doc
+            .set_sub(fid, b"NAM5", self.aloc_day_start.to_le_bytes().to_vec());
+        session
+            .doc
+            .set_sub(fid, b"NAM6", self.aloc_night_start.to_le_bytes().to_vec());
+        session.doc.set_sub(
+            fid,
+            b"NAM7",
+            self.aloc_retrigger_delay.to_le_bytes().to_vec(),
+        );
+
+        let mut fnam = self.aloc_fnam.to_vec();
+        fnam.resize(4, 0);
+        session.doc.set_sub(fid, b"FNAM", fnam);
+
+        // The conditional faction is optional: 8 of the game's 89 ALOC records
+        // carry one, the rest do not.
+        match self.aloc_conditional_faction {
+            Some(f) => session.doc.set_sub(fid, b"RNAM", f.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"RNAM"),
+        }
+
+        // The six media-set lists.
+        for list in &self.aloc_sets {
+            let payload: Vec<Vec<u8>> = list
+                .entries
+                .iter()
+                .map(|e| e.to_le_bytes().to_vec())
+                .collect();
+            if payload.is_empty() {
+                session.doc.remove_sub(fid, &list.sig);
+            } else {
+                session.doc.set_sub_list(fid, &list.sig, payload);
+            }
+        }
+    }
+
     /// Save an `ADDN` (Addon Node) record.
     ///
     /// `DATA` is a four-byte node index and `DNAM` a four-byte master
@@ -3959,6 +4170,7 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"LVLN" => "Leveled NPC",
         b"LVLC" => "Leveled Creature",
         b"ADDN" => "Addon Node",
+        b"ALOC" => "Media Location Controller",
         b"AVIF" => "Actor Value",
         b"EYES" => "Eyes",
         b"HAIR" => "Hair",
@@ -4276,6 +4488,7 @@ pub fn ui(
                 b"RACE" => draw_race_ui(ui, &mut state),
                 b"CLMT" => draw_clmt_ui(ui, &mut state),
                 b"ADDN" => draw_addn_ui(ui, &mut state),
+                b"ALOC" => draw_aloc_ui(ui, &session, &mut state),
                 b"AVIF" => draw_avif_ui(ui, &mut state),
                 b"EYES" => draw_eyes_ui(ui, &mut state),
                 b"HAIR" => draw_hair_ui(ui, &session, &mut state),
@@ -7476,6 +7689,141 @@ fn draw_eyes_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     .range(0..=u8::MAX as i64)
                     .speed(1.0),
             );
+        });
+    });
+}
+
+/// Draw the Media Location Controller (ALOC) editor body.
+///
+/// The six media-set lists are edited as lists, because each is a repeated
+/// subrecord. `NAM1`, `NAM2`, `NAM3` and `FNAM` are four bytes each that the
+/// spec does not name; they are reported and carried through unchanged.
+fn draw_aloc_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Media Location Controller");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Location Delay (NAM4):");
+            ui.add(
+                egui::DragValue::new(&mut state.aloc_location_delay)
+                    .speed(0.1)
+                    .range(0.0..=86400.0),
+            );
+            ui.separator();
+            ui.label("Retrigger Delay (NAM7):");
+            ui.add(
+                egui::DragValue::new(&mut state.aloc_retrigger_delay)
+                    .speed(0.1)
+                    .range(0.0..=86400.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Day Start (NAM5):");
+            ui.add(egui::DragValue::new(&mut state.aloc_day_start).range(0..=100000));
+            ui.separator();
+            ui.label("Night Start (NAM6):");
+            ui.add(egui::DragValue::new(&mut state.aloc_night_start).range(0..=100000));
+        });
+        ui.label("The day and night values are the hour, with the fraction of a day over 256.");
+        ui.horizontal(|ui| {
+            ui.label("NAM1 (unnamed):");
+            ui.label(format!("{:02X?}", state.aloc_nam1));
+            ui.separator();
+            ui.label("NAM2 (unnamed):");
+            ui.label(format!("{:02X?}", state.aloc_nam2));
+            ui.separator();
+            ui.label("NAM3 (unnamed):");
+            ui.label(format!("{:02X?}", state.aloc_nam3));
+            ui.separator();
+            ui.label("FNAM (unnamed):");
+            ui.label(format!("{:02X?}", state.aloc_fnam));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Conditional Faction (RNAM):");
+            let factions = session.records_by_sig(*b"FACT");
+            let mut fid = state.aloc_conditional_faction;
+            record_dropdown(ui, "aloc_conditional_faction", &factions, &mut fid);
+            state.aloc_conditional_faction = fid;
+        });
+    });
+
+    // --- The six media-set lists ---
+    ui.add_space(6.0);
+    let msets = session.records_by_sig(*b"MSET");
+    for (list_idx, list) in state.aloc_sets.iter_mut().enumerate() {
+        ui.group(|ui| {
+            ui.strong(format!(
+                "{} Media Set ({}) — {}",
+                list.label,
+                fnv_util::tag_str(&list.sig),
+                list.entries.len()
+            ));
+            ui.add_space(4.0);
+
+            if list.entries.is_empty() {
+                ui.label(egui::RichText::new("No media sets on this list.").italics());
+            } else {
+                let mut remove_idx = None;
+                for (idx, entry) in list.entries.iter_mut().enumerate() {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .button("✖")
+                            .on_hover_text("Remove this media set")
+                            .clicked()
+                        {
+                            remove_idx = Some(idx);
+                        }
+                        let mut fid = Some(*entry);
+                        record_dropdown(
+                            ui,
+                            &format!("aloc_set_{}_{}", list_idx, idx),
+                            &msets,
+                            &mut fid,
+                        );
+                        *entry = fid.unwrap_or(0);
+                    });
+                }
+                if let Some(idx) = remove_idx {
+                    list.entries.remove(idx);
+                }
+            }
+        });
+    }
+
+    // --- Add a media set ---
+    ui.add_space(4.0);
+    ui.group(|ui| {
+        ui.strong("Add Media Set");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("To list:");
+            egui::ComboBox::from_id_salt("aloc_add_list")
+                .selected_text(
+                    state
+                        .aloc_sets
+                        .get(state.aloc_set_list_to_add)
+                        .map(|l| l.label)
+                        .unwrap_or("Neutral"),
+                )
+                .show_ui(ui, |ui| {
+                    for (i, l) in state.aloc_sets.iter().enumerate() {
+                        ui.selectable_value(&mut state.aloc_set_list_to_add, i, l.label);
+                    }
+                });
+            ui.separator();
+            let mut add = state.aloc_set_to_add;
+            record_dropdown(ui, "aloc_add_set", &msets, &mut add);
+            if ui.button("Add").clicked() {
+                if let Some(fid) = add {
+                    if let Some(list) = state.aloc_sets.get_mut(state.aloc_set_list_to_add) {
+                        list.entries.push(fid);
+                    }
+                }
+            }
         });
     });
 }
