@@ -427,6 +427,14 @@ pub struct ObjectEditorState {
     pub wthr_sun_glare: u8,
     pub wthr_sun_damage: u8,
     pub wthr_cloud_layer0: String,
+    /// `WATR` The visual data — the `DNAM` struct.
+    pub watr_visual: WatrVisual,
+    /// `GNAM` Daytime — the FormID of the `WATR` record used in the day.
+    pub watr_daytime: Option<u32>,
+    /// `GNAM` Nighttime — the FormID of the `WATR` record used at night.
+    pub watr_nighttime: Option<u32>,
+    /// `GNAM` Underwater — the FormID of the `WATR` record used underwater.
+    pub watr_underwater: Option<u32>,
     pub watr_opacity: u8,
     pub watr_causes_damage: bool,
     pub watr_reflective: bool,
@@ -2239,6 +2247,101 @@ pub struct ActorInventoryEntry {
     pub count: i32,
     /// The `COED` extra data, if the item has one.
     pub extra: Option<Vec<u8>>,
+}
+
+/// The water's visual data — the `DNAM` struct of a `WATR` (Water) record.
+///
+/// The struct is 196 bytes: a sixteen-byte unknown header, then the
+/// water, fog, rain, displacement and noise properties, then a three-byte
+/// trailing pad the spec does not name.
+#[derive(Debug, Clone, Default)]
+pub struct WatrVisual {
+    /// `Water Properties - Sun Power` — the float32.
+    pub sun_power: f32,
+    /// `Water Properties - Reflectivity Amount` — the float32.
+    pub reflectivity_amount: f32,
+    /// `Water Properties - Fresnel Amount` — the float32.
+    pub fresnel_amount: f32,
+    /// `Fog Properties - Above Water - Fog Near Plane Distance` — the float32.
+    pub above_fog_near: f32,
+    /// `Fog Properties - Above Water - Fog Far Plane Distance` — the float32.
+    pub above_fog_far: f32,
+    /// `Shallow Color` — the rgba.
+    pub shallow_color: [u8; 4],
+    /// `Deep Color` — the rgba.
+    pub deep_color: [u8; 4],
+    /// `Reflection Color` — the rgba.
+    pub reflection_color: [u8; 4],
+    /// `Rain Simulator - Force` — the float32.
+    pub rain_force: f32,
+    /// `Rain Simulator - Velocity` — the float32.
+    pub rain_velocity: f32,
+    /// `Rain Simulator - Falloff` — the float32.
+    pub rain_falloff: f32,
+    /// `Rain Simulator - Dampener` — the float32.
+    pub rain_dampener: f32,
+    /// `Displacement Simulator - Starting Size` — the float32.
+    pub displacement_starting_size: f32,
+    /// `Displacement Simulator - Force` — the float32.
+    pub displacement_force: f32,
+    /// `Displacement Simulator - Velocity` — the float32.
+    pub displacement_velocity: f32,
+    /// `Displacement Simulator - Falloff` — the float32.
+    pub displacement_falloff: f32,
+    /// `Displacement Simulator - Dampener` — the float32.
+    pub displacement_dampener: f32,
+    /// `Rain Simulator - Starting Size` — the float32.
+    pub rain_starting_size: f32,
+    /// `Noise Properties - Normals - Noise Scale` — the float32.
+    pub noise_scale: f32,
+    /// `Noise Properties - Noise Layer One - Wind Direction` — the float32.
+    pub layer_one_wind_direction: f32,
+    /// `Noise Properties - Noise Layer Two - Wind Direction` — the float32.
+    pub layer_two_wind_direction: f32,
+    /// `Noise Properties - Noise Layer Three - Wind Direction` — the float32.
+    pub layer_three_wind_direction: f32,
+    /// `Noise Properties - Noise Layer One - Wind Speed` — the float32.
+    pub layer_one_wind_speed: f32,
+    /// `Noise Properties - Noise Layer Two - Wind Speed` — the float32.
+    pub layer_two_wind_speed: f32,
+    /// `Noise Properties - Noise Layer Three - Wind Speed` — the float32.
+    pub layer_three_wind_speed: f32,
+    /// `Noise Properties - Normals - Depth Falloff Start` — the float32.
+    pub depth_falloff_start: f32,
+    /// `Noise Properties - Normals - Depth Falloff End` — the float32.
+    pub depth_falloff_end: f32,
+    /// `Fog Properties - Above Water - Fog Amount` — the float32.
+    pub above_fog_amount: f32,
+    /// `Noise Properties - Normals - UV Scale` — the float32.
+    pub normals_uv_scale: f32,
+    /// `Fog Properties - Under Water - Fog Amount` — the float32.
+    pub under_fog_amount: f32,
+    /// `Fog Properties - Under Water - Fog Near Plane Distance` — the float32.
+    pub under_fog_near: f32,
+    /// `Fog Properties - Under Water - Fog Far Plane Distance` — the float32.
+    pub under_fog_far: f32,
+    /// `Water Properties - Distortion Amount` — the float32.
+    pub distortion_amount: f32,
+    /// `Water Properties - Shininess` — the float32.
+    pub shininess: f32,
+    /// `Water Properties - Reflection HDR Multiplier` — the float32.
+    pub reflection_hdr_multiplier: f32,
+    /// `Water Properties - Light Radius` — the float32.
+    pub light_radius: f32,
+    /// `Water Properties - Light Brightness` — the float32.
+    pub light_brightness: f32,
+    /// `Noise Properties - Noise Layer One - UV Scale` — the float32.
+    pub layer_one_uv_scale: f32,
+    /// `Noise Properties - Noise Layer Two - UV Scale` — the float32.
+    pub layer_two_uv_scale: f32,
+    /// `Noise Properties - Noise Layer Three - UV Scale` — the float32.
+    pub layer_three_uv_scale: f32,
+    /// `Noise Properties - Noise Layer One - Amplitude Scale` — the float32.
+    pub layer_one_amplitude_scale: f32,
+    /// `Noise Properties - Noise Layer Two - Amplitude Scale` — the float32.
+    pub layer_two_amplitude_scale: f32,
+    /// `Noise Properties - Noise Layer Three - Amplitude Scale` — the float32.
+    pub layer_three_amplitude_scale: f32,
 }
 
 /// One ingredient or output on a `RCPE` (Recipe) record.
@@ -5003,6 +5106,18 @@ impl ObjectEditorState {
     }
 
     fn load_watr(&mut self) {
+        self.watr_visual = WatrVisual::default();
+        self.watr_daytime = None;
+        self.watr_nighttime = None;
+        self.watr_underwater = None;
+        if let Some(b) = self.raw_subs.get(b"DNAM") {
+            self.watr_visual = read_watr_visual(b);
+        }
+        if let Some(b) = self.raw_subs.get(b"GNAM").filter(|b| b.len() >= 12) {
+            self.watr_daytime = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+            self.watr_nighttime = Some(u32::from_le_bytes([b[4], b[5], b[6], b[7]]));
+            self.watr_underwater = Some(u32::from_le_bytes([b[8], b[9], b[10], b[11]]));
+        }
         if let Some(b) = self.raw_subs.get(b"ANAM") {
             self.watr_opacity = b.first().copied().unwrap_or(255);
         }
@@ -9496,6 +9611,29 @@ impl ObjectEditorState {
 
     fn save_watr(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
+        // The visual data is written back over the record's own bytes, so
+        // the bytes the spec does not name survive.
+        if let Some(original) = self.raw_subs.get(b"DNAM") {
+            let data = write_watr_visual(original, &self.watr_visual);
+            session.doc.set_sub(fid, b"DNAM", data);
+        }
+        // The related waters: the daytime, nighttime and underwater
+        // records. The struct is written back over the record's own
+        // bytes, so its length survives.
+        if let Some(original) = self.raw_subs.get(b"GNAM") {
+            let mut g = original.clone();
+            g.resize(g.len().max(12), 0);
+            for (at, value) in [
+                (0usize, self.watr_daytime),
+                (4, self.watr_nighttime),
+                (8, self.watr_underwater),
+            ] {
+                if let Some(v) = value {
+                    g[at..at + 4].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+            session.doc.set_sub(fid, b"GNAM", g);
+        }
         session.doc.set_sub(fid, b"ANAM", vec![self.watr_opacity]);
         let mut f = 0u8;
         if self.watr_causes_damage {
@@ -13656,7 +13794,7 @@ pub fn ui(
                 b"CSTY" => draw_csty_ui(ui, &mut state),
                 b"MGEF" => draw_mgef_ui(ui, &mut state),
                 b"WTHR" => draw_wthr_ui(ui, &mut state),
-                b"WATR" => draw_watr_ui(ui, &mut state),
+                b"WATR" => draw_watr_ui(ui, &session, &mut state),
                 b"GLOB" => draw_glob_ui(ui, &mut state),
                 b"GMST" => draw_gmst_ui(ui, &mut state),
                 b"RACE" => draw_race_ui(ui, &mut state),
@@ -16778,7 +16916,137 @@ fn draw_wthr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
-fn draw_watr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+/// Read the water's visual data out of a `DNAM` payload.
+fn read_watr_visual(b: &[u8]) -> WatrVisual {
+    let f = |at: usize| -> f32 {
+        if b.len() >= at + 4 {
+            f32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+        } else {
+            0.0
+        }
+    };
+    let c = |at: usize| -> [u8; 4] {
+        if b.len() >= at + 4 {
+            [b[at], b[at + 1], b[at + 2], b[at + 3]]
+        } else {
+            [0; 4]
+        }
+    };
+    WatrVisual {
+        sun_power: f(16),
+        reflectivity_amount: f(20),
+        fresnel_amount: f(24),
+        above_fog_near: f(32),
+        above_fog_far: f(36),
+        shallow_color: c(40),
+        deep_color: c(44),
+        reflection_color: c(48),
+        rain_force: f(56),
+        rain_velocity: f(60),
+        rain_falloff: f(64),
+        rain_dampener: f(68),
+        displacement_starting_size: f(72),
+        displacement_force: f(76),
+        displacement_velocity: f(80),
+        displacement_falloff: f(84),
+        displacement_dampener: f(88),
+        rain_starting_size: f(92),
+        noise_scale: f(96),
+        layer_one_wind_direction: f(100),
+        layer_two_wind_direction: f(104),
+        layer_three_wind_direction: f(108),
+        layer_one_wind_speed: f(112),
+        layer_two_wind_speed: f(116),
+        layer_three_wind_speed: f(120),
+        depth_falloff_start: f(124),
+        depth_falloff_end: f(128),
+        above_fog_amount: f(132),
+        normals_uv_scale: f(136),
+        under_fog_amount: f(140),
+        under_fog_near: f(144),
+        under_fog_far: f(148),
+        distortion_amount: f(152),
+        shininess: f(156),
+        reflection_hdr_multiplier: f(160),
+        light_radius: f(164),
+        light_brightness: f(168),
+        layer_one_uv_scale: f(172),
+        layer_two_uv_scale: f(176),
+        layer_three_uv_scale: f(180),
+        layer_one_amplitude_scale: f(184),
+        layer_two_amplitude_scale: f(188),
+        layer_three_amplitude_scale: f(192),
+    }
+}
+
+/// Write the water's visual data back over the record's own bytes.
+fn write_watr_visual(original: &[u8], v: &WatrVisual) -> Vec<u8> {
+    let mut b = original.to_vec();
+    macro_rules! put_f {
+        ($at:expr, $field:ident) => {
+            if b.len() >= $at + 4 {
+                b[$at..$at + 4].copy_from_slice(&v.$field.to_le_bytes());
+            }
+        };
+    }
+    macro_rules! put_c {
+        ($at:expr, $field:ident) => {
+            if b.len() >= $at + 4 {
+                b[$at..$at + 4].copy_from_slice(&v.$field);
+            }
+        };
+    }
+    put_f!(16, sun_power);
+    put_f!(20, reflectivity_amount);
+    put_f!(24, fresnel_amount);
+    put_f!(32, above_fog_near);
+    put_f!(36, above_fog_far);
+    put_c!(40, shallow_color);
+    put_c!(44, deep_color);
+    put_c!(48, reflection_color);
+    put_f!(56, rain_force);
+    put_f!(60, rain_velocity);
+    put_f!(64, rain_falloff);
+    put_f!(68, rain_dampener);
+    put_f!(72, displacement_starting_size);
+    put_f!(76, displacement_force);
+    put_f!(80, displacement_velocity);
+    put_f!(84, displacement_falloff);
+    put_f!(88, displacement_dampener);
+    put_f!(92, rain_starting_size);
+    put_f!(96, noise_scale);
+    put_f!(100, layer_one_wind_direction);
+    put_f!(104, layer_two_wind_direction);
+    put_f!(108, layer_three_wind_direction);
+    put_f!(112, layer_one_wind_speed);
+    put_f!(116, layer_two_wind_speed);
+    put_f!(120, layer_three_wind_speed);
+    put_f!(124, depth_falloff_start);
+    put_f!(128, depth_falloff_end);
+    put_f!(132, above_fog_amount);
+    put_f!(136, normals_uv_scale);
+    put_f!(140, under_fog_amount);
+    put_f!(144, under_fog_near);
+    put_f!(148, under_fog_far);
+    put_f!(152, distortion_amount);
+    put_f!(156, shininess);
+    put_f!(160, reflection_hdr_multiplier);
+    put_f!(164, light_radius);
+    put_f!(168, light_brightness);
+    put_f!(172, layer_one_uv_scale);
+    put_f!(176, layer_two_uv_scale);
+    put_f!(180, layer_three_uv_scale);
+    put_f!(184, layer_one_amplitude_scale);
+    put_f!(188, layer_two_amplitude_scale);
+    put_f!(192, layer_three_amplitude_scale);
+    b
+}
+
+fn draw_watr_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
     ui.group(|ui| {
         ui.strong("Water Visuals & Radiation/Damage");
         ui.add_space(4.0);
@@ -16794,6 +17062,204 @@ fn draw_watr_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
             formid_field(ui, "watr_eff", &mut state.watr_effect);
             ui.label("Sound:");
             formid_field(ui, "watr_snd", &mut state.watr_sound);
+        });
+    });
+
+    // The related waters.
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Related Waters (GNAM)");
+        ui.add_space(4.0);
+        let waters = session.records_by_sig(*b"WATR");
+        ui.horizontal(|ui| {
+            ui.label("Daytime:");
+            let mut fid = state.watr_daytime;
+            record_dropdown(ui, "watr_day", &waters, &mut fid);
+            state.watr_daytime = fid;
+            ui.separator();
+            ui.label("Nighttime:");
+            let mut fid = state.watr_nighttime;
+            record_dropdown(ui, "watr_night", &waters, &mut fid);
+            state.watr_nighttime = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Underwater:");
+            let mut fid = state.watr_underwater;
+            record_dropdown(ui, "watr_under", &waters, &mut fid);
+            state.watr_underwater = fid;
+        });
+    });
+
+    // The visual data. Every field the spec names for the `DNAM` struct.
+    let v = &mut state.watr_visual;
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Water Properties");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Sun Power:");
+            ui.add(egui::DragValue::new(&mut v.sun_power).speed(0.01));
+            ui.label("Reflectivity Amount:");
+            ui.add(egui::DragValue::new(&mut v.reflectivity_amount).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Fresnel Amount:");
+            ui.add(egui::DragValue::new(&mut v.fresnel_amount).speed(0.01));
+            ui.label("Distortion Amount:");
+            ui.add(egui::DragValue::new(&mut v.distortion_amount).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Shininess:");
+            ui.add(egui::DragValue::new(&mut v.shininess).speed(0.01));
+            ui.label("Reflection HDR Multiplier:");
+            ui.add(egui::DragValue::new(&mut v.reflection_hdr_multiplier).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Light Radius:");
+            ui.add(egui::DragValue::new(&mut v.light_radius).speed(0.01));
+            ui.label("Light Brightness:");
+            ui.add(egui::DragValue::new(&mut v.light_brightness).speed(0.01));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Fog Properties");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Above Water - Fog Amount:");
+            ui.add(egui::DragValue::new(&mut v.above_fog_amount).speed(0.01));
+            ui.label("Above Water - Fog Near Plane Distance:");
+            ui.add(egui::DragValue::new(&mut v.above_fog_near).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Above Water - Fog Far Plane Distance:");
+            ui.add(egui::DragValue::new(&mut v.above_fog_far).speed(0.01));
+            ui.label("Under Water - Fog Amount:");
+            ui.add(egui::DragValue::new(&mut v.under_fog_amount).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Under Water - Fog Near Plane Distance:");
+            ui.add(egui::DragValue::new(&mut v.under_fog_near).speed(0.01));
+            ui.label("Under Water - Fog Far Plane Distance:");
+            ui.add(egui::DragValue::new(&mut v.under_fog_far).speed(0.01));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Rain & Displacement Simulators");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Rain Simulator - Force:");
+            ui.add(egui::DragValue::new(&mut v.rain_force).speed(0.01));
+            ui.label("Rain Simulator - Velocity:");
+            ui.add(egui::DragValue::new(&mut v.rain_velocity).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Rain Simulator - Falloff:");
+            ui.add(egui::DragValue::new(&mut v.rain_falloff).speed(0.01));
+            ui.label("Rain Simulator - Dampener:");
+            ui.add(egui::DragValue::new(&mut v.rain_dampener).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Rain Simulator - Starting Size:");
+            ui.add(egui::DragValue::new(&mut v.rain_starting_size).speed(0.01));
+            ui.label("Displacement Simulator - Starting Size:");
+            ui.add(egui::DragValue::new(&mut v.displacement_starting_size).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Displacement Simulator - Force:");
+            ui.add(egui::DragValue::new(&mut v.displacement_force).speed(0.01));
+            ui.label("Displacement Simulator - Velocity:");
+            ui.add(egui::DragValue::new(&mut v.displacement_velocity).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Displacement Simulator - Falloff:");
+            ui.add(egui::DragValue::new(&mut v.displacement_falloff).speed(0.01));
+            ui.label("Displacement Simulator - Dampener:");
+            ui.add(egui::DragValue::new(&mut v.displacement_dampener).speed(0.01));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Noise Properties");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Normals - Noise Scale:");
+            ui.add(egui::DragValue::new(&mut v.noise_scale).speed(0.01));
+            ui.label("Normals - UV Scale:");
+            ui.add(egui::DragValue::new(&mut v.normals_uv_scale).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Normals - Depth Falloff Start:");
+            ui.add(egui::DragValue::new(&mut v.depth_falloff_start).speed(0.01));
+            ui.label("Normals - Depth Falloff End:");
+            ui.add(egui::DragValue::new(&mut v.depth_falloff_end).speed(0.01));
+        });
+        for name in ["One", "Two", "Three"] {
+            ui.label(format!("Noise Layer {name}"));
+            match name {
+                "One" => {
+                    ui.horizontal(|ui| {
+                        ui.label("Wind Direction:");
+                        ui.add(egui::DragValue::new(&mut v.layer_one_wind_direction).speed(0.01));
+                        ui.label("Wind Speed:");
+                        ui.add(egui::DragValue::new(&mut v.layer_one_wind_speed).speed(0.01));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("UV Scale:");
+                        ui.add(egui::DragValue::new(&mut v.layer_one_uv_scale).speed(0.01));
+                        ui.label("Amplitude Scale:");
+                        ui.add(egui::DragValue::new(&mut v.layer_one_amplitude_scale).speed(0.01));
+                    });
+                }
+                "Two" => {
+                    ui.horizontal(|ui| {
+                        ui.label("Wind Direction:");
+                        ui.add(egui::DragValue::new(&mut v.layer_two_wind_direction).speed(0.01));
+                        ui.label("Wind Speed:");
+                        ui.add(egui::DragValue::new(&mut v.layer_two_wind_speed).speed(0.01));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("UV Scale:");
+                        ui.add(egui::DragValue::new(&mut v.layer_two_uv_scale).speed(0.01));
+                        ui.label("Amplitude Scale:");
+                        ui.add(egui::DragValue::new(&mut v.layer_two_amplitude_scale).speed(0.01));
+                    });
+                }
+                _ => {
+                    ui.horizontal(|ui| {
+                        ui.label("Wind Direction:");
+                        ui.add(egui::DragValue::new(&mut v.layer_three_wind_direction).speed(0.01));
+                        ui.label("Wind Speed:");
+                        ui.add(egui::DragValue::new(&mut v.layer_three_wind_speed).speed(0.01));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("UV Scale:");
+                        ui.add(egui::DragValue::new(&mut v.layer_three_uv_scale).speed(0.01));
+                        ui.label("Amplitude Scale:");
+                        ui.add(
+                            egui::DragValue::new(&mut v.layer_three_amplitude_scale).speed(0.01),
+                        );
+                    });
+                }
+            }
+        }
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Colors");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Shallow Color:");
+            ui.color_edit_button_srgba_unmultiplied(&mut v.shallow_color);
+            ui.label("Deep Color:");
+            ui.color_edit_button_srgba_unmultiplied(&mut v.deep_color);
+            ui.label("Reflection Color:");
+            ui.color_edit_button_srgba_unmultiplied(&mut v.reflection_color);
         });
     });
 }
