@@ -901,6 +901,214 @@ pub struct ObjectEditorState {
     /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
     pub stat_model: ModelData,
 
+    // KEYM (Key) fields
+    /// `DATA` Value — the int32.
+    pub keym_value: i32,
+    /// `DATA` Weight — the float32.
+    pub keym_weight: f32,
+    /// `ICON` — the large icon filename.
+    pub keym_icon: String,
+    /// `MICO` — the small icon filename.
+    pub keym_mico: String,
+    /// `SCRI` Script — the FormID of a `SCPT` record.
+    pub keym_script: Option<u32>,
+    /// `YNAM` Sound - Pick Up — the FormID of a `SOUN` record.
+    pub keym_pickup_sound: Option<u32>,
+    /// `ZNAM` Sound - Drop — the FormID of a `SOUN` record.
+    pub keym_drop_sound: Option<u32>,
+    /// `RNAM` Sound - Random / Looping — the FormID of a `SOUN` record.
+    pub keym_random_sound: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub keym_model: ModelData,
+    /// The destruction data: the `DEST` header and the `DSTD` stages.
+    pub keym_destruction: Vec<DestructionStage>,
+    /// `DEST` Health — the int32.
+    pub keym_dest_health: i32,
+    /// `DEST` Flags — the u8 flag word.
+    pub keym_dest_flags: u8,
+
+    // INGR (Ingredient) fields
+    /// `ETYP` Equipment Type — the int32 enum.
+    pub ingr_equipment_type: i32,
+    /// `DATA` Weight — the float32.
+    pub ingr_weight: f32,
+    /// `ENIT` Value — the int32.
+    pub ingr_effect_value: i32,
+    /// `ENIT` Flags — the u8 flag word: No Auto-Calculation, Food Item.
+    pub ingr_effect_flags: u8,
+    /// `ICON` — the large icon filename.
+    pub ingr_icon: String,
+    /// `MICO` — the small icon filename.
+    pub ingr_mico: String,
+    /// `SCRI` Script — the FormID of a `SCPT` record.
+    pub ingr_script: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub ingr_model: ModelData,
+    /// The effects. Each is an `EFID` (the effect) and an `EFIT` (the
+    /// parameters), and both repeat.
+    pub ingr_effects: Vec<SpellEffect>,
+
+    // IPCT (Impact) fields
+    /// `DATA` Effect - Duration — the float32.
+    pub ipct_duration: f32,
+    /// `DATA` Effect - Orientation — the uint32 enum.
+    pub ipct_orientation: u32,
+    /// `DATA` Angle Threshold — the float32.
+    pub ipct_angle_threshold: f32,
+    /// `DATA` Placement Radius — the float32.
+    pub ipct_placement_radius: f32,
+    /// `DATA` Sound Level — the uint32.
+    pub ipct_sound_level: u32,
+    /// `DATA` Flags — the uint32 flag word.
+    pub ipct_flags: u32,
+    /// `DNAM` Texture Set — the FormID of a `TXST` record.
+    pub ipct_texture_set: Option<u32>,
+    /// `SNAM` Sound 1 — the FormID of a `SOUN` record.
+    pub ipct_sound1: Option<u32>,
+    /// `NAM1` Sound 2 — the FormID of a `SOUN` record.
+    pub ipct_sound2: Option<u32>,
+    /// The model data collection: `MODL`, `MODB`, `MODT`, `MODS` and `MODD`.
+    pub ipct_model: ModelData,
+    /// The `DODT` decal data.
+    pub ipct_dodt: Option<DecalData>,
+
+    // IPDS (Impact Data Set) fields
+    /// `DATA` — the twelve material impact FormIDs. A null one is written as
+    /// zero.
+    pub ipds_impacts: Vec<Option<u32>>,
+
+    // RCPE (Recipe) fields
+    /// `DATA` Skill — the int32 actor value.
+    pub rcpe_skill: i32,
+    /// `DATA` Level — the uint32.
+    pub rcpe_level: u32,
+    /// `DATA` Category — the FormID of an `RCCT` record.
+    pub rcpe_category: Option<u32>,
+    /// `DATA` Sub-Category — the FormID of an `RCCT` record.
+    pub rcpe_sub_category: Option<u32>,
+    /// The conditions — the repeated `CTDA` list.
+    pub rcpe_conditions: Vec<Condition>,
+    /// The ingredients. Each is an `RCIL` (the item) and an `RCQY` (the
+    /// quantity), and both repeat.
+    pub rcpe_ingredients: Vec<RecipeItem>,
+    /// The outputs. Each is an `RCIL` (the item) and an `RCQY` (the
+    /// quantity), and both repeat.
+    pub rcpe_outputs: Vec<RecipeItem>,
+
+    // SCPT (Script) fields
+    /// `SCHR` — the basic script data.
+    pub scpt_header: ScriptHeader,
+    /// `SCDA` — the compiled script source.
+    pub scpt_compiled: Vec<u8>,
+    /// `SCTX` — the script source.
+    pub scpt_source: String,
+    /// The local variables. Each is an `SLSD` (the data) and a `SCVR` (the
+    /// name), and both repeat.
+    pub scpt_variables: Vec<ScriptVariable>,
+
+    // IMAD (Image Space Adapter) fields
+    /// `DNAM` — the data header.
+    pub imad_header: ImadHeader,
+    /// The curves. Each subrecord is one curve, and the curve's signature
+    /// says what it holds.
+    pub imad_curves: Vec<ImadCurve>,
+
+    // REGN (Region) fields
+    /// `RCLR` Map Color — the four bytes: red, green, blue and alpha.
+    pub regn_map_color: [u8; 4],
+    /// `WNAM` Worldspace — the FormID of a `WRLD` record.
+    pub regn_worldspace: Option<u32>,
+    /// `RPLI` Edge Fall-Off — the uint32.
+    pub regn_edge_falloff: Option<u32>,
+    /// `RPLD` Region Point List Data — the array of x and y float32 pairs.
+    pub regn_points: Vec<[f32; 2]>,
+    /// The region data entries.
+    pub regn_entries: Vec<RegionEntry>,
+
+    // PACK (Package) fields
+    /// `PKDT` General Flags — the uint32 flag word.
+    pub pack_general_flags: u32,
+    /// `PKDT` Type — the uint8 enum: Find, Follow, Escort, Eat, Sleep,
+    /// Wander, Travel, Accompany, Use Item At, Ambush, Flee Not Combat,
+    /// Sandbox, Patrol, Guard, Dialogue, Use Weapon.
+    pub pack_type: u8,
+    /// `PKDT` Unused — the byte the spec leaves unnamed.
+    pub pack_unused: u8,
+    /// `PKDT` Fallout Behaviour Flags — the uint16 flag word.
+    pub pack_fallout_behavior_flags: u16,
+    /// `PKDT` Type-Specific Flags — the uint16, or None when the record used
+    /// the short form that has no type-specific flags.
+    pub pack_type_specific_flags: Option<u16>,
+    /// `PKDT` Unused 2 — the two bytes the spec leaves unnamed.
+    pub pack_unused2: [u8; 2],
+    /// `PSDT` Month — the int8.
+    pub pack_month: i8,
+    /// `PSDT` Day of Week — the int8 enum.
+    pub pack_day_of_week: i8,
+    /// `PSDT` Date — the uint8.
+    pub pack_date: u8,
+    /// `PSDT` Time — the int8.
+    pub pack_time: i8,
+    /// `PSDT` Duration — the int32, in hours.
+    pub pack_duration: i32,
+    /// The conditions. Each is a `CTDA` and they repeat.
+    pub pack_conditions: Vec<Condition>,
+    /// The first location. A `PLDT` subrecord.
+    pub pack_location: PackageLocation,
+    /// The second location. A `PLD2` subrecord.
+    pub pack_location2: PackageLocation,
+    /// The first target. A `PTDT` subrecord.
+    pub pack_target: PackageTarget,
+    /// The second target. A `PTD2` subrecord.
+    pub pack_target2: PackageTarget,
+    /// `IDLF` Idle Animation Flags — the uint8 flag word.
+    pub pack_idle_flags: u8,
+    /// `IDLC` Idle Animation Count — the uint8, plus the three unnamed bytes.
+    pub pack_idle_count: u8,
+    pub pack_idle_count_unused: [u8; 3],
+    /// `IDLT` Idle Timer Setting — the float32.
+    pub pack_idle_timer: f32,
+    /// `IDLA` — the array of `IDLE` record FormIDs.
+    pub pack_idle_animations: Vec<u32>,
+    /// `IDLB` Unused — the four bytes.
+    pub pack_idle_unused: [u8; 4],
+    /// `CNAM` Combat Style — the FormID of a `CSTY` record.
+    pub pack_combat_style: Option<u32>,
+    /// `PKED` Eat Marker — present or not.
+    pub pack_eat_marker: bool,
+    /// `PKE2` Escort Distance — the uint32.
+    pub pack_escort_distance: Option<u32>,
+    /// `PKFD` Follow Start Location Trigger Radius — the float32.
+    pub pack_follow_radius: Option<f32>,
+    /// `PKPT` Patrol Flags — the uint16.
+    pub pack_patrol_flags: Option<u16>,
+    /// `PKW3` Use Weapon Data.
+    pub pack_weapon: PackageWeapon,
+    /// `PUID` Use Item Marker — present or not.
+    pub pack_use_item_marker: bool,
+    /// `PKAM` Ambush Marker — present or not.
+    pub pack_ambush_marker: bool,
+    /// `PKDD` Dialog Data.
+    pub pack_dialog: PackageDialog,
+    /// The embedded scripts. Each is a marker (`POBA`, `POEA` or `POCA`), an
+    /// `INAM` idle, a script collection and a `TNAM` topic, and they repeat.
+    pub pack_scripts: Vec<PackageScript>,
+
+    // TES4 (Plugin Header) fields
+    /// `HEDR` version — the float32.
+    pub tes4_version: f32,
+    /// `HEDR` numRecords — the uint32.
+    pub tes4_num_records: u32,
+    /// `HEDR` nextObjectId — the uint32.
+    pub tes4_next_object_id: u32,
+    /// `CNAM` author — the cstring.
+    pub tes4_author: String,
+    /// `SNAM` description — the cstring.
+    pub tes4_description: String,
+    /// The master files. Each is a `MAST` (the filename) and a `SSIG` (the
+    /// FormID), and both repeat.
+    pub tes4_masters: Vec<Tes4Master>,
+
     // CHAL (Challenge) fields
     /// `DATA` Type — the uint32 enum: the fourteen kinds of challenge.
     pub chal_type: u32,
@@ -1851,6 +2059,910 @@ pub struct SpellEffect {
     pub parameters: Vec<u8>,
 }
 
+/// Read the shared `DODT` decal data out of a subrecord's payload.
+///
+/// The payload is thirty-six bytes: the seven floats, the parallax passes,
+/// the flag word, two unused bytes and the rgba colour.
+fn read_decal_data(b: &[u8]) -> DecalData {
+    let f = |i: usize| {
+        let at = i * 4;
+        f32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
+    };
+    DecalData {
+        min_width: f(0),
+        max_width: f(1),
+        min_height: f(2),
+        max_height: f(3),
+        depth: f(4),
+        shininess: f(5),
+        parallax_scale: f(6),
+        parallax_passes: b[28],
+        flags: b[29],
+        color: [b[32], b[33], b[34], b[35]],
+    }
+}
+
+/// The `DODT` decal data, from the shared Decal Data collection.
+#[derive(Debug, Clone, Default)]
+pub struct DecalData {
+    /// `DODT` Min Width — the float32.
+    pub min_width: f32,
+    /// `DODT` Max Width — the float32.
+    pub max_width: f32,
+    /// `DODT` Min Height — the float32.
+    pub min_height: f32,
+    /// `DODT` Max Height — the float32.
+    pub max_height: f32,
+    /// `DODT` Depth — the float32.
+    pub depth: f32,
+    /// `DODT` Shininess — the float32.
+    pub shininess: f32,
+    /// `DODT` Parallax Scale — the float32.
+    pub parallax_scale: f32,
+    /// `DODT` Parallax Passes — the u8.
+    pub parallax_passes: u8,
+    /// `DODT` Flags — the u8 flag word: Parallax, Alpha Blending, Alpha
+    /// Testing.
+    pub flags: u8,
+    /// `DODT` Color — the rgba quadruple.
+    pub color: [u8; 4],
+}
+
+/// One ingredient or output on an `RCPE` (Recipe) record.
+///
+/// The collection is a run of `RCIL` (the item) and `RCQY` (the quantity),
+/// and both repeat.
+#[derive(Debug, Clone, Default)]
+pub struct RecipeItem {
+    /// `RCIL` Item — the FormID.
+    pub item: Option<u32>,
+    /// `RCQY` Quantity — the uint32.
+    pub quantity: u32,
+}
+
+/// Read a `PLDT` or `PLD2` location subrecord.
+///
+/// The subrecord is a uint32 type, the location and an int32 radius. What
+/// the location means depends on the type, so the bytes are kept whole and
+/// the type is kept beside them.
+fn read_package_location(data: &[u8]) -> PackageLocation {
+    let mut loc = PackageLocation::default();
+    if data.len() >= 4 {
+        loc.kind = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
+    }
+    if data.len() >= 8 {
+        loc.target = data[4..8].to_vec();
+    }
+    if data.len() >= 12 {
+        loc.radius = i32::from_le_bytes([data[8], data[9], data[10], data[11]]);
+    }
+    loc
+}
+
+/// Read a `PTDT` or `PTD2` target subrecord.
+///
+/// The subrecord is an int32 type, the target, an int32 count or distance
+/// and an unnamed float32.
+fn read_package_target(data: &[u8]) -> PackageTarget {
+    let mut t = PackageTarget::default();
+    if data.len() >= 4 {
+        t.kind = i32::from_le_bytes([data[0], data[1], data[2], data[3]]);
+    }
+    if data.len() >= 8 {
+        t.target = data[4..8].to_vec();
+    }
+    if data.len() >= 12 {
+        t.count_distance = i32::from_le_bytes([data[8], data[9], data[10], data[11]]);
+    }
+    if data.len() >= 16 {
+        t.unknown = f32::from_le_bytes([data[12], data[13], data[14], data[15]]);
+    }
+    t
+}
+
+/// Read the `PKW3` Use Weapon Data subrecord.
+///
+/// The subrecord is twenty-four bytes: the flag word, two uint8s, three
+/// uint16s, two float32s and four unnamed bytes.
+fn read_package_weapon(data: &[u8]) -> PackageWeapon {
+    let mut w = PackageWeapon::default();
+    if data.len() >= 4 {
+        w.flags = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
+    }
+    if data.len() >= 5 {
+        w.fire_rate = data[4];
+    }
+    if data.len() >= 6 {
+        w.fire_count = data[5];
+    }
+    if data.len() >= 8 {
+        w.num_bursts = u16::from_le_bytes([data[6], data[7]]);
+    }
+    if data.len() >= 10 {
+        w.shots_min = u16::from_le_bytes([data[8], data[9]]);
+    }
+    if data.len() >= 12 {
+        w.shots_max = u16::from_le_bytes([data[10], data[11]]);
+    }
+    if data.len() >= 16 {
+        w.pause_min = f32::from_le_bytes([data[12], data[13], data[14], data[15]]);
+    }
+    if data.len() >= 20 {
+        w.pause_max = f32::from_le_bytes([data[16], data[17], data[18], data[19]]);
+    }
+    if data.len() >= 24 {
+        w.unused = [data[20], data[21], data[22], data[23]];
+    }
+    w
+}
+
+/// Read the `PKDD` Dialog Data subrecord.
+///
+/// The subrecord is twenty-four bytes: the field of view, the topic, the
+/// flag word, four unnamed bytes and the dialog type.
+fn read_package_dialog(data: &[u8]) -> PackageDialog {
+    let mut d = PackageDialog::default();
+    if data.len() >= 4 {
+        d.fov = f32::from_le_bytes([data[0], data[1], data[2], data[3]]);
+    }
+    if data.len() >= 8 {
+        d.topic = Some(u32::from_le_bytes([data[4], data[5], data[6], data[7]]));
+    }
+    if data.len() >= 12 {
+        d.flags = u32::from_le_bytes([data[8], data[9], data[10], data[11]]);
+    }
+    if data.len() >= 16 {
+        d.unused = [data[12], data[13], data[14], data[15]];
+    }
+    if data.len() >= 20 {
+        d.dialog_type = u32::from_le_bytes([data[16], data[17], data[18], data[19]]);
+    }
+    d
+}
+
+/// Read the `RDOT` object placements of a `REGN` (Region) record.
+///
+/// Each placement is fifty-two bytes: the object's FormID, the parent index,
+/// two unnamed bytes, the density, the clustering and the two slopes, the
+/// flag word, the two radii, four unnamed bytes, the max height, the sink
+/// and the two variances, the three angle variances and six unnamed bytes.
+fn read_region_objects(data: &[u8]) -> Vec<RegionObject> {
+    const ENTRY: usize = 52;
+    let mut out = Vec::with_capacity(data.len() / ENTRY);
+    for chunk in data.chunks_exact(ENTRY) {
+        let mut o = RegionObject::default();
+        o.object = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+        o.parent_index = u16::from_le_bytes([chunk[4], chunk[5]]);
+        o.unused = [chunk[6], chunk[7]];
+        o.density = f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
+        o.clustering = chunk[12];
+        o.min_slope = chunk[13];
+        o.max_slope = chunk[14];
+        o.flags = chunk[15];
+        o.parent_radius = u16::from_le_bytes([chunk[16], chunk[17]]);
+        o.radius = u16::from_le_bytes([chunk[18], chunk[19]]);
+        o.unknown = [chunk[20], chunk[21], chunk[22], chunk[23]];
+        o.max_height = f32::from_le_bytes([chunk[24], chunk[25], chunk[26], chunk[27]]);
+        o.sink = f32::from_le_bytes([chunk[28], chunk[29], chunk[30], chunk[31]]);
+        o.sink_variance = f32::from_le_bytes([chunk[32], chunk[33], chunk[34], chunk[35]]);
+        o.size_variance = f32::from_le_bytes([chunk[36], chunk[37], chunk[38], chunk[39]]);
+        o.x_angle_variance = u16::from_le_bytes([chunk[40], chunk[41]]);
+        o.y_angle_variance = u16::from_le_bytes([chunk[42], chunk[43]]);
+        o.z_angle_variance = u16::from_le_bytes([chunk[44], chunk[45]]);
+        o.unknown2 = [
+            chunk[46], chunk[47], chunk[48], chunk[49], chunk[50], chunk[51],
+        ];
+        out.push(o);
+    }
+    out
+}
+
+/// Read the `RDGS` grass entries of a `REGN` (Region) record.
+///
+/// Each entry is eight bytes: the grass's FormID and four unnamed bytes.
+fn read_region_grasses(data: &[u8]) -> Vec<RegionGrass> {
+    let mut out = Vec::with_capacity(data.len() / 8);
+    for chunk in data.chunks_exact(8) {
+        out.push(RegionGrass {
+            grass: u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+            unknown: [chunk[4], chunk[5], chunk[6], chunk[7]],
+        });
+    }
+    out
+}
+
+/// Read the `RDSD` sound entries of a `REGN` (Region) record.
+///
+/// Each entry is twelve bytes: the sound's FormID, the flag word and the
+/// chance.
+fn read_region_sounds(data: &[u8]) -> Vec<RegionSound> {
+    let mut out = Vec::with_capacity(data.len() / 12);
+    for chunk in data.chunks_exact(12) {
+        out.push(RegionSound {
+            sound: u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+            flags: u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
+            chance: u32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]),
+        });
+    }
+    out
+}
+
+/// Read the `RDWT` weather entries of a `REGN` (Region) record.
+///
+/// Each entry is twelve bytes: the weather's FormID, the chance and the
+/// global's FormID.
+fn read_region_weather(data: &[u8]) -> Vec<RegionWeather> {
+    let mut out = Vec::with_capacity(data.len() / 12);
+    for chunk in data.chunks_exact(12) {
+        out.push(RegionWeather {
+            weather: u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+            chance: u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
+            global: Some(u32::from_le_bytes([
+                chunk[8], chunk[9], chunk[10], chunk[11],
+            ])),
+        });
+    }
+    out
+}
+
+/// Read the `DNAM` data header of an `IMAD` (Image Space Adapter) record.
+///
+/// The struct is a fixed run of fields: the flag word, the duration, the
+/// HDR block, seventy-two unnamed bytes, the cinematic block, eight unnamed
+/// bytes and the rest. The record's own length decides how much is present,
+/// so a short record simply leaves the later fields at zero.
+fn read_imad_header(data: &[u8]) -> ImadHeader {
+    let mut h = ImadHeader::default();
+    let u32_at = |off: usize| -> u32 {
+        if data.len() >= off + 4 {
+            u32::from_le_bytes([data[off], data[off + 1], data[off + 2], data[off + 3]])
+        } else {
+            0
+        }
+    };
+    h.flags = u32_at(0);
+    if data.len() >= 8 {
+        h.duration = f32::from_le_bytes([data[4], data[5], data[6], data[7]]);
+    }
+    h.hdr_eye_adapt_speed_mult = u32_at(8);
+    h.hdr_eye_adapt_speed_add = u32_at(12);
+    h.hdr_bloom_blur_radius_mult = u32_at(16);
+    h.hdr_bloom_blur_radius_add = u32_at(20);
+    h.hdr_bloom_threshold_mult = u32_at(24);
+    h.hdr_bloom_threshold_add = u32_at(28);
+    h.hdr_bloom_scale_mult = u32_at(32);
+    h.hdr_bloom_scale_add = u32_at(36);
+    h.hdr_target_lum_min_mult = u32_at(40);
+    h.hdr_target_lum_min_add = u32_at(44);
+    h.hdr_target_lum_max_mult = u32_at(48);
+    h.hdr_target_lum_max_add = u32_at(52);
+    h.hdr_sunlight_scale_mult = u32_at(56);
+    h.hdr_sunlight_scale_add = u32_at(60);
+    h.hdr_sky_scale_mult = u32_at(64);
+    h.hdr_sky_scale_add = u32_at(68);
+    if data.len() >= 144 {
+        h.unknown.copy_from_slice(&data[72..144]);
+    }
+    h.cinematic_saturation_mult = u32_at(144);
+    h.cinematic_saturation_add = u32_at(148);
+    h.cinematic_brightness_mult = u32_at(152);
+    h.cinematic_brightness_add = u32_at(156);
+    h.cinematic_contrast_mult = u32_at(160);
+    h.cinematic_contrast_add = u32_at(164);
+    if data.len() >= 176 {
+        h.unknown2.copy_from_slice(&data[168..176]);
+    }
+    h.tint_color = u32_at(176);
+    h.blur_radius = u32_at(180);
+    h.double_vision_strength = u32_at(184);
+    h.radial_blur_strength = u32_at(188);
+    h.radial_blur_ramp_up = u32_at(192);
+    h.radial_blur_start = u32_at(196);
+    h.radial_blur_flags = u32_at(200);
+    h.radial_blur_center_x = u32_at(204);
+    h.radial_blur_center_y = u32_at(208);
+    h.dof_strength = u32_at(212);
+    h.dof_distance = u32_at(216);
+    h.dof_range = u32_at(220);
+    h.dof_flags = u32_at(224);
+    h.radial_blur_ramp_down = u32_at(228);
+    h.radial_blur_down_start = u32_at(232);
+    h.fade_color = u32_at(236);
+    h.motion_blur_strength = u32_at(240);
+    h
+}
+
+/// Write the `DNAM` data header of an `IMAD` record back over the record's
+/// own bytes.
+///
+/// The struct's length varies — the game's records are 236, 240 and 244
+/// bytes long — so the record's own length is kept and only the fields
+/// that fit are written.
+fn write_imad_header(original: &[u8], h: &ImadHeader) -> Vec<u8> {
+    let mut data = original.to_vec();
+    let len = data.len();
+    let put_u32 = |data: &mut Vec<u8>, off: usize, v: u32| {
+        if data.len() >= off + 4 {
+            data[off..off + 4].copy_from_slice(&v.to_le_bytes());
+        }
+    };
+    put_u32(&mut data, 0, h.flags);
+    if len >= 8 {
+        data[4..8].copy_from_slice(&h.duration.to_le_bytes());
+    }
+    put_u32(&mut data, 8, h.hdr_eye_adapt_speed_mult);
+    put_u32(&mut data, 12, h.hdr_eye_adapt_speed_add);
+    put_u32(&mut data, 16, h.hdr_bloom_blur_radius_mult);
+    put_u32(&mut data, 20, h.hdr_bloom_blur_radius_add);
+    put_u32(&mut data, 24, h.hdr_bloom_threshold_mult);
+    put_u32(&mut data, 28, h.hdr_bloom_threshold_add);
+    put_u32(&mut data, 32, h.hdr_bloom_scale_mult);
+    put_u32(&mut data, 36, h.hdr_bloom_scale_add);
+    put_u32(&mut data, 40, h.hdr_target_lum_min_mult);
+    put_u32(&mut data, 44, h.hdr_target_lum_min_add);
+    put_u32(&mut data, 48, h.hdr_target_lum_max_mult);
+    put_u32(&mut data, 52, h.hdr_target_lum_max_add);
+    put_u32(&mut data, 56, h.hdr_sunlight_scale_mult);
+    put_u32(&mut data, 60, h.hdr_sunlight_scale_add);
+    put_u32(&mut data, 64, h.hdr_sky_scale_mult);
+    put_u32(&mut data, 68, h.hdr_sky_scale_add);
+    if len >= 144 {
+        data[72..144].copy_from_slice(&h.unknown);
+    }
+    put_u32(&mut data, 144, h.cinematic_saturation_mult);
+    put_u32(&mut data, 148, h.cinematic_saturation_add);
+    put_u32(&mut data, 152, h.cinematic_brightness_mult);
+    put_u32(&mut data, 156, h.cinematic_brightness_add);
+    put_u32(&mut data, 160, h.cinematic_contrast_mult);
+    put_u32(&mut data, 164, h.cinematic_contrast_add);
+    if len >= 176 {
+        data[168..176].copy_from_slice(&h.unknown2);
+    }
+    put_u32(&mut data, 176, h.tint_color);
+    put_u32(&mut data, 180, h.blur_radius);
+    put_u32(&mut data, 184, h.double_vision_strength);
+    put_u32(&mut data, 188, h.radial_blur_strength);
+    put_u32(&mut data, 192, h.radial_blur_ramp_up);
+    put_u32(&mut data, 196, h.radial_blur_start);
+    put_u32(&mut data, 200, h.radial_blur_flags);
+    put_u32(&mut data, 204, h.radial_blur_center_x);
+    put_u32(&mut data, 208, h.radial_blur_center_y);
+    put_u32(&mut data, 212, h.dof_strength);
+    put_u32(&mut data, 216, h.dof_distance);
+    put_u32(&mut data, 220, h.dof_range);
+    put_u32(&mut data, 224, h.dof_flags);
+    put_u32(&mut data, 228, h.radial_blur_ramp_down);
+    put_u32(&mut data, 232, h.radial_blur_down_start);
+    put_u32(&mut data, 236, h.fade_color);
+    put_u32(&mut data, 240, h.motion_blur_strength);
+    data
+}
+
+/// Read the keys of an `IMAD` (Image Space Adapter) curve.
+///
+/// A Time structure is two float32s; a Color structure is the time and four
+/// channels. A trailing remainder too short for a whole key is kept, so the
+/// curve can be written back byte for byte.
+fn read_imad_keys(data: &[u8], is_color: bool) -> Vec<ImadKey> {
+    let stride = if is_color { 20 } else { 8 };
+    let mut keys = Vec::with_capacity(data.len() / stride);
+    for chunk in data.chunks_exact(stride) {
+        let mut k = ImadKey::default();
+        k.time = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+        k.value = f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+        if is_color {
+            k.green = f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
+            k.blue = f32::from_le_bytes([chunk[12], chunk[13], chunk[14], chunk[15]]);
+            k.alpha = f32::from_le_bytes([chunk[16], chunk[17], chunk[18], chunk[19]]);
+        }
+        keys.push(k);
+    }
+    keys
+}
+
+/// The curves an `IMAD` (Image Space Adapter) record carries.
+///
+/// The record's subrecords are one per curve. The signatures that start with
+/// a control character are spelled with their hex value, as the spec does.
+const IMAD_CURVES: &[([u8; 4], &str, bool)] = &[
+    (*b"BNAM", "Blur Radius", false),
+    (*b"VNAM", "Double Vision Strength", false),
+    (*b"TNAM", "Tint Color", true),
+    (*b"NAM3", "Fade Color", true),
+    (*b"RNAM", "Radial Blur Strength", false),
+    (*b"SNAM", "Radial Blur Ramp Up", false),
+    (*b"UNAM", "Radial Blur Start", false),
+    (*b"NAM1", "Radial Blur Ramp Down", false),
+    (*b"NAM2", "Radial Blur Down Start", false),
+    (*b"WNAM", "DoF Strength", false),
+    (*b"XNAM", "DoF Distance", false),
+    (*b"YNAM", "DoF Range", false),
+    (*b"NAM4", "Motion Blur Strength", false),
+    (*b"\x00IAD", "HDR Eye Adapt Speed Mult", false),
+    (*b"@IAD", "HDR Eye Adapt Speed Add", false),
+    (*b"\x01IAD", "HDR Bloom Blur Radius Mult", false),
+    (*b"AIAD", "HDR Bloom Blur Radius Add", false),
+    (*b"\x02IAD", "HDR Bloom Threshold Mult", false),
+    (*b"BIAD", "HDR Bloom Threshold Add", false),
+    (*b"\x03IAD", "HDR Bloom Scale Mult", false),
+    (*b"CIAD", "HDR Bloom Scale Add", false),
+    (*b"\x04IAD", "HDR Target Lum Min Mult", false),
+    (*b"DIAD", "HDR Target Lum Min Add", false),
+    (*b"\x05IAD", "HDR Target Lum Max Mult", false),
+    (*b"EIAD", "HDR Target Lum Max Add", false),
+    (*b"\x06IAD", "HDR Sunlight Scale Mult", false),
+    (*b"FIAD", "HDR Sunlight Scale Add", false),
+    (*b"\x07IAD", "HDR Sky Scale Mult", false),
+    (*b"GIAD", "HDR Sky Scale Add", false),
+    (*b"\x08IAD", "Unknown 08", false),
+    (*b"HIAD", "Unknown 09", false),
+    (*b"\x09IAD", "Unknown 09", false),
+    (*b"IIAD", "Unknown 0A", false),
+    (*b"\x0AIAD", "Unknown 0A", false),
+    (*b"JIAD", "Unknown 0B", false),
+    (*b"\x0BIAD", "Unknown 0B", false),
+    (*b"KIAD", "Unknown 0C", false),
+    (*b"\x0CIAD", "Unknown 0C", false),
+    (*b"LIAD", "Unknown 0D", false),
+    (*b"\x0DIAD", "Unknown 0D", false),
+    (*b"MIAD", "Unknown 0E", false),
+    (*b"\x0EIAD", "Unknown 0E", false),
+    (*b"NIAD", "Unknown 0F", false),
+    (*b"\x0FIAD", "Unknown 0F", false),
+    (*b"OIAD", "Unknown 10", false),
+    (*b"\x10IAD", "Unknown 10", false),
+    (*b"PIAD", "Cinematic Saturation Mult", false),
+    (*b"\x11IAD", "Cinematic Saturation Mult", false),
+    (*b"QIAD", "Cinematic Saturation Add", false),
+    (*b"\x12IAD", "Cinematic Brightness Mult", false),
+    (*b"RIAD", "Cinematic Brightness Add", false),
+    (*b"\x13IAD", "Cinematic Contrast Mult", false),
+    (*b"SIAD", "Cinematic Contrast Add", false),
+    (*b"\x14IAD", "Unknown 14", false),
+    (*b"TIAD", "Unknown 14", false),
+];
+
+/// The name and colour flag of a curve signature, if it is a curve.
+fn imad_curve_for(sig: &[u8; 4]) -> Option<(&'static str, bool)> {
+    IMAD_CURVES
+        .iter()
+        .find(|(s, _, _)| s == sig)
+        .map(|(_, name, is_color)| (*name, *is_color))
+}
+
+/// One curve on an `IMAD` (Image Space Adapter) record.
+///
+/// The record carries one subrecord per curve. Every curve is a list of
+/// keys, and the keys are either a Time structure (the time and the value)
+/// or a Color structure (the time and four channels).
+#[derive(Debug, Clone, Default)]
+pub struct ImadCurve {
+    /// The subrecord's signature.
+    pub sig: [u8; 4],
+    /// The curve's name, from the spec.
+    pub name: &'static str,
+    /// Whether the curve's keys carry a colour rather than a value.
+    pub is_color: bool,
+    /// The keys.
+    pub keys: Vec<ImadKey>,
+}
+
+/// The `DNAM` data header of an `IMAD` (Image Space Adapter) record.
+///
+/// The struct is a fixed sequence of named fields followed by a block of
+/// unnamed bytes, and the record's own length decides how much of it is
+/// present: the game's records are 236, 240 and 244 bytes long. The named
+/// fields are therefore written over the record's own bytes, so the length
+/// and every unnamed bit survive a save.
+#[derive(Debug, Clone)]
+pub struct ImadHeader {
+    /// The uint32 flag word: Animatable.
+    pub flags: u32,
+    /// The float32 duration.
+    pub duration: f32,
+    /// The uint32.
+    pub hdr_eye_adapt_speed_mult: u32,
+    /// The uint32.
+    pub hdr_eye_adapt_speed_add: u32,
+    /// The uint32.
+    pub hdr_bloom_blur_radius_mult: u32,
+    /// The uint32.
+    pub hdr_bloom_blur_radius_add: u32,
+    /// The uint32.
+    pub hdr_bloom_threshold_mult: u32,
+    /// The uint32.
+    pub hdr_bloom_threshold_add: u32,
+    /// The uint32.
+    pub hdr_bloom_scale_mult: u32,
+    /// The uint32.
+    pub hdr_bloom_scale_add: u32,
+    /// The uint32.
+    pub hdr_target_lum_min_mult: u32,
+    /// The uint32.
+    pub hdr_target_lum_min_add: u32,
+    /// The uint32.
+    pub hdr_target_lum_max_mult: u32,
+    /// The uint32.
+    pub hdr_target_lum_max_add: u32,
+    /// The uint32.
+    pub hdr_sunlight_scale_mult: u32,
+    /// The uint32.
+    pub hdr_sunlight_scale_add: u32,
+    /// The uint32.
+    pub hdr_sky_scale_mult: u32,
+    /// The uint32.
+    pub hdr_sky_scale_add: u32,
+    /// The seventy-two unnamed bytes.
+    pub unknown: [u8; 72],
+    /// The uint32.
+    pub cinematic_saturation_mult: u32,
+    /// The uint32.
+    pub cinematic_saturation_add: u32,
+    /// The uint32.
+    pub cinematic_brightness_mult: u32,
+    /// The uint32.
+    pub cinematic_brightness_add: u32,
+    /// The uint32.
+    pub cinematic_contrast_mult: u32,
+    /// The uint32.
+    pub cinematic_contrast_add: u32,
+    /// The eight unnamed bytes.
+    pub unknown2: [u8; 8],
+    /// The uint32.
+    pub tint_color: u32,
+    /// The uint32.
+    pub blur_radius: u32,
+    /// The uint32.
+    pub double_vision_strength: u32,
+    /// The uint32.
+    pub radial_blur_strength: u32,
+    /// The uint32.
+    pub radial_blur_ramp_up: u32,
+    /// The uint32.
+    pub radial_blur_start: u32,
+    /// The uint32 flag word: Use Target.
+    pub radial_blur_flags: u32,
+    /// The uint32.
+    pub radial_blur_center_x: u32,
+    /// The uint32.
+    pub radial_blur_center_y: u32,
+    /// The uint32.
+    pub dof_strength: u32,
+    /// The uint32.
+    pub dof_distance: u32,
+    /// The uint32.
+    pub dof_range: u32,
+    /// The uint32 flag word: Use Target.
+    pub dof_flags: u32,
+    /// The uint32.
+    pub radial_blur_ramp_down: u32,
+    /// The uint32.
+    pub radial_blur_down_start: u32,
+    /// The uint32.
+    pub fade_color: u32,
+    /// The uint32.
+    pub motion_blur_strength: u32,
+}
+
+impl Default for ImadHeader {
+    fn default() -> Self {
+        ImadHeader {
+            flags: 0,
+            duration: 0.0,
+            hdr_eye_adapt_speed_mult: 0,
+            hdr_eye_adapt_speed_add: 0,
+            hdr_bloom_blur_radius_mult: 0,
+            hdr_bloom_blur_radius_add: 0,
+            hdr_bloom_threshold_mult: 0,
+            hdr_bloom_threshold_add: 0,
+            hdr_bloom_scale_mult: 0,
+            hdr_bloom_scale_add: 0,
+            hdr_target_lum_min_mult: 0,
+            hdr_target_lum_min_add: 0,
+            hdr_target_lum_max_mult: 0,
+            hdr_target_lum_max_add: 0,
+            hdr_sunlight_scale_mult: 0,
+            hdr_sunlight_scale_add: 0,
+            hdr_sky_scale_mult: 0,
+            hdr_sky_scale_add: 0,
+            unknown: [0; 72],
+            cinematic_saturation_mult: 0,
+            cinematic_saturation_add: 0,
+            cinematic_brightness_mult: 0,
+            cinematic_brightness_add: 0,
+            cinematic_contrast_mult: 0,
+            cinematic_contrast_add: 0,
+            unknown2: [0; 8],
+            tint_color: 0,
+            blur_radius: 0,
+            double_vision_strength: 0,
+            radial_blur_strength: 0,
+            radial_blur_ramp_up: 0,
+            radial_blur_start: 0,
+            radial_blur_flags: 0,
+            radial_blur_center_x: 0,
+            radial_blur_center_y: 0,
+            dof_strength: 0,
+            dof_distance: 0,
+            dof_range: 0,
+            dof_flags: 0,
+            radial_blur_ramp_down: 0,
+            radial_blur_down_start: 0,
+            fade_color: 0,
+            motion_blur_strength: 0,
+        }
+    }
+}
+
+/// One key on an `IMAD` (Image Space Adapter) curve.
+///
+/// A Time structure is two float32s: the time and the value. A Color
+/// structure is the time and four colour channels.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ImadKey {
+    /// The time — the float32.
+    pub time: f32,
+    /// The value — the float32. For a colour key this is the red channel.
+    pub value: f32,
+    /// The green channel — the float32.
+    pub green: f32,
+    /// The blue channel — the float32.
+    pub blue: f32,
+    /// The alpha channel — the float32.
+    pub alpha: f32,
+}
+
+/// One region data entry on a `REGN` (Region) record.
+///
+/// The record's region data is a run of `RDAT` (the header) followed by the
+/// entry's own subrecords, and the entries repeat. Each header's type says
+/// which subrecords the entry carries, so the entries are walked in file
+/// order rather than collected by signature.
+#[derive(Debug, Clone, Default)]
+pub struct RegionEntry {
+    /// `RDAT` Type — the uint32: Objects, Weather, Map, Land, Grass, Sound
+    /// or Imposter.
+    pub kind: u32,
+    /// `RDAT` Flags — the uint8: Override.
+    pub flags: u8,
+    /// `RDAT` Unused — the unnamed byte.
+    pub unused: u8,
+    /// `RDMP` Map Name — the cstring.
+    pub map_name: Option<String>,
+    /// `RDMD` Music Type — the uint32.
+    pub music_type: Option<u32>,
+    /// `RDMO` Music — the FormID of a `MUSC` record.
+    pub music: Option<u32>,
+    /// `RDSI` Incidental MediaSet — the FormID of an `MSET` record.
+    pub incidental_media: Option<u32>,
+    /// `RDSB` Battle MediaSet — the FormIDs of the `MSET` records.
+    pub battle_media: Vec<u32>,
+    /// `RDOT` Objects — the object placements.
+    pub objects: Vec<RegionObject>,
+    /// `RDGS` Grasses — the grass entries.
+    pub grasses: Vec<RegionGrass>,
+    /// `RDSD` Sounds — the sound entries.
+    pub sounds: Vec<RegionSound>,
+    /// `RDWT` Weather Types — the weather entries.
+    pub weather: Vec<RegionWeather>,
+    /// `RDID` Imposters — the FormIDs of the `REFR` records.
+    pub imposters: Vec<u32>,
+}
+
+/// One object placement on a `REGN` (Region) record.
+#[derive(Debug, Clone, Default)]
+pub struct RegionObject {
+    /// The FormID of the `TREE`, `STAT` or `LTEX` record.
+    pub object: u32,
+    /// The parent index — the uint16.
+    pub parent_index: u16,
+    /// The two unnamed bytes.
+    pub unused: [u8; 2],
+    /// The density — the float32.
+    pub density: f32,
+    /// The clustering — the uint8.
+    pub clustering: u8,
+    /// The min slope — the uint8.
+    pub min_slope: u8,
+    /// The max slope — the uint8.
+    pub max_slope: u8,
+    /// The flag word — the uint8.
+    pub flags: u8,
+    /// The radius with respect to the parent — the uint16.
+    pub parent_radius: u16,
+    /// The radius — the uint16.
+    pub radius: u16,
+    /// The four unnamed bytes.
+    pub unknown: [u8; 4],
+    /// The max height — the float32.
+    pub max_height: f32,
+    /// The sink — the float32.
+    pub sink: f32,
+    /// The sink variance — the float32.
+    pub sink_variance: f32,
+    /// The size variance — the float32.
+    pub size_variance: f32,
+    /// The x angle variance — the uint16.
+    pub x_angle_variance: u16,
+    /// The y angle variance — the uint16.
+    pub y_angle_variance: u16,
+    /// The z angle variance — the uint16.
+    pub z_angle_variance: u16,
+    /// The six unnamed bytes.
+    pub unknown2: [u8; 6],
+}
+
+/// One grass entry on a `REGN` (Region) record.
+#[derive(Debug, Clone, Default)]
+pub struct RegionGrass {
+    /// The FormID of the `GRAS` record.
+    pub grass: u32,
+    /// The four unnamed bytes.
+    pub unknown: [u8; 4],
+}
+
+/// One sound entry on a `REGN` (Region) record.
+#[derive(Debug, Clone, Default)]
+pub struct RegionSound {
+    /// The FormID of the `SOUN` record.
+    pub sound: u32,
+    /// The flag word — the uint32: Pleasant, Cloudy, Rainy, Snowy.
+    pub flags: u32,
+    /// The chance — the uint32.
+    pub chance: u32,
+}
+
+/// One weather entry on a `REGN` (Region) record.
+#[derive(Debug, Clone, Default)]
+pub struct RegionWeather {
+    /// The FormID of the `WTHR` record.
+    pub weather: u32,
+    /// The chance — the uint32.
+    pub chance: u32,
+    /// The FormID of the `GLOB` record.
+    pub global: Option<u32>,
+}
+
+/// One location on a `PACK` (Package) record.
+///
+/// A location is a `PLDT` or a `PLD2` subrecord: the type, the location
+/// itself and a radius. The location's own type decides what the second
+/// field means, so it is kept raw alongside the type.
+#[derive(Debug, Clone, Default)]
+pub struct PackageLocation {
+    /// The type: Near Reference, In Cell, Near Current Location, Near Editor
+    /// Location, Object ID, Object Type, Near Linked Reference, At Package
+    /// Location.
+    pub kind: u32,
+    /// The location. A FormID for the reference and object-id types, a
+    /// uint32 for the cell and object-type types, and the raw bytes for the
+    /// types the spec leaves unnamed.
+    pub target: Vec<u8>,
+    /// The radius — the int32.
+    pub radius: i32,
+}
+
+/// One target on a `PACK` (Package) record.
+///
+/// A target is a `PTDT` or a `PTD2` subrecord: the type, the target itself,
+/// a count or distance, and an unnamed float32.
+#[derive(Debug, Clone, Default)]
+pub struct PackageTarget {
+    /// The type: Specific Reference, Object ID, Object Type, Linked
+    /// Reference.
+    pub kind: i32,
+    /// The target. A FormID for the reference and object-id types, a uint32
+    /// for the object-type type, and the raw bytes for the type the spec
+    /// leaves unnamed.
+    pub target: Vec<u8>,
+    /// The count or distance — the int32.
+    pub count_distance: i32,
+    /// The unnamed float32.
+    pub unknown: f32,
+}
+
+/// The `PKW3` Use Weapon Data of a `PACK` record.
+#[derive(Debug, Clone, Default)]
+pub struct PackageWeapon {
+    /// The uint32 flag word.
+    pub flags: u32,
+    /// The uint8: Auto Fire or Volley Fire.
+    pub fire_rate: u8,
+    /// The uint8: Number of Bursts or Repeat Fire.
+    pub fire_count: u8,
+    /// The uint16.
+    pub num_bursts: u16,
+    /// The uint16.
+    pub shots_min: u16,
+    /// The uint16.
+    pub shots_max: u16,
+    /// The float32.
+    pub pause_min: f32,
+    /// The float32.
+    pub pause_max: f32,
+    /// The four unnamed bytes.
+    pub unused: [u8; 4],
+}
+
+/// The `PKDD` Dialog Data of a `PACK` record.
+#[derive(Debug, Clone, Default)]
+pub struct PackageDialog {
+    /// The float32 field of view.
+    pub fov: f32,
+    /// The FormID of a `DIAL` record.
+    pub topic: Option<u32>,
+    /// The uint32 flag word.
+    pub flags: u32,
+    /// The four unnamed bytes.
+    pub unused: [u8; 4],
+    /// The uint32 dialog type.
+    pub dialog_type: u32,
+}
+
+/// One embedded script on a `PACK` (Package) record.
+///
+/// The record carries three of these, one for each of the package's
+/// on-begin, on-end and on-change events. Each is a marker subrecord
+/// (`POBA`, `POEA` or `POCA`), an `INAM` idle animation, the shared Script
+/// collection and a `TNAM` topic.
+#[derive(Debug, Clone, Default)]
+pub struct PackageScript {
+    /// The marker that introduces this script.
+    pub marker: [u8; 4],
+    /// `INAM` — the FormID of an `IDLE` record.
+    pub idle: Option<u32>,
+    /// `SCHR` — the script header.
+    pub header: ScriptHeader,
+    /// `SCDA` — the compiled script source.
+    pub compiled: Vec<u8>,
+    /// `SCTX` — the script source.
+    pub source: String,
+    /// The local variables.
+    pub variables: Vec<ScriptVariable>,
+    /// The `SCRO` references.
+    pub references: Vec<u32>,
+    /// `TNAM` — the FormID of a `DIAL` record.
+    pub topic: Option<u32>,
+}
+
+/// The `SCHR` header of a script, from the shared Script collection.
+#[derive(Debug, Clone, Default)]
+pub struct ScriptHeader {
+    /// `SCHR` Type — the uint32.
+    pub script_type: u32,
+    /// `SCHR` Version — the uint32.
+    pub version: u32,
+    /// `SCHR` — the int32 unknown the spec names.
+    pub unknown: i32,
+}
+
+/// One local variable in a script, from the shared Script collection.
+///
+/// The variables are a run of `SLSD` (the data) and `SCVR` (the name), and
+/// both repeat.
+#[derive(Debug, Clone, Default)]
+pub struct ScriptVariable {
+    /// `SLSD` Index — the uint32.
+    pub index: u32,
+    /// `SLSD` Flags — the u8 flag word: IsLongOrShort.
+    pub flags: u8,
+    /// `SCVR` — the local variable's name.
+    pub name: String,
+}
+
+/// One master file on a `TES4` (Plugin Header) record.
+///
+/// The masters are a run of `MAST` (the filename) and `SSIG` (the FormID),
+/// and both repeat.
+#[derive(Debug, Clone, Default)]
+pub struct Tes4Master {
+    /// `MAST` — the master file's name.
+    pub filename: String,
+    /// `SSIG` — the master's FormID.
+    pub form_id: u32,
+}
+
+
 /// One collision part on a `SCOL` (Static Collision) record.
 ///
 /// The record's collection is a run of `ONAM` (the static the part collides
@@ -2743,6 +3855,16 @@ impl ObjectEditorState {
             b"ARMA" => self.load_arma(&raw_subs),
             b"CAMS" => self.load_cams(&raw_subs),
             b"CHAL" => self.load_chal(),
+            b"KEYM" => self.load_keym(&raw_subs),
+            b"INGR" => self.load_ingr(&raw_subs),
+            b"IPCT" => self.load_ipct(&raw_subs),
+            b"IPDS" => self.load_ipds(),
+            b"RCPE" => self.load_rcpe(&raw_subs),
+            b"SCPT" => self.load_scpt(&raw_subs),
+            b"PACK" => self.load_pack(&raw_subs),
+            b"REGN" => self.load_regn(&raw_subs),
+            b"IMAD" => self.load_imad(&raw_subs),
+            b"TES4" => self.load_tes4(&raw_subs),
             b"FLST" => self.load_flst(&raw_subs),
             b"MESG" => self.load_mesg(&raw_subs),
             b"MISC" => self.load_misc(&raw_subs),
@@ -4030,7 +5152,9 @@ impl ObjectEditorState {
                     self.tree_max_leaf_angle = f(2);
                     self.tree_branch_dimming = f(3);
                     self.tree_leaf_dimming = f(4);
-                    self.tree_shadow_radius = f(5) as i32;
+                    // The shadow radius is an int32, not a float.
+                    self.tree_shadow_radius =
+                        i32::from_le_bytes([s.data[20], s.data[21], s.data[22], s.data[23]]);
                     self.tree_rock_speed = f(6);
                     self.tree_rustle_speed = f(7);
                 }
@@ -4648,6 +5772,779 @@ impl ObjectEditorState {
                 }
                 _ => {}
             }
+        }
+    }
+
+    /// Load a `KEYM` (Key) record.
+    fn load_keym(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.keym_value = 0;
+        self.keym_weight = 0.0;
+        self.keym_icon = self.get_string(b"ICON");
+        self.keym_mico = self.get_string(b"MICO");
+        self.keym_script = self.get_fid(b"SCRI");
+        self.keym_pickup_sound = self.get_fid(b"YNAM");
+        self.keym_drop_sound = self.get_fid(b"ZNAM");
+        self.keym_random_sound = self.get_fid(b"RNAM");
+        self.keym_model = ModelData::default();
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.keym_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.keym_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.keym_model.modt = sub.data.clone(),
+                b"MODS" => self.keym_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.keym_model.modd = sub.data.first().copied(),
+                b"DATA" if sub.data.len() >= 8 => {
+                    self.keym_value =
+                        i32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    self.keym_weight =
+                        f32::from_le_bytes([sub.data[4], sub.data[5], sub.data[6], sub.data[7]]);
+                }
+                b"DEST" => {
+                    self.keym_destruction = load_destruction(raw_subs);
+                    if sub.data.len() >= 5 {
+                        self.keym_dest_health = i32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]);
+                        self.keym_dest_flags = sub.data[4];
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load an `INGR` (Ingredient) record.
+    fn load_ingr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.ingr_equipment_type = -1;
+        self.ingr_weight = 0.0;
+        self.ingr_effect_value = 0;
+        self.ingr_effect_flags = 0;
+        self.ingr_icon = self.get_string(b"ICON");
+        self.ingr_mico = self.get_string(b"MICO");
+        self.ingr_script = self.get_fid(b"SCRI");
+        self.ingr_model = ModelData::default();
+        self.ingr_effects.clear();
+
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.ingr_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.ingr_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.ingr_model.modt = sub.data.clone(),
+                b"MODS" => self.ingr_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.ingr_model.modd = sub.data.first().copied(),
+                b"ETYP" if sub.data.len() >= 4 => {
+                    self.ingr_equipment_type =
+                        i32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"DATA" if sub.data.len() >= 4 => {
+                    self.ingr_weight =
+                        f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"ENIT" if sub.data.len() >= 8 => {
+                    self.ingr_effect_value =
+                        i32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    self.ingr_effect_flags = sub.data[4];
+                }
+                _ => {}
+            }
+        }
+
+        // The effects are a run of EFID and EFIT, so they are walked in file
+        // order: the parameters belong to the effect before them.
+        let mut current: Option<SpellEffect> = None;
+        for sub in raw_subs {
+            match &sub.sig {
+                b"EFID" if sub.data.len() >= 4 => {
+                    if let Some(effect) = current.take() {
+                        self.ingr_effects.push(effect);
+                    }
+                    current = Some(SpellEffect {
+                        effect: Some(u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ])),
+                        parameters: Vec::new(),
+                    });
+                }
+                b"EFIT" => {
+                    if let Some(effect) = current.as_mut() {
+                        effect.parameters = sub.data.clone();
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(effect) = current {
+            self.ingr_effects.push(effect);
+        }
+    }
+
+    /// Load an `IPCT` (Impact) record.
+    fn load_ipct(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.ipct_duration = 0.0;
+        self.ipct_orientation = 0;
+        self.ipct_angle_threshold = 0.0;
+        self.ipct_placement_radius = 0.0;
+        self.ipct_sound_level = 0;
+        self.ipct_flags = 0;
+        self.ipct_texture_set = None;
+        self.ipct_sound1 = None;
+        self.ipct_sound2 = None;
+        self.ipct_model = ModelData::default();
+        self.ipct_dodt = None;
+
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MODL" => self.ipct_model.modl = zstring(&sub.data),
+                b"MODB" if sub.data.len() >= 4 => {
+                    self.ipct_model.modb =
+                        Some([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"MODT" => self.ipct_model.modt = sub.data.clone(),
+                b"MODS" => self.ipct_model.mods = parse_mods(&sub.data),
+                b"MODD" => self.ipct_model.modd = sub.data.first().copied(),
+                b"DNAM" if sub.data.len() >= 4 => {
+                    self.ipct_texture_set = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"SNAM" if sub.data.len() >= 4 => {
+                    self.ipct_sound1 = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"NAM1" if sub.data.len() >= 4 => {
+                    self.ipct_sound2 = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"DODT" if sub.data.len() >= 36 => {
+                    self.ipct_dodt = Some(read_decal_data(&sub.data));
+                }
+                b"DATA" if sub.data.len() >= 24 => {
+                    self.ipct_duration =
+                        f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    self.ipct_orientation =
+                        u32::from_le_bytes([sub.data[4], sub.data[5], sub.data[6], sub.data[7]]);
+                    self.ipct_angle_threshold =
+                        f32::from_le_bytes([sub.data[8], sub.data[9], sub.data[10], sub.data[11]]);
+                    self.ipct_placement_radius = f32::from_le_bytes([
+                        sub.data[12],
+                        sub.data[13],
+                        sub.data[14],
+                        sub.data[15],
+                    ]);
+                    self.ipct_sound_level = u32::from_le_bytes([
+                        sub.data[16],
+                        sub.data[17],
+                        sub.data[18],
+                        sub.data[19],
+                    ]);
+                    self.ipct_flags = u32::from_le_bytes([
+                        sub.data[20],
+                        sub.data[21],
+                        sub.data[22],
+                        sub.data[23],
+                    ]);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load an `IPDS` (Impact Data Set) record.
+    fn load_ipds(&mut self) {
+        self.ipds_impacts = vec![None; 12];
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 48) {
+            for i in 0..12 {
+                let at = i * 4;
+                let fid = u32::from_le_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]]);
+                self.ipds_impacts[i] = if fid == 0 { None } else { Some(fid) };
+            }
+        }
+    }
+
+    /// Load an `RCPE` (Recipe) record.
+    ///
+    /// The ingredients and the outputs are both runs of `RCIL` and `RCQY`.
+    /// The spec does not say which is which, so the first half of the pairs
+    /// is read as the ingredients and the second as the outputs.
+    fn load_rcpe(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.rcpe_skill = 0;
+        self.rcpe_level = 0;
+        self.rcpe_category = None;
+        self.rcpe_sub_category = None;
+        self.rcpe_ingredients.clear();
+        self.rcpe_outputs.clear();
+
+        if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 16) {
+            self.rcpe_skill = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.rcpe_level = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.rcpe_category = Some(u32::from_le_bytes([b[8], b[9], b[10], b[11]]));
+            self.rcpe_sub_category = Some(u32::from_le_bytes([b[12], b[13], b[14], b[15]]));
+        }
+
+        // The pairs are walked in file order: a quantity belongs to the item
+        // before it. `RCIL` is an ingredient and `RCOD` is an output, so the
+        // two lists are told apart by their signature rather than by their
+        // position.
+        let mut current: Option<(bool, RecipeItem)> = None;
+        for sub in raw_subs {
+            match &sub.sig {
+                b"RCIL" | b"RCOD" if sub.data.len() >= 4 => {
+                    if let Some((is_output, item)) = current.take() {
+                        if is_output {
+                            self.rcpe_outputs.push(item);
+                        } else {
+                            self.rcpe_ingredients.push(item);
+                        }
+                    }
+                    current = Some((
+                        &sub.sig == b"RCOD",
+                        RecipeItem {
+                            item: Some(u32::from_le_bytes([
+                                sub.data[0],
+                                sub.data[1],
+                                sub.data[2],
+                                sub.data[3],
+                            ])),
+                            quantity: 0,
+                        },
+                    ));
+                }
+                b"RCQY" if sub.data.len() >= 4 => {
+                    if let Some((_, item)) = current.as_mut() {
+                        item.quantity = u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]);
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some((is_output, item)) = current {
+            if is_output {
+                self.rcpe_outputs.push(item);
+            } else {
+                self.rcpe_ingredients.push(item);
+            }
+        }
+        self.rcpe_conditions = load_conditions(raw_subs);
+    }
+
+    /// Load a `SCPT` (Script) record.
+    fn load_scpt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.scpt_header = ScriptHeader::default();
+        self.scpt_compiled.clear();
+        self.scpt_source.clear();
+        self.scpt_variables.clear();
+
+        for sub in raw_subs {
+            match &sub.sig {
+                b"SCHR" if sub.data.len() >= 20 => {
+                    let b = &sub.data;
+                    self.scpt_header.script_type = u32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+                    self.scpt_header.version = u32::from_le_bytes([b[16], b[17], b[18], b[19]]);
+                    self.scpt_header.unknown = i32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+                }
+                b"SCDA" => self.scpt_compiled = sub.data.clone(),
+                b"SCTX" => self.scpt_source = String::from_utf8_lossy(&sub.data).into_owned(),
+                b"SLSD" if sub.data.len() >= 24 => {
+                    self.scpt_variables.push(ScriptVariable {
+                        index: u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]),
+                        flags: sub.data[16],
+                        name: String::new(),
+                    });
+                }
+                b"SCVR" => {
+                    if let Some(var) = self.scpt_variables.last_mut() {
+                        var.name = zstring(&sub.data);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Load an `IMAD` (Image Space Adapter) record.
+    fn load_imad(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.imad_header = ImadHeader::default();
+        self.imad_curves.clear();
+
+        for sub in raw_subs {
+            if sub.sig == *b"DNAM" {
+                self.imad_header = read_imad_header(&sub.data);
+                continue;
+            }
+            let Some((name, is_color)) = imad_curve_for(&sub.sig) else {
+                continue;
+            };
+            self.imad_curves.push(ImadCurve {
+                sig: sub.sig,
+                name,
+                is_color,
+                keys: read_imad_keys(&sub.data, is_color),
+            });
+        }
+    }
+
+    /// Load a `REGN` (Region) record.
+    ///
+    /// The region data is a run of `RDAT` headers, each followed by the
+    /// entry's own subrecords. The entries are walked in file order, because
+    /// `raw_subs` holds one value per signature and would collapse the
+    /// entries onto the last one.
+    fn load_regn(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.regn_map_color = [0; 4];
+        self.regn_worldspace = None;
+        self.regn_edge_falloff = None;
+        self.regn_points.clear();
+        self.regn_entries.clear();
+
+        // The region area is a run of RPLI (the edge fall-off) and RPLD (the
+        // point list), and both repeat.
+        let mut pending_falloff: Option<u32> = None;
+        let mut cur: Option<RegionEntry> = None;
+        for sub in raw_subs {
+            match &sub.sig {
+                b"RCLR" if sub.data.len() >= 4 => {
+                    self.regn_map_color = [sub.data[0], sub.data[1], sub.data[2], sub.data[3]];
+                }
+                b"WNAM" if sub.data.len() >= 4 => {
+                    self.regn_worldspace = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"RPLI" if sub.data.len() >= 4 => {
+                    let v =
+                        u32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    // The fall-off belongs to the point list that follows it.
+                    pending_falloff = Some(v);
+                }
+                b"RPLD" => {
+                    let mut points = Vec::with_capacity(sub.data.len() / 8);
+                    let mut c = sub.data.chunks_exact(8);
+                    for chunk in &mut c {
+                        points.push([
+                            f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+                            f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]),
+                        ]);
+                    }
+                    self.regn_edge_falloff = pending_falloff.take();
+                    self.regn_points = points;
+                }
+                b"RDAT" => {
+                    if let Some(entry) = cur.take() {
+                        self.regn_entries.push(entry);
+                    }
+                    let mut entry = RegionEntry::default();
+                    if sub.data.len() >= 4 {
+                        entry.kind = u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]);
+                    }
+                    if sub.data.len() >= 5 {
+                        entry.flags = sub.data[4];
+                    }
+                    if sub.data.len() >= 6 {
+                        entry.unused = sub.data[5];
+                    }
+                    cur = Some(entry);
+                }
+                b"RDMP" => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.map_name = Some(zstring(&sub.data));
+                    }
+                }
+                b"RDMD" if sub.data.len() >= 4 => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.music_type = Some(u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]));
+                    }
+                }
+                b"RDMO" if sub.data.len() >= 4 => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.music = Some(u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]));
+                    }
+                }
+                b"RDSI" if sub.data.len() >= 4 => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.incidental_media = Some(u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]));
+                    }
+                }
+                b"RDSB" if sub.data.len() >= 4 => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.battle_media.push(u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]));
+                    }
+                }
+                b"RDOT" => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.objects = read_region_objects(&sub.data);
+                    }
+                }
+                b"RDGS" => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.grasses = read_region_grasses(&sub.data);
+                    }
+                }
+                b"RDSD" => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.sounds = read_region_sounds(&sub.data);
+                    }
+                }
+                b"RDWT" => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.weather = read_region_weather(&sub.data);
+                    }
+                }
+                b"RDID" => {
+                    if let Some(entry) = cur.as_mut() {
+                        entry.imposters = sub
+                            .data
+                            .chunks_exact(4)
+                            .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                            .collect();
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(entry) = cur.take() {
+            self.regn_entries.push(entry);
+        }
+    }
+
+    /// Load a `PACK` (Package) record.
+    ///
+    /// The record carries three embedded scripts, each introduced by a marker
+    /// subrecord and each followed by an idle, the shared Script collection
+    /// and a topic. The scripts are walked in file order, because `raw_subs`
+    /// holds one value per signature and would collapse the three onto the
+    /// last one.
+    fn load_pack(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.pack_general_flags = 0;
+        self.pack_type = 0;
+        self.pack_unused = 0;
+        self.pack_fallout_behavior_flags = 0;
+        self.pack_type_specific_flags = None;
+        self.pack_unused2 = [0; 2];
+        self.pack_month = -1;
+        self.pack_day_of_week = -1;
+        self.pack_date = 0;
+        self.pack_time = -1;
+        self.pack_duration = 0;
+        self.pack_conditions = load_conditions(raw_subs);
+        self.pack_location = PackageLocation::default();
+        self.pack_location2 = PackageLocation::default();
+        self.pack_target = PackageTarget::default();
+        self.pack_target2 = PackageTarget::default();
+        self.pack_idle_flags = 0;
+        self.pack_idle_count = 0;
+        self.pack_idle_count_unused = [0; 3];
+        self.pack_idle_timer = 0.0;
+        self.pack_idle_animations.clear();
+        self.pack_idle_unused = [0; 4];
+        self.pack_combat_style = None;
+        self.pack_eat_marker = false;
+        self.pack_escort_distance = None;
+        self.pack_follow_radius = None;
+        self.pack_patrol_flags = None;
+        self.pack_weapon = PackageWeapon::default();
+        self.pack_use_item_marker = false;
+        self.pack_ambush_marker = false;
+        self.pack_dialog = PackageDialog::default();
+        self.pack_scripts.clear();
+
+        let mut cur: Option<PackageScript> = None;
+        for sub in raw_subs {
+            match &sub.sig {
+                b"PKDT" => {
+                    let b = &sub.data;
+                    if b.len() >= 4 {
+                        self.pack_general_flags = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+                    }
+                    if b.len() >= 5 {
+                        self.pack_type = b[4];
+                    }
+                    if b.len() >= 6 {
+                        self.pack_unused = b[5];
+                    }
+                    if b.len() >= 8 {
+                        self.pack_fallout_behavior_flags = u16::from_le_bytes([b[6], b[7]]);
+                    }
+                    if b.len() >= 10 {
+                        self.pack_type_specific_flags = Some(u16::from_le_bytes([b[8], b[9]]));
+                    }
+                    if b.len() >= 12 {
+                        self.pack_unused2 = [b[10], b[11]];
+                    }
+                }
+                b"PSDT" => {
+                    let b = &sub.data;
+                    if b.len() >= 1 {
+                        self.pack_month = b[0] as i8;
+                    }
+                    if b.len() >= 2 {
+                        self.pack_day_of_week = b[1] as i8;
+                    }
+                    if b.len() >= 3 {
+                        self.pack_date = b[2];
+                    }
+                    if b.len() >= 4 {
+                        self.pack_time = b[3] as i8;
+                    }
+                    if b.len() >= 8 {
+                        self.pack_duration = i32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+                    }
+                }
+                b"PLDT" => self.pack_location = read_package_location(&sub.data),
+                b"PLD2" => self.pack_location2 = read_package_location(&sub.data),
+                b"PTDT" => self.pack_target = read_package_target(&sub.data),
+                b"PTD2" => self.pack_target2 = read_package_target(&sub.data),
+                b"IDLF" if !sub.data.is_empty() => self.pack_idle_flags = sub.data[0],
+                b"IDLC" => {
+                    let b = &sub.data;
+                    if !b.is_empty() {
+                        self.pack_idle_count = b[0];
+                    }
+                    if b.len() >= 4 {
+                        self.pack_idle_count_unused = [b[1], b[2], b[3]];
+                    }
+                }
+                b"IDLT" if sub.data.len() >= 4 => {
+                    self.pack_idle_timer =
+                        f32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                }
+                b"IDLA" => {
+                    self.pack_idle_animations = sub
+                        .data
+                        .chunks_exact(4)
+                        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                        .collect();
+                }
+                b"IDLB" if sub.data.len() >= 4 => {
+                    self.pack_idle_unused = [sub.data[0], sub.data[1], sub.data[2], sub.data[3]];
+                }
+                b"CNAM" if sub.data.len() >= 4 => {
+                    self.pack_combat_style = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"PKED" => self.pack_eat_marker = true,
+                b"PKE2" if sub.data.len() >= 4 => {
+                    self.pack_escort_distance = Some(u32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"PKFD" if sub.data.len() >= 4 => {
+                    self.pack_follow_radius = Some(f32::from_le_bytes([
+                        sub.data[0],
+                        sub.data[1],
+                        sub.data[2],
+                        sub.data[3],
+                    ]));
+                }
+                b"PKPT" => {
+                    // The record is two bytes: the repeatable flag and one
+                    // unnamed byte.
+                    if sub.data.len() >= 2 {
+                        self.pack_patrol_flags =
+                            Some(u16::from_le_bytes([sub.data[0], sub.data[1]]));
+                    } else if !sub.data.is_empty() {
+                        self.pack_patrol_flags = Some(sub.data[0] as u16);
+                    }
+                }
+                b"PKW3" => self.pack_weapon = read_package_weapon(&sub.data),
+                b"PUID" => self.pack_use_item_marker = true,
+                b"PKAM" => self.pack_ambush_marker = true,
+                b"PKDD" => self.pack_dialog = read_package_dialog(&sub.data),
+                b"POBA" | b"POEA" | b"POCA" => {
+                    // The marker starts a new embedded script.
+                    if let Some(script) = cur.take() {
+                        self.pack_scripts.push(script);
+                    }
+                    cur = Some(PackageScript {
+                        marker: sub.sig,
+                        ..PackageScript::default()
+                    });
+                }
+                b"INAM" if sub.data.len() >= 4 => {
+                    let idle =
+                        u32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    if let Some(script) = cur.as_mut() {
+                        script.idle = Some(idle);
+                    }
+                }
+                b"TNAM" if sub.data.len() >= 4 => {
+                    let topic =
+                        u32::from_le_bytes([sub.data[0], sub.data[1], sub.data[2], sub.data[3]]);
+                    if let Some(script) = cur.as_mut() {
+                        script.topic = Some(topic);
+                    }
+                }
+                b"SCHR" if sub.data.len() >= 20 => {
+                    let b = &sub.data;
+                    let header = ScriptHeader {
+                        script_type: u32::from_le_bytes([b[12], b[13], b[14], b[15]]),
+                        version: u32::from_le_bytes([b[16], b[17], b[18], b[19]]),
+                        unknown: i32::from_le_bytes([b[8], b[9], b[10], b[11]]),
+                    };
+                    if let Some(script) = cur.as_mut() {
+                        script.header = header;
+                    }
+                }
+                b"SCDA" => {
+                    if let Some(script) = cur.as_mut() {
+                        script.compiled = sub.data.clone();
+                    }
+                }
+                b"SCTX" => {
+                    if let Some(script) = cur.as_mut() {
+                        script.source = String::from_utf8_lossy(&sub.data).into_owned();
+                    }
+                }
+                b"SLSD" if sub.data.len() >= 24 => {
+                    if let Some(script) = cur.as_mut() {
+                        script.variables.push(ScriptVariable {
+                            index: u32::from_le_bytes([
+                                sub.data[0],
+                                sub.data[1],
+                                sub.data[2],
+                                sub.data[3],
+                            ]),
+                            flags: sub.data[16],
+                            name: String::new(),
+                        });
+                    }
+                }
+                b"SCVR" => {
+                    if let Some(script) = cur.as_mut() {
+                        if let Some(var) = script.variables.last_mut() {
+                            var.name = zstring(&sub.data);
+                        }
+                    }
+                }
+                b"SCRO" if sub.data.len() >= 4 => {
+                    if let Some(script) = cur.as_mut() {
+                        script.references.push(u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]));
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(script) = cur.take() {
+            self.pack_scripts.push(script);
+        }
+    }
+
+    /// Load a `TES4` (Plugin Header) record.
+    fn load_tes4(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+        self.tes4_version = 0.0;
+        self.tes4_num_records = 0;
+        self.tes4_next_object_id = 0;
+        self.tes4_author = self.get_string(b"CNAM");
+        self.tes4_description = self.get_string(b"SNAM");
+        self.tes4_masters.clear();
+
+        if let Some(b) = self.raw_subs.get(b"HEDR").filter(|b| b.len() >= 12) {
+            self.tes4_version = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            self.tes4_num_records = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.tes4_next_object_id = u32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+        }
+
+        // The masters are a run of MAST and SSIG, so they are walked in file
+        // order: the FormID belongs to the master before it.
+        let mut current: Option<Tes4Master> = None;
+        for sub in raw_subs {
+            match &sub.sig {
+                b"MAST" => {
+                    if let Some(master) = current.take() {
+                        self.tes4_masters.push(master);
+                    }
+                    current = Some(Tes4Master {
+                        filename: zstring(&sub.data),
+                        form_id: 0,
+                    });
+                }
+                b"SSIG" if sub.data.len() >= 4 => {
+                    if let Some(master) = current.as_mut() {
+                        master.form_id = u32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
+                        ]);
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(master) = current {
+            self.tes4_masters.push(master);
         }
     }
 
@@ -5537,6 +7434,16 @@ impl ObjectEditorState {
             b"ARMA" => self.save_arma(session),
             b"CAMS" => self.save_cams(session),
             b"CHAL" => self.save_chal(session),
+            b"KEYM" => self.save_keym(session),
+            b"INGR" => self.save_ingr(session),
+            b"IPCT" => self.save_ipct(session),
+            b"IPDS" => self.save_ipds(session),
+            b"RCPE" => self.save_rcpe(session),
+            b"SCPT" => self.save_scpt(session),
+            b"PACK" => self.save_pack(session),
+            b"REGN" => self.save_regn(session),
+            b"IMAD" => self.save_imad(session),
+            b"TES4" => self.save_tes4(session),
             b"FLST" => self.save_flst(session),
             b"MESG" => self.save_mesg(session),
             b"MISC" => self.save_misc(session),
@@ -6988,21 +8895,46 @@ impl ObjectEditorState {
     fn save_idlm(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
 
-        session.doc.set_sub(fid, b"IDLF", vec![self.idlm_flags]);
+        // IDLF, IDLC, IDLT and IDLA are optional: 13 of the game's 211 IDLM
+        // records carry none of them, and a save must not add them.
+        if self.raw_subs.contains_key(b"IDLF") {
+            session.doc.set_sub(fid, b"IDLF", vec![self.idlm_flags]);
+        } else {
+            session.doc.remove_sub(fid, b"IDLF");
+        }
 
-        let mut idlc = vec![self.idlm_animation_count];
-        idlc.extend_from_slice(&self.idlm_idlc_unused);
-        session.doc.set_sub(fid, b"IDLC", idlc);
+        // IDLC is one byte on most of the game's records and four on the
+        // rest. The length the record had is kept, so a save that changes
+        // nothing is byte-identical.
+        let original = self.raw_subs.get(b"IDLC").cloned();
+        let len = original.as_ref().map(|b| b.len()).unwrap_or(1);
+        let mut idlc = original.unwrap_or_else(|| vec![0u8; 1]);
+        idlc.resize(len, 0);
+        if !idlc.is_empty() {
+            idlc[0] = self.idlm_animation_count;
+        }
+        if idlc.len() >= 4 {
+            idlc[1..4].copy_from_slice(&self.idlm_idlc_unused);
+        }
+        if self.raw_subs.contains_key(b"IDLC") {
+            session.doc.set_sub(fid, b"IDLC", idlc);
+        } else {
+            session.doc.remove_sub(fid, b"IDLC");
+        }
 
-        session
-            .doc
-            .set_sub(fid, b"IDLT", self.idlm_idle_timer.to_le_bytes().to_vec());
+        if self.raw_subs.contains_key(b"IDLT") {
+            session
+                .doc
+                .set_sub(fid, b"IDLT", self.idlm_idle_timer.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"IDLT");
+        }
 
         // One IDLA subrecord holds the whole list of FormIDs, so it is
         // written as a single payload rather than as a list of subrecords.
         if self.idlm_animations.is_empty() {
             session.doc.remove_sub(fid, b"IDLA");
-        } else {
+        } else if self.raw_subs.contains_key(b"IDLA") {
             let mut payload = Vec::with_capacity(self.idlm_animations.len() * 4);
             for a in &self.idlm_animations {
                 payload.extend_from_slice(&a.to_le_bytes());
@@ -7159,9 +9091,16 @@ impl ObjectEditorState {
                 .doc
                 .set_sub(fid, b"FNAM", encode_zstring(&self.musc_filename));
         }
-        session
-            .doc
-            .set_sub(fid, b"ANAM", self.musc_db.to_le_bytes().to_vec());
+        // ANAM is optional: 19 of the game's 20 MUSC records carry it and
+        // one does not. It is written only when the record had one, so a
+        // save that changes nothing does not add one.
+        if self.raw_subs.contains_key(b"ANAM") {
+            session
+                .doc
+                .set_sub(fid, b"ANAM", self.musc_db.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"ANAM");
+        }
     }
 
     /// Save a `RCCT` (Recipe Category) record.
@@ -7212,8 +9151,12 @@ impl ObjectEditorState {
         session.doc.set_sub(fid, b"DATA", data);
 
         match self.rgdl_actor_base {
-            Some(v) => session.doc.set_sub(fid, b"XNAM", v.to_le_bytes().to_vec()),
-            None => session.doc.remove_sub(fid, b"XNAM"),
+            Some(v) if self.raw_subs.contains_key(b"XNAM") => {
+                session.doc.set_sub(fid, b"XNAM", v.to_le_bytes().to_vec());
+            }
+            _ => {
+                session.doc.remove_sub(fid, b"XNAM");
+            }
         }
         match self.rgdl_body_part_data {
             Some(v) => session.doc.set_sub(fid, b"TNAM", v.to_le_bytes().to_vec()),
@@ -7305,7 +9248,7 @@ impl ObjectEditorState {
 
         if self.tree_seeds.is_empty() {
             session.doc.remove_sub(fid, b"SNAM");
-        } else {
+        } else if self.raw_subs.contains_key(b"SNAM") {
             let mut payload = Vec::with_capacity(self.tree_seeds.len() * 4);
             for s in &self.tree_seeds {
                 payload.extend_from_slice(&s.to_le_bytes());
@@ -7313,31 +9256,40 @@ impl ObjectEditorState {
             session.doc.set_sub(fid, b"SNAM", payload);
         }
 
-        // CNAM is thirty-two bytes: the eight floats and the shadow radius.
-        let original = self.raw_subs.get(b"CNAM").cloned();
-        let len = original.as_ref().map(|b| b.len()).unwrap_or(32);
-        let mut cnam = original.unwrap_or_else(|| vec![0u8; 32]);
-        cnam.resize(len, 0);
-        let mut cnam_bytes = Vec::with_capacity(32);
-        cnam_bytes.extend_from_slice(&self.tree_leaf_curvature.to_le_bytes());
-        cnam_bytes.extend_from_slice(&self.tree_min_leaf_angle.to_le_bytes());
-        cnam_bytes.extend_from_slice(&self.tree_max_leaf_angle.to_le_bytes());
-        cnam_bytes.extend_from_slice(&self.tree_branch_dimming.to_le_bytes());
-        cnam_bytes.extend_from_slice(&self.tree_leaf_dimming.to_le_bytes());
-        cnam_bytes.extend_from_slice(&self.tree_shadow_radius.to_le_bytes());
-        cnam_bytes.extend_from_slice(&self.tree_rock_speed.to_le_bytes());
-        cnam_bytes.extend_from_slice(&self.tree_rustle_speed.to_le_bytes());
-        for (i, byte) in cnam_bytes.iter().enumerate() {
-            if i < cnam.len() {
-                cnam[i] = *byte;
+        // CNAM is thirty-two bytes: six float32s, the int32 shadow radius
+        // and two more float32s. It is written back over the record's own
+        // bytes, so the length the record had is kept.
+        if let Some(original) = self.raw_subs.get(b"CNAM").cloned() {
+            let len = original.len();
+            let mut cnam = original;
+            cnam.resize(len, 0);
+            let mut cnam_bytes = Vec::with_capacity(32);
+            cnam_bytes.extend_from_slice(&self.tree_leaf_curvature.to_le_bytes());
+            cnam_bytes.extend_from_slice(&self.tree_min_leaf_angle.to_le_bytes());
+            cnam_bytes.extend_from_slice(&self.tree_max_leaf_angle.to_le_bytes());
+            cnam_bytes.extend_from_slice(&self.tree_branch_dimming.to_le_bytes());
+            cnam_bytes.extend_from_slice(&self.tree_leaf_dimming.to_le_bytes());
+            cnam_bytes.extend_from_slice(&self.tree_shadow_radius.to_le_bytes());
+            cnam_bytes.extend_from_slice(&self.tree_rock_speed.to_le_bytes());
+            cnam_bytes.extend_from_slice(&self.tree_rustle_speed.to_le_bytes());
+            for (i, byte) in cnam_bytes.iter().enumerate() {
+                if i < cnam.len() {
+                    cnam[i] = *byte;
+                }
             }
+            session.doc.set_sub(fid, b"CNAM", cnam);
+        } else {
+            session.doc.remove_sub(fid, b"CNAM");
         }
-        session.doc.set_sub(fid, b"CNAM", cnam);
 
-        let mut bnam = Vec::with_capacity(8);
-        bnam.extend_from_slice(&self.tree_billboard_width.to_le_bytes());
-        bnam.extend_from_slice(&self.tree_billboard_height.to_le_bytes());
-        session.doc.set_sub(fid, b"BNAM", bnam);
+        if self.raw_subs.contains_key(b"BNAM") {
+            let mut bnam = Vec::with_capacity(8);
+            bnam.extend_from_slice(&self.tree_billboard_width.to_le_bytes());
+            bnam.extend_from_slice(&self.tree_billboard_height.to_le_bytes());
+            session.doc.set_sub(fid, b"BNAM", bnam);
+        } else {
+            session.doc.remove_sub(fid, b"BNAM");
+        }
     }
 
     /// Save a `TXST` (Texture) record.
@@ -7352,9 +9304,15 @@ impl ObjectEditorState {
                 session.doc.set_sub(fid, sig, encode_zstring(text));
             }
         }
-        session
-            .doc
-            .set_sub(fid, b"DNAM", self.txst_flags.to_le_bytes().to_vec());
+        // DNAM is optional: 313 of the game's 493 TXST records carry it, and
+        // a save must not add it to the others.
+        if self.raw_subs.contains_key(b"DNAM") {
+            session
+                .doc
+                .set_sub(fid, b"DNAM", self.txst_flags.to_le_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"DNAM");
+        }
 
         // DODT is thirty-six bytes: the seven floats, the parallax passes,
         // the flag word, two unused bytes and the rgba colour.
@@ -7385,7 +9343,13 @@ impl ObjectEditorState {
     /// Save a `VTYP` (Voice Type) record.
     fn save_vtyp(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
-        session.doc.set_sub(fid, b"DNAM", vec![self.vtyp_flags]);
+        // DNAM is optional: 91 of the game's 100 VTYP records carry it, and a
+        // save must not add it to the others.
+        if self.raw_subs.contains_key(b"DNAM") {
+            session.doc.set_sub(fid, b"DNAM", vec![self.vtyp_flags]);
+        } else {
+            session.doc.remove_sub(fid, b"DNAM");
+        }
     }
 
     /// Save a `TACT` (Talking Activator) record.
@@ -7560,9 +9524,15 @@ impl ObjectEditorState {
                 session.doc.set_sub(fid, sig, encode_zstring(text));
             }
         }
+        // The track levels are optional: the game's 140 MSET records carry
+        // between one and six of them.
         for (i, sig) in LEVEL_SIGS.iter().enumerate() {
             let level = self.mset_levels.get(i).copied().unwrap_or(0.0);
-            session.doc.set_sub(fid, sig, level.to_le_bytes().to_vec());
+            if self.raw_subs.contains_key(*sig) {
+                session.doc.set_sub(fid, sig, level.to_le_bytes().to_vec());
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
         }
 
         // The boundaries repeat, so they are written with a list edit.
@@ -7577,21 +9547,21 @@ impl ObjectEditorState {
             session.doc.set_sub_list(fid, b"JNAM", payloads);
         }
 
-        session
-            .doc
-            .set_sub(fid, b"PNAM", vec![self.mset_enable_flags]);
-        session
-            .doc
-            .set_sub(fid, b"DNAM", self.mset_wait_time.to_le_bytes().to_vec());
-        session
-            .doc
-            .set_sub(fid, b"ENAM", self.mset_loop_fade_out.to_le_bytes().to_vec());
-        session
-            .doc
-            .set_sub(fid, b"FNAM", self.mset_recovery_time.to_le_bytes().to_vec());
-        session
-            .doc
-            .set_sub(fid, b"GNAM", self.mset_nighttime_max.to_le_bytes().to_vec());
+        // PNAM, DNAM, ENAM, FNAM and GNAM are optional: the game's 140 MSET
+        // records carry between 44 and 140 of each.
+        for (sig, value) in [
+            (b"PNAM", vec![self.mset_enable_flags]),
+            (b"DNAM", self.mset_wait_time.to_le_bytes().to_vec()),
+            (b"ENAM", self.mset_loop_fade_out.to_le_bytes().to_vec()),
+            (b"FNAM", self.mset_recovery_time.to_le_bytes().to_vec()),
+            (b"GNAM", self.mset_nighttime_max.to_le_bytes().to_vec()),
+        ] {
+            if self.raw_subs.contains_key(sig) {
+                session.doc.set_sub(fid, sig, value);
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
 
         match self.mset_intro {
             Some(v) => session.doc.set_sub(fid, b"HNAM", v.to_le_bytes().to_vec()),
@@ -7867,12 +9837,812 @@ impl ObjectEditorState {
             session.doc.set_sub(fid, b"MODD", vec![modd]);
         }
 
-        session
-            .doc
-            .set_sub(fid, b"BRUS", vec![self.stat_passthrough as u8]);
+        // BRUS is optional: 3404 of the game's 6785 STAT records carry it.
+        if self.raw_subs.contains_key(b"BRUS") {
+            session
+                .doc
+                .set_sub(fid, b"BRUS", vec![self.stat_passthrough as u8]);
+        } else {
+            session.doc.remove_sub(fid, b"BRUS");
+        }
         match self.stat_looping_sound {
             Some(v) => session.doc.set_sub(fid, b"RNAM", v.to_le_bytes().to_vec()),
             None => session.doc.remove_sub(fid, b"RNAM"),
+        }
+    }
+
+    /// Save a `KEYM` (Key) record.
+    fn save_keym(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.keym_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+        for (sig, text) in [(b"ICON", &self.keym_icon), (b"MICO", &self.keym_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+        for (sig, value) in [
+            (b"SCRI", self.keym_script),
+            (b"YNAM", self.keym_pickup_sound),
+            (b"ZNAM", self.keym_drop_sound),
+            (b"RNAM", self.keym_random_sound),
+        ] {
+            match value {
+                Some(v) if self.raw_subs.contains_key(sig) => {
+                    session.doc.set_sub(fid, sig, v.to_le_bytes().to_vec());
+                }
+                _ => {
+                    session.doc.remove_sub(fid, sig);
+                }
+            }
+        }
+        // DATA is optional: the game's KEYM records carry it only when the
+        // key has a value or a weight.
+        if self.raw_subs.contains_key(b"DATA") {
+            let mut data = Vec::with_capacity(8);
+            data.extend_from_slice(&self.keym_value.to_le_bytes());
+            data.extend_from_slice(&self.keym_weight.to_le_bytes());
+            session.doc.set_sub(fid, b"DATA", data);
+        } else {
+            session.doc.remove_sub(fid, b"DATA");
+        }
+
+        if self.keym_destruction.is_empty() && self.keym_dest_health <= 0 {
+            session.doc.remove_sub(fid, b"DEST");
+            session.doc.remove_sub(fid, b"DSTD");
+        } else {
+            save_destruction(
+                session,
+                fid,
+                self.keym_dest_health,
+                self.keym_dest_flags,
+                &self.keym_destruction,
+            );
+        }
+    }
+
+    /// Save an `INGR` (Ingredient) record.
+    fn save_ingr(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.ingr_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+        for (sig, text) in [(b"ICON", &self.ingr_icon), (b"MICO", &self.ingr_mico)] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+        match self.ingr_script {
+            Some(v) => session.doc.set_sub(fid, b"SCRI", v.to_le_bytes().to_vec()),
+            None => session.doc.remove_sub(fid, b"SCRI"),
+        }
+        session.doc.set_sub(
+            fid,
+            b"ETYP",
+            self.ingr_equipment_type.to_le_bytes().to_vec(),
+        );
+        session
+            .doc
+            .set_sub(fid, b"DATA", self.ingr_weight.to_le_bytes().to_vec());
+
+        // ENIT is eight bytes: the value, the flag word and three unused
+        // bytes.
+        let original = self.raw_subs.get(b"ENIT").cloned();
+        let mut enit = original.unwrap_or_else(|| vec![0u8; 8]);
+        enit.resize(8, 0);
+        enit[0..4].copy_from_slice(&self.ingr_effect_value.to_le_bytes());
+        enit[4] = self.ingr_effect_flags;
+        session.doc.set_sub(fid, b"ENIT", enit);
+
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for effect in &self.ingr_effects {
+            let mut efid = Vec::with_capacity(4);
+            efid.extend_from_slice(&effect.effect.unwrap_or(0).to_le_bytes());
+            seq.push((*b"EFID", efid));
+            if !effect.parameters.is_empty() {
+                seq.push((*b"EFIT", effect.parameters.clone()));
+            }
+        }
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"EFID");
+            session.doc.remove_sub(fid, b"EFIT");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"EFID", *b"EFIT"], seq);
+        }
+    }
+
+    /// Save an `IPCT` (Impact) record.
+    fn save_ipct(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let model = &self.ipct_model;
+        if !model.modl.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"MODL", encode_zstring(&model.modl));
+        }
+        if let Some(modb) = model.modb {
+            session.doc.set_sub(fid, b"MODB", modb.to_vec());
+        }
+        if !model.modt.is_empty() {
+            session.doc.set_sub(fid, b"MODT", model.modt.clone());
+        }
+        if !model.mods.is_empty() {
+            session.doc.set_sub(fid, b"MODS", write_mods(&model.mods));
+        }
+        if let Some(modd) = model.modd {
+            session.doc.set_sub(fid, b"MODD", vec![modd]);
+        }
+
+        // DATA is twenty-four bytes.
+        let original = self.raw_subs.get(b"DATA").cloned();
+        let mut data = original.unwrap_or_else(|| vec![0u8; 24]);
+        data.resize(24, 0);
+        data[0..4].copy_from_slice(&self.ipct_duration.to_le_bytes());
+        data[4..8].copy_from_slice(&self.ipct_orientation.to_le_bytes());
+        data[8..12].copy_from_slice(&self.ipct_angle_threshold.to_le_bytes());
+        data[12..16].copy_from_slice(&self.ipct_placement_radius.to_le_bytes());
+        data[16..20].copy_from_slice(&self.ipct_sound_level.to_le_bytes());
+        data[20..24].copy_from_slice(&self.ipct_flags.to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+
+        if let Some(dodt) = &self.ipct_dodt {
+            let mut b = Vec::with_capacity(36);
+            b.extend_from_slice(&dodt.min_width.to_le_bytes());
+            b.extend_from_slice(&dodt.max_width.to_le_bytes());
+            b.extend_from_slice(&dodt.min_height.to_le_bytes());
+            b.extend_from_slice(&dodt.max_height.to_le_bytes());
+            b.extend_from_slice(&dodt.depth.to_le_bytes());
+            b.extend_from_slice(&dodt.shininess.to_le_bytes());
+            b.extend_from_slice(&dodt.parallax_scale.to_le_bytes());
+            b.push(dodt.parallax_passes);
+            b.push(dodt.flags);
+            b.extend_from_slice(&[0u8; 2]);
+            b.extend_from_slice(&dodt.color);
+            session.doc.set_sub(fid, b"DODT", b);
+        }
+
+        // DNAM, SNAM and NAM1 are optional: 91 of the game's 125 IPCT records
+        // carry DNAM and 109 carry SNAM.
+        for (sig, value) in [
+            (b"DNAM", self.ipct_texture_set),
+            (b"SNAM", self.ipct_sound1),
+            (b"NAM1", self.ipct_sound2),
+        ] {
+            match value {
+                Some(v) if self.raw_subs.contains_key(sig) => {
+                    session.doc.set_sub(fid, sig, v.to_le_bytes().to_vec());
+                }
+                _ => {
+                    session.doc.remove_sub(fid, sig);
+                }
+            }
+        }
+    }
+
+    /// Save an `IPDS` (Impact Data Set) record.
+    fn save_ipds(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(48);
+        for impact in &self.ipds_impacts {
+            data.extend_from_slice(&impact.unwrap_or(0).to_le_bytes());
+        }
+        session.doc.set_sub(fid, b"DATA", data);
+    }
+
+    /// Save an `RCPE` (Recipe) record.
+    ///
+    /// The ingredients and the outputs are written as one run of `RCIL` and
+    /// `RCQY` pairs: the ingredients first, then the outputs.
+    fn save_rcpe(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        let mut data = Vec::with_capacity(16);
+        data.extend_from_slice(&self.rcpe_skill.to_le_bytes());
+        data.extend_from_slice(&self.rcpe_level.to_le_bytes());
+        data.extend_from_slice(&self.rcpe_category.unwrap_or(0).to_le_bytes());
+        data.extend_from_slice(&self.rcpe_sub_category.unwrap_or(0).to_le_bytes());
+        session.doc.set_sub(fid, b"DATA", data);
+
+        // The ingredients and the outputs are written as one run: every
+        // ingredient, then every output, each with its quantity.
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for (sig, items) in [
+            (*b"RCIL", &self.rcpe_ingredients),
+            (*b"RCOD", &self.rcpe_outputs),
+        ] {
+            for item in items {
+                let mut id = Vec::with_capacity(4);
+                id.extend_from_slice(&item.item.unwrap_or(0).to_le_bytes());
+                seq.push((sig, id));
+                seq.push((*b"RCQY", item.quantity.to_le_bytes().to_vec()));
+            }
+        }
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"RCIL");
+            session.doc.remove_sub(fid, b"RCOD");
+            session.doc.remove_sub(fid, b"RCQY");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"RCIL", *b"RCOD", *b"RCQY"], seq);
+        }
+
+        save_conditions(session, fid, &self.rcpe_conditions);
+    }
+
+    /// Save a `SCPT` (Script) record.
+    fn save_scpt(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        // SCHR is twenty bytes: the four unnamed bytes, the reference count,
+        // the compiled size, the variable count, the type and the flags.
+        let original = self.raw_subs.get(b"SCHR").cloned();
+        let mut schr = original.unwrap_or_else(|| vec![0u8; 20]);
+        schr.resize(20, 0);
+        schr[8..12].copy_from_slice(&self.scpt_header.unknown.to_le_bytes());
+        schr[12..16].copy_from_slice(&self.scpt_header.script_type.to_le_bytes());
+        schr[16..20].copy_from_slice(&self.scpt_header.version.to_le_bytes());
+        session.doc.set_sub(fid, b"SCHR", schr);
+
+        // SCDA and SCTX are optional: a record the modder emptied does not
+        // gain one it did not have.
+        if self.raw_subs.contains_key(b"SCDA") && !self.scpt_compiled.is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"SCDA", self.scpt_compiled.clone());
+        } else {
+            session.doc.remove_sub(fid, b"SCDA");
+        }
+        if self.raw_subs.contains_key(b"SCTX") && !self.scpt_source.trim().is_empty() {
+            session
+                .doc
+                .set_sub(fid, b"SCTX", self.scpt_source.as_bytes().to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"SCTX");
+        }
+
+        // The variables are a run of SLSD and SCVR, so they are written as
+        // one sequence: a pair of list edits would separate a variable's
+        // name from its data.
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for var in &self.scpt_variables {
+            // SLSD is twenty-four bytes: the index, twelve unused bytes, the
+            // flag word and seven more unused bytes.
+            let mut slsd = vec![0u8; 24];
+            slsd[0..4].copy_from_slice(&var.index.to_le_bytes());
+            slsd[16] = var.flags;
+            seq.push((*b"SLSD", slsd));
+            seq.push((*b"SCVR", encode_zstring(&var.name)));
+        }
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"SLSD");
+            session.doc.remove_sub(fid, b"SCVR");
+        } else if self.raw_subs.contains_key(b"SLSD") {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"SLSD", *b"SCVR"], seq);
+        }
+    }
+
+    /// Save an `IMAD` (Image Space Adapter) record.
+    fn save_imad(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        // The data header is written back over the record's own bytes, so
+        // the length it had and every unnamed bit survive.
+        if let Some(original) = self.raw_subs.get(b"DNAM") {
+            let data = write_imad_header(original, &self.imad_header);
+            session.doc.set_sub(fid, b"DNAM", data);
+        } else {
+            session.doc.remove_sub(fid, b"DNAM");
+        }
+
+        // Each curve is one subrecord, so they go out one at a time. A curve
+        // the record did not have is not added.
+        for curve in &self.imad_curves {
+            if !self.raw_subs.contains_key(&curve.sig) {
+                continue;
+            }
+            let stride = if curve.is_color { 20 } else { 8 };
+            let mut data = Vec::with_capacity(curve.keys.len() * stride);
+            for key in &curve.keys {
+                data.extend_from_slice(&key.time.to_le_bytes());
+                data.extend_from_slice(&key.value.to_le_bytes());
+                if curve.is_color {
+                    data.extend_from_slice(&key.green.to_le_bytes());
+                    data.extend_from_slice(&key.blue.to_le_bytes());
+                    data.extend_from_slice(&key.alpha.to_le_bytes());
+                }
+            }
+            session.doc.set_sub(fid, &curve.sig, data);
+        }
+    }
+
+    /// Save a `REGN` (Region) record.
+    fn save_regn(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        if self.raw_subs.contains_key(b"RCLR") {
+            session
+                .doc
+                .set_sub(fid, b"RCLR", self.regn_map_color.to_vec());
+        } else {
+            session.doc.remove_sub(fid, b"RCLR");
+        }
+
+        match self.regn_worldspace {
+            Some(v) if self.raw_subs.contains_key(b"WNAM") => {
+                session.doc.set_sub(fid, b"WNAM", v.to_le_bytes().to_vec());
+            }
+            _ => {
+                session.doc.remove_sub(fid, b"WNAM");
+            }
+        }
+
+        // The region area is a run of RPLI and RPLD, and the point list is
+        // the only thing the fall-off belongs to, so the pair is written
+        // together.
+        if self.raw_subs.contains_key(b"RPLD") {
+            let mut points = Vec::with_capacity(self.regn_points.len() * 8);
+            for p in &self.regn_points {
+                points.extend_from_slice(&p[0].to_le_bytes());
+                points.extend_from_slice(&p[1].to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"RPLD", points);
+            if self.raw_subs.contains_key(b"RPLI") {
+                session.doc.set_sub(
+                    fid,
+                    b"RPLI",
+                    self.regn_edge_falloff.unwrap_or(0).to_le_bytes().to_vec(),
+                );
+            } else {
+                session.doc.remove_sub(fid, b"RPLI");
+            }
+        } else {
+            session.doc.remove_sub(fid, b"RPLD");
+            session.doc.remove_sub(fid, b"RPLI");
+        }
+
+        // The region data is a run of RDAT headers, each followed by the
+        // entry's own subrecords, so the whole thing is written as one
+        // sequence: a per-signature list edit would scatter the entries.
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for entry in &self.regn_entries {
+            let mut rdat = Vec::with_capacity(8);
+            rdat.extend_from_slice(&entry.kind.to_le_bytes());
+            rdat.push(entry.flags);
+            rdat.push(entry.unused);
+            rdat.extend_from_slice(&[0, 0]);
+            seq.push((*b"RDAT", rdat));
+            if let Some(name) = &entry.map_name {
+                seq.push((*b"RDMP", encode_zstring(name)));
+            }
+            if let Some(v) = entry.music_type {
+                seq.push((*b"RDMD", v.to_le_bytes().to_vec()));
+            }
+            if let Some(v) = entry.music {
+                seq.push((*b"RDMO", v.to_le_bytes().to_vec()));
+            }
+            if let Some(v) = entry.incidental_media {
+                seq.push((*b"RDSI", v.to_le_bytes().to_vec()));
+            }
+            if !entry.battle_media.is_empty() {
+                for v in &entry.battle_media {
+                    seq.push((*b"RDSB", v.to_le_bytes().to_vec()));
+                }
+            }
+            if !entry.objects.is_empty() {
+                let mut data = Vec::with_capacity(entry.objects.len() * 52);
+                for o in &entry.objects {
+                    data.extend_from_slice(&o.object.to_le_bytes());
+                    data.extend_from_slice(&o.parent_index.to_le_bytes());
+                    data.extend_from_slice(&o.unused);
+                    data.extend_from_slice(&o.density.to_le_bytes());
+                    data.push(o.clustering);
+                    data.push(o.min_slope);
+                    data.push(o.max_slope);
+                    data.push(o.flags);
+                    data.extend_from_slice(&o.parent_radius.to_le_bytes());
+                    data.extend_from_slice(&o.radius.to_le_bytes());
+                    data.extend_from_slice(&o.unknown);
+                    data.extend_from_slice(&o.max_height.to_le_bytes());
+                    data.extend_from_slice(&o.sink.to_le_bytes());
+                    data.extend_from_slice(&o.sink_variance.to_le_bytes());
+                    data.extend_from_slice(&o.size_variance.to_le_bytes());
+                    data.extend_from_slice(&o.x_angle_variance.to_le_bytes());
+                    data.extend_from_slice(&o.y_angle_variance.to_le_bytes());
+                    data.extend_from_slice(&o.z_angle_variance.to_le_bytes());
+                    data.extend_from_slice(&o.unknown2);
+                }
+                seq.push((*b"RDOT", data));
+            }
+            if !entry.grasses.is_empty() {
+                let mut data = Vec::with_capacity(entry.grasses.len() * 8);
+                for g in &entry.grasses {
+                    data.extend_from_slice(&g.grass.to_le_bytes());
+                    data.extend_from_slice(&g.unknown);
+                }
+                seq.push((*b"RDGS", data));
+            }
+            if !entry.sounds.is_empty() {
+                let mut data = Vec::with_capacity(entry.sounds.len() * 12);
+                for s in &entry.sounds {
+                    data.extend_from_slice(&s.sound.to_le_bytes());
+                    data.extend_from_slice(&s.flags.to_le_bytes());
+                    data.extend_from_slice(&s.chance.to_le_bytes());
+                }
+                seq.push((*b"RDSD", data));
+            }
+            if !entry.weather.is_empty() {
+                let mut data = Vec::with_capacity(entry.weather.len() * 12);
+                for w in &entry.weather {
+                    data.extend_from_slice(&w.weather.to_le_bytes());
+                    data.extend_from_slice(&w.chance.to_le_bytes());
+                    data.extend_from_slice(&w.global.unwrap_or(0).to_le_bytes());
+                }
+                seq.push((*b"RDWT", data));
+            }
+            if !entry.imposters.is_empty() {
+                let mut data = Vec::with_capacity(entry.imposters.len() * 4);
+                for i in &entry.imposters {
+                    data.extend_from_slice(&i.to_le_bytes());
+                }
+                seq.push((*b"RDID", data));
+            }
+        }
+        if self.raw_subs.contains_key(b"RDAT") {
+            session.doc.set_sub_sequence(
+                fid,
+                vec![
+                    *b"RDAT", *b"RDMP", *b"RDMD", *b"RDMO", *b"RDSI", *b"RDSB", *b"RDOT", *b"RDGS",
+                    *b"RDSD", *b"RDWT", *b"RDID",
+                ],
+                seq,
+            );
+        } else {
+            for sig in [
+                b"RDAT", b"RDMP", b"RDMD", b"RDMO", b"RDSI", b"RDSB", b"RDOT", b"RDGS", b"RDSD",
+                b"RDWT", b"RDID",
+            ] {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
+    }
+
+    /// Save a `PACK` (Package) record.
+    fn save_pack(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+
+        // PKDT is either ten or twelve bytes: the general flags, the type,
+        // one unnamed byte, the fallout behaviour flags, and then the
+        // type-specific flags and two more unnamed bytes in the long form.
+        // The record's own length decides which form is written back.
+        let had_type_specific = self.raw_subs.contains_key(b"PKDT")
+            && self.raw_subs.get(b"PKDT").map(|d| d.len()).unwrap_or(0) >= 10;
+        if self.raw_subs.contains_key(b"PKDT") {
+            let mut pkdt = Vec::with_capacity(12);
+            pkdt.extend_from_slice(&self.pack_general_flags.to_le_bytes());
+            pkdt.push(self.pack_type);
+            pkdt.push(self.pack_unused);
+            pkdt.extend_from_slice(&self.pack_fallout_behavior_flags.to_le_bytes());
+            if had_type_specific {
+                pkdt.extend_from_slice(&self.pack_type_specific_flags.unwrap_or(0).to_le_bytes());
+                pkdt.extend_from_slice(&self.pack_unused2);
+            }
+            session.doc.set_sub(fid, b"PKDT", pkdt);
+        } else {
+            session.doc.remove_sub(fid, b"PKDT");
+        }
+
+        if self.raw_subs.contains_key(b"PSDT") {
+            let mut psdt = Vec::with_capacity(8);
+            psdt.push(self.pack_month as u8);
+            psdt.push(self.pack_day_of_week as u8);
+            psdt.push(self.pack_date);
+            psdt.push(self.pack_time as u8);
+            psdt.extend_from_slice(&self.pack_duration.to_le_bytes());
+            session.doc.set_sub(fid, b"PSDT", psdt);
+        } else {
+            session.doc.remove_sub(fid, b"PSDT");
+        }
+
+        // The conditions are a repeated CTDA, so they go out as a list.
+        if self.raw_subs.contains_key(b"CTDA") {
+            save_conditions(session, fid, &self.pack_conditions);
+        } else {
+            session.doc.remove_sub(fid, b"CTDA");
+        }
+
+        // The locations and the targets are optional.
+        for (sig, loc) in [
+            (b"PLDT", &self.pack_location),
+            (b"PLD2", &self.pack_location2),
+        ] {
+            if self.raw_subs.contains_key(sig) {
+                let mut data = Vec::with_capacity(12);
+                data.extend_from_slice(&loc.kind.to_le_bytes());
+                data.extend_from_slice(&loc.target);
+                data.resize(12, 0);
+                data[8..12].copy_from_slice(&loc.radius.to_le_bytes());
+                session.doc.set_sub(fid, sig, data);
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
+        for (sig, target) in [(b"PTDT", &self.pack_target), (b"PTD2", &self.pack_target2)] {
+            if self.raw_subs.contains_key(sig) {
+                let mut data = Vec::with_capacity(16);
+                data.extend_from_slice(&target.kind.to_le_bytes());
+                data.extend_from_slice(&target.target);
+                data.resize(16, 0);
+                data[8..12].copy_from_slice(&target.count_distance.to_le_bytes());
+                data[12..16].copy_from_slice(&target.unknown.to_le_bytes());
+                session.doc.set_sub(fid, sig, data);
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
+
+        // The idle animation collection.
+        for (sig, present) in [
+            (b"IDLF", self.raw_subs.contains_key(b"IDLF")),
+            (b"IDLC", self.raw_subs.contains_key(b"IDLC")),
+            (b"IDLT", self.raw_subs.contains_key(b"IDLT")),
+            (b"IDLA", self.raw_subs.contains_key(b"IDLA")),
+            (b"IDLB", self.raw_subs.contains_key(b"IDLB")),
+        ] {
+            if !present {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
+        if self.raw_subs.contains_key(b"IDLF") {
+            session
+                .doc
+                .set_sub(fid, b"IDLF", vec![self.pack_idle_flags]);
+        }
+        if self.raw_subs.contains_key(b"IDLC") {
+            // The count is one byte, but two of the game's records use the
+            // four-byte form, so the record's own length decides.
+            let long = self.raw_subs.get(b"IDLC").map(|d| d.len()).unwrap_or(1) >= 4;
+            let mut idlc = Vec::with_capacity(if long { 4 } else { 1 });
+            idlc.push(self.pack_idle_count);
+            if long {
+                idlc.extend_from_slice(&self.pack_idle_count_unused);
+            }
+            session.doc.set_sub(fid, b"IDLC", idlc);
+        }
+        if self.raw_subs.contains_key(b"IDLT") {
+            session
+                .doc
+                .set_sub(fid, b"IDLT", self.pack_idle_timer.to_le_bytes().to_vec());
+        }
+        if self.raw_subs.contains_key(b"IDLA") {
+            let mut idla = Vec::with_capacity(self.pack_idle_animations.len() * 4);
+            for id in &self.pack_idle_animations {
+                idla.extend_from_slice(&id.to_le_bytes());
+            }
+            session.doc.set_sub(fid, b"IDLA", idla);
+        }
+        if self.raw_subs.contains_key(b"IDLB") {
+            session
+                .doc
+                .set_sub(fid, b"IDLB", self.pack_idle_unused.to_vec());
+        }
+
+        match self.pack_combat_style {
+            Some(v) if self.raw_subs.contains_key(b"CNAM") => {
+                session.doc.set_sub(fid, b"CNAM", v.to_le_bytes().to_vec());
+            }
+            _ => {
+                session.doc.remove_sub(fid, b"CNAM");
+            }
+        }
+
+        // The markers are null subrecords: the record either has them or it
+        // does not, and a save does not add one.
+        for (sig, present) in [
+            (b"PKED", self.pack_eat_marker),
+            (b"PUID", self.pack_use_item_marker),
+            (b"PKAM", self.pack_ambush_marker),
+        ] {
+            if present && self.raw_subs.contains_key(sig) {
+                session.doc.set_sub(fid, sig, Vec::new());
+            } else {
+                session.doc.remove_sub(fid, sig);
+            }
+        }
+
+        for (sig, value) in [
+            (
+                b"PKE2",
+                self.pack_escort_distance.map(|v| v.to_le_bytes().to_vec()),
+            ),
+            (
+                b"PKFD",
+                self.pack_follow_radius.map(|v| v.to_le_bytes().to_vec()),
+            ),
+        ] {
+            match value {
+                Some(v) if self.raw_subs.contains_key(sig) => {
+                    session.doc.set_sub(fid, sig, v);
+                }
+                _ => {
+                    session.doc.remove_sub(fid, sig);
+                }
+            }
+        }
+
+        if self.raw_subs.contains_key(b"PKPT") {
+            // The record is two bytes, but two of the game's records use the
+            // one-byte form, so the record's own length decides.
+            let long = self.raw_subs.get(b"PKPT").map(|d| d.len()).unwrap_or(2) >= 2;
+            let flags = self.pack_patrol_flags.unwrap_or(0);
+            let data = if long {
+                flags.to_le_bytes().to_vec()
+            } else {
+                vec![flags as u8]
+            };
+            session.doc.set_sub(fid, b"PKPT", data);
+        } else {
+            session.doc.remove_sub(fid, b"PKPT");
+        }
+
+        if self.raw_subs.contains_key(b"PKW3") {
+            let w = &self.pack_weapon;
+            let mut data = Vec::with_capacity(24);
+            data.extend_from_slice(&w.flags.to_le_bytes());
+            data.push(w.fire_rate);
+            data.push(w.fire_count);
+            data.extend_from_slice(&w.num_bursts.to_le_bytes());
+            data.extend_from_slice(&w.shots_min.to_le_bytes());
+            data.extend_from_slice(&w.shots_max.to_le_bytes());
+            data.extend_from_slice(&w.pause_min.to_le_bytes());
+            data.extend_from_slice(&w.pause_max.to_le_bytes());
+            data.extend_from_slice(&w.unused);
+            session.doc.set_sub(fid, b"PKW3", data);
+        } else {
+            session.doc.remove_sub(fid, b"PKW3");
+        }
+
+        if self.raw_subs.contains_key(b"PKDD") {
+            let d = &self.pack_dialog;
+            let mut data = Vec::with_capacity(24);
+            data.extend_from_slice(&d.fov.to_le_bytes());
+            data.extend_from_slice(&d.topic.unwrap_or(0).to_le_bytes());
+            data.extend_from_slice(&d.flags.to_le_bytes());
+            data.extend_from_slice(&d.unused);
+            data.extend_from_slice(&d.dialog_type.to_le_bytes());
+            session.doc.set_sub(fid, b"PKDD", data);
+        } else {
+            session.doc.remove_sub(fid, b"PKDD");
+        }
+
+        // The three embedded scripts are a run of marker, idle, script
+        // collection and topic, so they are written as one sequence: a
+        // per-signature list edit would scatter the three scripts.
+        let had_scripts = self
+            .raw_subs
+            .keys()
+            .any(|s| s == b"POBA" || s == b"POEA" || s == b"POCA");
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for script in &self.pack_scripts {
+            seq.push((script.marker, Vec::new()));
+            seq.push((*b"INAM", script.idle.unwrap_or(0).to_le_bytes().to_vec()));
+            // The script header: the four unnamed bytes, the reference
+            // count, the compiled size, the variable count, the type and the
+            // flags.
+            let original = self
+                .raw_subs
+                .get(b"SCHR")
+                .cloned()
+                .unwrap_or_else(|| vec![0u8; 20]);
+            let mut schr = original;
+            schr.resize(20, 0);
+            schr[8..12].copy_from_slice(&script.header.unknown.to_le_bytes());
+            schr[12..16].copy_from_slice(&script.header.script_type.to_le_bytes());
+            schr[16..20].copy_from_slice(&script.header.version.to_le_bytes());
+            seq.push((*b"SCHR", schr));
+            if !script.compiled.is_empty() {
+                seq.push((*b"SCDA", script.compiled.clone()));
+            }
+            if !script.source.is_empty() {
+                seq.push((*b"SCTX", script.source.as_bytes().to_vec()));
+            }
+            for var in &script.variables {
+                let mut slsd = vec![0u8; 24];
+                slsd[0..4].copy_from_slice(&var.index.to_le_bytes());
+                slsd[16] = var.flags;
+                seq.push((*b"SLSD", slsd));
+                seq.push((*b"SCVR", encode_zstring(&var.name)));
+            }
+            for r in &script.references {
+                seq.push((*b"SCRO", r.to_le_bytes().to_vec()));
+            }
+            seq.push((*b"TNAM", script.topic.unwrap_or(0).to_le_bytes().to_vec()));
+        }
+        if had_scripts {
+            session.doc.set_sub_sequence(
+                fid,
+                vec![
+                    *b"POBA", *b"POEA", *b"POCA", *b"INAM", *b"SCHR", *b"SCDA", *b"SCTX", *b"SLSD",
+                    *b"SCVR", *b"SCRO", *b"TNAM",
+                ],
+                seq,
+            );
+        }
+    }
+
+    /// Save a `TES4` (Plugin Header) record.
+    fn save_tes4(&self, session: &mut crate::session::Session) {
+        let fid = self.form_id;
+        // HEDR is twelve bytes: the version, the record count and the next
+        // object id.
+        let original = self.raw_subs.get(b"HEDR").cloned();
+        let mut hedr = original.unwrap_or_else(|| vec![0u8; 12]);
+        hedr.resize(12, 0);
+        hedr[0..4].copy_from_slice(&self.tes4_version.to_le_bytes());
+        hedr[4..8].copy_from_slice(&self.tes4_num_records.to_le_bytes());
+        hedr[8..12].copy_from_slice(&self.tes4_next_object_id.to_le_bytes());
+        session.doc.set_sub(fid, b"HEDR", hedr);
+
+        for (sig, text) in [
+            (b"CNAM", &self.tes4_author),
+            (b"SNAM", &self.tes4_description),
+        ] {
+            if text.trim().is_empty() {
+                session.doc.remove_sub(fid, sig);
+            } else {
+                session.doc.set_sub(fid, sig, encode_zstring(text));
+            }
+        }
+
+        let mut seq: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for master in &self.tes4_masters {
+            seq.push((*b"MAST", encode_zstring(&master.filename)));
+            seq.push((*b"SSIG", master.form_id.to_le_bytes().to_vec()));
+        }
+        if seq.is_empty() {
+            session.doc.remove_sub(fid, b"MAST");
+            session.doc.remove_sub(fid, b"SSIG");
+        } else {
+            session
+                .doc
+                .set_sub_sequence(fid, vec![*b"MAST", *b"SSIG"], seq);
         }
     }
 
@@ -8849,6 +11619,16 @@ pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
         b"ARMA" => "Armor Addon",
         b"CAMS" => "Camera Shot",
         b"CHAL" => "Challenge",
+        b"KEYM" => "Key",
+        b"INGR" => "Ingredient",
+        b"IPCT" => "Impact",
+        b"IPDS" => "Impact Data Set",
+        b"RCPE" => "Recipe",
+        b"SCPT" => "Script",
+        b"PACK" => "Package",
+        b"REGN" => "Region",
+        b"IMAD" => "Image Space Adapter",
+        b"TES4" => "Plugin Header",
         b"FLST" => "Form List",
         b"MESG" => "Message",
         b"MISC" => "Miscellaneous",
@@ -9251,6 +12031,39 @@ const STAT_BUSHS: [(i8, &str); 11] = [
     (9, "BushJ"),
 ];
 
+/// `ETYP` Equipment Type, the int32 enum from fopdoc's ETYP page.
+const ETYP_TYPES: [(i32, &str); 15] = [
+    (-1, "None"),
+    (0, "Big Guns"),
+    (1, "Energy Weapons"),
+    (2, "Small Guns"),
+    (3, "Melee Weapons"),
+    (4, "Unarmed Weapon"),
+    (5, "Thrown Weapons"),
+    (6, "Mine"),
+    (7, "Body Wear"),
+    (8, "Head Wear"),
+    (9, "Hand Wear"),
+    (10, "Chems"),
+    (11, "Stimpack"),
+    (12, "Food"),
+    (13, "Alcohol"),
+];
+
+/// `INGR` `ENIT` Flags, the u8 word from fopdoc's INGR page.
+const INGR_EFFECT_FLAGS: [(u8, &str); 2] = [(0x01, "No Auto-Calculation"), (0x02, "Food Item")];
+
+/// `IPCT` `DATA` Effect - Orientation, the uint32 enum from fopdoc's IPCT
+/// page.
+const IPCT_ORIENTATIONS: [(u32, &str); 3] = [
+    (0, "Surface Normal"),
+    (1, "Projectile Vector"),
+    (2, "Projectile Reflection"),
+];
+
+/// `SCPT` `SCHR` Type, the uint32 enum from fopdoc's Script page.
+const SCPT_TYPES: [(u32, &str); 4] = [(0, "Unknown"), (1, "Object"), (2, "Quest"), (3, "Menu")];
+
 /// `IDLE` `DATA` Animation Group Section, the u8 enum from fopdoc's IDLE
 /// page.
 const IDLE_GROUPS: [(u8, &str); 6] = [
@@ -9647,6 +12460,16 @@ pub fn ui(
                 b"ARMA" => draw_arma_ui(ui, &mut state),
                 b"CAMS" => draw_cams_ui(ui, &session, &mut state),
                 b"CHAL" => draw_chal_ui(ui, &mut state),
+                b"KEYM" => draw_keym_ui(ui, &session, &mut state),
+                b"INGR" => draw_ingr_ui(ui, &session, &mut state),
+                b"IPCT" => draw_ipct_ui(ui, &session, &mut state),
+                b"IPDS" => draw_ipds_ui(ui, &session, &mut state),
+                b"RCPE" => draw_rcpe_ui(ui, &session, &mut state),
+                b"SCPT" => draw_scpt_ui(ui, &mut state),
+                b"PACK" => draw_pack_ui(ui, &session, &mut state),
+                b"REGN" => draw_regn_ui(ui, &session, &mut state),
+                b"IMAD" => draw_imad_ui(ui, &mut state),
+                b"TES4" => draw_tes4_ui(ui, &mut state),
                 b"FLST" => draw_flst_ui(ui, &mut state),
                 b"MESG" => draw_mesg_ui(ui, &session, &mut state),
                 b"SPEL" => draw_spel_ui(ui, &mut state),
@@ -14823,6 +17646,1412 @@ fn draw_stat_ui(
                     .desired_width(ui.available_width() - 140.0),
             );
         });
+    });
+}
+
+/// Draw the Key (KEYM) editor body.
+fn draw_keym_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Key");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Value (DATA):");
+            ui.add(egui::DragValue::new(&mut state.keym_value).range(-1000000..=1000000));
+            ui.separator();
+            ui.label("Weight:");
+            ui.add(
+                egui::DragValue::new(&mut state.keym_weight)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.keym_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.keym_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Script (SCRI):");
+            let scripts = session.records_by_sig(*b"SCPT");
+            let mut fid = state.keym_script;
+            record_dropdown(ui, "keym_scri", &scripts, &mut fid);
+            state.keym_script = fid;
+        });
+        for (label, value) in [
+            ("Sound - Pick Up (YNAM)", &mut state.keym_pickup_sound),
+            ("Sound - Drop (ZNAM)", &mut state.keym_drop_sound),
+            ("Sound - Random (RNAM)", &mut state.keym_random_sound),
+        ] {
+            ui.horizontal(|ui| {
+                ui.label(label);
+                let sounds = session.records_by_sig(*b"SOUN");
+                let mut fid = *value;
+                record_dropdown(ui, label, &sounds, &mut fid);
+                *value = fid;
+            });
+        }
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.keym_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Destruction Data — {} stage(s)",
+            state.keym_destruction.len()
+        ));
+        ui.add_space(4.0);
+        for (i, stage) in state.keym_destruction.iter().enumerate() {
+            ui.label(format!(
+                "  Stage {}: {} — destruction flag word 0x{:02X}",
+                i + 1,
+                stage.model,
+                stage.flags
+            ));
+        }
+    });
+}
+
+/// Draw the Ingredient (INGR) editor body.
+fn draw_ingr_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Ingredient");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Equipment Type (ETYP):");
+            egui::ComboBox::from_id_salt("ingr_etyp")
+                .selected_text(
+                    ETYP_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.ingr_equipment_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in ETYP_TYPES.iter() {
+                        ui.selectable_value(&mut state.ingr_equipment_type, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Weight (DATA):");
+            ui.add(
+                egui::DragValue::new(&mut state.ingr_weight)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Effect Value (ENIT):");
+            ui.add(egui::DragValue::new(&mut state.ingr_effect_value).range(-1000000..=1000000));
+            ui.separator();
+            ui.label("Effect Flags:");
+            for (bit, name) in INGR_EFFECT_FLAGS {
+                let mut set = (state.ingr_effect_flags & bit) != 0;
+                if ui.checkbox(&mut set, name).changed() {
+                    if set {
+                        state.ingr_effect_flags |= bit;
+                    } else {
+                        state.ingr_effect_flags &= !bit;
+                    }
+                }
+            }
+            ui.label(format!("0x{:02X}", state.ingr_effect_flags));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Large Icon (ICON):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ingr_icon)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Small Icon (MICO):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ingr_mico)
+                    .desired_width(ui.available_width() - 180.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Script (SCRI):");
+            let scripts = session.records_by_sig(*b"SCPT");
+            let mut fid = state.ingr_script;
+            record_dropdown(ui, "ingr_scri", &scripts, &mut fid);
+            state.ingr_script = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ingr_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Effects — {}", state.ingr_effects.len()));
+        ui.add_space(4.0);
+        for (idx, effect) in state.ingr_effects.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("#{}", idx + 1));
+                ui.label("Effect (EFID):");
+                ui.add(
+                    egui::TextEdit::singleline(
+                        &mut effect
+                            .effect
+                            .map(|v| format!("{v:08X}"))
+                            .unwrap_or_default(),
+                    )
+                    .id_salt(format!("ingr_efid_{idx}"))
+                    .hint_text("00000000")
+                    .desired_width(110.0),
+                );
+                ui.label(format!("{} parameter byte(s)", effect.parameters.len()));
+            });
+        }
+    });
+}
+
+/// Draw the Impact (IPCT) editor body.
+fn draw_ipct_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Impact");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Effect - Duration:");
+            ui.add(
+                egui::DragValue::new(&mut state.ipct_duration)
+                    .speed(0.01)
+                    .range(-1000.0..=1000.0),
+            );
+            ui.separator();
+            ui.label("Effect - Orientation:");
+            egui::ComboBox::from_id_salt("ipct_orientation")
+                .selected_text(
+                    IPCT_ORIENTATIONS
+                        .iter()
+                        .find(|(v, _)| *v == state.ipct_orientation)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in IPCT_ORIENTATIONS.iter() {
+                        ui.selectable_value(&mut state.ipct_orientation, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Angle Threshold:");
+            ui.add(
+                egui::DragValue::new(&mut state.ipct_angle_threshold)
+                    .speed(0.1)
+                    .range(-360.0..=360.0),
+            );
+            ui.separator();
+            ui.label("Placement Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.ipct_placement_radius)
+                    .speed(0.1)
+                    .range(-1000.0..=1000.0),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("Sound Level:");
+            egui::ComboBox::from_id_salt("ipct_sound_level")
+                .selected_text(
+                    SOUND_LEVELS
+                        .get(state.ipct_sound_level as usize)
+                        .copied()
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (i, name) in SOUND_LEVELS.iter().enumerate() {
+                        ui.selectable_value(&mut state.ipct_sound_level, i as u32, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Flags:");
+            let mut no_decal = (state.ipct_flags & 0x01) != 0;
+            if ui.checkbox(&mut no_decal, "No Decal Data").changed() {
+                if no_decal {
+                    state.ipct_flags |= 0x01;
+                } else {
+                    state.ipct_flags &= !0x01;
+                }
+            }
+            ui.label(format!("0x{:08X}", state.ipct_flags));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Texture Set (DNAM):");
+            let textures = session.records_by_sig(*b"TXST");
+            let mut fid = state.ipct_texture_set;
+            record_dropdown(ui, "ipct_dnam", &textures, &mut fid);
+            state.ipct_texture_set = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Sound 1 (SNAM):");
+            let sounds = session.records_by_sig(*b"SOUN");
+            let mut fid = state.ipct_sound1;
+            record_dropdown(ui, "ipct_snam", &sounds, &mut fid);
+            state.ipct_sound1 = fid;
+            ui.separator();
+            ui.label("Sound 2 (NAM1):");
+            let mut fid = state.ipct_sound2;
+            record_dropdown(ui, "ipct_nam1", &sounds, &mut fid);
+            state.ipct_sound2 = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Model (MODL):");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.ipct_model.modl)
+                    .desired_width(ui.available_width() - 140.0),
+            );
+        });
+    });
+
+    if let Some(dodt) = state.ipct_dodt.as_mut() {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Decal Data (DODT)");
+            ui.add_space(4.0);
+            for (label, value) in [
+                ("Min Width", &mut dodt.min_width),
+                ("Max Width", &mut dodt.max_width),
+                ("Min Height", &mut dodt.min_height),
+                ("Max Height", &mut dodt.max_height),
+                ("Depth", &mut dodt.depth),
+                ("Shininess", &mut dodt.shininess),
+                ("Parallax Scale", &mut dodt.parallax_scale),
+            ] {
+                ui.horizontal(|ui| {
+                    ui.label(label);
+                    ui.add(
+                        egui::DragValue::new(value)
+                            .speed(0.01)
+                            .range(-100000.0..=100000.0),
+                    );
+                });
+            }
+            ui.horizontal(|ui| {
+                ui.label("Parallax Passes:");
+                ui.add(egui::DragValue::new(&mut dodt.parallax_passes).range(0..=255));
+                ui.separator();
+                ui.label("Flags:");
+                for (bit, name) in TXST_DODT_FLAGS {
+                    let mut set = (dodt.flags & bit) != 0;
+                    if ui.checkbox(&mut set, name).changed() {
+                        if set {
+                            dodt.flags |= bit;
+                        } else {
+                            dodt.flags &= !bit;
+                        }
+                    }
+                }
+                ui.label(format!("0x{:02X}", dodt.flags));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Color:");
+                for c in dodt.color.iter_mut() {
+                    ui.add(egui::DragValue::new(c).range(0..=255));
+                }
+            });
+        });
+    }
+}
+
+/// Draw the Impact Data Set (IPDS) editor body.
+fn draw_ipds_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    const MATERIALS: [&str; 12] = [
+        "Stone",
+        "Dirt",
+        "Grass",
+        "Glass",
+        "Metal",
+        "Wood",
+        "Organic",
+        "Cloth",
+        "Water",
+        "Hollow Metal",
+        "Organic Bug",
+        "Organic Glow",
+    ];
+    ui.group(|ui| {
+        ui.strong("Impact Data Set");
+        ui.add_space(4.0);
+        let impacts = session.records_by_sig(*b"IPCT");
+        for (i, name) in MATERIALS.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(*name);
+                let mut fid = state.ipds_impacts.get(i).copied().flatten();
+                record_dropdown(ui, &format!("ipds_{i}"), &impacts, &mut fid);
+                if let Some(slot) = state.ipds_impacts.get_mut(i) {
+                    *slot = fid;
+                }
+            });
+        }
+    });
+}
+
+/// Draw one list of recipe ingredients or outputs.
+fn draw_recipe_items(ui: &mut egui::Ui, title: &str, items: &mut [RecipeItem]) {
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("{title} — {}", items.len()));
+        ui.add_space(4.0);
+        for (idx, item) in items.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("#{}", idx + 1));
+                ui.label("Item:");
+                let mut hex = item.item.map(|v| format!("{v:08X}")).unwrap_or_default();
+                if ui
+                    .add(
+                        egui::TextEdit::singleline(&mut hex)
+                            .id_salt(format!("rcpe_item_{title}_{idx}"))
+                            .hint_text("00000000")
+                            .desired_width(110.0),
+                    )
+                    .changed()
+                {
+                    if let Ok(v) = u32::from_str_radix(hex.trim(), 16) {
+                        item.item = Some(v);
+                    }
+                }
+                ui.label("Quantity:");
+                ui.add(egui::DragValue::new(&mut item.quantity).range(0..=100000));
+            });
+        }
+    });
+}
+
+/// Draw the Recipe (RCPE) editor body.
+fn draw_rcpe_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Recipe");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Skill:");
+            ui.add(egui::DragValue::new(&mut state.rcpe_skill).range(-1..=200));
+            ui.separator();
+            ui.label("Level:");
+            ui.add(egui::DragValue::new(&mut state.rcpe_level).range(0..=100));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Category:");
+            let categories = session.records_by_sig(*b"RCCT");
+            let mut fid = state.rcpe_category;
+            record_dropdown(ui, "rcpe_category", &categories, &mut fid);
+            state.rcpe_category = fid;
+            ui.separator();
+            ui.label("Sub-Category:");
+            let mut fid = state.rcpe_sub_category;
+            record_dropdown(ui, "rcpe_sub_category", &categories, &mut fid);
+            state.rcpe_sub_category = fid;
+        });
+    });
+
+    draw_recipe_items(ui, "Ingredients", &mut state.rcpe_ingredients);
+    draw_recipe_items(ui, "Outputs", &mut state.rcpe_outputs);
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Conditions (CTDA) — {}",
+            state.rcpe_conditions.len()
+        ));
+        ui.add_space(4.0);
+        for (idx, cond) in state.rcpe_conditions.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("Condition {}", idx + 1));
+                ui.label("Function:");
+                ui.add(egui::DragValue::new(&mut cond.function).range(0..=999));
+                ui.label("Comparison Value:");
+                ui.add(egui::DragValue::new(&mut cond.comparison_value).range(0..=u32::MAX));
+            });
+        }
+    });
+}
+
+/// The package types, from the `PKDT` Type field.
+const PACK_TYPES: &[(u8, &str)] = &[
+    (0, "Find"),
+    (1, "Follow"),
+    (2, "Escort"),
+    (3, "Eat"),
+    (4, "Sleep"),
+    (5, "Wander"),
+    (6, "Travel"),
+    (7, "Accompany"),
+    (8, "Use Item At"),
+    (9, "Ambush"),
+    (10, "Flee Not Combat"),
+    (11, "Unknown"),
+    (12, "Sandbox"),
+    (13, "Patrol"),
+    (14, "Guard"),
+    (15, "Dialogue"),
+    (16, "Use Weapon"),
+];
+
+/// The days of the week, from the `PSDT` Day of Week field.
+const PACK_DAYS: &[(i8, &str)] = &[
+    (-1, "Any"),
+    (0, "Sunday"),
+    (1, "Monday"),
+    (2, "Tuesday"),
+    (3, "Wednesday"),
+    (4, "Thursday"),
+    (5, "Friday"),
+    (6, "Saturday"),
+    (7, "Weekdays"),
+    (8, "Weekends"),
+    (9, "Monday, Wednesday, Friday"),
+    (10, "Tuesday, Thursday"),
+];
+
+/// The location types, from the `PLDT` and `PLD2` Type field.
+const PACK_LOCATION_TYPES: &[(u32, &str)] = &[
+    (0, "Near Reference"),
+    (1, "In Cell"),
+    (2, "Near Current Location"),
+    (3, "Near Editor Location"),
+    (4, "Object ID"),
+    (5, "Object Type"),
+    (6, "Near Linked Reference"),
+    (7, "At Package Location"),
+];
+
+/// The target types, from the `PTDT` and `PTD2` Type field.
+const PACK_TARGET_TYPES: &[(i32, &str)] = &[
+    (0, "Specific Reference"),
+    (1, "Object ID"),
+    (2, "Object Type"),
+    (3, "Linked Reference"),
+];
+
+/// The dialog types, from the `PKDD` Dialog Type field.
+const PACK_DIALOG_TYPES: &[(u32, &str)] = &[(0, "Say To"), (1, "Say To")];
+
+/// Draw the Image Space Adapter (IMAD) editor body.
+fn draw_imad_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    let h = &mut state.imad_header;
+    ui.group(|ui| {
+        ui.strong("Data (DNAM)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut h.flags).range(0..=u32::MAX));
+            ui.separator();
+            ui.label("Duration:");
+            ui.add(egui::DragValue::new(&mut h.duration).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Eye Adapt Speed:");
+            ui.add(egui::DragValue::new(&mut h.hdr_eye_adapt_speed_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_eye_adapt_speed_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Bloom Blur Radius:");
+            ui.add(egui::DragValue::new(&mut h.hdr_bloom_blur_radius_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_bloom_blur_radius_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Bloom Threshold:");
+            ui.add(egui::DragValue::new(&mut h.hdr_bloom_threshold_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_bloom_threshold_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Bloom Scale:");
+            ui.add(egui::DragValue::new(&mut h.hdr_bloom_scale_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_bloom_scale_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Target Lum Min:");
+            ui.add(egui::DragValue::new(&mut h.hdr_target_lum_min_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_target_lum_min_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Target Lum Max:");
+            ui.add(egui::DragValue::new(&mut h.hdr_target_lum_max_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_target_lum_max_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Sunlight Scale:");
+            ui.add(egui::DragValue::new(&mut h.hdr_sunlight_scale_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_sunlight_scale_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("HDR Sky Scale:");
+            ui.add(egui::DragValue::new(&mut h.hdr_sky_scale_mult));
+            ui.add(egui::DragValue::new(&mut h.hdr_sky_scale_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Cinematic Saturation:");
+            ui.add(egui::DragValue::new(&mut h.cinematic_saturation_mult));
+            ui.add(egui::DragValue::new(&mut h.cinematic_saturation_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Cinematic Brightness:");
+            ui.add(egui::DragValue::new(&mut h.cinematic_brightness_mult));
+            ui.add(egui::DragValue::new(&mut h.cinematic_brightness_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Cinematic Contrast:");
+            ui.add(egui::DragValue::new(&mut h.cinematic_contrast_mult));
+            ui.add(egui::DragValue::new(&mut h.cinematic_contrast_add));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Tint Color:");
+            ui.add(egui::DragValue::new(&mut h.tint_color));
+            ui.separator();
+            ui.label("Fade Color:");
+            ui.add(egui::DragValue::new(&mut h.fade_color));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Blur Radius:");
+            ui.add(egui::DragValue::new(&mut h.blur_radius));
+            ui.separator();
+            ui.label("Double Vision:");
+            ui.add(egui::DragValue::new(&mut h.double_vision_strength));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Radial Blur Strength:");
+            ui.add(egui::DragValue::new(&mut h.radial_blur_strength));
+            ui.separator();
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut h.radial_blur_flags));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Radial Blur Ramp Up:");
+            ui.add(egui::DragValue::new(&mut h.radial_blur_ramp_up));
+            ui.separator();
+            ui.label("Start:");
+            ui.add(egui::DragValue::new(&mut h.radial_blur_start));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Radial Blur Center:");
+            ui.add(egui::DragValue::new(&mut h.radial_blur_center_x));
+            ui.add(egui::DragValue::new(&mut h.radial_blur_center_y));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Radial Blur Ramp Down:");
+            ui.add(egui::DragValue::new(&mut h.radial_blur_ramp_down));
+            ui.separator();
+            ui.label("Down Start:");
+            ui.add(egui::DragValue::new(&mut h.radial_blur_down_start));
+        });
+        ui.horizontal(|ui| {
+            ui.label("DoF Strength:");
+            ui.add(egui::DragValue::new(&mut h.dof_strength));
+            ui.separator();
+            ui.label("Distance:");
+            ui.add(egui::DragValue::new(&mut h.dof_distance));
+        });
+        ui.horizontal(|ui| {
+            ui.label("DoF Range:");
+            ui.add(egui::DragValue::new(&mut h.dof_range));
+            ui.separator();
+            ui.label("DoF Flags:");
+            ui.add(egui::DragValue::new(&mut h.dof_flags));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Motion Blur Strength:");
+            ui.add(egui::DragValue::new(&mut h.motion_blur_strength));
+        });
+    });
+
+    ui.add_space(6.0);
+    for curve in state.imad_curves.iter_mut() {
+        ui.group(|ui| {
+            ui.strong(format!("{} — {} keys", curve.name, curve.keys.len()));
+            ui.add_space(4.0);
+            for key in curve.keys.iter_mut() {
+                ui.horizontal(|ui| {
+                    ui.label("Time:");
+                    ui.add(egui::DragValue::new(&mut key.time).speed(0.01));
+                    if curve.is_color {
+                        ui.label("R:");
+                        ui.add(egui::DragValue::new(&mut key.value).speed(0.01));
+                        ui.label("G:");
+                        ui.add(egui::DragValue::new(&mut key.green).speed(0.01));
+                        ui.label("B:");
+                        ui.add(egui::DragValue::new(&mut key.blue).speed(0.01));
+                        ui.label("A:");
+                        ui.add(egui::DragValue::new(&mut key.alpha).speed(0.01));
+                    } else {
+                        ui.label("Value:");
+                        ui.add(egui::DragValue::new(&mut key.value).speed(0.01));
+                    }
+                });
+            }
+        });
+    }
+}
+
+/// The region data entry types, from the `RDAT` Type field.
+const REGN_ENTRY_TYPES: &[(u32, &str)] = &[
+    (0, "Unknown"),
+    (1, "Unknown"),
+    (2, "Objects"),
+    (3, "Weather"),
+    (4, "Map"),
+    (5, "Land"),
+    (6, "Grass"),
+    (7, "Sound"),
+    (8, "Imposter"),
+    (9, "Unknown"),
+];
+
+/// The music types, from the `RDMD` field.
+const REGN_MUSIC_TYPES: &[(u32, &str)] = &[(0, "Default"), (1, "Public"), (2, "Dungeon")];
+
+/// Draw the Region (REGN) editor body.
+fn draw_regn_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("Region");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Map Color:");
+            let mut rgb = [
+                state.regn_map_color[0],
+                state.regn_map_color[1],
+                state.regn_map_color[2],
+            ];
+            if ui.color_edit_button_srgb(&mut rgb).changed() {
+                state.regn_map_color[0] = rgb[0];
+                state.regn_map_color[1] = rgb[1];
+                state.regn_map_color[2] = rgb[2];
+            }
+            ui.label("Alpha:");
+            ui.add(egui::DragValue::new(&mut state.regn_map_color[3]).range(0..=u8::MAX));
+            ui.separator();
+            ui.label("Worldspace:");
+            let worlds = session.records_by_sig(*b"WRLD");
+            let mut fid = state.regn_worldspace;
+            record_dropdown(ui, "regn_worldspace", &worlds, &mut fid);
+            state.regn_worldspace = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.label("Edge Fall-Off:");
+            ui.add(egui::DragValue::new(
+                &mut state.regn_edge_falloff.unwrap_or(0),
+            ));
+            ui.separator();
+            ui.label("Points:");
+            ui.label(format!("{}", state.regn_points.len()));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Region Data Entries — {}",
+            state.regn_entries.len()
+        ));
+        ui.add_space(4.0);
+        for (i, entry) in state.regn_entries.iter_mut().enumerate() {
+            ui.push_id(i, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(format!("Entry {}", i + 1));
+                    ui.label("Type:");
+                    egui::ComboBox::from_id_salt("regn_entry_type")
+                        .selected_text(
+                            REGN_ENTRY_TYPES
+                                .iter()
+                                .find(|(v, _)| *v == entry.kind)
+                                .map(|(_, n)| *n)
+                                .unwrap_or("Custom"),
+                        )
+                        .show_ui(ui, |ui| {
+                            for (v, name) in REGN_ENTRY_TYPES.iter() {
+                                ui.selectable_value(&mut entry.kind, *v, *name);
+                            }
+                        });
+                    ui.separator();
+                    ui.label("Flags:");
+                    ui.add(egui::DragValue::new(&mut entry.flags).range(0..=u8::MAX));
+                });
+                if let Some(name) = &entry.map_name {
+                    ui.horizontal(|ui| {
+                        ui.label("Map Name:");
+                        ui.label(name);
+                    });
+                }
+                if entry.music_type.is_some() {
+                    ui.horizontal(|ui| {
+                        ui.label("Music Type:");
+                        egui::ComboBox::from_id_salt("regn_music_type")
+                            .selected_text(
+                                REGN_MUSIC_TYPES
+                                    .iter()
+                                    .find(|(val, _)| *val == entry.music_type.unwrap_or(0))
+                                    .map(|(_, n)| *n)
+                                    .unwrap_or("Custom"),
+                            )
+                            .show_ui(ui, |ui| {
+                                for (val, name) in REGN_MUSIC_TYPES.iter() {
+                                    ui.selectable_value(&mut entry.music_type, Some(*val), *name);
+                                }
+                            });
+                        ui.separator();
+                        ui.label("Music:");
+                        let musics = session.records_by_sig(*b"MUSC");
+                        let mut fid = entry.music;
+                        record_dropdown(ui, "regn_music", &musics, &mut fid);
+                        entry.music = fid;
+                    });
+                }
+                if entry.incidental_media.is_some() || !entry.battle_media.is_empty() {
+                    ui.horizontal(|ui| {
+                        ui.label("Incidental MediaSet:");
+                        let sets = session.records_by_sig(*b"MSET");
+                        let mut fid = entry.incidental_media;
+                        record_dropdown(ui, "regn_incidental", &sets, &mut fid);
+                        entry.incidental_media = fid;
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Battle MediaSets:");
+                        ui.label(format!("{}", entry.battle_media.len()));
+                    });
+                }
+                if !entry.objects.is_empty() {
+                    ui.label(format!("Objects: {}", entry.objects.len()));
+                    for o in entry.objects.iter_mut() {
+                        ui.horizontal(|ui| {
+                            ui.label("Object:");
+                            let mut fid = Some(o.object);
+                            formid_field(ui, "regn_object", &mut fid);
+                            o.object = fid.unwrap_or(0);
+                            ui.label("Density:");
+                            ui.add(egui::DragValue::new(&mut o.density).speed(0.01));
+                            ui.label("Flags:");
+                            ui.add(egui::DragValue::new(&mut o.flags).range(0..=u8::MAX));
+                        });
+                    }
+                }
+                if !entry.grasses.is_empty() {
+                    ui.label(format!("Grasses: {}", entry.grasses.len()));
+                }
+                if !entry.sounds.is_empty() {
+                    ui.label(format!("Sounds: {}", entry.sounds.len()));
+                    for s in entry.sounds.iter_mut() {
+                        ui.horizontal(|ui| {
+                            ui.label("Sound:");
+                            let mut fid = Some(s.sound);
+                            formid_field(ui, "regn_sound", &mut fid);
+                            s.sound = fid.unwrap_or(0);
+                            ui.label("Flags:");
+                            ui.add(egui::DragValue::new(&mut s.flags).range(0..=u32::MAX));
+                            ui.label("Chance:");
+                            ui.add(egui::DragValue::new(&mut s.chance).range(0..=u32::MAX));
+                        });
+                    }
+                }
+                if !entry.weather.is_empty() {
+                    ui.label(format!("Weather Types: {}", entry.weather.len()));
+                    for w in entry.weather.iter_mut() {
+                        ui.horizontal(|ui| {
+                            ui.label("Weather:");
+                            let mut fid = Some(w.weather);
+                            formid_field(ui, "regn_weather", &mut fid);
+                            w.weather = fid.unwrap_or(0);
+                            ui.label("Chance:");
+                            ui.add(egui::DragValue::new(&mut w.chance).range(0..=u32::MAX));
+                        });
+                    }
+                }
+                if !entry.imposters.is_empty() {
+                    ui.label(format!("Imposters: {}", entry.imposters.len()));
+                }
+            });
+        }
+    });
+}
+
+/// Draw the Package (PACK) editor body.
+fn draw_pack_ui(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    state: &mut ObjectEditorState,
+) {
+    ui.group(|ui| {
+        ui.strong("General");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt("pack_type")
+                .selected_text(
+                    PACK_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.pack_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in PACK_TYPES.iter() {
+                        ui.selectable_value(&mut state.pack_type, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("General Flags:");
+            ui.add(egui::DragValue::new(&mut state.pack_general_flags).range(0..=u32::MAX));
+            ui.label(format!("0x{:08X}", state.pack_general_flags));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Fallout Behaviour Flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.pack_fallout_behavior_flags).range(0..=u16::MAX),
+            );
+            ui.separator();
+            ui.label("Type-Specific Flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.pack_type_specific_flags.unwrap_or(0))
+                    .range(0..=u16::MAX),
+            );
+            if state.pack_type_specific_flags.is_none() {
+                state.pack_type_specific_flags = Some(0);
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Unused:");
+            ui.add(egui::DragValue::new(&mut state.pack_unused).range(0..=u8::MAX));
+            ui.separator();
+            ui.label("Unused 2:");
+            ui.add(egui::DragValue::new(&mut state.pack_unused2[0]).range(0..=u8::MAX));
+            ui.add(egui::DragValue::new(&mut state.pack_unused2[1]).range(0..=u8::MAX));
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Schedule");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Month:");
+            ui.add(egui::DragValue::new(&mut state.pack_month).range(-128..=127));
+            ui.separator();
+            ui.label("Day of Week:");
+            egui::ComboBox::from_id_salt("pack_dow")
+                .selected_text(
+                    PACK_DAYS
+                        .iter()
+                        .find(|(v, _)| *v == state.pack_day_of_week)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in PACK_DAYS.iter() {
+                        ui.selectable_value(&mut state.pack_day_of_week, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Date:");
+            ui.add(egui::DragValue::new(&mut state.pack_date).range(0..=u8::MAX));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Time:");
+            ui.add(egui::DragValue::new(&mut state.pack_time).range(-128..=127));
+            ui.separator();
+            ui.label("Duration (hours):");
+            ui.add(egui::DragValue::new(&mut state.pack_duration).range(0..=i32::MAX));
+        });
+    });
+
+    ui.add_space(6.0);
+    draw_package_location(ui, "Location 1 (PLDT)", &mut state.pack_location);
+    draw_package_location(ui, "Location 2 (PLD2)", &mut state.pack_location2);
+    draw_package_target(ui, "Target 1 (PTDT)", &mut state.pack_target);
+    draw_package_target(ui, "Target 2 (PTD2)", &mut state.pack_target2);
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Idle Animation");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.pack_idle_flags).range(0..=u8::MAX));
+            ui.separator();
+            ui.label("Count:");
+            ui.add(egui::DragValue::new(&mut state.pack_idle_count).range(0..=u8::MAX));
+            ui.separator();
+            ui.label("Timer:");
+            ui.add(egui::DragValue::new(&mut state.pack_idle_timer).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Animations:");
+            let mut remove = None;
+            for i in 0..state.pack_idle_animations.len() {
+                let id = state.pack_idle_animations[i];
+                ui.horizontal(|ui| {
+                    let mut fid = Some(id);
+                    formid_field(ui, &format!("pack_idle_{i}"), &mut fid);
+                    state.pack_idle_animations[i] = fid.unwrap_or(0);
+                    if ui.button("x").clicked() {
+                        remove = Some(i);
+                    }
+                });
+            }
+            if let Some(i) = remove {
+                state.pack_idle_animations.remove(i);
+            }
+            if ui.button("Add Animation").clicked() {
+                state.pack_idle_animations.push(0);
+            }
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Options");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Combat Style:");
+            let styles = session.records_by_sig(*b"CSTY");
+            let mut fid = state.pack_combat_style;
+            record_dropdown(ui, "pack_combat_style", &styles, &mut fid);
+            state.pack_combat_style = fid;
+        });
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut state.pack_eat_marker, "Eat Marker (PKED)");
+            ui.separator();
+            ui.checkbox(&mut state.pack_use_item_marker, "Use Item Marker (PUID)");
+            ui.separator();
+            ui.checkbox(&mut state.pack_ambush_marker, "Ambush Marker (PKAM)");
+        });
+        ui.horizontal(|ui| {
+            ui.label("Escort Distance:");
+            ui.add(
+                egui::DragValue::new(&mut state.pack_escort_distance.unwrap_or(0))
+                    .range(0..=u32::MAX),
+            );
+            ui.separator();
+            ui.label("Follow Trigger Radius:");
+            ui.add(
+                egui::DragValue::new(&mut state.pack_follow_radius.unwrap_or(0.0))
+                    .speed(0.01)
+                    .range(0.0..=10000.0),
+            );
+            ui.separator();
+            ui.label("Patrol Flags:");
+            ui.add(
+                egui::DragValue::new(&mut state.pack_patrol_flags.unwrap_or(0)).range(0..=u16::MAX),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Use Weapon (PKW3)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.pack_weapon.flags).range(0..=u32::MAX));
+            ui.label(format!("0x{:08X}", state.pack_weapon.flags));
+            ui.separator();
+            ui.label("Fire Rate:");
+            egui::ComboBox::from_id_salt("pack_fire_rate")
+                .selected_text(if state.pack_weapon.fire_rate == 0 {
+                    "Auto Fire"
+                } else {
+                    "Volley Fire"
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut state.pack_weapon.fire_rate, 0, "Auto Fire");
+                    ui.selectable_value(&mut state.pack_weapon.fire_rate, 1, "Volley Fire");
+                });
+            ui.separator();
+            ui.label("Fire Count:");
+            egui::ComboBox::from_id_salt("pack_fire_count")
+                .selected_text(if state.pack_weapon.fire_count == 0 {
+                    "Number of Bursts"
+                } else {
+                    "Repeat Fire"
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut state.pack_weapon.fire_count, 0, "Number of Bursts");
+                    ui.selectable_value(&mut state.pack_weapon.fire_count, 1, "Repeat Fire");
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Bursts:");
+            ui.add(egui::DragValue::new(&mut state.pack_weapon.num_bursts).range(0..=u16::MAX));
+            ui.separator();
+            ui.label("Shots:");
+            ui.add(egui::DragValue::new(&mut state.pack_weapon.shots_min).range(0..=u16::MAX));
+            ui.add(egui::DragValue::new(&mut state.pack_weapon.shots_max).range(0..=u16::MAX));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Pause:");
+            ui.add(
+                egui::DragValue::new(&mut state.pack_weapon.pause_min)
+                    .speed(0.01)
+                    .range(0.0..=1000.0),
+            );
+            ui.add(
+                egui::DragValue::new(&mut state.pack_weapon.pause_max)
+                    .speed(0.01)
+                    .range(0.0..=1000.0),
+            );
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Dialog (PKDD)");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("FOV:");
+            ui.add(egui::DragValue::new(&mut state.pack_dialog.fov).speed(0.5));
+            ui.separator();
+            ui.label("Flags:");
+            ui.add(egui::DragValue::new(&mut state.pack_dialog.flags).range(0..=u32::MAX));
+            ui.label(format!("0x{:08X}", state.pack_dialog.flags));
+            ui.separator();
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt("pack_dialog_type")
+                .selected_text(
+                    PACK_DIALOG_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.pack_dialog.dialog_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in PACK_DIALOG_TYPES.iter() {
+                        ui.selectable_value(&mut state.pack_dialog.dialog_type, *v, *name);
+                    }
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Topic:");
+            let topics = session.records_by_sig(*b"DIAL");
+            let mut fid = state.pack_dialog.topic;
+            record_dropdown(ui, "pack_dialog_topic", &topics, &mut fid);
+            state.pack_dialog.topic = fid;
+        });
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Embedded Scripts — {}", state.pack_scripts.len()));
+        ui.add_space(4.0);
+        for (i, script) in state.pack_scripts.iter_mut().enumerate() {
+            ui.push_id(i, |ui| {
+                let name = match script.marker {
+                    x if x == *b"POBA" => "On Begin",
+                    x if x == *b"POEA" => "On End",
+                    _ => "On Change",
+                };
+                ui.horizontal(|ui| {
+                    ui.strong(name);
+                    ui.separator();
+                    ui.label("Idle:");
+                    let idles = session.records_by_sig(*b"IDLE");
+                    let mut fid = script.idle;
+                    record_dropdown(ui, "pack_script_idle", &idles, &mut fid);
+                    script.idle = fid;
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Topic:");
+                    let topics = session.records_by_sig(*b"DIAL");
+                    let mut fid = script.topic;
+                    record_dropdown(ui, "pack_script_topic", &topics, &mut fid);
+                    script.topic = fid;
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Script Type:");
+                    ui.add(
+                        egui::DragValue::new(&mut script.header.script_type).range(0..=u32::MAX),
+                    );
+                    ui.separator();
+                    ui.label("Version:");
+                    ui.add(egui::DragValue::new(&mut script.header.version).range(0..=u32::MAX));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Source:");
+                    ui.add(
+                        egui::TextEdit::singleline(&mut script.source)
+                            .desired_width(ui.available_width() - 60.0),
+                    );
+                });
+                ui.label(format!(
+                    "Compiled bytes: {}   Local variables: {}   References: {}",
+                    script.compiled.len(),
+                    script.variables.len(),
+                    script.references.len()
+                ));
+            });
+        }
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!(
+            "Conditions (CTDA) — {}",
+            state.pack_conditions.len()
+        ));
+        ui.add_space(4.0);
+        for (idx, cond) in state.pack_conditions.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("Condition {}", idx + 1));
+                ui.label("Function:");
+                ui.add(egui::DragValue::new(&mut cond.function).range(0..=999));
+                ui.label("Comparison Value:");
+                ui.add(egui::DragValue::new(&mut cond.comparison_value).range(0..=u32::MAX));
+            });
+        }
+    });
+}
+
+/// Draw one of a package record's two locations.
+fn draw_package_location(ui: &mut egui::Ui, label: &str, loc: &mut PackageLocation) {
+    ui.group(|ui| {
+        ui.strong(label);
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt(format!("pack_loc_{label}"))
+                .selected_text(
+                    PACK_LOCATION_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == loc.kind)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in PACK_LOCATION_TYPES.iter() {
+                        ui.selectable_value(&mut loc.kind, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Radius:");
+            ui.add(egui::DragValue::new(&mut loc.radius));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Location:");
+            let mut hex = loc
+                .target
+                .iter()
+                .map(|b| format!("{b:02X}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if ui.text_edit_singleline(&mut hex).changed() {
+                let mut bytes = Vec::with_capacity(4);
+                let mut chars = hex.chars().filter(|c| !c.is_whitespace());
+                while let Some(pair) = chars.next() {
+                    let high = pair.to_digit(16);
+                    let low = chars.next().and_then(|c| c.to_digit(16));
+                    if let (Some(h), Some(l)) = (high, low) {
+                        bytes.push((h * 16 + l) as u8);
+                    }
+                }
+                loc.target = bytes;
+            }
+        });
+    });
+}
+
+/// Draw one of a package record's two targets.
+fn draw_package_target(ui: &mut egui::Ui, label: &str, target: &mut PackageTarget) {
+    ui.group(|ui| {
+        ui.strong(label);
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt(format!("pack_tgt_{label}"))
+                .selected_text(
+                    PACK_TARGET_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == target.kind)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in PACK_TARGET_TYPES.iter() {
+                        ui.selectable_value(&mut target.kind, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Count / Distance:");
+            ui.add(egui::DragValue::new(&mut target.count_distance));
+            ui.separator();
+            ui.label("Unknown:");
+            ui.add(egui::DragValue::new(&mut target.unknown).speed(0.01));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Target:");
+            let mut hex = target
+                .target
+                .iter()
+                .map(|b| format!("{b:02X}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if ui.text_edit_singleline(&mut hex).changed() {
+                let mut bytes = Vec::with_capacity(4);
+                let mut chars = hex.chars().filter(|c| !c.is_whitespace());
+                while let Some(pair) = chars.next() {
+                    let high = pair.to_digit(16);
+                    let low = chars.next().and_then(|c| c.to_digit(16));
+                    if let (Some(h), Some(l)) = (high, low) {
+                        bytes.push((h * 16 + l) as u8);
+                    }
+                }
+                target.target = bytes;
+            }
+        });
+    });
+}
+
+/// Draw the Script (SCPT) editor body.
+fn draw_scpt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Script");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Type:");
+            egui::ComboBox::from_id_salt("scpt_type")
+                .selected_text(
+                    SCPT_TYPES
+                        .iter()
+                        .find(|(v, _)| *v == state.scpt_header.script_type)
+                        .map(|(_, n)| *n)
+                        .unwrap_or("Custom"),
+                )
+                .show_ui(ui, |ui| {
+                    for (v, name) in SCPT_TYPES.iter() {
+                        ui.selectable_value(&mut state.scpt_header.script_type, *v, *name);
+                    }
+                });
+            ui.separator();
+            ui.label("Version:");
+            ui.add(egui::DragValue::new(&mut state.scpt_header.version).range(0..=1000));
+        });
+        ui.label(format!(
+            "Compiled script: {} byte(s)",
+            state.scpt_compiled.len()
+        ));
+        ui.label("Script Source (SCTX):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.scpt_source)
+                .desired_rows(10)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Local Variables — {}", state.scpt_variables.len()));
+        ui.add_space(4.0);
+        for (idx, var) in state.scpt_variables.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("#{}", idx + 1));
+                ui.label("Index:");
+                ui.add(egui::DragValue::new(&mut var.index).range(0..=u32::MAX));
+                ui.label("Name:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut var.name)
+                        .id_salt(format!("scpt_var_{idx}"))
+                        .desired_width(200.0),
+                );
+                ui.label("IsLongOrShort:");
+                let mut long = (var.flags & 0x01) != 0;
+                if ui.checkbox(&mut long, "").changed() {
+                    if long {
+                        var.flags |= 0x01;
+                    } else {
+                        var.flags &= !0x01;
+                    }
+                }
+            });
+        }
+    });
+}
+
+/// Draw the Plugin Header (TES4) editor body.
+fn draw_tes4_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    ui.group(|ui| {
+        ui.strong("Plugin Header");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Version (HEDR):");
+            ui.add(
+                egui::DragValue::new(&mut state.tes4_version)
+                    .speed(0.01)
+                    .range(0.0..=10.0),
+            );
+            ui.separator();
+            ui.label("Number of Records:");
+            ui.add(egui::DragValue::new(&mut state.tes4_num_records).range(0..=10000000));
+            ui.separator();
+            ui.label("Next Object Id:");
+            ui.add(egui::DragValue::new(&mut state.tes4_next_object_id).range(0..=0x00FF_FFFF));
+        });
+        ui.label("Author (CNAM):");
+        ui.add(
+            egui::TextEdit::singleline(&mut state.tes4_author)
+                .desired_width(ui.available_width() - 20.0),
+        );
+        ui.label("Description (SNAM):");
+        ui.add(
+            egui::TextEdit::multiline(&mut state.tes4_description)
+                .desired_rows(4)
+                .desired_width(ui.available_width() - 20.0),
+        );
+    });
+
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong(format!("Master Files — {}", state.tes4_masters.len()));
+        ui.add_space(4.0);
+        for (idx, master) in state.tes4_masters.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("#{}", idx + 1));
+                ui.add(
+                    egui::TextEdit::singleline(&mut master.filename)
+                        .id_salt(format!("tes4_master_{idx}"))
+                        .desired_width(ui.available_width() - 200.0),
+                );
+                ui.label("FormID:");
+                ui.add(egui::DragValue::new(&mut master.form_id).range(0..=u32::MAX));
+            });
+        }
     });
 }
 
