@@ -727,6 +727,10 @@ pub struct ObjectEditorState {
     /// The image space adapter's flag byte and the bytes the spec does
     /// not name.
     pub imgs_rest: Vec<u8>,
+    /// `DNAM` Night Eye Tint Color — the rgb.
+    pub imgs_night_eye_tint: [u8; 3],
+    /// `DNAM` Cinematic Brightness Tint Color — the rgb.
+    pub imgs_cinematic_brightness_tint: [u8; 3],
 
     // LGTM (Lighting) fields
     /// `DATA` Ambient Color — the byte quadruple (red, green, blue, unused).
@@ -6318,6 +6322,8 @@ impl ObjectEditorState {
     fn load_imgs(&mut self) {
         self.imgs_hdr = [0.0; 26];
         self.imgs_rest.clear();
+        self.imgs_night_eye_tint = [0; 3];
+        self.imgs_cinematic_brightness_tint = [0; 3];
         if let Some(b) = self.raw_subs.get(b"DNAM") {
             // The named float32s.
             for (i, (_, at)) in IMGS_FIELDS.iter().enumerate() {
@@ -6326,9 +6332,16 @@ impl ObjectEditorState {
                         f32::from_le_bytes([b[*at], b[*at + 1], b[*at + 2], b[*at + 3]]);
                 }
             }
+            // The two three-byte colours.
+            if b.len() >= 87 {
+                self.imgs_night_eye_tint = [b[84], b[85], b[86]];
+            }
+            if b.len() >= 107 {
+                self.imgs_cinematic_brightness_tint = [b[104], b[105], b[106]];
+            }
             // The flag byte and the bytes the spec does not name.
-            if b.len() > 104 {
-                self.imgs_rest = b[104..].to_vec();
+            if b.len() > 128 {
+                self.imgs_rest = b[128..].to_vec();
             }
         }
     }
@@ -11311,11 +11324,16 @@ impl ObjectEditorState {
         let len = original.as_ref().map(|b| b.len()).unwrap_or(152);
         let mut data = original.unwrap_or_else(|| vec![0u8; 152]);
         data.resize(len, 0);
-        for (i, v) in self.imgs_hdr.iter().enumerate() {
-            let at = i * 4;
-            if at + 4 <= data.len() {
-                data[at..at + 4].copy_from_slice(&v.to_le_bytes());
+        for (i, (_, at)) in IMGS_FIELDS.iter().enumerate() {
+            if *at + 4 <= data.len() {
+                data[*at..*at + 4].copy_from_slice(&self.imgs_hdr[i].to_le_bytes());
             }
+        }
+        if data.len() >= 87 {
+            data[84..87].copy_from_slice(&self.imgs_night_eye_tint);
+        }
+        if data.len() >= 107 {
+            data[104..107].copy_from_slice(&self.imgs_cinematic_brightness_tint);
         }
         session.doc.set_sub(fid, b"DNAM", data);
     }
@@ -20224,6 +20242,12 @@ fn draw_imgs_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                 );
             });
         }
+        ui.horizontal(|ui| {
+            ui.label("Night Eye Tint Color:");
+            ui.color_edit_button_srgb(&mut state.imgs_night_eye_tint);
+            ui.label("Cinematic Brightness Tint Color:");
+            ui.color_edit_button_srgb(&mut state.imgs_cinematic_brightness_tint);
+        });
         ui.label(format!(
             "The rest of DNAM ({} bytes) depends on the record's form version — preserved as-is.",
             state.imgs_rest.len()

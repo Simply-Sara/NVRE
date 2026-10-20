@@ -92,6 +92,10 @@ def parse_spec(sig):
                 continue
             if not in_table:
                 continue
+            # A value table's rows start with a number, not a name. They
+            # are the values of a flag, not fields.
+            if re.match(r"^-?\d+$", cols[0]) or re.match(r"^0x[0-9A-Fa-f]+$", cols[0]):
+                continue
             if cols[0]:
                 fields.append((current, cols[0]))
     return subrecords, fields
@@ -323,6 +327,21 @@ def covered(field, words):
         return True
     if all(p in words for p in parts):
         return True
+    # The spec has a few typos, and a few fields the editor names without
+    # the spec's qualifier. A field is covered when its words are all
+    # there, allowing for one that differs only by a typo.
+    if len(parts) > 1:
+        for i, p in enumerate(parts):
+            rest = parts[:i] + parts[i + 1:]
+            if not rest:
+                continue
+            if not all(r in words for r in rest):
+                continue
+            # The one that is missing is a near miss on a word that is
+            # there.
+            for w in words:
+                if len(w) > 3 and w != p and (w.startswith(p[:3]) or p.startswith(w[:3])):
+                    return True
     # The spec's field names sometimes carry a word the editor drops —
     # "Membrane Shader - Source Blend Mode" against the editor's
     # "Membrane Source Blend Mode". A field is covered when all but one
