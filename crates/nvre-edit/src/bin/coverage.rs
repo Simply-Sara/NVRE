@@ -92,7 +92,22 @@ fn main() {
                 }
             });
         }
-        let v = cov.to_json(15);
+        let v = cov.to_json(40);
+        // The trailing subrecords are a separate list: they decoded, but left
+        // bytes over, which means the layout is incomplete rather than wrong.
+        let mut trailing: Vec<((String, String), u64, Option<String>)> = cov
+            .by_sub
+            .iter()
+            .filter(|(_, c)| c.trailing > 0)
+            .map(|((rt, st), c)| ((rt.clone(), st.clone()), c.trailing, c.first_error.clone()))
+            .collect();
+        trailing.sort_by(|a, b| b.1.cmp(&a.1));
+        if !trailing.is_empty() {
+            println!("\n--- trailing subrecords (decoded, but bytes left over) ---");
+            for ((rt, st), n, e) in trailing.iter().take(20) {
+                println!("{st:5} {n:>8}  on {rt}{}", e.as_ref().map(|x| format!(": {x}")).unwrap_or_default());
+            }
+        }
         let s = &v["summary"];
         let total = s["subrecords"].as_u64().unwrap_or(0);
         let ok = s["ok"].as_u64().unwrap_or(0);

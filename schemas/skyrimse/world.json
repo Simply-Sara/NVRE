@@ -434,6 +434,12 @@
      "note": "The formid of whatever the reference places.",
      "type": "formid"
     },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length; it appears with XACT when the object is open by default.",
+     "type": "bytes"
+    },
     "PDTO": {
      "confidence": "documented",
      "name": "Patrol Data Topic",
@@ -458,6 +464,18 @@
      "note": "The scripting info.",
      "type": "bytes"
     },
+    "XACT": {
+     "confidence": "documented",
+     "name": "Activation",
+     "note": "Always 0x0d. It appears with ONAM when the object is open by default.",
+     "type": "u32"
+    },
+    "XALP": {
+     "confidence": "documented",
+     "name": "Alpha Cutoff",
+     "note": "The current and default alpha cutoffs. Which one the CK shows is not always clear.",
+     "type": "REFR_XALP"
+    },
     "XAPD": {
      "confidence": "documented",
      "name": "Activation Parent Flags",
@@ -469,6 +487,12 @@
      "name": "Activation Parent",
      "note": "The REFR to activate, usually a STAT, and the delay.",
      "type": "REFR_XAPR"
+    },
+    "XATR": {
+     "confidence": "documented",
+     "name": "Attach Reference",
+     "note": "The reference to attach to.",
+     "type": "formid"
     },
     "XCNT": {
      "confidence": "documented",
@@ -536,6 +560,12 @@
      "note": "Zero-length; present when the reference is ignored by something.",
      "type": "bytes"
     },
+    "XLCM": {
+     "confidence": "documented",
+     "name": "Type",
+     "note": "Only the values 0x00, 0x02 and 0x03 are seen.",
+     "type": "u32"
+    },
     "XLIB": {
      "confidence": "documented",
      "name": "Leveled Item Base",
@@ -587,6 +617,18 @@
       "count": 3
      }
     },
+    "XMBR": {
+     "confidence": "documented",
+     "name": "Multi Bound Reference",
+     "note": "The multi-bound reference.",
+     "type": "formid"
+    },
+    "XNDP": {
+     "confidence": "documented",
+     "name": "Door Pivot",
+     "note": "The navmesh triangle the door pivots on.",
+     "type": "REFR_XNDP"
+    },
     "XOWN": {
      "confidence": "documented",
      "name": "Owner",
@@ -620,6 +662,12 @@
      "note": "The reference's primitive: its bounds, its colour and its shape.",
      "type": "REFR_XPRM"
     },
+    "XPWR": {
+     "confidence": "documented",
+     "name": "Reflected By",
+     "note": "The reference that reflects this one.",
+     "type": "formid"
+    },
     "XRDS": {
      "confidence": "documented",
      "name": "Radius",
@@ -643,6 +691,30 @@
      "name": "Scale",
      "note": "The reference's scale.",
      "type": "f32"
+    },
+    "XTEL": {
+     "confidence": "documented",
+     "name": "Door Teleport",
+     "note": "The door the teleport goes to, and where.",
+     "type": "REFR_XTEL"
+    },
+    "XTRI": {
+     "confidence": "documented",
+     "name": "Primitive",
+     "note": "The primitive's collision layer, chosen by matching the BNAM field of a COLL form.",
+     "type": "u32"
+    },
+    "XWCN": {
+     "confidence": "documented",
+     "name": "Water Current Count",
+     "note": "The size of the XWCU divided by sixteen.",
+     "type": "u32"
+    },
+    "XWCU": {
+     "confidence": "documented",
+     "name": "Water Current",
+     "note": "The water current, a series of sixteen-byte structures. There seem to be three of them.",
+     "type": "bytes"
     }
    }
   },
@@ -917,6 +989,20 @@
     }
    ]
   },
+  "REFR_XALP": {
+   "struct": [
+    {
+     "name": "current_alpha_cutoff",
+     "note": "The current alpha cutoff.",
+     "type": "u8"
+    },
+    {
+     "name": "default_alpha_cutoff",
+     "note": "The default alpha cutoff.",
+     "type": "u8"
+    }
+   ]
+  },
   "REFR_XAPR": {
    "struct": [
     {
@@ -1017,6 +1103,25 @@
     }
    ]
   },
+  "REFR_XNDP": {
+   "struct": [
+    {
+     "name": "navmesh",
+     "note": "The NAVM the pivot is on.",
+     "type": "formid"
+    },
+    {
+     "name": "triangle_index",
+     "note": "The navmesh triangle's index.",
+     "type": "u16"
+    },
+    {
+     "name": "padding",
+     "note": "Padding.",
+     "type": "u16"
+    }
+   ]
+  },
   "REFR_XPRM": {
    "struct": [
     {
@@ -1079,6 +1184,41 @@
      "type": {
       "array": "u8",
       "count": 2
+     }
+    }
+   ]
+  },
+  "REFR_XTEL": {
+   "struct": [
+    {
+     "name": "destination",
+     "note": "The DOOR the teleport goes to.",
+     "type": "formid"
+    },
+    {
+     "name": "position",
+     "note": "The x, y and z position.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    {
+     "name": "rotation",
+     "note": "The x, y and z rotation, in radians.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    {
+     "name": "flags",
+     "note": "The teleport's flags.",
+     "type": {
+      "bits": {
+       "0": "No Alarm"
+      },
+      "flags": "u32"
      }
     }
    ]

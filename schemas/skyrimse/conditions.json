@@ -17,6 +17,12 @@
    "name": "Condition",
    "note": "UESP, Skyrim Mod:Mod File Format/CTDA Field. The condition reads as <Reference>.<Function>(<Param1>, <Param2>) <Operator> <Value>. [measured: every CTDA in Skyrim.esm is exactly 32 bytes, so Run On, Reference and the trailing index are all present \u2014 Fallout's CTDA has only the first two of the three, and its last two fields are optional.]",
    "type": "Condition"
+  },
+  "MODT": {
+   "confidence": "documented",
+   "name": "Model Texture Hashes",
+   "note": "The model's texture hashes. Skyrim's layout is a 12-byte header followed by that many 12-byte texture entries, which is a different shape from the pre-TES5 one the other games use: there each hash is 24 bytes of three uint64s. [measured: every MODT in Skyrim.esm is 12 bytes plus a multiple of 12, and the second header word is the entry count.]",
+   "type": "SKYRIM_MODT"
   }
  },
  "format": "fnv.schema/1",
@@ -78,6 +84,51 @@
      "name": "unknown2",
      "note": "The index of the package data or quest alias to run on. -1 means 'none', and it is also used for other run-on types. This is Skyrim's extra trailing field: Fallout's CTDA is 20, 24 or 28 bytes, Skyrim's is always 32, the difference being this field plus Run On and Reference always being present. [measured: all 83,759 CTDA subrecords in Skyrim.esm are exactly 32 bytes]",
      "type": "i32"
+    }
+   ]
+  },
+  "SKYRIM_MODT": {
+   "struct": [
+    {
+     "name": "version",
+     "note": "Always 2 in the shipped data.",
+     "type": "u32"
+    },
+    {
+     "name": "count",
+     "note": "How many texture entries follow.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown",
+     "note": "Always zero.",
+     "type": "u32"
+    },
+    {
+     "name": "textures",
+     "note": "The model's textures. [measured: every MODT in Skyrim.esm is 12 bytes plus a multiple of 12, and the count in the second header word is the number of entries, which is what this layout gives.]",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "hash",
+         "note": "The texture's hash.",
+         "type": "u32"
+        },
+        {
+         "name": "extension",
+         "note": "The texture's file extension, which is \"dds\" in every shipped record.",
+         "type": "zstring"
+        },
+        {
+         "name": "hash2",
+         "note": "A second hash.",
+         "type": "u32"
+        }
+       ]
+      },
+      "count_field": "count"
+     }
     }
    ]
   }
