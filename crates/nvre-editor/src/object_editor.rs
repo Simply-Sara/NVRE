@@ -65,6 +65,22 @@ pub struct ObjectEditorState {
     /// The animation type — the uint32 enum: Hand To Hand, Melee, Pistol,
     /// Rifle, and the rest.
     pub weap_animation_type: u32,
+    /// The weapon's animation data — the `DNAM` struct, field by field.
+    pub weap_anim: Vec<WeapAnimField>,
+    /// Whether the record carries a `VATS` subrecord.
+    pub weap_vats_present: bool,
+    /// `VATS` Effect — the FormID of the `SPEL` record.
+    pub weap_vats_effect: Option<u32>,
+    /// `VATS` Skill — the float32.
+    pub weap_vats_skill: f32,
+    /// `VATS` Damage Multiplier — the float32.
+    pub weap_vats_damage_multiplier: f32,
+    /// `VATS` AP — the float32.
+    pub weap_vats_ap: f32,
+    /// `VATS` Silent — the uint8: No or Yes.
+    pub weap_vats_silent: u8,
+    /// `VATS` Mod Required — the uint8: No or Yes.
+    pub weap_vats_mod_required: u8,
     pub weap_crit_dmg: u16,
     pub weap_crit_mult: f32,
     pub weap_crit_effect: Option<u32>,
@@ -2533,6 +2549,131 @@ pub struct WeatherSound {
     pub kind: u32,
 }
 
+/// The kind of a weapon animation data field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum WeapAnimKind {
+    /// A float32.
+    #[default]
+    F32,
+    /// A uint32.
+    U32,
+    /// An int32.
+    I32,
+    /// A uint8.
+    U8,
+    /// An int8.
+    I8,
+    /// A uint16.
+    U16,
+    /// An int16.
+    I16,
+    /// A FormID.
+    Fid,
+}
+
+/// One field of a weapon's animation data.
+#[derive(Debug, Clone, Default)]
+pub struct WeapAnimField {
+    /// The field's offset in the struct.
+    pub offset: usize,
+    /// The field's name, from the spec.
+    pub name: &'static str,
+    /// The field's kind.
+    pub kind: WeapAnimKind,
+    /// The field's value. A float32, a uint32, an int32, a FormID or a
+    /// byte, depending on the kind.
+    pub value: WeapAnimValue,
+}
+
+/// A weapon animation data field's value.
+#[derive(Debug, Clone)]
+pub enum WeapAnimValue {
+    /// A float32.
+    F32(f32),
+    /// A uint32.
+    U32(u32),
+    /// An int32.
+    I32(i32),
+    /// A uint8.
+    U8(u8),
+    /// An int8.
+    I8(i8),
+    /// A uint16.
+    U16(u16),
+    /// An int16.
+    I16(i16),
+    /// A FormID.
+    Fid(u32),
+}
+
+impl Default for WeapAnimValue {
+    fn default() -> Self {
+        WeapAnimValue::F32(0.0)
+    }
+}
+
+/// The weapon animation data's fields, in the order the spec lists them,
+/// with each field's offset in the struct.
+///
+/// The struct is 203 bytes in the game's records. The bytes the spec does
+/// not name are carried through unchanged.
+const WEAP_ANIM_FIELDS: &[(usize, WeapAnimKind, &str)] = &[
+    (0, WeapAnimKind::U32, "Animation Type"),
+    (4, WeapAnimKind::F32, "Animation Multiplier"),
+    (8, WeapAnimKind::F32, "Reach"),
+    (12, WeapAnimKind::U8, "Flags 1"),
+    (13, WeapAnimKind::U8, "Grip Animation"),
+    (14, WeapAnimKind::U8, "Ammo Use"),
+    (15, WeapAnimKind::U8, "Reload Animation"),
+    (16, WeapAnimKind::F32, "Min Spread"),
+    (20, WeapAnimKind::F32, "Spread"),
+    (28, WeapAnimKind::F32, "Sight FOV"),
+    (36, WeapAnimKind::Fid, "Projectile"),
+    (40, WeapAnimKind::U8, "Base VATS To-Hit Chance"),
+    (41, WeapAnimKind::U8, "Attack Animation"),
+    (42, WeapAnimKind::U8, "Projectile Cound"),
+    (43, WeapAnimKind::U8, "Embedded Weapon - Actor Value"),
+    (44, WeapAnimKind::F32, "Min Range"),
+    (48, WeapAnimKind::F32, "Max Range"),
+    (52, WeapAnimKind::U32, "On Hit"),
+    (56, WeapAnimKind::U32, "Flags 2"),
+    (60, WeapAnimKind::F32, "Animation Attack Multiplier"),
+    (64, WeapAnimKind::F32, "Fire Rate"),
+    (68, WeapAnimKind::F32, "Override - Action Points"),
+    (72, WeapAnimKind::F32, "Rumble - Left Motor Strength"),
+    (76, WeapAnimKind::F32, "Rumble - Right Motor Strength"),
+    (80, WeapAnimKind::F32, "Rumble - Duration"),
+    (84, WeapAnimKind::F32, "Override - Damage To Weapon Mult"),
+    (88, WeapAnimKind::F32, "Attack Shots/Sec"),
+    (92, WeapAnimKind::F32, "Reload Time"),
+    (96, WeapAnimKind::F32, "Jam Time"),
+    (100, WeapAnimKind::F32, "Aim Arc"),
+    (104, WeapAnimKind::I32, "Skill"),
+    (108, WeapAnimKind::U32, "Rumble - Pattern"),
+    (112, WeapAnimKind::F32, "Rumble - Wavelength"),
+    (116, WeapAnimKind::F32, "Limb Damage Multiplier"),
+    (120, WeapAnimKind::I32, "Resistance Type"),
+    (124, WeapAnimKind::F32, "Sight Usage"),
+    (128, WeapAnimKind::F32, "Semi-Automatic Fire Delay Min"),
+    (132, WeapAnimKind::F32, "Semi-Automatic Fire Delay Max"),
+    (140, WeapAnimKind::U32, "Effect - Mod 1"),
+    (144, WeapAnimKind::U32, "Effect - Mod 2"),
+    (148, WeapAnimKind::U32, "Effect - Mod 3"),
+    (152, WeapAnimKind::F32, "Value A - Mod 1"),
+    (156, WeapAnimKind::F32, "Value A - Mod 2"),
+    (160, WeapAnimKind::F32, "Value A - Mod 3"),
+    (164, WeapAnimKind::U32, "Power Attack Animation Override"),
+    (168, WeapAnimKind::U32, "Strength Requirement"),
+    (172, WeapAnimKind::U8, "Reload Animation - Mod"),
+    (175, WeapAnimKind::F32, "Regen Rate"),
+    (179, WeapAnimKind::F32, "Kill Impulse"),
+    (183, WeapAnimKind::F32, "Value B - Mod 1"),
+    (187, WeapAnimKind::F32, "Value B - Mod 2"),
+    (191, WeapAnimKind::F32, "Value B - Mod 3"),
+    (195, WeapAnimKind::F32, "Impulse Dist"),
+    (199, WeapAnimKind::U32, "Skill Requirement"),
+];
+
 /// One ingredient or output on a `RCPE` (Recipe) record.
 ///
 /// The collection is a run of `RCIL` (the item) and `RCQY` (the quantity),
@@ -4695,6 +4836,27 @@ impl ObjectEditorState {
     }
 
     fn load_weap(&mut self) {
+        self.weap_anim.clear();
+        if let Some(b) = self.raw_subs.get(b"DNAM") {
+            self.weap_anim = read_weap_anim(b);
+        }
+        self.weap_vats_present = self.raw_subs.contains_key(b"VATS");
+        self.weap_vats_effect = None;
+        self.weap_vats_skill = 0.0;
+        self.weap_vats_damage_multiplier = 0.0;
+        self.weap_vats_ap = 0.0;
+        self.weap_vats_silent = 0;
+        self.weap_vats_mod_required = 0;
+        if let Some(b) = self.raw_subs.get(b"VATS").filter(|b| b.len() >= 16) {
+            self.weap_vats_effect = Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
+            self.weap_vats_skill = f32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+            self.weap_vats_damage_multiplier = f32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+            self.weap_vats_ap = f32::from_le_bytes([b[12], b[13], b[14], b[15]]);
+            if b.len() >= 18 {
+                self.weap_vats_silent = b[16];
+                self.weap_vats_mod_required = b[17];
+            }
+        }
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 15) {
             self.weap_val = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.weap_hp = i32::from_le_bytes([b[4], b[5], b[6], b[7]]);
@@ -8667,6 +8829,41 @@ impl ObjectEditorState {
 
     fn save_weap(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
+        // The animation data is written back over the record's own bytes,
+        // so its length and the bytes the spec does not name survive.
+        if let Some(original) = self.raw_subs.get(b"DNAM") {
+            let data = write_weap_anim(original, &self.weap_anim);
+            session.doc.set_sub(fid, b"DNAM", data);
+        }
+
+        // The VATS data is written back over the record's own bytes too.
+        if let Some(original) = self.raw_subs.get(b"VATS") {
+            let mut v = original.clone();
+            // The struct is twenty bytes in most of the game's records and
+            // sixteen in a few, so the two flag bytes are only written
+            // when the record's own bytes reach them.
+            if v.len() >= 4 {
+                if let Some(e) = self.weap_vats_effect {
+                    v[0..4].copy_from_slice(&e.to_le_bytes());
+                }
+            }
+            if v.len() >= 8 {
+                v[4..8].copy_from_slice(&self.weap_vats_skill.to_le_bytes());
+            }
+            if v.len() >= 12 {
+                v[8..12].copy_from_slice(&self.weap_vats_damage_multiplier.to_le_bytes());
+            }
+            if v.len() >= 16 {
+                v[12..16].copy_from_slice(&self.weap_vats_ap.to_le_bytes());
+            }
+            if v.len() >= 17 {
+                v[16] = self.weap_vats_silent;
+            }
+            if v.len() >= 18 {
+                v[17] = self.weap_vats_mod_required;
+            }
+            session.doc.set_sub(fid, b"VATS", v);
+        }
         let mut d = self
             .raw_subs
             .get(b"DATA")
@@ -14460,11 +14657,253 @@ const WEAP_ANIMATION_TYPES: &[(&str, u32)] = &[
     ("Thrown (1 Hand)", 13),
 ];
 
+/// Read a weapon's animation data out of a `DNAM` payload.
+fn read_weap_anim(b: &[u8]) -> Vec<WeapAnimField> {
+    let mut out = Vec::new();
+    for (offset, kind, name) in WEAP_ANIM_FIELDS {
+        let value = match kind {
+            WeapAnimKind::F32 => {
+                if b.len() >= offset + 4 {
+                    WeapAnimValue::F32(f32::from_le_bytes([
+                        b[*offset],
+                        b[*offset + 1],
+                        b[*offset + 2],
+                        b[*offset + 3],
+                    ]))
+                } else {
+                    WeapAnimValue::F32(0.0)
+                }
+            }
+            WeapAnimKind::U32 => {
+                if b.len() >= offset + 4 {
+                    WeapAnimValue::U32(u32::from_le_bytes([
+                        b[*offset],
+                        b[*offset + 1],
+                        b[*offset + 2],
+                        b[*offset + 3],
+                    ]))
+                } else {
+                    WeapAnimValue::U32(0)
+                }
+            }
+            WeapAnimKind::I32 => {
+                if b.len() >= offset + 4 {
+                    WeapAnimValue::I32(i32::from_le_bytes([
+                        b[*offset],
+                        b[*offset + 1],
+                        b[*offset + 2],
+                        b[*offset + 3],
+                    ]))
+                } else {
+                    WeapAnimValue::I32(0)
+                }
+            }
+            WeapAnimKind::U16 => {
+                if b.len() >= offset + 2 {
+                    WeapAnimValue::U16(u16::from_le_bytes([b[*offset], b[*offset + 1]]))
+                } else {
+                    WeapAnimValue::U16(0)
+                }
+            }
+            WeapAnimKind::I16 => {
+                if b.len() >= offset + 2 {
+                    WeapAnimValue::I16(i16::from_le_bytes([b[*offset], b[*offset + 1]]))
+                } else {
+                    WeapAnimValue::I16(0)
+                }
+            }
+            WeapAnimKind::U8 => {
+                if b.len() > *offset {
+                    WeapAnimValue::U8(b[*offset])
+                } else {
+                    WeapAnimValue::U8(0)
+                }
+            }
+            WeapAnimKind::I8 => {
+                if b.len() > *offset {
+                    WeapAnimValue::I8(b[*offset] as i8)
+                } else {
+                    WeapAnimValue::I8(0)
+                }
+            }
+            WeapAnimKind::Fid => {
+                if b.len() >= offset + 4 {
+                    WeapAnimValue::Fid(u32::from_le_bytes([
+                        b[*offset],
+                        b[*offset + 1],
+                        b[*offset + 2],
+                        b[*offset + 3],
+                    ]))
+                } else {
+                    WeapAnimValue::Fid(0)
+                }
+            }
+        };
+        out.push(WeapAnimField {
+            offset: *offset,
+            name,
+            kind: *kind,
+            value,
+        });
+    }
+    out
+}
+
+/// Write a weapon's animation data back over the record's own bytes.
+fn write_weap_anim(original: &[u8], fields: &[WeapAnimField]) -> Vec<u8> {
+    let mut b = original.to_vec();
+    for field in fields {
+        let at = field.offset;
+        match (&field.value, field.kind) {
+            (WeapAnimValue::F32(v), _) => {
+                if b.len() >= at + 4 {
+                    b[at..at + 4].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+            (WeapAnimValue::U32(v), _) => {
+                if b.len() >= at + 4 {
+                    b[at..at + 4].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+            (WeapAnimValue::I32(v), _) => {
+                if b.len() >= at + 4 {
+                    b[at..at + 4].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+            (WeapAnimValue::U16(v), _) => {
+                if b.len() >= at + 2 {
+                    b[at..at + 2].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+            (WeapAnimValue::I16(v), _) => {
+                if b.len() >= at + 2 {
+                    b[at..at + 2].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+            (WeapAnimValue::U8(v), _) => {
+                if b.len() > at {
+                    b[at] = *v;
+                }
+            }
+            (WeapAnimValue::I8(v), _) => {
+                if b.len() > at {
+                    b[at] = *v as u8;
+                }
+            }
+            (WeapAnimValue::Fid(v), _) => {
+                if b.len() >= at + 4 {
+                    b[at..at + 4].copy_from_slice(&v.to_le_bytes());
+                }
+            }
+        }
+    }
+    b
+}
+
 fn draw_weap_ui(
     ui: &mut egui::Ui,
     session: &crate::session::Session,
     state: &mut ObjectEditorState,
 ) {
+    // The VATS data.
+    if state.weap_vats_present {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("VATS");
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Effect:");
+                let spells = session.spells_and_enchantments();
+                let mut fid = state.weap_vats_effect;
+                record_dropdown(ui, "weap_vats_effect", &spells, &mut fid);
+                state.weap_vats_effect = fid;
+            });
+            ui.horizontal(|ui| {
+                ui.label("Skill:");
+                ui.add(egui::DragValue::new(&mut state.weap_vats_skill).speed(0.01));
+                ui.label("Damage Multiplier:");
+                ui.add(egui::DragValue::new(&mut state.weap_vats_damage_multiplier).speed(0.01));
+                ui.label("AP:");
+                ui.add(egui::DragValue::new(&mut state.weap_vats_ap).speed(0.01));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Silent:");
+                egui::ComboBox::from_id_salt("weap_vats_silent")
+                    .selected_text(if state.weap_vats_silent == 0 {
+                        "No"
+                    } else {
+                        "Yes"
+                    })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut state.weap_vats_silent, 0, "No");
+                        ui.selectable_value(&mut state.weap_vats_silent, 1, "Yes");
+                    });
+                ui.label("Mod Required:");
+                egui::ComboBox::from_id_salt("weap_vats_mod_required")
+                    .selected_text(if state.weap_vats_mod_required == 0 {
+                        "No"
+                    } else {
+                        "Yes"
+                    })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut state.weap_vats_mod_required, 0, "No");
+                        ui.selectable_value(&mut state.weap_vats_mod_required, 1, "Yes");
+                    });
+            });
+        });
+    }
+
+    // The animation data. Every field the spec names for the `DNAM`
+    // struct.
+    if !state.weap_anim.is_empty() {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Animation Data (DNAM)");
+            ui.add_space(4.0);
+            egui::Grid::new("weap_anim_grid")
+                .striped(true)
+                .min_col_width(220.0)
+                .show(ui, |ui| {
+                    for field in state.weap_anim.iter_mut() {
+                        ui.label(format!("{}:", field.name));
+                        match &mut field.value {
+                            WeapAnimValue::F32(v) => {
+                                ui.add(egui::DragValue::new(v).speed(0.01));
+                            }
+                            WeapAnimValue::U32(v) => {
+                                ui.add(egui::DragValue::new(v).range(0..=u32::MAX));
+                            }
+                            WeapAnimValue::I32(v) => {
+                                ui.add(egui::DragValue::new(v).range(-2147483648..=2147483647));
+                            }
+                            WeapAnimValue::U16(v) => {
+                                ui.add(egui::DragValue::new(v).range(0..=u16::MAX));
+                            }
+                            WeapAnimValue::I16(v) => {
+                                ui.add(egui::DragValue::new(v).range(-32768..=32767));
+                            }
+                            WeapAnimValue::U8(v) => {
+                                ui.add(egui::DragValue::new(v).range(0..=u8::MAX));
+                            }
+                            WeapAnimValue::I8(v) => {
+                                ui.add(egui::DragValue::new(v).range(-128..=127));
+                            }
+                            WeapAnimValue::Fid(v) => {
+                                let mut option = Some(*v);
+                                formid_field(
+                                    ui,
+                                    &format!("weap_anim_{}", field.offset),
+                                    &mut option,
+                                );
+                                *v = option.unwrap_or(0);
+                            }
+                        }
+                        ui.end_row();
+                    }
+                });
+        });
+    }
+
     ui.group(|ui| {
         ui.strong("Combat & Damage Parameters");
         ui.add_space(4.0);

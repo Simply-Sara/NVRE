@@ -115,12 +115,12 @@ def const_span(src, name):
     if not m:
         return ""
     start = m.start()
-    # A const ends at the line that closes it.
-    end = src.find("];", start)
+    # A table ends at the line that closes it.
+    end = src.find("\n];", start)
     if end == -1:
         end = src.find("\n}\n", start)
     if end == -1:
-        return src[start:start + 4000]
+        return src[start:start + 8000]
     return src[start:end]
 
 
@@ -177,19 +177,27 @@ def type_code(src, sig):
 
     # The shared helpers and the named tables the type's own code calls.
     # A table of field names is a helper too: a type that lists its
-    # fields in a constant is covering them.
-    called = set(re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\b", own))
-    for helper in called:
-        # Only the editor's own helpers and tables, not the standard
-        # library.
-        if not re.search(
-            rf"^(fn|pub fn|const|pub const|static|pub static) {re.escape(helper)}\b",
-            src,
-            re.M,
-        ):
-            continue
-        parts.append(const_span(src, helper))
-        parts.append(function_span(src, helper))
+    # fields in a constant is covering them. A helper's own helpers count
+    # as well, because a type's read and write helpers usually hold the
+    # table.
+    # The editor's own top-level names, so a helper can be found without
+    # searching the file again for each one.
+    OWN_NAMES = re.findall(
+        r"^(?:pub )?(?:fn|const|static) ([A-Za-z_][A-Za-z0-9_]*)", src, re.M
+    )
+    for depth in range(2):
+        called = set(re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\b", own))
+        added = False
+        for helper in called & set(OWN_NAMES):
+            const = const_span(src, helper)
+            func = function_span(src, helper)
+            if const or func:
+                parts.append(const)
+                parts.append(func)
+                added = True
+        own = "\n".join(parts)
+        if not added:
+            break
 
     # The state fields the type owns: the flat state prefixes its fields,
     # but the prefix varies, so take every state field whose name starts
