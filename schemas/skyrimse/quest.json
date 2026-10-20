@@ -1,0 +1,576 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "QUST": {
+   "confidence": "documented",
+   "name": "Quest",
+   "note": "UESP, Skyrim Mod:Mod File Format/QUST. A quest nests four kinds of list inside one record: the quest stages (each INDX with one or more log entries), the quest objectives (each QOBJ with one or more quest targets), and the aliases (each ALST or ALLS with a list of fields). The same signature means different things in different lists \u2014 FNAM is an objective's flag in the objective list and an alias's flags in the alias list \u2014 so the record is a sequence of blocks. [measured: 1,811 QUST records in Skyrim.esm, with 12,891 aliases, 11,999 alias endings, 14,343 objective flags and 11,427 conditions]",
+   "sequence": {
+    "blocks": {
+     "alias": {
+      "opener": "ALST",
+      "order": [
+       "ALST",
+       "ALLS",
+       "ALID",
+       "FNAM",
+       "ALFI",
+       "ALCO",
+       "ALCA",
+       "ALCL",
+       "ALEQ",
+       "ALEA",
+       "ALFA",
+       "KNAM",
+       "ALRT",
+       "ALFE",
+       "ALFD",
+       "ALFL",
+       "ALFR",
+       "ALNA",
+       "ALNT",
+       "ALUA",
+       "CTDA",
+       "KSIZ",
+       "KWDA",
+       "COCT",
+       "CNTO",
+       "SPOR",
+       "OCOR",
+       "GWOR",
+       "ECOR",
+       "ALDN",
+       "ALSP",
+       "ALFC",
+       "ALPC",
+       "VTCK",
+       "ALED"
+      ],
+      "subrecords": {
+       "ALCA": {
+        "confidence": "documented",
+        "name": "Create At",
+        "note": "The high bit says whether to create at or in; the rest is the AliasID to create the object at or in.",
+        "type": "u32"
+       },
+       "ALCL": {
+        "confidence": "documented",
+        "name": "Create Level",
+        "note": "0 = Easy, 1 = Medium, 2 = Hard, 3 = Very Hard, 4 = None.",
+        "type": "u32"
+       },
+       "ALCO": {
+        "confidence": "documented",
+        "name": "Alias Created Object",
+        "note": "A base record to create an instance of and assign to this alias.",
+        "type": "formid"
+       },
+       "ALDN": {
+        "confidence": "documented",
+        "name": "Display Name",
+        "note": "A MESG record whose value becomes the alias target's displayed name.",
+        "type": "formid"
+       },
+       "ALEA": {
+        "confidence": "documented",
+        "name": "External Alias",
+        "note": "The AliasID to use in the external quest.",
+        "type": "u32"
+       },
+       "ALED": {
+        "confidence": "documented",
+        "name": "End Of Alias",
+        "note": "Zero-length; marks the end of the alias.",
+        "type": "bytes"
+       },
+       "ALEQ": {
+        "confidence": "documented",
+        "name": "External Alias Reference",
+        "note": "The quest the alias should be copied from. ALEA gives the AliasID in that quest.",
+        "type": "formid"
+       },
+       "ALFA": {
+        "confidence": "documented",
+        "name": "Alias Reference",
+        "note": "The AliasID of a reference or location alias within this quest, depending on the alias's own type.",
+        "type": "u32"
+       },
+       "ALFC": {
+        "confidence": "documented",
+        "name": "Alias Factions",
+        "note": "A FACT record, added to the alias target for the duration of the quest.",
+        "type": "formid"
+       },
+       "ALFD": {
+        "confidence": "documented",
+        "name": "Event Data",
+        "note": "The Event Data dropdown's value, a four-character code. Its meaning varies with the event type.",
+        "type": "string"
+       },
+       "ALFE": {
+        "confidence": "documented",
+        "name": "From Event",
+        "note": "The type of event, a four-character code matching an SMEN short name, for example \"Script\". It is not NUL-terminated. ALFD gives the event's extra data.",
+        "type": "string"
+       },
+       "ALFI": {
+        "confidence": "documented",
+        "name": "Forced Into Alias",
+        "note": "The AliasID of another alias to copy this one into.",
+        "type": "u32"
+       },
+       "ALFL": {
+        "confidence": "documented",
+        "name": "Alias Forced Location",
+        "note": "A fixed LCTN to assign to this alias. It also becomes the quest's default location.",
+        "type": "formid"
+       },
+       "ALFR": {
+        "confidence": "documented",
+        "name": "Alias Forced Reference",
+        "note": "The ACHR or REFR to assign to this alias.",
+        "type": "formid"
+       },
+       "ALID": {
+        "confidence": "documented",
+        "name": "Alias Name",
+        "note": "The alias's name, for example Location or QuestGiver. It appears in the strings that are updated from the quest's details.",
+        "type": "zstring"
+       },
+       "ALLS": {
+        "confidence": "documented",
+        "name": "Alias ID (Location)",
+        "note": "The alias's numerical value, for a location alias.",
+        "type": "u32"
+       },
+       "ALNA": {
+        "confidence": "documented",
+        "name": "Near Alias",
+        "note": "The AliasID this one must be near.",
+        "type": "u32"
+       },
+       "ALNT": {
+        "confidence": "documented",
+        "name": "Near Type",
+        "note": "Always 0: Linked Ref Child.",
+        "type": "u32"
+       },
+       "ALPC": {
+        "confidence": "documented",
+        "name": "Alias Package Data",
+        "note": "A PACK record, added to the alias target for the duration of the quest.",
+        "type": "formid"
+       },
+       "ALRT": {
+        "confidence": "documented",
+        "name": "Alias Reference Type",
+        "note": "The LCRT used to find the object to assign to this alias.",
+        "type": "formid"
+       },
+       "ALSP": {
+        "confidence": "documented",
+        "name": "Alias Spells",
+        "note": "A SPEL record, added to the alias target for the duration of the quest.",
+        "type": "formid"
+       },
+       "ALST": {
+        "confidence": "documented",
+        "name": "Alias ID",
+        "note": "The alias's numerical value, the parameter for functions such as LocAliasHasKeyword. ALST is a reference alias and ALLS is a location alias.",
+        "type": "u32"
+       },
+       "ALUA": {
+        "confidence": "documented",
+        "name": "Alias Unique Actor",
+        "note": "The NPC_ whose existing instance is used, rather than a new one being created.",
+        "type": "formid"
+       },
+       "CNTO": {
+        "confidence": "documented",
+        "name": "Items",
+        "note": "An item added to the alias target's inventory for the duration of the quest.",
+        "type": "QUST_CNTO"
+       },
+       "COCT": {
+        "confidence": "documented",
+        "name": "Item Count",
+        "note": "How many CNTO records follow. It may be absent even when there are CNTO records.",
+        "type": "u32"
+       },
+       "CTDA": {
+        "confidence": "documented",
+        "name": "Match Conditions",
+        "note": "The conditions used to find a matching reference or location.",
+        "type": "Condition"
+       },
+       "ECOR": {
+        "confidence": "documented",
+        "name": "Combat Override",
+        "note": "The combat override package list (FLST).",
+        "type": "formid"
+       },
+       "FNAM": {
+        "confidence": "documented",
+        "name": "Flags",
+        "note": "The alias's flags. 0x01 Reserves, 0x02 Optional, 0x04 Quest Object, 0x08 Allow Reuse In Quest, 0x10 Allow Dead, 0x20 In Loaded Area, 0x40 Essential, 0x80 Allow Disabled, 0x100 Stores Text, 0x200 Allow Reserved, 0x400 Protected, 0x800 No Fill Type, 0x1000 Allow Destroyed, 0x2000 Closest, 0x4000 Uses Stored Text, 0x8000 Initially Disabled, 0x10000 Allow Cleared, 0x20000 Clears Name When Removed. This FNAM is the alias's flags, not the objective's.",
+        "type": {
+         "bits": {
+          "0": "Reserves",
+          "1": "Optional",
+          "10": "Protected",
+          "11": "No Fill Type",
+          "12": "Allow Destroyed",
+          "13": "Closest",
+          "14": "Uses Stored Text",
+          "15": "Initially Disabled",
+          "16": "Allow Cleared",
+          "17": "Clears Name When Removed",
+          "2": "Quest Object",
+          "3": "Allow Reuse In Quest",
+          "4": "Allow Dead",
+          "5": "In Loaded Area",
+          "6": "Essential",
+          "7": "Allow Disabled",
+          "8": "Stores Text",
+          "9": "Allow Reserved"
+         },
+         "flags": "u32"
+        }
+       },
+       "GWOR": {
+        "confidence": "documented",
+        "name": "Guard Warn Override",
+        "note": "The guard warn override package list (FLST). Never used in the main game files.",
+        "type": "formid"
+       },
+       "KNAM": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "A single KYWD record.",
+        "type": "formid"
+       },
+       "KSIZ": {
+        "confidence": "documented",
+        "name": "Keyword Count",
+        "note": "How many KWDA entries follow.",
+        "type": "u32"
+       },
+       "KWDA": {
+        "confidence": "documented",
+        "name": "Alias Keyword",
+        "note": "A KYWD record, added to the alias for the duration of the quest. There is one per KSIZ.",
+        "type": "formid"
+       },
+       "OCOR": {
+        "confidence": "documented",
+        "name": "Observe Dead Body Override",
+        "note": "The observe dead body override package list (FLST). Never used in the main game files.",
+        "type": "formid"
+       },
+       "SPOR": {
+        "confidence": "documented",
+        "name": "Spectator Override",
+        "note": "The spectator override package list (FLST).",
+        "type": "formid"
+       },
+       "VTCK": {
+        "confidence": "documented",
+        "name": "Voice Type",
+        "note": "Additional valid voice types for export. When non-zero, points to NPC_ or FLST records.",
+        "type": "formid"
+       }
+      }
+     },
+     "objective": {
+      "opener": "QOBJ",
+      "order": [
+       "QOBJ",
+       "FNAM",
+       "NNAM",
+       "QSTA",
+       "CTDA"
+      ],
+      "subrecords": {
+       "CTDA": {
+        "confidence": "documented",
+        "name": "Conditions",
+        "note": "The conditions that apply to this target.",
+        "type": "Condition"
+       },
+       "FNAM": {
+        "confidence": "documented",
+        "name": "Flags",
+        "note": "0x01 = ORed With Previous. This FNAM is the objective's flag, not the alias's.",
+        "type": "i32"
+       },
+       "NNAM": {
+        "confidence": "documented",
+        "name": "Node Name",
+        "note": "The text of the individual quest objective.",
+        "type": "zstring"
+       },
+       "QOBJ": {
+        "confidence": "documented",
+        "name": "Index",
+        "note": "The quest objective's index. By convention it matches a quest stage's index, but that is a convention and not enforced; what actually controls when an objective appears is the script attached to the stage.",
+        "type": "i16"
+       },
+       "QSTA": {
+        "confidence": "documented",
+        "name": "Quest Target",
+        "note": "The objective's target: the alias it points at and whether its compass marker ignores locks.",
+        "type": "QUST_QSTA"
+       }
+      }
+     },
+     "stage": {
+      "opener": "INDX",
+      "order": [
+       "INDX",
+       "QSDT",
+       "CTDA",
+       "CNAM",
+       "NAM0",
+       "SCHR"
+      ],
+      "subrecords": {
+       "CNAM": {
+        "confidence": "documented",
+        "name": "Journal Entry",
+        "note": "The index in the string file for the journal entry's text.",
+        "type": "u32"
+       },
+       "CTDA": {
+        "confidence": "documented",
+        "name": "Conditions",
+        "note": "The conditions that apply to this log entry.",
+        "type": "Condition"
+       },
+       "INDX": {
+        "confidence": "documented",
+        "name": "Journal Index",
+        "note": "The quest stage: its journal index and flags. More than one log entry may follow, one for each possible journal text.",
+        "type": "QUST_INDX"
+       },
+       "NAM0": {
+        "confidence": "documented",
+        "name": "Unknown",
+        "note": "The next quest.",
+        "type": "formid"
+       },
+       "QSDT": {
+        "confidence": "documented",
+        "name": "Flags",
+        "note": "Each QSDT marks the start of a log entry. 0x01 = Complete Quest, 0x02 = Fail Quest.",
+        "type": "u8"
+       },
+       "SCHR": {
+        "confidence": "documented",
+        "name": "Old Script",
+        "note": "The old scripting field.",
+        "type": "bytes"
+       }
+      }
+     }
+    },
+    "end": [
+     "ANAM"
+    ],
+    "start": [
+     "EDID",
+     "VMAD",
+     "FULL",
+     "DNAM",
+     "ENAM",
+     "QTGL",
+     "FLTR",
+     "CTDA",
+     "NEXT",
+     "CTDA"
+    ]
+   },
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Next Alias ID",
+     "note": "The next available alias id, an incremental counter the CK uses when it creates a new alias in the ALST and ALLS fields.",
+     "type": "i32"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Conditions",
+     "note": "The conditions that apply to the quest as a whole, and \u2014 after the NEXT marker \u2014 the quest event conditions.",
+     "type": "Condition"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Quest Data",
+     "note": "The quest's flags, priority and type.",
+     "type": "QUST_DNAM"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ENAM": {
+     "confidence": "documented",
+     "name": "Event",
+     "note": "A four-character event code matching an SMEN short name. It is not NUL-terminated, so it is read as the whole of the field.",
+     "type": "string"
+    },
+    "FLTR": {
+     "confidence": "documented",
+     "name": "Object Window Filter",
+     "note": "A path such as \"Main Quest\\\" or \"Faction\\ThievesGuild\\\".",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Quest Name",
+     "note": "The full name as shown in the journal.",
+     "type": "u32"
+    },
+    "NEXT": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length; it separates the quest's dialogue conditions from its event conditions when only one set is present.",
+     "type": "bytes"
+    },
+    "QTGL": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Text display globals.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The only VMAD in the record, and it holds the information about every script attached to the quest, including the stage fragments and the aliases' scripts.",
+     "type": "bytes"
+    }
+   }
+  }
+ },
+ "types": {
+  "QUST_CNTO": {
+   "struct": [
+    {
+     "name": "item_id",
+     "note": "The item.",
+     "type": "formid"
+    },
+    {
+     "name": "item_count",
+     "note": "How many.",
+     "type": "u32"
+    }
+   ]
+  },
+  "QUST_DNAM": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "0x02 is unused and 0x10 is used but not shown in the CK.",
+     "type": {
+      "bits": {
+       "0": "Start Game Enabled",
+       "2": "Wilderness Encounter",
+       "3": "Allow Repeated Stages"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "flags2",
+     "note": "0x08 is unused and 0x10 is used but not shown in the CK.",
+     "type": {
+      "bits": {
+       "0": "Run Once",
+       "1": "Exclude From Dialogue Export",
+       "2": "Warn On Alias Fill Failure"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "priority",
+     "note": "A value from 0 to 100.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown",
+     "note": "Possibly filler. The observed values are 0, 25, 101, 108, 111 and 204; only 0 and 204 occur more than once.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown2",
+     "note": "Always zero.",
+     "type": "i32"
+    },
+    {
+     "name": "quest_type",
+     "note": "The quest's type. Miscellaneous is the one whose name is hidden in the quest log and whose objectives alone are shown.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Main Quest",
+       "10": "DLC01 - Vampire",
+       "11": "DLC02 - Dragonborn",
+       "2": "Mages' Guild",
+       "3": "Thieves' Guild",
+       "4": "Dark Brotherhood",
+       "5": "Companion Quests",
+       "6": "Miscellaneous",
+       "7": "Daedric Quests",
+       "8": "Side Quests",
+       "9": "Civil War"
+      }
+     }
+    }
+   ]
+  },
+  "QUST_INDX": {
+   "struct": [
+    {
+     "name": "index",
+     "note": "The journal index of the quest stage. Stage numbers are not guaranteed to be unique within a quest.",
+     "type": "i16"
+    },
+    {
+     "name": "flags",
+     "note": "The stage's flag options.",
+     "type": {
+      "bits": {
+       "1": "Start Up Stage",
+       "2": "Shut Down Stage",
+       "3": "Keep Instance Data From Here On"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "Possibly filler. Nothing in the CK corresponds to it; the values range from -110 to 127 and do not look like flags.",
+     "type": "i8"
+    }
+   ]
+  },
+  "QUST_QSTA": {
+   "struct": [
+    {
+     "name": "target_alias",
+     "note": "The alias this quest objective targets, as an AliasID.",
+     "type": "i32"
+    },
+    {
+     "name": "flags",
+     "note": "0 = the compass marker does not ignore locks, 1 = it does.",
+     "type": "i32"
+    }
+   ]
+  }
+ }
+}
