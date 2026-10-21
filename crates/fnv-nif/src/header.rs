@@ -4,7 +4,7 @@
 //! both with a Bethesda stream header. Every byte read is kept so that `write` can
 //! reproduce the original header exactly.
 
-use fnv_util::{cp1252, Cursor, OutOfBounds};
+use nvre_util::{cp1252, Cursor, OutOfBounds};
 
 /// Packed file version, e.g. `0x14020007` for 20.2.0.7.
 pub type Version = u32;

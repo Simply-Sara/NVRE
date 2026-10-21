@@ -712,7 +712,7 @@ pub const REFR_PERSISTENT: u32 = 0x400;
 
 /// A NUL-terminated Windows-1252 Editor ID.
 pub fn encode_zstring(s: &str) -> Vec<u8> {
-    let mut v = fnv_util::cp1252::encode(s).unwrap_or_else(|| s.bytes().collect());
+    let mut v = nvre_util::cp1252::encode(s).unwrap_or_else(|| s.bytes().collect());
     v.push(0);
     v
 }
@@ -723,7 +723,7 @@ pub fn edid_of(r: &Record) -> Option<String> {
         .ok()?
         .iter()
         .find(|s| &s.sig == b"EDID")
-        .map(|s| fnv_util::cp1252::decode_z(&s.data))
+        .map(|s| nvre_util::cp1252::decode_z(&s.data))
 }
 
 /// Look up a record by FormID in a parsed plugin.

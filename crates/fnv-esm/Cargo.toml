@@ -14,7 +14,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 # By git, not path: a path dep here would resolve `fnv-esm`'s own dependencies
 # (and `fnv-util`) to copies distinct from the ones the rest of the graph uses.
-fnv-util = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+nvre-util = { path = "../nvre-util" }
 fnv-inflate = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 serde_json = "1"
 serde = "1"

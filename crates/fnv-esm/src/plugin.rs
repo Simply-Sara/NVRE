@@ -2,7 +2,7 @@
 
 use crate::raw::{self, EsmError, Node, Record};
 use bytes::Bytes;
-use fnv_util::{cp1252, Cursor};
+use nvre_util::{cp1252, Cursor};
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq)]

@@ -216,7 +216,7 @@ fn a_class_with_no_edits_saves_back_byte_identical() {
             (b.sig, &b.data),
             (a.sig, &a.data),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(&a.sig)
+            nvre_util::tag_str(&a.sig)
         );
     }
     // And the two the editor owns are the sizes the spec says they are.

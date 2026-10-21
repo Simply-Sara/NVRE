@@ -71,7 +71,7 @@ fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
     subs.iter()
         .find(|s| &s.sig == sig)
         .map(|s| s.data.clone())
-        .unwrap_or_else(|| panic!("a {} subrecord", fnv_util::tag_str(sig)))
+        .unwrap_or_else(|| panic!("a {} subrecord", nvre_util::tag_str(sig)))
 }
 
 /// Every payload with this signature, in file order.
@@ -85,7 +85,7 @@ fn payloads(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
 /// The signature sequence of a record, in file order.
 fn sig_order(subs: &[fnv_esm::Subrecord]) -> Vec<String> {
     subs.iter()
-        .map(|s| fnv_util::tag_str(&s.sig).to_string())
+        .map(|s| nvre_util::tag_str(&s.sig).to_string())
         .collect()
 }
 
@@ -212,7 +212,7 @@ fn the_media_set_lists_survive_a_save() {
             payloads(&after, &sig),
             payloads(&before, &sig),
             "{}: the list comes back whole and in order",
-            fnv_util::tag_str(&sig)
+            nvre_util::tag_str(&sig)
         );
     }
 }
@@ -236,7 +236,7 @@ fn a_media_location_with_no_edits_saves_back_byte_identical() {
             (b.sig, &b.data),
             (a.sig, &a.data),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(&a.sig)
+            nvre_util::tag_str(&a.sig)
         );
     }
     assert_eq!(
@@ -422,7 +422,7 @@ fn every_media_location_in_the_master_saves_back_byte_identical() {
                 (asig, ad),
                 (bs, bd),
                 "{fid:08X}: subrecord {i} ({}) is byte-identical",
-                fnv_util::tag_str(bs)
+                nvre_util::tag_str(bs)
             );
         }
     }

@@ -137,7 +137,7 @@ fn the_model_and_texture_lists_survive_a_save() {
             payload(&after, &sig),
             payload(&before, &sig),
             "{}: the numbered model comes back",
-            fnv_util::tag_str(&sig)
+            nvre_util::tag_str(&sig)
         );
     }
 }
@@ -161,7 +161,7 @@ fn a_casino_with_no_edits_saves_back_byte_identical() {
             (b.sig, &b.data),
             (a.sig, &a.data),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(&a.sig)
+            nvre_util::tag_str(&a.sig)
         );
     }
     assert_eq!(

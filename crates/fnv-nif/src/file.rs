@@ -4,7 +4,7 @@ use crate::codec::{Codec, CodecError, FileCtx};
 use crate::header::{Footer, Header, NifError};
 use crate::schema::Schema;
 use crate::value::Struct;
-use fnv_util::Cursor;
+use nvre_util::Cursor;
 use std::ops::Range;
 
 #[derive(Debug, Clone)]

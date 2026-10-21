@@ -65,7 +65,7 @@ pub fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
     subs.iter()
         .find(|s| &s.sig == sig)
         .map(|s| s.data.clone())
-        .unwrap_or_else(|| panic!("a {} subrecord", fnv_util::tag_str(sig)))
+        .unwrap_or_else(|| panic!("a {} subrecord", nvre_util::tag_str(sig)))
 }
 
 /// Every payload with this signature, in file order.
@@ -79,7 +79,7 @@ pub fn payloads(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
 /// The signature sequence of a record, in file order.
 pub fn sig_order(subs: &[fnv_esm::Subrecord]) -> Vec<String> {
     subs.iter()
-        .map(|s| fnv_util::tag_str(&s.sig).to_string())
+        .map(|s| nvre_util::tag_str(&s.sig).to_string())
         .collect()
 }
 
@@ -199,7 +199,7 @@ pub fn assert_all_save_back_byte_identical(
         fids.len(),
         expected_count,
         "the master has {expected_count} {} records",
-        fnv_util::tag_str(sig)
+        nvre_util::tag_str(sig)
     );
 
     let mut before = std::collections::BTreeMap::new();
@@ -219,7 +219,7 @@ pub fn assert_all_save_back_byte_identical(
         state.save_to_session(s);
     }
 
-    let path = std::env::temp_dir().join(format!("nvre_all_{}.esp", fnv_util::tag_str(sig)));
+    let path = std::env::temp_dir().join(format!("nvre_all_{}.esp", nvre_util::tag_str(sig)));
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
     let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
@@ -254,7 +254,7 @@ pub fn assert_all_save_back_byte_identical(
                 (asig, ad),
                 (bs, bd),
                 "{fid:08X}: subrecord {i} ({}) is byte-identical",
-                fnv_util::tag_str(bs)
+                nvre_util::tag_str(bs)
             );
         }
     }

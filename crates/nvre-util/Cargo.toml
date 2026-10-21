@@ -1,0 +1,15 @@
+[package]
+name = "nvre-util"
+description = "NVRE's shared helpers: Windows-1252 text, SHA-256, a bounds-checked byte cursor"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+encoding_rs = "0.8"
+hex = "0.4"
+sha2 = "0.10"
+thiserror = "2"
+
+[dev-dependencies]
+proptest = "1"

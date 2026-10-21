@@ -5,7 +5,7 @@
 //! `docs/spec-notes/esm.md` for the format description and confidence tags.
 
 use bytes::Bytes;
-use fnv_util::{tag_str, Cursor};
+use nvre_util::{tag_str, Cursor};
 use std::borrow::Cow;
 
 pub const RECORD_HEADER_SIZE: usize = 24;

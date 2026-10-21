@@ -59,7 +59,7 @@ fn main() {
                 .join(" ");
             println!(
                 "  {:4} len={:<5} {}",
-                fnv_util::tag_str(&s.sig),
+                nvre_util::tag_str(&s.sig),
                 s.data.len(),
                 hex
             );

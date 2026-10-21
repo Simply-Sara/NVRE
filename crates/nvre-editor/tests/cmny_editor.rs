@@ -102,7 +102,7 @@ fn a_money_record_with_no_edits_saves_back_byte_identical() {
             (b.sig, &b.data),
             (a.sig, &a.data),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(&a.sig)
+            nvre_util::tag_str(&a.sig)
         );
     }
     assert_eq!(
@@ -153,7 +153,7 @@ fn edited_fields_in_every_subrecord_survive_the_save() {
             String::from_utf8_lossy(&got).trim_end_matches('\0'),
             want,
             "{}: the edited value",
-            fnv_util::tag_str(sig)
+            nvre_util::tag_str(sig)
         );
     }
 }

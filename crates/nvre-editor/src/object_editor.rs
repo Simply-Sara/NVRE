@@ -4627,7 +4627,7 @@ impl ObjectEditorState {
         self.form_id = form_id;
         self.sig = sig;
         self.tab = EditorTab::Main;
-        self.status = format!("Loaded {} {:08X}", fnv_util::tag_str(&sig), form_id);
+        self.status = format!("Loaded {} {:08X}", nvre_util::tag_str(&sig), form_id);
 
         let (raw_subs, flags, found) = if let Some(rec) = session.doc.record(form_id) {
             (rec.subrecords().unwrap_or_default(), rec.header.flags, true)
@@ -9484,7 +9484,7 @@ impl ObjectEditorState {
 
         session.status = format!(
             "queued edits on {} {:08X}",
-            fnv_util::tag_str(&self.sig),
+            nvre_util::tag_str(&self.sig),
             fid
         );
     }
@@ -14598,7 +14598,7 @@ fn encode_zstring(s: &str) -> Vec<u8> {
 
 /// Generate a clean, human-readable window title for any record.
 pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
-    let fallback = fnv_util::tag_str(sig);
+    let fallback = nvre_util::tag_str(sig);
     let type_name = match sig {
         b"CREA" => "Creature",
         b"NPC_" => "NPC",
@@ -15407,7 +15407,7 @@ pub fn ui(
         // Top Header
         ui.group(|ui| {
             ui.horizontal(|ui| {
-                ui.strong(format!("Type: {}", fnv_util::tag_str(&state.sig)));
+                ui.strong(format!("Type: {}", nvre_util::tag_str(&state.sig)));
                 ui.separator();
                 ui.label(format!("FormID: {:08X}", state.form_id));
                 ui.separator();
@@ -25576,7 +25576,7 @@ fn draw_aloc_ui(
             ui.strong(format!(
                 "{} Media Set ({}) — {}",
                 list.label,
-                fnv_util::tag_str(&list.sig),
+                nvre_util::tag_str(&list.sig),
                 list.entries.len()
             ));
             ui.add_space(4.0);

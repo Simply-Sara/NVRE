@@ -25,7 +25,7 @@ fn show(tag: &str, sig: &[u8; 4], data: &[u8]) {
     };
     println!(
         "  {tag} {:4} len={:<5} {hex}{extra}",
-        fnv_util::tag_str(sig),
+        nvre_util::tag_str(sig),
         data.len()
     );
 }
@@ -111,7 +111,7 @@ fn main() {
                             .unwrap_or(0);
                     println!(
                         "     first difference at byte {first} of {}",
-                        fnv_util::tag_str(&b.0)
+                        nvre_util::tag_str(&b.0)
                     );
                 }
             }

@@ -66,7 +66,7 @@ fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
     subs.iter()
         .find(|s| &s.sig == sig)
         .map(|s| s.data.clone())
-        .unwrap_or_else(|| panic!("a {} subrecord", fnv_util::tag_str(sig)))
+        .unwrap_or_else(|| panic!("a {} subrecord", nvre_util::tag_str(sig)))
 }
 
 /// Every payload with a signature, in file order.
@@ -80,7 +80,7 @@ fn all_payloads(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
 /// The signature sequence of a record, in file order.
 fn sig_order(subs: &[fnv_esm::Subrecord]) -> Vec<String> {
     subs.iter()
-        .map(|s| fnv_util::tag_str(&s.sig).to_string())
+        .map(|s| nvre_util::tag_str(&s.sig).to_string())
         .collect()
 }
 
@@ -273,7 +273,7 @@ fn a_faction_with_no_edits_saves_back_byte_identical() {
             (b.sig, &b.data),
             (a.sig, &a.data),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(&a.sig)
+            nvre_util::tag_str(&a.sig)
         );
     }
     // And the relations and the ranks keep their order.
@@ -580,7 +580,7 @@ fn a_faction_with_no_relations_and_no_ranks_saves_back_byte_identical() {
             (b.sig, &b.data),
             (a.sig, &a.data),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(&a.sig)
+            nvre_util::tag_str(&a.sig)
         );
     }
 }

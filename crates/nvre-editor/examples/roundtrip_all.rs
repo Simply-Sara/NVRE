@@ -220,7 +220,7 @@ fn main() {
                     if bad == 0 {
                         first_problem = format!(
                             "{fid:08X}: subrecord {i} ({}) changes",
-                            fnv_util::tag_str(bs)
+                            nvre_util::tag_str(bs)
                         );
                     }
                     bad += 1;

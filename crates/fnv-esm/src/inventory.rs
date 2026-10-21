@@ -5,7 +5,7 @@
 use crate::decode::formid_str;
 use crate::plugin::Plugin;
 use crate::raw::{group_type, visit_groups, visit_records, Record};
-use fnv_util::cp1252;
+use nvre_util::cp1252;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
@@ -135,7 +135,7 @@ pub fn stats_json(p: &Plugin) -> Value {
             None => by_group.push((key, 1)),
         }
         if depth == 0 {
-            top_labels.push(fnv_util::tag_str(&g.header.label));
+            top_labels.push(nvre_util::tag_str(&g.header.label));
         }
     });
     let hedr_matches = p.header.num_records as i64 == (records + groups) as i64 - 1;

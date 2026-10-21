@@ -245,7 +245,7 @@ fn the_constructible_object_saves_back_unchanged() {
             &after[i],
             &(*bsig, bdata.clone()),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(bsig)
+            nvre_util::tag_str(bsig)
         );
     }
 

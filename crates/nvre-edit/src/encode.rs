@@ -587,7 +587,7 @@ fn formid_u32(v: &Value, path: &str) -> Result<u32, EncodeError> {
 }
 
 fn cp1252(s: &str, path: &str) -> Result<Vec<u8>, EncodeError> {
-    fnv_util::cp1252::encode(s).ok_or_else(|| EncodeError::Encoding {
+    nvre_util::cp1252::encode(s).ok_or_else(|| EncodeError::Encoding {
         path: path.to_string(),
         s: s.to_string(),
     })
@@ -644,11 +644,11 @@ pub fn encode_sub_len(
     let def = schema
         .lookup(rec_sig, sub_sig)
         .ok_or_else(|| EncodeError::Value {
-            path: fnv_util::tag_str(sub_sig),
+            path: nvre_util::tag_str(sub_sig),
             msg: format!(
                 "no layout for {}.{}",
-                fnv_util::tag_str(rec_sig),
-                fnv_util::tag_str(sub_sig)
+                nvre_util::tag_str(rec_sig),
+                nvre_util::tag_str(sub_sig)
             ),
         })?;
     if let Some(want) = schema.fixed_size(&def.ty) {

@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if shown >= limit {
             return;
         }
-        let sig = fnv_util::tag_str(&r.header.sig).to_string();
+        let sig = nvre_util::tag_str(&r.header.sig).to_string();
         if sig != want {
             return;
         }

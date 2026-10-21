@@ -2047,8 +2047,8 @@ name = "bsa105"
 version = "0.1.0"
 dependencies = [
  "flate2",
- "fnv-util",
  "lz4_flex",
+ "nvre-util",
  "proptest",
  "thiserror 2.0.21",
  "tracing",
@@ -2955,8 +2955,8 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "fnv-inflate",
- "fnv-util",
  "memmap2",
+ "nvre-util",
  "proptest",
  "rayon",
  "serde",
@@ -2979,21 +2979,10 @@ dependencies = [
 name = "fnv-nif"
 version = "0.1.0"
 dependencies = [
- "fnv-util",
+ "nvre-util",
  "serde_json",
  "thiserror 2.0.21",
  "tracing",
-]
-
-[[package]]
-name = "fnv-util"
-version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
-dependencies = [
- "encoding_rs",
- "hex",
- "sha2",
- "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -4293,8 +4282,8 @@ dependencies = [
  "bytes",
  "fnv-esm",
  "fnv-inflate",
- "fnv-util",
  "fnv-world",
+ "nvre-util",
  "proptest",
  "serde",
  "serde_json",
@@ -4315,15 +4304,26 @@ dependencies = [
  "fnv-dds",
  "fnv-esm",
  "fnv-nif",
- "fnv-util",
  "fnv-vfs",
  "fnv-world",
  "nvf-assets",
  "nvre-edit",
+ "nvre-util",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
  "tracing",
+]
+
+[[package]]
+name = "nvre-util"
+version = "0.1.0"
+dependencies = [
+ "encoding_rs",
+ "hex",
+ "proptest",
+ "sha2",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

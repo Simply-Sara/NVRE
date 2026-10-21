@@ -214,7 +214,7 @@ fn find_by_edid(plugin: &Plugin, edid: &str) -> Option<(u32, fnv_esm::raw::Recor
         if found.is_none() {
             if let Ok(subs) = r.subrecords() {
                 if let Some(s) = subs.iter().find(|s| &s.sig == b"EDID") {
-                    if fnv_util::cp1252::decode_z(&s.data) == edid {
+                    if nvre_util::cp1252::decode_z(&s.data) == edid {
                         found = Some((r.header.form_id, r.clone()));
                     }
                 }

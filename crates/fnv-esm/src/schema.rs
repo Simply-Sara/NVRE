@@ -1320,7 +1320,7 @@ impl Schema {
             check(self, t, 0, &format!("types.{n}"))?;
         }
         for (k, d) in &self.common {
-            check(self, &d.ty, 0, &format!("common.{}", fnv_util::tag_str(k)))?;
+            check(self, &d.ty, 0, &format!("common.{}", nvre_util::tag_str(k)))?;
         }
         for (rk, r) in &self.records {
             for (sk, d) in &r.subrecords {
@@ -1328,7 +1328,7 @@ impl Schema {
                     self,
                     &d.ty,
                     0,
-                    &format!("{}.{}", fnv_util::tag_str(rk), fnv_util::tag_str(sk)),
+                    &format!("{}.{}", nvre_util::tag_str(rk), nvre_util::tag_str(sk)),
                 )?;
             }
         }

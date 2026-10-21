@@ -22,7 +22,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 # By git, not path: a path dep here would resolve `fnv-util` to a *second*
 # copy distinct from the one the rest of the graph uses.
-fnv-util = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+nvre-util = { path = "../nvre-util" }
 serde_json = "1"
 thiserror = "2"
 tracing = "0.1"

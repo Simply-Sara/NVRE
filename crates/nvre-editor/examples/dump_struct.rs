@@ -50,7 +50,7 @@ fn main() {
             shown += 1;
             println!(
                 "--- {fid:08X} {} len={} ---",
-                fnv_util::tag_str(&want),
+                nvre_util::tag_str(&want),
                 s.data.len()
             );
             for (i, chunk) in s.data.as_chunks::<4>().0.iter().enumerate() {

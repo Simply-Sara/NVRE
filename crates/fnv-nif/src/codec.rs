@@ -7,7 +7,7 @@ use crate::expr::Scope;
 use crate::header::{RawString, V20_1_0_3};
 use crate::schema::{Field, Prim, Schema, TypeRef};
 use crate::value::{FieldScope, Struct, Value};
-use fnv_util::{cp1252, Cursor};
+use nvre_util::{cp1252, Cursor};
 
 /// Error while decoding or encoding, with the field path and (for decoding) the offset
 /// within the block.
@@ -199,7 +199,7 @@ impl<'a> Codec<'a> {
             return Err(err(path, format!("{n} elements of at least {min} bytes exceed the {} bytes left", c.remaining()), Some(c.pos)));
         }
         let at = c.pos;
-        let oob = |e: fnv_util::OutOfBounds| err(path, e.to_string(), Some(at));
+        let oob = |e: nvre_util::OutOfBounds| err(path, e.to_string(), Some(at));
         match ty {
             TypeRef::Prim(Prim::Bytes) => Ok(Value::Bytes(c.bytes(n).map_err(oob)?.to_vec())),
             TypeRef::Prim(p) if p.floats().is_some() => {
@@ -250,7 +250,7 @@ impl<'a> Codec<'a> {
         path: &str,
     ) -> Result<Value, CodecError> {
         let at = c.pos;
-        let oob = |e: fnv_util::OutOfBounds| err(path, e.to_string(), Some(at));
+        let oob = |e: nvre_util::OutOfBounds| err(path, e.to_string(), Some(at));
         Ok(match ty {
             TypeRef::Struct(name) => {
                 let def = self.schema.structs.get(name).ok_or_else(|| err(path, format!("unknown struct {name}"), None))?;
@@ -599,7 +599,7 @@ fn check_count(n: i64, path: &str, pos: usize) -> Result<(), CodecError> {
     Ok(())
 }
 
-fn read_int(p: Prim, c: &mut Cursor<'_>) -> Result<i64, fnv_util::OutOfBounds> {
+fn read_int(p: Prim, c: &mut Cursor<'_>) -> Result<i64, nvre_util::OutOfBounds> {
     Ok(match p {
         Prim::U8 | Prim::Bool => c.u8()? as i64,
         Prim::I8 => c.i8()? as i64,
@@ -612,7 +612,7 @@ fn read_int(p: Prim, c: &mut Cursor<'_>) -> Result<i64, fnv_util::OutOfBounds> {
     })
 }
 
-fn push_ints(p: Prim, c: &mut Cursor<'_>, v: &mut Vec<i64>) -> Result<(), fnv_util::OutOfBounds> {
+fn push_ints(p: Prim, c: &mut Cursor<'_>, v: &mut Vec<i64>) -> Result<(), nvre_util::OutOfBounds> {
     match p {
         Prim::Triangle => {
             for _ in 0..3 {

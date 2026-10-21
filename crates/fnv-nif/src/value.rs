@@ -143,7 +143,7 @@ impl Value {
             Value::Str { text, .. } => json!(text),
             Value::Ref(r) | Value::Ptr(r) => json!(r),
             Value::Floats(v) => Json::Array(v.iter().map(|f| float_json(*f)).collect()),
-            Value::Bytes(b) => json!(fnv_util::sha256::to_hex(b)),
+            Value::Bytes(b) => json!(nvre_util::sha256::to_hex(b)),
             Value::FloatList { dim, data } => {
                 if *dim == 1 {
                     Json::Array(data.iter().map(|f| float_json(*f)).collect())

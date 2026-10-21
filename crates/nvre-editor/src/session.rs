@@ -950,7 +950,7 @@ impl Session {
         self.editing_object = Some((form_id, sig));
         self.status = format!(
             "opened {} {:08X} in editor window",
-            fnv_util::tag_str(&sig),
+            nvre_util::tag_str(&sig),
             form_id
         );
     }
@@ -1050,17 +1050,17 @@ impl Session {
             rec.record().subrecords().map_err(|e| e.to_string())?
         };
         let Some(sub) = subs.iter().find(|s| &s.sig == sig) else {
-            return Err(format!("{fid:08X} has no {}", fnv_util::tag_str(sig)));
+            return Err(format!("{fid:08X} has no {}", nvre_util::tag_str(sig)));
         };
         let mut decoded = nvre_edit::encode::decoded(&self.schema, &rec_sig, sub)
-            .ok_or_else(|| format!("{} does not decode", fnv_util::tag_str(sig)))?;
+            .ok_or_else(|| format!("{} does not decode", nvre_util::tag_str(sig)))?;
         set_path(&mut decoded, path, value)?;
         let bytes = nvre_edit::encode::encode_sub(&self.schema, &rec_sig, sig, &decoded)
             .map_err(|e| e.to_string())?;
         // A staged record has FormID 0 until the save; the edit has to reach the
         // staged copy, which is addressed by that same placeholder.
         self.doc.set_sub(fid, sig, bytes);
-        self.status = format!("set {}.{} on {fid:08X}", fnv_util::tag_str(sig), path);
+        self.status = format!("set {}.{} on {fid:08X}", nvre_util::tag_str(sig), path);
         Ok(())
     }
 

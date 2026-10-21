@@ -20,7 +20,7 @@ license = "GPL-3.0-or-later"
 # fnv-bsa.
 
 [dependencies]
-fnv-util = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+nvre-util = { path = "../nvre-util" }
 flate2 = "1"
 lz4_flex = { version = "0.14", default-features = false, features = ["frame", "std"] }
 thiserror = "2"

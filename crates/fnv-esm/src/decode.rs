@@ -4,7 +4,7 @@
 
 use crate::raw::{Record, Subrecord};
 use crate::schema::{Prim, Schema, TypeDef};
-use fnv_util::{cp1252, sha256::to_hex, Cursor};
+use nvre_util::{cp1252, sha256::to_hex, Cursor};
 use rayon::prelude::*;
 use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, HashMap};
@@ -102,7 +102,7 @@ pub fn formid_str(v: u32) -> String {
 }
 
 fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, String> {
-    let e = |e: fnv_util::OutOfBounds| e.to_string();
+    let e = |e: nvre_util::OutOfBounds| e.to_string();
     Ok(match p {
         Prim::U8 => Value::from(c.u8().map_err(e)?),
         Prim::U16 => Value::from(c.u16().map_err(e)?),
@@ -201,7 +201,7 @@ fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, Stri
 }
 
 fn read_int(p: Prim, c: &mut Cursor) -> Result<i64, String> {
-    let e = |e: fnv_util::OutOfBounds| e.to_string();
+    let e = |e: nvre_util::OutOfBounds| e.to_string();
     Ok(match p {
         Prim::U8 => c.u8().map_err(e)? as i64,
         Prim::U16 => c.u16().map_err(e)? as i64,

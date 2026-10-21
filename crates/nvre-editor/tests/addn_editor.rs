@@ -68,13 +68,13 @@ fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
     subs.iter()
         .find(|s| &s.sig == sig)
         .map(|s| s.data.clone())
-        .unwrap_or_else(|| panic!("a {} subrecord", fnv_util::tag_str(sig)))
+        .unwrap_or_else(|| panic!("a {} subrecord", nvre_util::tag_str(sig)))
 }
 
 /// The signature sequence of a record, in file order.
 fn sig_order(subs: &[fnv_esm::Subrecord]) -> Vec<String> {
     subs.iter()
-        .map(|s| fnv_util::tag_str(&s.sig).to_string())
+        .map(|s| nvre_util::tag_str(&s.sig).to_string())
         .collect()
 }
 
@@ -174,7 +174,7 @@ fn an_addon_node_with_no_edits_saves_back_byte_identical() {
             (b.sig, &b.data),
             (a.sig, &a.data),
             "subrecord {i} ({}) is byte-identical",
-            fnv_util::tag_str(&a.sig)
+            nvre_util::tag_str(&a.sig)
         );
     }
     assert_eq!(
@@ -366,7 +366,7 @@ fn every_addon_node_in_the_master_saves_back_byte_identical() {
                 (asig, ad),
                 (bs, bd),
                 "{fid:08X}: subrecord {i} ({}) is byte-identical",
-                fnv_util::tag_str(bs)
+                nvre_util::tag_str(bs)
             );
         }
     }

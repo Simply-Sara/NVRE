@@ -29,7 +29,7 @@
 //! [`Warning`], never a panic, and an unknown flag bit is preserved and
 //! reported rather than dropped.
 
-use fnv_util::{cp1252, Cursor};
+use nvre_util::{cp1252, Cursor};
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
