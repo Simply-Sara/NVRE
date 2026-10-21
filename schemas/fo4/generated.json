@@ -20669,8 +20669,9 @@
     },
     "DNAM": {
      "confidence": "documented",
+     "expose": true,
      "name": "Type",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM The value of this subrecord decides which variant a later union takes.",
      "type": {
       "enum": "u8",
       "values": {
@@ -20749,6 +20750,13 @@
      "name": "Data",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NOTE.SNAM",
      "type": {
+      "cases": {
+       "0": 1,
+       "1": 2,
+       "3": 3
+      },
+      "default": 0,
+      "switch_on": "DNAM",
       "union": [
        {
         "size": 4,
@@ -45909,6 +45917,16 @@
      {
       "name": "Function Type",
       "type": {
+       "cases": {
+        "0": 0,
+        "1": 0,
+        "2": 1,
+        "4": 3,
+        "5": 2,
+        "6": 0
+       },
+       "default": 0,
+       "switch_on": "Value Type",
        "union": [
         {
          "size": 1,
@@ -45977,9 +45995,10 @@
       "name": "Value 1",
       "type": {
        "cases": {
-        "HitBehaviour": 8,
-        "SoundLevel": 6,
-        "StaggerValue": 7
+        "0": 1,
+        "1": 2,
+        "2": 3,
+        "6": 4
        },
        "default": 0,
        "switch_on": "Value Type",
@@ -46061,6 +46080,15 @@
      {
       "name": "Value 2",
       "type": {
+       "cases": {
+        "0": 1,
+        "1": 2,
+        "2": 3,
+        "4": 1,
+        "6": 2
+       },
+       "default": 0,
+       "switch_on": "Value Type",
        "union": [
         {
          "size": 4,

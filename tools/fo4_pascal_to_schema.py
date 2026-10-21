@@ -470,6 +470,24 @@ class Converter:
                 "bits": [],
                 "direct": False,
             }
+        # A table of cases: `case ValueType of 0: Result := 0; 2: Result
+        # := 1; end`. The value names the result directly.
+        cm = re.search(
+            r"case\s+\w+\s+of(.*?)\bend\b", body, re.S | re.I
+        )
+        if cm:
+            cases = {}
+            for km in re.finditer(
+                r"(\d+)\s*:\s*Result\s*:=\s*(\d+)\s*;", cm.group(1)
+            ):
+                cases[km.group(1)] = int(km.group(2))
+            if cases:
+                return {
+                    "switch": switch,
+                    "cases": cases,
+                    "bits": [],
+                    "direct": False,
+                }
         # The cases: a name compared to a string, or a number compared to a
         # number, each giving a result.
         cases = {}
