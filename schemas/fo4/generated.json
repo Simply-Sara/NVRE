@@ -13079,6 +13079,174 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(IMAD)",
    "sequence": {
     "blocks": {
+     "\u0000IAD": {
+      "opener": "\u0000IAD",
+      "order": [
+       "\u0000IAD",
+       "@IAD",
+       "\u0001IAD",
+       "AIAD",
+       "\u0002IAD",
+       "BIAD",
+       "\u0003IAD",
+       "CIAD",
+       "\u0004IAD",
+       "DIAD",
+       "\u0005IAD",
+       "EIAD",
+       "\u0006IAD",
+       "FIAD",
+       "\u0007IAD",
+       "GIAD"
+      ],
+      "subrecords": {
+       "\u0000IAD": {
+        "confidence": "documented",
+        "name": "Eye Adapt Speed Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0000IAD",
+        "type": "bytes"
+       },
+       "\u0001IAD": {
+        "confidence": "documented",
+        "name": "Bloom Blur Radius Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0001IAD",
+        "type": "bytes"
+       },
+       "\u0002IAD": {
+        "confidence": "documented",
+        "name": "Bloom Threshold Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0002IAD",
+        "type": "bytes"
+       },
+       "\u0003IAD": {
+        "confidence": "documented",
+        "name": "Bloom Scale Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0003IAD",
+        "type": "bytes"
+       },
+       "\u0004IAD": {
+        "confidence": "documented",
+        "name": "Target Lum Min Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0004IAD",
+        "type": "bytes"
+       },
+       "\u0005IAD": {
+        "confidence": "documented",
+        "name": "Target Lum Max Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0005IAD",
+        "type": "bytes"
+       },
+       "\u0006IAD": {
+        "confidence": "documented",
+        "name": "Sunlight Scale Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0006IAD",
+        "type": "bytes"
+       },
+       "\u0007IAD": {
+        "confidence": "documented",
+        "name": "Sky Scale Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.\u0007IAD",
+        "type": "bytes"
+       },
+       "@IAD": {
+        "confidence": "documented",
+        "name": "Eye Adapt Speed Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.@IAD",
+        "type": "bytes"
+       },
+       "AIAD": {
+        "confidence": "documented",
+        "name": "Bloom Blur Radius Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.AIAD",
+        "type": "bytes"
+       },
+       "BIAD": {
+        "confidence": "documented",
+        "name": "Bloom Threshold Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.BIAD",
+        "type": "bytes"
+       },
+       "CIAD": {
+        "confidence": "documented",
+        "name": "Bloom Scale Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.CIAD",
+        "type": "bytes"
+       },
+       "DIAD": {
+        "confidence": "documented",
+        "name": "Target Lum Min Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.DIAD",
+        "type": "bytes"
+       },
+       "EIAD": {
+        "confidence": "documented",
+        "name": "Target Lum Max Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.EIAD",
+        "type": "bytes"
+       },
+       "FIAD": {
+        "confidence": "documented",
+        "name": "Sunlight Scale Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.FIAD",
+        "type": "bytes"
+       },
+       "GIAD": {
+        "confidence": "documented",
+        "name": "Sky Scale Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HDR.GIAD",
+        "type": "bytes"
+       }
+      }
+     },
+     "\u0011IAD": {
+      "opener": "\u0011IAD",
+      "order": [
+       "\u0011IAD",
+       "QIAD",
+       "\u0012IAD",
+       "RIAD",
+       "\u0013IAD",
+       "SIAD"
+      ],
+      "subrecords": {
+       "\u0011IAD": {
+        "confidence": "documented",
+        "name": "Saturation Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.Cinematic.\u0011IAD",
+        "type": "bytes"
+       },
+       "\u0012IAD": {
+        "confidence": "documented",
+        "name": "Brightness Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.Cinematic.\u0012IAD",
+        "type": "bytes"
+       },
+       "\u0013IAD": {
+        "confidence": "documented",
+        "name": "Contrast Mult",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.Cinematic.\u0013IAD",
+        "type": "bytes"
+       },
+       "QIAD": {
+        "confidence": "documented",
+        "name": "Saturation Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.Cinematic.QIAD",
+        "type": "bytes"
+       },
+       "RIAD": {
+        "confidence": "documented",
+        "name": "Brightness Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.Cinematic.RIAD",
+        "type": "bytes"
+       },
+       "SIAD": {
+        "confidence": "documented",
+        "name": "Contrast Add",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.Cinematic.SIAD",
+        "type": "bytes"
+       }
+      }
+     },
      "RNAM": {
       "opener": "RNAM",
       "order": [
@@ -13168,6 +13336,66 @@
     "start": []
    },
    "subrecords": {
+    "\bIAD": {
+     "confidence": "documented",
+     "name": "\bIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\bIAD",
+     "type": "bytes"
+    },
+    "\tIAD": {
+     "confidence": "documented",
+     "name": "\tIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\tIAD",
+     "type": "bytes"
+    },
+    "\nIAD": {
+     "confidence": "documented",
+     "name": "\nIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\nIAD",
+     "type": "bytes"
+    },
+    "\u000bIAD": {
+     "confidence": "documented",
+     "name": "\u000bIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\u000bIAD",
+     "type": "bytes"
+    },
+    "\fIAD": {
+     "confidence": "documented",
+     "name": "\fIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\fIAD",
+     "type": "bytes"
+    },
+    "\rIAD": {
+     "confidence": "documented",
+     "name": "\rIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\rIAD",
+     "type": "bytes"
+    },
+    "\u000eIAD": {
+     "confidence": "documented",
+     "name": "\u000eIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\u000eIAD",
+     "type": "bytes"
+    },
+    "\u000fIAD": {
+     "confidence": "documented",
+     "name": "\u000fIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\u000fIAD",
+     "type": "bytes"
+    },
+    "\u0010IAD": {
+     "confidence": "documented",
+     "name": "\u0010IAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\u0010IAD",
+     "type": "bytes"
+    },
+    "\u0014IAD": {
+     "confidence": "documented",
+     "name": "\u0014IAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.\u0014IAD",
+     "type": "bytes"
+    },
     "BNAM": {
      "confidence": "documented",
      "name": "Blur Radius",
@@ -13479,6 +13707,42 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EDID",
      "type": "zstring"
     },
+    "HIAD": {
+     "confidence": "documented",
+     "name": "HIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.HIAD",
+     "type": "bytes"
+    },
+    "IIAD": {
+     "confidence": "documented",
+     "name": "IIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.IIAD",
+     "type": "bytes"
+    },
+    "JIAD": {
+     "confidence": "documented",
+     "name": "JIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.JIAD",
+     "type": "bytes"
+    },
+    "KIAD": {
+     "confidence": "documented",
+     "name": "KIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.KIAD",
+     "type": "bytes"
+    },
+    "LIAD": {
+     "confidence": "documented",
+     "name": "LIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.LIAD",
+     "type": "bytes"
+    },
+    "MIAD": {
+     "confidence": "documented",
+     "name": "MIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.MIAD",
+     "type": "bytes"
+    },
     "NAM3": {
      "confidence": "documented",
      "name": "Fade Color",
@@ -13489,6 +13753,30 @@
      "confidence": "documented",
      "name": "Motion Blur Strength",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.NAM4",
+     "type": "bytes"
+    },
+    "NIAD": {
+     "confidence": "documented",
+     "name": "NIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.NIAD",
+     "type": "bytes"
+    },
+    "OIAD": {
+     "confidence": "documented",
+     "name": "OIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.OIAD",
+     "type": "bytes"
+    },
+    "PIAD": {
+     "confidence": "documented",
+     "name": "PIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.PIAD",
+     "type": "bytes"
+    },
+    "TIAD": {
+     "confidence": "documented",
+     "name": "TIAD",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IMAD.TIAD",
      "type": "bytes"
     },
     "TNAM": {
@@ -38719,6 +39007,72 @@
     "start": []
    },
    "subrecords": {
+    "\u00000TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #0",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _00_0TX",
+     "type": "zstring"
+    },
+    "\u00100TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #1",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _10_0TX",
+     "type": "zstring"
+    },
+    " 0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #2",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _20_0TX",
+     "type": "zstring"
+    },
+    "00TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #3",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _30_0TX",
+     "type": "zstring"
+    },
+    ":0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #10",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _3A_0TX",
+     "type": "zstring"
+    },
+    ";0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #11",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _3B_0TX",
+     "type": "zstring"
+    },
+    "<0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #12",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _3C_0TX",
+     "type": "zstring"
+    },
+    "=0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #13",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _3D_0TX",
+     "type": "zstring"
+    },
+    ">0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #14",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _3E_0TX",
+     "type": "zstring"
+    },
+    "?0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #15",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _3F_0TX",
+     "type": "zstring"
+    },
+    "@0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #4",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _40_0TX",
+     "type": "zstring"
+    },
     "A0TX": {
      "confidence": "documented",
      "name": "Cloud Texture Layer #17",
@@ -43266,6 +43620,12 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ONAM",
      "type": "bytes"
     },
+    "P0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #5",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _50_0TX",
+     "type": "zstring"
+    },
     "PNAM": {
      "confidence": "documented",
      "name": "Cloud Colors",
@@ -43397,6 +43757,30 @@
      "name": "Visibility Mult",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WTHR.WNAM",
      "type": "f32"
+    },
+    "`0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #6",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _60_0TX",
+     "type": "zstring"
+    },
+    "p0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #7",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _70_0TX",
+     "type": "zstring"
+    },
+    "\u00800TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #8",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _80_0TX",
+     "type": "zstring"
+    },
+    "\u00900TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #9",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _90_0TX",
+     "type": "zstring"
     }
    }
   },

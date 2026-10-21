@@ -271,8 +271,49 @@ def bracket_list(text):
 
 
 def is_signature(text):
-    """Whether `text` is a four-character record signature."""
-    return bool(re.fullmatch(r"[A-Z][A-Z0-9_]{3}", text.strip()))
+    """Whether `text` is a four-character record signature.
+
+    A signature whose first byte is not printable is written by xEdit as
+    the byte in hex between underscores — `_00_IAD` — and is a signature
+    too.
+    """
+    text = text.strip()
+    if re.fullmatch(r"[A-Z][A-Z0-9_]{3}", text):
+        return True
+    return bool(re.fullmatch(r"_[0-9A-Fa-f]{2}_[A-Z0-9]{3}", text))
+
+
+def signature_of(text):
+    """The four bytes a signature name stands for, or None.
+
+    Most signatures are written as they are, but xEdit cannot write a
+    control character in an identifier, so it names a signature whose first
+    byte is not printable by giving the byte in hex between underscores:
+    `_00_IAD` is the byte 0x00 followed by "IAD", and `_40_IAD` is "@IAD".
+    """
+    text = text.strip()
+    m = re.fullmatch(r"_([0-9A-Fa-f]{2})_(.{3})", text)
+    if m:
+        b = int(m.group(1), 16)
+        rest = m.group(2)
+        if not rest.isascii() or not rest.isupper():
+            return None
+        return bytes([b]) + rest.encode("ascii")
+    if is_signature(text):
+        return text.encode("ascii")
+    return None
+
+
+def sig_key(text):
+    """The key a signature is written under in the schema.
+
+    The key is the signature's four bytes, so a signature whose first byte
+    is a control character is written as that character.
+    """
+    raw = signature_of(text)
+    if raw is None:
+        return text.strip()
+    return raw.decode("latin-1")
 
 
 # --------------------------------------------------------------------------
@@ -444,7 +485,7 @@ class Converter:
         for p in parts:
             p = p.strip()
             if is_signature(p):
-                return p
+                return sig_key(p)
         return self._named_type_signature(kind)
 
     def _canonical(self, name):
@@ -748,6 +789,10 @@ class Converter:
                     continue
                 first = sig_of
                 mparts = [first]
+            # The signature is written under its four bytes, so a signature
+            # whose first byte is a control character is written as that
+            # character.
+            first = sig_key(first)
             schema, note = self.convert_member(mname, margs, f"{name}.{first}")
             if schema is None:
                 continue
@@ -1568,6 +1613,10 @@ class Converter:
                     continue
                 first = sig_of
                 parts = [first]
+            # The signature is written under its four bytes, so a signature
+            # whose first byte is a control character is written as that
+            # character.
+            first = sig_key(first)
             schema, note = self.convert_member(mname, args, f"{sig}.{first}")
             if schema is None:
                 continue
@@ -1878,7 +1927,7 @@ class Converter:
         if not eparts or not is_signature(eparts[0]):
             self.problems.append(f"{sig}: group {gname} element is not a subrecord")
             return
-        ssig = eparts[0].strip()
+        ssig = sig_key(eparts[0])
         schema, note = self.convert_member(ename, eargs, f"{sig}.{gname}.{ssig}")
         if schema is None:
             return

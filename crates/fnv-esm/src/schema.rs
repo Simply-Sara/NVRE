@@ -449,13 +449,26 @@ fn parse_bit_mask(k: &str) -> Result<u64, ()> {
 }
 
 fn sig4(s: &str, ctx: &str) -> Result<[u8; 4], SchemaError> {
-    let b = s.as_bytes();
-    if b.len() != 4 {
+    // A signature is four characters, and a character above 127 stands for
+    // the byte of the same value — Fallout 4's image-space adapter has
+    // subrecords whose first byte is a control character.
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() != 4 {
         return Err(SchemaError(format!(
             "{ctx}: signature {s:?} is not 4 bytes"
         )));
     }
-    Ok([b[0], b[1], b[2], b[3]])
+    let mut out = [0u8; 4];
+    for (i, c) in chars.iter().enumerate() {
+        let v = *c as u32;
+        if v > 255 {
+            return Err(SchemaError(format!(
+                "{ctx}: signature {s:?} is not 4 bytes"
+            )));
+        }
+        out[i] = v as u8;
+    }
+    Ok(out)
 }
 
 fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
