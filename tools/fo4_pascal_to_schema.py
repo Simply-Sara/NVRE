@@ -1553,7 +1553,14 @@ class Converter:
         parts = split_args(args) if args is not None else []
         if not parts:
             return None
-        fname = pascal_string(parts[0])
+        # The field's name is the first quoted argument. Some of xEdit's
+        # definitions put a flag before it — `wbString(True, 'Mesh', 260)` —
+        # so the name is found rather than counted.
+        fname = None
+        for p in parts:
+            fname = pascal_string(p)
+            if fname is not None:
+                break
         if fname is None:
             # A helper used as a bare field — `wbAmbientColors` inside a
             # struct — is a field whose type is the helper's layout, and

@@ -35028,7 +35028,15 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), STAT.MNAM",
      "type": {
       "array": {
-       "struct": []
+       "struct": [
+        {
+         "name": "Mesh",
+         "type": {
+          "array": "u8",
+          "count": 260
+         }
+        }
+       ]
       }
      }
     },
