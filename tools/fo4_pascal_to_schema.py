@@ -395,11 +395,15 @@ class Converter:
         """
         out = {}
         for m in re.finditer(
-            r"function\s+(\w*[Dd]ecider)\s*\([^)]*\)\s*:\s*Integer\s*;(.*?)\nend;",
+            # The `end;` that closes a decider may be indented, since xEdit
+            # declares some of them inside a procedure. The body ends at
+            # the `end;` at the same indentation as the declaration, so
+            # that an inner block's `end;` does not end it.
+            r"^([ \t]*)function\s+(\w*[Dd]ecider)\s*\([^)]*\)\s*:\s*Integer\s*;(.*?)\n\1end;",
             self.src,
-            re.S,
+            re.S | re.M,
         ):
-            name, body = m.group(1), m.group(2)
+            name, body = m.group(2), m.group(3)
             d = self._read_decider(body)
             if d:
                 out[name.lower()] = d
@@ -470,6 +474,25 @@ class Converter:
                 "bits": [],
                 "direct": False,
             }
+        # A comparison against a value, where the value is held in a local
+        # that was filled from the field: `ObjFormat := Container.ElementNative
+        # Values['Object Format']; if ObjFormat = 1 then Result := 1;`.
+        # The field is the switch, and the comparison names the case.
+        lm = re.search(
+            r"(\w+)\s*:=\s*Container\.ElementNativeValues\['([^']+)'\]", body
+        )
+        if lm:
+            local, field = lm.group(1), lm.group(2)
+            km = re.search(
+                rf"{local}\s*=\s*(-?\d+)\s*then\s*Result\s*:=\s*(\d+)", body
+            )
+            if km:
+                return {
+                    "switch": field,
+                    "cases": {km.group(1): int(km.group(2))},
+                    "bits": [],
+                    "direct": False,
+                }
         # A table of cases: `case ValueType of 0: Result := 0; 2: Result
         # := 1; end`, or the same over an expression — `case
         # Integer(Container.ElementNativeValues['Type']) of`. The value
@@ -515,7 +538,52 @@ class Converter:
         self.collect_local_groups()
         self.collect_records()
         self.resolve_deferred()
+        self.expose_outer_switch_fields()
         return self
+
+    def expose_outer_switch_fields(self):
+        """Mark the fields a union in one type switches on in another.
+
+        A union may switch on a field of the struct *around* it — xEdit's
+        `wbScriptObjFormatDecider` reads the "Object Format" of the virtual
+        machine adapter that holds the script property — and the two are
+        separate definitions: the property is a named type of its own and
+        the adapter is another. The field is found by name among the types
+        and marked so that its value is kept.
+        """
+        # Every field of every type, by name.
+        fields = {}
+        for name, ty in self.types.items():
+            if isinstance(ty, dict) and "struct" in ty:
+                for f in ty["struct"]:
+                    if isinstance(f, dict) and isinstance(f.get("name"), str):
+                        fields.setdefault(f["name"], []).append(f)
+        # Every switch a union makes, by the field it names.
+        switches = set()
+
+        def scan(node):
+            if isinstance(node, dict):
+                sw = node.get("switch_on")
+                if isinstance(sw, str):
+                    switches.add(sw)
+                for v in node.values():
+                    scan(v)
+            elif isinstance(node, list):
+                for v in node:
+                    scan(v)
+
+        for ty in self.types.values():
+            scan(ty)
+        for rec in self.records.values():
+            scan(rec)
+        for name in switches:
+            for f in fields.get(name, []):
+                if "expose" not in f:
+                    f["expose"] = True
+                    f["note"] = (
+                        f"{f.get('note', '')} The value of this field decides "
+                        f"which variant a union takes."
+                    ).strip()
 
     def resolve_deferred(self):
         """Point a deferred name at the type it names.
@@ -2007,9 +2075,11 @@ class Converter:
     def _expose_switch_fields(self, rec):
         """Mark the siblings that a union switches on, so they are kept.
 
-        A union that switches on a sibling's value needs that sibling's
-        value to be remembered, which the schema language does for a field
-        marked `expose`.
+        A union's switch may name a field of the struct around it rather
+        than of its own — xEdit's `wbScriptObjFormatDecider` reads the
+        "Object Format" of the virtual machine adapter that holds the
+        script property — so the field is looked for in the record's own
+        definitions as well as in the struct the union is in.
         """
         targets = set()
 
@@ -2027,9 +2097,10 @@ class Converter:
         scan(rec)
         if not targets:
             return
-        for group in [rec.get("subrecords", {})] + [
+        groups = [rec.get("subrecords", {})] + [
             b.get("subrecords", {}) for b in rec.get("sequence", {}).get("blocks", {}).values()
-        ]:
+        ]
+        for group in groups:
             for sig, sub in group.items():
                 if sig in targets and "expose" not in sub:
                     sub["expose"] = True
@@ -2037,6 +2108,23 @@ class Converter:
                         f"{sub.get('note', '')} The value of this subrecord decides "
                         f"which variant a later union takes."
                     ).strip()
+        # A field of a struct that holds a union further in: the switch may
+        # name it, and its value has to be kept.
+        for target in targets:
+            for group in groups:
+                for sig, sub in group.items():
+                    ty = sub.get("type")
+                    if not isinstance(ty, dict):
+                        continue
+                    if "struct" not in ty:
+                        continue
+                    for f in ty["struct"]:
+                        if f.get("name") == target and "expose" not in f:
+                            f["expose"] = True
+                            f["note"] = (
+                                f"{f.get('note', '')} The value of this field decides "
+                                f"which variant a union takes."
+                            ).strip()
 
     def _put_block(self, blocks, opener, order, subs, note):
         """Add a block, merging it with a block that opens the same way.

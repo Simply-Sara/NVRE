@@ -405,9 +405,17 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             let mut obj = Map::new();
             // A struct's own field values are kept so a union inside it can
             // switch on one of them. The map is saved and restored, so a
-            // nested struct does not see its parent's fields.
+            // nested struct does not see its parent's fields — except that
+            // a union may switch on a field of the struct *around* it
+            // (xEdit's `wbScriptObjFormatDecider` reads the "Object Format"
+            // of the virtual machine adapter that holds the property), so
+            // the parent's fields are kept too and the inner ones win.
             let saved_switch = ctx.switch_on.take();
-            ctx.switch_on = Some(HashMap::new());
+            ctx.switch_on = Some(match &saved_switch {
+                Some(parent) => parent.clone(),
+                None => HashMap::new(),
+            });
+            let outer = ctx.switch_on.clone().unwrap_or_default();
             for f in fields {
                 if f.optional {
                     // The field is skipped when the bytes left are too few
@@ -520,6 +528,14 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                     }
                 }
                 obj.insert(f.name.clone(), v);
+            }
+            // The struct's own fields are what a union inside it reads, and
+            // they take the place of the enclosing struct's fields of the
+            // same name.
+            if let Some(m) = ctx.switch_on.as_mut() {
+                for (k, v) in &outer {
+                    m.entry(k.clone()).or_insert(v.clone());
+                }
             }
             ctx.switch_on = saved_switch;
             Ok(Value::Object(obj))
