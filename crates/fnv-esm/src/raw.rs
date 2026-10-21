@@ -173,6 +173,38 @@ impl Record {
         self.header.flags & record_flags::COMPRESSED != 0
     }
 
+    /// The record types whose payload may be compressed inside the record.
+    ///
+    /// Fallout 4 compresses four of its record types *inside* the record, so
+    /// the payload is not a run of subrecords but a `u32` giving the
+    /// uncompressed size and then a zlib stream [observed: of the 40,165
+    /// `CELL` records in `Fallout4.esm`, 8,471 have a payload whose fifth
+    /// and sixth bytes are the zlib header `78 da`, and the word before it
+    /// is the length of the decompressed data; the rest hold their
+    /// subrecords directly].
+    ///
+    /// The other games do not compress inside a record, so the list is
+    /// Fallout 4's own and is asked for rather than assumed.
+    pub const INFLATED: [[u8; 4]; 4] = [*b"LAND", *b"CELL", *b"NAVM", *b"NPC_"];
+
+    /// Whether this record's payload may be compressed inside the record.
+    pub fn may_be_inflated(&self) -> bool {
+        Self::INFLATED.iter().any(|s| s == &self.header.sig)
+    }
+
+    /// Whether this record's payload *is* compressed inside the record.
+    ///
+    /// A record of one of the inflatable types is compressed only when the
+    /// bytes after the size word are a zlib header. The other records of
+    /// the same type hold their subrecords directly, and the two forms are
+    /// told apart by that header rather than by the size word, whose value
+    /// differs per record [observed: the first four bytes of a plain
+    /// `CELL` are the signature "DATA", and the first four of a compressed
+    /// one are the uncompressed size].
+    pub fn is_inflated(&self) -> bool {
+        self.may_be_inflated() && self.raw.len() > 5 && is_zlib_header(&self.raw[4..])
+    }
+
     /// Uncompressed subrecord bytes. Tolerates zlib trailer anomalies (see
     /// [`Record::payload_checked`] to observe them).
     /// Callers that need the trailer status use [`Record::payload_checked`]; here an
@@ -194,6 +226,9 @@ impl Record {
     /// Uncompressed payload plus the zlib trailer status (`Verified` for
     /// uncompressed records).
     pub fn payload_checked(&self) -> Result<(Cow<'_, [u8]>, fnv_inflate::Trailer), EsmError> {
+        if self.is_inflated() {
+            return self.inflated_payload_checked();
+        }
         if !self.is_compressed() {
             return Ok((Cow::Borrowed(&self.raw), fnv_inflate::Trailer::Verified));
         }
@@ -202,6 +237,31 @@ impl Record {
                 offset: self.offset,
                 form_id: self.header.form_id,
                 msg: "compressed payload shorter than 4 bytes".into(),
+            });
+        }
+        let size =
+            u32::from_le_bytes([self.raw[0], self.raw[1], self.raw[2], self.raw[3]]) as usize;
+        fnv_inflate::zlib_decompress_ex(&self.raw[4..], Some(size))
+            .map(|(d, t)| (Cow::Owned(d), t))
+            .map_err(|e| EsmError::Decompress {
+                offset: self.offset,
+                form_id: self.header.form_id,
+                msg: e.to_string(),
+            })
+    }
+
+    /// The payload of a record that is compressed inside the record.
+    ///
+    /// Fallout 4's `LAND`, `CELL`, `NAVM` and `NPC_` records hold a `u32`
+    /// giving the uncompressed size and then a zlib stream, rather than a
+    /// run of subrecords. The record's own header flag is not set: the
+    /// compression is inside the record, not around it.
+    fn inflated_payload_checked(&self) -> Result<(Cow<'_, [u8]>, fnv_inflate::Trailer), EsmError> {
+        if self.raw.len() < 6 {
+            return Err(EsmError::Decompress {
+                offset: self.offset,
+                form_id: self.header.form_id,
+                msg: "inflated payload shorter than 6 bytes".into(),
             });
         }
         let size =
@@ -226,6 +286,30 @@ impl Record {
             ),
         })
     }
+}
+
+/// Whether the bytes at the head of a buffer are a zlib stream.
+///
+/// A zlib stream starts with a two-byte header: the compression method and
+/// flags, then a check value. The common forms are `78 9c` (the default
+/// compression), `78 da` (the best compression) and `78 01` (no
+/// compression) [documented: the zlib format, RFC 1950].
+pub fn is_zlib_header(b: &[u8]) -> bool {
+    if b.len() < 2 {
+        return false;
+    }
+    let cmf = b[0];
+    let flg = b[1];
+    // The compression method must be 8 (deflate) and the two bytes together
+    // must be a multiple of 31.
+    if cmf & 0x0f != 8 {
+        return false;
+    }
+    if ((cmf as u16) * 256 + flg as u16) % 31 != 0 {
+        return false;
+    }
+    // A preset dictionary is not used here, and the header must not say so.
+    flg & 0x20 == 0
 }
 
 /// Parse a record payload into subrecords, resolving XXXX size extensions.

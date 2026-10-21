@@ -88,7 +88,7 @@ INT_TYPES = {
 # a run of subrecords instead of one.
 GROUP_KINDS = {
     "wbRStruct", "wbRArray", "wbRArrayS", "wbRStructs", "wbRStructSK",
-    "wbRStructExSK", "wbRStructsSK", "wbRUnion", "wbStructs",
+    "wbRStructExSK", "wbRStructsSK", "wbStructs",
 }
 
 # The helper functions the .pas defines for itself, with the layout each one
@@ -1203,6 +1203,32 @@ class Converter:
                 "subrecords": subs,
             }
             return
+        if members == "UNION":
+            # The group's element is a union of alternative groups — a
+            # landscape's layers are either a base layer or an alpha layer.
+            # Every variant's subrecords belong to the block, because the
+            # schema language has no way to say which variant a record used.
+            subs = {}
+            order = []
+            for variant in self._union_variants(parts):
+                for first, sname, schema, note in variant:
+                    if first in subs:
+                        continue
+                    subs[first] = {
+                        "name": sname,
+                        "type": schema,
+                        "confidence": "documented",
+                        "note": note,
+                    }
+                    order.append(first)
+            if not subs:
+                return
+            blocks[order[0]] = {
+                "opener": order[0],
+                "order": order,
+                "subrecords": subs,
+            }
+            return
 
         # A fixed run of several subrecords: a sequence block.
         subs = {}
@@ -1245,7 +1271,8 @@ class Converter:
 
         The string "NESTED" means the element is a group of its own, whose
         members are one level down. The string "NAMED" means the element is
-        a named type that is itself a group.
+        a named type that is itself a group. The string "UNION" means the
+        element is a union of alternative groups.
         """
         for p in parts[1:]:
             members = bracket_list(p)
@@ -1260,9 +1287,37 @@ class Converter:
                 inner = self._group_members(split_args(eargs))
                 if inner is not None:
                     return "NESTED"
+            elif ename == "wbRUnion" and eargs is not None:
+                return "UNION"
             elif ename is None and self._is_named_group(element):
                 return "NAMED"
         return None
+
+    def _union_variants(self, parts):
+        """The groups a `wbRUnion` holds, as lists of subrecords.
+
+        A union of groups names alternative shapes — a landscape's layers are
+        either a base layer or an alpha layer — and each variant is a group
+        of its own.
+        """
+        out = []
+        ename, eargs, _ = match_call(parts[1].strip())
+        if ename is None or eargs is None:
+            return out
+        for p in split_args(eargs):
+            variants = bracket_list(p)
+            if variants is None:
+                continue
+            for v in variants:
+                vname, vargs, _ = match_call(v)
+                if vname is None or vargs is None:
+                    continue
+                subs = self._group_subrecords(
+                    f"{parts[0]}.{vname}", vname, split_args(vargs)
+                )
+                if subs:
+                    out.append(subs)
+        return out
 
     def _is_named_group(self, name):
         """Whether a name is a named type whose own members are a group."""

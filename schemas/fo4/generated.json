@@ -11690,6 +11690,84 @@
    "confidence": "documented",
    "name": "Landscape",
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(LAND)",
+   "sequence": {
+    "blocks": {
+     "BTXT": {
+      "opener": "BTXT",
+      "order": [
+       "BTXT",
+       "ATXT",
+       "VTXT"
+      ],
+      "subrecords": {
+       "ATXT": {
+        "confidence": "documented",
+        "name": "ATXT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Layers'.wbRStructSK.ATXT",
+        "type": {
+         "struct": [
+          {
+           "name": "Texture",
+           "type": "formid"
+          },
+          {
+           "name": "Quadrant",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Layer",
+           "type": "i16"
+          }
+         ]
+        }
+       },
+       "BTXT": {
+        "confidence": "documented",
+        "name": "BTXT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Layers'.wbRStructSK.BTXT",
+        "type": {
+         "struct": [
+          {
+           "name": "Texture",
+           "type": "formid"
+          },
+          {
+           "name": "Quadrant",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Layer",
+           "type": "i16"
+          }
+         ]
+        }
+       },
+       "VTXT": {
+        "confidence": "documented",
+        "name": "Alpha Layer Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Layers'.wbRStructSK.VTXT",
+        "type": "bytes"
+       }
+      }
+     }
+    },
+    "end": [],
+    "start": []
+   },
    "subrecords": {
     "DATA": {
      "confidence": "documented",
@@ -20569,6 +20647,185 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(QUST)",
    "sequence": {
     "blocks": {
+     "ALST": {
+      "opener": "ALST",
+      "order": [
+       "ALST",
+       "ALID",
+       "FNAM",
+       "ALFI",
+       "ALFR",
+       "ALUA",
+       "ALCC",
+       "KSIZ",
+       "KWDA",
+       "COCT",
+       "SPOR",
+       "OCOR",
+       "GWOR",
+       "ECOR",
+       "ALLA",
+       "ALDN",
+       "ALFV",
+       "ALDI",
+       "VTCK",
+       "ALED",
+       "ALLS",
+       "ALFL",
+       "ALCS",
+       "ALMI"
+      ],
+      "subrecords": {
+       "ALCC": {
+        "confidence": "documented",
+        "name": "Closest To Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCC",
+        "type": "i32"
+       },
+       "ALCS": {
+        "confidence": "documented",
+        "name": "Collection Alias ID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCS",
+        "type": "u32"
+       },
+       "ALDI": {
+        "confidence": "documented",
+        "name": "Death Item",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALDI",
+        "type": "formid"
+       },
+       "ALDN": {
+        "confidence": "documented",
+        "name": "Display Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALDN",
+        "type": "formid"
+       },
+       "ALED": {
+        "confidence": "documented",
+        "name": "Alias End",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALED",
+        "type": {
+         "struct": []
+        }
+       },
+       "ALFI": {
+        "confidence": "documented",
+        "name": "Force Into Alias When Filled",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFI",
+        "type": "i32"
+       },
+       "ALFL": {
+        "confidence": "documented",
+        "name": "Specific Location",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFL",
+        "type": "formid"
+       },
+       "ALFR": {
+        "confidence": "documented",
+        "name": "Forced Reference",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFR",
+        "type": "formid"
+       },
+       "ALFV": {
+        "confidence": "documented",
+        "name": "Forced Voice",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFV",
+        "type": "formid"
+       },
+       "ALID": {
+        "confidence": "documented",
+        "name": "Alias Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALID",
+        "type": "zstring"
+       },
+       "ALLA": {
+        "confidence": "documented",
+        "name": "Linked Aliases",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALLA",
+        "type": "bytes"
+       },
+       "ALLS": {
+        "confidence": "documented",
+        "name": "Location Alias ID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALLS",
+        "type": "u32"
+       },
+       "ALMI": {
+        "confidence": "documented",
+        "name": "Max Initial Fill Count",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALMI",
+        "type": "u8"
+       },
+       "ALST": {
+        "confidence": "documented",
+        "name": "Reference Alias ID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALST",
+        "type": "u32"
+       },
+       "ALUA": {
+        "confidence": "documented",
+        "name": "Unique Actor",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALUA",
+        "type": "formid"
+       },
+       "COCT": {
+        "confidence": "documented",
+        "name": "COCT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), COCT",
+        "type": "u32"
+       },
+       "ECOR": {
+        "confidence": "documented",
+        "name": "Combat override package list",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ECOR",
+        "type": "formid"
+       },
+       "FNAM": {
+        "confidence": "documented",
+        "name": "FNAM",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
+        "type": "u32"
+       },
+       "GWOR": {
+        "confidence": "documented",
+        "name": "Guard warn override package list",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.GWOR",
+        "type": "formid"
+       },
+       "KSIZ": {
+        "confidence": "documented",
+        "name": "KSIZ",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KSIZ",
+        "type": "u32"
+       },
+       "KWDA": {
+        "confidence": "documented",
+        "name": "KWDA",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbKWDAs",
+        "type": {
+         "array": "formid"
+        }
+       },
+       "OCOR": {
+        "confidence": "documented",
+        "name": "Observe dead body override package list",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.OCOR",
+        "type": "formid"
+       },
+       "SPOR": {
+        "confidence": "documented",
+        "name": "Spectator override package list",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.SPOR",
+        "type": "formid"
+       },
+       "VTCK": {
+        "confidence": "documented",
+        "name": "Voice Types",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.VTCK",
+        "type": "formid"
+       }
+      }
+     },
      "INDX": {
       "opener": "INDX",
       "order": [
