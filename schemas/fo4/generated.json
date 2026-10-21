@@ -927,7 +927,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -1017,7 +1017,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -1049,7 +1049,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -1078,7 +1078,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -1100,7 +1100,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -1118,7 +1118,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -1148,7 +1148,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -3399,7 +3399,7 @@
            "optional": true,
            "type": {
             "array": "formid",
-            "count_prefix": "u32"
+            "count_prefix": "u8"
            }
           },
           {
@@ -3447,7 +3447,8 @@
                }
               }
              ]
-            }
+            },
+            "count_field": "Include Count"
            }
           },
           {
@@ -5951,7 +5952,8 @@
        {
         "name": "Meshes",
         "type": {
-         "array": "u32"
+         "array": "u32",
+         "count_field": "Meshes Count"
         }
        },
        {
@@ -5968,7 +5970,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_field": "References Count"
         }
        }
       ]
@@ -11357,7 +11360,7 @@
            "optional": true,
            "type": {
             "array": "formid",
-            "count_prefix": "u32"
+            "count_prefix": "u8"
            }
           },
           {
@@ -11405,7 +11408,8 @@
                }
               }
              ]
-            }
+            },
+            "count_field": "Include Count"
            }
           },
           {
@@ -11661,7 +11665,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -11751,7 +11755,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -11783,7 +11787,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -11812,7 +11816,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -11834,7 +11838,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -11852,7 +11856,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -11882,7 +11886,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -19922,14 +19926,14 @@
         "name": "Merged To",
         "type": {
          "array": "formid",
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
         "name": "Preferred Merges",
         "type": {
          "array": "formid",
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -19950,7 +19954,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20008,7 +20012,7 @@
                  }
                 ]
                },
-               "count_prefix": "u8"
+               "count_prefix": "u32"
               }
              },
              {
@@ -20030,7 +20034,7 @@
                  }
                 ]
                },
-               "count_prefix": "u8"
+               "count_prefix": "u32"
               }
              }
             ]
@@ -20090,9 +20094,9 @@
         "type": {
          "array": {
           "array": "formid",
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20110,7 +20114,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        }
       ]
@@ -20220,7 +20224,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20310,7 +20314,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20342,7 +20346,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20371,7 +20375,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20393,7 +20397,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20411,7 +20415,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -20441,7 +20445,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -21263,7 +21267,7 @@
            "optional": true,
            "type": {
             "array": "formid",
-            "count_prefix": "u32"
+            "count_prefix": "u8"
            }
           },
           {
@@ -21311,7 +21315,8 @@
                }
               }
              ]
-            }
+            },
+            "count_field": "Include Count"
            }
           },
           {
@@ -22387,7 +22392,7 @@
         "name": "Attach Parent Slots",
         "type": {
          "array": "formid",
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -22411,7 +22416,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -22448,7 +22453,8 @@
             }
            }
           ]
-         }
+         },
+         "count_field": "Include Count"
         }
        },
        {
@@ -35113,7 +35119,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -35203,7 +35209,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -35235,7 +35241,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -35264,7 +35270,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -35286,7 +35292,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -35304,7 +35310,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -35334,7 +35340,7 @@
            }
           ]
          },
-         "count_prefix": "u8"
+         "count_prefix": "u32"
         }
        },
        {
@@ -37755,7 +37761,7 @@
            "optional": true,
            "type": {
             "array": "formid",
-            "count_prefix": "u32"
+            "count_prefix": "u8"
            }
           },
           {
@@ -37803,7 +37809,8 @@
                }
               }
              ]
-            }
+            },
+            "count_field": "Include Count"
            }
           },
           {
@@ -45354,7 +45361,7 @@
         }
        ]
       },
-      "count_prefix": "u8"
+      "count_prefix": "u32"
      }
     },
     {
@@ -45444,7 +45451,7 @@
         }
        ]
       },
-      "count_prefix": "u8"
+      "count_prefix": "u32"
      }
     },
     {
@@ -45476,7 +45483,7 @@
         }
        ]
       },
-      "count_prefix": "u8"
+      "count_prefix": "u32"
      }
     },
     {
@@ -45505,7 +45512,7 @@
         }
        ]
       },
-      "count_prefix": "u8"
+      "count_prefix": "u32"
      }
     },
     {
@@ -45527,7 +45534,7 @@
         }
        ]
       },
-      "count_prefix": "u8"
+      "count_prefix": "u32"
      }
     },
     {
@@ -45545,7 +45552,7 @@
         }
        ]
       },
-      "count_prefix": "u8"
+      "count_prefix": "u32"
      }
     },
     {
@@ -45575,7 +45582,7 @@
         }
        ]
       },
-      "count_prefix": "u8"
+      "count_prefix": "u32"
      }
     },
     {
@@ -45749,7 +45756,7 @@
      "optional": true,
      "type": {
       "array": "formid",
-      "count_prefix": "u32"
+      "count_prefix": "u8"
      }
     },
     {
@@ -45797,7 +45804,8 @@
          }
         }
        ]
-      }
+      },
+      "count_field": "Include Count"
      }
     },
     {
@@ -46019,7 +46027,8 @@
       "type": "f32"
      }
     ]
-   }
+   },
+   "count_field": "Property Count"
   },
   "wbObjectTypeEnum": {
    "enum": "u32",
@@ -47204,7 +47213,8 @@
          "type": "len_string_u16"
         }
        ]
-      }
+      },
+      "count_field": "FragmentCount"
      }
     }
    ]
@@ -47410,25 +47420,25 @@
             }
            ]
           },
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
          "type": {
           "array": "len_string_u16",
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
          "type": {
           "array": "i32",
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
          "type": {
           "array": "f32",
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
@@ -47440,7 +47450,7 @@
             "1": "True"
            }
           },
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
@@ -47559,25 +47569,25 @@
                     }
                    ]
                   },
-                  "count_prefix": "u8"
+                  "count_prefix": "u32"
                  }
                 },
                 {
                  "type": {
                   "array": "len_string_u16",
-                  "count_prefix": "u8"
+                  "count_prefix": "u32"
                  }
                 },
                 {
                  "type": {
                   "array": "i32",
-                  "count_prefix": "u8"
+                  "count_prefix": "u32"
                  }
                 },
                 {
                  "type": {
                   "array": "f32",
-                  "count_prefix": "u8"
+                  "count_prefix": "u32"
                  }
                 },
                 {
@@ -47589,7 +47599,7 @@
                     "1": "True"
                    }
                   },
-                  "count_prefix": "u8"
+                  "count_prefix": "u32"
                  }
                 },
                 {
@@ -47600,9 +47610,9 @@
              }
             ]
            },
-           "count_prefix": "u8"
+           "count_prefix": "u32"
           },
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         }
        ]
@@ -47768,25 +47778,25 @@
             }
            ]
           },
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
          "type": {
           "array": "len_string_u16",
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
          "type": {
           "array": "i32",
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
          "type": {
           "array": "f32",
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
@@ -47798,7 +47808,7 @@
             "1": "True"
            }
           },
-          "count_prefix": "u8"
+          "count_prefix": "u32"
          }
         },
         {
@@ -47809,7 +47819,7 @@
      }
     ]
    },
-   "count_prefix": "u8"
+   "count_prefix": "u32"
   },
   "wbSexEnum": {
    "enum": "u32",

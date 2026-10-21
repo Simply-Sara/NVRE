@@ -371,6 +371,8 @@ class Converter:
         # The signatures the unit declares under a name of its own, which is
         # the authority for what those names stand for.
         self.declared_sigs = declared_signatures(self.src)
+        # The sibling field each count callback reads.
+        self.counters = self._collect_counters()
         self.records = {}        # signature -> record definition
         self.problems = []
         self.deferred = set()    # names referred to before they were defined
@@ -1576,6 +1578,41 @@ class Converter:
             return None
         return {"name": fname, "type": schema}
 
+    def _counter_field(self, parts):
+        """The sibling field an array's count comes from, if it does.
+
+        xEdit's arrays sometimes take their count from a callback rather
+        than from the data — `wbOMODDataIncludeCounter` reads the struct's
+        own "Include Count" field — and the schema language's `count_field`
+        says the same thing. The callback's body is read for the field it
+        names.
+        """
+        for p in parts:
+            p = p.strip()
+            if not re.fullmatch(r"wb[A-Za-z0-9_]*", p):
+                continue
+            d = self.counters.get(p.lower())
+            if d:
+                return d
+        return None
+
+    def _collect_counters(self):
+        """The sibling field each count callback reads."""
+        out = {}
+        for m in re.finditer(
+            r"function\s+(\w*Counter)\s*\([^)]*\)\s*:\s*Cardinal\s*;(.*?)\nend;",
+            self.src,
+            re.S,
+        ):
+            body = m.group(2)
+            # The field the callback reads: it asks the container for the
+            # element's native value by name.
+            fm = re.search(r"ElementNativeValues\['([^']+)'\]", body)
+            if not fm:
+                continue
+            out[m.group(1).lower()] = fm.group(1)
+        return out
+
     def _convert_array(self, parts, ctx):
         # `wbArray` has the same two forms as `wbStruct`: with a signature
         # (`wbArray(SIG, name, element, count)`) and without one
@@ -1599,13 +1636,22 @@ class Converter:
             count = 0
         if count > 0:
             return {"array": elem, "count": count}, self._note(ctx)
+        # The count may come from a sibling field rather than from the
+        # data, which the schema language's `count_field` says.
+        counter = self._counter_field(parts)
+        if counter:
+            return (
+                {"array": elem, "count_field": counter},
+                self._note(ctx),
+            )
         if count < 0:
             # A negative count means the count is in the data, and its width
-            # is the count's own size: -1 is a byte, -2 two bytes, -4 four.
-            # Fallout 4's script arrays are all two bytes [observed: the
-            # count in a `VMAD` subrecord of `Fallout4.esm` is followed by
-            # the two-byte length of the first script's name].
-            width = {1: "u8", 2: "u16", 4: "u32"}.get(-count)
+            # is what the count's own value says: xEdit's -1 is a four-byte
+            # count, -2 a two-byte one and -4 a single byte [measured: the
+            # navigation map's merged-mesh array, whose count is -1, is
+            # preceded by a four-byte count, and the script array, whose
+            # count is -2, by a two-byte one].
+            width = {1: "u32", 2: "u16", 4: "u8"}.get(-count)
             if width:
                 return (
                     {"array": elem, "count_prefix": width},
