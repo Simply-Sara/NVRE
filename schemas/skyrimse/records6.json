@@ -1,6 +1,66 @@
 {
  "format": "fnv.schema/1",
  "records": {
+  "AACT": {
+   "confidence": "observed",
+   "merge": true,
+   "name": "Actor Action",
+   "note": "[measured: 2 CNAM fields of 4 bytes in Dawnguard.esm]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Colour",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
+  "ARMA": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Armor Addon",
+   "note": "UESP, Skyrim Mod:Mod File Format/ARMA. [measured: 1 ONAM field of 4 bytes in Dragonborn.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    }
+   }
+  },
+  "CAMS": {
+   "confidence": "observed",
+   "merge": true,
+   "name": "Camera",
+   "note": "[measured: 108 DATA fields of 44 bytes in Update.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The camera's data. Its layout is not documented. [observed: 44 bytes]",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
   "CLAS": {
    "confidence": "documented",
    "merge": true,
@@ -435,6 +495,26 @@
     }
    }
   },
+  "LIGH": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Light",
+   "note": "UESP, Skyrim Mod:Mod File Format/LIGH. [measured: 2 VMAD fields of 48 bytes in Dragonborn.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Scripting",
+     "note": "The script data. [observed: 48 bytes]",
+     "type": "bytes"
+    }
+   }
+  },
   "MISC": {
    "confidence": "documented",
    "merge": true,
@@ -571,6 +651,26 @@
      "name": "Unknown",
      "note": "An unknown field.",
      "type": "bytes"
+    }
+   }
+  },
+  "RACE": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Race",
+   "note": "UESP, Skyrim Mod:Mod File Format/RACE. [measured: 2 SPMV fields of 4 bytes in Dragonborn.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "SPMV": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
     }
    }
   },

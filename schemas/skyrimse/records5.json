@@ -127,7 +127,7 @@
     "DATA": {
      "confidence": "documented",
      "name": "Data",
-     "note": "The material's data, 48 bytes.",
+     "note": "UESP, Skyrim Mod:Mod File Format/MATO. [measured: 28, 32, 48 or 52 bytes across Skyrim.esm, Update.esm, Dawnguard.esm and Dragonborn.esm]",
      "type": "MATO_DATA"
     },
     "DNAM": {
@@ -546,6 +546,10 @@
        {
         "name": "dir_proj_z",
         "type": "f32"
+       },
+       {
+        "name": "normal_dampener",
+        "type": "f32"
        }
       ]
      }
@@ -582,6 +586,27 @@
        {
         "name": "dir_proj_z",
         "type": "f32"
+       },
+       {
+        "name": "normal_dampener",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_r",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_g",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_b",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass",
+        "note": "Whether the material is a single pass.",
+        "type": "u32"
        }
       ]
      }
@@ -620,7 +645,28 @@
         "type": "f32"
        },
        {
-        "name": "unknown",
+        "name": "normal_dampener",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_r",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_g",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_b",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass",
+        "note": "Whether the material is a single pass.",
+        "type": "u32"
+       },
+       {
+        "name": "unknown12",
         "note": "Unknown.",
         "type": "u32"
        }

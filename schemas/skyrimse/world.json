@@ -782,6 +782,14 @@
      "name": "Preferred Pathing",
      "note": "UESP, Skyrim Mod:Mod File Format/NAVI. The preferred pathing data. [observed: 25,696 bytes]",
      "type": "bytes"
+    },
+    "NVSI": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "UESP, Skyrim Mod:Mod File Format/NAVI. Appears since Dawnguard and seems to be only NAVM references. It is a run of form ids with no count of its own. [observed: 4, 20, 24 and 236 bytes]",
+     "type": {
+      "array": "formid"
+     }
     }
    }
   },
@@ -1482,6 +1490,12 @@
      "name": "Location",
      "note": "The location (LCTN).",
      "type": "formid"
+    },
+    "XWEM": {
+     "confidence": "observed",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 37 and 43 bytes]",
+     "type": "zstring"
     },
     "ZNAM": {
      "confidence": "documented",
