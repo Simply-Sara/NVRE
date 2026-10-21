@@ -574,6 +574,30 @@ class Converter:
             "subrecords": subs,
         }
 
+    def _group_members_as_subrecords(self, name, kind, parts):
+        """The subrecords a group holds, whatever kind of group it is.
+
+        A group is either a fixed run of several subrecords or a run of one
+        repeating subrecord; this answers both, so a group inside a group
+        can be taken into the outer one.
+        """
+        members = self._group_members(parts)
+        if members is None:
+            # A run of one repeating subrecord.
+            flat = {}
+            self.convert_repeating(name, pascal_string(parts[0]) if parts else kind, parts, flat)
+            return [
+                (sig, sub["name"], sub["type"], sub["note"])
+                for sig, sub in flat.items()
+            ]
+        if members == "NESTED":
+            members = self._nested_members(name, kind, parts)
+            if not members:
+                return []
+        if members in ("NAMED", "UNION"):
+            return []
+        return self._group_subrecords(name, kind, parts)
+
     def _group_subrecords(self, name, kind, parts):
         """The subrecords a named group holds, as (signature, definition)."""
         out = []
@@ -606,11 +630,7 @@ class Converter:
                 # A group inside the group: the schema language has no nested
                 # block, so its subrecords are taken into this one.
                 if mname in GROUP_KINDS and margs is not None:
-                    out.extend(
-                        self._group_subrecords(
-                            name, mname, split_args(margs)
-                        )
-                    )
+                    out.extend(self._group_members_as_subrecords(name, mname, split_args(margs)))
                     continue
                 # The member is a named definition that owns a signature.
                 sig_of = self._named_type_signature(mname)

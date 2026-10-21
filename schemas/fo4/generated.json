@@ -75,7 +75,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -83,6 +84,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ACHR.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      },
@@ -17489,10 +17507,17 @@
       "opener": "INDX",
       "order": [
        "INDX",
+       "DATA",
        "INTV",
        "NAM1"
       ],
       "subrecords": {
+       "DATA": {
+        "confidence": "documented",
+        "name": "DATA",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NOCM.Unknown.Unknown.DATA. The group 'Unknown' repeats this subrecord.",
+        "type": "bytes"
+       },
        "INDX": {
         "confidence": "documented",
         "name": "Index",
@@ -19351,7 +19376,10 @@
        "CITC",
        "PRCB",
        "PNAM",
-       "FNAM"
+       "FNAM",
+       "PKC2",
+       "PFO2",
+       "PFOR"
       ],
       "subrecords": {
        "ANAM": {
@@ -19407,6 +19435,54 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
         "type": "u32"
+       },
+       "PFO2": {
+        "confidence": "documented",
+        "name": "Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Procedure Tree.Flags Override.PFO2. The group 'Flags Override' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Set General Flags",
+           "type": "u32"
+          },
+          {
+           "name": "Clear General Flags",
+           "type": "u32"
+          },
+          {
+           "name": "Set Interrupt Flags",
+           "type": "u16"
+          },
+          {
+           "name": "Clear Interrupt Flags",
+           "type": "u16"
+          },
+          {
+           "name": "Preferred Speed Override",
+           "type": "u8"
+          },
+          {
+           "name": "Unknown",
+           "type": {
+            "array": "u8",
+            "count": 3
+           }
+          }
+         ]
+        }
+       },
+       "PFOR": {
+        "confidence": "documented",
+        "name": "PFOR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Procedure Tree.Unknown.PFOR. The group 'Unknown' repeats this subrecord.",
+        "type": "bytes"
+       },
+       "PKC2": {
+        "confidence": "documented",
+        "name": "Index",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PKC2. The group 'Data Input Indexes' repeats this subrecord.",
+        "type": "u8"
        },
        "PLDT": {
         "confidence": "documented",
@@ -19870,7 +19946,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -19878,6 +19955,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PARW.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -20210,7 +20304,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -20218,6 +20313,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PBAR.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -20550,7 +20662,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -20558,6 +20671,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PBEA.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -20890,7 +21020,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -20898,6 +21029,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PCON.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -21540,7 +21688,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -21548,6 +21697,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PFLA.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -21880,7 +22046,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -21888,6 +22055,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PGRE.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -22220,7 +22404,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -22228,6 +22413,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PHZD.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -22643,7 +22845,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -22651,6 +22854,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PMIS.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      }
@@ -23384,6 +23604,9 @@
        "ALDN",
        "ALFV",
        "ALDI",
+       "ALSP",
+       "ALFC",
+       "ALPC",
        "VTCK",
        "ALED",
        "ALLS",
@@ -23471,6 +23694,12 @@
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFA",
         "type": "i32"
        },
+       "ALFC": {
+        "confidence": "documented",
+        "name": "Faction",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.Alias Factions.ALFC. The group 'Alias Factions' repeats this subrecord.",
+        "type": "formid"
+       },
        "ALFD": {
         "confidence": "documented",
         "name": "Event Data",
@@ -23546,10 +23775,22 @@
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALNT",
         "type": "u32"
        },
+       "ALPC": {
+        "confidence": "documented",
+        "name": "Package",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.Alias Package Data.ALPC. The group 'Alias Package Data' repeats this subrecord.",
+        "type": "formid"
+       },
        "ALRT": {
         "confidence": "documented",
         "name": "Ref Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALRT",
+        "type": "formid"
+       },
+       "ALSP": {
+        "confidence": "documented",
+        "name": "Spell",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.Alias Spells.ALSP. The group 'Alias Spells' repeats this subrecord.",
         "type": "formid"
        },
        "ALST": {
@@ -24476,9 +24717,24 @@
       "opener": "SGNM",
       "order": [
        "SGNM",
+       "SAKD",
+       "STKD",
+       "SAPT",
        "SRAF"
       ],
       "subrecords": {
+       "SAKD": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.Actor Keywords.SAKD. The group 'Actor Keywords' repeats this subrecord.",
+        "type": "formid"
+       },
+       "SAPT": {
+        "confidence": "documented",
+        "name": "Path",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SAPT. The group 'Animation Paths' repeats this subrecord.",
+        "type": "zstring"
+       },
        "SGNM": {
         "confidence": "documented",
         "name": "Behaviour Graph",
@@ -24501,6 +24757,12 @@
           }
          ]
         }
+       },
+       "STKD": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.Target Keywords.STKD. The group 'Target Keywords' repeats this subrecord.",
+        "type": "formid"
        }
       }
      }
@@ -25138,7 +25400,8 @@
      "XAPD": {
       "opener": "XAPD",
       "order": [
-       "XAPD"
+       "XAPD",
+       "XAPR"
       ],
       "subrecords": {
        "XAPD": {
@@ -25146,6 +25409,23 @@
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XAPD",
         "type": "u8"
+       },
+       "XAPR": {
+        "confidence": "documented",
+        "name": "XAPR",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REFR.Activate Parents.Activate Parent Refs.XAPR. The group 'Activate Parent Refs' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Delay",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      },
@@ -25235,7 +25515,8 @@
       "order": [
        "XRMR",
        "LNAM",
-       "INAM"
+       "INAM",
+       "XLRM"
       ],
       "subrecords": {
        "INAM": {
@@ -25248,6 +25529,12 @@
         "confidence": "documented",
         "name": "Lighting Template",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REFR.Bound Data.LNAM",
+        "type": "formid"
+       },
+       "XLRM": {
+        "confidence": "documented",
+        "name": "Linked Room",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REFR.Bound Data.Linked Rooms.XLRM. The group 'Linked Rooms' repeats this subrecord.",
         "type": "formid"
        },
        "XRMR": {
@@ -25279,7 +25566,8 @@
      "XWPG": {
       "opener": "XWPG",
       "order": [
-       "XWPG"
+       "XWPG",
+       "XWPN"
       ],
       "subrecords": {
        "XWPG": {
@@ -25287,6 +25575,27 @@
         "name": "Count",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XWPG",
         "type": "u32"
+       },
+       "XWPN": {
+        "confidence": "documented",
+        "name": "Connection",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REFR.Power Grid.Connections.XWPN. The group 'Connections' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "name": "Node 1",
+           "type": "formid"
+          },
+          {
+           "name": "Node 2",
+           "type": "formid"
+          },
+          {
+           "name": "Line",
+           "type": "formid"
+          }
+         ]
+        }
        }
       }
      }
@@ -26903,6 +27212,7 @@
        "NNUS",
        "NQUS",
        "DTGT",
+       "PNAM",
        "DATA",
        "HTID",
        "DMAX",
@@ -26910,7 +27220,6 @@
        "CRIS",
        "DEMO",
        "DEVA",
-       "PNAM",
        "ONAM"
       ],
       "subrecords": {
@@ -27130,8 +27439,8 @@
        },
        "PNAM": {
         "confidence": "documented",
-        "name": "AnimArchType",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.PNAM",
+        "name": "Package",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.Packages.PNAM. The group 'Packages' repeats this subrecord.",
         "type": "formid"
        },
        "PTOP": {
