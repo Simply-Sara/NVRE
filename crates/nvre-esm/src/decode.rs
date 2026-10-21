@@ -156,9 +156,9 @@ fn decode_subdef(
             .and_then(Json::as_u64)
             .ok_or_else(|| format!("the count of {count_from:?} is not known yet"))?
             as usize;
-        return decode_counted(&def.ty, n, c, ctx);
+        return decode_counted(&def.ty, n, c, ctx, &Map::new());
     }
-    decode_type_value(&def.ty, c, ctx)
+    decode_type_value(&def.ty, c, ctx, &Map::new())
 }
 
 /// Decode a type's value.
@@ -166,6 +166,7 @@ fn decode_type_value(
     ty: &Type,
     c: &mut Cursor<'_>,
     ctx: &mut DecodeCtx<'_>,
+    scope: &Map<String, Json>,
 ) -> Result<Json, String> {
     match ty {
         Type::Prim(p) => decode_prim(*p, c),
@@ -187,9 +188,9 @@ fn decode_type_value(
                 return Err(format!("the unknown type {n:?}"));
             };
             if !td.union.is_empty() {
-                return decode_type_value(&Type::Union(td.union.clone()), c, ctx);
+                return decode_type_value(&Type::Union(td.union.clone()), c, ctx, scope);
             }
-            decode_struct(td, c, ctx)
+            decode_struct(td, c, ctx, scope)
         }
         Type::Enum { storage, values } => {
             let v = decode_prim(*storage, c)?;
@@ -221,25 +222,39 @@ fn decode_type_value(
                 storage: Prim::U32,
                 union: Vec::new(),
             };
-            decode_struct(&td, c, ctx)
+            decode_struct(&td, c, ctx, scope)
         }
         Type::Array { of, count } => {
             // How many elements: a fixed count, a field's value, or a
             // length in the data itself.
             let n = match count {
                 ArrayCount::Fixed(n) => *n,
-                ArrayCount::FromField(f) => ctx
-                    .values
-                    .get(f)
-                    .and_then(Json::as_u64)
-                    .ok_or_else(|| format!("the count of {f:?} is not known yet"))?
-                    as usize,
+                ArrayCount::FromField(f) => {
+                    // The count is a sibling field: in the struct being
+                    // read, or in the subrecord this array is part of.
+                    scope
+                        .get(f)
+                        .and_then(Json::as_u64)
+                        .or_else(|| ctx.values.get(f).and_then(Json::as_u64))
+                        .ok_or_else(|| format!("the count of {f:?} is not known yet"))?
+                        as usize
+                }
+                ArrayCount::Rest => {
+                    // The elements fill what is left, so the count depends on
+                    // how big each one is.
+                    let size = type_size(ctx.schema, of);
+                    let left = c.remaining();
+                    match size {
+                        Some(n) if n > 0 => left / n,
+                        _ => 0,
+                    }
+                }
                 ArrayCount::Prefix(p) => {
                     let len = c.u32().map_err(|e: nvre_util::OutOfBounds| e.to_string())?;
                     len as usize
                 }
             };
-            decode_counted(of, n, c, ctx)
+            decode_counted(of, n, c, ctx, scope)
         }
         Type::Union(variants) => {
             // A union's variant is chosen by its size: the one whose size
@@ -251,7 +266,7 @@ fn decode_type_value(
                 .or_else(|| variants.iter().find(|v| v.size.is_none()))
                 .or_else(|| variants.first());
             match chosen {
-                Some(v) => decode_type_value(&v.ty, c, ctx),
+                Some(v) => decode_type_value(&v.ty, c, ctx, scope),
                 None => Err("a union has no variants".into()),
             }
         }
@@ -263,6 +278,7 @@ fn decode_struct(
     td: &TypeDef,
     c: &mut Cursor<'_>,
     ctx: &mut DecodeCtx<'_>,
+    outer: &Map<String, Json>,
 ) -> Result<Json, String> {
     let mut m = Map::new();
     for f in &td.fields {
@@ -276,11 +292,12 @@ fn decode_struct(
             let n = m
                 .get(count_from)
                 .and_then(Json::as_u64)
+                .or_else(|| outer.get(count_from).and_then(Json::as_u64))
                 .ok_or_else(|| format!("the count of {count_from:?} is not known yet"))?
                 as usize;
-            decode_counted(&f.ty, n, c, ctx)?
+            decode_counted(&f.ty, n, c, ctx, &m)?
         } else {
-            decode_type_value(&f.ty, c, ctx)?
+            decode_type_value(&f.ty, c, ctx, &m)?
         };
         m.insert(f.name.clone(), v);
     }
@@ -293,6 +310,7 @@ fn decode_counted(
     n: usize,
     c: &mut Cursor<'_>,
     ctx: &mut DecodeCtx<'_>,
+    scope: &Map<String, Json>,
 ) -> Result<Json, String> {
     // A counted array of a primitive is a list of them.
     if let Type::Prim(p) = ty {
@@ -308,9 +326,35 @@ fn decode_counted(
     }
     let mut out = Vec::with_capacity(n.min(4096));
     for _ in 0..n {
-        out.push(decode_type_value(ty, c, ctx)?);
+        out.push(decode_type_value(ty, c, ctx, scope)?);
     }
     Ok(Json::Array(out))
+}
+
+/// How many bytes a type holds, when it is a fixed size.
+fn type_size(schema: &Schema, ty: &Type) -> Option<usize> {
+    match ty {
+        Type::Prim(p) => p.size(),
+        // A named type: a struct of fixed-size fields has a fixed size.
+        Type::Named(n) => {
+            let td = schema.type_def(n)?;
+            let mut total = 0usize;
+            for f in &td.fields {
+                total += type_size(schema, &f.ty)?;
+            }
+            Some(total)
+        }
+        // An array of a fixed size: the element's size times the count.
+        Type::Array { of, count } => {
+            let one = type_size(schema, of)?;
+            match count {
+                ArrayCount::Fixed(n) => Some(one * n),
+                ArrayCount::Prefix(p) => Some(one + p.size()?),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
 }
 
 /// Decode a primitive.
@@ -333,8 +377,8 @@ fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
             Json::String(cp1252::decode_z(bytes))
         }
         Prim::String => {
-            let len = c.u16().map_err(e)? as usize;
-            let bytes = c.bytes(len).map_err(e)?;
+            // The rest of the data is the text.
+            let bytes = c.bytes(c.remaining()).map_err(e)?;
             Json::String(cp1252::decode(bytes))
         }
         Prim::Bytes => {
@@ -353,18 +397,16 @@ fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
             Json::String(cp1252::decode(bytes))
         }
         Prim::ZStringArray => {
-            // An array of strings, each with a one-byte length, until the
-            // data runs out.
-            let mut out = Vec::new();
-            while c.remaining() > 0 {
-                let len = c.u8().map_err(e)? as usize;
-                if len == 0 {
-                    break;
-                }
-                let bytes = c.bytes(len).map_err(e)?;
-                out.push(Json::String(cp1252::decode(bytes)));
-            }
-            Json::Array(out)
+            // A list of NUL-separated strings, closed by a NUL.
+            let rest = c.bytes(c.remaining()).map_err(e)?;
+            // The list is closed by a NUL, and one more NUL may close it.
+            let body = rest.strip_suffix(&[0]).unwrap_or(rest);
+            let body = body.strip_suffix(&[0]).unwrap_or(body);
+            Json::Array(
+                body.split(|&b| b == 0)
+                    .map(|s| Json::String(cp1252::decode(s)))
+                    .collect(),
+            )
         }
     })
 }

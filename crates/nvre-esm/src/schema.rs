@@ -216,6 +216,8 @@ pub enum ArrayCount {
     /// The count is in the data: a length before the elements, in the type
     /// the schema names.
     Prefix(Prim),
+    /// There is no count: the elements fill what is left.
+    Rest,
 }
 
 /// One variant of a union: a type, and the size it occupies.
@@ -541,15 +543,15 @@ impl Schema {
                         ArrayCount::Fixed(n as usize)
                     } else if let Some(f) = o.get("count_field").and_then(|v| v.as_str()) {
                         ArrayCount::FromField(f.to_string())
-                    } else {
+                    } else if let Some(p) = o.get("count_prefix").and_then(|v| v.as_str()) {
                         // The count is in the data, in the type the schema
                         // names: a u32 length, or a u16 one.
-                        let p = o
-                            .get("count_prefix")
-                            .and_then(|v| v.as_str())
-                            .and_then(Prim::parse)
-                            .unwrap_or(Prim::U32);
+                        let p =
+                            Prim::parse(p).ok_or_else(|| format!("unknown count type {p:?}"))?;
                         ArrayCount::Prefix(p)
+                    } else {
+                        // No count: the elements fill what is left.
+                        ArrayCount::Rest
                     };
                     return Ok(Type::Array {
                         of: Box::new(of),
@@ -637,6 +639,7 @@ impl Schema {
         let storage = o
             .get("storage")
             .or_else(|| o.get("flags"))
+            .or_else(|| o.get("enum"))
             .and_then(|v| v.as_str())
             .and_then(Prim::parse)
             .unwrap_or(Prim::U32);
