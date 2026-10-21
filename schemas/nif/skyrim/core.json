@@ -952,11 +952,13 @@
     },
     {
      "name": "welding_type",
-     "type": "u32"
+     "type": "u8",
+     "note": "nifgen's hkWeldingType is a byte, where nif.xml has it as a uint."
     },
     {
      "name": "material_type",
-     "type": "u32"
+     "type": "u8",
+     "note": "nifgen's bhkCMSMatType is a byte, where nif.xml has it as a uint."
     },
     {
      "name": "num_materials_32",
@@ -969,7 +971,7 @@
     },
     {
      "name": "num_materials_16",
-     "type": "u16"
+     "type": "u32"
     },
     {
      "name": "materials_16",
@@ -978,7 +980,7 @@
     },
     {
      "name": "num_materials_8",
-     "type": "u16"
+     "type": "u32"
     },
     {
      "name": "materials_8",
@@ -1035,10 +1037,11 @@
      "length": "num_chunks"
     },
     {
-     "name": "num_convex_piece_a",
+     "name": "trailing",
      "type": "u32"
     }
-   ]
+   ],
+   "note": "nifgen's bhkCompressedMeshShapeData, measured. The welding type and the material type are bytes, where nif.xml has them as uints \u2014 that six-byte difference is what made every field after them land in the wrong place. The material list's first entry is a real Skyrim material (500811281 is SKY_HAV_MAT_WOOD), and a word follows the last chunk."
   },
   "BSFurnitureMarkerNode": {
    "inherit": "NiNode",
@@ -1540,8 +1543,9 @@
     },
     {
      "name": "vertices",
-     "type": "UshortVector3",
-     "length": "num_vertices / 3"
+     "type": "u16",
+     "length": "num_vertices",
+     "note": "nifgen: the count is the number of vertices multiplied by three, and each vertex is three of these."
     },
     {
      "name": "num_indices",
@@ -1570,7 +1574,8 @@
      "type": "u16",
      "length": "num_welding_info"
     }
-   ]
+   ],
+   "note": "nifgen's bhkCMSChunk. Measured: the vertex count is already multiplied by three, and the vertices are a flat list of sixteen-bit values."
   },
   "bhkBallAndSocketConstraintCInfo": {
    "fields": [
