@@ -1,0 +1,312 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "IPCT": {
+   "confidence": "documented",
+   "name": "Impact",
+   "note": "UESP, Skyrim Mod:Mod File Format/IPCT. [measured: 27 NAM2 fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The effect's duration, its flags and the angle threshold.",
+     "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Texture Set",
+     "note": "xEdit wbDefinitionsFNV.pas IPCT record",
+     "type": "formid"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The path to the .nif.",
+     "type": "zstring"
+    },
+    "MODT": {
+     "confidence": "documented",
+     "name": "Model Textures",
+     "note": "A run of 12-byte structs.",
+     "type": "bytes"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Sound 2",
+     "note": "xEdit wbDefinitionsFNV.pas IPCT record",
+     "type": "formid"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound 1",
+     "note": "xEdit wbDefinitionsFNV.pas IPCT record",
+     "type": "formid"
+    }
+   }
+  },
+  "MATO": {
+   "confidence": "documented",
+   "name": "Material Object",
+   "note": "UESP, Skyrim Mod:Mod File Format/MATO. [measured: 32 DATA fields in Skyrim.esm, 48 bytes in 29 of them]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The material's data, 48 bytes.",
+     "type": "MATO_DATA"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Property Data",
+     "note": "The property data, which is very large when it is present.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The path to the .nif. It is not present when the model is a LOD.",
+     "type": "zstring"
+    }
+   }
+  },
+  "TACT": {
+   "confidence": "documented",
+   "name": "Activator",
+   "note": "UESP, Skyrim Mod:Mod File Format/TACT. [measured: 25 FNAM fields in Skyrim.esm, each 2 bytes, and 25 PNAM fields, each 4 bytes]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The activator's flags. [observed: 2 bytes]",
+     "type": "u16"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Radio Template",
+     "note": "xEdit wbDefinitionsFNV.pas TACT record",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Looping Sound",
+     "note": "xEdit wbDefinitionsFNV.pas TACT record",
+     "type": "formid"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Voice Type",
+     "note": "xEdit wbDefinitionsFNV.pas TACT record",
+     "type": "formid"
+    }
+   }
+  },
+  "WATR": {
+   "confidence": "documented",
+   "name": "Water",
+   "note": "UESP, Skyrim Mod:Mod File Format/WATR. [measured: 33 NAM0 and 33 NAM1 fields in Skyrim.esm, each 12 bytes]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Opacity",
+     "note": "The water's opacity.",
+     "type": "u8"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Damage Per Second",
+     "note": "Always zero in Skyrim.esm.",
+     "type": "u16"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The water's data, 228 or 232 bytes.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The water's flags.",
+     "type": {
+      "bits": {
+       "0": "Causes Damage"
+      },
+      "flags": "u8"
+     }
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Related Waters",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": {
+      "struct": [
+       {
+        "name": "daytime",
+        "type": "formid"
+       },
+       {
+        "name": "nighttime",
+        "type": "formid"
+       },
+       {
+        "name": "underwater",
+        "type": "formid"
+       }
+      ]
+     }
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Imagespace Modifier",
+     "note": "The image space modifier.",
+     "type": "formid"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Always zero in Skyrim.esm.",
+     "type": "u8"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 12 bytes]",
+     "type": "ObjectBounds"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 12 bytes]",
+     "type": "ObjectBounds"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Noise Map",
+     "note": "xEdit wbDefinitionsFNV.pas WATR record",
+     "type": "zstring"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Open Sound",
+     "note": "The sound played when the water is entered.",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Material",
+     "note": "The material (MATT).",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Spell Effect",
+     "note": "The spell effect. It does not occur in Skyrim.esm.",
+     "type": "formid"
+    }
+   }
+  }
+ },
+ "types": {
+  "MATO_DATA": {
+   "struct": [
+    {
+     "name": "falloff_scale",
+     "type": "f32"
+    },
+    {
+     "name": "falloff_bias",
+     "type": "f32"
+    },
+    {
+     "name": "noise_uv_scale",
+     "type": "f32"
+    },
+    {
+     "name": "material_uv_scale",
+     "type": "f32"
+    },
+    {
+     "name": "dir_proj_x",
+     "type": "f32"
+    },
+    {
+     "name": "dir_proj_y",
+     "type": "f32"
+    },
+    {
+     "name": "dir_proj_z",
+     "type": "f32"
+    },
+    {
+     "name": "normal_dampener",
+     "type": "f32"
+    },
+    {
+     "name": "single_pass_r",
+     "type": "f32"
+    },
+    {
+     "name": "single_pass_g",
+     "type": "f32"
+    },
+    {
+     "name": "single_pass_b",
+     "type": "f32"
+    },
+    {
+     "name": "single_pass",
+     "note": "Whether the material is a single pass.",
+     "type": "u32"
+    }
+   ]
+  }
+ }
+}
