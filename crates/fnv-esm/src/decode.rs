@@ -46,6 +46,9 @@ pub struct DecodeCtx<'a> {
     pub exposed: HashMap<([u8; 4], String), SwitchValue>,
     /// The record currently being decoded, for `exposed` lookups.
     pub rec_sig: [u8; 4],
+    /// The record's own format version, which a union may switch on
+    /// (xEdit's `wbDeciderFormVersion99`).
+    pub form_version: u32,
     /// The subrecord currently being decoded, for `exposed` lookups.
     ///
     /// A field of a subrecord's own struct is exposed under its own name,
@@ -108,6 +111,7 @@ impl<'a> DecodeCtx<'a> {
             on_formid: None,
             exposed: HashMap::new(),
             rec_sig,
+            form_version: 0,
             sub_sig: None,
             switch_on: None,
             block: None,
@@ -368,6 +372,7 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             bits,
             default,
             variants,
+            min_version,
         } => {
             // The variant is chosen by a sibling value, not by the bytes left.
             // Two lookups, in order: a field decoded earlier in the *same* struct
@@ -382,6 +387,17 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             // A missing switch selects the default, mirroring xEdit's deciders
             // (e.g. wbPerkDATADecider returns 0 when the sibling PRKE is absent,
             // which is exactly the record-level case the union must also cover).
+            // The record's own format version decides the variant when the
+            // schema says so: the later variant when the version is at
+            // least the minimum (xEdit's `wbDeciderFormVersion99`).
+            if let Some(min) = min_version {
+                let idx = if ctx.form_version >= *min {
+                    1.min(variants.len() - 1)
+                } else {
+                    0
+                };
+                return decode_type(&variants[idx], c, ctx);
+            }
             let idx = match &switch {
                 // A bit test: the first mask xEdit tests that is set picks
                 // the variant, and none being set leaves the default.
@@ -866,6 +882,7 @@ pub fn decode_record_localized(r: &Record, schema: &Schema, localized: bool) -> 
             let mut arr = Vec::with_capacity(subs.len());
             let mut ctx = DecodeCtx::new(schema, r.header.sig);
             ctx.localized = localized;
+            ctx.form_version = r.header.form_version as u32;
             walk_sequence(&r.header.sig, &subs, schema, &mut ctx, |s, ctx| {
                 let d = decode_sub(&r.header.sig, s, ctx);
                 let mut o = Map::new();

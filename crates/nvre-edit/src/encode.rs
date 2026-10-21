@@ -92,6 +92,39 @@ fn repeated_name(fields: &[fnv_esm::schema::Field]) -> Option<String> {
 /// Encode `value` according to `t`, appending to `out`.
 ///
 /// `path` is the field path used in error messages ("DATA.rotation_radians.z").
+/// The record's own format version, which a union may switch on.
+///
+/// xEdit's `wbDeciderFormVersion99` reads the record header's form
+/// version and picks the later shape when it is 99 or more. The encoder
+/// needs the version of the record it is writing, so it is kept here for
+/// the length of the write.
+thread_local! {
+    static FORM_VERSION: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Set the record's format version for the length of the write.
+///
+/// The version is the one of the record being written, so a union that
+/// switches on it picks the same shape the decoder read.
+pub fn set_form_version(v: u32) -> FormVersionGuard {
+    FORM_VERSION.with(|c| {
+        let old = c.get();
+        c.set(v);
+        FormVersionGuard(Some(old))
+    })
+}
+
+/// Restores the form version when the write is done.
+pub struct FormVersionGuard(Option<u32>);
+
+impl Drop for FormVersionGuard {
+    fn drop(&mut self) {
+        if let Some(old) = self.0 {
+            FORM_VERSION.with(|c| c.set(old));
+        }
+    }
+}
+
 pub fn encode_type(
     schema: &Schema,
     t: &TypeDef,
@@ -369,7 +402,17 @@ pub fn encode_type(
                 }),
             }
         }
-        TypeDef::ValueUnion { variants, .. } => {
+        TypeDef::ValueUnion {
+            variants, min_version, ..
+        } => {
+            // A union the record's own format version decides: the later
+            // variant when the version is at least the minimum (xEdit's
+            // `wbDeciderFormVersion99`).
+            if let Some(min) = min_version {
+                let v = FORM_VERSION.with(|c| c.get());
+                let idx = if v >= *min { 1.min(variants.len() - 1) } else { 0 };
+                return encode_type(schema, &variants[idx], value, out, path);
+            }
             // A value-decided union carries no switch in the bytes, so the variant
             // must be picked from the value alone. Each variant is tried in order
             // and the first that encodes without error wins — same as the plain

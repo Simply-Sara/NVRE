@@ -399,7 +399,7 @@ class Converter:
             # declares some of them inside a procedure. The body ends at
             # the `end;` at the same indentation as the declaration, so
             # that an inner block's `end;` does not end it.
-            r"^([ \t]*)function\s+(\w*[Dd]ecider)\s*\([^)]*\)\s*:\s*Integer\s*;(.*?)\n\1end;",
+            r"^([ \t]*)function\s+(\w*[Dd]ecider\w*|\w*Decider\w*)\s*\([^)]*\)\s*:\s*Integer\s*;(.*?)\n\1end;",
             self.src,
             re.S | re.M,
         ):
@@ -411,6 +411,19 @@ class Converter:
 
     def _read_decider(self, body):
         """The switch field and the cases of one decider body."""
+        # The record's own format version decides: xEdit's
+        # `wbDeciderFormVersion99` reads the record header's form version
+        # and picks the later shape when it is 99 or more. It reads no
+        # field of its own, so it is told apart here.
+        vm = re.search(r"wbFormVerDecider\s*\([^)]*,\s*(\d+)\s*\)", body)
+        if vm:
+            return {
+                "switch": "form_version",
+                "cases": {},
+                "bits": [],
+                "direct": False,
+                "min_version": int(vm.group(1)),
+            }
         # A decider may read a *field* of a *sibling subrecord* — xEdit's
         # `wbPerkDATADecider` reads the type in the perk's PRKE — and then
         # the switch is that field of that subrecord, named "SIG.Field".
@@ -1898,7 +1911,9 @@ class Converter:
                 if found is not None:
                     members = found
                     continue
-            if decider is None and re.fullmatch(r"wb\w*Decider", p.strip()):
+            # The decider's name: xEdit's deciders are named `wb...Decider`,
+            # and a few are named `wbDeciderFormVersion99`.
+            if decider is None and re.fullmatch(r"wb\w*[Dd]ecider\w*", p.strip()):
                 decider = p.strip()
         if members is None:
             return "bytes", self._note(ctx)
@@ -1996,6 +2011,10 @@ class Converter:
                         k: v for k, v in d["cases"].items() if v < len(variants)
                     }
                     union["default"] = 0
+                elif d.get("min_version") is not None:
+                    # The record's own format version decides: the later
+                    # variant when the version is at least the minimum.
+                    union["min_version"] = d["min_version"]
         return union, self._note(ctx)
 
     # -- a record -----------------------------------------------------------

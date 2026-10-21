@@ -9894,6 +9894,7 @@
         "name": "Vertical Offset Mult",
         "optional": true,
         "type": {
+         "min_version": 99,
          "union": [
           {
            "size": 4,

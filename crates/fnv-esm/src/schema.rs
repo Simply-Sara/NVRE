@@ -264,6 +264,14 @@ pub enum TypeDef {
         bits: Vec<(u64, usize)>,
         default: usize,
         variants: Vec<TypeDef>,
+        /// The record's own format version decides the variant: the second
+        /// variant when the version is at least this, the first otherwise.
+        ///
+        /// xEdit's `wbDeciderFormVersion99` reads the record header's form
+        /// version and picks the later shape when it is 99 or more, which
+        /// is how Fallout 4's explosion record gives a vertical offset
+        /// multiplier rather than four unknown bytes.
+        min_version: Option<u32>,
     },
     /// A union whose variant is chosen by the field's first word, read
     /// without consuming it.
@@ -739,10 +747,15 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                         variants: out.into_iter().map(|(_, t)| t).collect(),
                     });
                 }
-                if let Some(field) = v.get("switch_on") {
-                    let name = field.as_str().map(str::to_string).ok_or_else(|| {
-                        SchemaError(format!("{ctx}: switch_on must be a field name string"))
-                    })?;
+                // A union the record's own format version decides needs no
+                // switch field, but it is decided the same way as one that
+                // has a switch.
+                if v.get("switch_on").is_some() || v.get("min_version").is_some() {
+                    let field = v.get("switch_on").cloned().unwrap_or(Value::Null);
+                    let name = field
+                        .as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| "form_version".to_string());
                     let mut cases = Vec::new();
                     if let Some(Value::Object(m)) = v.get("cases") {
                         for (k, idx) in m {
@@ -796,12 +809,18 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                             out.len()
                         )));
                     }
+                    // The record's format version may decide the variant.
+                    let min_version = v
+                        .get("min_version")
+                        .and_then(Value::as_u64)
+                        .map(|m| m as u32);
                     return Ok(TypeDef::ValueUnion {
                         name,
                         cases,
                         bits,
                         default,
                         variants: out.into_iter().map(|(_, t)| t).collect(),
+                        min_version,
                     });
                 }
                 Ok(TypeDef::Union(out))
