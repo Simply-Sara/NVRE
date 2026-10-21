@@ -101,7 +101,7 @@ fn decode_sub_in(
     sig: &str,
     s: &Subrecord,
     ctx: &mut DecodeCtx<'_>,
-    scope: &Map<String, Json>,
+    _scope: &Map<String, Json>,
 ) -> DecodedSub {
     let Some(def) = b.subrecords.get(sig) else {
         return DecodedSub {
@@ -293,7 +293,21 @@ fn decode_type_value(
                     }
                 }
                 ArrayCount::Prefix(p) => {
-                    let len = c.u32().map_err(|e: nvre_util::OutOfBounds| e.to_string())?;
+                    // The count is in the data, in the type the schema names.
+                    let len: u64 = match p {
+                        Prim::U8 => {
+                            c.u8().map_err(|e: nvre_util::OutOfBounds| e.to_string())? as u64
+                        }
+                        Prim::U16 => {
+                            c.u16().map_err(|e: nvre_util::OutOfBounds| e.to_string())? as u64
+                        }
+                        Prim::U32 => {
+                            c.u32().map_err(|e: nvre_util::OutOfBounds| e.to_string())? as u64
+                        }
+                        other => {
+                            return Err(format!("a count prefix of {other:?} is not supported"))
+                        }
+                    };
                     len as usize
                 }
             };

@@ -57,7 +57,6 @@
 use serde_json::Value as Json;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 /// The format tag a schema file carries.
 pub const FORMAT: &str = "nvre.esm.schema/1";

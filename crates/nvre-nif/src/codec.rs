@@ -6,8 +6,7 @@
 //! rather than a wrong number.
 
 use crate::header::V20_1_0_3;
-use crate::value::{Struct, Value};
-use nvre_util::Cursor;
+use crate::value::Value;
 
 /// A fault while reading.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -400,15 +399,6 @@ pub fn read_prim(
             Value::Bytes(Vec::new())
         }
     })
-}
-
-/// A struct read from the bytes, with the fields the schema gave.
-pub fn read_fields(r: &mut Reader<'_>, fields: &[(String, Value)]) -> Result<Struct, CodecError> {
-    let mut s = Struct::new();
-    for (name, v) in fields {
-        s.set(name, v.clone());
-    }
-    Ok(s)
 }
 
 #[cfg(test)]

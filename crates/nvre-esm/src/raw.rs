@@ -296,7 +296,7 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
 }
 
 /// Read groups until the file ends.
-fn parse_groups(c: &mut Cursor<'_>, data: &[u8], depth: usize) -> Result<Vec<Group>, EsmError> {
+fn parse_groups(c: &mut Cursor<'_>, data: &[u8], _depth: usize) -> Result<Vec<Group>, EsmError> {
     let mut out = Vec::new();
     loop {
         let start = c.pos;

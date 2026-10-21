@@ -4355,6 +4355,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nvre-world"
+version = "0.1.0"
+dependencies = [
+ "fnv-world",
+ "nvre-esm",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "objc-sys"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

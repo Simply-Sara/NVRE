@@ -42,7 +42,6 @@ use crate::value::Value;
 use serde_json::Value as Json;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 /// The struct types the schema language has built in.
 ///
@@ -583,7 +582,7 @@ impl Schema {
     /// Check that the schema refers only to types it defines.
     pub fn check(&self) -> Result<(), SchemaError> {
         let mut errs = Vec::new();
-        for (name, d) in &self.blocks {
+        for (name, _d) in &self.blocks {
             for base in self.block_chain(name) {
                 if !self.blocks.contains_key(base) {
                     errs.push(format!("block {name:?} is based on the unknown {base:?}"));
@@ -594,7 +593,7 @@ impl Schema {
             let all = self.block_fields(name).unwrap_or_default();
             self.check_fields(name, &all, &mut errs);
         }
-        for (name, d) in &self.structs {
+        for (name, _d) in &self.structs {
             for base in self.struct_chain(name) {
                 if !self.structs.contains_key(base) {
                     errs.push(format!("struct {name:?} is based on the unknown {base:?}"));
