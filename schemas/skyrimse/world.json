@@ -1132,6 +1132,12 @@
      "note": "The cloud model, with an optional MODT.",
      "type": "bytes"
     },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 8 bytes]",
+     "type": "u32"
+    },
     "NAM2": {
      "confidence": "documented",
      "name": "Water Type",
@@ -1149,6 +1155,12 @@
      "name": "LOD Water Height",
      "note": "The LOD ocean water level. It is -14000.0 for Tamriel.",
      "type": "f32"
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 8 bytes]",
+     "type": "u32"
     },
     "NAMA": {
      "confidence": "documented",

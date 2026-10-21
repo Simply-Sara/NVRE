@@ -108,6 +108,12 @@
      "note": "0x01 = All Levels, which sets it to calculate for every entry below the player level and choose randomly among them. 0x02 = Each, which repeats the check every time the list is called rather than reusing the result. 0x04 = Use All, which uses every entry when the list is called. 0x08 = Special Loot.",
      "type": "u8"
     },
+    "LVLG": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "LVLO": {
      "confidence": "documented",
      "name": "Leveled Object",

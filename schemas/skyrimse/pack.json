@@ -116,10 +116,16 @@
        },
        "ObjectList": {
         "subrecords": {
+         "ANAM": {
+          "confidence": "documented",
+          "name": "List Entry Type",
+          "note": "The type of the list's next entry, for example Bool or Int. The entry's value follows.",
+          "type": "zstring"
+         },
          "CNAM": {
           "confidence": "documented",
           "name": "Object List Value",
-          "note": "The activity's value. UESP lists this as a float-typed CNAM; in the shipped data it is 4 bytes.",
+          "note": "The list's first value. UESP lists this as a float-typed CNAM; in the shipped data it is 4 bytes.",
           "type": {
            "union": [
             {
