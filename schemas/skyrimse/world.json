@@ -508,6 +508,98 @@
     }
    }
   },
+  "LCTN": {
+   "confidence": "documented",
+   "name": "Location",
+   "note": "UESP, Skyrim Mod:Mod File Format/LCTN. A location holds the population that belongs to it: the actors, the unique actors, the static references and the enable points. [measured: 572 LCSR and 354 LCEC fields in Skyrim.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "A KYWD record. There is one per KSIZ.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "LCEC": {
+     "confidence": "documented",
+     "name": "Encounter",
+     "note": "The encounter zone the location sits in.",
+     "type": "LCTN_LCEC"
+    },
+    "LCEP": {
+     "confidence": "documented",
+     "name": "Enable Points",
+     "note": "The points at which the location's actors are enabled.",
+     "type": "LCTN_LCEP"
+    },
+    "LCID": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "LCPR": {
+     "confidence": "documented",
+     "name": "Population References",
+     "note": "The actors that populate the location.",
+     "type": "LCTN_LCPR"
+    },
+    "LCSR": {
+     "confidence": "documented",
+     "name": "Static References",
+     "note": "The location's static references, each with the ref type that finds them.",
+     "type": "LCTN_LCSR"
+    },
+    "LCUN": {
+     "confidence": "documented",
+     "name": "Unique References",
+     "note": "The location's unique actors.",
+     "type": "LCTN_LCUN"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent Location",
+     "note": "The parent LCTN.",
+     "type": "formid"
+    },
+    "RCPR": {
+     "confidence": "documented",
+     "name": "Population References",
+     "note": "The actors. There is only one instance of this in the game data.",
+     "type": {
+      "array": "formid"
+     }
+    }
+   }
+  },
   "NAVI": {
    "confidence": "hypothesis",
    "name": "Navmesh Info",
@@ -884,7 +976,7 @@
   "STAT": {
    "confidence": "documented",
    "name": "Static",
-   "note": "UESP, Skyrim Mod:Mod File Format/STAT. [measured: 9,720 DNAM fields in Skyrim.esm]",
+   "note": "UESP, Skyrim Mod:Mod File Format/STAT. [measured: 824 MNAM fields in Skyrim.esm]",
    "subrecords": {
     "BRUS": {
      "confidence": "documented",
@@ -894,15 +986,21 @@
     },
     "DNAM": {
      "confidence": "documented",
-     "name": "Unknown",
-     "note": "The static's data, whose layout is not documented.",
-     "type": "bytes"
+     "name": "Data",
+     "note": "The static's maximum angle and its directional material.",
+     "type": "STAT_DNAM"
     },
     "EDID": {
      "confidence": "documented",
      "name": "Editor ID",
      "note": "The editor id.",
      "type": "zstring"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "LOD Data",
+     "note": "The static's level of detail models, present when the HasDistanceLOD flag is set. It is 1,040 bytes: four 260-byte model paths, from the high detail model to the low detail one, with junk after each terminated string. The first empty string is the lowest detail model, so if the second is empty the third and fourth are too.",
+     "type": "bytes"
     },
     "MO2S": {
      "confidence": "documented",
@@ -933,6 +1031,12 @@
      "name": "Model Data",
      "note": "The model's texture data.",
      "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The static's bounds, always 12 bytes.",
+     "type": "ObjectBounds"
     },
     "RNAM": {
      "confidence": "documented",
@@ -1242,6 +1346,113 @@
     }
    ]
   },
+  "LCTN_LCEC": {
+   "struct": [
+    {
+     "name": "world",
+     "note": "The WRLD the encounter zone is in.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": {
+      "array": "i16",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "LCTN_LCEP": {
+   "struct": [
+    {
+     "name": "actor",
+     "note": "The ACHR.",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "The REFR.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "note": "Extra data that varies considerably, though the first byte is always zero.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    }
+   ]
+  },
+  "LCTN_LCPR": {
+   "struct": [
+    {
+     "name": "actor",
+     "note": "The ACHR.",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "note": "The CELL or WRLD the actor is in. 0x3C is Tamriel.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": {
+      "array": "i16",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "LCTN_LCSR": {
+   "struct": [
+    {
+     "name": "location_ref_type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "A REFR or an ACHR.",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "note": "The CELL or WRLD the reference is in. 0x3C is Tamriel.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": {
+      "array": "i16",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "LCTN_LCUN": {
+   "struct": [
+    {
+     "name": "npc",
+     "note": "The NPC_.",
+     "type": "formid"
+    },
+    {
+     "name": "actor",
+     "note": "The ACHR.",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "note": "The LCTN, which points to itself in most cases.",
+     "type": "formid"
+    }
+   ]
+  },
   "REFR_XALP": {
    "struct": [
     {
@@ -1479,9 +1690,14 @@
   "STAT_DNAM": {
    "struct": [
     {
-     "name": "unknown",
-     "note": "The stat's data, whose layout is not documented.",
-     "type": "bytes"
+     "name": "max_angle",
+     "note": "The maximum angle, 30 to 120 degrees.",
+     "type": "f32"
+    },
+    {
+     "name": "directional_material",
+     "note": "The directional material (MATO).",
+     "type": "formid"
     }
    ]
   },

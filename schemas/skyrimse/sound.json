@@ -98,6 +98,40 @@
     }
    }
   },
+  "LCRT": {
+   "confidence": "documented",
+   "name": "Location Reference Type",
+   "note": "UESP, Skyrim Mod:Mod File Format/LCRT. [measured: 404 CNAM fields in Skyrim.esm]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Colour Code",
+     "note": "The RGB colour code. The last byte is always zero.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
   "LVLI": {
    "confidence": "documented",
    "name": "Leveled Item",
@@ -114,6 +148,49 @@
      "name": "Leveled Object",
      "note": "The leveled item's contents.",
      "type": "bytes"
+    }
+   }
+  },
+  "LVLN": {
+   "confidence": "documented",
+   "name": "Leveled NPC",
+   "note": "UESP, Skyrim Mod:Mod File Format/LVLN. [measured: 527 LLCT fields in Skyrim.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "LLCT": {
+     "confidence": "documented",
+     "name": "Entry Count",
+     "note": "How many entries the list has, which is the number of LVLO records.",
+     "type": "u8"
+    },
+    "LVLD": {
+     "confidence": "documented",
+     "name": "Chance For No Spawn",
+     "note": "The chance that an item on this list is not spawned at all. It is always zero, and does not appear in the CK.",
+     "type": "u8"
+    },
+    "LVLF": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "0x01 = All Levels, which sets it to calculate for every entry below the player level and choose randomly among them. 0x02 = Each, which repeats the check every time the list is called rather than reusing the result.",
+     "type": "u8"
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "Leveled Object",
+     "note": "The list's entries: the level, the NPC or LVLN the entry uses, and how many enemies it adds.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "Always 12 zeroes.",
+     "type": "ObjectBounds"
     }
    }
   },
@@ -145,6 +222,27 @@
      "name": "Unknown",
      "note": "Undefined information; the size varies.",
      "type": "bytes"
+    }
+   }
+  },
+  "OTFT": {
+   "confidence": "documented",
+   "name": "Outfit",
+   "note": "UESP, Skyrim Mod:Mod File Format/OTFT. [measured: 481 INAM fields in Skyrim.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Inventory List",
+     "note": "The outfit's pieces, which are ARMO or LVLI records. There is no count of its own, so it is a run of formids.",
+     "type": {
+      "array": "formid"
+     }
     }
    }
   },
