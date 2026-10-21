@@ -50,8 +50,14 @@ from pathlib import Path
 # the same licence the Fallout and Skyrim definitions came under.
 SOURCE = "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1)"
 
-# The records whose groups the generator cannot express, and which are
-# therefore written by hand.
+# The records the generator cannot fully express, and which are therefore
+# written by hand.
+#
+# The generator's own output for these is not nothing: each of them has
+# groups the generator does turn into `sequence` blocks, and the blocks it
+# does produce are right. What it cannot do is a group *inside* a group, so
+# a few of each record's subrecords end up undefined. A hand-written file
+# replaces the generated one for the record and fixes the rest.
 HAND_WRITTEN = {
     "SCEN",   # the action/phase structure is nested three deep
     "PACK",   # the activity list's shape depends on the activity's type
@@ -274,11 +280,24 @@ def is_signature(text):
 # --------------------------------------------------------------------------
 
 class Converter:
+    # The definitions whose layout the hand-written files give, rather than
+    # the generator, and the schema type each of them uses. xEdit's own
+    # layout for these is either conditional on a flag (`wbMODT` is decoded
+    # only when `wbDecodeTextureHashes` is set) or decided by a decider the
+    # schema language does not carry (`wbCTDA`'s unions are chosen by the
+    # condition's own function). The generator emits a reference to the
+    # schema's type by name.
+    OVERRIDDEN = {
+        "wbMODT": "FO4_MODT",
+        "wbCTDA": "FO4_Condition",
+    }
+
     def __init__(self, src):
         self.src = strip_comments(src)
         self.types = {}          # Pascal variable name -> schema type
         self.type_notes = {}     # Pascal variable name -> note
         self.type_sigs = {}      # Pascal variable name -> the signature it owns
+        self.named_groups = {}   # named type -> the subrecords its group holds
         self.records = {}        # signature -> record definition
         self.problems = []
         self.deferred = set()    # names referred to before they were defined
@@ -427,6 +446,17 @@ class Converter:
         # The second pass: build the layouts, in declaration order, so a
         # definition that uses an earlier one sees it.
         for var, kind, args in pending:
+            if var in self.OVERRIDDEN:
+                # The layout is the hand-written file's; the generator only
+                # records that the name exists and what signature it owns.
+                self.types[var] = self.OVERRIDDEN[var]
+                self.type_notes[var] = self._note(
+                    f"{var}, laid out in the hand-written file"
+                )
+                sig = self._record_signature(kind, split_args(args))
+                if sig:
+                    self.type_sigs[var] = sig
+                continue
             schema, note = self.convert_member(kind, args, var)
             if schema is not None:
                 self.types[var] = schema
@@ -437,6 +467,85 @@ class Converter:
                 sig = self._record_signature(kind, split_args(args))
                 if sig:
                     self.type_sigs[var] = sig
+            # A named definition may itself be a group — `wbCTDA` holds the
+            # `CTDA` subrecord — and a record that uses the name as a group's
+            # element needs the subrecords it holds.
+            if kind in GROUP_KINDS:
+                subs = self._group_subrecords(var, kind, split_args(args))
+                if subs:
+                    self.named_groups[var.lower()] = subs
+                    # A group whose element is a named group holds that
+                    # group's subrecords: `wbCTDAs` holds `wbCTDA`, which
+                    # holds the `CTDA` subrecord.
+                    for p in split_args(args)[1:]:
+                        element = p.strip()
+                        if match_call(element)[0] is None:
+                            inner = self.named_groups.get(element.lower())
+                            if inner:
+                                self.named_groups[var.lower()] = inner
+                            break
+
+    def _named_group_block(self, named):
+        """A sequence block for the subrecords a named group holds."""
+        if not named:
+            return None
+        subs = {}
+        order = []
+        for first, sname, schema, note in named:
+            subs[first] = {
+                "name": sname,
+                "type": schema,
+                "confidence": "documented",
+                "note": note,
+            }
+            order.append(first)
+        return {
+            "opener": order[0],
+            "order": order,
+            "subrecords": subs,
+        }
+
+    def _group_subrecords(self, name, kind, parts):
+        """The subrecords a named group holds, as (signature, definition)."""
+        out = []
+        members = self._group_members(parts)
+        if members == "NAMED" or members == "NESTED":
+            # The group's element is another group; its subrecords are the
+            # ones this group holds.
+            for p in parts[1:]:
+                element = p.strip()
+                if match_call(element)[0] is None:
+                    inner = self.named_groups.get(element.lower())
+                    if inner:
+                        return list(inner)
+                    return out
+                ename, eargs, _ = match_call(element)
+                if ename in GROUP_KINDS and eargs is not None:
+                    return self._group_subrecords(name, ename, split_args(eargs))
+        if not isinstance(members, list):
+            return out
+        for m in members:
+            mname, margs, _ = match_call(m)
+            if mname is None:
+                # A bare named definition — `wbMODT` — is a member whose
+                # signature the definition itself carries.
+                mname = m.strip()
+                margs = ""
+            mparts = split_args(margs) if margs is not None else []
+            first = mparts[0].strip() if mparts else ""
+            if not is_signature(first):
+                # The member is a named definition that owns a signature.
+                sig_of = self._named_type_signature(mname)
+                if sig_of is None:
+                    continue
+                first = sig_of
+                mparts = [first]
+            schema, note = self.convert_member(mname, margs, f"{name}.{first}")
+            if schema is None:
+                continue
+            sname = pascal_string(mparts[1]) if len(mparts) > 1 else first
+            out.append((first, sname or first, schema, note))
+        return out
 
     # -- the records --------------------------------------------------------
 
@@ -691,7 +800,7 @@ class Converter:
         if kind in ("wbFormIDCk", "wbFormIDCkNoReach", "wbFormIDCK", "wbFormIDck", "wbFormID"):
             return "formid", self._note(ctx)
         if kind in ("wbString", "wbStringKC", "wbStringLC", "wbStringT", "wbStringForward"):
-            return "zstring", self._note(ctx)
+            return self._convert_string(parts)
         if kind in ("wbLString", "wbLStringKC"):
             return "localized", self._note(ctx)
         if kind == "wbLenString":
@@ -717,6 +826,15 @@ class Converter:
             return ty, note
         if kind in HELPERS:
             return self._helper_struct(kind, parts)
+        # A definition the hand-written files provide: the generator emits a
+        # reference to it by name, and the hand-written file gives it its
+        # layout. `wbMODT` is one: xEdit's own layout for it is conditional
+        # on a flag, and the measured one is written out.
+        if kind in self.OVERRIDDEN:
+            return (
+                self.OVERRIDDEN[kind],
+                self._note(f"{kind}, laid out in the hand-written file"),
+            )
         self.problems.append(f"{ctx}: unhandled {kind}")
         return None, None
 
@@ -747,32 +865,83 @@ class Converter:
             return ({"struct": fields}, self._note(f"{kind}('{name}')"))
         return {"struct": fields}, self._note(kind)
 
+    def _convert_string(self, parts):
+        """A string, which may have a fixed length.
+
+        xEdit's `wbString(sig, name, size, ...)` gives a fixed length when
+        the size is not zero: the text is exactly that many bytes, with no
+        terminator. `DIAL`'s `SNAM` is four bytes of tag — "HELO", "RUMO" —
+        rather than a name.
+        """
+        size = None
+        if len(parts) >= 3 and is_signature(parts[0].strip()):
+            size = parts[2].strip()
+        elif len(parts) >= 2:
+            size = parts[1].strip()
+        try:
+            n = int(size) if size is not None else 0
+        except ValueError:
+            n = 0
+        if n > 0:
+            # A fixed-length string: the bytes are text, with no terminator.
+            return (
+                {"array": "u8", "count": n},
+                self._note(parts[0].strip()),
+            )
+        return "zstring", self._note(parts[0].strip())
+
     def _convert_integer(self, parts):
-        if len(parts) < 3:
+        # `wbInteger` has two forms: with a signature
+        # (`wbInteger(SIG, name, intType, ...)`) and without one
+        # (`wbInteger(name, intType, ...)`), so the type is the argument
+        # after the name either way.
+        if len(parts) >= 3 and is_signature(parts[0].strip()):
+            it = parts[2].strip()
+            note_ctx = parts[0].strip()
+        elif len(parts) >= 2:
+            it = parts[1].strip()
+            note_ctx = parts[0].strip()
+        else:
             return "u32", self._note(parts[0] if parts else "?")
-        it = parts[2].strip()
         ty = INT_TYPES.get(it, "u32")
-        return ty, self._note(parts[0].strip())
+        return ty, self._note(note_ctx)
 
     def _convert_byte_array(self, parts):
-        size = parts[2].strip() if len(parts) > 2 else "0"
+        # `wbByteArray` has the same two forms as `wbInteger`, so the size
+        # is the argument after the name either way.
+        if len(parts) >= 3 and is_signature(parts[0].strip()):
+            size = parts[2].strip()
+            note_ctx = parts[0].strip()
+        elif len(parts) >= 2:
+            size = parts[1].strip()
+            note_ctx = parts[0].strip()
+        else:
+            return "bytes", self._note(parts[0] if parts else "?")
         try:
             n = int(size)
         except ValueError:
             n = 0
         if n > 0:
-            return {"array": "u8", "count": n}, self._note(parts[0].strip())
+            return {"array": "u8", "count": n}, self._note(note_ctx)
         # A size of 0 means "the rest of the field".
-        return "bytes", self._note(parts[0].strip())
+        return "bytes", self._note(note_ctx)
 
     def _convert_struct(self, parts, ctx):
         # `wbStruct` has two forms: with a signature (`wbStruct(SIG, name,
         # [members])`) and without one (`wbStruct(name, [members])`). The
         # members are the argument that is a `[ ... ]` list either way.
+        # `wbStructSK` adds a sort key before the name, which shifts the
+        # members one place along; the list is still found by its shape:
+        # a sort key is a list of integers, not of definitions.
         members = None
         for p in parts[1:]:
-            members = bracket_list(p)
-            if members is not None:
+            candidate = bracket_list(p)
+            if candidate and all(
+                (match_call(m)[0] is not None)
+                or re.fullmatch(r"wb[A-Za-z0-9_]+", m.strip())
+                for m in candidate
+            ):
+                members = candidate
                 break
         if members is None:
             return "bytes", self._note(ctx)
@@ -948,6 +1117,14 @@ class Converter:
                 if mname in GROUP_KINDS:
                     self.convert_group(sig, mname, parts, args, flat, blocks)
                     continue
+                # A named group used as a member — `wbCTDAs` — holds the
+                # subrecords of the group it names, so it becomes a block.
+                named = self.named_groups.get(mname.lower())
+                if named:
+                    block = self._named_group_block(named)
+                    if block is not None:
+                        blocks[block["opener"]] = block
+                    continue
                 # A named definition that carries a signature is a subrecord.
                 sig_of = self._named_type_signature(mname)
                 if sig_of is None:
@@ -1003,6 +1180,29 @@ class Converter:
             members = self._nested_members(sig, gname, parts)
             if not members:
                 return
+        if members == "NAMED":
+            # The group's element is a named type that is itself a group —
+            # `wbCTDAs` holds `wbCTDA`, which holds the `CTDA` subrecord. The
+            # named type's own subrecords are the group's.
+            named = self.named_groups.get(parts[1].strip().lower())
+            if not named:
+                return
+            subs = {}
+            order = []
+            for first, sname, schema, note in named:
+                subs[first] = {
+                    "name": sname,
+                    "type": schema,
+                    "confidence": "documented",
+                    "note": note,
+                }
+                order.append(first)
+            blocks[order[0]] = {
+                "opener": order[0],
+                "order": order,
+                "subrecords": subs,
+            }
+            return
 
         # A fixed run of several subrecords: a sequence block.
         subs = {}
@@ -1044,7 +1244,8 @@ class Converter:
         """The group's member list, or None if it holds a single element.
 
         The string "NESTED" means the element is a group of its own, whose
-        members are one level down.
+        members are one level down. The string "NAMED" means the element is
+        a named type that is itself a group.
         """
         for p in parts[1:]:
             members = bracket_list(p)
@@ -1053,12 +1254,31 @@ class Converter:
         # The element is a single definition. If it is itself a group, the
         # members are inside it.
         if len(parts) > 1:
-            ename, eargs, _ = match_call(parts[1])
+            element = parts[1].strip()
+            ename, eargs, _ = match_call(element)
             if ename in GROUP_KINDS and eargs is not None:
                 inner = self._group_members(split_args(eargs))
                 if inner is not None:
                     return "NESTED"
+            elif ename is None and self._is_named_group(element):
+                return "NAMED"
         return None
+
+    def _is_named_group(self, name):
+        """Whether a name is a named type whose own members are a group."""
+        if not re.fullmatch(r"wb[A-Za-z0-9_]*", name):
+            return False
+        return name.lower() in self.named_groups
+
+    def _named_group_members(self, sig, gname, parts):
+        """The members of a group whose element is a named group."""
+        element = parts[1].strip()
+        members = self.named_groups.get(element.lower())
+        if members is None:
+            return None
+        # The members are the named type's own; the subrecord definitions
+        # they carry are already built, so they are taken whole.
+        return members
 
     def _nested_members(self, sig, gname, parts):
         """The members of a group whose element is a group of its own."""
@@ -1109,7 +1329,12 @@ def main():
 
     skipped = {s for s in HAND_WRITTEN if s in c.records}
     records = {k: v for k, v in c.records.items() if k not in HAND_WRITTEN}
-    types = dict(sorted(c.types.items()))
+    # The overridden names are the hand-written files' own; the generator
+    # only refers to them.
+    types = {
+        k: v for k, v in sorted(c.types.items())
+        if k not in Converter.OVERRIDDEN
+    }
 
     out_dir.mkdir(parents=True, exist_ok=True)
     doc = {

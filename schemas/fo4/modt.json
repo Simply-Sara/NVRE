@@ -1,0 +1,141 @@
+{
+ "format": "fnv.schema/1",
+ "common": {
+  "MODT": {
+   "confidence": "documented",
+   "name": "Model Texture Hashes",
+   "note": "The model's texture hashes. Fallout 4's MODT comes in three forms, told by the version word at the head: version 2 is three words and nothing else, version 3 is a 16-byte header and then the entries, and version 4 is a 20-byte header and then the entries. Each entry is 12 bytes: a hash, the \"dds\" extension and a second hash. [measured: of the 19,354 MODT fields in Fallout4.esm, 66 are version 2, 791 are version 3 and 18,497 are version 4; every version-3 field is 16 bytes plus a whole number of twelve-byte entries, and every version-4 field is 20 bytes plus a whole number of them.]",
+   "type": "FO4_MODT"
+  }
+ },
+ "types": {
+  "FO4_MODT": {
+   "peek": true,
+   "cases": {
+    "2": 0,
+    "3": 1,
+    "4": 2
+   },
+   "default": 2,
+   "union": [
+    {
+     "name": "Version 2",
+     "note": "The oldest form: three words and no entries at all. [measured: 66 MODT fields in Fallout4.esm have this version, and every one of them is twelve bytes.]",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "note": "Always 2 in this form.",
+        "type": "u32"
+       },
+       {
+        "name": "unused",
+        "note": "Unused.",
+        "type": {
+         "array": "u8",
+         "count": 8
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Version 3",
+     "note": "The older form: a 16-byte header and then the entries, one per texture. [measured: 791 MODT fields in Fallout4.esm have this version; every one is 16 bytes plus a multiple of twelve.]",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "note": "Always 3 in this form.",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "note": "How many texture entries follow.",
+        "type": "u32"
+       },
+       {
+        "name": "unused",
+        "note": "Unused.",
+        "type": {
+         "array": "u8",
+         "count": 8
+        }
+       },
+       {
+        "name": "entries",
+        "note": "The model's textures.",
+        "type": {
+         "array": "FO4_MODT_ENTRY",
+         "count_field": "count"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Version 4",
+     "note": "The current form: a 20-byte header and then the entries. [measured: 18,497 MODT fields in Fallout4.esm have this version; every one is 20 bytes plus a multiple of twelve, and the entry count is the header's count plus its materials count in all but two.]",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "note": "Always 4 in this form.",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "note": "How many texture headers follow.",
+        "type": "u32"
+       },
+       {
+        "name": "unused",
+        "note": "Unused.",
+        "type": "u32"
+       },
+       {
+        "name": "unique_textures",
+        "note": "How many distinct textures the model's materials use.",
+        "type": "u32"
+       },
+       {
+        "name": "materials",
+        "note": "How many materials the model has. The number of entries that follow is this count plus the header's own count.",
+        "type": "u32"
+       },
+       {
+        "name": "entries",
+        "note": "The model's texture entries. They fill the rest of the field, which is always a whole number of them: the entry count is the header's count plus its materials count, and the field's length confirms it. [measured: 18,495 of the 18,497 version-4 MODT fields in Fallout4.esm are 20 bytes plus a whole number of twelve-byte entries, and the count matches the header's count plus its materials count.]",
+        "type": {
+         "array": "FO4_MODT_ENTRY"
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "FO4_MODT_ENTRY": {
+   "struct": [
+    {
+     "name": "hash",
+     "note": "The texture's hash.",
+     "type": "u32"
+    },
+    {
+     "name": "extension",
+     "note": "The texture's extension, four bytes: usually \"dds\" and a NUL, but not always. [measured: the extension is not a NUL-terminated string in every entry — some hold other bytes.]",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "second_hash",
+     "note": "A second hash, whose meaning is not documented.",
+     "type": "u32"
+    }
+   ]
+  }
+ }
+}

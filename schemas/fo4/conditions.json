@@ -1,0 +1,85 @@
+{
+ "format": "fnv.schema/1",
+ "common": {
+  "CIS1": {
+   "confidence": "documented",
+   "name": "Variable Name",
+   "note": "The variable name that replaces the CTDA's first argument. It trails a CTDA that uses a string parameter, and the CTDA's parameter 1 is then a very high value. [documented: xEdit wbDefinitionsFO4.pas, wbCTDAParam1StringToInt; observed: CIS1 follows a CTDA in INFO and PACK.]",
+   "type": "zstring"
+  },
+  "CIS2": {
+   "confidence": "documented",
+   "name": "Variable Name",
+   "note": "The variable name that replaces the CTDA's second argument. It trails a CTDA that uses a string parameter. [documented: xEdit wbDefinitionsFO4.pas, wbCTDAParam1StringToInt; observed: CIS2 follows a CTDA in INFO.]",
+   "type": "zstring"
+  },
+  "CTDA": {
+   "confidence": "documented",
+   "name": "Condition",
+   "note": "The condition reads as <Reference>.<Function>(<Param1>, <Param2>) <Operator> <Value>. [documented: xEdit wbDefinitionsFO4.pas, wbCTDA; observed: every one of the 101,882 CTDA subrecords in Fallout4.esm is exactly 32 bytes, so Run On, Reference and the trailing index are all present, as in Skyrim — Fallout's CTDA has only the first two of the three, and its last two fields are optional.]",
+   "type": "FO4_Condition"
+  }
+ },
+ "types": {
+  "FO4_Condition": {
+   "struct": [
+    {
+     "name": "operator",
+     "note": "The upper 3 bits are the compare operator (0 = Equal to, 1 = Not equal to, 2 = Greater than, 3 = Greater than or equal to, 4 = Less than, 5 = Less than or equal to) and the lower 5 bits are flags: 0x01 = OR (otherwise conditions are ANDed together), 0x02 = Parameters (use aliases), 0x04 = Use global, 0x08 = Use Pack Data, 0x10 = Swap Subject and Target.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown",
+     "note": "Unused data.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "comparison_value_raw",
+     "note": "The value the function result is compared against: a float, or a GLOB formid when the 0x04 Use global flag is set. Decoded as a raw u32.",
+     "type": "u32"
+    },
+    {
+     "name": "function",
+     "note": "The condition function's index. [documented: xEdit wbDefinitionsFO4.pas, wbCTDAFunctionToStr.]",
+     "type": "u16"
+    },
+    {
+     "name": "padding",
+     "note": "Padding. The bytes are unused but may be non-zero.",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "parameter1_raw",
+     "note": "The first parameter: a number, or a formid when the function takes one. Zero when the function needs no parameter. A string parameter is a CIS1 subrecord following the CTDA instead.",
+     "type": "u32"
+    },
+    {
+     "name": "parameter2_raw",
+     "note": "The second parameter, same shape as the first. A string parameter is a CIS2 subrecord following the CTDA instead.",
+     "type": "u32"
+    },
+    {
+     "name": "run_on",
+     "note": "How the condition applies: 0 = Subject, 1 = Target, 2 = Reference (see the reference field), 3 = Combat Target, 4 = Linked Reference, 5 = Quest Alias, 6 = Package Data, 7 = Event Data. Always present in Fallout 4, as in Skyrim. [observed: 0 and 1 in the sampled CTDAs of Fallout4.esm.]",
+     "type": "u32"
+    },
+    {
+     "name": "reference_raw",
+     "note": "The reference the condition is about, when the run-on type is Reference. Zero when it is not.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown2",
+     "note": "The index of the package data or quest alias to run on. -1 means 'none', and it is also used for other run-on types. [observed: -1 in every sampled CTDA of Fallout4.esm.]",
+     "type": "i32"
+    }
+   ]
+  }
+ }
+}
