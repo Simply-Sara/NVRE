@@ -209,6 +209,12 @@
    "name": "Weather",
    "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The cloud textures have a signature per layer: 00TX is layer 0, and layer n uses a texture whose signature is the character 0 plus n followed by 0TX. [measured: 1,537 WTHR records in Skyrim.esm; the cloud texture colour is 512 bytes, the alpha 512 bytes, and DALC is 24 or 32 bytes]",
    "subrecords": {
+    "*0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture",
+     "note": "The cloud texture's path. The signature names the layer: layer 0 is 00TX and layer n uses the character chr(ord('0')+n) followed by 0TX.",
+     "type": "zstring"
+    },
     "DALC": {
      "confidence": "documented",
      "name": "Direct Ambient And Specular Colours",

@@ -32,7 +32,9 @@ pub fn zstring_like(d: &[u8]) -> bool {
     if d.is_empty() || *d.last().unwrap() != 0 {
         return false;
     }
-    d[..d.len() - 1].iter().all(|&b| b >= 0x20 || b == b'\t' || b == b'\r' || b == b'\n')
+    d[..d.len() - 1]
+        .iter()
+        .all(|&b| b >= 0x20 || b == b'\t' || b == b'\r' || b == b'\n')
 }
 
 impl Survey {
@@ -78,7 +80,11 @@ impl Survey {
         for ((r, s), p) in &self.pairs {
             let mut sizes: Vec<(&usize, &u64)> = p.sizes.iter().collect();
             sizes.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
-            let sz: Vec<Value> = sizes.iter().take(8).map(|(k, v)| json!({"size": k, "count": v})).collect();
+            let sz: Vec<Value> = sizes
+                .iter()
+                .take(8)
+                .map(|(k, v)| json!({"size": k, "count": v}))
+                .collect();
             rows.push(json!({
                 "record": r,
                 "sub": s,

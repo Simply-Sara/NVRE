@@ -48,7 +48,10 @@ impl<'a> LoadOrder<'a> {
         if plugins.len() > 255 {
             return Err(LoadOrderError::TooManyPlugins(plugins.len()));
         }
-        let lower: Vec<String> = plugins.iter().map(|p| p.name.to_ascii_lowercase()).collect();
+        let lower: Vec<String> = plugins
+            .iter()
+            .map(|p| p.name.to_ascii_lowercase())
+            .collect();
         for (i, n) in lower.iter().enumerate() {
             if lower[..i].contains(n) {
                 return Err(LoadOrderError::Duplicate(plugins[i].name.clone()));
@@ -68,19 +71,31 @@ impl<'a> LoadOrder<'a> {
                         })
                     }
                     None => {
-                        return Err(LoadOrderError::MissingMaster { plugin: p.name.clone(), master: mr.name.clone() })
+                        return Err(LoadOrderError::MissingMaster {
+                            plugin: p.name.clone(),
+                            master: mr.name.clone(),
+                        })
                     }
                 }
             }
             master_map.push(m);
         }
-        let mut lo = LoadOrder { plugins, master_map, records: Vec::new(), index: HashMap::new(), unmappable: Vec::new() };
+        let mut lo = LoadOrder {
+            plugins,
+            master_map,
+            records: Vec::new(),
+            index: HashMap::new(),
+            unmappable: Vec::new(),
+        };
         for (pi, p) in plugins.iter().enumerate() {
             let mut recs: Vec<&'a Record> = Vec::new();
             visit_records(&p.nodes[1..], &mut |r, _| recs.push(r));
             for (ord, r) in recs.iter().enumerate() {
                 match lo.to_global(pi, r.header.form_id) {
-                    Some(g) => lo.index.entry(g).or_default().push(DefRef { plugin: pi as u8, ordinal: ord as u32 }),
+                    Some(g) => lo.index.entry(g).or_default().push(DefRef {
+                        plugin: pi as u8,
+                        ordinal: ord as u32,
+                    }),
                     None => {
                         tracing::debug!(
                             plugin = %p.name,
@@ -105,7 +120,11 @@ impl<'a> LoadOrder<'a> {
     pub fn to_global(&self, pi: usize, local: u32) -> Option<u32> {
         let idx = (local >> 24) as usize;
         let masters = &self.master_map[pi];
-        let target = if idx < masters.len() { masters[idx] } else { pi as u8 };
+        let target = if idx < masters.len() {
+            masters[idx]
+        } else {
+            pi as u8
+        };
         Some(((target as u32) << 24) | (local & 0x00FF_FFFF))
     }
 
@@ -116,13 +135,19 @@ impl<'a> LoadOrder<'a> {
         if target as usize == pi {
             return Some(((self.master_map[pi].len() as u32) << 24) | low);
         }
-        self.master_map[pi].iter().position(|&m| m == target).map(|i| ((i as u32) << 24) | low)
+        self.master_map[pi]
+            .iter()
+            .position(|&m| m == target)
+            .map(|i| ((i as u32) << 24) | low)
     }
 
     /// The winning (last-loaded) definition of a global FormID.
     pub fn winner(&self, global: u32) -> Option<(&'a Plugin, &'a Record)> {
         let d = *self.index.get(&global)?.last()?;
-        Some((&self.plugins[d.plugin as usize], self.records[d.plugin as usize][d.ordinal as usize]))
+        Some((
+            &self.plugins[d.plugin as usize],
+            self.records[d.plugin as usize][d.ordinal as usize],
+        ))
     }
 
     pub fn exists(&self, global: u32) -> bool {

@@ -6,7 +6,11 @@ use fnv_esm::raw::{visit_records, write_subrecords, Subrecord};
 use fnv_esm::{LoadOrder, Plugin, Schema};
 
 fn sub(sig: &[u8; 4], data: &[u8]) -> Subrecord {
-    Subrecord { sig: *sig, data: data.to_vec(), extended: false }
+    Subrecord {
+        sig: *sig,
+        data: data.to_vec(),
+        extended: false,
+    }
 }
 
 fn record(sig: &[u8; 4], flags: u32, fid: u32, payload: &[u8]) -> Vec<u8> {
@@ -51,7 +55,12 @@ fn tes4(masters: &[&str], num_records: i32, onam: &[u32]) -> Vec<u8> {
         let d: Vec<u8> = onam.iter().flat_map(|x| x.to_le_bytes()).collect();
         subs.push(sub(b"ONAM", &d));
     }
-    record(b"TES4", if masters.is_empty() { 1 } else { 0 }, 0, &write_subrecords(&subs))
+    record(
+        b"TES4",
+        if masters.is_empty() { 1 } else { 0 },
+        0,
+        &write_subrecords(&subs),
+    )
 }
 
 fn glob(fid: u32, edid: &str, value: f32) -> Vec<u8> {
@@ -61,12 +70,20 @@ fn glob(fid: u32, edid: &str, value: f32) -> Vec<u8> {
         b"GLOB",
         0,
         fid,
-        &write_subrecords(&[sub(b"EDID", &e), sub(b"FNAM", b"f"), sub(b"FLTV", &value.to_le_bytes())]),
+        &write_subrecords(&[
+            sub(b"EDID", &e),
+            sub(b"FNAM", b"f"),
+            sub(b"FLTV", &value.to_le_bytes()),
+        ]),
     )
 }
 
 fn master() -> Vec<u8> {
-    let body = [glob(0x0000_1000, "GlobA", 1.0), glob(0x0000_1001, "GlobB", 2.0)].concat();
+    let body = [
+        glob(0x0000_1000, "GlobA", 1.0),
+        glob(0x0000_1001, "GlobB", 2.0),
+    ]
+    .concat();
     let mut f = tes4(&[], 3, &[]);
     f.extend(group(b"GLOB", 0, &body));
     f
@@ -74,10 +91,18 @@ fn master() -> Vec<u8> {
 
 fn dlc() -> Vec<u8> {
     // Overrides GlobB, adds GlobC; GlobC is compressed.
-    let payload = write_subrecords(&[sub(b"EDID", b"GlobC\0"), sub(b"FNAM", b"f"), sub(b"FLTV", &3.5f32.to_le_bytes())]);
+    let payload = write_subrecords(&[
+        sub(b"EDID", b"GlobC\0"),
+        sub(b"FNAM", b"f"),
+        sub(b"FLTV", &3.5f32.to_le_bytes()),
+    ]);
     let mut comp = (payload.len() as u32).to_le_bytes().to_vec();
     comp.extend(fnv_inflate::zlib_store(&payload));
-    let body = [glob(0x0000_1001, "GlobB", 20.0), record(b"GLOB", 0x40000, 0x0100_2000, &comp)].concat();
+    let body = [
+        glob(0x0000_1001, "GlobB", 20.0),
+        record(b"GLOB", 0x40000, 0x0100_2000, &comp),
+    ]
+    .concat();
     let mut f = tes4(&["Master.esm"], 3, &[]);
     f.extend(group(b"GLOB", 0, &body));
     f
@@ -137,9 +162,15 @@ fn load_order_errors() {
     let d = Plugin::parse(&dlc(), "Dlc.esm".into()).unwrap();
     let m = Plugin::parse(&master(), "Master.esm".into()).unwrap();
     let only_dlc = vec![Plugin::parse(&dlc(), "Dlc.esm".into()).unwrap()];
-    assert!(matches!(LoadOrder::new(&only_dlc), Err(LoadOrderError::MissingMaster { .. })));
+    assert!(matches!(
+        LoadOrder::new(&only_dlc),
+        Err(LoadOrderError::MissingMaster { .. })
+    ));
     let wrong = vec![d, m];
-    assert!(matches!(LoadOrder::new(&wrong), Err(LoadOrderError::MasterAfterDependent { .. })));
+    assert!(matches!(
+        LoadOrder::new(&wrong),
+        Err(LoadOrderError::MasterAfterDependent { .. })
+    ));
 }
 
 #[test]
@@ -154,7 +185,10 @@ fn compressed_record_decodes_and_coverage_counts() {
         if r.is_compressed() {
             let v = decode_record(r, &s);
             let t = v.to_string();
-            assert!(t.contains("GlobC") && t.contains("3.5") && t.contains("Float"), "{t}");
+            assert!(
+                t.contains("GlobC") && t.contains("3.5") && t.contains("Float"),
+                "{t}"
+            );
         }
     });
     assert_eq!(n, 2);
@@ -168,7 +202,11 @@ fn unknown_and_trailing_are_reported() {
         b"GLOB",
         0,
         0x10,
-        &write_subrecords(&[sub(b"EDID", b"X\0"), sub(b"FLTV", &[0, 0, 128, 63, 9, 9]), sub(b"ZZZZ", &[1])]),
+        &write_subrecords(&[
+            sub(b"EDID", b"X\0"),
+            sub(b"FLTV", &[0, 0, 128, 63, 9, 9]),
+            sub(b"ZZZZ", &[1]),
+        ]),
     );
     let mut f = tes4(&[], 2, &[]);
     f.extend(group(b"GLOB", 0, &r));
@@ -192,7 +230,11 @@ fn rejects_non_plugin() {
 fn repository_schemas_load() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv");
     let s = Schema::load_dir(&dir).unwrap_or_else(|e| panic!("{e}"));
-    assert!(s.records.len() >= 30, "only {} record definitions", s.records.len());
+    assert!(
+        s.records.len() >= 30,
+        "only {} record definitions",
+        s.records.len()
+    );
     assert!(s.common.contains_key(b"EDID"));
 }
 
@@ -206,7 +248,14 @@ fn stats_counts_repeated_unknown_group_types() {
     let v = fnv_esm::inventory::stats_json(&p);
     let g = v.get("by_group_type").unwrap();
     assert_eq!(g.get("unknown_11").and_then(|x| x.as_u64()), Some(3));
-    assert_eq!(g.as_object().unwrap().iter().filter(|(k, _)| *k == "unknown_11").count(), 1);
+    assert_eq!(
+        g.as_object()
+            .unwrap()
+            .iter()
+            .filter(|(k, _)| *k == "unknown_11")
+            .count(),
+        1
+    );
 }
 
 #[test]
@@ -219,7 +268,12 @@ fn schema_cannot_request_unbounded_zero_width_arrays() {
     )
     .unwrap();
     s.validate().unwrap();
-    let r = record(b"GLOB", 0, 1, &write_subrecords(&[sub(b"FLTV", &[1, 2, 3, 4])]));
+    let r = record(
+        b"GLOB",
+        0,
+        1,
+        &write_subrecords(&[sub(b"FLTV", &[1, 2, 3, 4])]),
+    );
     let mut f = tes4(&[], 2, &[]);
     f.extend(group(b"GLOB", 0, &r));
     let p = Plugin::parse(&f, "T.esm".into()).unwrap();
@@ -246,7 +300,12 @@ fn zstring_array_lists_and_terminator() {
         (b"a.kf\0b.kf", None),
     ];
     for (i, (data, want)) in cases.iter().enumerate() {
-        let r = record(b"CREA", 0, 0x10 + i as u32, &write_subrecords(&[sub(b"KFFZ", data)]));
+        let r = record(
+            b"CREA",
+            0,
+            0x10 + i as u32,
+            &write_subrecords(&[sub(b"KFFZ", data)]),
+        );
         let mut f = tes4(&[], 2, &[]);
         f.extend(group(b"CREA", 0, &r));
         let p = Plugin::parse(&f, "T.esm".into()).unwrap();
@@ -256,7 +315,8 @@ fn zstring_array_lists_and_terminator() {
         match want {
             Some(w) => {
                 assert_eq!((ok, error), (1, 0), "case {i}");
-                let v = decode_record(p.nodes[1..].iter().find_map(first_record).unwrap(), &s).to_string();
+                let v = decode_record(p.nodes[1..].iter().find_map(first_record).unwrap(), &s)
+                    .to_string();
                 assert!(v.contains(w), "case {i}: {v}");
             }
             None => assert_eq!(error, 1, "case {i}: an unterminated list is an error"),
@@ -380,16 +440,28 @@ fn size_union_picks_variant_by_length() {
     s.validate().unwrap();
     let mut ctx = DecodeCtx::new(&s, *b"WATR");
     let d = decode_sub(b"WATR", &sub(b"DATA", &[7, 0]), &mut ctx);
-    assert_eq!((d.status, d.value.unwrap().to_string()), (SubStatus::Ok, "7".to_string()));
+    assert_eq!(
+        (d.status, d.value.unwrap().to_string()),
+        (SubStatus::Ok, "7".to_string())
+    );
     let d = decode_sub(b"WATR", &sub(b"DATA", &[0, 0, 128, 63, 9, 0]), &mut ctx);
     assert_eq!(d.status, SubStatus::Ok);
     let v = d.value.unwrap();
-    assert_eq!((v["damage"].as_u64(), v["f"].as_f64()), (Some(9), Some(1.0)));
+    assert_eq!(
+        (v["damage"].as_u64(), v["f"].as_f64()),
+        (Some(9), Some(1.0))
+    );
     // No variant for 3 bytes and no fallback: an error, not a guess.
-    assert_eq!(decode_sub(b"WATR", &sub(b"DATA", &[1, 2, 3]), &mut ctx).status, SubStatus::Error);
+    assert_eq!(
+        decode_sub(b"WATR", &sub(b"DATA", &[1, 2, 3]), &mut ctx).status,
+        SubStatus::Error
+    );
     // A variant without a size is the fallback.
     let d = decode_sub(b"TEST", &sub(b"DATA", &[1, 2, 3]), &mut ctx);
-    assert_eq!((d.status, d.value.unwrap().to_string()), (SubStatus::Ok, "\"010203\"".to_string()));
+    assert_eq!(
+        (d.status, d.value.unwrap().to_string()),
+        (SubStatus::Ok, "\"010203\"".to_string())
+    );
     let bad = r#"{"format":"fnv.schema/1","common":{"DATA":{"type":{"union":[]}}}}"#;
     assert!(Schema::default().merge_str(bad, "x").is_err());
 }

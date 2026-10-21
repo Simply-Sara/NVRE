@@ -49,7 +49,10 @@ impl Plugin {
     /// Memory-map the file; records reference the mapping without copying.
     pub fn open(path: impl AsRef<Path>) -> Result<Plugin, EsmError> {
         let p = path.as_ref();
-        let name = p.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+        let name = p
+            .file_name()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default();
         Plugin::parse_bytes(map_file(p)?, name)
     }
 
@@ -64,12 +67,20 @@ impl Plugin {
         let first = match nodes.first() {
             Some(Node::Record(r)) if &r.header.sig == b"TES4" => r,
             _ => {
-                return Err(EsmError::Structure { offset: 0, msg: "file does not start with a TES4 record".into() })
+                return Err(EsmError::Structure {
+                    offset: 0,
+                    msg: "file does not start with a TES4 record".into(),
+                })
             }
         };
         let header = parse_header(first)?;
         tracing::debug!(plugin = %name, masters = header.masters.len(), bytes = data.len(), "parsed plugin");
-        Ok(Plugin { name, nodes, header, file_size: data.len() as u64 })
+        Ok(Plugin {
+            name,
+            nodes,
+            header,
+            file_size: data.len() as u64,
+        })
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -95,7 +106,9 @@ impl Plugin {
 pub fn map_file(path: &Path) -> Result<Bytes, EsmError> {
     let file = std::fs::File::open(path)?;
     if !file.metadata()?.is_file() {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "not a regular file").into());
+        return Err(
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "not a regular file").into(),
+        );
     }
     // SAFETY: plugins are read-only inputs (the game install is never written by
     // NVForever, docs/design/install-layout.md). If another process truncates or
@@ -119,7 +132,10 @@ fn parse_header(r: &Record) -> Result<PluginHeader, EsmError> {
         overridden_forms: Vec::new(),
         other: Vec::new(),
     };
-    let err = |m: &str| EsmError::Structure { offset: r.offset, msg: format!("TES4: {m}") };
+    let err = |m: &str| EsmError::Structure {
+        offset: r.offset,
+        msg: format!("TES4: {m}"),
+    };
     let mut saw_hedr = false;
     for s in &subs {
         match &s.sig {
@@ -132,7 +148,10 @@ fn parse_header(r: &Record) -> Result<PluginHeader, EsmError> {
             }
             b"CNAM" => h.author = Some(cp1252::decode_z(&s.data)),
             b"SNAM" => h.description = Some(cp1252::decode_z(&s.data)),
-            b"MAST" => h.masters.push(MasterRef { name: cp1252::decode_z(&s.data), data: None }),
+            b"MAST" => h.masters.push(MasterRef {
+                name: cp1252::decode_z(&s.data),
+                data: None,
+            }),
             b"DATA" => {
                 if let Some(m) = h.masters.last_mut() {
                     if s.data.len() == 8 {
@@ -141,7 +160,13 @@ fn parse_header(r: &Record) -> Result<PluginHeader, EsmError> {
                 }
             }
             b"ONAM" => {
-                h.overridden_forms = s.data.as_chunks::<4>().0.iter().map(|c| u32::from_le_bytes(*c)).collect();
+                h.overridden_forms = s
+                    .data
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|c| u32::from_le_bytes(*c))
+                    .collect();
             }
             _ => h.other.push(s.sig_str()),
         }

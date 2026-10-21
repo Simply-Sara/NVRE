@@ -364,9 +364,7 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                         let n = ctx.counts.get(&from).copied().unwrap_or(0) as usize;
                         for i in 0..n {
                             let before = c.pos;
-                            out.push(
-                                decode_type(elem, c, ctx).map_err(|e| format!("[{i}]: {e}"))?,
-                            );
+                            out.push(decode_type(elem, c, ctx).map_err(|e| format!("[{i}]: {e}"))?);
                             if c.pos == before {
                                 return Err("array element consumed no bytes".into());
                             }

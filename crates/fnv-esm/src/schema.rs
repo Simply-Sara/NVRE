@@ -227,6 +227,15 @@ pub struct RecordDef {
     pub name: String,
     pub confidence: String,
     pub subrecords: HashMap<[u8; 4], SubDef>,
+    /// Definitions for signatures that are not fixed, keyed by a suffix.
+    ///
+    /// Some records name their fields by position rather than by a fixed
+    /// signature. Skyrim's `WTHR` has one cloud texture per layer, and layer
+    /// *n* uses the signature `chr(ord('0') + n)` followed by `0TX`, so the
+    /// layers run `00TX`, `10TX`, `20TX` and on past the digits into the
+    /// punctuation and the letters. A key of `"0TX"` matches any signature
+    /// that ends with it.
+    pub wildcards: Vec<(Vec<u8>, SubDef)>,
     /// Named bits of the record header's flags field, sorted by bit (`header_flags`).
     pub header_flags: Vec<(u32, String)>,
     pub header_flags_confidence: Option<String>,
@@ -629,7 +638,41 @@ fn parse_subdef(v: &Value, ctx: &str) -> Result<SubDef, SchemaError> {
 /// Named header flag bits (sorted) and their confidence.
 type HeaderFlags = (Vec<(u32, String)>, Option<String>);
 
-/// A record entry's `header_flags`: `{"bits": {"10": "Name"}, "confidence", "note"}`.
+/// The definitions for a record's wildcard signatures.
+///
+/// A key that ends in `*` names a suffix rather than a whole signature:
+/// Skyrim's `WTHR` has one cloud texture per layer, and layer *n* uses the
+/// signature `chr(ord('0') + n)` followed by `0TX`, so the layers run
+/// `00TX`, `10TX`, `20TX` and on past the digits into the punctuation and
+/// the letters.
+fn parse_wildcards(
+    subs: Option<&Value>,
+    label: &str,
+    rec: &str,
+) -> Result<Vec<(Vec<u8>, SubDef)>, SchemaError> {
+    let mut out = Vec::new();
+    if let Some(Value::Object(sm)) = subs {
+        for (ss, sd) in sm {
+            let Some(suffix) = ss.strip_prefix('*') else {
+                continue;
+            };
+            // The suffix is right-aligned in the signature, so it is compared
+            // against the signature's trailing bytes.
+            let b = suffix.as_bytes();
+            if b.is_empty() || b.len() > 4 {
+                return Err(SchemaError(format!(
+                    "{label}:{rec}.{ss}: a wildcard suffix must be 1 to 4 bytes"
+                )));
+            }
+            out.push((
+                b.to_vec(),
+                parse_subdef(sd, &format!("{label}:{rec}.{ss}"))?,
+            ));
+        }
+    }
+    Ok(out)
+}
+
 fn parse_header_flags(v: Option<&Value>, ctx: &str) -> Result<HeaderFlags, SchemaError> {
     let Some(v) = v else {
         return Ok((Vec::new(), None));
@@ -977,12 +1020,18 @@ impl Schema {
                 let mut subs = HashMap::new();
                 if let Some(Value::Object(sm)) = d.get("subrecords") {
                     for (ss, sd) in sm {
+                        // A wildcard key names a suffix, not a whole
+                        // signature, so it does not go in the fixed map.
+                        if ss.starts_with('*') {
+                            continue;
+                        }
                         subs.insert(
                             sig4(ss, label)?,
                             parse_subdef(sd, &format!("{label}:{sig}.{ss}"))?,
                         );
                     }
                 }
+                let wildcards = parse_wildcards(d.get("subrecords"), label, &sig)?;
                 let (header_flags, header_flags_confidence) = parse_header_flags(
                     d.get("header_flags"),
                     &format!("{label}:{sig}.header_flags"),
@@ -999,6 +1048,7 @@ impl Schema {
                         .unwrap_or("hypothesis")
                         .to_string(),
                     subrecords: subs,
+                    wildcards,
                     header_flags,
                     header_flags_confidence,
                     sequence: parse_sequence(
@@ -1061,12 +1111,18 @@ impl Schema {
                 let mut subs = HashMap::new();
                 if let Some(Value::Object(sm)) = d.get("subrecords") {
                     for (ss, sd) in sm {
+                        // A wildcard key names a suffix, not a whole
+                        // signature, so it does not go in the fixed map.
+                        if ss.starts_with('*') {
+                            continue;
+                        }
                         subs.insert(
                             sig4(ss, label)?,
                             parse_subdef(sd, &format!("{label}:{sig}.{ss}"))?,
                         );
                     }
                 }
+                let wildcards = parse_wildcards(d.get("subrecords"), label, &sig)?;
                 let (header_flags, header_flags_confidence) = parse_header_flags(
                     d.get("header_flags"),
                     &format!("{label}:{sig}.header_flags"),
@@ -1083,6 +1139,7 @@ impl Schema {
                         .unwrap_or("hypothesis")
                         .to_string(),
                     subrecords: subs,
+                    wildcards,
                     header_flags,
                     header_flags_confidence,
                     sequence: parse_sequence(
@@ -1170,10 +1227,19 @@ impl Schema {
 
     /// The definition that applies to `sub` inside `rec` record.
     pub fn lookup(&self, rec: &[u8; 4], sub: &[u8; 4]) -> Option<&SubDef> {
-        self.records
-            .get(rec)
-            .and_then(|r| r.subrecords.get(sub))
-            .or_else(|| self.common.get(sub))
+        if let Some(r) = self.records.get(rec) {
+            if let Some(d) = r.subrecords.get(sub) {
+                return Some(d);
+            }
+            if let Some(d) = r.wildcards.iter().find(|(suffix, _)| {
+                // The suffix is right-aligned in the signature, so it is
+                // compared against the signature's trailing bytes.
+                suffix.len() <= sub.len() && &sub[sub.len() - suffix.len()..] == &suffix[..]
+            }) {
+                return Some(&d.1);
+            }
+        }
+        self.common.get(sub)
     }
 
     /// The definition that applies to `sub` inside `rec`, given the sequence

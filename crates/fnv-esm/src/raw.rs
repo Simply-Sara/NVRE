@@ -30,7 +30,11 @@ pub enum EsmError {
     #[error("structure error at 0x{offset:x}: {msg}")]
     Structure { offset: u64, msg: String },
     #[error("cannot decompress record {form_id:08X} at 0x{offset:x}: {msg}")]
-    Decompress { offset: u64, form_id: u32, msg: String },
+    Decompress {
+        offset: u64,
+        form_id: u32,
+        msg: String,
+    },
 }
 
 impl From<std::io::Error> for EsmError {
@@ -190,17 +194,26 @@ impl Record {
                 msg: "compressed payload shorter than 4 bytes".into(),
             });
         }
-        let size = u32::from_le_bytes([self.raw[0], self.raw[1], self.raw[2], self.raw[3]]) as usize;
+        let size =
+            u32::from_le_bytes([self.raw[0], self.raw[1], self.raw[2], self.raw[3]]) as usize;
         fnv_inflate::zlib_decompress_ex(&self.raw[4..], Some(size))
             .map(|(d, t)| (Cow::Owned(d), t))
-            .map_err(|e| EsmError::Decompress { offset: self.offset, form_id: self.header.form_id, msg: e.to_string() })
+            .map_err(|e| EsmError::Decompress {
+                offset: self.offset,
+                form_id: self.header.form_id,
+                msg: e.to_string(),
+            })
     }
 
     pub fn subrecords(&self) -> Result<Vec<Subrecord>, EsmError> {
         let p = self.payload()?;
         parse_subrecords(&p).map_err(|(pos, msg)| EsmError::Structure {
             offset: self.offset,
-            msg: format!("record {} {:08X}: subrecord at payload+{pos}: {msg}", self.sig_str(), self.header.form_id),
+            msg: format!(
+                "record {} {:08X}: subrecord at payload+{pos}: {msg}",
+                self.sig_str(),
+                self.header.form_id
+            ),
         })
     }
 }
@@ -224,14 +237,23 @@ pub fn parse_subrecords(p: &[u8]) -> Result<Vec<Subrecord>, (usize, String)> {
         let (size, extended) = match pending_size.take() {
             Some(s) => {
                 if size16 != 0 {
-                    return Err((at, format!("subrecord after XXXX has non-zero size field {size16}")));
+                    return Err((
+                        at,
+                        format!("subrecord after XXXX has non-zero size field {size16}"),
+                    ));
                 }
                 (s as usize, true)
             }
             None => (size16 as usize, false),
         };
-        let data = c.bytes(size).map_err(|e| (at, format!("{} data: {e}", tag_str(&sig))))?;
-        out.push(Subrecord { sig, data: data.to_vec(), extended });
+        let data = c
+            .bytes(size)
+            .map_err(|e| (at, format!("{} data: {e}", tag_str(&sig))))?;
+        out.push(Subrecord {
+            sig,
+            data: data.to_vec(),
+            extended,
+        });
     }
     if pending_size.is_some() {
         return Err((p.len(), "XXXX at end of record".into()));
@@ -259,12 +281,20 @@ pub fn write_subrecords(subs: &[Subrecord]) -> Vec<u8> {
 }
 
 fn structure(offset: usize, msg: impl Into<String>) -> EsmError {
-    EsmError::Structure { offset: offset as u64, msg: msg.into() }
+    EsmError::Structure {
+        offset: offset as u64,
+        msg: msg.into(),
+    }
 }
 
 /// Parse a sequence of nodes occupying `data[start..end]`.
 /// Parse `data[start..end]`. Record payloads are slices sharing `data`'s buffer.
-pub fn parse_nodes(data: &Bytes, start: usize, end: usize, depth: usize) -> Result<Vec<Node>, EsmError> {
+pub fn parse_nodes(
+    data: &Bytes,
+    start: usize,
+    end: usize,
+    depth: usize,
+) -> Result<Vec<Node>, EsmError> {
     if depth > 16 {
         return Err(structure(start, "groups nested deeper than 16 levels"));
     }
@@ -272,7 +302,10 @@ pub fn parse_nodes(data: &Bytes, start: usize, end: usize, depth: usize) -> Resu
     let mut pos = start;
     while pos < end {
         if end - pos < 24 {
-            return Err(structure(pos, format!("{} trailing bytes, too short for a header", end - pos)));
+            return Err(structure(
+                pos,
+                format!("{} trailing bytes, too short for a header", end - pos),
+            ));
         }
         let mut c = Cursor::new(&data[pos..pos + 24]);
         let sig = c.tag().unwrap();
@@ -289,9 +322,15 @@ pub fn parse_nodes(data: &Bytes, start: usize, end: usize, depth: usize) -> Resu
             let gend = pos
                 .checked_add(h.size as usize)
                 .filter(|&e| e <= end && h.size as usize >= GROUP_HEADER_SIZE)
-                .ok_or_else(|| structure(pos, format!("group size {} overruns its container", h.size)))?;
+                .ok_or_else(|| {
+                    structure(pos, format!("group size {} overruns its container", h.size))
+                })?;
             let children = parse_nodes(data, pos + GROUP_HEADER_SIZE, gend, depth + 1)?;
-            out.push(Node::Group(Group { header: h, children, offset: pos as u64 }));
+            out.push(Node::Group(Group {
+                header: h,
+                children,
+                offset: pos as u64,
+            }));
             pos = gend;
         } else {
             let h = RecordHeader {
@@ -308,9 +347,20 @@ pub fn parse_nodes(data: &Bytes, start: usize, end: usize, depth: usize) -> Resu
                 .checked_add(h.data_size as usize)
                 .filter(|&e| e <= end)
                 .ok_or_else(|| {
-                    structure(pos, format!("record {} data size {} overruns its container", tag_str(&sig), h.data_size))
+                    structure(
+                        pos,
+                        format!(
+                            "record {} data size {} overruns its container",
+                            tag_str(&sig),
+                            h.data_size
+                        ),
+                    )
                 })?;
-            out.push(Node::Record(Record { header: h, raw: data.slice(dstart..dend), offset: pos as u64 }));
+            out.push(Node::Record(Record {
+                header: h,
+                raw: data.slice(dstart..dend),
+                offset: pos as u64,
+            }));
             pos = dend;
         }
     }
@@ -353,7 +403,11 @@ pub fn write_nodes(nodes: &[Node], out: &mut Vec<u8>) {
 /// Depth-first visit of every record, with the chain of enclosing group headers.
 pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(nodes: &'a [Node], f: &mut F) {
     let mut stack: Vec<&'a GroupHeader> = Vec::new();
-    fn go<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(nodes: &'a [Node], stack: &mut Vec<&'a GroupHeader>, f: &mut F) {
+    fn go<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
+        nodes: &'a [Node],
+        stack: &mut Vec<&'a GroupHeader>,
+        f: &mut F,
+    ) {
         for n in nodes {
             match n {
                 Node::Record(r) => f(r, stack),
@@ -385,7 +439,11 @@ mod tests {
     use super::*;
 
     fn sub(sig: &[u8; 4], data: &[u8]) -> Subrecord {
-        Subrecord { sig: *sig, data: data.to_vec(), extended: false }
+        Subrecord {
+            sig: *sig,
+            data: data.to_vec(),
+            extended: false,
+        }
     }
 
     #[test]
@@ -393,7 +451,11 @@ mod tests {
         let big = vec![0xABu8; 70_000];
         let subs = vec![
             sub(b"EDID", b"TestRec\0"),
-            Subrecord { sig: *b"OFST", data: big.clone(), extended: true },
+            Subrecord {
+                sig: *b"OFST",
+                data: big.clone(),
+                extended: true,
+            },
             sub(b"DATA", &[1, 2, 3, 4]),
         ];
         let bytes = write_subrecords(&subs);

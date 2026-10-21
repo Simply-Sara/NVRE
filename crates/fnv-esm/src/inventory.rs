@@ -5,8 +5,8 @@
 use crate::decode::formid_str;
 use crate::plugin::Plugin;
 use crate::raw::{group_type, visit_groups, visit_records, Record};
-use serde_json::{json, Value};
 use fnv_util::cp1252;
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 pub struct InventoryRow {
@@ -90,7 +90,10 @@ pub fn inventory_json(p: &Plugin) -> Value {
             })
         })
         .collect();
-    let errors: Vec<Value> = errors.into_iter().map(|e| json!({"code": "record_payload", "detail": e})).collect();
+    let errors: Vec<Value> = errors
+        .into_iter()
+        .map(|e| json!({"code": "record_payload", "detail": e}))
+        .collect();
     json!({
         "schema": "fnv.esm.inventory/1",
         "plugin": p.name,
@@ -117,8 +120,9 @@ pub fn stats_json(p: &Plugin) -> Value {
     });
     let mut groups = 0u64;
     // All group-type names in numeric order, zero counts included (contract).
-    let mut by_group: Vec<(String, u64)> =
-        (0..=10).map(|t| (group_type::name(t).to_string(), 0u64)).collect();
+    let mut by_group: Vec<(String, u64)> = (0..=10)
+        .map(|t| (group_type::name(t).to_string(), 0u64))
+        .collect();
     let mut top_labels = Vec::new();
     visit_groups(&p.nodes, &mut |g, depth| {
         groups += 1;
