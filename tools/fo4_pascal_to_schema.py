@@ -566,8 +566,19 @@ class Converter:
         self.collect_local_groups()
         self.collect_records()
         self.resolve_deferred()
+        # The unions are settled once every type is in place, because a
+        # union that switches on a sibling's value is only complete when
+        # the sibling's own definition is known.
+        self.resolve_record_switches()
         self.expose_outer_switch_fields()
         return self
+
+    def resolve_record_switches(self):
+        """Settle every record's unions that switch on a sibling's value."""
+        for sig, rec in self.records.items():
+            flat = rec.get("subrecords", {})
+            blocks = rec.get("sequence", {}).get("blocks", {})
+            self._resolve_sub_switches(rec, flat, blocks)
 
     def mark_absent_fragments(self):
         """Mark the script fragments as absent when nothing is left for them.
@@ -1548,6 +1559,40 @@ class Converter:
         kind = "enum" if name == "wbEnum" else "flags"
         table = {}
         n = 0
+        # A member may carry an explicit value in front of the name: the
+        # two are separate arguments — `Int64($864804BE), 'BSOverdrive'` —
+        # and the value is the number the field holds.
+        #
+        # The members are read from the text rather than from the split
+        # arguments, because the split separates the value from its name
+        # and the value may sit in a list of its own — `wbEnum([], [...])`.
+        text = args
+        # The list of members is the last bracketed list in the call.
+        start = text.rfind("[")
+        end = text.rfind("]")
+        if start >= 0 and end > start:
+            text = text[start + 1 : end]
+        # The members are read as the pairs of a value and a name that
+        # appear in the text, in order.
+        pattern = re.compile(
+            r"(?:\b(?:Int64|Int32|UInt64|UInt32)\s*\(\s*\$([0-9A-Fa-f]+)\s*\)|"
+            r"\{\s*(\d+)\s*\})\s*,?\s*"
+            r"'((?:[^']|'')*)'"
+        )
+        found = False
+        for vm in pattern.finditer(text):
+            hexval, brace, name = vm.groups()
+            if hexval is not None:
+                idx = int(hexval, 16)
+            elif brace is not None:
+                idx = int(brace)
+            else:
+                idx = n
+            table[idx] = name.replace("''", "'")
+            n = idx + 1
+            found = True
+        if found:
+            return kind, table
         for m in members:
             m = m.strip()
             # A member may carry an explicit index: `{3} 'Cave'`.
@@ -2102,7 +2147,6 @@ class Converter:
         if blocks:
             rec["sequence"] = {"start": [], "blocks": blocks, "end": []}
         self._expose_switch_fields(rec)
-        self._resolve_sub_switches(rec, flat, blocks)
         return rec
 
     def _resolve_sub_switches(self, rec, flat, blocks):
@@ -2114,42 +2158,93 @@ class Converter:
         — "PRKE.Type" — and the cases are that field's own values, which
         the sibling's own definition gives. The field is marked so that its
         value is kept.
+
+        The switch may name the sibling subrecord itself, whose value is a
+        number an enum gives a name to — xEdit's audio effect chain reads
+        the kind of effect from the KNAM before it, and the decider's
+        cases are the names that kind has.
         """
         groups = [flat] + [b.get("subrecords", {}) for b in blocks.values()]
         for group in groups:
-            for sig, sub in group.items():
-                ty = sub.get("type")
-                if not isinstance(ty, dict):
-                    continue
-                switch = ty.get("switch_on")
-                if not switch or "." not in switch:
-                    continue
-                sub_sig, field = switch.split(".", 1)
-                # The sibling's own definition, and the field within it.
-                target_sub = None
-                for g in groups:
-                    if sub_sig in g:
-                        target_sub = g[sub_sig]
-                        break
-                if target_sub is None:
-                    continue
-                target_ty = target_sub.get("type")
-                if not isinstance(target_ty, dict) or "struct" not in target_ty:
-                    continue
-                field_def = None
+            for sub in group.values():
+                for ty in self._unions_of(sub.get("type")):
+                    self._resolve_one_switch(ty, groups)
+
+    def _unions_of(self, ty):
+        """The unions a subrecord's own type holds, at any depth."""
+        out = []
+
+        def scan(node, depth=0):
+            if depth > 6:
+                return
+            if isinstance(node, list):
+                for v in node:
+                    scan(v, depth + 1)
+                return
+            if not isinstance(node, dict):
+                return
+            if isinstance(node.get("union"), list):
+                out.append(node)
+            for v in node.values():
+                scan(v, depth + 1)
+
+        scan(ty)
+        return out
+
+    def _resolve_one_switch(self, ty, groups):
+        """Settle one union's switch against the record's own subrecords."""
+        switch = ty.get("switch_on")
+        if not switch:
+            return
+        # The switch may name a field of a sibling subrecord, or the
+        # sibling subrecord itself.
+        if "." in switch:
+            sub_sig, field = switch.split(".", 1)
+        else:
+            sub_sig, field = switch, None
+        # The sibling's own definition, and the field within it.
+        target_sub = None
+        for g in groups:
+            if sub_sig in g:
+                target_sub = g[sub_sig]
+                break
+        if target_sub is None:
+            return
+        target_ty = target_sub.get("type")
+        n = len(ty.get("union", []))
+        if field is not None:
+            field_def = None
+            if isinstance(target_ty, dict) and "struct" in target_ty:
                 for f in target_ty["struct"]:
                     if f.get("name") == field:
                         field_def = f
                         break
-                if field_def is None:
-                    continue
-                values = self._enum_values(field_def.get("type"))
-                if not values:
-                    continue
-                n = len(ty.get("union", []))
-                ty["cases"] = {str(k): k for k in values if k < n}
-                ty["default"] = 0
-                field_def["expose"] = True
+            if field_def is None:
+                return
+            values = self._enum_values(field_def.get("type"))
+            if not values:
+                return
+            ty["cases"] = {str(k): k for k in values if k < n}
+            ty["default"] = 0
+            field_def["expose"] = True
+            return
+        # The switch names the sibling subrecord itself, whose own value is
+        # a number that an enum gives a name to. The decider's cases are
+        # those names, so they are turned into the numbers the enum gives.
+        values = self._enum_values(target_ty)
+        if not values:
+            return
+        by_name = {name: k for k, name in values.items()}
+        cases = ty.get("cases")
+        if not isinstance(cases, dict):
+            return
+        ty["cases"] = {
+            str(by_name[key]): value
+            for key, value in cases.items()
+            if key in by_name and value < n
+        }
+        ty["default"] = 0
+        target_sub["expose"] = True
 
     def _expose_switch_fields(self, rec):
         """Mark the siblings that a union switches on, so they are kept.
