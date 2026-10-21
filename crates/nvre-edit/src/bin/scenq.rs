@@ -1,4 +1,4 @@
-//! SCEN's tail: what follows the blocks?
+//! SCEN: what is around NEXT and QNAM?
 use fnv_esm::raw::visit_records;
 use fnv_esm::Plugin;
 fn main() {
@@ -7,11 +7,12 @@ fn main() {
     visit_records(&p.nodes[1..], &mut |r, _| {
         if n >= 3 { return; }
         let Ok(subs) = r.subrecords() else { return };
-        // Find the last block opener, then show the tail.
-        let last_action = subs.iter().rposition(|s| s.sig == *b"ANAM");
-        let Some(la) = last_action else { return };
-        n += 1;
-        let tail: Vec<String> = subs[la..].iter().map(|x| format!("{}:{}", x.sig_str(), x.data.len())).collect();
-        println!("tail from {la}: {}", tail.join(" "));
+        for (i, s) in subs.iter().enumerate() {
+            if s.sig != *b"NEXT" { continue; }
+            n += 1;
+            let lo = i.saturating_sub(4); let hi = (i+4).min(subs.len());
+            let ctx: Vec<String> = subs[lo..hi].iter().map(|x| format!("{}:{}", x.sig_str(), x.data.len())).collect();
+            println!("NEXT at {i}: {ctx:?}");
+        }
     });
 }

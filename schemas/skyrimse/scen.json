@@ -252,7 +252,17 @@
     "start": [
      "EDID",
      "VMAD",
-     "FNAM"
+     "FNAM",
+     "DATA",
+     "DNAM",
+     "CTDA",
+     "NEXT",
+     "CTDA",
+     "SCHR",
+     "QNAM",
+     "NEXT",
+     "SCHR",
+     "QNAM"
     ]
    },
    "subrecords": {
@@ -267,6 +277,18 @@
      "name": "Scene Conditions",
      "note": "The scene's own conditions, in the main record rather than in a phase. The phase block carries its own CTDA with the same layout.",
      "type": "Condition"
+    },
+    "DATA": {
+     "confidence": "observed",
+     "name": "Data",
+     "note": "An unknown field. [observed: 8 bytes]",
+     "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "observed",
+     "name": "Data",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
     },
     "EDID": {
      "confidence": "documented",
@@ -295,11 +317,29 @@
      "note": "The highest action number. It can be higher than the highest action number, which may indicate deleted actions. This is not an action's own INAM, which is the action's number.",
      "type": "u32"
     },
+    "NEXT": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length. It separates the scene's dialogue conditions from its event conditions.",
+     "type": "bytes"
+    },
     "PNAM": {
      "confidence": "documented",
      "name": "Parent Quest",
      "note": "The quest that owns the scene.",
      "type": "formid"
+    },
+    "QNAM": {
+     "confidence": "observed",
+     "name": "Unknown",
+     "note": "An unknown field. It appears in the main record after each SCHR, alongside the NEXT markers. [observed: 738 of them in Skyrim.esm, each 4 bytes]",
+     "type": "u32"
+    },
+    "SCHR": {
+     "confidence": "documented",
+     "name": "Old Script",
+     "note": "The old scripting field.",
+     "type": "bytes"
     },
     "VMAD": {
      "confidence": "documented",
