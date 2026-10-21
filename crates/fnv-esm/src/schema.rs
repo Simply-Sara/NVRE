@@ -124,6 +124,12 @@ pub enum Prim {
     /// hash. The first word has to be looked at before the field is read, so
     /// a union can switch on it.
     PeekU32,
+    /// A length-prefixed string whose length prefix is two bytes wide.
+    ///
+    /// Fallout 4's `wbLenString` always writes a two-byte length, where the
+    /// other games' is four bytes wide [observed: every `wbLenString` in
+    /// `wbDefinitionsFO4.pas` names a size of 2].
+    LenStringU16,
 }
 
 impl Prim {
@@ -143,6 +149,7 @@ impl Prim {
             "zstring" => Prim::ZString,
             "zstring_array" => Prim::ZStringArray,
             "len_string" => Prim::LenString,
+            "len_string_u16" => Prim::LenStringU16,
             "string" => Prim::String,
             "cstring" => Prim::CString,
             "localized" => Prim::Localized,
@@ -161,6 +168,7 @@ impl Prim {
             Prim::ZString
             | Prim::ZStringArray
             | Prim::LenString
+            | Prim::LenStringU16
             | Prim::String
             | Prim::CString
             | Prim::Localized

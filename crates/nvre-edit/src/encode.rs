@@ -462,6 +462,15 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
             write_uint(Prim::U32, b.len() as u64, out, path)?;
             out.extend_from_slice(&b);
         }
+        Prim::LenStringU16 => {
+            // Fallout 4's `wbLenString`: a two-byte byte length, then the bytes.
+            let s = value
+                .as_str()
+                .ok_or_else(|| kind_err(path, "string", value))?;
+            let b = cp1252(s, path)?;
+            write_uint(Prim::U16, b.len() as u64, out, path)?;
+            out.extend_from_slice(&b);
+        }
         Prim::String => {
             let s = value
                 .as_str()

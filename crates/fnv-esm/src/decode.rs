@@ -192,6 +192,15 @@ fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, Stri
                 .map_err(|oob| format!("len_string length {n} exceeds the field: {oob}"))?;
             Value::from(cp1252::decode(s))
         }
+        Prim::LenStringU16 => {
+            // Fallout 4's `wbLenString`: a little-endian u16 byte count, then
+            // exactly that many bytes of text with no terminator.
+            let n = c.u16().map_err(e)? as usize;
+            let s = c
+                .bytes(n)
+                .map_err(|oob| format!("len_string length {n} exceeds the field: {oob}"))?;
+            Value::from(cp1252::decode(s))
+        }
         Prim::String => Value::from(cp1252::decode(c.bytes(c.remaining()).unwrap())),
         Prim::CString => {
             // xEdit's `wbString` inside a struct: text up to the first NUL, with the

@@ -234,7 +234,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -245,7 +245,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -855,7 +856,8 @@
             "type": "f32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -944,7 +946,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -975,7 +978,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -1003,7 +1007,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -1024,7 +1029,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -1041,7 +1047,8 @@
             "type": "u16"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -1070,7 +1077,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -1261,7 +1269,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -1272,7 +1280,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -3278,7 +3287,8 @@
            "name": "Keywords",
            "optional": true,
            "type": {
-            "array": "formid"
+            "array": "formid",
+            "count_prefix": "u32"
            }
           },
           {
@@ -3578,7 +3588,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -3589,7 +3599,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -4489,7 +4500,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -4500,7 +4511,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -6802,7 +6814,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -6813,7 +6825,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -8008,7 +8021,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -8019,7 +8032,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -10393,7 +10407,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -10404,7 +10418,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -10838,7 +10853,8 @@
            "name": "Keywords",
            "optional": true,
            "type": {
-            "array": "formid"
+            "array": "formid",
+            "count_prefix": "u32"
            }
           },
           {
@@ -11111,7 +11127,8 @@
             "type": "f32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -11200,7 +11217,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -11231,7 +11249,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -11259,7 +11278,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -11280,7 +11300,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -11297,7 +11318,8 @@
             "type": "u16"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -11326,7 +11348,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -11463,7 +11486,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -11474,7 +11497,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -13450,7 +13474,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -13461,7 +13485,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        },
        {
@@ -13872,7 +13897,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -13883,7 +13908,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -14646,7 +14672,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -14657,7 +14683,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -16409,7 +16436,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -16420,7 +16447,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -17729,7 +17757,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -17740,7 +17768,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -18088,7 +18117,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -18099,7 +18128,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -18635,7 +18665,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -18646,7 +18676,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -18915,13 +18946,15 @@
        {
         "name": "Merged To",
         "type": {
-         "array": "formid"
+         "array": "formid",
+         "count_prefix": "u8"
         }
        },
        {
         "name": "Preferred Merges",
         "type": {
-         "array": "formid"
+         "array": "formid",
+         "count_prefix": "u8"
         }
        },
        {
@@ -18941,7 +18974,8 @@
             "type": "formid"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -18992,7 +19026,8 @@
                   }
                  }
                 ]
-               }
+               },
+               "count_prefix": "u8"
               }
              },
              {
@@ -19013,7 +19048,8 @@
                   "type": "f32"
                  }
                 ]
-               }
+               },
+               "count_prefix": "u8"
               }
              }
             ]
@@ -19072,8 +19108,10 @@
         "name": "NavMeshes",
         "type": {
          "array": {
-          "array": "formid"
-         }
+          "array": "formid",
+          "count_prefix": "u8"
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19090,7 +19128,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        }
       ]
@@ -19199,7 +19238,8 @@
             "type": "f32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19288,7 +19328,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19319,7 +19360,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19347,7 +19389,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19368,7 +19411,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19385,7 +19429,8 @@
             "type": "u16"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19414,7 +19459,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -19725,7 +19771,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -19736,7 +19782,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -20228,7 +20275,8 @@
            "name": "Keywords",
            "optional": true,
            "type": {
-            "array": "formid"
+            "array": "formid",
+            "count_prefix": "u32"
            }
           },
           {
@@ -21180,7 +21228,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -21191,7 +21239,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -21317,7 +21366,8 @@
        {
         "name": "Attach Parent Slots",
         "type": {
-         "array": "formid"
+         "array": "formid",
+         "count_prefix": "u8"
         }
        },
        {
@@ -21340,7 +21390,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -22172,7 +22223,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -22183,7 +22234,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        },
        {
@@ -22332,7 +22384,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -22343,7 +22395,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -22709,7 +22762,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -22720,7 +22773,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -23086,7 +23140,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -23097,7 +23151,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -23463,7 +23518,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -23474,7 +23529,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -24059,7 +24115,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -24070,7 +24126,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        },
        {
@@ -24213,7 +24270,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -24224,7 +24281,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -24590,7 +24648,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -24601,7 +24659,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -24967,7 +25026,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -24978,7 +25037,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -25427,7 +25487,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -25438,7 +25498,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -26755,7 +26816,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -26766,7 +26827,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        },
        {
@@ -26797,7 +26859,7 @@
               "struct": [
                {
                 "name": "ScriptName",
-                "type": "len_string"
+                "type": "len_string_u16"
                },
                {
                 "name": "wbScriptFlags",
@@ -26808,11 +26870,13 @@
                 "type": "wbScriptProperties"
                }
               ]
-             }
+             },
+             "count_prefix": "u16"
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -28703,7 +28767,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -28714,7 +28778,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -30970,7 +31035,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -30981,7 +31046,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        },
        {
@@ -32614,7 +32680,8 @@
             "type": "f32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -32703,7 +32770,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -32734,7 +32802,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -32762,7 +32831,8 @@
             }
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -32783,7 +32853,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -32800,7 +32871,8 @@
             "type": "u16"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -32829,7 +32901,8 @@
             "type": "u32"
            }
           ]
-         }
+         },
+         "count_prefix": "u8"
         }
        },
        {
@@ -32954,7 +33027,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -32965,7 +33038,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -33282,7 +33356,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -33293,7 +33367,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -33660,7 +33735,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -33671,7 +33746,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        },
        {
@@ -34060,7 +34136,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -34071,7 +34147,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -35229,7 +35306,8 @@
            "name": "Keywords",
            "optional": true,
            "type": {
-            "array": "formid"
+            "array": "formid",
+            "count_prefix": "u32"
            }
           },
           {
@@ -35793,7 +35871,7 @@
           "struct": [
            {
             "name": "ScriptName",
-            "type": "len_string"
+            "type": "len_string_u16"
            },
            {
             "name": "wbScriptFlags",
@@ -35804,7 +35882,8 @@
             "type": "wbScriptProperties"
            }
           ]
-         }
+         },
+         "count_prefix": "u16"
         }
        }
       ]
@@ -41911,7 +41990,8 @@
          "type": "f32"
         }
        ]
-      }
+      },
+      "count_prefix": "u8"
      }
     },
     {
@@ -42000,7 +42080,8 @@
          }
         }
        ]
-      }
+      },
+      "count_prefix": "u8"
      }
     },
     {
@@ -42031,7 +42112,8 @@
          }
         }
        ]
-      }
+      },
+      "count_prefix": "u8"
      }
     },
     {
@@ -42059,7 +42141,8 @@
          }
         }
        ]
-      }
+      },
+      "count_prefix": "u8"
      }
     },
     {
@@ -42080,7 +42163,8 @@
          "type": "u32"
         }
        ]
-      }
+      },
+      "count_prefix": "u8"
      }
     },
     {
@@ -42097,7 +42181,8 @@
          "type": "u16"
         }
        ]
-      }
+      },
+      "count_prefix": "u8"
      }
     },
     {
@@ -42126,7 +42211,8 @@
          "type": "u32"
         }
        ]
-      }
+      },
+      "count_prefix": "u8"
      }
     },
     {
@@ -42293,7 +42379,8 @@
      "name": "Keywords",
      "optional": true,
      "type": {
-      "array": "formid"
+      "array": "formid",
+      "count_prefix": "u32"
      }
     },
     {
@@ -43155,7 +43242,7 @@
    "struct": [
     {
      "name": "ScriptName",
-     "type": "len_string"
+     "type": "len_string_u16"
     },
     {
      "name": "wbScriptFlags",
@@ -43205,14 +43292,15 @@
         },
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "FragmentName",
-         "type": "len_string"
+         "type": "len_string_u16"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     }
    ]
@@ -43248,11 +43336,11 @@
         },
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "FragmentName",
-         "type": "len_string"
+         "type": "len_string_u16"
         }
        ]
       }
@@ -43292,11 +43380,11 @@
         },
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "FragmentName",
-         "type": "len_string"
+         "type": "len_string_u16"
         }
        ]
       }
@@ -43316,7 +43404,7 @@
     },
     {
      "name": "ScriptName",
-     "type": "len_string"
+     "type": "len_string_u16"
     },
     {
      "name": "Script",
@@ -43362,11 +43450,11 @@
         },
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "FragmentName",
-         "type": "len_string"
+         "type": "len_string_u16"
         }
        ]
       }
@@ -43405,11 +43493,11 @@
         },
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "FragmentName",
-         "type": "len_string"
+         "type": "len_string_u16"
         }
        ]
       }
@@ -43448,14 +43536,15 @@
         },
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "FragmentName",
-         "type": "len_string"
+         "type": "len_string_u16"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     }
    ]
@@ -43465,7 +43554,7 @@
     "struct": [
      {
       "name": "propertyName",
-      "type": "len_string"
+      "type": "len_string_u16"
      },
      {
       "name": "Type",
@@ -43488,7 +43577,7 @@
       "type": {
        "union": [
         {
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "size": 4,
@@ -43545,27 +43634,32 @@
              }
             }
            ]
-          }
+          },
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "len_string"
+          "array": "len_string_u16",
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "i32"
+          "array": "i32",
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "f32"
+          "array": "f32",
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "u8"
+          "array": "u8",
+          "count_prefix": "u8"
          }
         },
         {
@@ -43575,7 +43669,7 @@
             "struct": [
              {
               "name": "memberName",
-              "type": "len_string"
+              "type": "len_string_u16"
              },
              {
               "name": "Type",
@@ -43598,7 +43692,7 @@
               "type": {
                "union": [
                 {
-                 "type": "len_string"
+                 "type": "len_string_u16"
                 },
                 {
                  "size": 4,
@@ -43655,27 +43749,32 @@
                      }
                     }
                    ]
-                  }
+                  },
+                  "count_prefix": "u8"
                  }
                 },
                 {
                  "type": {
-                  "array": "len_string"
+                  "array": "len_string_u16",
+                  "count_prefix": "u8"
                  }
                 },
                 {
                  "type": {
-                  "array": "i32"
+                  "array": "i32",
+                  "count_prefix": "u8"
                  }
                 },
                 {
                  "type": {
-                  "array": "f32"
+                  "array": "f32",
+                  "count_prefix": "u8"
                  }
                 },
                 {
                  "type": {
-                  "array": "u8"
+                  "array": "u8",
+                  "count_prefix": "u8"
                  }
                 },
                 {
@@ -43685,15 +43784,18 @@
               }
              }
             ]
-           }
-          }
+           },
+           "count_prefix": "u8"
+          },
+          "count_prefix": "u8"
          }
         }
        ]
       }
      }
     ]
-   }
+   },
+   "count_prefix": "u16"
   },
   "wbScriptPropertyObject": {
    "union": [
@@ -43742,7 +43844,7 @@
     "struct": [
      {
       "name": "memberName",
-      "type": "len_string"
+      "type": "len_string_u16"
      },
      {
       "name": "Type",
@@ -43765,7 +43867,7 @@
       "type": {
        "union": [
         {
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "size": 4,
@@ -43822,27 +43924,32 @@
              }
             }
            ]
-          }
+          },
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "len_string"
+          "array": "len_string_u16",
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "i32"
+          "array": "i32",
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "f32"
+          "array": "f32",
+          "count_prefix": "u8"
          }
         },
         {
          "type": {
-          "array": "u8"
+          "array": "u8",
+          "count_prefix": "u8"
          }
         },
         {
@@ -43852,7 +43959,8 @@
       }
      }
     ]
-   }
+   },
+   "count_prefix": "u8"
   },
   "wbTargetData": {
    "struct": [
@@ -43971,7 +44079,7 @@
        "struct": [
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "wbScriptFlags",
@@ -43982,7 +44090,8 @@
          "type": "wbScriptProperties"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     }
    ]
@@ -44004,7 +44113,7 @@
        "struct": [
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "wbScriptFlags",
@@ -44015,7 +44124,8 @@
          "type": "wbScriptProperties"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     },
     {
@@ -44041,7 +44151,7 @@
        "struct": [
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "wbScriptFlags",
@@ -44052,7 +44162,8 @@
          "type": "wbScriptProperties"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     },
     {
@@ -44078,7 +44189,7 @@
        "struct": [
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "wbScriptFlags",
@@ -44089,7 +44200,8 @@
          "type": "wbScriptProperties"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     },
     {
@@ -44115,7 +44227,7 @@
        "struct": [
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "wbScriptFlags",
@@ -44126,7 +44238,8 @@
          "type": "wbScriptProperties"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     },
     {
@@ -44157,7 +44270,7 @@
            "struct": [
             {
              "name": "ScriptName",
-             "type": "len_string"
+             "type": "len_string_u16"
             },
             {
              "name": "wbScriptFlags",
@@ -44168,11 +44281,13 @@
              "type": "wbScriptProperties"
             }
            ]
-          }
+          },
+          "count_prefix": "u16"
          }
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     }
    ]
@@ -44194,7 +44309,7 @@
        "struct": [
         {
          "name": "ScriptName",
-         "type": "len_string"
+         "type": "len_string_u16"
         },
         {
          "name": "wbScriptFlags",
@@ -44205,7 +44320,8 @@
          "type": "wbScriptProperties"
         }
        ]
-      }
+      },
+      "count_prefix": "u16"
      }
     },
     {

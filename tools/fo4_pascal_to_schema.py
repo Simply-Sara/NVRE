@@ -995,6 +995,12 @@ class Converter:
         if kind in ("wbLString", "wbLStringKC"):
             return "localized", self._note(ctx)
         if kind == "wbLenString":
+            # `wbLenString(name, size)` — the size is the width of the
+            # length prefix. Fallout 4's are all two bytes, where the
+            # other games' are four.
+            size = parts[1].strip() if len(parts) > 1 else "0"
+            if size == "2":
+                return "len_string_u16", self._note(ctx)
             return "len_string", self._note(ctx)
         if kind == "wbByteArray":
             return self._convert_byte_array(parts)
@@ -1342,6 +1348,18 @@ class Converter:
             count = 0
         if count > 0:
             return {"array": elem, "count": count}, self._note(ctx)
+        if count < 0:
+            # A negative count means the count is in the data, and its width
+            # is the count's own size: -1 is a byte, -2 two bytes, -4 four.
+            # Fallout 4's script arrays are all two bytes [observed: the
+            # count in a `VMAD` subrecord of `Fallout4.esm` is followed by
+            # the two-byte length of the first script's name].
+            width = {1: "u8", 2: "u16", 4: "u32"}.get(-count)
+            if width:
+                return (
+                    {"array": elem, "count_prefix": width},
+                    self._note(ctx),
+                )
         # A count of 0 means "fill the rest of the field".
         return {"array": elem}, self._note(ctx)
 
