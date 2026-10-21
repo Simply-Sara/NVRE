@@ -363,6 +363,40 @@
     }
    }
   },
+  "INGR": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Ingredient",
+   "note": "UESP, Skyrim Mod:Mod File Format/INGR. [measured: 1 MODS field of 27 bytes in Dragonborn.esm and 1 of 31 and 36 in HearthFires.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODS": {
+     "confidence": "observed",
+     "name": "Alternate Textures",
+     "note": "The alternate textures: a count, then each one's name, the texture it replaces and the three-dimensional index. [observed: 27, 31 and 36 bytes in Dragonborn.esm and HearthFires.esm]",
+     "type": {
+      "struct": [
+       {
+        "name": "count",
+        "type": "u32"
+       },
+       {
+        "name": "textures",
+        "type": {
+         "array": "AlternateTexture",
+         "count_field": "count"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
   "LVLI": {
    "confidence": "documented",
    "merge": true,

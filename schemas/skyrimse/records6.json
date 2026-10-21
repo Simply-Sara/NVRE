@@ -99,6 +99,26 @@
     }
    }
   },
+  "DEBR": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Debris",
+   "note": "UESP, Skyrim Mod:Mod File Format/DEBR. The base's MODT is an array of Fallout texture hashes; Skyrim's is the two forms of its own MODT. [measured: 14 MODT fields of 12 bytes in Dawnguard.esm and 7 in Dragonborn.esm]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODT": {
+     "confidence": "documented",
+     "name": "Model Texture Hashes",
+     "note": "The model's textures, in the same two forms as Skyrim's MODT.",
+     "type": "SKYRIM_MODT"
+    }
+   }
+  },
   "DOBJ": {
    "confidence": "documented",
    "merge": true,
