@@ -940,16 +940,19 @@
     {
      "name": "owner_rank",
      "note": "The rank required in the faction for ownership, which is 0 or -1 when there is no faction.",
+     "optional": true,
      "type": "i8"
     },
     {
      "name": "min_level",
      "note": "The minimum level.",
+     "optional": true,
      "type": "u8"
     },
     {
      "name": "flags",
      "note": "The encounter's flags.",
+     "optional": true,
      "type": {
       "bits": {
        "0": "Never Resets",
@@ -962,6 +965,7 @@
     {
      "name": "max_level",
      "note": "The maximum level.",
+     "optional": true,
      "type": "u8"
     }
    ]

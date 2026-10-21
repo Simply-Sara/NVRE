@@ -285,6 +285,14 @@
          "array": "SKYRIM_MODT_ENTRY",
          "count_field": "count"
         }
+       },
+       {
+        "name": "extra",
+        "note": "The words after the textures. Their meaning is not documented.",
+        "type": {
+         "array": "u32",
+         "count_field": "extra_words"
+        }
        }
       ]
      }

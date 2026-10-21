@@ -737,9 +737,12 @@
     },
     "IDLA": {
      "confidence": "documented",
+     "count_from": "IDLC",
      "name": "Idle",
      "note": "The idle's formid. There is one per IDLC.",
-     "type": "formid"
+     "type": {
+      "array": "formid"
+     }
     },
     "IDLC": {
      "confidence": "documented",

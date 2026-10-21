@@ -257,9 +257,12 @@
        },
        "KWDA": {
         "confidence": "documented",
+        "count_from": "KSIZ",
         "name": "Alias Keyword",
         "note": "A KYWD record, added to the alias for the duration of the quest. There is one per KSIZ.",
-        "type": "formid"
+        "type": {
+         "array": "formid"
+        }
        },
        "OCOR": {
         "confidence": "documented",
