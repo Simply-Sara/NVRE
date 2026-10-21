@@ -1,0 +1,647 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "CSTY": {
+   "confidence": "documented",
+   "name": "Combat Style",
+   "note": "UESP, Skyrim Mod:Mod File Format/CSTY. The float arrays vary in length: the general array is 2, 8 or 10 floats, the melee one 7 or 8, the close range one 2 or 4, and the flight one 1 to 8. [measured: 144 CSTY records in Skyrim.esm]",
+   "subrecords": {
+    "CSCR": {
+     "confidence": "documented",
+     "name": "Close Range",
+     "note": "The style's close range multipliers.",
+     "type": "CSTY_CSCR"
+    },
+    "CSFL": {
+     "confidence": "documented",
+     "name": "Flight",
+     "note": "The style's flight chances and times, from one to eight floats.",
+     "type": {
+      "array": "f32"
+     }
+    },
+    "CSGD": {
+     "confidence": "documented",
+     "name": "General",
+     "note": "The style's general multipliers.",
+     "type": "CSTY_CSGD"
+    },
+    "CSLR": {
+     "confidence": "documented",
+     "name": "Long Range",
+     "note": "The strafe multiplier. The default is 0.2.",
+     "type": "f32"
+    },
+    "CSMD": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "CSME": {
+     "confidence": "documented",
+     "name": "Melee",
+     "note": "The style's melee multipliers.",
+     "type": "CSTY_CSME"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The style's flags. Exactly one of Dueling or Flanking is always set.",
+     "type": {
+      "bits": {
+       "0": "Dueling",
+       "1": "Flanking",
+       "2": "Allow Dual Wielding"
+      },
+      "flags": "u32"
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
+  "IMGS": {
+   "confidence": "documented",
+   "name": "Image Spaces",
+   "note": "UESP, Skyrim Mod:Mod File Format/IMGS. [measured: 268 IMGS records in Skyrim.esm; HNAM is 36 bytes, CNAM 12, TNAM 16 and DNAM 16 in all but two]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Cinematic Parameters",
+     "note": "The saturation, brightness and contrast.",
+     "type": "IMGS_CNAM"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Depth Of Field",
+     "note": "The strength, distance and range, and sometimes a fourth float that seems to influence the blur radius and the No Sky flag.",
+     "type": {
+      "array": "f32"
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ENAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An alternative to the HNAM, CNAM and TNAM fields, in two records only. It is fourteen floats.",
+     "type": {
+      "array": "f32",
+      "count": 14
+     }
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "HDR Parameters",
+     "note": "The high dynamic range parameters: the eye adapt speed, the bloom's blur radius, threshold and scale, the receive bloom threshold, the white point, the sunlight and sky scales, and the eye adapt strength.",
+     "type": "IMGS_HNAM"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Tint Parameters",
+     "note": "The tint amount and its red, green and blue channels.",
+     "type": "IMGS_TNAM"
+    }
+   }
+  },
+  "LSCR": {
+   "confidence": "documented",
+   "name": "Load Screen",
+   "note": "UESP, Skyrim Mod:Mod File Format/LSCR. [measured: 298 LSCR records in Skyrim.esm; RNAM is 6 bytes, ONAM 4 and XNAM 12]",
+   "subrecords": {
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Match Conditions",
+     "note": "The conditions under which the screen shows, presumably for the ones that are only somewhat relevant.",
+     "type": "Condition"
+    },
+    "DESC": {
+     "confidence": "documented",
+     "name": "Displayed Text",
+     "note": "The text shown on the loading screen.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MOD2": {
+     "confidence": "documented",
+     "name": "Camera Path",
+     "note": "The path to the camera .nif.",
+     "type": "zstring"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Loading Screen NIF",
+     "note": "The static (STAT) the screen shows.",
+     "type": "formid"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Rotation Offset Constraints",
+     "note": "The lowest and highest rotation allowed.",
+     "type": "LSCR_ONAM"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Initial Rotation",
+     "note": "The camera's initial x, y and z rotation.",
+     "type": "LSCR_RNAM"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Initial Scale",
+     "note": "The camera's initial scale. The typical values are roughly between 0.5 and 2.",
+     "type": "f32"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Initial Translation Offset",
+     "note": "The camera's initial x, y and z translation.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    }
+   }
+  },
+  "MUST": {
+   "confidence": "documented",
+   "name": "Music Track",
+   "note": "UESP, Skyrim Mod:Mod File Format/MUST. [measured: 611 MUST records in Skyrim.esm]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "A Track",
+     "note": "The path to the first .wav.",
+     "type": "zstring"
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "B Track",
+     "note": "The path to the second .wav.",
+     "type": "zstring"
+    },
+    "CITC": {
+     "confidence": "documented",
+     "name": "Condition Count",
+     "note": "How many conditions follow.",
+     "type": "u32"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Track Type",
+     "note": "The track's type: 0x6ED7E048 is a single track, 0xA1A9C4D5 a silent track and 0x23F678C3 a palette.",
+     "type": "MUST_CNAM"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Conditions",
+     "note": "The conditions under which the track plays.",
+     "type": "Condition"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Fade Out",
+     "note": "The fade-out in seconds. It appears in the palette tracks only.",
+     "type": "f32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FLTV": {
+     "confidence": "documented",
+     "name": "Duration",
+     "note": "The track's duration in seconds. It is only for the silent and palette tracks.",
+     "type": "f32"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Cue Points",
+     "note": "The cue points, in seconds. There is an arbitrary number of them.",
+     "type": {
+      "array": "f32"
+     }
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Loop Data",
+     "note": "Where the loop begins and ends, in seconds, and how many times it loops.",
+     "type": "MUST_LNAM"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Tracks",
+     "note": "The other MUST records this one collects, probably the pre-MUSC collections. A formid of zero separates the layers, since zero is not a valid formid anyway.",
+     "type": {
+      "array": "formid"
+     }
+    }
+   }
+  },
+  "PHZD": {
+   "confidence": "documented",
+   "name": "Physics Hazard",
+   "note": "UESP, Skyrim Mod:Mod File Format/PHZD. [measured: 673 PHZD records in Skyrim.esm; DATA is 24 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Coordinates",
+     "note": "The hazard's x, y and z position and rotation.",
+     "type": "PHZD_DATA"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base Hazard",
+     "note": "The hazard (HAZD) this one is based on.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The scripting info.",
+     "type": "bytes"
+    },
+    "XESP": {
+     "confidence": "documented",
+     "name": "Enable Parent",
+     "note": "The object to enable the hazard with: a REFR, usually to a STAT, and the flags.",
+     "type": {
+      "struct": [
+       {
+        "name": "reference",
+        "type": "formid"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Set Enable State Opposite Parent",
+          "1": "Pop In"
+         },
+         "flags": "u32"
+        }
+       }
+      ]
+     }
+    },
+    "XIS2": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length; present when the object is ignored by the sandbox. It is not in the shipped .esm files.",
+     "type": "bytes"
+    },
+    "XLRL": {
+     "confidence": "documented",
+     "name": "Location",
+     "note": "The location the hazard is in. It is found in the Cutting Room Floor.",
+     "type": "formid"
+    },
+    "XSCL": {
+     "confidence": "documented",
+     "name": "Scale",
+     "note": "The scale of the base model.",
+     "type": "f32"
+    }
+   }
+  },
+  "RELA": {
+   "confidence": "documented",
+   "name": "Relationship",
+   "note": "UESP, Skyrim Mod:Mod File Format/RELA. [measured: 642 RELA records in Skyrim.esm; DATA is 16 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The parent, the child and their relationship rank.",
+     "type": "RELA_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  }
+ },
+ "types": {
+  "CSTY_CSCR": {
+   "struct": [
+    {
+     "name": "dueling_circle_mult",
+     "note": "The duelling circle multiplier. The default is 0.2.",
+     "type": "f32"
+    },
+    {
+     "name": "dueling_fallback_mult",
+     "note": "The duelling fallback multiplier. The default is 0.2.",
+     "type": "f32"
+    }
+   ]
+  },
+  "CSTY_CSGD": {
+   "struct": [
+    {
+     "name": "offensive_mult",
+     "note": "The offensive multiplier.",
+     "type": "f32"
+    },
+    {
+     "name": "defensive_mult",
+     "note": "The defensive multiplier.",
+     "type": "f32"
+    },
+    {
+     "name": "group_offensive_mult",
+     "note": "The group offensive multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "melee_equipment_mult",
+     "note": "The melee equipment multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "magic_equipment_mult",
+     "note": "The magic equipment multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "ranged_equipment_mult",
+     "note": "The ranged equipment multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "shout_equipment_mult",
+     "note": "The shout equipment multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "unarmed_mult",
+     "note": "The unarmed multiplier. The default is 1.0.",
+     "type": "f32"
+    }
+   ]
+  },
+  "CSTY_CSME": {
+   "struct": [
+    {
+     "name": "attack_staggered_mult",
+     "note": "The staggered attack multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "power_attack_staggered_mult",
+     "note": "The staggered power attack multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "power_attack_blocking_mult",
+     "note": "The blocking power attack multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "bash_mult",
+     "note": "The bash multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "bash_recoiled_mult",
+     "note": "The recoiled bash multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "bash_attack_mult",
+     "note": "The bash attack multiplier. The default is 1.0.",
+     "type": "f32"
+    },
+    {
+     "name": "bash_power_attack_mult",
+     "note": "The bash power attack multiplier. The default is 1.0.",
+     "type": "f32"
+    }
+   ]
+  },
+  "IMGS_CNAM": {
+   "struct": [
+    {
+     "name": "saturation",
+     "note": "The saturation.",
+     "type": "f32"
+    },
+    {
+     "name": "brightness",
+     "note": "The brightness.",
+     "type": "f32"
+    },
+    {
+     "name": "contrast",
+     "note": "The contrast.",
+     "type": "f32"
+    }
+   ]
+  },
+  "IMGS_HNAM": {
+   "struct": [
+    {
+     "name": "eye_adapt_speed",
+     "note": "How fast the eye adapts.",
+     "type": "f32"
+    },
+    {
+     "name": "bloom_blur_radius",
+     "note": "The bloom's blur radius.",
+     "type": "f32"
+    },
+    {
+     "name": "bloom_threshold",
+     "note": "The bloom's threshold.",
+     "type": "f32"
+    },
+    {
+     "name": "bloom_scale",
+     "note": "The bloom's scale.",
+     "type": "f32"
+    },
+    {
+     "name": "receive_bloom_threshold",
+     "note": "The threshold at which bloom is received.",
+     "type": "f32"
+    },
+    {
+     "name": "white",
+     "note": "The white point.",
+     "type": "f32"
+    },
+    {
+     "name": "sunlight_scale",
+     "note": "The sunlight's scale.",
+     "type": "f32"
+    },
+    {
+     "name": "sky_scale",
+     "note": "The sky's scale.",
+     "type": "f32"
+    },
+    {
+     "name": "eye_adapt_strength",
+     "note": "How strongly the eye adapts.",
+     "type": "f32"
+    }
+   ]
+  },
+  "IMGS_TNAM": {
+   "struct": [
+    {
+     "name": "tint_amount",
+     "note": "How much tint there is.",
+     "type": "f32"
+    },
+    {
+     "name": "red",
+     "note": "The red channel of the tint.",
+     "type": "f32"
+    },
+    {
+     "name": "green",
+     "note": "The green channel of the tint.",
+     "type": "f32"
+    },
+    {
+     "name": "blue",
+     "note": "The blue channel of the tint.",
+     "type": "f32"
+    }
+   ]
+  },
+  "LSCR_ONAM": {
+   "struct": [
+    {
+     "name": "min",
+     "note": "The lowest rotation allowed.",
+     "type": "i16"
+    },
+    {
+     "name": "max",
+     "note": "The highest rotation allowed.",
+     "type": "i16"
+    }
+   ]
+  },
+  "LSCR_RNAM": {
+   "struct": [
+    {
+     "name": "x",
+     "note": "The x rotation.",
+     "type": "i16"
+    },
+    {
+     "name": "y",
+     "note": "The y rotation.",
+     "type": "i16"
+    },
+    {
+     "name": "z",
+     "note": "The z rotation.",
+     "type": "i16"
+    }
+   ]
+  },
+  "MUST_CNAM": {
+   "enum": "u32",
+   "values": {
+    "1859641416": "Single Track",
+    "2712257749": "Silent Track",
+    "603355331": "Palette"
+   }
+  },
+  "MUST_LNAM": {
+   "struct": [
+    {
+     "name": "loop_begins",
+     "note": "Where the loop begins, in seconds.",
+     "type": "f32"
+    },
+    {
+     "name": "loop_ends",
+     "note": "Where the loop ends, in seconds.",
+     "type": "f32"
+    },
+    {
+     "name": "loop_count",
+     "note": "How many times the track loops.",
+     "type": "u32"
+    }
+   ]
+  },
+  "PHZD_DATA": {
+   "struct": [
+    {
+     "name": "x",
+     "note": "The x coordinate.",
+     "type": "f32"
+    },
+    {
+     "name": "y",
+     "note": "The y coordinate.",
+     "type": "f32"
+    },
+    {
+     "name": "z",
+     "note": "The z coordinate.",
+     "type": "f32"
+    },
+    {
+     "name": "rx",
+     "note": "The x rotation.",
+     "type": "f32"
+    },
+    {
+     "name": "ry",
+     "note": "The y rotation.",
+     "type": "f32"
+    },
+    {
+     "name": "rz",
+     "note": "The z rotation.",
+     "type": "f32"
+    }
+   ]
+  },
+  "RELA_DATA": {
+   "struct": [
+    {
+     "name": "parent",
+     "note": "The parent NPC. Parent and child here does not necessarily mean a biological relationship; it is a generic way of describing two connected items.",
+     "type": "formid"
+    },
+    {
+     "name": "child",
+     "note": "The child NPC.",
+     "type": "formid"
+    },
+    {
+     "name": "rank",
+     "note": "The relationship level. The stored value runs from 0 to 8, and is converted into a value from -4 to 4, which is what GetRelationshipRank returns: 0 is Lover (4), 1 is Ally (3), 2 is Confidant (2), 3 is Friend (1), 4 is Acquaintance (0), 5 is Rival (-1), 6 is Foe (-2), 7 is Enemy (-3) and 8 is Archnemesis (-4).",
+     "type": "u16"
+    }
+   ]
+  }
+ }
+}
