@@ -513,6 +513,12 @@
    "name": "Location",
    "note": "UESP, Skyrim Mod:Mod File Format/LCTN. A location holds the population that belongs to it: the actors, the unique actors, the static references and the enable points. [measured: 572 LCSR and 354 LCEC fields in Skyrim.esm]",
    "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "EDID": {
      "confidence": "documented",
      "name": "Editor ID",
@@ -965,6 +971,12 @@
      "note": "The door the teleport goes to, and where.",
      "type": "REFR_XTEL"
     },
+    "XTNM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "XTRI": {
      "confidence": "documented",
      "name": "Primitive",
@@ -1144,6 +1156,24 @@
      "note": "The distant LOD multiplier.",
      "type": "f32"
     },
+    "OFST": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field whose size varies with the worldspace. [observed: 120 to 113,836 bytes]",
+     "type": "bytes"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field, 16 bytes.",
+     "type": "bytes"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 2 bytes]",
+     "type": "u16"
+    },
     "RNAM": {
      "confidence": "documented",
      "name": "Large References",
@@ -1159,6 +1189,12 @@
       "count": 2
      }
     },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "XEZN": {
      "confidence": "documented",
      "name": "Encounter Zone",
@@ -1170,6 +1206,12 @@
      "name": "Location",
      "note": "The location (LCTN).",
      "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
     }
    }
   }

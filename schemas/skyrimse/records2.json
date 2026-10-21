@@ -305,6 +305,12 @@
      "note": "32 bytes, one per layer. The byte for layer n is a float encoded as a uint8, where 0x00 is -0.1, 0x7f is 0 and 0xfe is 0.1.",
      "type": "WTHR_CLOUD_SPEED"
     },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 8 bytes]",
+     "type": "bytes"
+    },
     "TNAM": {
      "confidence": "documented",
      "name": "Unknown",

@@ -179,7 +179,7 @@
     "CITC": {
      "confidence": "documented",
      "name": "Condition Count",
-     "note": "How many conditions follow.",
+     "note": "How many conditions follow. [observed: 4 bytes]",
      "type": "u32"
     },
     "CNAM": {
@@ -383,7 +383,7 @@
     "LVLG": {
      "confidence": "documented",
      "name": "Unknown",
-     "note": "An unknown field.",
+     "note": "An unknown field. [observed: 4 bytes]",
      "type": "u32"
     },
     "LVLO": {

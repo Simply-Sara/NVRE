@@ -451,6 +451,12 @@
      "note": "UESP, Skyrim Mod:Mod File Format/BOOK. Message Icon Filename",
      "type": "zstring"
     },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data. [observed: 41 to 803 bytes]",
+     "type": "bytes"
+    },
     "YNAM": {
      "confidence": "hypothesis",
      "name": "pickupSound",
@@ -689,6 +695,12 @@
      "note": "UESP, Skyrim Mod:Mod File Format/FURN.",
      "type": "u32"
     },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures. [observed: 30 bytes]",
+     "type": "bytes"
+    },
     "NAM0": {
      "confidence": "hypothesis",
      "name": "unknown",
@@ -706,6 +718,12 @@
      "name": "unknown",
      "note": "UESP, Skyrim Mod:Mod File Format/FURN. 4 bytes, 0 or 00334ccc seen",
      "type": "u32"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data. [observed: 20 to 277 bytes]",
+     "type": "bytes"
     },
     "WBDT": {
      "confidence": "hypothesis",

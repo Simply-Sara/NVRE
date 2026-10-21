@@ -18,6 +18,12 @@
      "note": "The character's AI: aggression, confidence, morality and the aggro radii.",
      "type": "AIDT"
     },
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "ATKD": {
      "confidence": "documented",
      "name": "Attack Data",
