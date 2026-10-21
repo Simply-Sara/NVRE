@@ -621,8 +621,10 @@
     "RDWT": {
      "confidence": "documented",
      "name": "Weight",
-     "note": "The region's weight.",
-     "type": "f32"
+     "note": "The region's weight, a run of floats. [measured: 12, 36, 48, 60, 72 or 84 bytes in Skyrim.esm]",
+     "type": {
+      "array": "f32"
+     }
     },
     "RNAM": {
      "confidence": "documented",

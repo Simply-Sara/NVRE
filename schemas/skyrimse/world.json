@@ -930,8 +930,63 @@
     "XLIG": {
      "confidence": "documented",
      "name": "Light Data",
-     "note": "The light's field of view offset, fade offset, end distance cap and shadow depth bias, plus four unknown bytes.",
-     "type": "REFR_XLIG"
+     "note": "UESP, Skyrim Mod:Mod File Format/REFR. The light's field of view offset, fade offset, end distance cap and shadow depth bias. [measured: 16 bytes in every XLIG field in Skyrim.esm but one, which is 20]",
+     "type": {
+      "union": [
+       {
+        "name": "Sixteen Bytes",
+        "size": 16,
+        "type": {
+         "struct": [
+          {
+           "name": "field_of_view_offset",
+           "type": "f32"
+          },
+          {
+           "name": "fade_offset",
+           "type": "f32"
+          },
+          {
+           "name": "end_distance_cap",
+           "type": "f32"
+          },
+          {
+           "name": "shadow_depth_bias",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "Twenty Bytes",
+        "size": 20,
+        "type": {
+         "struct": [
+          {
+           "name": "field_of_view_offset",
+           "type": "f32"
+          },
+          {
+           "name": "fade_offset",
+           "type": "f32"
+          },
+          {
+           "name": "end_distance_cap",
+           "type": "f32"
+          },
+          {
+           "name": "shadow_depth_bias",
+           "type": "f32"
+          },
+          {
+           "name": "unknown",
+           "type": "u32"
+          }
+         ]
+        }
+       }
+      ]
+     }
     },
     "XLKR": {
      "confidence": "documented",
@@ -1240,10 +1295,21 @@
      "type": "bytes"
     },
     "NAM0": {
-     "confidence": "documented",
+     "confidence": "observed",
      "name": "Unknown",
-     "note": "An unknown field. [observed: 8 bytes]",
-     "type": "u32"
+     "note": "An unknown field of two words. [observed: 8 bytes]",
+     "type": {
+      "struct": [
+       {
+        "name": "unknown1",
+        "type": "u32"
+       },
+       {
+        "name": "unknown2",
+        "type": "u32"
+       }
+      ]
+     }
     },
     "NAM2": {
      "confidence": "documented",
@@ -1264,10 +1330,21 @@
      "type": "f32"
     },
     "NAM9": {
-     "confidence": "documented",
+     "confidence": "observed",
      "name": "Unknown",
-     "note": "An unknown field. [observed: 8 bytes]",
-     "type": "u32"
+     "note": "An unknown field of two words. [observed: 8 bytes]",
+     "type": {
+      "struct": [
+       {
+        "name": "unknown1",
+        "type": "u32"
+       },
+       {
+        "name": "unknown2",
+        "type": "u32"
+       }
+      ]
+     }
     },
     "NAMA": {
      "confidence": "documented",

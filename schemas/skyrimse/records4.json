@@ -833,9 +833,9 @@
     "EPF3": {
      "confidence": "documented",
      "name": "Run Immediately",
-     "note": "xEdit wbDefinitionsFNV.pas PERK record",
+     "note": "UESP, Skyrim Mod:Mod File Format/PERK. [measured: 4 bytes in every EPF3 field in Skyrim.esm, against Fallout's word]",
      "type": {
-      "enum": "u16",
+      "enum": "u32",
       "values": {
        "0": "False",
        "1": "True"
