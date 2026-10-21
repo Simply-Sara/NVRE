@@ -242,6 +242,90 @@
     }
    ],
    "note": "nif.xml's BSVertexData: the Special Edition's packed vertex, whose layout the vertex description's attribute flags choose. The argument is the description shifted down to those flags."
+  },
+  "SkinPartition": {
+   "fields": [
+    {
+     "name": "num_vertices",
+     "type": "u32"
+    },
+    {
+     "name": "num_triangles",
+     "type": "u32"
+    },
+    {
+     "name": "num_bones",
+     "type": "u16"
+    },
+    {
+     "name": "num_strips",
+     "type": "u16"
+    },
+    {
+     "name": "num_weights_per_vertex",
+     "type": "u16"
+    },
+    {
+     "name": "bones",
+     "type": "u16",
+     "length": "num_bones"
+    },
+    {
+     "name": "has_vertex_map",
+     "type": "bool"
+    },
+    {
+     "name": "vertex_map",
+     "type": "u16",
+     "length": "num_vertices",
+     "cond": "has_vertex_map"
+    },
+    {
+     "name": "has_vertex_weights",
+     "type": "bool"
+    },
+    {
+     "name": "vertex_weights",
+     "type": "f32",
+     "length": "num_vertices",
+     "width": "num_weights_per_vertex",
+     "cond": "has_vertex_weights"
+    },
+    {
+     "name": "strip_lengths",
+     "type": "u16",
+     "length": "num_strips"
+    },
+    {
+     "name": "has_faces",
+     "type": "bool"
+    },
+    {
+     "name": "strips",
+     "type": "u16",
+     "length": "num_strips",
+     "width": "strip_lengths",
+     "cond": "has_faces && num_strips != 0"
+    },
+    {
+     "name": "triangles",
+     "type": "triangle",
+     "length": "num_triangles",
+     "cond": "has_faces && num_strips == 0"
+    },
+    {
+     "name": "has_bone_indices",
+     "type": "bool"
+    },
+    {
+     "name": "bone_indices",
+     "type": "u8",
+     "length": "num_vertices",
+     "width": "num_weights_per_vertex",
+     "cond": "has_bone_indices"
+    }
+   ],
+   "note": "The Special Edition's skin partition, measured: the vertex and triangle counts are thirty-two-bit where the original edition's are sixteen-bit."
   }
  }
 }
