@@ -546,6 +546,67 @@
    "name": "Location",
    "note": "UESP, Skyrim Mod:Mod File Format/LCTN. A location holds the population that belongs to it: the actors, the unique actors, the static references and the enable points. [measured: 572 LCSR and 354 LCEC fields in Skyrim.esm]",
    "subrecords": {
+    "ACEC": {
+     "confidence": "documented",
+     "name": "Encounter",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The encounter: a worldspace and a run of int16 pairs. Since Dawnguard this field is named ACEC rather than LCEC, and the contents are the same.",
+     "type": {
+      "struct": [
+       {
+        "name": "world",
+        "note": "The worldspace (WRLD).",
+        "type": "formid"
+       },
+       {
+        "name": "points",
+        "note": "The encounter's points, in pairs.",
+        "type": {
+         "array": "i16"
+        }
+       }
+      ]
+     }
+    },
+    "ACEP": {
+     "confidence": "documented",
+     "name": "Enable Points",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The enable points: a run of twelve-byte structs with no count of their own. Since Dawnguard this field is named ACEP rather than LCEP, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCEP"
+     }
+    },
+    "ACID": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. Since Dawnguard this field is named ACID rather than LCID. It is a run of form ids with no count of its own. [observed: 124, 172 and 352 bytes]",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "ACPR": {
+     "confidence": "documented",
+     "name": "Population Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The population refs: a run of twelve-byte structs with no count of their own. Since Dawnguard this field is named ACPR rather than LCPR, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCPR"
+     }
+    },
+    "ACSR": {
+     "confidence": "documented",
+     "name": "Static Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The static refs: a run of sixteen-byte structs with no count of their own. Since Dawnguard this field is named ACSR rather than LCSR, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCSR"
+     }
+    },
+    "ACUN": {
+     "confidence": "documented",
+     "name": "Unique Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The unique refs: a run of twelve-byte structs with no count of their own. Since Dawnguard this field is named ACUN rather than LCUN, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCUN"
+     }
+    },
     "CNAM": {
      "confidence": "documented",
      "name": "Unknown",
@@ -669,6 +730,12 @@
      "name": "Parent Location",
      "note": "The parent LCTN.",
      "type": "formid"
+    },
+    "RCEC": {
+     "confidence": "documented",
+     "name": "Encounter",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. Since Dawnguard this field is named RCEC rather than LCEC. [observed: 8 bytes]",
+     "type": "bytes"
     },
     "RCPR": {
      "confidence": "documented",
@@ -1160,6 +1227,7 @@
   },
   "STAT": {
    "confidence": "documented",
+   "merge": true,
    "name": "Static",
    "note": "UESP, Skyrim Mod:Mod File Format/STAT. [measured: 824 MNAM fields in Skyrim.esm]",
    "subrecords": {
@@ -1172,7 +1240,7 @@
     "DNAM": {
      "confidence": "documented",
      "name": "Data",
-     "note": "The static's maximum angle and its directional material.",
+     "note": "UESP, Skyrim Mod:Mod File Format/STAT. [measured: 8 bytes in most records and 12 in Update.esm's 379 and a few of Dawnguard.esm's]",
      "type": "STAT_DNAM"
     },
     "EDID": {
@@ -2031,16 +2099,47 @@
    ]
   },
   "STAT_DNAM": {
-   "struct": [
+   "union": [
     {
-     "name": "max_angle",
-     "note": "The maximum angle, 30 to 120 degrees.",
-     "type": "f32"
+     "name": "Eight Bytes",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "max_angle",
+        "note": "The maximum angle, 30 to 120 degrees.",
+        "type": "f32"
+       },
+       {
+        "name": "directional_material",
+        "note": "The directional material (MATO).",
+        "type": "formid"
+       }
+      ]
+     }
     },
     {
-     "name": "directional_material",
-     "note": "The directional material (MATO).",
-     "type": "formid"
+     "name": "Twelve Bytes",
+     "size": 12,
+     "type": {
+      "struct": [
+       {
+        "name": "max_angle",
+        "note": "The maximum angle, 30 to 120 degrees.",
+        "type": "f32"
+       },
+       {
+        "name": "directional_material",
+        "note": "The directional material (MATO).",
+        "type": "formid"
+       },
+       {
+        "name": "unknown",
+        "note": "Unknown.",
+        "type": "u32"
+       }
+      ]
+     }
     }
    ]
   },

@@ -263,6 +263,12 @@
      "note": "32 bytes whose layout is not documented.",
      "type": "bytes"
     },
+    "HNAM": {
+     "confidence": "observed",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 16 bytes]",
+     "type": "bytes"
+    },
     "IMSP": {
      "confidence": "documented",
      "name": "Unknown",

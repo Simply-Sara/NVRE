@@ -546,10 +546,6 @@
        {
         "name": "dir_proj_z",
         "type": "f32"
-       },
-       {
-        "name": "normal_dampener",
-        "type": "f32"
        }
       ]
      }
@@ -586,26 +582,46 @@
        {
         "name": "dir_proj_z",
         "type": "f32"
-       },
+       }
+      ]
+     }
+    },
+    {
+     "name": "Thirteen Fields",
+     "size": 52,
+     "type": {
+      "struct": [
        {
-        "name": "normal_dampener",
+        "name": "falloff_scale",
         "type": "f32"
        },
        {
-        "name": "single_pass_r",
+        "name": "falloff_bias",
         "type": "f32"
        },
        {
-        "name": "single_pass_g",
+        "name": "noise_uv_scale",
         "type": "f32"
        },
        {
-        "name": "single_pass_b",
+        "name": "material_uv_scale",
         "type": "f32"
        },
        {
-        "name": "single_pass",
-        "note": "Whether the material is a single pass.",
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       },
+       {
+        "name": "unknown",
+        "note": "Unknown.",
         "type": "u32"
        }
       ]

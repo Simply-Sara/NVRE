@@ -309,6 +309,7 @@
   },
   "LTEX": {
    "confidence": "documented",
+   "merge": true,
    "name": "Lighting Texture",
    "note": "UESP, Skyrim Mod:Mod File Format/LTEX. [measured: HNAM is 2 bytes in every LTEX]",
    "subrecords": {
@@ -329,6 +330,12 @@
      "name": "Havok Data",
      "note": "The friction and the restitution.",
      "type": "LTEX_HNAM"
+    },
+    "INAM": {
+     "confidence": "observed",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
     },
     "MNAM": {
      "confidence": "documented",

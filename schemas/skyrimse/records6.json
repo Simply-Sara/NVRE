@@ -824,6 +824,91 @@
      "type": "u32"
     }
    }
+  },
+  "VOLI": {
+   "confidence": "observed",
+   "name": "Volume",
+   "note": "A volume is a grid of cells, each a form id. [measured: 36 VOLI records in Update.esm, each with twelve four-byte fields]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ENAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "JNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "KNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Cell",
+     "note": "One cell of the volume's grid.",
+     "type": "formid"
+    }
+   }
   }
  },
  "types": {
