@@ -69,8 +69,20 @@ pub struct SceneObject {
     pub children: Vec<usize>,
 }
 
-pub const SHAPE_TYPES: [&str; 3] = ["NiTriShape", "NiTriStrips", "BSSegmentedTriShape"];
-pub const SHAPE_DATA_TYPES: [&str; 2] = ["NiTriShapeData", "NiTriStripsData"];
+pub const SHAPE_TYPES: [&str; 4] = [
+    "NiTriShape",
+    "NiTriStrips",
+    "BSSegmentedTriShape",
+    // The Special Edition's shape block: it holds its vertices in the shape
+    // itself, in a packed format, where the original edition keeps them in
+    // a separate block.
+    "BSTriShape",
+];
+/// The blocks that carry a shape's geometry.
+///
+/// The Special Edition's shape carries its own geometry, in the packed
+/// vertex format, where the original edition keeps it in a separate block.
+pub const SHAPE_DATA_TYPES: [&str; 3] = ["NiTriShapeData", "NiTriStripsData", "BSTriShape"];
 
 /// Nodes (NiNode and derived types) and triangle shapes, in block order, with each
 /// object's parent = the lowest-index node listing it as a child.
