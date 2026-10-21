@@ -367,9 +367,16 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 if f.optional {
                     // The field is skipped when the bytes left are too few
                     // for it, so a struct may be shorter than its fields.
-                    let need = schema.fixed_size(&f.ty);
-                    if need.is_none_or(|n| c.remaining() < n) {
-                        break;
+                    // A field whose size is not known is read, since there
+                    // is no telling that it will not fit.
+                    // The field is still named in the output, with a null
+                    // value, so that a re-encode writes exactly the bytes
+                    // that were read.
+                    if let Some(n) = schema.fixed_size(&f.ty) {
+                        if c.remaining() < n {
+                            obj.insert(f.name.clone(), Value::Null);
+                            break;
+                        }
                     }
                 }
                 // A count-field array reads its element count from a sibling field

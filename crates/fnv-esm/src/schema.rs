@@ -1445,6 +1445,20 @@ impl Schema {
                 }
                 n
             }
+            TypeDef::ValueUnion { variants, .. } => {
+                // The variant is chosen by a sibling's value, so the union
+                // has a fixed size only when its variants all agree.
+                let mut n = None;
+                for v in variants {
+                    let s = self.fixed_size(v)?;
+                    match n {
+                        None => n = Some(s),
+                        Some(prev) if prev == s => {}
+                        Some(_) => return None,
+                    }
+                }
+                n
+            }
             TypeDef::Struct(fs) => {
                 let mut n = 0;
                 for f in fs {
@@ -1465,7 +1479,7 @@ impl Schema {
             // malformed array carrying both `count` and `count_prefix` (rejected at
             // parse time) all have no size known before reading the data.
             TypeDef::Array { .. } => None,
-            TypeDef::Named(_) | TypeDef::Union(_) | TypeDef::ValueUnion { .. } => None,
+            TypeDef::Named(_) | TypeDef::Union(_) => None,
         }
     }
 }

@@ -62,7 +62,30 @@
      "confidence": "documented",
      "name": "Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Component Tech Level",
+       "10": "Attraction Type",
+       "11": "Dialogue Subtype",
+       "12": "Quest Target",
+       "13": "Anim Flavor",
+       "14": "Anim Gender",
+       "15": "Anim Face",
+       "16": "Quest Group",
+       "17": "Anim Injured",
+       "18": "Dispel Effect",
+       "2": "Attach Point",
+       "3": "Component Property",
+       "4": "Instantiation Filter",
+       "5": "Mod Association",
+       "6": "Sound",
+       "7": "Anim Archetype",
+       "8": "Function Call",
+       "9": "Recipe Filter"
+      }
+     }
     }
    }
   },
@@ -415,10 +438,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -1260,23 +1285,40 @@
       "struct": [
        {
         "name": "Sound Model",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Frequency",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Volume",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Starts Active",
-        "type": "u8"
+        "optional": true,
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "No Signal Static",
-        "type": "u8"
+        "optional": true,
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        }
       ]
      }
@@ -1512,7 +1554,13 @@
          "struct": [
           {
            "name": "Enabled",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "False",
+             "1": "True"
+            }
+           }
           },
           {
            "name": "Value",
@@ -2615,12 +2663,24 @@
        {
         "name": "Requires Line of Sight",
         "optional": true,
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Combat Target",
         "optional": true,
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Unused",
@@ -3326,7 +3386,13 @@
           {
            "name": "Default",
            "optional": true,
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "False",
+             "1": "True"
+            }
+           }
           },
           {
            "name": "Keywords",
@@ -3362,11 +3428,23 @@
               },
               {
                "name": "Optional",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               },
               {
                "name": "Don't Use All",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               }
              ]
             }
@@ -3496,7 +3574,16 @@
        },
        {
         "name": "Stagger Rating",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "None",
+          "1": "Small",
+          "2": "Medium",
+          "3": "Large",
+          "4": "Extra Large"
+         }
+        }
        },
        {
         "name": "unknown",
@@ -3876,7 +3963,13 @@
      "confidence": "documented",
      "name": "Is Interior",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XTRI",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "False",
+       "1": "True"
+      }
+     }
     }
    }
   },
@@ -4048,7 +4141,13 @@
        },
        {
         "name": "Default Number of Tiles - Relative to Length",
-        "type": "u16"
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Default Color",
@@ -5306,14 +5405,17 @@
       "struct": [
        {
         "name": "X",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Y",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Force Hide Land",
+        "optional": true,
         "type": "u32"
        }
       ]
@@ -5327,6 +5429,7 @@
       "struct": [
        {
         "name": "Ambient Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5353,6 +5456,7 @@
        },
        {
         "name": "Directional Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5379,6 +5483,7 @@
        },
        {
         "name": "Fog Color Near",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5405,34 +5510,42 @@
        },
        {
         "name": "Fog Near",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Far",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Directional Rotation XY",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Directional Rotation Z",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Directional Fade",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Clip Distance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Power",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "wbAmbientColors",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5633,6 +5746,7 @@
        },
        {
         "name": "Fog Color Far",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5659,18 +5773,22 @@
        },
        {
         "name": "Fog Max",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Light Fade Begin",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Light Fade End",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Inherits",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Ambient Color",
@@ -5690,14 +5808,17 @@
        },
        {
         "name": "Near Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Near Height Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Color High Near",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5724,6 +5845,7 @@
        },
        {
         "name": "Fog Color High Far",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5750,30 +5872,37 @@
        },
        {
         "name": "High Density Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Near Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Far Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog High Near Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog High Far Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Far Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Far Height Range",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -6360,10 +6489,12 @@
       "struct": [
        {
         "name": "Created Object Count",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Priority",
+        "optional": true,
         "type": "u16"
        }
       ]
@@ -8230,15 +8361,53 @@
          "struct": [
           {
            "name": "Membrane Shader - Source Blend Mode",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Zero",
+             "10": "Dest Inverse Color",
+             "11": "Source Alpha SAT",
+             "2": "One",
+             "3": "Source Color",
+             "4": "Source Inverse Color",
+             "5": "Source Alpha",
+             "6": "Source Inverted Alpha",
+             "7": "Dest Alpha",
+             "8": "Dest Inverted Alpha",
+             "9": "Dest Color"
+            }
+           }
           },
           {
            "name": "Membrane Shader - Blend Operation",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Add",
+             "2": "Subtract",
+             "3": "Reverse Subtract",
+             "4": "Minimum",
+             "5": "Maximum"
+            }
+           }
           },
           {
            "name": "Membrane Shader - Z Test Function",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "",
+             "2": "",
+             "3": "Equal To",
+             "4": "",
+             "5": "Greater Than",
+             "6": "",
+             "7": "Greater Than or Equal To"
+            }
+           }
           },
           {
            "name": "Fill/Texture Effect - Color Key 1",
@@ -8362,7 +8531,23 @@
           },
           {
            "name": "Membrane Shader - Dest Blend Mode",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Zero",
+             "10": "Dest Inverse Color",
+             "11": "Source Alpha SAT",
+             "2": "One",
+             "3": "Source Color",
+             "4": "Source Inverse Color",
+             "5": "Source Alpha",
+             "6": "Source Inverted Alpha",
+             "7": "Dest Alpha",
+             "8": "Dest Inverted Alpha",
+             "9": "Dest Color"
+            }
+           }
           },
           {
            "name": "Holes Animation - Start Time",
@@ -8528,15 +8713,53 @@
           },
           {
            "name": "Membrane Shader - Source Blend Mode",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Zero",
+             "10": "Dest Inverse Color",
+             "11": "Source Alpha SAT",
+             "2": "One",
+             "3": "Source Color",
+             "4": "Source Inverse Color",
+             "5": "Source Alpha",
+             "6": "Source Inverted Alpha",
+             "7": "Dest Alpha",
+             "8": "Dest Inverted Alpha",
+             "9": "Dest Color"
+            }
+           }
           },
           {
            "name": "Membrane Shader - Blend Operation",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Add",
+             "2": "Subtract",
+             "3": "Reverse Subtract",
+             "4": "Minimum",
+             "5": "Maximum"
+            }
+           }
           },
           {
            "name": "Membrane Shader - Z Test Function",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "",
+             "2": "",
+             "3": "Equal To",
+             "4": "",
+             "5": "Greater Than",
+             "6": "",
+             "7": "Greater Than or Equal To"
+            }
+           }
           },
           {
            "name": "Fill/Texture Effect - Color Key 1",
@@ -8660,23 +8883,93 @@
           },
           {
            "name": "Membrane Shader - Dest Blend Mode",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Zero",
+             "10": "Dest Inverse Color",
+             "11": "Source Alpha SAT",
+             "2": "One",
+             "3": "Source Color",
+             "4": "Source Inverse Color",
+             "5": "Source Alpha",
+             "6": "Source Inverted Alpha",
+             "7": "Dest Alpha",
+             "8": "Dest Inverted Alpha",
+             "9": "Dest Color"
+            }
+           }
           },
           {
            "name": "Particle Shader - Source Blend Mode",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Zero",
+             "10": "Dest Inverse Color",
+             "11": "Source Alpha SAT",
+             "2": "One",
+             "3": "Source Color",
+             "4": "Source Inverse Color",
+             "5": "Source Alpha",
+             "6": "Source Inverted Alpha",
+             "7": "Dest Alpha",
+             "8": "Dest Inverted Alpha",
+             "9": "Dest Color"
+            }
+           }
           },
           {
            "name": "Particle Shader - Blend Operation",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Add",
+             "2": "Subtract",
+             "3": "Reverse Subtract",
+             "4": "Minimum",
+             "5": "Maximum"
+            }
+           }
           },
           {
            "name": "Particle Shader - Z Test Function",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "",
+             "2": "",
+             "3": "Equal To",
+             "4": "",
+             "5": "Greater Than",
+             "6": "",
+             "7": "Greater Than or Equal To"
+            }
+           }
           },
           {
            "name": "Particle Shader - Dest Blend Mode",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "",
+             "1": "Zero",
+             "10": "Dest Inverse Color",
+             "11": "Source Alpha SAT",
+             "2": "One",
+             "3": "Source Color",
+             "4": "Source Inverse Color",
+             "5": "Source Alpha",
+             "6": "Source Inverted Alpha",
+             "7": "Dest Alpha",
+             "8": "Dest Inverted Alpha",
+             "9": "Dest Color"
+            }
+           }
           },
           {
            "name": "Particle Shader - Particle Birth Ramp Up Time",
@@ -9267,7 +9560,15 @@
        {
         "name": "Cast Type",
         "optional": true,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Constant Effect",
+          "1": "Fire and Forget",
+          "2": "Concentration",
+          "3": "Scroll"
+         }
+        }
        },
        {
         "name": "Enchantment Amount",
@@ -9277,7 +9578,16 @@
        {
         "name": "Target Type",
         "optional": true,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Self",
+          "1": "Touch",
+          "2": "Aimed",
+          "3": "Target Actor",
+          "4": "Target Location"
+         }
+        }
        },
        {
         "name": "Enchant Type",
@@ -9549,7 +9859,16 @@
        {
         "name": "Sound Level",
         "optional": true,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Loud",
+          "1": "Normal",
+          "2": "Silent",
+          "3": "Very Loud",
+          "4": "Quiet"
+         }
+        }
        },
        {
         "name": "Placed Object AutoFade Delay",
@@ -9775,42 +10094,64 @@
       "struct": [
        {
         "name": "Arrest",
-        "type": "u8"
+        "optional": true,
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Attack On Sight",
-        "type": "u8"
+        "optional": true,
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Murder",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Assault",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Trespass",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Pickpocket",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Steal Multiplier",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Escape",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Werewolf (unused)",
+        "optional": true,
         "type": "u16"
        }
       ]
@@ -9888,12 +10229,52 @@
      "type": {
       "struct": [
        {
+        "expose": true,
         "name": "Type",
-        "type": "i32"
+        "optional": true,
+        "type": {
+         "enum": "i32",
+         "values": {
+          "0": "Near reference",
+          "1": "In cell",
+          "10": "Target",
+          "11": "Target (location)",
+          "12": "Near self",
+          "13": "Near Editor Location Cell",
+          "14": "Alias (ref collection)",
+          "2": "Near package start location",
+          "3": "Near editor location",
+          "4": "Object ID",
+          "5": "Object Type",
+          "6": "Near linked reference",
+          "7": "At package location",
+          "8": "Alias (reference)",
+          "9": "Alias (location)"
+         }
+        }
        },
        {
         "name": "Location Value",
+        "optional": true,
         "type": {
+         "cases": {
+          "0": 0,
+          "1": 1,
+          "10": 10,
+          "11": 11,
+          "12": 12,
+          "13": 13,
+          "14": 14,
+          "2": 2,
+          "3": 3,
+          "4": 4,
+          "5": 5,
+          "6": 6,
+          "7": 7,
+          "8": 8,
+          "9": 9
+         },
+         "default": 0,
          "switch_on": "Type",
          "union": [
           {
@@ -9924,7 +10305,41 @@
           },
           {
            "size": 4,
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": " NONE",
+             "1": "Activators",
+             "10": "Furniture",
+             "11": "Weapons: Any",
+             "12": "Ammo",
+             "13": "Keys",
+             "14": "Alchemy",
+             "15": "Food",
+             "16": "Clothing",
+             "17": "All: Wearable",
+             "18": "Weapons: NONE",
+             "19": "Weapons: Melee",
+             "2": "Armor",
+             "20": "Weapons: Ranged",
+             "21": "Spells: Any",
+             "22": "Spells: Range Target",
+             "23": "Spells: Range Touch",
+             "24": "Spells: Range Self",
+             "25": "Actors: Any",
+             "26": "Furniture: Beds",
+             "27": "Furniture: Chairs",
+             "28": "Shouts",
+             "29": "Headtrack Markers",
+             "3": "Books",
+             "4": "Containers",
+             "5": "Doors",
+             "6": "Ingredients",
+             "7": "Lights",
+             "8": "Miscellaneous",
+             "9": "Flora"
+            }
+           }
           },
           {
            "size": 4,
@@ -9976,10 +10391,12 @@
        },
        {
         "name": "Radius",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Collection Index",
+        "optional": true,
         "type": "u32"
        }
       ]
@@ -10030,15 +10447,33 @@
        },
        {
         "name": "Buys Stolen Items",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Buy/Sell Everything Not In List?",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Buys NonStolen Items",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -10763,7 +11198,16 @@
           },
           {
            "name": "Disabled Points",
-           "type": "u16"
+           "type": {
+            "bits": {
+             "0": "Front",
+             "1": "Behind",
+             "2": "Right",
+             "3": "Left",
+             "4": "Up"
+            },
+            "flags": "u16"
+           }
           }
          ]
         }
@@ -10892,7 +11336,13 @@
           {
            "name": "Default",
            "optional": true,
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "False",
+             "1": "True"
+            }
+           }
           },
           {
            "name": "Keywords",
@@ -10928,11 +11378,23 @@
               },
               {
                "name": "Optional",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               },
               {
                "name": "Don't Use All",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               }
              ]
             }
@@ -11011,11 +11473,29 @@
       "struct": [
        {
         "name": "Type",
-        "type": "u16"
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "",
+          "1": "Sit",
+          "2": "Lay",
+          "3": "",
+          "4": "Lean"
+         }
+        }
        },
        {
         "name": "Entry Points",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Front",
+          "1": "Behind",
+          "2": "Right",
+          "3": "Left",
+          "4": "Up"
+         },
+         "flags": "u16"
+        }
        }
       ]
      }
@@ -11577,7 +12057,35 @@
        {
         "name": "Uses Skill",
         "optional": true,
-        "type": "i8"
+        "type": {
+         "enum": "i8",
+         "values": {
+          "0": "Unknown 1",
+          "1": "Unknown 2",
+          "10": "Smithing",
+          "11": "Heavy Armor",
+          "12": "Light Armor",
+          "13": "Pickpocket",
+          "14": "Lockpicking",
+          "15": "Sneak",
+          "16": "Alchemy",
+          "17": "Speech",
+          "18": "Alteration",
+          "19": "Conjuration",
+          "2": "Unknown 3",
+          "20": "Destruction",
+          "21": "Illusion",
+          "22": "Restoration",
+          "23": "None",
+          "3": "Unknown 4",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "One Handed",
+          "7": "Two Handed",
+          "8": "Archery",
+          "9": "Block"
+         }
+        }
        }
       ]
      }
@@ -11757,7 +12265,13 @@
        },
        {
         "size": 4,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        }
       ]
      }
@@ -13506,14 +14020,17 @@
       "struct": [
        {
         "name": "Version",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Object Format",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Scripts",
+        "optional": true,
         "type": {
          "array": {
           "struct": [
@@ -13536,6 +14053,7 @@
        },
        {
         "name": "wbScriptFragmentsInfo",
+        "optional": true,
         "type": "wbScriptFragmentsInfo"
        }
       ]
@@ -14190,7 +14708,16 @@
        {
         "name": "Sound Level",
         "optional": true,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Loud",
+          "1": "Normal",
+          "2": "Silent",
+          "3": "Very Loud",
+          "4": "Quiet"
+         }
+        }
        },
        {
         "name": "Flags",
@@ -14786,7 +15313,17 @@
       "struct": [
        {
         "name": "Reverb Class",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Default",
+          "1": "Class A",
+          "2": "Class B",
+          "3": "Class C",
+          "4": "Class D",
+          "5": "Class E"
+         }
+        }
        },
        {
         "name": "Descriptor",
@@ -14876,7 +15413,30 @@
      "confidence": "documented",
      "name": "Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Component Tech Level",
+       "10": "Attraction Type",
+       "11": "Dialogue Subtype",
+       "12": "Quest Target",
+       "13": "Anim Flavor",
+       "14": "Anim Gender",
+       "15": "Anim Face",
+       "16": "Quest Group",
+       "17": "Anim Injured",
+       "18": "Dispel Effect",
+       "2": "Attach Point",
+       "3": "Component Property",
+       "4": "Instantiation Filter",
+       "5": "Mod Association",
+       "6": "Sound",
+       "7": "Anim Archetype",
+       "8": "Function Call",
+       "9": "Recipe Filter"
+      }
+     }
     }
    }
   },
@@ -14905,7 +15465,15 @@
           },
           {
            "name": "Quadrant",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Bottom Left",
+             "1": "Bottom Right",
+             "2": "Top Left",
+             "3": "Top Right"
+            }
+           }
           },
           {
            "name": "Unused",
@@ -14947,7 +15515,15 @@
           },
           {
            "name": "Quadrant",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Bottom Left",
+             "1": "Bottom Right",
+             "2": "Top Left",
+             "3": "Top Right"
+            }
+           }
           },
           {
            "name": "Unused",
@@ -17623,12 +18199,29 @@
           {
            "name": "Casting Type",
            "optional": true,
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Constant Effect",
+             "1": "Fire and Forget",
+             "2": "Concentration",
+             "3": "Scroll"
+            }
+           }
           },
           {
            "name": "Delivery",
            "optional": true,
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Self",
+             "1": "Touch",
+             "2": "Aimed",
+             "3": "Target Actor",
+             "4": "Target Location"
+            }
+           }
           },
           {
            "name": "wbActorValue",
@@ -17710,7 +18303,16 @@
           {
            "name": "Casting Sound Level",
            "optional": true,
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Loud",
+             "1": "Normal",
+             "2": "Silent",
+             "3": "Very Loud",
+             "4": "Quiet"
+            }
+           }
           },
           {
            "name": "Script Effect AI",
@@ -18611,7 +19213,13 @@
      "confidence": "documented",
      "name": "On Local Map",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "False",
+       "1": "True"
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -19032,7 +19640,13 @@
        },
        {
         "name": "Is Island",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Island",
@@ -20321,7 +20935,13 @@
           {
            "name": "Default",
            "optional": true,
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "False",
+             "1": "True"
+            }
+           }
           },
           {
            "name": "Keywords",
@@ -20357,11 +20977,23 @@
               },
               {
                "name": "Optional",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               },
               {
                "name": "Don't Use All",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               }
              ]
             }
@@ -20691,7 +21323,13 @@
          "struct": [
           {
            "name": "Aggro Radius Behavior",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "False",
+             "1": "True"
+            }
+           }
           },
           {
            "name": "Unknown",
@@ -21002,7 +21640,16 @@
      "confidence": "documented",
      "name": "Sound Level",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NAM8",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Loud",
+       "1": "Normal",
+       "2": "Silent",
+       "3": "Very Loud",
+       "4": "Quiet"
+      }
+     }
     },
     "NTRM": {
      "confidence": "documented",
@@ -21461,11 +22108,23 @@
            },
            {
             "name": "Optional",
-            "type": "u8"
+            "type": {
+             "enum": "u8",
+             "values": {
+              "0": "False",
+              "1": "True"
+             }
+            }
            },
            {
             "name": "Don't Use All",
-            "type": "u8"
+            "type": {
+             "enum": "u8",
+             "values": {
+              "0": "False",
+              "1": "True"
+             }
+            }
            }
           ]
          }
@@ -21688,7 +22347,13 @@
           },
           {
            "size": 1,
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "False",
+             "1": "True"
+            }
+           }
           },
           {
            "size": 4,
@@ -21764,19 +22429,129 @@
          "struct": [
           {
            "name": "Set General Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Offers Services",
+             "1": "Unknown 2",
+             "10": "Once per day",
+             "11": "Unknown 12",
+             "12": "Skip Load Into Furniture",
+             "13": "Preferred Speed",
+             "14": "Unknown 15",
+             "15": "Unknown 16",
+             "16": "Unknown 17",
+             "17": "Always Sneak",
+             "18": "Allow Swimming",
+             "19": "Unknown 20",
+             "2": "Must complete",
+             "20": "Ignore Combat",
+             "21": "Weapons Unequipped",
+             "22": "Unknown 23",
+             "23": "Weapon Drawn",
+             "24": "Unknown 25",
+             "25": "Unknown 26",
+             "26": "Unknown 27",
+             "27": "No Combat Alert",
+             "28": "Unknown 29",
+             "29": "Wear Sleep Outfit",
+             "3": "Maintain Speed at Goal",
+             "30": "Unknown 31",
+             "4": "Treat As Player Follower",
+             "5": "Unknown 6",
+             "6": "Unlock doors at package start",
+             "7": "Unlock doors at package end",
+             "8": "Request Block Idles",
+             "9": "Continue if PC Near"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Clear General Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Offers Services",
+             "1": "Unknown 2",
+             "10": "Once per day",
+             "11": "Unknown 12",
+             "12": "Skip Load Into Furniture",
+             "13": "Preferred Speed",
+             "14": "Unknown 15",
+             "15": "Unknown 16",
+             "16": "Unknown 17",
+             "17": "Always Sneak",
+             "18": "Allow Swimming",
+             "19": "Unknown 20",
+             "2": "Must complete",
+             "20": "Ignore Combat",
+             "21": "Weapons Unequipped",
+             "22": "Unknown 23",
+             "23": "Weapon Drawn",
+             "24": "Unknown 25",
+             "25": "Unknown 26",
+             "26": "Unknown 27",
+             "27": "No Combat Alert",
+             "28": "Unknown 29",
+             "29": "Wear Sleep Outfit",
+             "3": "Maintain Speed at Goal",
+             "30": "Unknown 31",
+             "4": "Treat As Player Follower",
+             "5": "Unknown 6",
+             "6": "Unlock doors at package start",
+             "7": "Unlock doors at package end",
+             "8": "Request Block Idles",
+             "9": "Continue if PC Near"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Set Interrupt Flags",
-           "type": "u16"
+           "type": {
+            "bits": {
+             "0": "Hellos to player",
+             "1": "Random conversations",
+             "10": "Off For Important Scene",
+             "11": "Unknown 12",
+             "12": "Unknown 13",
+             "13": "Unknown 14",
+             "14": "Unknown 15",
+             "15": "Unknown 16",
+             "2": "Observe combat behavior",
+             "3": "Greet corpse behavior",
+             "4": "Reaction to player actions",
+             "5": "Friendly fire comments",
+             "6": "Aggro Radius Behavior",
+             "7": "Allow Idle Chatter",
+             "8": "Unknown 9",
+             "9": "World Interactions"
+            },
+            "flags": "u16"
+           }
           },
           {
            "name": "Clear Interrupt Flags",
-           "type": "u16"
+           "type": {
+            "bits": {
+             "0": "Hellos to player",
+             "1": "Random conversations",
+             "10": "Off For Important Scene",
+             "11": "Unknown 12",
+             "12": "Unknown 13",
+             "13": "Unknown 14",
+             "14": "Unknown 15",
+             "15": "Unknown 16",
+             "2": "Observe combat behavior",
+             "3": "Greet corpse behavior",
+             "4": "Reaction to player actions",
+             "5": "Friendly fire comments",
+             "6": "Aggro Radius Behavior",
+             "7": "Allow Idle Chatter",
+             "8": "Unknown 9",
+             "9": "World Interactions"
+            },
+            "flags": "u16"
+           }
           },
           {
            "name": "Preferred Speed Override",
@@ -21819,12 +22594,52 @@
         "type": {
          "struct": [
           {
+           "expose": true,
            "name": "Type",
-           "type": "i32"
+           "optional": true,
+           "type": {
+            "enum": "i32",
+            "values": {
+             "0": "Near reference",
+             "1": "In cell",
+             "10": "Target",
+             "11": "Target (location)",
+             "12": "Near self",
+             "13": "Near Editor Location Cell",
+             "14": "Alias (ref collection)",
+             "2": "Near package start location",
+             "3": "Near editor location",
+             "4": "Object ID",
+             "5": "Object Type",
+             "6": "Near linked reference",
+             "7": "At package location",
+             "8": "Alias (reference)",
+             "9": "Alias (location)"
+            }
+           }
           },
           {
            "name": "Location Value",
+           "optional": true,
            "type": {
+            "cases": {
+             "0": 0,
+             "1": 1,
+             "10": 10,
+             "11": 11,
+             "12": 12,
+             "13": 13,
+             "14": 14,
+             "2": 2,
+             "3": 3,
+             "4": 4,
+             "5": 5,
+             "6": 6,
+             "7": 7,
+             "8": 8,
+             "9": 9
+            },
+            "default": 0,
             "switch_on": "Type",
             "union": [
              {
@@ -21855,7 +22670,41 @@
              },
              {
               "size": 4,
-              "type": "u32"
+              "type": {
+               "enum": "u32",
+               "values": {
+                "0": " NONE",
+                "1": "Activators",
+                "10": "Furniture",
+                "11": "Weapons: Any",
+                "12": "Ammo",
+                "13": "Keys",
+                "14": "Alchemy",
+                "15": "Food",
+                "16": "Clothing",
+                "17": "All: Wearable",
+                "18": "Weapons: NONE",
+                "19": "Weapons: Melee",
+                "2": "Armor",
+                "20": "Weapons: Ranged",
+                "21": "Spells: Any",
+                "22": "Spells: Range Target",
+                "23": "Spells: Range Touch",
+                "24": "Spells: Range Self",
+                "25": "Actors: Any",
+                "26": "Furniture: Beds",
+                "27": "Furniture: Chairs",
+                "28": "Shouts",
+                "29": "Headtrack Markers",
+                "3": "Books",
+                "4": "Containers",
+                "5": "Doors",
+                "6": "Ingredients",
+                "7": "Lights",
+                "8": "Miscellaneous",
+                "9": "Flora"
+               }
+              }
              },
              {
               "size": 4,
@@ -21907,10 +22756,12 @@
           },
           {
            "name": "Radius",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Collection Index",
+           "optional": true,
            "type": "u32"
           }
          ]
@@ -22330,7 +23181,42 @@
        {
         "name": "General Flags",
         "optional": true,
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Offers Services",
+          "1": "Unknown 2",
+          "10": "Once per day",
+          "11": "Unknown 12",
+          "12": "Skip Load Into Furniture",
+          "13": "Preferred Speed",
+          "14": "Unknown 15",
+          "15": "Unknown 16",
+          "16": "Unknown 17",
+          "17": "Always Sneak",
+          "18": "Allow Swimming",
+          "19": "Unknown 20",
+          "2": "Must complete",
+          "20": "Ignore Combat",
+          "21": "Weapons Unequipped",
+          "22": "Unknown 23",
+          "23": "Weapon Drawn",
+          "24": "Unknown 25",
+          "25": "Unknown 26",
+          "26": "Unknown 27",
+          "27": "No Combat Alert",
+          "28": "Unknown 29",
+          "29": "Wear Sleep Outfit",
+          "3": "Maintain Speed at Goal",
+          "30": "Unknown 31",
+          "4": "Treat As Player Follower",
+          "5": "Unknown 6",
+          "6": "Unlock doors at package start",
+          "7": "Unlock doors at package end",
+          "8": "Request Block Idles",
+          "9": "Continue if PC Near"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Type",
@@ -22384,7 +23270,27 @@
        {
         "name": "Interrupt Flags",
         "optional": true,
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Hellos to player",
+          "1": "Random conversations",
+          "10": "Off For Important Scene",
+          "11": "Unknown 12",
+          "12": "Unknown 13",
+          "13": "Unknown 14",
+          "14": "Unknown 15",
+          "15": "Unknown 16",
+          "2": "Observe combat behavior",
+          "3": "Greet corpse behavior",
+          "4": "Reaction to player actions",
+          "5": "Friendly fire comments",
+          "6": "Aggro Radius Behavior",
+          "7": "Allow Idle Chatter",
+          "8": "Unknown 9",
+          "9": "World Interactions"
+         },
+         "flags": "u16"
+        }
        },
        {
         "name": "Unknown",
@@ -22473,14 +23379,17 @@
       "struct": [
        {
         "name": "Version",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Object Format",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Scripts",
+        "optional": true,
         "type": {
          "array": {
           "struct": [
@@ -22503,6 +23412,7 @@
        },
        {
         "name": "wbScriptFragmentsPack",
+        "optional": true,
         "type": "wbScriptFragmentsPack"
        }
       ]
@@ -22759,10 +23669,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -22859,10 +23771,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -23137,10 +24051,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -23237,10 +24153,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -23515,10 +24433,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -23615,10 +24535,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -23893,10 +24815,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -23993,10 +24917,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -24081,7 +25007,169 @@
             "struct": [
              {
               "name": "Entry Point",
-              "type": "u8"
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "Mod Breath Timer",
+                "1": "Mod My Critical Hit Chance",
+                "10": "Set Max Carry Weight",
+                "100": "Mod Player Explosion Scale",
+                "101": "Set Rads To Health Mult",
+                "102": "Mod Actor Scope Stability",
+                "103": "Mod Actor Grenade Speed Mult",
+                "104": "Mod Explosion Force",
+                "105": "Mod VATS Penetration Min Visibility",
+                "106": "Mod Rads for Rad Health Max",
+                "107": "Mod VATS Player AP On Kill Chance",
+                "108": "Set VATS Fill Critical Bar On Hit",
+                "109": "Mod VATS Concentrated Fire Chance Bonus",
+                "11": "Mod Addiction Chance",
+                "110": "Mod VATS Critical Count",
+                "111": "Mod VATS Hold Em Steady Bonus",
+                "112": "Mod Typed Spell Magnitude",
+                "113": "Mod Typed Incoming Spell Magnitude",
+                "114": "Set VATS Gun-Fu Num Targets For Crits",
+                "115": "Mod Outgoing Limb Damage",
+                "116": "Mod Restore Action Cost Value",
+                "117": "Mod VATS Reload Action Points",
+                "118": "Mod Incoming Battery Damage",
+                "119": "Mod VATS Critical Charge",
+                "12": "Mod Addiction Duration",
+                "120": "Mod Exp Location",
+                "121": "Mod Exp Speech",
+                "122": "Mod VATS Head Shot Chance",
+                "123": "Mod VATS Hit Chance",
+                "124": "Mod Incoming Explosion Damage",
+                "125": "Mod Ammo Health Mult",
+                "126": "Mod Hacking Guesses",
+                "127": "Mod Terminal Lockout Time",
+                "128": "Set Undetectable",
+                "129": "Invest In Vendor",
+                "13": "Mod Positive Chem Duration",
+                "130": "Mod Outgoing Limb Bash Damage",
+                "131": "Set Run While Over Encumbered",
+                "132": "Get Component Radar Distance",
+                "133": "Show Grenade Trajectory",
+                "134": "Mod Cone-of-fire Mult",
+                "135": "Mod VATS Concentrated Fire Damage Mult",
+                "136": "Apply Bloody Mess Spell",
+                "137": "Mod VATS Critical Fill Chance On Bank",
+                "138": "Mod VATS Critical Fill Chance On Use",
+                "139": "Set VATS Critical Fill On AP Reward",
+                "14": "Activate",
+                "140": "Set VATS Critical Fill On Stranger",
+                "141": "Mod Gun Range Mult",
+                "142": "Mod Scope Hold Breath AP Drain Mult",
+                "143": "Set Force Decapitate",
+                "144": "Mod VATS Shoot Explosive Damage Mult",
+                "145": "Mod Scrounger Fill Ammo Chance",
+                "146": "Set Can Explode Pants",
+                "147": "Set VATS Penetration Full Damage",
+                "148": "Mod VATS Gun-Fu 2nd Target Dmg Mult",
+                "149": "Mod VATS Gun-Fu 3rd Target Dmg Mult",
+                "15": "Ignore Running During Detection",
+                "150": "Mod VATS Gun-Fu 4th+ Target Dmg Mult",
+                "151": "Mod VATS Blitz Max Distance",
+                "152": "Set VATS Blitz Max Dmg Mult",
+                "153": "Mod VATS Blitz Dmg Bonus Dist",
+                "154": "Mod Bash Critical Chance",
+                "155": "VATS Apply Paralyzing Palm Spell",
+                "156": "Mod Fatigue for Fatigue AP Max",
+                "157": "Set Fatigue to AP Mult",
+                "16": "Ignore Broken Lock",
+                "17": "Mod Enemy Critical Hit Chance",
+                "18": "Mod Sneak Attack Mult",
+                "19": "Mod Max Placeable Mines",
+                "2": "Mod My Critical Hit Damage Mult",
+                "20": "Mod Bow Zoom",
+                "21": "Mod Recover Arrow Chance",
+                "22": "Mod Exp",
+                "23": "Mod Telekinesis Distance",
+                "24": "Mod Telekinesis Damage Mult",
+                "25": "Mod Telekinesis Damage",
+                "26": "Mod Bashing Damage",
+                "27": "Mod Power Attack Action Points",
+                "28": "Mod Power Attack Damage",
+                "29": "Mod Spell Magnitude",
+                "3": "Mod Mine Explode Chance",
+                "30": "Mod Spell Duration",
+                "31": "Mod Secondary Value Weight",
+                "32": "Mod Armor Weight",
+                "33": "Mod Incoming Stagger",
+                "34": "Mod Target Stagger",
+                "35": "Mod Weapon Attack Damage",
+                "36": "Mod Incoming Weapon Damage",
+                "37": "Mod Target Damage Resistance",
+                "38": "Mod Spell Cost",
+                "39": "Mod Percent Blocked",
+                "4": "Mod Incoming Limb Damage",
+                "40": "Mod Shield Deflect Arrow Chance",
+                "41": "Mod Incoming Spell Magnitude",
+                "42": "Mod Incoming Spell Duration",
+                "43": "Mod Player Intimidation",
+                "44": "Mod Ricochet Chance",
+                "45": "Mod Ricochet Damage",
+                "46": "Mod Bribe Amount",
+                "47": "Mod Detection Light",
+                "48": "Mod Detection Movement",
+                "49": "Mod Scrap Reward Mult",
+                "5": "Mod Book Actor Value Bonus",
+                "50": "Set Sweep Attack",
+                "51": "Apply Combat Hit Spell",
+                "52": "Apply Bashing Spell",
+                "53": "Apply Reanimate Spell",
+                "54": "Set Boolean Graph Variable",
+                "55": "Mod Spell Casting Sound Event",
+                "56": "Mod Pickpocket Chance",
+                "57": "Mod Detection Sneak Skill",
+                "58": "Mod Falling Damage",
+                "59": "Mod Lockpick Sweet Spot",
+                "6": "Mod Recovered Health",
+                "60": "Mod Sell Prices",
+                "61": "Set Pickpocket Equipped Item",
+                "62": "Set Player Gate Lockpick",
+                "63": "Set Lockpick Starting Arc",
+                "64": "Set Progression Picking",
+                "65": "Set Lockpicks Unbreakable",
+                "66": "Mod Alchemy Effectiveness",
+                "67": "Apply Weapon Swing Spell",
+                "68": "Mod Commanded Actor Limit",
+                "69": "Apply Sneaking Spell",
+                "7": "Set Should Attack",
+                "70": "Mod Player Magic Slowdown",
+                "71": "Mod Ward Magicka Absorption Pct",
+                "72": "Mod Initial Ingredient Effects Learned",
+                "73": "Purify Alchemy Ingredients",
+                "74": "Set Filter Activation",
+                "75": "Set Dual Cast",
+                "76": "Mod Outgoing Explosion Limb Damage",
+                "77": "Mod Enchantment Power",
+                "78": "Mod Soul Pct Captured to Weapon",
+                "79": "Mod VATS Attack Action Points",
+                "8": "Mod Buy Prices",
+                "80": "Mod Reflect Damage Chance",
+                "81": "Set Activate Label",
+                "82": "Mod Kill Experience",
+                "83": "Mod Poison Dose Count",
+                "84": "Set Apply Placed Item",
+                "85": "Mod Armor Rating",
+                "86": "Mod lockpicking crime chance",
+                "87": "Mod ingredients harvested",
+                "88": "Mod Spell Range (Target Loc.)",
+                "89": "Mod Critical Charge Mult on Ricochet",
+                "9": "Add Leveled List On Death",
+                "90": "Mod lockpicking key reward chance",
+                "91": "Mod Auto Lockpicking Chance",
+                "92": "Mod Auto Hacking Chance",
+                "93": "Mod Typed Weapon Attack Damage",
+                "94": "Mod Typed Incoming Weapon Damage",
+                "95": "Mod Charisma Challenge Chance",
+                "96": "Mod Sprint AP Drain Rate",
+                "97": "Mod Drawn Weapon Weight Speed Effect",
+                "98": "Set Player Gate Hacking",
+                "99": "Mod Player Explosion Damage"
+               }
+              }
              },
              {
               "name": "Function",
@@ -24290,7 +25378,13 @@
        {
         "name": "Trait",
         "optional": true,
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Level",
@@ -24305,12 +25399,24 @@
        {
         "name": "Playable",
         "optional": true,
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Hidden",
         "optional": true,
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        }
       ]
      }
@@ -24365,14 +25471,17 @@
       "struct": [
        {
         "name": "Version",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Object Format",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Scripts",
+        "optional": true,
         "type": {
          "array": {
           "struct": [
@@ -24395,6 +25504,7 @@
        },
        {
         "name": "wbScriptFragments",
+        "optional": true,
         "type": "wbScriptFragments"
        }
       ]
@@ -24645,10 +25755,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -24745,10 +25857,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -25023,10 +26137,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -25123,10 +26239,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -25401,10 +26519,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -25501,10 +26621,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -25862,10 +26984,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -25962,10 +27086,12 @@
       "struct": [
        {
         "name": "Reference",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Reflection",
@@ -26422,7 +27548,16 @@
      "confidence": "documented",
      "name": "Sound Level",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), VNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Loud",
+       "1": "Normal",
+       "2": "Silent",
+       "3": "Very Loud",
+       "4": "Quiet"
+      }
+     }
     }
    }
   },
@@ -27191,14 +28326,17 @@
       "struct": [
        {
         "name": "Version",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Object Format",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Scripts",
+        "optional": true,
         "type": {
          "array": {
           "struct": [
@@ -27221,10 +28359,12 @@
        },
        {
         "name": "wbScriptFragmentsQuest",
+        "optional": true,
         "type": "wbScriptFragmentsQuest"
        },
        {
         "name": "Aliases",
+        "optional": true,
         "type": {
          "array": {
           "struct": [
@@ -27792,7 +28932,12 @@
         "confidence": "documented",
         "name": "Index",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INDX",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Body Texture"
+         }
+        }
        },
        "MNAM": {
         "confidence": "documented",
@@ -27898,70 +29043,87 @@
          "struct": [
           {
            "name": "Aah / LipBigAah",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "BigAah / LipDST",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "BMP / LipEee",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "ChJsh / LipFV",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "DST / LipK",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Eee / LipL",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Eh / LipR",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "FV / LipTh",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "I",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "K",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "N",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Oh",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "OohQ",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "R",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "TH",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "W",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "unknown",
+           "optional": true,
            "type": "bytes"
           }
          ]
@@ -28264,17 +29426,125 @@
        {
         "name": "Shield Biped Object",
         "optional": true,
-        "type": "i32"
+        "type": {
+         "enum": "i32",
+         "values": {
+          "0": "30 - Hair Top",
+          "1": "31 - Hair Long",
+          "10": "40 - [U] R Leg",
+          "11": "41 - [A] Torso",
+          "12": "42 - [A] L Arm",
+          "13": "43 - [A] R Arm",
+          "14": "44 - [A] L Leg",
+          "15": "45 - [A] R Leg",
+          "16": "46 - Headband",
+          "17": "47 - Eyes",
+          "18": "48 - Beard",
+          "19": "49 - Mouth",
+          "2": "32 - FaceGen Head",
+          "20": "50 - Neck",
+          "21": "51 - Ring",
+          "22": "52 - Scalp",
+          "23": "53 - Decapitation",
+          "24": "54 - Unnamed",
+          "25": "55 - Unnamed",
+          "26": "56 - Unnamed",
+          "27": "57 - Unnamed",
+          "28": "58 - Unnamed",
+          "29": "59 - Shield",
+          "3": "33 - BODY",
+          "30": "60 - Pipboy",
+          "31": "None",
+          "4": "34 - L Hand",
+          "5": "35 - R Hand",
+          "6": "36 - [U] Torso",
+          "7": "37 - [U] L Arm",
+          "8": "38 - [U] R Arm",
+          "9": "39 - [U] L Leg"
+         }
+        }
        },
        {
         "name": "Beard Biped Object",
         "optional": true,
-        "type": "i32"
+        "type": {
+         "enum": "i32",
+         "values": {
+          "0": "30 - Hair Top",
+          "1": "31 - Hair Long",
+          "10": "40 - [U] R Leg",
+          "11": "41 - [A] Torso",
+          "12": "42 - [A] L Arm",
+          "13": "43 - [A] R Arm",
+          "14": "44 - [A] L Leg",
+          "15": "45 - [A] R Leg",
+          "16": "46 - Headband",
+          "17": "47 - Eyes",
+          "18": "48 - Beard",
+          "19": "49 - Mouth",
+          "2": "32 - FaceGen Head",
+          "20": "50 - Neck",
+          "21": "51 - Ring",
+          "22": "52 - Scalp",
+          "23": "53 - Decapitation",
+          "24": "54 - Unnamed",
+          "25": "55 - Unnamed",
+          "26": "56 - Unnamed",
+          "27": "57 - Unnamed",
+          "28": "58 - Unnamed",
+          "29": "59 - Shield",
+          "3": "33 - BODY",
+          "30": "60 - Pipboy",
+          "31": "None",
+          "4": "34 - L Hand",
+          "5": "35 - R Hand",
+          "6": "36 - [U] Torso",
+          "7": "37 - [U] L Arm",
+          "8": "38 - [U] R Arm",
+          "9": "39 - [U] L Leg"
+         }
+        }
        },
        {
         "name": "Body Biped Object",
         "optional": true,
-        "type": "i32"
+        "type": {
+         "enum": "i32",
+         "values": {
+          "0": "30 - Hair Top",
+          "1": "31 - Hair Long",
+          "10": "40 - [U] R Leg",
+          "11": "41 - [A] Torso",
+          "12": "42 - [A] L Arm",
+          "13": "43 - [A] R Arm",
+          "14": "44 - [A] L Leg",
+          "15": "45 - [A] R Leg",
+          "16": "46 - Headband",
+          "17": "47 - Eyes",
+          "18": "48 - Beard",
+          "19": "49 - Mouth",
+          "2": "32 - FaceGen Head",
+          "20": "50 - Neck",
+          "21": "51 - Ring",
+          "22": "52 - Scalp",
+          "23": "53 - Decapitation",
+          "24": "54 - Unnamed",
+          "25": "55 - Unnamed",
+          "26": "56 - Unnamed",
+          "27": "57 - Unnamed",
+          "28": "58 - Unnamed",
+          "29": "59 - Shield",
+          "3": "33 - BODY",
+          "30": "60 - Pipboy",
+          "31": "None",
+          "4": "34 - L Hand",
+          "5": "35 - R Hand",
+          "6": "36 - [U] Torso",
+          "7": "37 - [U] L Arm",
+          "8": "38 - [U] R Arm",
+          "9": "39 - [U] L Leg"
+         }
+        }
        },
        {
         "name": "Aim Angle Tolerance",
@@ -28339,7 +29609,43 @@
        {
         "name": "Pipboy Biped Object",
         "optional": true,
-        "type": "i32"
+        "type": {
+         "enum": "i32",
+         "values": {
+          "0": "30 - Hair Top",
+          "1": "31 - Hair Long",
+          "10": "40 - [U] R Leg",
+          "11": "41 - [A] Torso",
+          "12": "42 - [A] L Arm",
+          "13": "43 - [A] R Arm",
+          "14": "44 - [A] L Leg",
+          "15": "45 - [A] R Leg",
+          "16": "46 - Headband",
+          "17": "47 - Eyes",
+          "18": "48 - Beard",
+          "19": "49 - Mouth",
+          "2": "32 - FaceGen Head",
+          "20": "50 - Neck",
+          "21": "51 - Ring",
+          "22": "52 - Scalp",
+          "23": "53 - Decapitation",
+          "24": "54 - Unnamed",
+          "25": "55 - Unnamed",
+          "26": "56 - Unnamed",
+          "27": "57 - Unnamed",
+          "28": "58 - Unnamed",
+          "29": "59 - Shield",
+          "3": "33 - BODY",
+          "30": "60 - Pipboy",
+          "31": "None",
+          "4": "34 - L Hand",
+          "5": "35 - R Hand",
+          "6": "36 - [U] Torso",
+          "7": "37 - [U] L Arm",
+          "8": "38 - [U] R Arm",
+          "9": "39 - [U] L Leg"
+         }
+        }
        },
        {
         "name": "XP Value",
@@ -29388,30 +30694,43 @@
       "struct": [
        {
         "name": "Slack",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Thickness",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Wind - Detached End",
-        "type": "u8"
+        "optional": true,
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": "bytes"
        }
       ]
@@ -29555,26 +30874,32 @@
       "struct": [
        {
         "name": "FOV 90+/-",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fade 1.0+/-",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "End Distance Cap",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Shadow Depth Bias",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Near Clip",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Volumetric Intensity",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -29588,10 +30913,12 @@
       "struct": [
        {
         "name": "Keyword/Ref",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Ref",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -29613,6 +30940,7 @@
       "struct": [
        {
         "name": "Level",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -29632,6 +30960,7 @@
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 3
@@ -29639,10 +30968,12 @@
        },
        {
         "name": "Key",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "",
@@ -29654,6 +30985,7 @@
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 3
@@ -29661,6 +30993,7 @@
        },
        {
         "name": "unknown",
+        "optional": true,
         "type": "bytes"
        }
       ]
@@ -30688,7 +32021,17 @@
      "confidence": "documented",
      "name": "Reverb Class",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Default",
+       "1": "Class A",
+       "2": "Class B",
+       "3": "Class C",
+       "4": "Class D",
+       "5": "Class E"
+      }
+     }
     },
     "DATA": {
      "confidence": "documented",
@@ -31097,7 +32440,19 @@
         "confidence": "documented",
         "name": "Emotion Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DEMO",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Neutral",
+          "1": "Anger",
+          "2": "Disgust",
+          "3": "Fear",
+          "4": "Sad",
+          "5": "Happy",
+          "6": "Surprise",
+          "7": "Puzzled"
+         }
+        }
        },
        "DEVA": {
         "confidence": "documented",
@@ -31560,14 +32915,17 @@
       "struct": [
        {
         "name": "Version",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Object Format",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Scripts",
+        "optional": true,
         "type": {
          "array": {
           "struct": [
@@ -31590,6 +32948,7 @@
        },
        {
         "name": "wbScriptFragmentsScen",
+        "optional": true,
         "type": "wbScriptFragmentsScen"
        }
       ]
@@ -31846,7 +33205,13 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Random",
+       "1": "Warn if no child quest started"
+      },
+      "flags": "u32"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -31889,7 +33254,13 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Random",
+       "1": "Warn if no child quest started"
+      },
+      "flags": "u32"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -31979,7 +33350,13 @@
       "struct": [
        {
         "name": "Node Flags",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Random",
+          "1": "Warn if no child quest started"
+         },
+         "flags": "u16"
+        }
        },
        {
         "name": "Quest Flags",
@@ -32566,15 +33943,24 @@
       "struct": [
        {
         "name": "Min Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Max Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Stackable",
-        "type": "u8"
+        "optional": true,
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        }
       ]
      }
@@ -32795,12 +34181,29 @@
        {
         "name": "Cast Type",
         "optional": true,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Constant Effect",
+          "1": "Fire and Forget",
+          "2": "Concentration",
+          "3": "Scroll"
+         }
+        }
        },
        {
         "name": "Target Type",
         "optional": true,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Self",
+          "1": "Touch",
+          "2": "Aimed",
+          "3": "Target Actor",
+          "4": "Target Location"
+         }
+        }
        },
        {
         "name": "Cast Duration",
@@ -34260,14 +35663,17 @@
       "struct": [
        {
         "name": "Version",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Object Format",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Scripts",
+        "optional": true,
         "type": {
          "array": {
           "struct": [
@@ -34290,6 +35696,7 @@
        },
        {
         "name": "wbScriptFragments",
+        "optional": true,
         "type": "wbScriptFragments"
        }
       ]
@@ -35388,7 +36795,13 @@
        {
         "name": "Screen Space Reflections",
         "optional": true,
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        }
       ]
      }
@@ -35838,7 +37251,13 @@
           {
            "name": "Default",
            "optional": true,
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "False",
+             "1": "True"
+            }
+           }
           },
           {
            "name": "Keywords",
@@ -35874,11 +37293,23 @@
               },
               {
                "name": "Optional",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               },
               {
                "name": "Don't Use All",
-               "type": "u8"
+               "type": {
+                "enum": "u8",
+                "values": {
+                 "0": "False",
+                 "1": "True"
+                }
+               }
               }
              ]
             }
@@ -36005,7 +37436,15 @@
        },
        {
         "name": "On Hit",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Normal formula behaviour",
+          "1": "Dismember only",
+          "2": "Explode only",
+          "3": "No dismember/explode"
+         }
+        }
        },
        {
         "name": "Skill",
@@ -36097,7 +37536,16 @@
        },
        {
         "name": "Sound Level",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Loud",
+          "1": "Normal",
+          "2": "Silent",
+          "3": "Very Loud",
+          "4": "Quiet"
+         }
+        }
        },
        {
         "name": "Sound - Attack",
@@ -36160,7 +37608,16 @@
        },
        {
         "name": "Stagger",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "None",
+          "1": "Small",
+          "2": "Medium",
+          "3": "Large",
+          "4": "Extra Large"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -41838,22 +43295,27 @@
       "struct": [
        {
         "name": "On Lightning Strike - Spell",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "On Lightning Strike - Threshold",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "On Weather Activate - Spell",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "On Weather Activate - Threshold",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -41861,6 +43323,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -42080,7 +43543,13 @@
       "struct": [
        {
         "name": "Aggro Radius Behavior",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "False",
+          "1": "True"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -42113,7 +43582,65 @@
   },
   "wbAPPR": "bytes",
   "wbATTX": "localized",
+  "wbActorPropertyEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Keywords",
+    "1": "ForcedInventory",
+    "2": "XPOffset",
+    "3": "Enchantments",
+    "4": "ColorRemappingIndex",
+    "5": "MaterialSwaps"
+   }
+  },
   "wbActorValue": "formid",
+  "wbAdvanceActionEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Normal Usage",
+    "1": "Power Attack",
+    "2": "Bash",
+    "3": "Lockpick Success",
+    "4": "Lockpick Broken"
+   }
+  },
+  "wbAlignmentEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Good",
+    "1": "Neutral",
+    "2": "Evil",
+    "3": "Very Good",
+    "4": "Very Evil"
+   }
+  },
+  "wbArmorPropertyEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Enchantments",
+    "1": "BashImpactDataSet",
+    "10": "ActorValues",
+    "11": "Health",
+    "12": "ColorRemappingIndex",
+    "13": "MaterialSwaps",
+    "2": "BlockMaterial",
+    "3": "Keywords",
+    "4": "Weight",
+    "5": "Value",
+    "6": "Rating",
+    "7": "AddonIndex",
+    "8": "BodyPart",
+    "9": "DamageTypeValue"
+   }
+  },
+  "wbAxisEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "X",
+    "1": "Y",
+    "2": "Z"
+   }
+  },
   "wbBOD2": {
    "struct": [
     {
@@ -42121,6 +43648,84 @@
      "type": "wbFirstPersonFlagsU32"
     }
    ]
+  },
+  "wbBipedObjectEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "30 - Hair Top",
+    "1": "31 - Hair Long",
+    "10": "40 - [U] R Leg",
+    "11": "41 - [A] Torso",
+    "12": "42 - [A] L Arm",
+    "13": "43 - [A] R Arm",
+    "14": "44 - [A] L Leg",
+    "15": "45 - [A] R Leg",
+    "16": "46 - Headband",
+    "17": "47 - Eyes",
+    "18": "48 - Beard",
+    "19": "49 - Mouth",
+    "2": "32 - FaceGen Head",
+    "20": "50 - Neck",
+    "21": "51 - Ring",
+    "22": "52 - Scalp",
+    "23": "53 - Decapitation",
+    "24": "54 - Unnamed",
+    "25": "55 - Unnamed",
+    "26": "56 - Unnamed",
+    "27": "57 - Unnamed",
+    "28": "58 - Unnamed",
+    "29": "59 - Shield",
+    "3": "33 - BODY",
+    "30": "60 - Pipboy",
+    "31": "None",
+    "4": "34 - L Hand",
+    "5": "35 - R Hand",
+    "6": "36 - [U] Torso",
+    "7": "37 - [U] L Arm",
+    "8": "38 - [U] R Arm",
+    "9": "39 - [U] L Leg"
+   }
+  },
+  "wbBlendModeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "",
+    "1": "Zero",
+    "10": "Dest Inverse Color",
+    "11": "Source Alpha SAT",
+    "2": "One",
+    "3": "Source Color",
+    "4": "Source Inverse Color",
+    "5": "Source Alpha",
+    "6": "Source Inverted Alpha",
+    "7": "Dest Alpha",
+    "8": "Dest Inverted Alpha",
+    "9": "Dest Color"
+   }
+  },
+  "wbBlendOpEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "",
+    "1": "Add",
+    "2": "Subtract",
+    "3": "Reverse Subtract",
+    "4": "Minimum",
+    "5": "Maximum"
+   }
+  },
+  "wbBodyPartIndexEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Body Texture"
+   }
+  },
+  "wbBoolEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "False",
+    "1": "True"
+   }
   },
   "wbCITC": "u32",
   "wbCITCReq": "u32",
@@ -42189,6 +43794,24 @@
    ]
   },
   "wbCUSD": "formid",
+  "wbCastEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Constant Effect",
+    "1": "Fire and Forget",
+    "2": "Concentration",
+    "3": "Scroll"
+   }
+  },
+  "wbCastingSourceEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Left",
+    "1": "Right",
+    "2": "Voice",
+    "3": "Instant"
+   }
+  },
   "wbColorInterpolator": {
    "struct": [
     {
@@ -42212,6 +43835,28 @@
      "type": "f32"
     }
    ]
+  },
+  "wbCrimeTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Steal",
+    "1": "Pickpocket",
+    "2": "Trespass",
+    "3": "Attack",
+    "4": "Murder",
+    "5": "Escape Jail",
+    "6": "None"
+   }
+  },
+  "wbCriticalStageEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "None",
+    "1": "Goo Start",
+    "2": "Goo End",
+    "3": "Disintegrate Start",
+    "4": "Disintegrate End"
+   }
   },
   "wbDATAPosRot": {
    "struct": [
@@ -42363,20 +44008,399 @@
   "wbEITM": "formid",
   "wbETYP": "formid",
   "wbETYPReq": "formid",
+  "wbEmotionTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Neutral",
+    "1": "Anger",
+    "2": "Disgust",
+    "3": "Fear",
+    "4": "Sad",
+    "5": "Happy",
+    "6": "Surprise",
+    "7": "Puzzled"
+   }
+  },
+  "wbEntryPointsEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Mod Breath Timer",
+    "1": "Mod My Critical Hit Chance",
+    "10": "Set Max Carry Weight",
+    "100": "Mod Player Explosion Scale",
+    "101": "Set Rads To Health Mult",
+    "102": "Mod Actor Scope Stability",
+    "103": "Mod Actor Grenade Speed Mult",
+    "104": "Mod Explosion Force",
+    "105": "Mod VATS Penetration Min Visibility",
+    "106": "Mod Rads for Rad Health Max",
+    "107": "Mod VATS Player AP On Kill Chance",
+    "108": "Set VATS Fill Critical Bar On Hit",
+    "109": "Mod VATS Concentrated Fire Chance Bonus",
+    "11": "Mod Addiction Chance",
+    "110": "Mod VATS Critical Count",
+    "111": "Mod VATS Hold Em Steady Bonus",
+    "112": "Mod Typed Spell Magnitude",
+    "113": "Mod Typed Incoming Spell Magnitude",
+    "114": "Set VATS Gun-Fu Num Targets For Crits",
+    "115": "Mod Outgoing Limb Damage",
+    "116": "Mod Restore Action Cost Value",
+    "117": "Mod VATS Reload Action Points",
+    "118": "Mod Incoming Battery Damage",
+    "119": "Mod VATS Critical Charge",
+    "12": "Mod Addiction Duration",
+    "120": "Mod Exp Location",
+    "121": "Mod Exp Speech",
+    "122": "Mod VATS Head Shot Chance",
+    "123": "Mod VATS Hit Chance",
+    "124": "Mod Incoming Explosion Damage",
+    "125": "Mod Ammo Health Mult",
+    "126": "Mod Hacking Guesses",
+    "127": "Mod Terminal Lockout Time",
+    "128": "Set Undetectable",
+    "129": "Invest In Vendor",
+    "13": "Mod Positive Chem Duration",
+    "130": "Mod Outgoing Limb Bash Damage",
+    "131": "Set Run While Over Encumbered",
+    "132": "Get Component Radar Distance",
+    "133": "Show Grenade Trajectory",
+    "134": "Mod Cone-of-fire Mult",
+    "135": "Mod VATS Concentrated Fire Damage Mult",
+    "136": "Apply Bloody Mess Spell",
+    "137": "Mod VATS Critical Fill Chance On Bank",
+    "138": "Mod VATS Critical Fill Chance On Use",
+    "139": "Set VATS Critical Fill On AP Reward",
+    "14": "Activate",
+    "140": "Set VATS Critical Fill On Stranger",
+    "141": "Mod Gun Range Mult",
+    "142": "Mod Scope Hold Breath AP Drain Mult",
+    "143": "Set Force Decapitate",
+    "144": "Mod VATS Shoot Explosive Damage Mult",
+    "145": "Mod Scrounger Fill Ammo Chance",
+    "146": "Set Can Explode Pants",
+    "147": "Set VATS Penetration Full Damage",
+    "148": "Mod VATS Gun-Fu 2nd Target Dmg Mult",
+    "149": "Mod VATS Gun-Fu 3rd Target Dmg Mult",
+    "15": "Ignore Running During Detection",
+    "150": "Mod VATS Gun-Fu 4th+ Target Dmg Mult",
+    "151": "Mod VATS Blitz Max Distance",
+    "152": "Set VATS Blitz Max Dmg Mult",
+    "153": "Mod VATS Blitz Dmg Bonus Dist",
+    "154": "Mod Bash Critical Chance",
+    "155": "VATS Apply Paralyzing Palm Spell",
+    "156": "Mod Fatigue for Fatigue AP Max",
+    "157": "Set Fatigue to AP Mult",
+    "16": "Ignore Broken Lock",
+    "17": "Mod Enemy Critical Hit Chance",
+    "18": "Mod Sneak Attack Mult",
+    "19": "Mod Max Placeable Mines",
+    "2": "Mod My Critical Hit Damage Mult",
+    "20": "Mod Bow Zoom",
+    "21": "Mod Recover Arrow Chance",
+    "22": "Mod Exp",
+    "23": "Mod Telekinesis Distance",
+    "24": "Mod Telekinesis Damage Mult",
+    "25": "Mod Telekinesis Damage",
+    "26": "Mod Bashing Damage",
+    "27": "Mod Power Attack Action Points",
+    "28": "Mod Power Attack Damage",
+    "29": "Mod Spell Magnitude",
+    "3": "Mod Mine Explode Chance",
+    "30": "Mod Spell Duration",
+    "31": "Mod Secondary Value Weight",
+    "32": "Mod Armor Weight",
+    "33": "Mod Incoming Stagger",
+    "34": "Mod Target Stagger",
+    "35": "Mod Weapon Attack Damage",
+    "36": "Mod Incoming Weapon Damage",
+    "37": "Mod Target Damage Resistance",
+    "38": "Mod Spell Cost",
+    "39": "Mod Percent Blocked",
+    "4": "Mod Incoming Limb Damage",
+    "40": "Mod Shield Deflect Arrow Chance",
+    "41": "Mod Incoming Spell Magnitude",
+    "42": "Mod Incoming Spell Duration",
+    "43": "Mod Player Intimidation",
+    "44": "Mod Ricochet Chance",
+    "45": "Mod Ricochet Damage",
+    "46": "Mod Bribe Amount",
+    "47": "Mod Detection Light",
+    "48": "Mod Detection Movement",
+    "49": "Mod Scrap Reward Mult",
+    "5": "Mod Book Actor Value Bonus",
+    "50": "Set Sweep Attack",
+    "51": "Apply Combat Hit Spell",
+    "52": "Apply Bashing Spell",
+    "53": "Apply Reanimate Spell",
+    "54": "Set Boolean Graph Variable",
+    "55": "Mod Spell Casting Sound Event",
+    "56": "Mod Pickpocket Chance",
+    "57": "Mod Detection Sneak Skill",
+    "58": "Mod Falling Damage",
+    "59": "Mod Lockpick Sweet Spot",
+    "6": "Mod Recovered Health",
+    "60": "Mod Sell Prices",
+    "61": "Set Pickpocket Equipped Item",
+    "62": "Set Player Gate Lockpick",
+    "63": "Set Lockpick Starting Arc",
+    "64": "Set Progression Picking",
+    "65": "Set Lockpicks Unbreakable",
+    "66": "Mod Alchemy Effectiveness",
+    "67": "Apply Weapon Swing Spell",
+    "68": "Mod Commanded Actor Limit",
+    "69": "Apply Sneaking Spell",
+    "7": "Set Should Attack",
+    "70": "Mod Player Magic Slowdown",
+    "71": "Mod Ward Magicka Absorption Pct",
+    "72": "Mod Initial Ingredient Effects Learned",
+    "73": "Purify Alchemy Ingredients",
+    "74": "Set Filter Activation",
+    "75": "Set Dual Cast",
+    "76": "Mod Outgoing Explosion Limb Damage",
+    "77": "Mod Enchantment Power",
+    "78": "Mod Soul Pct Captured to Weapon",
+    "79": "Mod VATS Attack Action Points",
+    "8": "Mod Buy Prices",
+    "80": "Mod Reflect Damage Chance",
+    "81": "Set Activate Label",
+    "82": "Mod Kill Experience",
+    "83": "Mod Poison Dose Count",
+    "84": "Set Apply Placed Item",
+    "85": "Mod Armor Rating",
+    "86": "Mod lockpicking crime chance",
+    "87": "Mod ingredients harvested",
+    "88": "Mod Spell Range (Target Loc.)",
+    "89": "Mod Critical Charge Mult on Ricochet",
+    "9": "Add Leveled List On Death",
+    "90": "Mod lockpicking key reward chance",
+    "91": "Mod Auto Lockpicking Chance",
+    "92": "Mod Auto Hacking Chance",
+    "93": "Mod Typed Weapon Attack Damage",
+    "94": "Mod Typed Incoming Weapon Damage",
+    "95": "Mod Charisma Challenge Chance",
+    "96": "Mod Sprint AP Drain Rate",
+    "97": "Mod Drawn Weapon Weight Speed Effect",
+    "98": "Set Player Gate Hacking",
+    "99": "Mod Player Explosion Damage"
+   }
+  },
+  "wbEventFunctionEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "GetIsID",
+    "1": "IsInList",
+    "2": "GetValue",
+    "3": "HasKeyword",
+    "4": "GetItemValue"
+   }
+  },
+  "wbEventMemberEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "None",
+    "1": "CreatedObject",
+    "2": "(Old)Location",
+    "3": "(New)Location",
+    "4": "Keyword",
+    "5": "Form",
+    "6": "Value1",
+    "7": "Value2"
+   }
+  },
   "wbFLTR": "zstring",
   "wbFTYP": "formid",
   "wbFULL": "localized",
   "wbFULLActor": "localized",
   "wbFULLReq": "localized",
   "wbFirstPersonFlagsU32": "u32",
+  "wbFormTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Activator",
+    "1": "Armor",
+    "10": "Tree",
+    "100": "Reverb Parameters",
+    "101": "Terminal",
+    "11": "Weapon",
+    "12": "Actor",
+    "13": "LeveledCharacter",
+    "14": "Spell",
+    "15": "Enchantment",
+    "16": "Potion",
+    "17": "LeveledItem",
+    "18": "Key",
+    "19": "Ammo",
+    "2": "Book",
+    "20": "Flora",
+    "21": "Furniture",
+    "22": "Sound Marker",
+    "23": "LandTexture",
+    "24": "CombatStyle",
+    "25": "LoadScreen",
+    "26": "LeveledSpell",
+    "27": "AnimObject",
+    "28": "WaterType",
+    "29": "IdleMarker",
+    "3": "Container",
+    "30": "EffectShader",
+    "31": "Projectile",
+    "32": "TalkingActivator",
+    "33": "Explosion",
+    "34": "TextureSet",
+    "35": "Debris",
+    "36": "MenuIcon",
+    "37": "FormList",
+    "38": "Perk",
+    "39": "BodyPartData",
+    "4": "Door",
+    "40": "AddOnNode",
+    "41": "MovableStatic",
+    "42": "CameraShot",
+    "43": "ImpactData",
+    "44": "ImpactDataSet",
+    "45": "Quest",
+    "46": "Package",
+    "47": "VoiceType",
+    "48": "Class",
+    "49": "Race",
+    "5": "Ingredient",
+    "50": "Eyes",
+    "51": "HeadPart",
+    "52": "Faction",
+    "53": "Note",
+    "54": "Weather",
+    "55": "Climate",
+    "56": "ArmorAddon",
+    "57": "Global",
+    "58": "Imagespace",
+    "59": "Imagespace Modifier",
+    "6": "Light",
+    "60": "Encounter Zone",
+    "61": "Message",
+    "62": "Constructible Object",
+    "63": "Acoustic Space",
+    "64": "Ragdoll",
+    "65": "Script",
+    "66": "Magic Effect",
+    "67": "Music Type",
+    "68": "Static Collection",
+    "69": "Keyword",
+    "7": "MiscItem",
+    "70": "Location",
+    "71": "Location Ref Type",
+    "72": "Footstep",
+    "73": "Footstep Set",
+    "74": "Material Type",
+    "75": "Actor Action",
+    "76": "Music Track",
+    "77": "Word of Power",
+    "78": "Shout",
+    "79": "Relationship",
+    "8": "Static",
+    "80": "Equip Slot",
+    "81": "Association Type",
+    "82": "Outfit",
+    "83": "Art Object",
+    "84": "Material Object",
+    "85": "Lighting Template",
+    "86": "Shader Particle Geometry",
+    "87": "Visual Effect",
+    "88": "Apparatus",
+    "89": "Movement Type",
+    "9": "Grass",
+    "90": "Hazard",
+    "91": "SM Event Node",
+    "92": "Sound Descriptor",
+    "93": "Dual Cast Data",
+    "94": "Sound Category",
+    "95": "Soul Gem",
+    "96": "Sound Output Model",
+    "97": "Collision Layer",
+    "98": "Scroll",
+    "99": "ColorForm"
+   }
+  },
+  "wbFurnitureAnimTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "",
+    "1": "Sit",
+    "2": "Lay",
+    "3": "",
+    "4": "Lean"
+   }
+  },
+  "wbFurnitureEntryTypeFlags": {
+   "bits": {
+    "0": "Front",
+    "1": "Behind",
+    "2": "Right",
+    "3": "Left",
+    "4": "Up"
+   },
+   "flags": "u32"
+  },
+  "wbHitBehaviourEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Normal formula behaviour",
+    "1": "Dismember only",
+    "2": "Explode only",
+    "3": "No dismember/explode"
+   }
+  },
   "wbICON": "zstring",
   "wbINRD": "formid",
   "wbKSIZ": "u32",
   "wbKWDAs": {
    "array": "formid"
   },
+  "wbKeywordTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "None",
+    "1": "Component Tech Level",
+    "10": "Attraction Type",
+    "11": "Dialogue Subtype",
+    "12": "Quest Target",
+    "13": "Anim Flavor",
+    "14": "Anim Gender",
+    "15": "Anim Face",
+    "16": "Quest Group",
+    "17": "Anim Injured",
+    "18": "Dispel Effect",
+    "2": "Attach Point",
+    "3": "Component Property",
+    "4": "Instantiation Filter",
+    "5": "Mod Association",
+    "6": "Sound",
+    "7": "Anim Archetype",
+    "8": "Function Call",
+    "9": "Recipe Filter"
+   }
+  },
   "wbLLCT": "u8",
   "wbLVLD": "u8",
+  "wbLocationEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Near reference",
+    "1": "In cell",
+    "10": "Target",
+    "11": "Target (location)",
+    "12": "Near self",
+    "13": "Near Editor Location Cell",
+    "14": "Alias (ref collection)",
+    "2": "Near package start location",
+    "3": "Near editor location",
+    "4": "Object ID",
+    "5": "Object Type",
+    "6": "Near linked reference",
+    "7": "At package location",
+    "8": "Alias (reference)",
+    "9": "Alias (location)"
+   }
+  },
   "wbMDOB": "formid",
   "wbMGEFType": {
    "enum": "u32",
@@ -42542,6 +44566,118 @@
      "type": "bytes"
     }
    ]
+  },
+  "wbMiscStatEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Animals Friended",
+    "1": "Animals Killed",
+    "10": "Chems Crafted",
+    "11": "Chems Taken",
+    "12": "Chests Looted",
+    "13": "Computers Hacked",
+    "14": "Cores Ejected",
+    "15": "Corpses Eaten",
+    "16": "Creatures Killed",
+    "17": "Creatures Killed DLC03",
+    "18": "Critical Strikes",
+    "19": "Days Passed",
+    "2": "Armor Improved",
+    "20": "Days Survived",
+    "21": "DLC01 Quests Completed",
+    "22": "DLC03 Locations Discovered",
+    "23": "Dungeons Cleared",
+    "24": "Fatman Deaths",
+    "25": "Fits of Rage",
+    "26": "Food",
+    "27": "Food Cooked",
+    "28": "Food Eaten",
+    "29": "Four Leaf Clovers",
+    "3": "Assaults",
+    "30": "Fusion Cores Consumed",
+    "31": "Game Difficulty",
+    "32": "Grand Slams",
+    "33": "Grim Reaper Sprints",
+    "34": "Happiness",
+    "35": "Hours Slept",
+    "36": "Hours Waiting",
+    "37": "HSAtomicCommand",
+    "38": "HSAutomatron",
+    "39": "HSGrognak",
+    "4": "Backstabs",
+    "40": "HSJangles",
+    "41": "HSPipfall",
+    "42": "HSRedMenace",
+    "43": "HSZetaInvaders",
+    "44": "Institute Quests Completed",
+    "45": "Intimidations",
+    "46": "Investments Made",
+    "47": "Items Crafted DLC03",
+    "48": "Items Scrapped",
+    "49": "Items Stolen",
+    "5": "Bobbleheads Collected",
+    "50": "Junk Collected",
+    "51": "Legendary Enemies Killed",
+    "52": "Locations Discovered",
+    "53": "Locks Picked",
+    "54": "Main Quests Completed",
+    "55": "Mines Disarmed",
+    "56": "Minuteman Quests Completed",
+    "57": "Misc Objectives Completed",
+    "58": "Money Shots",
+    "59": "Most Caps Carried",
+    "6": "Bright Ideas",
+    "60": "Murders",
+    "61": "Mysterious Strabger Visits",
+    "62": "Nuka Cola Flavors Created",
+    "63": "Nuka World Creatures Killed",
+    "64": "Objects Built",
+    "65": "Pants Exploded",
+    "66": "Paralyzing Punches",
+    "67": "People",
+    "68": "People Killed",
+    "69": "Plants Harvested",
+    "7": "Brotherhood of Steel Quests Completed",
+    "70": "PlayedFutureRetroHolotape",
+    "71": "Pockets Picked",
+    "72": "Power",
+    "73": "Quests Completed",
+    "74": "RadAway Taken",
+    "75": "Rad-X Taken",
+    "76": "Railroad Quests Completed",
+    "77": "Ricochets",
+    "78": "Robots Disabled",
+    "79": "Robots Improved",
+    "8": "Buildings",
+    "80": "Robots Killed",
+    "81": "Sandman Kills",
+    "82": "Side Quests Completed",
+    "83": "Skill Books Read",
+    "84": "Sneak Attacks",
+    "85": "Speach Successes",
+    "86": "Stimpacks Taken",
+    "87": "Supply Lines Created",
+    "88": "Survival Denied",
+    "89": "Survival Level-Ups",
+    "9": "Caps Found",
+    "90": "Synths Killed",
+    "91": "Times Addicted",
+    "92": "Trespasses",
+    "93": "Turrets Killed",
+    "94": "Wasteland Whispers",
+    "95": "Water",
+    "96": "Weapons Disarmed",
+    "97": "Weapons Improved",
+    "98": "Workshops Unlocked"
+   }
+  },
+  "wbMusicEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Default",
+    "1": "Public",
+    "2": "Dungeon"
+   }
   },
   "wbNTRM": "formid",
   "wbNVNM": {
@@ -42995,7 +45131,13 @@
     {
      "name": "Default",
      "optional": true,
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "False",
+       "1": "True"
+      }
+     }
     },
     {
      "name": "Keywords",
@@ -43031,11 +45173,23 @@
         },
         {
          "name": "Optional",
-         "type": "u8"
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "False",
+           "1": "True"
+          }
+         }
         },
         {
          "name": "Don't Use All",
-         "type": "u8"
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "False",
+           "1": "True"
+          }
+         }
         }
        ]
       }
@@ -43166,7 +45320,13 @@
         },
         {
          "size": 4,
-         "type": "u32"
+         "type": {
+          "enum": "u32",
+          "values": {
+           "0": "False",
+           "1": "True"
+          }
+         }
         },
         {
          "size": 4,
@@ -43178,15 +45338,41 @@
         },
         {
          "size": 4,
-         "type": "u32"
+         "type": {
+          "enum": "u32",
+          "values": {
+           "0": "Loud",
+           "1": "Normal",
+           "2": "Silent",
+           "3": "Very Loud",
+           "4": "Quiet"
+          }
+         }
         },
         {
          "size": 4,
-         "type": "u32"
+         "type": {
+          "enum": "u32",
+          "values": {
+           "0": "None",
+           "1": "Small",
+           "2": "Medium",
+           "3": "Large",
+           "4": "Extra Large"
+          }
+         }
         },
         {
          "size": 4,
-         "type": "u32"
+         "type": {
+          "enum": "u32",
+          "values": {
+           "0": "Normal formula behaviour",
+           "1": "Dismember only",
+           "2": "Explode only",
+           "3": "No dismember/explode"
+          }
+         }
         }
        ]
       }
@@ -43212,7 +45398,13 @@
         },
         {
          "size": 4,
-         "type": "u32"
+         "type": {
+          "enum": "u32",
+          "values": {
+           "0": "False",
+           "1": "True"
+          }
+         }
         }
        ]
       }
@@ -43222,6 +45414,41 @@
       "type": "f32"
      }
     ]
+   }
+  },
+  "wbObjectTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": " NONE",
+    "1": "Activators",
+    "10": "Furniture",
+    "11": "Weapons: Any",
+    "12": "Ammo",
+    "13": "Keys",
+    "14": "Alchemy",
+    "15": "Food",
+    "16": "Clothing",
+    "17": "All: Wearable",
+    "18": "Weapons: NONE",
+    "19": "Weapons: Melee",
+    "2": "Armor",
+    "20": "Weapons: Ranged",
+    "21": "Spells: Any",
+    "22": "Spells: Range Target",
+    "23": "Spells: Range Touch",
+    "24": "Spells: Range Self",
+    "25": "Actors: Any",
+    "26": "Furniture: Beds",
+    "27": "Furniture: Chairs",
+    "28": "Shouts",
+    "29": "Headtrack Markers",
+    "3": "Books",
+    "4": "Containers",
+    "5": "Doors",
+    "6": "Ingredients",
+    "7": "Lights",
+    "8": "Miscellaneous",
+    "9": "Flora"
    }
   },
   "wbPDTO": {
@@ -43263,15 +45490,112 @@
     }
    ]
   },
+  "wbPKDTFlags": {
+   "bits": {
+    "0": "Offers Services",
+    "1": "Unknown 2",
+    "10": "Once per day",
+    "11": "Unknown 12",
+    "12": "Skip Load Into Furniture",
+    "13": "Preferred Speed",
+    "14": "Unknown 15",
+    "15": "Unknown 16",
+    "16": "Unknown 17",
+    "17": "Always Sneak",
+    "18": "Allow Swimming",
+    "19": "Unknown 20",
+    "2": "Must complete",
+    "20": "Ignore Combat",
+    "21": "Weapons Unequipped",
+    "22": "Unknown 23",
+    "23": "Weapon Drawn",
+    "24": "Unknown 25",
+    "25": "Unknown 26",
+    "26": "Unknown 27",
+    "27": "No Combat Alert",
+    "28": "Unknown 29",
+    "29": "Wear Sleep Outfit",
+    "3": "Maintain Speed at Goal",
+    "30": "Unknown 31",
+    "4": "Treat As Player Follower",
+    "5": "Unknown 6",
+    "6": "Unlock doors at package start",
+    "7": "Unlock doors at package end",
+    "8": "Request Block Idles",
+    "9": "Continue if PC Near"
+   },
+   "flags": "u32"
+  },
+  "wbPKDTInterruptFlags": {
+   "bits": {
+    "0": "Hellos to player",
+    "1": "Random conversations",
+    "10": "Off For Important Scene",
+    "11": "Unknown 12",
+    "12": "Unknown 13",
+    "13": "Unknown 14",
+    "14": "Unknown 15",
+    "15": "Unknown 16",
+    "2": "Observe combat behavior",
+    "3": "Greet corpse behavior",
+    "4": "Reaction to player actions",
+    "5": "Friendly fire comments",
+    "6": "Aggro Radius Behavior",
+    "7": "Allow Idle Chatter",
+    "8": "Unknown 9",
+    "9": "World Interactions"
+   },
+   "flags": "u32"
+  },
   "wbPLDT": {
    "struct": [
     {
+     "expose": true,
      "name": "Type",
-     "type": "i32"
+     "optional": true,
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Near reference",
+       "1": "In cell",
+       "10": "Target",
+       "11": "Target (location)",
+       "12": "Near self",
+       "13": "Near Editor Location Cell",
+       "14": "Alias (ref collection)",
+       "2": "Near package start location",
+       "3": "Near editor location",
+       "4": "Object ID",
+       "5": "Object Type",
+       "6": "Near linked reference",
+       "7": "At package location",
+       "8": "Alias (reference)",
+       "9": "Alias (location)"
+      }
+     }
     },
     {
      "name": "Location Value",
+     "optional": true,
      "type": {
+      "cases": {
+       "0": 0,
+       "1": 1,
+       "10": 10,
+       "11": 11,
+       "12": 12,
+       "13": 13,
+       "14": 14,
+       "2": 2,
+       "3": 3,
+       "4": 4,
+       "5": 5,
+       "6": 6,
+       "7": 7,
+       "8": 8,
+       "9": 9
+      },
+      "default": 0,
       "switch_on": "Type",
       "union": [
        {
@@ -43302,7 +45626,41 @@
        },
        {
         "size": 4,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": " NONE",
+          "1": "Activators",
+          "10": "Furniture",
+          "11": "Weapons: Any",
+          "12": "Ammo",
+          "13": "Keys",
+          "14": "Alchemy",
+          "15": "Food",
+          "16": "Clothing",
+          "17": "All: Wearable",
+          "18": "Weapons: NONE",
+          "19": "Weapons: Melee",
+          "2": "Armor",
+          "20": "Weapons: Ranged",
+          "21": "Spells: Any",
+          "22": "Spells: Range Target",
+          "23": "Spells: Range Touch",
+          "24": "Spells: Range Self",
+          "25": "Actors: Any",
+          "26": "Furniture: Beds",
+          "27": "Furniture: Chairs",
+          "28": "Shouts",
+          "29": "Headtrack Markers",
+          "3": "Books",
+          "4": "Containers",
+          "5": "Doors",
+          "6": "Ingredients",
+          "7": "Lights",
+          "8": "Miscellaneous",
+          "9": "Flora"
+         }
+        }
        },
        {
         "size": 4,
@@ -43354,10 +45712,12 @@
     },
     {
      "name": "Radius",
+     "optional": true,
      "type": "i32"
     },
     {
      "name": "Collection Index",
+     "optional": true,
      "type": "u32"
     }
    ]
@@ -43365,12 +45725,52 @@
   "wbPLVD": {
    "struct": [
     {
+     "expose": true,
      "name": "Type",
-     "type": "i32"
+     "optional": true,
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Near reference",
+       "1": "In cell",
+       "10": "Target",
+       "11": "Target (location)",
+       "12": "Near self",
+       "13": "Near Editor Location Cell",
+       "14": "Alias (ref collection)",
+       "2": "Near package start location",
+       "3": "Near editor location",
+       "4": "Object ID",
+       "5": "Object Type",
+       "6": "Near linked reference",
+       "7": "At package location",
+       "8": "Alias (reference)",
+       "9": "Alias (location)"
+      }
+     }
     },
     {
      "name": "Location Value",
+     "optional": true,
      "type": {
+      "cases": {
+       "0": 0,
+       "1": 1,
+       "10": 10,
+       "11": 11,
+       "12": 12,
+       "13": 13,
+       "14": 14,
+       "2": 2,
+       "3": 3,
+       "4": 4,
+       "5": 5,
+       "6": 6,
+       "7": 7,
+       "8": 8,
+       "9": 9
+      },
+      "default": 0,
       "switch_on": "Type",
       "union": [
        {
@@ -43401,7 +45801,41 @@
        },
        {
         "size": 4,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": " NONE",
+          "1": "Activators",
+          "10": "Furniture",
+          "11": "Weapons: Any",
+          "12": "Ammo",
+          "13": "Keys",
+          "14": "Alchemy",
+          "15": "Food",
+          "16": "Clothing",
+          "17": "All: Wearable",
+          "18": "Weapons: NONE",
+          "19": "Weapons: Melee",
+          "2": "Armor",
+          "20": "Weapons: Ranged",
+          "21": "Spells: Any",
+          "22": "Spells: Range Target",
+          "23": "Spells: Range Touch",
+          "24": "Spells: Range Self",
+          "25": "Actors: Any",
+          "26": "Furniture: Beds",
+          "27": "Furniture: Chairs",
+          "28": "Shouts",
+          "29": "Headtrack Markers",
+          "3": "Books",
+          "4": "Containers",
+          "5": "Doors",
+          "6": "Ingredients",
+          "7": "Lights",
+          "8": "Miscellaneous",
+          "9": "Flora"
+         }
+        }
        },
        {
         "size": 4,
@@ -43453,10 +45887,12 @@
     },
     {
      "name": "Radius",
+     "optional": true,
      "type": "i32"
     },
     {
      "name": "Collection Index",
+     "optional": true,
      "type": "u32"
     }
    ]
@@ -43467,70 +45903,87 @@
    "struct": [
     {
      "name": "Aah / LipBigAah",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "BigAah / LipDST",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "BMP / LipEee",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "ChJsh / LipFV",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "DST / LipK",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Eee / LipL",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Eh / LipR",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "FV / LipTh",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "I",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "K",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "N",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Oh",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "OohQ",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "R",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "TH",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "W",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "unknown",
+     "optional": true,
      "type": "bytes"
     }
    ]
@@ -43577,6 +46030,29 @@
     }
    ]
   },
+  "wbPropTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "None",
+    "1": "Object",
+    "10": "",
+    "11": "Array of Object",
+    "12": "Array of String",
+    "13": "Array of Int32",
+    "14": "Array of Float",
+    "15": "Array of Bool",
+    "16": "Array of Variable",
+    "17": "Array of Struct",
+    "2": "String",
+    "3": "Int32",
+    "4": "Float",
+    "5": "Bool",
+    "6": "Variable",
+    "7": "Struct",
+    "8": "",
+    "9": ""
+   }
+  },
   "wbQUSTAliasFlags": {
    "bits": {
     "0": "Reserves Location/Reference",
@@ -43607,9 +46083,36 @@
    },
    "flags": "u32"
   },
+  "wbQuadrantEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Bottom Left",
+    "1": "Bottom Right",
+    "2": "Top Left",
+    "3": "Top Right"
+   }
+  },
   "wbRaceRBPC": "bytes",
   "wbReqKWDAs": {
    "array": "formid"
+  },
+  "wbReverbClassEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Default",
+    "1": "Class A",
+    "2": "Class B",
+    "3": "Class C",
+    "4": "Class D",
+    "5": "Class E"
+   }
+  },
+  "wbSMNodeFlags": {
+   "bits": {
+    "0": "Random",
+    "1": "Warn if no child quest started"
+   },
+   "flags": "u32"
   },
   "wbSNAMMarkerParams": "bytes",
   "wbSPCT": "u32",
@@ -43834,12 +46337,29 @@
     {
      "name": "Cast Type",
      "optional": true,
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Constant Effect",
+       "1": "Fire and Forget",
+       "2": "Concentration",
+       "3": "Scroll"
+      }
+     }
     },
     {
      "name": "Target Type",
      "optional": true,
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Self",
+       "1": "Touch",
+       "2": "Aimed",
+       "3": "Target Actor",
+       "4": "Target Location"
+      }
+     }
     },
     {
      "name": "Cast Duration",
@@ -44180,7 +46700,29 @@
      },
      {
       "name": "Type",
-      "type": "u8"
+      "type": {
+       "enum": "u8",
+       "values": {
+        "0": "None",
+        "1": "Object",
+        "10": "",
+        "11": "Array of Object",
+        "12": "Array of String",
+        "13": "Array of Int32",
+        "14": "Array of Float",
+        "15": "Array of Bool",
+        "16": "Array of Variable",
+        "17": "Array of Struct",
+        "2": "String",
+        "3": "Int32",
+        "4": "Float",
+        "5": "Bool",
+        "6": "Variable",
+        "7": "Struct",
+        "8": "",
+        "9": ""
+       }
+      }
      },
      {
       "name": "Flags",
@@ -44211,7 +46753,13 @@
         },
         {
          "size": 1,
-         "type": "u8"
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "False",
+           "1": "True"
+          }
+         }
         },
         {
          "type": {
@@ -44280,7 +46828,13 @@
         },
         {
          "type": {
-          "array": "u8",
+          "array": {
+           "enum": "u8",
+           "values": {
+            "0": "False",
+            "1": "True"
+           }
+          },
           "count_prefix": "u8"
          }
         },
@@ -44295,7 +46849,29 @@
              },
              {
               "name": "Type",
-              "type": "u8"
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "None",
+                "1": "Object",
+                "10": "",
+                "11": "Array of Object",
+                "12": "Array of String",
+                "13": "Array of Int32",
+                "14": "Array of Float",
+                "15": "Array of Bool",
+                "16": "Array of Variable",
+                "17": "Array of Struct",
+                "2": "String",
+                "3": "Int32",
+                "4": "Float",
+                "5": "Bool",
+                "6": "Variable",
+                "7": "Struct",
+                "8": "",
+                "9": ""
+               }
+              }
              },
              {
               "name": "Flags",
@@ -44326,7 +46902,13 @@
                 },
                 {
                  "size": 1,
-                 "type": "u8"
+                 "type": {
+                  "enum": "u8",
+                  "values": {
+                   "0": "False",
+                   "1": "True"
+                  }
+                 }
                 },
                 {
                  "type": {
@@ -44395,7 +46977,13 @@
                 },
                 {
                  "type": {
-                  "array": "u8",
+                  "array": {
+                   "enum": "u8",
+                   "values": {
+                    "0": "False",
+                    "1": "True"
+                   }
+                  },
                   "count_prefix": "u8"
                  }
                 },
@@ -44470,7 +47058,29 @@
      },
      {
       "name": "Type",
-      "type": "u8"
+      "type": {
+       "enum": "u8",
+       "values": {
+        "0": "None",
+        "1": "Object",
+        "10": "",
+        "11": "Array of Object",
+        "12": "Array of String",
+        "13": "Array of Int32",
+        "14": "Array of Float",
+        "15": "Array of Bool",
+        "16": "Array of Variable",
+        "17": "Array of Struct",
+        "2": "String",
+        "3": "Int32",
+        "4": "Float",
+        "5": "Bool",
+        "6": "Variable",
+        "7": "Struct",
+        "8": "",
+        "9": ""
+       }
+      }
      },
      {
       "name": "Flags",
@@ -44501,7 +47111,13 @@
         },
         {
          "size": 1,
-         "type": "u8"
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "False",
+           "1": "True"
+          }
+         }
         },
         {
          "type": {
@@ -44570,7 +47186,13 @@
         },
         {
          "type": {
-          "array": "u8",
+          "array": {
+           "enum": "u8",
+           "values": {
+            "0": "False",
+            "1": "True"
+           }
+          },
           "count_prefix": "u8"
          }
         },
@@ -44583,6 +47205,73 @@
     ]
    },
    "count_prefix": "u8"
+  },
+  "wbSexEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Male",
+    "1": "Female"
+   }
+  },
+  "wbSkillEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Unknown 1",
+    "1": "Unknown 2",
+    "10": "Smithing",
+    "11": "Heavy Armor",
+    "12": "Light Armor",
+    "13": "Pickpocket",
+    "14": "Lockpicking",
+    "15": "Sneak",
+    "16": "Alchemy",
+    "17": "Speech",
+    "18": "Alteration",
+    "19": "Conjuration",
+    "2": "Unknown 3",
+    "20": "Destruction",
+    "21": "Illusion",
+    "22": "Restoration",
+    "23": "None",
+    "3": "Unknown 4",
+    "4": "Unknown 5",
+    "5": "Unknown 6",
+    "6": "One Handed",
+    "7": "Two Handed",
+    "8": "Archery",
+    "9": "Block"
+   }
+  },
+  "wbSoulGemEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "None",
+    "1": "Petty",
+    "2": "Lesser",
+    "3": "Common",
+    "4": "Greater",
+    "5": "Grand"
+   }
+  },
+  "wbSoundLevelEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Loud",
+    "1": "Normal",
+    "2": "Silent",
+    "3": "Very Loud",
+    "4": "Quiet"
+   }
+  },
+  "wbStaggerEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "None",
+    "1": "Small",
+    "2": "Medium",
+    "3": "Large",
+    "4": "Extra Large"
+   }
   },
   "wbTargetData": {
    "struct": [
@@ -44631,7 +47320,41 @@
        },
        {
         "size": 4,
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": " NONE",
+          "1": "Activators",
+          "10": "Furniture",
+          "11": "Weapons: Any",
+          "12": "Ammo",
+          "13": "Keys",
+          "14": "Alchemy",
+          "15": "Food",
+          "16": "Clothing",
+          "17": "All: Wearable",
+          "18": "Weapons: NONE",
+          "19": "Weapons: Melee",
+          "2": "Armor",
+          "20": "Weapons: Ranged",
+          "21": "Spells: Any",
+          "22": "Spells: Range Target",
+          "23": "Spells: Range Touch",
+          "24": "Spells: Range Self",
+          "25": "Actors: Any",
+          "26": "Furniture: Beds",
+          "27": "Furniture: Chairs",
+          "28": "Shouts",
+          "29": "Headtrack Markers",
+          "3": "Books",
+          "4": "Containers",
+          "5": "Doors",
+          "6": "Ingredients",
+          "7": "Lights",
+          "8": "Miscellaneous",
+          "9": "Flora"
+         }
+        }
        },
        {
         "size": 4,
@@ -44671,6 +47394,16 @@
      "type": "i32"
     }
    ]
+  },
+  "wbTargetEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Self",
+    "1": "Touch",
+    "2": "Aimed",
+    "3": "Target Actor",
+    "4": "Target Location"
+   }
   },
   "wbTimeInterpolator": {
    "struct": [
@@ -44722,14 +47455,17 @@
    "struct": [
     {
      "name": "Version",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Object Format",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Scripts",
+     "optional": true,
      "type": {
       "array": {
        "struct": [
@@ -44752,6 +47488,7 @@
     },
     {
      "name": "wbScriptFragmentsInfo",
+     "optional": true,
      "type": "wbScriptFragmentsInfo"
     }
    ]
@@ -44760,14 +47497,17 @@
    "struct": [
     {
      "name": "Version",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Object Format",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Scripts",
+     "optional": true,
      "type": {
       "array": {
        "struct": [
@@ -44790,6 +47530,7 @@
     },
     {
      "name": "wbScriptFragmentsPack",
+     "optional": true,
      "type": "wbScriptFragmentsPack"
     }
    ]
@@ -44798,14 +47539,17 @@
    "struct": [
     {
      "name": "Version",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Object Format",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Scripts",
+     "optional": true,
      "type": {
       "array": {
        "struct": [
@@ -44828,6 +47572,7 @@
     },
     {
      "name": "wbScriptFragments",
+     "optional": true,
      "type": "wbScriptFragments"
     }
    ]
@@ -44836,14 +47581,17 @@
    "struct": [
     {
      "name": "Version",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Object Format",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Scripts",
+     "optional": true,
      "type": {
       "array": {
        "struct": [
@@ -44866,10 +47614,12 @@
     },
     {
      "name": "wbScriptFragmentsQuest",
+     "optional": true,
      "type": "wbScriptFragmentsQuest"
     },
     {
      "name": "Aliases",
+     "optional": true,
      "type": {
       "array": {
        "struct": [
@@ -44918,14 +47668,17 @@
    "struct": [
     {
      "name": "Version",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Object Format",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Scripts",
+     "optional": true,
      "type": {
       "array": {
        "struct": [
@@ -44948,9 +47701,159 @@
     },
     {
      "name": "wbScriptFragmentsScen",
+     "optional": true,
      "type": "wbScriptFragmentsScen"
     }
    ]
+  },
+  "wbVatsValueFunctionEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Weapon Is",
+    "1": "Weapon In List",
+    "10": "Critical Effect In List",
+    "11": "Is Fatal",
+    "12": "Explode Part",
+    "13": "Dismember Part",
+    "14": "Cripple Part",
+    "15": "Weapon Type Is",
+    "16": "Is Stranger",
+    "17": "Is Paralyzing Palm",
+    "18": "Projectile Type Is",
+    "19": "Delivery Type Is",
+    "2": "Target Is",
+    "20": "Casting Type Is",
+    "3": "Target In List",
+    "4": "Target Distance",
+    "5": "Target Part",
+    "6": "VATS Action",
+    "7": "Is Success",
+    "8": "Is Critical",
+    "9": "Critical Effect Is"
+   }
+  },
+  "wbWardStateEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "None",
+    "1": "Absorb",
+    "2": "Break"
+   }
+  },
+  "wbWeaponAnimTypeEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "HandToHandMelee",
+    "1": "OneHandSword",
+    "2": "OneHandDagger",
+    "3": "OneHandAxe",
+    "4": "OneHandMace",
+    "5": "TwoHandSword",
+    "6": "TwoHandAxe",
+    "7": "Bow",
+    "8": "Staff",
+    "9": "Crossbow"
+   }
+  },
+  "wbWeaponPropertyEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "Speed",
+    "1": "Reach",
+    "10": "Rank",
+    "11": "Unknown 11",
+    "12": "AmmoCapacity",
+    "13": "Unknown 13",
+    "14": "Unknown 14",
+    "15": "Type",
+    "16": "IsPlayerOnly",
+    "17": "NPCsUseAmmo",
+    "18": "HasChargingReload",
+    "19": "IsMinorCrime",
+    "2": "MinRange",
+    "20": "IsFixedRange",
+    "21": "HasEffectOnDeath",
+    "22": "HasAlternateRumble",
+    "23": "IsNonHostile",
+    "24": "IgnoreResist",
+    "25": "IsAutomatic",
+    "26": "CantDrop",
+    "27": "IsNonPlayable",
+    "28": "AttackDamage",
+    "29": "Value",
+    "3": "MaxRange",
+    "30": "Weight",
+    "31": "Keywords",
+    "32": "AimModel",
+    "33": "AimModelMinConeDegrees",
+    "34": "AimModelMaxConeDegrees",
+    "35": "AimModelConeIncreasePerShot",
+    "36": "AimModelConeDecreasePerSec",
+    "37": "AimModelConeDecreaseDelayMs",
+    "38": "AimModelConeSneakMultiplier",
+    "39": "AimModelRecoilDiminishSpringForce",
+    "4": "AttackDelaySec",
+    "40": "AimModelRecoilDiminishSightsMult",
+    "41": "AimModelRecoilMaxDegPerShot",
+    "42": "AimModelRecoilMinDegPerShot",
+    "43": "AimModelRecoilHipMult",
+    "44": "AimModelRecoilShotsForRunaway",
+    "45": "AimModelRecoilArcDeg",
+    "46": "AimModelRecoilArcRotateDeg",
+    "47": "AimModelConeIronSightsMultiplier",
+    "48": "HasScope",
+    "49": "ZoomDataFOVMult",
+    "5": "Unknown 5",
+    "50": "FireSeconds",
+    "51": "NumProjectiles",
+    "52": "AttackSound",
+    "53": "AttackSound2D",
+    "54": "AttackLoop",
+    "55": "AttackFailSound",
+    "56": "IdleSound",
+    "57": "EquipSound",
+    "58": "UnEquipSound",
+    "59": "SoundLevel",
+    "6": "OutOfRangeDamageMult",
+    "60": "ImpactDataSet",
+    "61": "Ammo",
+    "62": "CritEffect",
+    "63": "BashImpactDataSet",
+    "64": "BlockMaterial",
+    "65": "Enchantments",
+    "66": "AimModelBaseStability",
+    "67": "ZoomData",
+    "68": "ZoomDataOverlay",
+    "69": "ZoomDataImageSpace",
+    "7": "SecondaryDamage",
+    "70": "ZoomDataCameraOffsetX",
+    "71": "ZoomDataCameraOffsetY",
+    "72": "ZoomDataCameraOffsetZ",
+    "73": "EquipSlot",
+    "74": "SoundLevelMult",
+    "75": "NPCAmmoList",
+    "76": "ReloadSpeed",
+    "77": "DamageTypeValues",
+    "78": "AccuracyBonus",
+    "79": "AttackActionPointCost",
+    "8": "CriticalChargeBonus",
+    "80": "OverrideProjectile",
+    "81": "HasBoltAction",
+    "82": "StaggerValue",
+    "83": "SightedTransitionSeconds",
+    "84": "FullPowerSeconds",
+    "85": "HoldInputToPower",
+    "86": "HasRepeatableSingleFire",
+    "87": "MinPowerPerShot",
+    "88": "ColorRemappingIndex",
+    "89": "MaterialSwaps",
+    "9": "HitBehaviour",
+    "90": "CriticalDamageMult",
+    "91": "FastEquipSound",
+    "92": "DisableShells",
+    "93": "HasChargingAttack",
+    "94": "ActorValues"
+   }
   },
   "wbXESP": {
    "struct": [
@@ -45026,6 +47929,19 @@
   "wbXRNK": "i32",
   "wbXSCL": "f32",
   "wbYNAM": "formid",
-  "wbZNAM": "formid"
+  "wbZNAM": "formid",
+  "wbZTestFuncEnum": {
+   "enum": "u32",
+   "values": {
+    "0": "",
+    "1": "",
+    "2": "",
+    "3": "Equal To",
+    "4": "",
+    "5": "Greater Than",
+    "6": "",
+    "7": "Greater Than or Equal To"
+   }
+  }
  }
 }

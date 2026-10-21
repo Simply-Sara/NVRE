@@ -1021,7 +1021,22 @@ class Converter:
         if kind == "wbUnion":
             return self._convert_union(parts, ctx)
         if kind in ("wbEnum", "wbFlags"):
-            return None, None  # a formatter, not a layout
+            # A formatter, not a layout — unless the unit names it, in which
+            # case it is a definition of its own: `wbLocationEnum` is the
+            # unit's list of what a package's location may be.
+            values = self._formatter_values(f"{kind}({args})")
+            if values is None:
+                return None, None
+            table_kind, table = values
+            if table_kind == "enum":
+                return (
+                    {"enum": "u32", "values": {str(k): v for k, v in table.items()}},
+                    self._note(ctx),
+                )
+            return (
+                {"flags": "u32", "bits": {str(k): v for k, v in table.items()}},
+                self._note(ctx),
+            )
         # A name the unit declares is a shared definition, and wins over the
         # built-in helper expansion.
         ty, note = self._lookup_type(kind)
@@ -1079,8 +1094,17 @@ class Converter:
         size = None
         if len(parts) >= 3 and is_signature(parts[0].strip()):
             size = parts[2].strip()
-        elif len(parts) >= 2:
-            size = parts[1].strip()
+        else:
+            # The size is the argument that is a plain number: the form
+            # without a signature may carry a flag first — `wbString(True,
+            # 'Mesh', 260)` — so the number is found rather than counted.
+            for p in parts[1:]:
+                p = p.strip()
+                if re.fullmatch(r"\d+", p):
+                    size = p
+                    break
+            if size is None and len(parts) >= 2:
+                size = parts[1].strip()
         try:
             n = int(size) if size is not None else 0
         except ValueError:
@@ -1125,11 +1149,25 @@ class Converter:
         return ty, self._note(note_ctx)
 
     def _formatter_values(self, fmt):
-        """The values an enum or a flag set gives, as number -> name."""
+        """The values an enum or a flag set gives, as number -> name.
+
+        The formatter is either the call itself — `wbEnum([...])` — or the
+        name of a definition the unit declares — `wbLocationEnum` — in
+        which case the definition's own values are used.
+        """
         if not fmt:
             return None
         name, args, _ = match_call(fmt)
-        if name is None or name not in ("wbEnum", "wbFlags") or args is None:
+        if name is None:
+            # A named definition the unit declares.
+            ty = self.types.get(fmt.strip()) or self.types.get(self._canonical(fmt.strip()))
+            if isinstance(ty, dict):
+                if "values" in ty and "enum" in ty:
+                    return "enum", {int(k): v for k, v in ty["values"].items()}
+                if "bits" in ty and "flags" in ty:
+                    return "flags", {int(k): v for k, v in ty["bits"].items()}
+            return None
+        if name not in ("wbEnum", "wbFlags") or args is None:
             return None
         members = bracket_list(args)
         if members is None:
@@ -1199,14 +1237,30 @@ class Converter:
         if not fields:
             return {"struct": []}, self._note(ctx)
         fields = self._resolve_direct_switches(fields, ctx)
-        # A struct that xEdit marks optional may be shorter than its fields:
-        # the arguments after the members are the options, then a flag
-        # saying the struct may be absent, and the fields are read as long
-        # as the data lasts.
-        if self._struct_is_optional(parts, at):
+        # A struct may be shorter than its fields, in two ways xEdit says:
+        # the struct is marked optional, or it names a version, in which
+        # case the fields a later version added are absent from an earlier
+        # record. The schema cannot say which version a record is, so the
+        # trailing fields are read as long as the data lasts.
+        if self._struct_is_optional(parts, at) or self._struct_version(parts, at) is not None:
             for f in fields:
                 f["optional"] = True
         return {"struct": fields}, self._note(ctx)
+
+    def _struct_version(self, parts, at):
+        """The version a struct names, if it names one.
+
+        The arguments after the member list are the options, then a flag
+        saying the struct may be absent, then a flag saying it is not
+        written, then the version.
+        """
+        if at < 0:
+            return None
+        for p in parts[at + 1:]:
+            p = p.strip()
+            if re.fullmatch(r"\d+", p):
+                return int(p)
+        return None
 
     def _struct_is_optional(self, parts, at):
         """Whether xEdit says a struct may be shorter than its fields.
