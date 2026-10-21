@@ -582,6 +582,10 @@
        {
         "name": "b",
         "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": "u8"
        }
       ]
      }
@@ -601,6 +605,10 @@
        },
        {
         "name": "b",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
         "type": "u8"
        }
       ]
@@ -622,6 +630,10 @@
        {
         "name": "b",
         "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": "u8"
        }
       ]
      }
@@ -641,6 +653,10 @@
        },
        {
         "name": "b",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
         "type": "u8"
        }
       ]

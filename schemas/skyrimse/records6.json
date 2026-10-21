@@ -261,6 +261,34 @@
     }
    }
   },
+  "FSTS": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Footstep Set",
+   "note": "UESP, Skyrim Mod:Mod File Format/FSTS. [measured: 35 XCNT fields in Skyrim.esm, each 20 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Footstep Sets",
+     "note": "UESP, Skyrim Mod:Mod File Format/FSTS. The footsteps, end to end. The count is the sum of the five sets' counts.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "XCNT": {
+     "confidence": "documented",
+     "name": "Set Count",
+     "note": "The count of each of the five footstep sets.",
+     "type": "FSTS_XCNT"
+    }
+   }
+  },
   "LCTN": {
    "confidence": "documented",
    "merge": true,
@@ -950,6 +978,35 @@
      "type": {
       "array": "u32"
      }
+    }
+   ]
+  },
+  "FSTS_XCNT": {
+   "struct": [
+    {
+     "name": "walking",
+     "note": "The count of the walking set.",
+     "type": "u32"
+    },
+    {
+     "name": "running",
+     "note": "The count of the running set.",
+     "type": "u32"
+    },
+    {
+     "name": "sprinting",
+     "note": "The count of the sprinting set.",
+     "type": "u32"
+    },
+    {
+     "name": "sneaking",
+     "note": "The count of the sneaking set.",
+     "type": "u32"
+    },
+    {
+     "name": "swimming",
+     "note": "The count of the swimming set.",
+     "type": "u32"
     }
    ]
   },
