@@ -866,7 +866,7 @@
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/KEYM. [KYWD 0x000914EF] VendorItemKey",
      "type": {
-      "array": "bytes"
+      "array": "formid"
      }
     },
     "RNAM": {

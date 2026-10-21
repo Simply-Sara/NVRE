@@ -15,8 +15,10 @@
     "CNAM": {
      "confidence": "documented",
      "name": "Collision Layers",
-     "note": "The names of the collision's layers. There is no count of its own, so it is a run of names.",
-     "type": "zstring"
+     "note": "UESP, Skyrim Mod:Mod File Format/COLL. The collision's layers: a run of form ids with no count of its own. [measured: 4, 8, 12 and more bytes in Skyrim.esm]",
+     "type": {
+      "array": "formid"
+     }
     },
     "DESC": {
      "confidence": "documented",

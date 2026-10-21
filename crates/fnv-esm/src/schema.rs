@@ -1087,7 +1087,6 @@ impl Schema {
                 // fields are added or replace their counterparts, and the
                 // shadowed record's other fields stay. That is what a game
                 // needs when only some of a record's fields differ.
-                let merge = d.get("merge").and_then(Value::as_bool) == Some(true);
                 let mut subs = HashMap::new();
                 if let Some(Value::Object(sm)) = d.get("subrecords") {
                     for (ss, sd) in sm {
@@ -1102,7 +1101,7 @@ impl Schema {
                         );
                     }
                 }
-                let wildcards = parse_wildcards(d.get("subrecords"), label, &sig)?;
+                let wildcards = parse_wildcards(d.get("subrecords"), label, sig)?;
                 let (header_flags, header_flags_confidence) = parse_header_flags(
                     d.get("header_flags"),
                     &format!("{label}:{sig}.header_flags"),
@@ -1198,7 +1197,7 @@ impl Schema {
                         );
                     }
                 }
-                let wildcards = parse_wildcards(d.get("subrecords"), label, &sig)?;
+                let wildcards = parse_wildcards(d.get("subrecords"), label, sig)?;
                 let (header_flags, header_flags_confidence) = parse_header_flags(
                     d.get("header_flags"),
                     &format!("{label}:{sig}.header_flags"),
@@ -1345,7 +1344,7 @@ impl Schema {
             if let Some(d) = r.wildcards.iter().find(|(suffix, _)| {
                 // The suffix is right-aligned in the signature, so it is
                 // compared against the signature's trailing bytes.
-                suffix.len() <= sub.len() && &sub[sub.len() - suffix.len()..] == &suffix[..]
+                suffix.len() <= sub.len() && sub[sub.len() - suffix.len()..] == suffix[..]
             }) {
                 return Some(&d.1);
             }

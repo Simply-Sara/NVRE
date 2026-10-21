@@ -624,6 +624,23 @@ pub fn encode_sub(
     sub_sig: &[u8; 4],
     value: &Value,
 ) -> Result<Vec<u8>, EncodeError> {
+    encode_sub_len(schema, rec_sig, sub_sig, value, None)
+}
+
+/// Encode a subrecord, knowing how many bytes it took.
+///
+/// A union's variants can all encode the same value but to different
+/// lengths — Skyrim's cell flags are one byte in some records and two in
+/// others — and the first variant that encodes is not necessarily the one
+/// the data used. When the original length is known, the variant that
+/// matches it is the one to write.
+pub fn encode_sub_len(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    value: &Value,
+    orig_len: Option<usize>,
+) -> Result<Vec<u8>, EncodeError> {
     let def = schema
         .lookup(rec_sig, sub_sig)
         .ok_or_else(|| EncodeError::Value {
@@ -648,6 +665,39 @@ pub fn encode_sub(
                 });
             }
             return Ok(probe);
+        }
+    }
+    if let (TypeDef::ValueUnion { variants, .. }, Some(len)) = (schema.resolve(&def.ty), orig_len) {
+        // The variant that writes as many bytes as the data took is the one
+        // the data used. Each is tried and the one whose length matches
+        // wins; a variant that encodes to a different length is not the
+        // one that was read.
+        for vt in variants.iter() {
+            if let Ok(bytes) = encode_probe(schema, vt, value) {
+                if bytes.len() == len {
+                    return Ok(bytes);
+                }
+            }
+        }
+    }
+    if let (TypeDef::Union(variants), Some(len)) = (schema.resolve(&def.ty), orig_len) {
+        // The variant that writes as many bytes as the data took is the one
+        // the data used. Only the variants with a known size can be told
+        // apart this way.
+        let mut sized: Vec<(usize, &TypeDef)> = variants
+            .iter()
+            .filter_map(|(n, t)| n.map(|n| (n, t)))
+            .collect();
+        sized.sort_by_key(|(n, _)| n.abs_diff(len));
+        for (n, vt) in sized {
+            if n != len {
+                continue;
+            }
+            if let Ok(bytes) = encode_probe(schema, vt, value) {
+                if bytes.len() == len {
+                    return Ok(bytes);
+                }
+            }
         }
     }
     encode_probe(schema, &def.ty, value)
@@ -715,7 +765,7 @@ pub fn roundtrips(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) 
     let Some(value) = decoded(schema, rec_sig, sub) else {
         return false;
     };
-    match encode_sub(schema, rec_sig, &sub.sig, &value) {
+    match encode_sub_len(schema, rec_sig, &sub.sig, &value, Some(sub.data.len())) {
         Ok(bytes) => bytes == sub.data,
         Err(_) => false,
     }

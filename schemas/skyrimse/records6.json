@@ -41,6 +41,26 @@
     }
    }
   },
+  "BPTD": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Body Part Data",
+   "note": "UESP, Skyrim Mod:Mod File Format/BPTD. The base's part name is a string; Skyrim's is an index into the string table. [measured: 4 bytes in every BPTN field in Skyrim.esm]",
+   "subrecords": {
+    "BPTN": {
+     "confidence": "documented",
+     "name": "Part Name",
+     "note": "UESP's lstring: an index into the game's string table.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
   "CAMS": {
    "confidence": "observed",
    "merge": true,

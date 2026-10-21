@@ -18,11 +18,23 @@
    "note": "UESP, Skyrim Mod:Mod File Format/CTDA Field. The condition reads as <Reference>.<Function>(<Param1>, <Param2>) <Operator> <Value>. [measured: every CTDA in Skyrim.esm is exactly 32 bytes, so Run On, Reference and the trailing index are all present \u2014 Fallout's CTDA has only the first two of the three, and its last two fields are optional.]",
    "type": "Condition"
   },
+  "DESC": {
+   "confidence": "documented",
+   "name": "Description",
+   "note": "UESP's lstring: an index into the game's string table, not a string of its own. The base's is Fallout's string. [measured: 4 bytes in every DESC field in Skyrim.esm]",
+   "type": "u32"
+  },
   "DMDT": {
    "confidence": "documented",
    "name": "Destruction Stage Model Texture Hashes",
    "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Skyrim's DMDT has a twelve-byte header \u2014 the version, the entry count and a flag \u2014 and then the texture entries, which is the same shape as its MODT. The base's is an array of Fallout texture hashes.",
    "type": "SKYRIM_DMDT"
+  },
+  "FULL": {
+   "confidence": "documented",
+   "name": "Full Name",
+   "note": "UESP's lstring: an index into the game's string table, not a string of its own. The base's is Fallout's string. [measured: 4 bytes in every FULL field in Skyrim.esm]",
+   "type": "u32"
   },
   "MODT": {
    "confidence": "documented",

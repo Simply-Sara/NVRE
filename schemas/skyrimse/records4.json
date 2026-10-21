@@ -524,8 +524,8 @@
     "ITXT": {
      "confidence": "documented",
      "name": "Button Text",
-     "note": "xEdit wbDefinitionsFNV.pas MESG record",
-     "type": "zstring"
+     "note": "UESP's lstring: an index into the game's string table, not a string of its own. [measured: 4 bytes in every such field in Skyrim.esm]",
+     "type": "u32"
     },
     "NAM0": {
      "confidence": "documented",
@@ -929,7 +929,7 @@
      "confidence": "documented",
      "expose": true,
      "name": "Entry Point Function Parameter Type",
-     "note": "xEdit wbDefinitionsFNV.pas PERK wbInteger(EPFT, 'Type', itU8, wbPerkEPFTToStr, wbPerkEPFTToInt).SetDontShow; `expose` on the value: the EPFD union below switches on it (wbEPFDDecider reads sibling EPFT)",
+     "note": "UESP, Skyrim Mod:Mod File Format/PERK. The type of the parameter data that follows in the EPFD. 1 is a float, 2 an actor value and a factor, 3 and 5 a form id and 6 a zstring.",
      "type": "u8"
     },
     "FULL": {

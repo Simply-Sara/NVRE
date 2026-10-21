@@ -159,8 +159,8 @@
     "FULL": {
      "confidence": "documented",
      "name": "Full Name",
-     "note": "The in-game name.",
-     "type": "zstring"
+     "note": "UESP's lstring: an index into the game's string table, not a string of its own. [measured: 4 bytes in every such field in Skyrim.esm]",
+     "type": "u32"
     },
     "GNAM": {
      "confidence": "documented",
@@ -284,8 +284,8 @@
     "SHRT": {
      "confidence": "documented",
      "name": "Short Alias",
-     "note": "Used in Alias= when present.",
-     "type": "zstring"
+     "note": "UESP's lstring: an index into the game's string table, not a string of its own. [measured: 4 bytes in every such field in Skyrim.esm]",
+     "type": "u32"
     },
     "SNAM": {
      "confidence": "documented",
