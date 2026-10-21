@@ -101,7 +101,7 @@ fn main() {
             .filter(|(_, c)| c.trailing > 0)
             .map(|((rt, st), c)| ((rt.clone(), st.clone()), c.trailing, c.first_error.clone()))
             .collect();
-        trailing.sort_by(|a, b| b.1.cmp(&a.1));
+        trailing.sort_by_key(|(_, n, _)| std::cmp::Reverse(*n));
         if !trailing.is_empty() {
             println!("\n--- trailing subrecords (decoded, but bytes left over) ---");
             for ((rt, st), n, e) in trailing.iter().take(20) {

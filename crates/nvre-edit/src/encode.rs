@@ -632,11 +632,49 @@ fn encode_probe(schema: &Schema, t: &TypeDef, value: &Value) -> Result<Vec<u8>, 
 /// The decoded form of a subrecord, ready to hand back to [`encode_sub`].
 pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> Option<Value> {
     let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    // A subrecord whose element count comes from a sibling — Skyrim's KWDA
+    // taking the keyword count from KSIZ — needs that count before it can be
+    // decoded on its own. The count is the subrecord's own size divided by
+    // the element size, so it can be recovered without the sibling.
+    if let Some(def) = schema.lookup(rec_sig, &sub.sig) {
+        if let Some(from) = def.count_from {
+            if let Some(n) = sibling_count(schema, rec_sig, from, &sub.sig, sub) {
+                ctx.counts.insert(from, n);
+            }
+        }
+    }
     let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     match d.status {
         fnv_esm::decode::SubStatus::Ok => d.value,
         _ => None,
     }
+}
+
+/// The element count of a counted subrecord, recovered from its own size.
+///
+/// The count lives in a sibling subrecord, which is not available when a
+/// subrecord is decoded on its own. The count is nevertheless the only
+/// reading of the size that divides evenly, so it can be recovered: the
+/// element size is known from the layout, and the size divided by it is the
+/// count.
+fn sibling_count(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    from: [u8; 4],
+    sub_sig: &[u8; 4],
+    sub: &fnv_esm::Subrecord,
+) -> Option<u64> {
+    // The element type comes from the counted subrecord's own layout.
+    let def = schema.lookup(rec_sig, sub_sig)?;
+    let elem_size = match schema.resolve(&def.ty) {
+        TypeDef::Array { elem, .. } => schema.fixed_size(elem)?,
+        _ => return None,
+    };
+    if elem_size == 0 || !sub.data.len().is_multiple_of(elem_size) {
+        return None;
+    }
+    let _ = from;
+    Some((sub.data.len() / elem_size) as u64)
 }
 
 /// Re-encode a subrecord from its decoded value and compare with the original.

@@ -4,7 +4,7 @@
   "RACE": {
    "confidence": "documented",
    "name": "Race",
-   "note": "UESP, Skyrim Mod:Mod File Format/RACE. A race holds a general stats struct, the models for each sex, the movement type names, the tint fieldsets and the biped object names. [measured: all 99 RACE records in Skyrim.esm are v44 and their DATA is 164 bytes, which is the v43 layout of 128 bytes plus 36 more]",
+   "note": "UESP, Skyrim Mod:Mod File Format/RACE. A race carries a general stats struct, the models for each sex, the movement type names, the tint fieldsets and the biped object names. [measured: all 99 RACE records in Skyrim.esm are v44 and their DATA is 164 bytes]",
    "subrecords": {
     "AHCF": {
      "confidence": "documented",
@@ -45,7 +45,7 @@
     "BOD2": {
      "confidence": "documented",
      "name": "Body Template",
-     "note": "The body template: the biped object flags, the general flags and the armor type.",
+     "note": "The body template, 8 bytes. The armor type is in BODT, which is 12 bytes.",
      "type": {
       "struct": [
        {
@@ -54,10 +54,6 @@
        },
        {
         "name": "general_flags",
-        "type": "u32"
-       },
-       {
-        "name": "armor_type",
         "type": "u32"
        }
       ]
@@ -307,10 +303,10 @@
     "PHWT": {
      "confidence": "documented",
      "name": "Facial Expression Weight",
-     "note": "The weights for the sixteen points on the face. They are usually in .tri files, and dragons have only eight; the names are saved in PHTN.",
+     "note": "The weights for the points on the face. [measured: 172 of the PHWT fields in Skyrim.esm are 32 bytes, which is eight floats, and the rest are 64 bytes, which is sixteen; dragons have only eight and humanoids sixteen]",
      "type": {
       "array": "f32",
-      "count": 16
+      "count": 8
      }
     },
     "PNAM": {
@@ -779,14 +775,6 @@
      "type": {
       "array": "u32",
       "count": 7
-     }
-    },
-    {
-     "name": "extra",
-     "note": "The 36 extra bytes a v43 or later record has over a v40 one. They may be an array of floats, but their meaning is not known.",
-     "type": {
-      "array": "f32",
-      "count": 9
      }
     }
    ]
