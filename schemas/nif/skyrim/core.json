@@ -27,7 +27,7 @@
      "type": "ref"
     }
    ],
-   "note": "Skyrim's AV object has no properties array. Fallout's has a count and an array between the scale and the collision object; reading them where there are none put every field after the scale a fixed distance off, which is what made NiNode, NiCamera and BSFadeNode fail."
+   "note": "Skyrim's AV object. It has no properties array, where Fallout's has a count and an array; reading them where there are none put every field after the scale a fixed distance off, which is what made NiNode, NiCamera and BSFadeNode fail. A minority of blocks carry a word the reading does not model, and those are the only nodes that still fail."
   },
   "NiTriShapeData": {
    "inherit": "NiTriBasedGeomData",
@@ -669,7 +669,7 @@
     },
     {
      "name": "num_constraints",
-     "type": "u16"
+     "type": "u32"
     },
     {
      "name": "constraints",
@@ -678,16 +678,10 @@
     },
     {
      "name": "body_flags",
-     "type": "u32"
-    },
-    {
-     "name": "padding",
-     "type": "u8",
-     "length": "2",
-     "note": "Two bytes between the body flags and the end of the block. Most of Skyrim's bodies have four more than this; what decides it is not yet known."
+     "type": "u16"
     }
    ],
-   "note": "nif.xml: the body flags are a u32 below bs_version 76 and a u16 from there up; measured over Skyrim's bodies, they read as a u32 here."
+   "note": "nifgen's bhkRigidBody. The body flags are sixteen-bit where the older form is thirty-two-bit."
   },
   "bhkRigidBodyT": {
    "inherit": "bhkRigidBody",
@@ -848,13 +842,15 @@
    "fields": [
     {
      "name": "switch_node_flags",
-     "type": "u32"
+     "type": "u16",
+     "note": "nifgen's NiSwitchFlags is a ushort, where nif.xml has it as a uint."
     },
     {
      "name": "index",
      "type": "u32"
     }
-   ]
+   ],
+   "note": "nifgen's NiSwitchNode."
   },
   "NiMeshPSysData": {
    "inherit": "NiPSysData",
@@ -1044,8 +1040,23 @@
    "note": "nifgen's bhkCompressedMeshShapeData, measured. The welding type and the material type are bytes, where nif.xml has them as uints \u2014 that six-byte difference is what made every field after them land in the wrong place. The material list's first entry is a real Skyrim material (500811281 is SKY_HAV_MAT_WOOD), and a word follows the last chunk."
   },
   "BSFurnitureMarkerNode": {
-   "inherit": "NiNode",
-   "fields": []
+   "inherit": "NiObject",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    },
+    {
+     "name": "num_positions",
+     "type": "u32"
+    },
+    {
+     "name": "positions",
+     "type": "FurniturePosition",
+     "length": "num_positions"
+    }
+   ],
+   "note": "nifgen's BSFurnitureMarkerNode. It is a furniture marker, not a node: it carries a name and the positions, with no children and no extra-data list."
   },
   "BSSkyShaderProperty": {
    "inherit": "BSShaderProperty",
@@ -1223,6 +1234,30 @@
      "type": "ref"
     }
    ]
+  },
+  "NiNode": {
+   "inherit": "NiAVObject",
+   "fields": [
+    {
+     "name": "num_effects",
+     "type": "u32"
+    },
+    {
+     "name": "effects",
+     "type": "ref",
+     "length": "num_effects"
+    },
+    {
+     "name": "num_children",
+     "type": "u32"
+    },
+    {
+     "name": "children",
+     "type": "ref",
+     "length": "num_children"
+    }
+   ],
+   "note": "nifgen's NiNode, measured: the effects come before the children, where Fallout's has the children first. The two orders are indistinguishable when a node has no effects, which is most of them."
   }
  },
  "structs": {
@@ -1347,6 +1382,10 @@
      "length": 4
     },
     {
+     "name": "unknown_int_1",
+     "type": "u32"
+    },
+    {
      "name": "collision_response",
      "type": "hkResponseType"
     },
@@ -1357,11 +1396,6 @@
     {
      "name": "process_contact_callback_delay",
      "type": "u16"
-    },
-    {
-     "name": "unused_04",
-     "type": "bytes",
-     "length": 4
     },
     {
      "name": "translation",
@@ -1400,7 +1434,19 @@
      "type": "f32"
     },
     {
+     "name": "time_factor",
+     "type": "f32"
+    },
+    {
+     "name": "gravity_factor",
+     "type": "f32"
+    },
+    {
      "name": "friction",
+     "type": "f32"
+    },
+    {
+     "name": "rolling_friction_multiplier",
      "type": "f32"
     },
     {
@@ -1436,6 +1482,14 @@
      "type": "hkQualityType"
     },
     {
+     "name": "auto_remove_level",
+     "type": "u8"
+    },
+    {
+     "name": "response_modifier_flags",
+     "type": "u8"
+    },
+    {
      "name": "num_shape_keys_in_contact_point",
      "type": "u8"
     },
@@ -1444,12 +1498,12 @@
      "type": "bool"
     },
     {
-     "name": "unused_05",
+     "name": "unused_04",
      "type": "bytes",
      "length": 12
     }
    ],
-   "note": "nif.xml's bhkRigidBodyCInfo2010, which a Skyrim body carries: a shape-key count and a flag where the 550/660 form Fallout uses has neither. Measured: the constraint count is a u16 and sits two bytes earlier than the 550/660 form would put it."
+   "note": "nifgen's bhkRigidBodyCInfo2010, measured. The time and gravity factors and the rolling friction multiplier are in the shipped data, and the inertia tensor is a four-by-three matrix, where nif.xml's list leaves room for a different set."
   },
   "hkAabb": {
    "fields": [
@@ -1605,6 +1659,23 @@
      "type": "bhkConstraintCInfo"
     }
    ]
+  },
+  "FurniturePosition": {
+   "fields": [
+    {
+     "name": "offset",
+     "type": "vec3"
+    },
+    {
+     "name": "heading",
+     "type": "f32"
+    },
+    {
+     "name": "animation_type",
+     "type": "u32"
+    }
+   ],
+   "note": "nifgen's FurniturePosition, measured: the offset, the heading around the z axis (a full turn is 6.283185) and the animation type. The entry points it also lists are not in the shipped blocks."
   }
  }
 }
