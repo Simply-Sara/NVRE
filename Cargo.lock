@@ -2954,8 +2954,8 @@ name = "fnv-esm"
 version = "0.1.0"
 dependencies = [
  "bytes",
- "fnv-inflate",
  "memmap2",
+ "nvre-inflate",
  "nvre-util",
  "proptest",
  "rayon",
@@ -2963,16 +2963,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tracing",
-]
-
-[[package]]
-name = "fnv-inflate"
-version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
-dependencies = [
- "adler2",
- "flate2",
- "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -4276,13 +4266,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "nvre-dds"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "nvre-edit"
 version = "0.1.0"
 dependencies = [
  "bytes",
  "fnv-esm",
- "fnv-inflate",
  "fnv-world",
+ "nvre-inflate",
  "nvre-util",
  "proptest",
  "serde",
@@ -4313,6 +4311,16 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tracing",
+]
+
+[[package]]
+name = "nvre-inflate"
+version = "0.1.0"
+dependencies = [
+ "adler2",
+ "flate2",
+ "proptest",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

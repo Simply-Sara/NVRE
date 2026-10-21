@@ -7,7 +7,7 @@ license.workspace = true
 
 [dependencies]
 nvre-util.workspace = true
-fnv-inflate.workspace = true
+nvre-inflate.workspace = true
 fnv-esm.workspace = true
 fnv-world.workspace = true
 serde.workspace = true

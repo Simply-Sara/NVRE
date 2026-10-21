@@ -1,0 +1,14 @@
+[package]
+name = "nvre-inflate"
+description = "NVRE's zlib reader: RFC 1950 decoding with trailer diagnostics, and a stored-block encoder"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+adler2 = "2"
+flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }
+thiserror = "2"
+
+[dev-dependencies]
+proptest = "1"

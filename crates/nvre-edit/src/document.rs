@@ -512,7 +512,7 @@ fn apply_edits(r: &mut Record, edits: &[Edit]) {
                 // unreadable. Recompress, and keep the stored size.
                 r.raw = if r.is_compressed() {
                     let mut v = (payload.len() as u32).to_le_bytes().to_vec();
-                    v.extend_from_slice(&fnv_inflate::zlib_store(&payload));
+                    v.extend_from_slice(&nvre_inflate::zlib_store(&payload));
                     v.into()
                 } else {
                     payload.into()

@@ -189,8 +189,8 @@ fn find_accepts_both_separators_and_is_case_insensitive() {
 
 #[test]
 fn non_bsa_and_wrong_version_are_rejected() {
-    // A Fallout 4 BA2 begins "BTDX"; a v104 archive must be refused rather than
-    // misread, because a wrong version means a wrong folder-record size.
+    // A Fallout 4 BA2 begins "BTDX", and a file that is not a BSA at all must
+    // be refused rather than misread.
     let dir = std::env::temp_dir().join("bsa105-reject");
     std::fs::create_dir_all(&dir).unwrap();
     let bad = dir.join("not-a-bsa.bsa");
@@ -199,15 +199,39 @@ fn non_bsa_and_wrong_version_are_rejected() {
     std::fs::write(&bad, not_bsa).unwrap();
     assert!(matches!(Archive::open(&bad), Err(Bsa105Error::NotBsa)));
 
-    let v104 = dir.join("v104.bsa");
+    // A version this reader does not know is refused: the folder record's
+    // size and the payload's codec are both read from the version, so an
+    // unknown one cannot be read safely.
+    let unknown = dir.join("unknown-version.bsa");
     let mut hdr = [0u8; 36];
     hdr[..4].copy_from_slice(&MAGIC);
-    hdr[4..8].copy_from_slice(&104u32.to_le_bytes());
-    std::fs::write(&v104, hdr).unwrap();
+    hdr[4..8].copy_from_slice(&107u32.to_le_bytes());
+    std::fs::write(&unknown, hdr).unwrap();
     assert!(matches!(
-        Archive::open(&v104),
-        Err(Bsa105Error::UnsupportedVersion(104))
+        Archive::open(&unknown),
+        Err(Bsa105Error::UnsupportedVersion(107))
     ));
+}
+
+#[test]
+fn both_archive_versions_are_accepted() {
+    // Version 104 (the original edition) and version 105 (the Special
+    // Edition) differ in exactly two places: the folder record is 16 bytes
+    // rather than 24, and the payload may be an LZ4 frame rather than zlib.
+    // One reader handles both.
+    let dir = std::env::temp_dir().join("bsa105-versions");
+    std::fs::create_dir_all(&dir).unwrap();
+    for version in [104u32, 105u32] {
+        let path = dir.join(format!("v{version}.bsa"));
+        let mut hdr = [0u8; 36];
+        hdr[..4].copy_from_slice(&MAGIC);
+        hdr[4..8].copy_from_slice(&version.to_le_bytes());
+        std::fs::write(&path, hdr).unwrap();
+        // The header is read; there is no folder block in this stub, so the
+        // archive opens with no entries rather than being refused.
+        let a = Archive::open(&path).expect("a version this reader knows");
+        assert_eq!(a.entries().count(), 0, "the stub has no entries");
+    }
 }
 
 #[test]

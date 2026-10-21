@@ -97,7 +97,7 @@ fn dlc() -> Vec<u8> {
         sub(b"FLTV", &3.5f32.to_le_bytes()),
     ]);
     let mut comp = (payload.len() as u32).to_le_bytes().to_vec();
-    comp.extend(fnv_inflate::zlib_store(&payload));
+    comp.extend(nvre_inflate::zlib_store(&payload));
     let body = [
         glob(0x0000_1001, "GlobB", 20.0),
         record(b"GLOB", 0x40000, 0x0100_2000, &comp),

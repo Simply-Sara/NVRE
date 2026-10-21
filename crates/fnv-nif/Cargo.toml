@@ -29,9 +29,3 @@ tracing = "0.1"
 
 [dev-dependencies]
 proptest = "1"
-
-[dev-dependencies.fnv-bsa]
-path = "../../NVForever/crates/fnv-bsa"
-
-[dev-dependencies.fnv-dds]
-path = "../../NVForever/crates/fnv-dds"

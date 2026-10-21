@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105", "crates/nvre-util"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,8 +10,10 @@ license = "GPL-3.0-or-later"
 [workspace.dependencies]
 # NVRE's own crates, by path. These are NVRE's code, not a copy of anyone
 # else's: `nvre-util` is the byte cursor, the Windows-1252 text and the
-# SHA-256 that every format crate speaks.
+# SHA-256 that every format crate speaks, and `nvre-inflate` is the zlib
+# reader.
 nvre-util = { path = "crates/nvre-util" }
+nvre-inflate = { path = "crates/nvre-inflate" }
 
 # The remaining NVForever format crates, by git. The editor is read-write
 # where those are read-only; upstream stays the reference implementation and
@@ -23,10 +25,6 @@ nvre-util = { path = "crates/nvre-util" }
 # unions, so the layouts in `schemas/` could not reach 100% coverage through
 # the upstream schema language; `fnv-esm` is where those constructs now live.
 # Keep each fork's diff against upstream small and documented.
-#
-# `fnv-inflate` is upstream's zlib reader and `fnv-dds` its texture decoder;
-# both are on the way out of the graph, into crates NVRE owns.
-fnv-inflate = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 fnv-esm = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 fnv-vfs = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 fnv-world = { git = "https://github.com/LootJunkieAzza/NVForever.git" }

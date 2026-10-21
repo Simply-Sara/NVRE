@@ -169,7 +169,7 @@ impl Record {
     /// accepted anomaly is only logged.
     pub fn payload(&self) -> Result<Cow<'_, [u8]>, EsmError> {
         let (p, trailer) = self.payload_checked()?;
-        if trailer != fnv_inflate::Trailer::Verified {
+        if trailer != nvre_inflate::Trailer::Verified {
             tracing::debug!(
                 record = %self.sig_str(),
                 form_id = format_args!("{:08X}", self.header.form_id),
@@ -183,9 +183,9 @@ impl Record {
 
     /// Uncompressed payload plus the zlib trailer status (`Verified` for
     /// uncompressed records).
-    pub fn payload_checked(&self) -> Result<(Cow<'_, [u8]>, fnv_inflate::Trailer), EsmError> {
+    pub fn payload_checked(&self) -> Result<(Cow<'_, [u8]>, nvre_inflate::Trailer), EsmError> {
         if !self.is_compressed() {
-            return Ok((Cow::Borrowed(&self.raw), fnv_inflate::Trailer::Verified));
+            return Ok((Cow::Borrowed(&self.raw), nvre_inflate::Trailer::Verified));
         }
         if self.raw.len() < 4 {
             return Err(EsmError::Decompress {
@@ -196,7 +196,7 @@ impl Record {
         }
         let size =
             u32::from_le_bytes([self.raw[0], self.raw[1], self.raw[2], self.raw[3]]) as usize;
-        fnv_inflate::zlib_decompress_ex(&self.raw[4..], Some(size))
+        nvre_inflate::zlib_decompress_ex(&self.raw[4..], Some(size))
             .map(|(d, t)| (Cow::Owned(d), t))
             .map_err(|e| EsmError::Decompress {
                 offset: self.offset,
