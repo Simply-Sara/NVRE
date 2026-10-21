@@ -154,6 +154,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -173,6 +174,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -603,18 +605,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -628,18 +634,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -1121,26 +1131,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -1343,10 +1359,12 @@
       "struct": [
        {
         "name": "Master Particle System Cap",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "enum": "u16",
          "values": {
@@ -1380,26 +1398,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -1649,18 +1673,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -1674,18 +1702,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -1722,14 +1754,17 @@
          "struct": [
           {
            "name": "Magnitude",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Area",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Duration",
+           "optional": true,
            "type": "u32"
           }
          ]
@@ -1822,10 +1857,12 @@
       "struct": [
        {
         "name": "Value",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "No Auto-Calc",
@@ -1852,14 +1889,17 @@
        },
        {
         "name": "Addiction",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Addiction Chance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Sound - Consume",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -1911,26 +1951,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -2140,18 +2186,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -2165,18 +2215,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -2247,10 +2301,12 @@
       "struct": [
        {
         "name": "Value",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -2270,10 +2326,12 @@
       "struct": [
        {
         "name": "Projectile",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Ignores Normal Weapon Resistance",
@@ -2285,6 +2343,7 @@
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 3
@@ -2292,10 +2351,12 @@
        },
        {
         "name": "Damage",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Health",
+        "optional": true,
         "type": "u32"
        }
       ]
@@ -2347,26 +2408,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -2478,26 +2545,32 @@
       "struct": [
        {
         "name": "Radius",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Min Delay",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Max Delay",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Requires Line of Sight",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Combat Target",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -2755,14 +2828,17 @@
       "struct": [
        {
         "name": "Male Priority",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Female Priority",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Weight slider - Male",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Unknown 0",
@@ -2773,6 +2849,7 @@
        },
        {
         "name": "Weight slider - Female",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Unknown 0",
@@ -2783,6 +2860,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -2790,10 +2868,12 @@
        },
        {
         "name": "Detection Sound Value",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 1
@@ -2801,6 +2881,7 @@
        },
        {
         "name": "Weapon Adjust",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -2960,18 +3041,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -2985,18 +3070,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -3141,18 +3230,22 @@
          "struct": [
           {
            "name": "Include Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Property Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Level Min",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -3160,10 +3253,12 @@
           },
           {
            "name": "Level Max",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -3171,28 +3266,34 @@
           },
           {
            "name": "Addon Index",
+           "optional": true,
            "type": "i16"
           },
           {
            "name": "Default",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Keywords",
+           "optional": true,
            "type": {
             "array": "formid"
            }
           },
           {
            "name": "Min Level For Ranks",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Alt Levels Per Tier",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Includes",
+           "optional": true,
            "type": {
             "array": {
              "struct": [
@@ -3218,6 +3319,7 @@
           },
           {
            "name": "wbObjectModProperties",
+           "optional": true,
            "type": "wbObjectModProperties"
           }
          ]
@@ -3283,14 +3385,17 @@
       "struct": [
        {
         "name": "Value",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Health",
+        "optional": true,
         "type": "u32"
        }
       ]
@@ -3403,26 +3508,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -3592,26 +3703,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -3650,26 +3767,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -4046,18 +4169,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -4071,18 +4198,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -4159,10 +4290,12 @@
       "struct": [
        {
         "name": "Value",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -4182,6 +4315,7 @@
       "struct": [
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Advance Actor Value",
@@ -4195,6 +4329,7 @@
        },
        {
         "name": "Teaches",
+        "optional": true,
         "type": {
          "union": [
           {
@@ -4221,6 +4356,7 @@
        },
        {
         "name": "Text Offset",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -4295,26 +4431,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -4418,70 +4560,87 @@
          "struct": [
           {
            "name": "Damage Mult",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Explodable - Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Explodable - Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Explodable - Debris Scale",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Severable - Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Severable - Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Severable - Debris Scale",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Cut - Min",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Cut - Max",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Cut - Radius",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Gore Effects - Local Rotate X",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Gore Effects - Local Rotate Y",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Cut - Tesselation",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Severable - Impact DataSet",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Explodable - Impact DataSet",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Explodable - Limb Replacement Scale",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Severable",
@@ -4498,6 +4657,7 @@
           },
           {
            "name": "Part Type",
+           "optional": true,
            "type": {
             "enum": "u8",
             "values": {
@@ -4532,70 +4692,87 @@
           },
           {
            "name": "Health Percent",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Actor Value",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "To Hit Chance",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Explodable - Explosion Chance %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Non-Lethal Dismemberment Chance",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Severable - Debris Count",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Explodable - Debris Count",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Severable - Decal Count",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Explodable - Decal Count",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Geometry Segment Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "On Cripple - Art Object",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "On Cripple - Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "On Cripple - Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "On Cripple - Impact DataSet",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "On Cripple - Debris Scale",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "On Cripple - Debris Count",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "On Cripple - Decal Count",
+           "optional": true,
            "type": "u8"
           }
          ]
@@ -4797,6 +4974,7 @@
       "struct": [
        {
         "name": "Action",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -4809,6 +4987,7 @@
        },
        {
         "name": "Location",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -4821,6 +5000,7 @@
        },
        {
         "name": "Target",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -4833,6 +5013,7 @@
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Position Follows Location",
@@ -4849,6 +5030,7 @@
        },
        {
         "name": "Time Multipliers",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -4868,30 +5050,37 @@
        },
        {
         "name": "Max Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Min Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Target % Between Actors",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Near Target Distance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Location Spring",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Target Spring",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Rotation Offset",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5932,6 +6121,7 @@
       "struct": [
        {
         "name": "Sunrise",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5947,6 +6137,7 @@
        },
        {
         "name": "Sunset",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -5962,10 +6153,12 @@
        },
        {
         "name": "Volatility",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Moons / Phase Length",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -6190,18 +6383,22 @@
       "struct": [
        {
         "name": "Red",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Green",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Blue",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -6332,18 +6529,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -6357,18 +6558,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -6445,6 +6650,7 @@
       "struct": [
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Allow Sounds When Animation",
@@ -6456,6 +6662,7 @@
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -6507,26 +6714,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -6666,46 +6879,57 @@
       "struct": [
        {
         "name": "Dueling - Circle Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Dueling - Fallback Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Flanking - Flank Distance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Flanking - Stalk Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Charging - Charge Distance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Charging - Throw Probability",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Charging - Sprint Fast Probability",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Charging - Sideswipe Probability",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Charging - Disengane Probability",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Charging - Throw Max Targets",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Flanking - Flank Variance",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -6725,34 +6949,42 @@
       "struct": [
        {
         "name": "Hover Chance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Dive Bomb Chance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Ground Attack Chance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Hover Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Ground Attack Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Perch Attack Chance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Perch Attack Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Flying Attack Chance",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -6766,50 +6998,62 @@
       "struct": [
        {
         "name": "Offensive Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Defensive Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Group Offensive Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Equipment Score Mult - Melee",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Equipment Score Mult - Magic",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Equipment Score Mult - Ranged",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Equipment Score Mult - Shout",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Equipment Score Mult - Unarmed",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Equipment Score Mult - Staff",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Avoid Threat Chance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Dodge Threat Chance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Evade Threat Chance",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -6823,22 +7067,27 @@
       "struct": [
        {
         "name": "Strafe Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Adjust Range Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Crouch Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Wait Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Range Mult",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -6858,42 +7107,52 @@
       "struct": [
        {
         "name": "Attack Staggered Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Power Attack Staggered Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Power Attack Blocking Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Bash Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Bash Recoil Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Bash Attack Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Bash Power Attack Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Special Attack Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Block When Staggered Mult",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Attack When Staggered Mult",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -6950,14 +7209,17 @@
          "struct": [
           {
            "name": "Percentage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model FileName",
+           "optional": true,
            "type": "zstring"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Has Collision Data"
@@ -7494,18 +7756,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -7519,18 +7785,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -7668,26 +7938,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -7777,22 +8053,27 @@
       "struct": [
        {
         "name": "Owner",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Location",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Rank",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Min Level",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Never Resets",
@@ -7805,6 +8086,7 @@
        },
        {
         "name": "Max Level",
+        "optional": true,
         "type": "i8"
        }
       ]
@@ -8871,14 +9153,17 @@
          "struct": [
           {
            "name": "Magnitude",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Area",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Duration",
+           "optional": true,
            "type": "u32"
           }
          ]
@@ -8905,10 +9190,12 @@
       "struct": [
        {
         "name": "Enchantment Cost",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "No Auto-Calc",
@@ -8920,18 +9207,22 @@
        },
        {
         "name": "Cast Type",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Enchantment Amount",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Target Type",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Enchant Type",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -8942,14 +9233,17 @@
        },
        {
         "name": "Charge Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Base Enchantment",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Worn Restrictions",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -8969,26 +9263,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -9095,50 +9395,62 @@
       "struct": [
        {
         "name": "Light",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Sound 1",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Sound 2",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Impact Data Set",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Placed Object",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Spawn Projectile",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Force",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Damage",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Inner Radius",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Outer Radius",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "IS Radius",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Vertical Offset Mult",
+        "optional": true,
         "type": {
          "union": [
           {
@@ -9157,6 +9469,7 @@
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Unknown 0",
@@ -9176,14 +9489,17 @@
        },
        {
         "name": "Sound Level",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Placed Object AutoFade Delay",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Stagger",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -9197,6 +9513,7 @@
        },
        {
         "name": "Spawn",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -9257,26 +9574,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -9442,6 +9765,7 @@
       "struct": [
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Hidden From NPC",
@@ -9799,18 +10123,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -9824,18 +10152,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -9944,26 +10276,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -9983,18 +10321,22 @@
       "struct": [
        {
         "name": "Spring",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Summer ",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Fall",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Winter",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -10147,22 +10489,27 @@
       "struct": [
        {
         "name": "Walking",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Running",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Sprinting",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Sneaking",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Swimming",
+        "optional": true,
         "type": "u32"
        }
       ]
@@ -10268,18 +10615,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -10293,18 +10644,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -10435,18 +10790,22 @@
          "struct": [
           {
            "name": "Include Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Property Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Level Min",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -10454,10 +10813,12 @@
           },
           {
            "name": "Level Max",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -10465,28 +10826,34 @@
           },
           {
            "name": "Addon Index",
+           "optional": true,
            "type": "i16"
           },
           {
            "name": "Default",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Keywords",
+           "optional": true,
            "type": {
             "array": "formid"
            }
           },
           {
            "name": "Min Level For Ranks",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Alt Levels Per Tier",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Includes",
+           "optional": true,
            "type": {
             "array": {
              "struct": [
@@ -10512,6 +10879,7 @@
           },
           {
            "name": "wbObjectModProperties",
+           "optional": true,
            "type": "wbObjectModProperties"
           }
          ]
@@ -11019,26 +11387,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -11114,6 +11488,7 @@
       "struct": [
        {
         "name": "Bench Type",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -11132,6 +11507,7 @@
        },
        {
         "name": "Uses Skill",
+        "optional": true,
         "type": "i8"
        }
       ]
@@ -11386,18 +11762,22 @@
       "struct": [
        {
         "name": "Density",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Min Slope",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Max Slope",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 1
@@ -11405,10 +11785,12 @@
        },
        {
         "name": "Units From Water",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -11416,6 +11798,7 @@
        },
        {
         "name": "Units From Water Type",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -11432,22 +11815,27 @@
        },
        {
         "name": "Position Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Height Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Color Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Wave Period",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Vertex Lighting",
@@ -11459,6 +11847,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 3
@@ -11481,26 +11870,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -11665,26 +12060,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -11868,6 +12269,7 @@
       "struct": [
        {
         "name": "Looping seconds (both 255 forever)",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -11883,14 +12285,17 @@
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Animation Group Section",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Replay Delay",
+        "optional": true,
         "type": "u16"
        }
       ]
@@ -12038,26 +12443,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -12516,14 +12927,17 @@
       "struct": [
        {
         "name": "Saturation",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Brightness",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Contrast",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -12537,18 +12951,22 @@
       "struct": [
        {
         "name": "Strength",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Distance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -12556,6 +12974,7 @@
        },
        {
         "name": "Sky / Blur Radius",
+        "optional": true,
         "type": {
          "enum": "u16",
          "values": {
@@ -12581,10 +13000,12 @@
        },
        {
         "name": "Vignette Radius",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Vignette Strength",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -12610,38 +13031,47 @@
       "struct": [
        {
         "name": "Eye Adapt Speed",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Tonemap E",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Bloom Threshold",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Bloom Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Auto Exposure Max",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Auto Exposure Min",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Sunlight Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Sky Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Middle Gray",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -12655,10 +13085,12 @@
       "struct": [
        {
         "name": "Amount",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -13139,18 +13571,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -13164,18 +13600,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -13212,14 +13652,17 @@
          "struct": [
           {
            "name": "Magnitude",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Area",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Duration",
+           "optional": true,
            "type": "u32"
           }
          ]
@@ -13282,10 +13725,12 @@
       "struct": [
        {
         "name": "Value",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -13305,10 +13750,12 @@
       "struct": [
        {
         "name": "Ingredient Value",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "No auto-calculation",
@@ -13373,26 +13820,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -13638,10 +14091,12 @@
       "struct": [
        {
         "name": "Effect - Duration",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Effect - Orientation",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -13653,18 +14108,22 @@
        },
        {
         "name": "Angle Threshold",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Placement Radius",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Sound Level",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "No Decal Data"
@@ -13674,6 +14133,7 @@
        },
        {
         "name": "Impact Result",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -13687,6 +14147,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -13955,18 +14416,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -13980,18 +14445,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -14062,10 +14531,12 @@
       "struct": [
        {
         "name": "Value",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -14117,26 +14588,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -15163,6 +15640,7 @@
       "struct": [
        {
         "name": "Ambient Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15189,6 +15667,7 @@
        },
        {
         "name": "Directional Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15215,6 +15694,7 @@
        },
        {
         "name": "Fog Color Near",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15241,34 +15721,42 @@
        },
        {
         "name": "Fog Near",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Far",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Directional Rotation XY",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Directional Rotation Z",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Directional Fade",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Clip Distance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Power",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 32
@@ -15276,6 +15764,7 @@
        },
        {
         "name": "Fog Color Far",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15302,18 +15791,22 @@
        },
        {
         "name": "Fog Max",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Light Fade Begin",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Light Fade End",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -15321,14 +15814,17 @@
        },
        {
         "name": "Near Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Near Height Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Color High Near",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15355,6 +15851,7 @@
        },
        {
         "name": "Fog Color High Far",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15381,30 +15878,37 @@
        },
        {
         "name": "High Density Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Near Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog Far Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog High Near Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Fog High Far Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Far Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Far Height Range",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -15522,18 +16026,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -15547,18 +16055,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -15629,14 +16141,17 @@
       "struct": [
        {
         "name": "Time",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Radius",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15663,6 +16178,7 @@
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Unknown 0",
@@ -15693,18 +16209,22 @@
        },
        {
         "name": "Falloff Exponent",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "FOV",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Near Clip",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Flicker Effect",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -15724,26 +16244,32 @@
        },
        {
         "name": "Constant",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Scalar",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Exponent",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "God Rays - Near Clip",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Value",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -15813,26 +16339,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -15998,10 +16530,12 @@
       "struct": [
        {
         "name": "Friction",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Restitution",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -16194,26 +16728,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -16430,26 +16970,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -16531,22 +17077,27 @@
       "struct": [
        {
         "name": "Falloff Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Falloff Bias",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Noise UV Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Material UV Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Projection Vector",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -16566,10 +17117,12 @@
        },
        {
         "name": "Normal Dampener",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Single Pass Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -16589,6 +17142,7 @@
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Single Pass"
@@ -16796,6 +17350,7 @@
          "struct": [
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Hostile",
@@ -16836,10 +17391,12 @@
           },
           {
            "name": "Base Cost",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Assoc. Item",
+           "optional": true,
            "type": {
             "union": [
              {
@@ -16883,6 +17440,7 @@
           },
           {
            "name": "Magic Skill (unused)",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 4
@@ -16890,14 +17448,17 @@
           },
           {
            "name": "Resist Value",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Counter Effect count",
+           "optional": true,
            "type": "u16"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 2
@@ -16905,26 +17466,32 @@
           },
           {
            "name": "Casting Light",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Taper Weight",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Hit Shader",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Enchant Shader",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Minimum Skill Level",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Spellmaking",
+           "optional": true,
            "type": {
             "struct": [
              {
@@ -16940,62 +17507,77 @@
           },
           {
            "name": "Taper Curve",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Taper Duration",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Second AV Weight",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "wbMGEFType",
+           "optional": true,
            "type": "wbMGEFType"
           },
           {
            "name": "wbActorValue",
+           "optional": true,
            "type": "wbActorValue"
           },
           {
            "name": "Projectile",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Casting Type",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Delivery",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "wbActorValue",
+           "optional": true,
            "type": "wbActorValue"
           },
           {
            "name": "Casting Art",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Hit Effect Art",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Impact Data",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Skill Usage Multiplier",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Dual Casting",
+           "optional": true,
            "type": {
             "struct": [
              {
@@ -17011,10 +17593,12 @@
           },
           {
            "name": "Enchant Art",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 4
@@ -17022,6 +17606,7 @@
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 4
@@ -17029,22 +17614,27 @@
           },
           {
            "name": "Equip Ability",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Image Space Modifier",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Perk to Apply",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Casting Sound Level",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Script Effect AI",
+           "optional": true,
            "type": {
             "struct": [
              {
@@ -17256,18 +17846,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -17281,18 +17875,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -17369,10 +17967,12 @@
       "struct": [
        {
         "name": "Value",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Weight",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -17430,26 +18030,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -17571,114 +18177,142 @@
       "struct": [
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Walk - Left",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Run - Left",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Walk - Right",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Run - Right",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Walk - Forward",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Run - Forward",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Sprint - Forward",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Walk - Back",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Run - Back",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Standing - Pitch",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Walk - Pitch",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Run - Pitch",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Sprint - Pitch",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Standing - Yaw",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Walk - Yaw",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Run - Yaw",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Sprint - Yaw",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -17784,18 +18418,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -17809,18 +18447,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -17923,26 +18565,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -19378,18 +20026,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -19403,18 +20055,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -19524,18 +20180,22 @@
          "struct": [
           {
            "name": "Include Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Property Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Level Min",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -19543,10 +20203,12 @@
           },
           {
            "name": "Level Max",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -19554,28 +20216,34 @@
           },
           {
            "name": "Addon Index",
+           "optional": true,
            "type": "i16"
           },
           {
            "name": "Default",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Keywords",
+           "optional": true,
            "type": {
             "array": "formid"
            }
           },
           {
            "name": "Min Level For Ranks",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Alt Levels Per Tier",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Includes",
+           "optional": true,
            "type": {
             "array": {
              "struct": [
@@ -19601,6 +20269,7 @@
           },
           {
            "name": "wbObjectModProperties",
+           "optional": true,
            "type": "wbObjectModProperties"
           }
          ]
@@ -19645,10 +20314,12 @@
          "struct": [
           {
            "name": "Value",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Color",
+           "optional": true,
            "type": {
             "struct": [
              {
@@ -19675,6 +20346,7 @@
           },
           {
            "name": "Template Color Index",
+           "optional": true,
            "type": "i16"
           }
          ]
@@ -19719,6 +20391,7 @@
       "struct": [
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Female",
@@ -19759,10 +20432,12 @@
        },
        {
         "name": "XP Value Offset",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Level",
+        "optional": true,
         "type": {
          "union": [
           {
@@ -19778,18 +20453,22 @@
        },
        {
         "name": "Calc min level",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Calc max level",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Disposition Base",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Use Template Actors",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Traits",
@@ -19811,10 +20490,12 @@
        },
        {
         "name": "Bleedout Override",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -19831,6 +20512,7 @@
       "struct": [
        {
         "name": "Aggression",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -19843,6 +20525,7 @@
        },
        {
         "name": "Confidence",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -19856,10 +20539,12 @@
        },
        {
         "name": "Energy Level",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Responsibility",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -19872,6 +20557,7 @@
        },
        {
         "name": "Mood",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -19888,6 +20574,7 @@
        },
        {
         "name": "Assistance",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -19899,6 +20586,7 @@
        },
        {
         "name": "Aggro",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -19926,6 +20614,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -20229,26 +20918,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -21296,14 +21991,17 @@
       "struct": [
        {
         "name": "Data Input Count",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Package Template",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Version Counter (autoincremented)",
+        "optional": true,
         "type": "u32"
        }
       ]
@@ -21317,10 +22015,12 @@
       "struct": [
        {
         "name": "General Flags",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -21331,6 +22031,7 @@
        },
        {
         "name": "Interrupt Override",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -21347,6 +22048,7 @@
        },
        {
         "name": "Preferred Speed",
+        "optional": true,
         "type": {
          "enum": "u8",
          "values": {
@@ -21359,6 +22061,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 1
@@ -21366,10 +22069,12 @@
        },
        {
         "name": "Interrupt Flags",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -21386,10 +22091,12 @@
       "struct": [
        {
         "name": "Month",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Day of week",
+        "optional": true,
         "type": {
          "enum": "i8",
          "values": {
@@ -21409,18 +22116,22 @@
        },
        {
         "name": "Date",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Hour",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Minute",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Unused",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 3
@@ -21428,6 +22139,7 @@
        },
        {
         "name": "Duration (minutes)",
+        "optional": true,
         "type": "i32"
        }
       ]
@@ -21540,6 +22252,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -21559,6 +22272,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -21915,6 +22629,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -21934,6 +22649,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -22290,6 +23006,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -22309,6 +23026,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -22665,6 +23383,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -22684,6 +23403,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -23250,22 +23970,27 @@
       "struct": [
        {
         "name": "Trait",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Level",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Num Ranks",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Playable",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Hidden",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -23408,6 +24133,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -23427,6 +24153,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -23783,6 +24510,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -23802,6 +24530,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -24158,6 +24887,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -24177,6 +24907,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -24616,6 +25347,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -24635,6 +25367,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -25038,18 +25771,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -25063,18 +25800,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -25322,26 +26063,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -26354,114 +27101,142 @@
          "struct": [
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Walk - Left",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Run - Left",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Walk - Right",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Run - Right",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Walk - Forward",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Run - Forward",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Sprint - Forward",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Walk - Back",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Run - Back",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Standing - Pitch",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Walk - Pitch",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Run - Pitch",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Sprint - Pitch",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Standing - Yaw",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Walk - Yaw",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Run - Yaw",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Sprint - Yaw",
+           "optional": true,
            "type": "f32"
           }
          ]
@@ -26694,6 +27469,7 @@
          "struct": [
           {
            "name": "Role",
+           "optional": true,
            "type": {
             "enum": "u16",
             "values": {
@@ -26707,6 +27483,7 @@
           },
           {
            "name": "Perspective",
+           "optional": true,
            "type": {
             "enum": "u16",
             "values": {
@@ -26802,14 +27579,17 @@
       "struct": [
        {
         "name": "Male Height",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Female Height",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Male Default Weight",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -26829,6 +27609,7 @@
        },
        {
         "name": "Female Default Weight",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -26848,6 +27629,7 @@
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Playable",
@@ -26888,14 +27670,17 @@
        },
        {
         "name": "Acceleration Rate",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Deceleration Rate",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Size",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -26908,6 +27693,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 8
@@ -26915,38 +27701,47 @@
        },
        {
         "name": "Injured Health Pct",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Shield Biped Object",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Beard Biped Object",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Body Biped Object",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "Aim Angle Tolerance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Flight Radius",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Angular Acceleration Rate",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Angular Tolerance",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Flags 2",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Use Advanced Avoidance",
@@ -26978,6 +27773,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 36
@@ -26985,94 +27781,117 @@
        },
        {
         "name": "Pipboy Biped Object",
+        "optional": true,
         "type": "i32"
        },
        {
         "name": "XP Value",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Severable - Debris Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Severable - Debris Count",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Severable - Decal Count",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Explodable - Debris Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Explodable - Debris Count",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Explodable - Decal Count",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Severable - Explosion",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Severable - Debris",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Severable - Impact DataSet",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Explodable - Explosion",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Explodable - Debris",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Explodable - Impact DataSet",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "OnCripple - Debris Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "OnCripple - Debris Count",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "OnCripple - Decal Count",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "OnCripple - Explosion",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "OnCripple - Debris",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "OnCripple - Impact DataSet",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Explodable - Subsegment Explosion",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Orientation Limits - Pitch",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Orientation Limits - Roll",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -27524,6 +28343,7 @@
          "struct": [
           {
            "name": "Type",
+           "optional": true,
            "type": {
             "enum": "u8",
             "values": {
@@ -27632,6 +28452,7 @@
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -27794,6 +28615,7 @@
       "struct": [
        {
         "name": "Position",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -27813,6 +28635,7 @@
        },
        {
         "name": "Rotation",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -28826,6 +29649,7 @@
          "struct": [
           {
            "name": "Type",
+           "optional": true,
            "type": {
             "enum": "u32",
             "values": {
@@ -28850,6 +29674,7 @@
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Override"
@@ -28859,10 +29684,12 @@
           },
           {
            "name": "Priority",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": "bytes"
           }
          ]
@@ -29143,18 +29970,22 @@
       "struct": [
        {
         "name": "Red",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Green",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Blue",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 1
@@ -29264,50 +30095,62 @@
       "struct": [
        {
         "name": "Decay Time (ms)",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "HF Reference (Hz)",
+        "optional": true,
         "type": "u16"
        },
        {
         "name": "Room Filter",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Room HF Filter",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Reflections",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Reverb Amp",
+        "optional": true,
         "type": "i8"
        },
        {
         "name": "Decay HF Ratio",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Reflect Delay (ms), scaled",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Reverb Delay (ms)",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Diffusion %",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Density %",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -29334,14 +30177,17 @@
       "struct": [
        {
         "name": "Effect Art",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Shader",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Rotate to Face Target",
@@ -30306,26 +31152,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -31071,26 +31923,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -31152,14 +32010,17 @@
          "struct": [
           {
            "name": "Magnitude",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Area",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Duration",
+           "optional": true,
            "type": "u32"
           }
          ]
@@ -31218,26 +32079,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -31251,10 +32118,12 @@
       "struct": [
        {
         "name": "Base Cost",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Manual Cost Calc",
@@ -31295,6 +32164,7 @@
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -31315,26 +32185,32 @@
        },
        {
         "name": "Charge Time",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Cast Type",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Target Type",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Cast Duration",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Casting Perk",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -31355,10 +32231,12 @@
       "struct": [
        {
         "name": "Gravity Velocity",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31366,10 +32244,12 @@
        },
        {
         "name": "Rotation Velocity",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31377,18 +32257,22 @@
        },
        {
         "name": "Particle Size X",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Center Offset Min",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Particle Size Y",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31396,10 +32280,12 @@
        },
        {
         "name": "Center Offset Min",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31407,10 +32293,12 @@
        },
        {
         "name": "Center Offset Max",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31418,10 +32306,12 @@
        },
        {
         "name": "Initial Rotation",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31429,10 +32319,12 @@
        },
        {
         "name": "# of Subtextures X",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31440,10 +32332,12 @@
        },
        {
         "name": "# of Subtextures Y",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31451,6 +32345,7 @@
        },
        {
         "name": "Type",
+        "optional": true,
         "type": {
          "enum": "u32",
          "values": {
@@ -31461,6 +32356,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31468,10 +32364,12 @@
        },
        {
         "name": "Box Size",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 4
@@ -31479,10 +32377,12 @@
        },
        {
         "name": "Particle Density",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "unknown",
+        "optional": true,
         "type": "bytes"
        }
       ]
@@ -31593,18 +32493,22 @@
       "struct": [
        {
         "name": "Max Angle (30-120)",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Material",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Leaf Amplitude",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Leaf Frequency",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -31986,26 +32890,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -32161,18 +33071,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -32186,18 +33100,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -32300,26 +33218,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -32650,26 +33574,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -32826,14 +33756,17 @@
       "struct": [
        {
         "name": "Version",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Number of Records",
+        "optional": true,
         "type": "u32"
        },
        {
         "name": "Next Object ID",
+        "optional": true,
         "type": "u32"
        }
       ]
@@ -32957,50 +33890,62 @@
       "struct": [
        {
         "name": "Trunk Flexibility",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Branch Flexibility",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Leaf Amplitude",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Leaf Frequency",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -33026,26 +33971,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -33141,18 +34092,22 @@
       "struct": [
        {
         "name": "wbPosRot",
+        "optional": true,
         "type": "wbPosRot"
        },
        {
         "name": "Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Zoom Min",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Zoom Max",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -33355,26 +34310,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -33432,6 +34393,7 @@
       "struct": [
        {
         "name": "Fog Properties",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -33557,6 +34519,7 @@
        },
        {
         "name": "Physical Properties",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -33641,6 +34604,7 @@
        },
        {
         "name": "Specular Properties",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -33676,6 +34640,7 @@
        },
        {
         "name": "Noise Properties",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -33743,6 +34708,7 @@
        },
        {
         "name": "Silt Properties",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -33806,6 +34772,7 @@
        },
        {
         "name": "Screen Space Reflections",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -34032,18 +34999,22 @@
          "struct": [
           {
            "name": "Health %",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Index",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Model Damage Stage",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Cap Damage",
@@ -34057,18 +35028,22 @@
           },
           {
            "name": "Self Damage per Second",
+           "optional": true,
            "type": "i32"
           },
           {
            "name": "Explosion",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris",
+           "optional": true,
            "type": "formid"
           },
           {
            "name": "Debris Count",
+           "optional": true,
            "type": "i32"
           }
          ]
@@ -34206,18 +35181,22 @@
          "struct": [
           {
            "name": "Include Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Property Count",
+           "optional": true,
            "type": "u32"
           },
           {
            "name": "Level Min",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -34225,10 +35204,12 @@
           },
           {
            "name": "Level Max",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Unused",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -34236,28 +35217,34 @@
           },
           {
            "name": "Addon Index",
+           "optional": true,
            "type": "i16"
           },
           {
            "name": "Default",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Keywords",
+           "optional": true,
            "type": {
             "array": "formid"
            }
           },
           {
            "name": "Min Level For Ranks",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Alt Levels Per Tier",
+           "optional": true,
            "type": "u8"
           },
           {
            "name": "Includes",
+           "optional": true,
            "type": {
             "array": {
              "struct": [
@@ -34283,6 +35270,7 @@
           },
           {
            "name": "wbObjectModProperties",
+           "optional": true,
            "type": "wbObjectModProperties"
           }
          ]
@@ -34741,26 +35729,32 @@
       "struct": [
        {
         "name": "X1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z1",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "X2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Y2",
+        "optional": true,
         "type": "i16"
        },
        {
         "name": "Z2",
+        "optional": true,
         "type": "i16"
        }
       ]
@@ -34863,10 +35857,12 @@
          "struct": [
           {
            "name": "X",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Y",
+           "optional": true,
            "type": "f32"
           }
          ]
@@ -34880,10 +35876,12 @@
          "struct": [
           {
            "name": "X",
+           "optional": true,
            "type": "f32"
           },
           {
            "name": "Y",
+           "optional": true,
            "type": "f32"
           }
          ]
@@ -34963,6 +35961,7 @@
          "struct": [
           {
            "name": "Flags",
+           "optional": true,
            "type": {
             "bits": {
              "0": "Use Land Data",
@@ -34977,6 +35976,7 @@
           },
           {
            "name": "Unknown",
+           "optional": true,
            "type": {
             "array": "u8",
             "count": 1
@@ -35221,18 +36221,22 @@
       "struct": [
        {
         "name": "World Map Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Cell X Offset",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Cell Y Offset",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Cell Z Offset",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -35573,10 +36577,12 @@
       "struct": [
        {
         "name": "Wind Speed",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "array": "u8",
          "count": 2
@@ -35584,38 +36590,47 @@
        },
        {
         "name": "Trans Delta",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Sun Glare",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Sun Damage",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Precipitation - Begin Fade In",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Precipitation - End Fade Out",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Thunder/Lightning - Begin Fade In",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Thunder/Lightning - End Fade Out",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Thunder/Lightning - Frequency",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Flags",
+        "optional": true,
         "type": {
          "bits": {
           "0": "Weather - Pleasant",
@@ -35632,6 +36647,7 @@
        },
        {
         "name": "Lightning Color",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -35651,22 +36667,27 @@
        },
        {
         "name": "Visual Effect - Begin",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Visual Effect - End",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Wind Direction",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Wind Direction Range",
+        "optional": true,
         "type": "u8"
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": "u8"
        }
       ]
@@ -35698,74 +36719,92 @@
       "struct": [
        {
         "name": "Day - Near",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - Far",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Near",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Far",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - Power",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Power",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - Max",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Max",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - Near Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - Near Height Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Near Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Near Height Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - High Density Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - High Density Scale",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - Far Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Day - Far Height Range",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Far Height Mid",
+        "optional": true,
         "type": "f32"
        },
        {
         "name": "Night - Far Height Range",
+        "optional": true,
         "type": "f32"
        }
       ]
@@ -35803,34 +36842,42 @@
       "struct": [
        {
         "name": "Sunrise",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Day",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Sunset",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "Night",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "EarlySunrise",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "LateSunrise",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "EarlySunset",
+        "optional": true,
         "type": "formid"
        },
        {
         "name": "LateSunset",
+        "optional": true,
         "type": "formid"
        }
       ]
@@ -35880,6 +36927,7 @@
       "struct": [
        {
         "name": "Sky-Upper",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -36095,6 +37143,7 @@
        },
        {
         "name": "Fog Near",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -36310,6 +37359,7 @@
        },
        {
         "name": "Unknown",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -36525,6 +37575,7 @@
        },
        {
         "name": "Ambient",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -36740,6 +37791,7 @@
        },
        {
         "name": "Sunlight",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -36955,6 +38007,7 @@
        },
        {
         "name": "Sun",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -37170,6 +38223,7 @@
        },
        {
         "name": "Stars",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -37385,6 +38439,7 @@
        },
        {
         "name": "Sky-Lower",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -37600,6 +38655,7 @@
        },
        {
         "name": "Horizon",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -37815,6 +38871,7 @@
        },
        {
         "name": "Effect Lighting",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -38030,6 +39087,7 @@
        },
        {
         "name": "Cloud LOD Diffuse",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -38245,6 +39303,7 @@
        },
        {
         "name": "Cloud LOD Ambient",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -38460,6 +39519,7 @@
        },
        {
         "name": "Fog Far",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -38675,6 +39735,7 @@
        },
        {
         "name": "Sky Statics",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -38890,6 +39951,7 @@
        },
        {
         "name": "Water Multiplier",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -39105,6 +40167,7 @@
        },
        {
         "name": "Sun Glare",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -39320,6 +40383,7 @@
        },
        {
         "name": "Moon Glare",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -39535,6 +40599,7 @@
        },
        {
         "name": "Fog Near High",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -39750,6 +40815,7 @@
        },
        {
         "name": "Fog Far High",
+        "optional": true,
         "type": {
          "struct": [
           {
@@ -40234,6 +41300,7 @@
    "struct": [
     {
      "name": "Aggression",
+     "optional": true,
      "type": {
       "enum": "u8",
       "values": {
@@ -40246,6 +41313,7 @@
     },
     {
      "name": "Confidence",
+     "optional": true,
      "type": {
       "enum": "u8",
       "values": {
@@ -40259,10 +41327,12 @@
     },
     {
      "name": "Energy Level",
+     "optional": true,
      "type": "u8"
     },
     {
      "name": "Responsibility",
+     "optional": true,
      "type": {
       "enum": "u8",
       "values": {
@@ -40275,6 +41345,7 @@
     },
     {
      "name": "Mood",
+     "optional": true,
      "type": {
       "enum": "u8",
       "values": {
@@ -40291,6 +41362,7 @@
     },
     {
      "name": "Assistance",
+     "optional": true,
      "type": {
       "enum": "u8",
       "values": {
@@ -40302,6 +41374,7 @@
     },
     {
      "name": "Aggro",
+     "optional": true,
      "type": {
       "struct": [
        {
@@ -40329,6 +41402,7 @@
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": {
       "array": "u8",
       "count": 4
@@ -40442,6 +41516,7 @@
    "struct": [
     {
      "name": "Position",
+     "optional": true,
      "type": {
       "struct": [
        {
@@ -40461,6 +41536,7 @@
     },
     {
      "name": "Rotation",
+     "optional": true,
      "type": {
       "struct": [
        {
@@ -40568,14 +41644,17 @@
    "struct": [
     {
      "name": "Magnitude",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Area",
+     "optional": true,
      "type": "u32"
     },
     {
      "name": "Duration",
+     "optional": true,
      "type": "u32"
     }
    ]
@@ -41132,26 +42211,32 @@
    "struct": [
     {
      "name": "X1",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Y1",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Z1",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "X2",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Y2",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Z2",
+     "optional": true,
      "type": "i16"
     }
    ]
@@ -41160,18 +42245,22 @@
    "struct": [
     {
      "name": "Include Count",
+     "optional": true,
      "type": "u32"
     },
     {
      "name": "Property Count",
+     "optional": true,
      "type": "u32"
     },
     {
      "name": "Level Min",
+     "optional": true,
      "type": "u8"
     },
     {
      "name": "Unused",
+     "optional": true,
      "type": {
       "array": "u8",
       "count": 1
@@ -41179,10 +42268,12 @@
     },
     {
      "name": "Level Max",
+     "optional": true,
      "type": "u8"
     },
     {
      "name": "Unused",
+     "optional": true,
      "type": {
       "array": "u8",
       "count": 1
@@ -41190,28 +42281,34 @@
     },
     {
      "name": "Addon Index",
+     "optional": true,
      "type": "i16"
     },
     {
      "name": "Default",
+     "optional": true,
      "type": "u8"
     },
     {
      "name": "Keywords",
+     "optional": true,
      "type": {
       "array": "formid"
      }
     },
     {
      "name": "Min Level For Ranks",
+     "optional": true,
      "type": "u8"
     },
     {
      "name": "Alt Levels Per Tier",
+     "optional": true,
      "type": "u8"
     },
     {
      "name": "Includes",
+     "optional": true,
      "type": {
       "array": {
        "struct": [
@@ -41237,6 +42334,7 @@
     },
     {
      "name": "wbObjectModProperties",
+     "optional": true,
      "type": "wbObjectModProperties"
     }
    ]
@@ -41810,114 +42908,142 @@
    "struct": [
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Walk - Left",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Run - Left",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Walk - Right",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Run - Right",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Walk - Forward",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Run - Forward",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Sprint - Forward",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Walk - Back",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Run - Back",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Standing - Pitch",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Walk - Pitch",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Run - Pitch",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Sprint - Pitch",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Unknown",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Standing - Yaw",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Walk - Yaw",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Run - Yaw",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Sprint - Yaw",
+     "optional": true,
      "type": "f32"
     }
    ]
@@ -41926,10 +43052,12 @@
    "struct": [
     {
      "name": "Base Cost",
+     "optional": true,
      "type": "u32"
     },
     {
      "name": "Flags",
+     "optional": true,
      "type": {
       "bits": {
        "0": "Manual Cost Calc",
@@ -41970,6 +43098,7 @@
     },
     {
      "name": "Type",
+     "optional": true,
      "type": {
       "enum": "u32",
       "values": {
@@ -41990,26 +43119,32 @@
     },
     {
      "name": "Charge Time",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Cast Type",
+     "optional": true,
      "type": "u32"
     },
     {
      "name": "Target Type",
+     "optional": true,
      "type": "u32"
     },
     {
      "name": "Cast Duration",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Range",
+     "optional": true,
      "type": "f32"
     },
     {
      "name": "Casting Perk",
+     "optional": true,
      "type": "formid"
     }
    ]

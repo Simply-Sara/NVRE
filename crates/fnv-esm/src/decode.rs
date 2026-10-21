@@ -355,8 +355,13 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             let saved_switch = ctx.switch_on.take();
             ctx.switch_on = Some(HashMap::new());
             for f in fields {
-                if f.optional && c.is_empty() {
-                    break;
+                if f.optional {
+                    // The field is skipped when the bytes left are too few
+                    // for it, so a struct may be shorter than its fields.
+                    let need = schema.fixed_size(&f.ty);
+                    if need.is_none_or(|n| c.remaining() < n) {
+                        break;
+                    }
                 }
                 // A count-field array reads its element count from a sibling field
                 // that was decoded earlier in this same struct (xEdit's

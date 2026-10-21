@@ -1170,10 +1170,12 @@ class Converter:
         # members one place along; the list is still found by its shape:
         # a sort key is a list of integers, not of definitions.
         members = None
-        for p in parts[1:]:
+        at = -1
+        for i, p in enumerate(parts[1:], 1):
             candidate = bracket_list(p)
             if candidate and self._is_member_list(candidate):
                 members = candidate
+                at = i
                 break
         if members is None:
             return "bytes", self._note(ctx)
@@ -1185,7 +1187,25 @@ class Converter:
         if not fields:
             return {"struct": []}, self._note(ctx)
         fields = self._resolve_direct_switches(fields, ctx)
+        # A struct that xEdit marks optional may be shorter than its fields:
+        # the arguments after the members are the options, then a flag
+        # saying the struct may be absent, and the fields are read as long
+        # as the data lasts.
+        if self._struct_is_optional(parts, at):
+            for f in fields:
+                f["optional"] = True
         return {"struct": fields}, self._note(ctx)
+
+    def _struct_is_optional(self, parts, at):
+        """Whether xEdit says a struct may be shorter than its fields.
+
+        The arguments after the member list are the options, then a flag
+        saying the struct may be absent, then the version.
+        """
+        if at < 0:
+            return False
+        flag = parts[at + 2].strip() if len(parts) > at + 2 else ""
+        return flag.lower() == "true"
 
     def _resolve_direct_switches(self, fields, ctx):
         """Give a union that switches on a field its own value the cases.
