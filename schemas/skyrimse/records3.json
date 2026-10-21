@@ -1,0 +1,344 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "ARTO": {
+   "confidence": "documented",
+   "name": "Art Object",
+   "note": "UESP, Skyrim Mod:Mod File Format/ARTO. [measured: 201 DNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Art Type",
+     "note": "What the art object is used for: 0 = Magic Casting, 1 = Magic Hit Effect, 2 = Enchantment Effect.",
+     "type": "ARTO_DNAM"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODB, MODT, MODS and MODD fields.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "Always 12 bytes, even when all zero.",
+     "type": "ObjectBounds"
+    }
+   }
+  },
+  "KYWD": {
+   "confidence": "documented",
+   "name": "Keyword",
+   "note": "UESP, Skyrim Mod:Mod File Format/KYWD. [measured: 199 CNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Colour",
+     "note": "The colour used to identify the keyword in the editor.",
+     "type": "KYWD_CNAM"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
+  "MSTT": {
+   "confidence": "documented",
+   "name": "Movement Type",
+   "note": "UESP, Skyrim Mod:Mod File Format/MSTT. [measured: 90 MODS fields in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "On Local Map",
+     "note": "Whether the movement type applies on the local map.",
+     "type": "u8"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures.",
+     "type": "bytes"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "The sound the movement type plays.",
+     "type": "formid"
+    }
+   }
+  },
+  "RFCT": {
+   "confidence": "documented",
+   "name": "Reference Effect",
+   "note": "UESP, Skyrim Mod:Mod File Format/RFCT. [measured: 103 DATA fields in Skyrim.esm, each 12 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The effect's data.",
+     "type": "RFCT_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
+  "TXST": {
+   "confidence": "documented",
+   "name": "Texture Set",
+   "note": "UESP, Skyrim Mod:Mod File Format/TXST. The textures have a numbered signature: TX00 is the colour map, TX01 the normal map, TX02 the mask, TX03 the tone or glow map, TX04 the detail map, TX05 the environment map, TX06 the multilayer map, which does not occur in Skyrim.esm, and TX07 the glow map. [measured: 186 TX07 fields in Skyrim.esm]",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The texture set's flags. Bit 0 means there is no specular map.",
+     "type": {
+      "bits": {
+       "0": "No Specular Map"
+      },
+      "flags": "u16"
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The bounds, as six int16 values.",
+     "type": "TXST_OBND"
+    },
+    "TX00": {
+     "confidence": "documented",
+     "name": "Colour Map",
+     "note": "The colour map's path.",
+     "type": "zstring"
+    },
+    "TX01": {
+     "confidence": "documented",
+     "name": "Normal Map",
+     "note": "The normal map's path, in tangent or model space.",
+     "type": "zstring"
+    },
+    "TX02": {
+     "confidence": "documented",
+     "name": "Mask",
+     "note": "The mask's path, for the environment or the light.",
+     "type": "zstring"
+    },
+    "TX03": {
+     "confidence": "documented",
+     "name": "Tone Map",
+     "note": "The tone map's path for skins, or the glow map's path for things.",
+     "type": "zstring"
+    },
+    "TX04": {
+     "confidence": "documented",
+     "name": "Detail Map",
+     "note": "The detail map's path, for the roughness, complexion or age.",
+     "type": "zstring"
+    },
+    "TX05": {
+     "confidence": "documented",
+     "name": "Environment Map",
+     "note": "The environment map's path, mostly cubemaps.",
+     "type": "zstring"
+    },
+    "TX06": {
+     "confidence": "documented",
+     "name": "Multilayer Map",
+     "note": "The multilayer map's path. It does not occur in Skyrim.esm.",
+     "type": "zstring"
+    },
+    "TX07": {
+     "confidence": "documented",
+     "name": "Glow Map",
+     "note": "The glow map's path.",
+     "type": "zstring"
+    }
+   }
+  }
+ },
+ "types": {
+  "ARTO_DNAM": {
+   "enum": "u32",
+   "values": {
+    "0": "Magic Casting",
+    "1": "Magic Hit Effect",
+    "2": "Enchantment Effect"
+   }
+  },
+  "KYWD_CNAM": {
+   "struct": [
+    {
+     "name": "r",
+     "note": "The red channel.",
+     "type": "u8"
+    },
+    {
+     "name": "g",
+     "note": "The green channel.",
+     "type": "u8"
+    },
+    {
+     "name": "b",
+     "note": "The blue channel.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Always zero.",
+     "type": "u8"
+    }
+   ]
+  },
+  "RFCT_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "The effect's flags.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "u32"
+    }
+   ]
+  },
+  "TXST_OBND": {
+   "struct": [
+    {
+     "name": "x1",
+     "type": "i16"
+    },
+    {
+     "name": "y1",
+     "type": "i16"
+    },
+    {
+     "name": "z1",
+     "type": "i16"
+    },
+    {
+     "name": "x2",
+     "type": "i16"
+    },
+    {
+     "name": "y2",
+     "type": "i16"
+    },
+    {
+     "name": "z2",
+     "type": "i16"
+    }
+   ]
+  },
+  "WTHR_DALC": {
+   "struct": [
+    {
+     "name": "sunrise",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "day",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "sunset",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "night",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}
