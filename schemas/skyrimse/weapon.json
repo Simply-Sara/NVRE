@@ -144,6 +144,7 @@
   },
   "WEAP": {
    "confidence": "documented",
+   "merge": true,
    "name": "Weapon",
    "note": "UESP, Skyrim Mod:Mod File Format/WEAP. [measured: 2,484 WEAP records in Skyrim.esm; DATA is 10 bytes, CRDT is 24 and DNAM is 100]",
    "subrecords": {
@@ -168,7 +169,7 @@
     "CRDT": {
      "confidence": "documented",
      "name": "Critical Damage",
-     "note": "The weapon's critical damage, multiplier and effect.",
+     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. The Special Edition's CRDT is 24 bytes; the base's is Fallout's 16-byte form. [measured: 24 bytes in every CRDT field in Skyrim.esm]",
      "type": "WEAP_CRDT"
     },
     "DATA": {
@@ -385,12 +386,17 @@
      }
     },
     {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "u32"
+    },
+    {
      "name": "critical_spell",
      "note": "The critical spell effect (SPEL).",
      "type": "formid"
     },
     {
-     "name": "unknown2",
+     "name": "unknown3",
      "note": "Unknown.",
      "type": "u32"
     }

@@ -3,6 +3,7 @@
  "records": {
   "RACE": {
    "confidence": "documented",
+   "merge": true,
    "name": "Race",
    "note": "UESP, Skyrim Mod:Mod File Format/RACE. A race carries a general stats struct, the models for each sex, the movement type names, the tint fieldsets and the biped object names. [measured: all 99 RACE records in Skyrim.esm are v44 and their DATA is 164 bytes]",
    "subrecords": {
@@ -305,8 +306,24 @@
      "name": "Facial Expression Weight",
      "note": "The weights for the points on the face. [measured: 172 of the PHWT fields in Skyrim.esm are 32 bytes, which is eight floats, and the rest are 64 bytes, which is sixteen; dragons have only eight and humanoids sixteen]",
      "type": {
-      "array": "f32",
-      "count": 8
+      "union": [
+       {
+        "name": "Eight Points",
+        "size": 32,
+        "type": {
+         "array": "f32",
+         "count": 8
+        }
+       },
+       {
+        "name": "Sixteen Points",
+        "size": 64,
+        "type": {
+         "array": "f32",
+         "count": 16
+        }
+       }
+      ]
      }
     },
     "PNAM": {
