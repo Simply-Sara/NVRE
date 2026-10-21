@@ -1183,6 +1183,12 @@ class Converter:
             return {"struct": []}, self._note(ctx)
         if kind in ("wbStruct", "wbStructSK", "wbStructExSK"):
             return self._convert_struct(parts, ctx)
+        if kind in ("wbStructs", "wbStructsSK"):
+            # `wbStructs(SIG, name, kind, [members])` is one subrecord of
+            # that signature holding a struct of that kind, and
+            # `wbStructs(name, kind, [members])` is the same without a
+            # signature. Either way the layout is a struct.
+            return self._convert_struct(parts, ctx)
         if kind in ("wbArray", "wbArrayS"):
             return self._convert_array(parts, ctx)
         if kind == "wbUnion":
@@ -1710,6 +1716,18 @@ class Converter:
                 args = ""
             parts = split_args(args) if args is not None else []
             first = parts[0].strip() if parts else ""
+            # A group may open with a signature — `wbStructs(CVPA, 'Components',
+            # 'Component', [...])` is the `CVPA` subrecord and the group
+            # around it — so the kind settles it, not the first argument.
+            # A `wbStructs` with a signature is the subrecord itself, and
+            # not a group, so it does not settle it that way.
+            if (
+                mname in GROUP_KINDS
+                and len(parts) > 1
+                and not (mname in ("wbStructs", "wbStructsSK") and is_signature(first))
+            ):
+                self.convert_group(sig, mname, parts, args, flat, blocks)
+                continue
             if not is_signature(first):
                 if mname in GROUP_KINDS:
                     self.convert_group(sig, mname, parts, args, flat, blocks)

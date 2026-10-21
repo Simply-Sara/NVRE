@@ -18940,6 +18940,23 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MISC.CDIX",
      "type": "bytes"
     },
+    "CVPA": {
+     "confidence": "documented",
+     "name": "Components",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MISC.CVPA",
+     "type": {
+      "struct": [
+       {
+        "name": "Component",
+        "type": "formid"
+       },
+       {
+        "name": "Count",
+        "type": "u32"
+       }
+      ]
+     }
+    },
     "DATA": {
      "confidence": "documented",
      "name": "Data",
@@ -37845,6 +37862,23 @@
        {
         "name": "Crit Effect",
         "type": "formid"
+       }
+      ]
+     }
+    },
+    "DAMA": {
+     "confidence": "documented",
+     "name": "Damage Types",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.DAMA",
+     "type": {
+      "struct": [
+       {
+        "name": "Type",
+        "type": "formid"
+       },
+       {
+        "name": "Amount",
+        "type": "u32"
        }
       ]
      }
