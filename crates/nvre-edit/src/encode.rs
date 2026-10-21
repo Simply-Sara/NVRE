@@ -89,15 +89,12 @@ fn repeated_name(fields: &[fnv_esm::schema::Field]) -> Option<String> {
     None
 }
 
-/// Encode `value` according to `t`, appending to `out`.
-///
-/// `path` is the field path used in error messages ("DATA.rotation_radians.z").
-/// The record's own format version, which a union may switch on.
-///
-/// xEdit's `wbDeciderFormVersion99` reads the record header's form
-/// version and picks the later shape when it is 99 or more. The encoder
-/// needs the version of the record it is writing, so it is kept here for
-/// the length of the write.
+// The record's own format version, which a union may switch on.
+//
+// xEdit's `wbDeciderFormVersion99` reads the record header's form version
+// and picks the later shape when it is 99 or more. The encoder needs the
+// version of the record it is writing, so it is kept here for the length
+// of the write.
 thread_local! {
     static FORM_VERSION: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
@@ -125,6 +122,9 @@ impl Drop for FormVersionGuard {
     }
 }
 
+/// Encode `value` according to `t`, appending to `out`.
+///
+/// `path` is the field path used in error messages ("DATA.rotation_radians.z").
 pub fn encode_type(
     schema: &Schema,
     t: &TypeDef,

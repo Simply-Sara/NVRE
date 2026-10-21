@@ -1080,12 +1080,18 @@
             "type": "u16"
            },
            {
+            "expose": true,
             "name": "DTUnknown",
             "type": "u32"
            },
            {
             "name": "Door",
             "type": {
+             "cases": {
+              "0": 0
+             },
+             "default": 0,
+             "switch_on": "DTUnknown",
              "union": [
               {
                "size": 0,
@@ -11879,12 +11885,18 @@
             "type": "u16"
            },
            {
+            "expose": true,
             "name": "DTUnknown",
             "type": "u32"
            },
            {
             "name": "Door",
             "type": {
+             "cases": {
+              "0": 0
+             },
+             "default": 0,
+             "switch_on": "DTUnknown",
              "union": [
               {
                "size": 0,
@@ -20523,12 +20535,18 @@
             "type": "u16"
            },
            {
+            "expose": true,
             "name": "DTUnknown",
             "type": "u32"
            },
            {
             "name": "Door",
             "type": {
+             "cases": {
+              "0": 0
+             },
+             "default": 0,
+             "switch_on": "DTUnknown",
              "union": [
               {
                "size": 0,
@@ -35558,12 +35576,18 @@
             "type": "u16"
            },
            {
+            "expose": true,
             "name": "DTUnknown",
             "type": "u32"
            },
            {
             "name": "Door",
             "type": {
+             "cases": {
+              "0": 0
+             },
+             "default": 0,
+             "switch_on": "DTUnknown",
              "union": [
               {
                "size": 0,
@@ -45834,12 +45858,18 @@
          "type": "u16"
         },
         {
+         "expose": true,
          "name": "DTUnknown",
          "type": "u32"
         },
         {
          "name": "Door",
          "type": {
+          "cases": {
+           "0": 0
+          },
+          "default": 0,
+          "switch_on": "DTUnknown",
           "union": [
            {
             "size": 0,

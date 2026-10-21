@@ -502,6 +502,21 @@ class Converter:
                 "bits": [],
                 "direct": False,
             }
+        # A comparison against zero the other way round: `if i <> 0 then
+        # Result := 1` — the later variant when the value is not zero.
+        zm = re.search(
+            r"(\w+)\s*:=\s*(\w+)\.NativeValue\s*;.*?if\s+\1\s*<>\s*0\s+then\s*Result\s*:=\s*(\d+)",
+            body,
+            re.S,
+        )
+        if zm:
+            return {
+                "switch": switch,
+                "cases": {"0": 0},
+                "bits": [],
+                "direct": False,
+                "default": int(zm.group(3)),
+            }
         # A comparison against a value, where the value is held in a local
         # that was filled from the field: `ObjFormat := Container.ElementNative
         # Values['Object Format']; if ObjFormat = 1 then Result := 1;`.
@@ -2060,6 +2075,11 @@ class Converter:
                     # The record's own format version decides: the later
                     # variant when the version is at least the minimum.
                     union["min_version"] = d["min_version"]
+                else:
+                    # The decider may name the variant to use when no case
+                    # matches: `if i <> 0 then Result := 1` puts the later
+                    # variant to use for every value but zero.
+                    union["default"] = d.get("default", 0)
         return union, self._note(ctx)
 
     # -- a record -----------------------------------------------------------

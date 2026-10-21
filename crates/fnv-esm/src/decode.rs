@@ -162,16 +162,28 @@ fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, Stri
             Value::from(formid_str(v))
         }
         Prim::ZString => {
+            // The text runs to the first NUL, and what follows it belongs
+            // to the next field: a debris model's data holds a percentage,
+            // the model's file name and a flag, and the name ends at its
+            // own NUL.
             let rest = c.bytes(c.remaining()).unwrap();
-            if rest.last() != Some(&0) && !rest.is_empty() {
-                // Not terminated: keep the text but flag it via an error so the
-                // definition gets reviewed.
-                return Err(format!(
-                    "zstring not NUL-terminated: {:?}",
-                    cp1252::decode(rest)
-                ));
-            }
-            Value::from(cp1252::decode_z(rest))
+            let n = match rest.iter().position(|b| *b == 0) {
+                Some(n) => n,
+                None => {
+                    if rest.is_empty() {
+                        return Ok(Value::from(String::new()));
+                    }
+                    // Not terminated: flag it so the definition gets reviewed.
+                    return Err(format!(
+                        "zstring not NUL-terminated: {:?}",
+                        cp1252::decode(rest)
+                    ));
+                }
+            };
+            let text = cp1252::decode(&rest[..n]);
+            // Put back what was read past the NUL.
+            c.pos -= rest.len() - n - 1;
+            Value::from(text)
         }
         Prim::ZStringArray => {
             let rest = c.bytes(c.remaining()).unwrap();
