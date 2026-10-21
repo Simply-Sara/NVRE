@@ -3,6 +3,7 @@
  "records": {
   "EQUP": {
    "confidence": "documented",
+   "merge": true,
    "name": "Equipment",
    "note": "UESP, Skyrim Mod:Mod File Format/EQUP. [measured: 7 DATA fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -38,8 +39,41 @@
     }
    }
   },
+  "EXPL": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Explosion",
+   "note": "UESP, Skyrim Mod:Mod File Format/EXPL. [measured: 143 DATA fields in Skyrim.esm, 40, 44, 48 or 52 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The explosion's data. Its layout is not documented.",
+     "type": "EXPL_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "Always 12 bytes, even when all zero.",
+     "type": "ObjectBounds"
+    }
+   }
+  },
   "LCTN": {
    "confidence": "documented",
+   "merge": true,
    "name": "Location",
    "note": "UESP, Skyrim Mod:Mod File Format/LCTN. [measured: 12 NAM0 and 9 FNAM fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -162,6 +196,7 @@
   },
   "MISC": {
    "confidence": "documented",
+   "merge": true,
    "name": "Miscellaneous",
    "note": "UESP, Skyrim Mod:Mod File Format/MISC. [measured: 13 MODS and 11 VMAD fields in Skyrim.esm]",
    "subrecords": {
@@ -256,6 +291,7 @@
   },
   "PROJ": {
    "confidence": "documented",
+   "merge": true,
    "name": "Projectile",
    "note": "UESP, Skyrim Mod:Mod File Format/PROJ. [measured: 12 NAM2 fields in Skyrim.esm, 12 to 24 bytes]",
    "subrecords": {
@@ -299,6 +335,7 @@
   },
   "REGN": {
    "confidence": "documented",
+   "merge": true,
    "name": "Region",
    "note": "UESP, Skyrim Mod:Mod File Format/REGN. [measured: 53 RDSA fields in Skyrim.esm, 12 to 708 bytes]",
    "subrecords": {
@@ -415,6 +452,7 @@
   },
   "REVB": {
    "confidence": "documented",
+   "merge": true,
    "name": "Reverb",
    "note": "UESP, Skyrim Mod:Mod File Format/REVB. [measured: 10 DATA fields in Skyrim.esm, each 14 bytes]",
    "subrecords": {
@@ -440,6 +478,7 @@
   },
   "SMQN": {
    "confidence": "documented",
+   "merge": true,
    "name": "Story Manager Quest Node",
    "note": "UESP, Skyrim Mod:Mod File Format/SMQN. [measured: 17 MNAM and 7 FNAM fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -522,6 +561,23 @@
      "type": "u32"
     }
    }
+  }
+ },
+ "types": {
+  "EXPL_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "type": "u32"
+    },
+    {
+     "name": "words",
+     "note": "The rest of the data, whose layout is not documented.",
+     "type": {
+      "array": "u32"
+     }
+    }
+   ]
   }
  }
 }

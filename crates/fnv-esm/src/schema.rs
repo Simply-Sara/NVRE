@@ -1081,6 +1081,13 @@ impl Schema {
         if let Some(Value::Object(recs)) = v.get("records") {
             for (sig, d) in recs {
                 let k = sig4(sig, label)?;
+                // A record in an overlay *replaces* the one it shadows, so the
+                // overlay's copy has to be complete. A record that says
+                // `"merge": true` instead adds to the one it shadows: its own
+                // fields are added or replace their counterparts, and the
+                // shadowed record's other fields stay. That is what a game
+                // needs when only some of a record's fields differ.
+                let merge = d.get("merge").and_then(Value::as_bool) == Some(true);
                 let mut subs = HashMap::new();
                 if let Some(Value::Object(sm)) = d.get("subrecords") {
                     for (ss, sd) in sm {
@@ -1172,6 +1179,11 @@ impl Schema {
         if let Some(Value::Object(recs)) = v.get("records") {
             for (sig, d) in recs {
                 let k = sig4(sig, label)?;
+                // A record that says `"merge": true` adds to the record it
+                // shadows rather than replacing it: its own fields are added
+                // or replace their counterparts, and the shadowed record's
+                // other fields stay.
+                let merge = d.get("merge").and_then(Value::as_bool) == Some(true);
                 let mut subs = HashMap::new();
                 if let Some(Value::Object(sm)) = d.get("subrecords") {
                     for (ss, sd) in sm {
@@ -1211,7 +1223,36 @@ impl Schema {
                         &format!("{label}:{sig}.sequence"),
                     )?,
                 };
-                self.records.insert(k, rd);
+                if merge {
+                    // The shadowed record's other fields stay, and this one's
+                    // own fields replace their counterparts.
+                    match self.records.get_mut(&k) {
+                        Some(prev) => {
+                            prev.subrecords.extend(rd.subrecords);
+                            prev.wildcards.extend(rd.wildcards);
+                            if rd.header_flags.is_empty() {
+                                // keep the shadowed record's header flags
+                            } else {
+                                prev.header_flags = rd.header_flags;
+                                prev.header_flags_confidence = rd.header_flags_confidence;
+                            }
+                            if rd.sequence.is_some() {
+                                prev.sequence = rd.sequence;
+                            }
+                            if !rd.name.is_empty() {
+                                prev.name = rd.name;
+                            }
+                            if !rd.confidence.is_empty() {
+                                prev.confidence = rd.confidence;
+                            }
+                        }
+                        None => {
+                            self.records.insert(k, rd);
+                        }
+                    }
+                } else {
+                    self.records.insert(k, rd);
+                }
             }
         }
         self.files.push(label.to_string());

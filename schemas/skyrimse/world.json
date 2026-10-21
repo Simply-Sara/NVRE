@@ -3,6 +3,7 @@
  "records": {
   "ARMO": {
    "confidence": "documented",
+   "merge": true,
    "name": "Armor",
    "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Skyrim's armor carries a body template, a base value and a weight, and separate male and female models. [measured: 2,762 ARMO records in Skyrim.esm; DATA is 8 bytes and BOD2 is 8 bytes in almost all of them]",
    "subrecords": {
@@ -389,6 +390,7 @@
   },
   "FACT": {
    "confidence": "documented",
+   "merge": true,
    "name": "Faction",
    "note": "UESP, Skyrim Mod:Mod File Format/FACT. [measured: 996 VENV fields in Skyrim.esm]",
    "subrecords": {
@@ -540,6 +542,7 @@
   },
   "LCTN": {
    "confidence": "documented",
+   "merge": true,
    "name": "Location",
    "note": "UESP, Skyrim Mod:Mod File Format/LCTN. A location holds the population that belongs to it: the actors, the unique actors, the static references and the enable points. [measured: 572 LCSR and 354 LCEC fields in Skyrim.esm]",
    "subrecords": {
@@ -687,6 +690,7 @@
   },
   "REFR": {
    "confidence": "documented",
+   "merge": true,
    "name": "Reference",
    "note": "UESP, Skyrim Mod:Mod File Format/REFR. A reference places a base object in the world. INAM means two things: the image space in the header, and the patrol data's idle name in the marker set. The header's INAM is the one decoded here, since the idle name is far rarer. [measured: 10,103 XLIG, 8,783 XLRT, 3,179 PDTO and 2,702 XLIB fields in Skyrim.esm]",
    "subrecords": {
@@ -1132,6 +1136,7 @@
   },
   "WRLD": {
    "confidence": "documented",
+   "merge": true,
    "name": "Worldspace",
    "note": "UESP, Skyrim Mod:Mod File Format/WRLD. A worldspace holds a nested group with a CELL and the exterior cell blocks. [measured: 11,105 RNAM fields in Skyrim.esm, holding the large references that place a base object of object size 512 or greater]",
    "subrecords": {

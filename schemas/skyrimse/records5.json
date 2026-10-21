@@ -3,6 +3,7 @@
  "records": {
   "ASTP": {
    "confidence": "documented",
+   "merge": true,
    "name": "Actor Sleep/Mood",
    "note": "UESP, Skyrim Mod:Mod File Format/ASTP. [measured: 20 DATA fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -51,6 +52,7 @@
   },
   "IPCT": {
    "confidence": "documented",
+   "merge": true,
    "name": "Impact",
    "note": "UESP, Skyrim Mod:Mod File Format/IPCT. [measured: 27 NAM2 fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -106,6 +108,7 @@
   },
   "MATO": {
    "confidence": "documented",
+   "merge": true,
    "name": "Material Object",
    "note": "UESP, Skyrim Mod:Mod File Format/MATO. [measured: 32 DATA fields in Skyrim.esm, 48 bytes in 29 of them]",
    "subrecords": {
@@ -137,6 +140,7 @@
   },
   "SMEN": {
    "confidence": "documented",
+   "merge": true,
    "name": "Story Manager Event",
    "note": "UESP, Skyrim Mod:Mod File Format/SMEN. [measured: 24 of each field in Skyrim.esm]",
    "subrecords": {
@@ -192,6 +196,7 @@
   },
   "SNCT": {
    "confidence": "documented",
+   "merge": true,
    "name": "Sound Category",
    "note": "UESP, Skyrim Mod:Mod File Format/SNCT. [measured: 18 FNAM and 18 VNAM fields in Skyrim.esm, each 4 and 2 bytes]",
    "subrecords": {
@@ -241,6 +246,7 @@
   },
   "SPGD": {
    "confidence": "documented",
+   "merge": true,
    "name": "Precipitation",
    "note": "UESP, Skyrim Mod:Mod File Format/SPGD. [measured: 16 DATA fields in Skyrim.esm]",
    "subrecords": {
@@ -266,6 +272,7 @@
   },
   "TACT": {
    "confidence": "documented",
+   "merge": true,
    "name": "Activator",
    "note": "UESP, Skyrim Mod:Mod File Format/TACT. [measured: 25 FNAM fields in Skyrim.esm, each 2 bytes, and 25 PNAM fields, each 4 bytes]",
    "subrecords": {
@@ -315,6 +322,7 @@
   },
   "WATR": {
    "confidence": "documented",
+   "merge": true,
    "name": "Water",
    "note": "UESP, Skyrim Mod:Mod File Format/WATR. [measured: 33 NAM0 and 33 NAM1 fields in Skyrim.esm, each 12 bytes]",
    "subrecords": {

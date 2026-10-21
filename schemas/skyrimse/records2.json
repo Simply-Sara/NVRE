@@ -156,9 +156,9 @@
    "subrecords": {
     "ANAM": {
      "confidence": "documented",
-     "name": "Animation",
-     "note": "The animation the model plays.",
-     "type": "zstring"
+     "name": "Attenuation Values",
+     "note": "UESP, Skyrim Mod:Mod File Format/SOPM. The attenuation values: four unknown bytes, the minimum and maximum distance, a five-byte curve and three bytes of padding.",
+     "type": "SOPM_ANAM"
     },
     "CNAM": {
      "confidence": "documented",
@@ -427,6 +427,39 @@
      "name": "recovery_time",
      "note": "How long the shout takes to recharge. For the player's dragon shouts it is the total recharge time, and for the others it is usually a small arbitrary number.",
      "type": "f32"
+    }
+   ]
+  },
+  "SOPM_ANAM": {
+   "struct": [
+    {
+     "name": "unknown",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "min_distance",
+     "type": "f32"
+    },
+    {
+     "name": "max_distance",
+     "type": "f32"
+    },
+    {
+     "name": "curve",
+     "type": {
+      "array": "u8",
+      "count": 5
+     }
+    },
+    {
+     "name": "padding",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
     }
    ]
   },

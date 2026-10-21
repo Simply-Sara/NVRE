@@ -3,6 +3,7 @@
  "records": {
   "ACHR": {
    "confidence": "documented",
+   "merge": true,
    "name": "Actor",
    "note": "UESP, Skyrim Mod:Mod File Format/ACHR. An ACHR is an actor placed in the world. [measured: 5,639 XLCN and 2,701 XLRT fields in Skyrim.esm]",
    "subrecords": {
@@ -81,6 +82,7 @@
   },
   "LVLI": {
    "confidence": "documented",
+   "merge": true,
    "name": "Leveled Item",
    "note": "UESP, Skyrim Mod:Mod File Format/LVLI. A leveled item is a list of entries, each with a level, an item and a count. [measured: 3,075 LVLD and LVLF fields and 3,056 LLCT fields in Skyrim.esm; the three are single bytes, not the dwords the names might suggest]",
    "subrecords": {

@@ -3,6 +3,7 @@
  "records": {
   "ANIO": {
    "confidence": "documented",
+   "merge": true,
    "name": "Animation Object",
    "note": "UESP, Skyrim Mod:Mod File Format/ANIO. [measured: 62 BNAM fields in Skyrim.esm, each 18 bytes]",
    "subrecords": {
@@ -34,6 +35,7 @@
   },
   "APPA": {
    "confidence": "documented",
+   "merge": true,
    "name": "Apparatus",
    "note": "UESP, Skyrim Mod:Mod File Format/APPA. [measured: 45 DATA fields in Skyrim.esm, each 8 bytes, and 45 QUAL fields, each 4 bytes]",
    "subrecords": {
@@ -83,6 +85,7 @@
   },
   "ASPC": {
    "confidence": "documented",
+   "merge": true,
    "name": "Acoustic Space",
    "note": "UESP, Skyrim Mod:Mod File Format/ASPC. [measured: 34 BNAM fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -173,6 +176,7 @@
   },
   "FACT": {
    "confidence": "documented",
+   "merge": true,
    "name": "Faction",
    "note": "UESP, Skyrim Mod:Mod File Format/FACT. [measured: 36 CITC fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -291,6 +295,7 @@
   },
   "FSTS": {
    "confidence": "documented",
+   "merge": true,
    "name": "Flying Stairs",
    "note": "UESP, Skyrim Mod:Mod File Format/FSTS. [measured: 35 DATA fields in Skyrim.esm, 16 to 96 bytes]",
    "subrecords": {
@@ -310,6 +315,7 @@
   },
   "HAZD": {
    "confidence": "documented",
+   "merge": true,
    "name": "Hazard",
    "note": "UESP, Skyrim Mod:Mod File Format/HAZD. [measured: 44 DATA fields in Skyrim.esm, each 40 bytes]",
    "subrecords": {
@@ -359,6 +365,7 @@
   },
   "LVLI": {
    "confidence": "documented",
+   "merge": true,
    "name": "Leveled Item",
    "note": "UESP, Skyrim Mod:Mod File Format/LVLI. [measured: 65 LVLG fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -396,6 +403,7 @@
   },
   "LVSP": {
    "confidence": "documented",
+   "merge": true,
    "name": "Leveled Spell",
    "note": "UESP, Skyrim Mod:Mod File Format/LVSP. [measured: 82 LVLO fields in Skyrim.esm, each 12 bytes]",
    "subrecords": {
@@ -439,6 +447,7 @@
   },
   "MESG": {
    "confidence": "documented",
+   "merge": true,
    "name": "Message",
    "note": "UESP, Skyrim Mod:Mod File Format/MESG. [measured: 46 QNAM fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -560,6 +569,7 @@
   },
   "MUSC": {
    "confidence": "documented",
+   "merge": true,
    "name": "Music",
    "note": "UESP, Skyrim Mod:Mod File Format/MUSC. [measured: 50 PNAM and 50 WNAM fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
@@ -612,6 +622,7 @@
   },
   "PERK": {
    "confidence": "documented",
+   "merge": true,
    "name": "Perk",
    "note": "UESP, Skyrim Mod:Mod File Format/PERK. [measured: 76 NNAM fields in Skyrim.esm, each 4 bytes]",
    "subrecords": {
