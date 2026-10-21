@@ -196,7 +196,28 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     name: "Skyrim Special Edition",
     editor_name: "Skyrim SE Rust Editor",
     master: "Skyrim.esm",
-    archives: &[],
+    // The shipped `Skyrim.ini`'s `sResourceArchiveList`. The Special Edition
+    // splits the textures and the meshes into numbered archives, and every
+    // one of them is v105.
+    archives: &[
+        "Skyrim - Misc.bsa",
+        "Skyrim - Shaders.bsa",
+        "Skyrim - Textures0.bsa",
+        "Skyrim - Textures1.bsa",
+        "Skyrim - Textures2.bsa",
+        "Skyrim - Textures3.bsa",
+        "Skyrim - Textures4.bsa",
+        "Skyrim - Textures5.bsa",
+        "Skyrim - Textures6.bsa",
+        "Skyrim - Textures7.bsa",
+        "Skyrim - Textures8.bsa",
+        "Skyrim - Interface.bsa",
+        "Skyrim - Animations.bsa",
+        "Skyrim - Meshes0.bsa",
+        "Skyrim - Meshes1.bsa",
+        "Skyrim - Sounds.bsa",
+        "Skyrim - Voices_en0.bsa",
+    ],
     archive_format: ArchiveFormat::Bsa105,
     steam_folder: Some("Skyrim Special Edition"),
     schema_subdir: "skyrimse",
@@ -204,7 +225,7 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     schema_version_dir: "skyrimse",
     notes: &[
         "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimse",
-        "archives are BSA v105/LZ4: read by the bsa105 crate, but the editor's VFS is still v104-only, so loose files only until it is switched",
+        "archives are BSA v105/LZ4, which the editor's VFS reads through NVRE's own bsa105 crate, so the models load",
         "its NIF blocks all decode and its shapes are measured, but the packed vertex format its shapes use is read as raw bytes, so its geometry is not yet exact",
     ],
 };
@@ -533,17 +554,13 @@ impl GameProfile {
                 fnv_vfs::Vfs::archive_order(data_dir, self.archives, &names)
             }
             ArchiveFormat::Bsa105 => {
-                // The crate exists and is verified against all 23 shipped
-                // archives, but `fnv_vfs` is NVForever's and reads v104 only.
-                // Wiring this up means replacing the Vfs layer's archive source,
-                // which is a change to how every game loads, not a one-line
-                // swap — so until then this is an honest loose-files-only open.
-                tracing::warn!(
-                    "{}: BSA v105 archives are readable by the bsa105 crate, but the \
-                     editor's VFS reads v104 only; opening with loose files only",
-                    self.name
-                );
-                Vec::new()
+                // The same order as the v104 case: the game's own list, then
+                // `Update.bsa`, then each loaded plugin's own archives. The
+                // archives themselves are read by NVRE's own `bsa105` crate,
+                // which handles both container versions.
+                let plugins = self.masters_in(data_dir);
+                let names: Vec<&str> = plugins.iter().map(String::as_str).collect();
+                fnv_vfs::Vfs::archive_order(data_dir, self.archives, &names)
             }
             ArchiveFormat::Unreadable => {
                 tracing::warn!(

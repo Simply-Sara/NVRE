@@ -1,0 +1,12 @@
+[package]
+name = "fnv-vfs"
+description = "Read-only virtual file system over BSA archives and loose files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# NVRE's own archive reader, which handles both version 104 (Fallout, Skyrim's
+# original edition) and version 105 (Skyrim's Special Edition) in one crate.
+bsa105 = { path = "../bsa105" }
+thiserror.workspace = true

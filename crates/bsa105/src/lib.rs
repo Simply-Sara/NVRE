@@ -37,8 +37,20 @@ use std::path::Path;
 pub const MAGIC: [u8; 4] = *b"BSA\0";
 pub const HEADER_SIZE: u32 = 36;
 
-/// The archive version this crate reads.
+/// The archive version this crate was written for: Skyrim Special Edition's.
 pub const VERSION: u32 = 105;
+
+/// The archive version Fallout and Skyrim's original edition use.
+///
+/// Version 104 differs from 105 in exactly two places, and this reader
+/// handles both: a folder record is 16 bytes rather than 24, and a
+/// compressed block's payload is zlib rather than an LZ4 frame. The
+/// payload's codec is sniffed either way, so an archive that claims one
+/// version and stores the other's codec still reads.
+pub const VERSION_104: u32 = 104;
+
+/// Bytes in a v104 folder record: hash(8) + count(4) + offset(4).
+pub const FOLDER_RECORD_SIZE_104: usize = 16;
 
 /// Archive flag bits. Names follow public community documentation; the two
 /// marked "unconfirmed" have no observed layout effect.
@@ -71,7 +83,7 @@ pub enum Bsa105Error {
     Io(io::Error),
     #[error("not a BSA archive (bad magic)")]
     NotBsa,
-    #[error("unsupported BSA version {0} (this reader handles 105)")]
+    #[error("unsupported BSA version {0} (this reader handles 104 and 105)")]
     UnsupportedVersion(u32),
     #[error("Xbox 360 (big-endian) archives are not supported")]
     BigEndian,
@@ -268,7 +280,7 @@ impl Archive {
             file_flags: c.u16().unwrap(),
             file_flags_padding: c.u16().unwrap(),
         };
-        if header.version != VERSION {
+        if header.version != VERSION && header.version != VERSION_104 {
             return Err(Bsa105Error::UnsupportedVersion(header.version));
         }
         if header.archive_flags & flags::XBOX360 != 0 {
@@ -299,7 +311,15 @@ impl Archive {
         // bytes; that single difference is what this crate exists for.
         let has_dir_names = header.archive_flags & flags::DIR_NAMES != 0;
         let has_file_names = header.archive_flags & flags::FILE_NAMES != 0;
-        let dir_len = header.folder_count as u64 * FOLDER_RECORD_SIZE as u64
+        // v104's folder record is 16 bytes; v105's is 24. The version in the
+        // header says which, and the file name block's offset says the same:
+        // a wrong guess desyncs on the first folder name rather than failing.
+        let folder_record_size = if header.version == VERSION_104 {
+            FOLDER_RECORD_SIZE_104
+        } else {
+            FOLDER_RECORD_SIZE
+        };
+        let dir_len = header.folder_count as u64 * folder_record_size as u64
             + if has_dir_names {
                 header.total_folder_name_length as u64 + header.folder_count as u64
             } else {
@@ -324,12 +344,27 @@ impl Archive {
 
         let mut folders = Vec::with_capacity(header.folder_count as usize);
         for _ in 0..header.folder_count {
+            let hash = c.u64().map_err(|e| Bsa105Error::Truncated(e.to_string()))?;
+            let count = c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?;
+            // v105 has a word between the count and the offset that the
+            // format does not document; v104 has none.
+            let pad_after_count = if folder_record_size == FOLDER_RECORD_SIZE {
+                c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?
+            } else {
+                0
+            };
+            let offset = c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?;
+            let pad_after_offset = if folder_record_size == FOLDER_RECORD_SIZE {
+                c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?
+            } else {
+                0
+            };
             folders.push(FolderRecord {
-                hash: c.u64().map_err(|e| Bsa105Error::Truncated(e.to_string()))?,
-                count: c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?,
-                pad_after_count: c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?,
-                offset: c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?,
-                pad_after_offset: c.u32().map_err(|e| Bsa105Error::Truncated(e.to_string()))?,
+                hash,
+                count,
+                pad_after_count,
+                offset,
+                pad_after_offset,
                 name: Vec::new(),
                 files: Vec::new(),
             });

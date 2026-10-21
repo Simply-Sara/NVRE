@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/bsa105"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105"]
 
 [workspace.package]
 version = "0.1.0"
@@ -47,6 +47,7 @@ clap = { version = "4", features = ["derive", "env"] }
 fnv-world = { path = "crates/fnv-world" }
 fnv-esm = { path = "crates/fnv-esm" }
 fnv-nif = { path = "crates/fnv-nif" }
+fnv-vfs = { path = "crates/fnv-vfs" }
 
 # Enable high optimization for external dependencies in dev/debug builds.
 # Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.
