@@ -272,6 +272,11 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
         }
         TypeDef::Struct(fields) => {
             let mut obj = Map::new();
+            // A struct's own field values are kept so a union inside it can
+            // switch on one of them. The map is saved and restored, so a
+            // nested struct does not see its parent's fields.
+            let saved_switch = ctx.switch_on.take();
+            ctx.switch_on = Some(HashMap::new());
             for f in fields {
                 if f.optional && c.is_empty() {
                     break;
@@ -326,6 +331,7 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 }
                 obj.insert(f.name.clone(), v);
             }
+            ctx.switch_on = saved_switch;
             Ok(Value::Object(obj))
         }
         TypeDef::Array {

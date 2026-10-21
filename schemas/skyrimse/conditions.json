@@ -21,7 +21,7 @@
   "MODT": {
    "confidence": "documented",
    "name": "Model Texture Hashes",
-   "note": "The model's texture hashes. Skyrim's layout is a 12-byte header followed by that many 12-byte texture entries, which is a different shape from the pre-TES5 one the other games use: there each hash is 24 bytes of three uint64s. [measured: every MODT in Skyrim.esm is 12 bytes plus a multiple of 12, and the second header word is the entry count.]",
+   "note": "The model's texture hashes. Skyrim's MODT comes in two forms. Most have a 12-byte header \u2014 a version of 2, the entry count and a zero \u2014 and then the entries; the rest have no header at all and the entries simply fill the field. Each entry is 12 bytes: a hash, the \"dds\" extension and a second hash. The first word says which form it is, so the header is read first and the rest follows the form it implies. [measured: 12,057 of Skyrim.esm's MODT fields have no header, and 8,538 have one; every field is a multiple of twelve, and the headered ones are twelve more than a multiple of twelve.]",
    "type": "SKYRIM_MODT"
   }
  },
@@ -90,23 +90,106 @@
   "SKYRIM_MODT": {
    "struct": [
     {
-     "name": "version",
-     "note": "Always 2 in the shipped data.",
+     "expose": true,
+     "name": "first",
+     "note": "The first word. It is 2 when the field has a header, and a texture hash when it does not.",
      "type": "u32"
     },
     {
-     "name": "count",
-     "note": "How many texture entries follow.",
-     "type": "u32"
-    },
-    {
-     "name": "unknown",
-     "note": "Always zero.",
-     "type": "u32"
-    },
+     "name": "body",
+     "note": "The rest of the field.",
+     "type": {
+      "cases": {
+       "2": 1
+      },
+      "default": 0,
+      "switch_on": "first",
+      "union": [
+       {
+        "name": "Bare",
+        "type": {
+         "struct": [
+          {
+           "name": "textures",
+           "note": "The model's textures, with no header and no count: the entries fill the field.",
+           "type": {
+            "array": {
+             "struct": [
+              {
+               "name": "hash",
+               "note": "The texture's hash.",
+               "type": "u32"
+              },
+              {
+               "name": "extension",
+               "note": "The texture's file extension, which is \"dds\" in every shipped record.",
+               "type": "cstring"
+              },
+              {
+               "name": "hash2",
+               "note": "A second hash.",
+               "type": "u32"
+              }
+             ]
+            }
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "Headered",
+        "type": {
+         "struct": [
+          {
+           "name": "count",
+           "note": "How many texture entries follow.",
+           "type": "u32"
+          },
+          {
+           "name": "unknown",
+           "note": "Always zero.",
+           "type": "u32"
+          },
+          {
+           "name": "textures",
+           "note": "The model's textures.",
+           "type": {
+            "array": {
+             "struct": [
+              {
+               "name": "hash",
+               "note": "The texture's hash.",
+               "type": "u32"
+              },
+              {
+               "name": "extension",
+               "note": "The texture's file extension, which is \"dds\" in every shipped record.",
+               "type": "cstring"
+              },
+              {
+               "name": "hash2",
+               "note": "A second hash.",
+               "type": "u32"
+              }
+             ]
+            },
+            "count_field": "count"
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "SKYRIM_MODT_BARE": {
+   "struct": [
     {
      "name": "textures",
-     "note": "The model's textures. [measured: every MODT in Skyrim.esm is 12 bytes plus a multiple of 12, and the count in the second header word is the number of entries, which is what this layout gives.]",
+     "note": "The model's textures, with no header and no count: the entries fill the field. [measured: 12,057 of Skyrim.esm's MODT fields are in this form, and the rest have the 12-byte header]",
      "type": {
       "array": {
        "struct": [
@@ -117,7 +200,7 @@
         },
         {
          "name": "extension",
-         "note": "The texture's file extension, which is \"dds\" in every shipped record. It is a NUL-terminated string, so it is read as one and the cursor is left just past the terminator.",
+         "note": "The texture's file extension, which is \"dds\" in every shipped record.",
          "type": "cstring"
         },
         {
@@ -126,8 +209,91 @@
          "type": "u32"
         }
        ]
-      },
-      "count_field": "count"
+      }
+     }
+    }
+   ]
+  },
+  "SKYRIM_MODT_BODY": {
+   "union": [
+    {
+     "name": "Headered",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "note": "Always 2 in the shipped data.",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "note": "How many texture entries follow.",
+        "type": "u32"
+       },
+       {
+        "name": "unknown",
+        "note": "Always zero.",
+        "type": "u32"
+       },
+       {
+        "name": "textures",
+        "note": "The model's textures.",
+        "type": {
+         "array": {
+          "struct": [
+           {
+            "name": "hash",
+            "note": "The texture's hash.",
+            "type": "u32"
+           },
+           {
+            "name": "extension",
+            "note": "The texture's file extension, which is \"dds\" in every shipped record.",
+            "type": "cstring"
+           },
+           {
+            "name": "hash2",
+            "note": "A second hash.",
+            "type": "u32"
+           }
+          ]
+         },
+         "count_field": "count"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Bare",
+     "type": {
+      "struct": [
+       {
+        "name": "textures",
+        "note": "The model's textures, with no header and no count: the entries fill the field.",
+        "type": {
+         "array": {
+          "struct": [
+           {
+            "name": "hash",
+            "note": "The texture's hash.",
+            "type": "u32"
+           },
+           {
+            "name": "extension",
+            "note": "The texture's file extension, which is \"dds\" in every shipped record.",
+            "type": "cstring"
+           },
+           {
+            "name": "hash2",
+            "note": "A second hash.",
+            "type": "u32"
+           }
+          ]
+         }
+        }
+       }
+      ]
      }
     }
    ]
