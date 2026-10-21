@@ -97,6 +97,15 @@ pub enum Prim {
     CString,
     /// Opaque bytes occupying the rest of the field (hex in output).
     Bytes,
+    /// The field's first four bytes read as a little-endian `u32`, without
+    /// consuming them.
+    ///
+    /// A record's field can take more than one shape, and the shape is
+    /// decided by the field's first word. Skyrim's `MODT` is a headered form
+    /// whose first word is 2 and a bare form whose first word is a texture
+    /// hash. The first word has to be looked at before the field is read, so
+    /// a union can switch on it.
+    PeekU32,
 }
 
 impl Prim {
@@ -119,6 +128,7 @@ impl Prim {
             "string" => Prim::String,
             "cstring" => Prim::CString,
             "bytes" => Prim::Bytes,
+            "peek_u32" => Prim::PeekU32,
             _ => return None,
         })
     }
@@ -127,7 +137,7 @@ impl Prim {
         match self {
             Prim::U8 | Prim::I8 => Some(1),
             Prim::U16 | Prim::I16 => Some(2),
-            Prim::U32 | Prim::I32 | Prim::F32 | Prim::FormId => Some(4),
+            Prim::U32 | Prim::I32 | Prim::F32 | Prim::FormId | Prim::PeekU32 => Some(4),
             Prim::U64 | Prim::I64 | Prim::F64 => Some(8),
             Prim::ZString
             | Prim::ZStringArray
@@ -194,6 +204,19 @@ pub enum TypeDef {
     /// integer (enums and flags included) earlier in the same struct.
     ValueUnion {
         name: String,
+        cases: Vec<(u64, usize)>,
+        default: usize,
+        variants: Vec<TypeDef>,
+    },
+    /// A union whose variant is chosen by the field's first word, read
+    /// without consuming it.
+    ///
+    /// Some fields take more than one shape and the first word says which.
+    /// Skyrim's `MODT` is a headered form whose first word is 2 and a bare
+    /// form whose first word is a texture hash, and the first word belongs to
+    /// the field either way — so the whole field is the union, not a field
+    /// inside it.
+    PeekUnion {
         cases: Vec<(u64, usize)>,
         default: usize,
         variants: Vec<TypeDef>,
@@ -556,6 +579,47 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                 // earlier sibling field's value rather than from the bytes left
                 // (xEdit's `wbUnion` with a decider function). Without `switch_on`
                 // this stays the plain size-decided union above.
+                // `{"union": [...], "peek": true}` makes the union choose
+                // its variant by the field's first word, read without
+                // consuming it. The word belongs to the field either way, so
+                // the whole field is the union.
+                if v.get("peek").and_then(Value::as_bool) == Some(true) {
+                    let mut cases = Vec::new();
+                    if let Some(Value::Object(m)) = v.get("cases") {
+                        for (k, idx) in m {
+                            let key: u64 = k
+                                .parse()
+                                .map_err(|_| SchemaError(format!("{ctx}: case key {k:?}")))?;
+                            let i = idx.as_u64().ok_or_else(|| {
+                                SchemaError(format!("{ctx}: case {k:?} needs a variant index"))
+                            })? as usize;
+                            if i >= out.len() {
+                                return Err(SchemaError(format!(
+                                    "{ctx}: case {k:?} names variant {i}, but there are only {}",
+                                    out.len()
+                                )));
+                            }
+                            cases.push((key, i));
+                        }
+                    }
+                    cases.sort_by_key(|(k, _)| *k);
+                    let default = v
+                        .get("default")
+                        .and_then(Value::as_u64)
+                        .map(|d| d as usize)
+                        .unwrap_or(0);
+                    if default >= out.len() {
+                        return Err(SchemaError(format!(
+                            "{ctx}: default names variant {default}, but there are only {}",
+                            out.len()
+                        )));
+                    }
+                    return Ok(TypeDef::PeekUnion {
+                        cases,
+                        default,
+                        variants: out.into_iter().map(|(_, t)| t).collect(),
+                    });
+                }
                 if let Some(field) = v.get("switch_on") {
                     let name = field.as_str().map(str::to_string).ok_or_else(|| {
                         SchemaError(format!("{ctx}: switch_on must be a field name string"))
@@ -1164,6 +1228,12 @@ impl Schema {
             }
             match t {
                 TypeDef::Prim(_) | TypeDef::Enum { .. } | TypeDef::Flags { .. } => Ok(()),
+                TypeDef::PeekUnion { variants, .. } => {
+                    for v in variants {
+                        check(s, v, depth + 1, ctx)?;
+                    }
+                    Ok(())
+                }
                 TypeDef::Named(n) => match s.types.get(n) {
                     Some(t2) => check(s, t2, depth + 1, ctx),
                     None => Err(SchemaError(format!("{ctx}: unknown type {n:?}"))),
@@ -1285,6 +1355,20 @@ impl Schema {
         match self.resolve(t) {
             TypeDef::Prim(p) => p.size(),
             TypeDef::Enum { base, .. } | TypeDef::Flags { base, .. } => base.size(),
+            TypeDef::PeekUnion { variants, .. } => {
+                // The variants have different shapes, so the union has no
+                // fixed size unless they all agree.
+                let mut n = None;
+                for v in variants {
+                    let s = self.fixed_size(v)?;
+                    match n {
+                        None => n = Some(s),
+                        Some(prev) if prev == s => {}
+                        Some(_) => return None,
+                    }
+                }
+                n
+            }
             TypeDef::Struct(fs) => {
                 let mut n = 0;
                 for f in fs {

@@ -313,6 +313,32 @@ pub fn encode_type(
                 }),
             }
         }
+        TypeDef::PeekUnion { variants, .. } => {
+            // The switch word is part of the field, so the variant has to be
+            // picked from the value alone. Each variant is tried in order and
+            // the first that encodes without error wins.
+            let mut first_err = None;
+            for (i, vt) in variants.iter().enumerate() {
+                let mut probe = Vec::new();
+                match encode_type(schema, vt, value, &mut probe, path) {
+                    Ok(()) => {
+                        out.extend_from_slice(&probe);
+                        return Ok(());
+                    }
+                    Err(e) => first_err = first_err.or(Some((i, e))),
+                }
+            }
+            match first_err {
+                Some((_, e)) => Err(EncodeError::Value {
+                    path: path.to_string(),
+                    msg: format!("no union variant matches: {e}"),
+                }),
+                None => Err(EncodeError::Value {
+                    path: path.to_string(),
+                    msg: "union has no variants".into(),
+                }),
+            }
+        }
         TypeDef::ValueUnion { variants, .. } => {
             // A value-decided union carries no switch in the bytes, so the variant
             // must be picked from the value alone. Each variant is tried in order
@@ -391,6 +417,10 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
         Prim::I32 => out.extend_from_slice(&fit_i32(path, as_i64(path, value)?)?.to_le_bytes()),
         Prim::I64 => out.extend_from_slice(&fit_i64(path, as_i64(path, value)?)?.to_le_bytes()),
         Prim::F32 => out.extend_from_slice(&(as_f64(path, value)? as f32).to_le_bytes()),
+        Prim::PeekU32 => {
+            // The peeked word is read, not written: it belongs to the
+            // shape the field takes, and the shape's own layout writes it.
+        }
         Prim::F64 => out.extend_from_slice(&as_f64(path, value)?.to_le_bytes()),
         Prim::FormId => out.extend_from_slice(&formid_u32(value, path)?.to_le_bytes()),
         Prim::ZString => {
@@ -725,7 +755,7 @@ pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec
                     walk(schema, vt, prefix, out);
                 }
             }
-            TypeDef::ValueUnion { variants, .. } => {
+            TypeDef::PeekUnion { variants, .. } | TypeDef::ValueUnion { variants, .. } => {
                 for vt in variants {
                     walk(schema, vt, prefix, out);
                 }

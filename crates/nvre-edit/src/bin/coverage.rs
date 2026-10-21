@@ -105,7 +105,10 @@ fn main() {
         if !trailing.is_empty() {
             println!("\n--- trailing subrecords (decoded, but bytes left over) ---");
             for ((rt, st), n, e) in trailing.iter().take(20) {
-                println!("{st:5} {n:>8}  on {rt}{}", e.as_ref().map(|x| format!(": {x}")).unwrap_or_default());
+                println!(
+                    "{st:5} {n:>8}  on {rt}{}",
+                    e.as_ref().map(|x| format!(": {x}")).unwrap_or_default()
+                );
             }
         }
         let s = &v["summary"];

@@ -120,7 +120,7 @@ fn remap_value(
         // A union is chosen by byte width at decode time, so the variant that
         // produced this value is not recorded. Remapping inside one could pick
         // the wrong variant, so unions are left untouched.
-        TypeDef::Union(_) | TypeDef::ValueUnion { .. } => Some(()),
+        TypeDef::Union(_) | TypeDef::ValueUnion { .. } | TypeDef::PeekUnion { .. } => Some(()),
         TypeDef::Named(_) | TypeDef::Prim(_) | TypeDef::Enum { .. } | TypeDef::Flags { .. } => {
             Some(())
         }
@@ -183,7 +183,7 @@ fn count_in(schema: &Schema, t: &TypeDef, value: &Value, n: &mut usize) {
                 count_in(schema, vt, value, n);
             }
         }
-        TypeDef::ValueUnion { variants, .. } => {
+        TypeDef::ValueUnion { variants, .. } | TypeDef::PeekUnion { variants, .. } => {
             for vt in variants {
                 count_in(schema, vt, value, n);
             }

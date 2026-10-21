@@ -7,14 +7,18 @@ fn main() {
     let rec = std::env::args().nth(2).unwrap();
     let mut sizes: BTreeMap<(String, usize), u64> = Default::default();
     visit_records(&p.nodes[1..], &mut |r, _| {
-        if r.header.sig != rec.as_bytes() { return; }
+        if r.header.sig != rec.as_bytes() {
+            return;
+        }
         let Ok(subs) = r.subrecords() else { return };
         for s in subs {
             *sizes.entry((s.sig_str(), s.data.len())).or_default() += 1;
         }
     });
     let mut by: BTreeMap<String, BTreeMap<usize, u64>> = Default::default();
-    for ((sig, len), c) in sizes { by.entry(sig).or_default().insert(len, c); }
+    for ((sig, len), c) in sizes {
+        by.entry(sig).or_default().insert(len, c);
+    }
     for (sig, m) in &by {
         let h: Vec<String> = m.iter().map(|(l, c)| format!("{l}B x{c}")).collect();
         println!("  {sig:5} {}", h.join(", "));

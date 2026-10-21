@@ -94,28 +94,54 @@
    ]
   },
   "SKYRIM_DMDT": {
-   "struct": [
+   "cases": {
+    "2": 0
+   },
+   "default": 1,
+   "peek": true,
+   "union": [
     {
-     "name": "version",
-     "note": "Always 2 in the shipped data.",
-     "type": "u32"
-    },
-    {
-     "name": "count",
-     "note": "How many texture entries follow.",
-     "type": "u32"
-    },
-    {
-     "name": "flags",
-     "note": "Zero in most records and one in some.",
-     "type": "u32"
-    },
-    {
-     "name": "textures",
-     "note": "The destruction stage's textures.",
+     "name": "Headered",
      "type": {
-      "array": "SKYRIM_DMDT_ENTRY",
-      "count_field": "count"
+      "struct": [
+       {
+        "name": "version",
+        "note": "Always 2 in the shipped data.",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "note": "How many texture entries follow.",
+        "type": "u32"
+       },
+       {
+        "name": "unknown",
+        "note": "Always zero.",
+        "type": "u32"
+       },
+       {
+        "name": "textures",
+        "note": "The destruction stage's textures.",
+        "type": {
+         "array": "SKYRIM_DMDT_ENTRY",
+         "count_field": "count"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Bare",
+     "type": {
+      "struct": [
+       {
+        "name": "textures",
+        "note": "The destruction stage's textures, with no header and no count.",
+        "type": {
+         "array": "SKYRIM_DMDT_ENTRY"
+        }
+       }
+      ]
      }
     }
    ]
@@ -129,7 +155,7 @@
     },
     {
      "name": "extension",
-     "note": "The texture's file extension, which is \"dds\" in the shipped data.",
+     "note": "The texture's file extension, which is \"dds\" in every shipped record.",
      "type": "cstring"
     },
     {
@@ -140,133 +166,11 @@
    ]
   },
   "SKYRIM_MODT": {
-   "struct": [
-    {
-     "expose": true,
-     "name": "first",
-     "note": "The first word. It is 2 when the field has a header, and a texture hash when it does not.",
-     "type": "u32"
-    },
-    {
-     "name": "body",
-     "note": "The rest of the field.",
-     "type": {
-      "cases": {
-       "2": 1
-      },
-      "default": 0,
-      "switch_on": "first",
-      "union": [
-       {
-        "name": "Bare",
-        "type": {
-         "struct": [
-          {
-           "name": "textures",
-           "note": "The model's textures, with no header and no count: the entries fill the field.",
-           "type": {
-            "array": {
-             "struct": [
-              {
-               "name": "hash",
-               "note": "The texture's hash.",
-               "type": "u32"
-              },
-              {
-               "name": "extension",
-               "note": "The texture's file extension, which is \"dds\" in every shipped record.",
-               "type": "cstring"
-              },
-              {
-               "name": "hash2",
-               "note": "A second hash.",
-               "type": "u32"
-              }
-             ]
-            }
-           }
-          }
-         ]
-        }
-       },
-       {
-        "name": "Headered",
-        "type": {
-         "struct": [
-          {
-           "name": "count",
-           "note": "How many texture entries follow.",
-           "type": "u32"
-          },
-          {
-           "name": "unknown",
-           "note": "Always zero.",
-           "type": "u32"
-          },
-          {
-           "name": "textures",
-           "note": "The model's textures.",
-           "type": {
-            "array": {
-             "struct": [
-              {
-               "name": "hash",
-               "note": "The texture's hash.",
-               "type": "u32"
-              },
-              {
-               "name": "extension",
-               "note": "The texture's file extension, which is \"dds\" in every shipped record.",
-               "type": "cstring"
-              },
-              {
-               "name": "hash2",
-               "note": "A second hash.",
-               "type": "u32"
-              }
-             ]
-            },
-            "count_field": "count"
-           }
-          }
-         ]
-        }
-       }
-      ]
-     }
-    }
-   ]
-  },
-  "SKYRIM_MODT_BARE": {
-   "struct": [
-    {
-     "name": "textures",
-     "note": "The model's textures, with no header and no count: the entries fill the field. [measured: 12,057 of Skyrim.esm's MODT fields are in this form, and the rest have the 12-byte header]",
-     "type": {
-      "array": {
-       "struct": [
-        {
-         "name": "hash",
-         "note": "The texture's hash.",
-         "type": "u32"
-        },
-        {
-         "name": "extension",
-         "note": "The texture's file extension, which is \"dds\" in every shipped record.",
-         "type": "cstring"
-        },
-        {
-         "name": "hash2",
-         "note": "A second hash.",
-         "type": "u32"
-        }
-       ]
-      }
-     }
-    }
-   ]
-  },
-  "SKYRIM_MODT_BODY": {
+   "cases": {
+    "2": 0
+   },
+   "default": 1,
+   "peek": true,
    "union": [
     {
      "name": "Headered",
@@ -291,25 +195,7 @@
         "name": "textures",
         "note": "The model's textures.",
         "type": {
-         "array": {
-          "struct": [
-           {
-            "name": "hash",
-            "note": "The texture's hash.",
-            "type": "u32"
-           },
-           {
-            "name": "extension",
-            "note": "The texture's file extension, which is \"dds\" in every shipped record.",
-            "type": "cstring"
-           },
-           {
-            "name": "hash2",
-            "note": "A second hash.",
-            "type": "u32"
-           }
-          ]
-         },
+         "array": "SKYRIM_MODT_ENTRY",
          "count_field": "count"
         }
        }
@@ -324,29 +210,30 @@
         "name": "textures",
         "note": "The model's textures, with no header and no count: the entries fill the field.",
         "type": {
-         "array": {
-          "struct": [
-           {
-            "name": "hash",
-            "note": "The texture's hash.",
-            "type": "u32"
-           },
-           {
-            "name": "extension",
-            "note": "The texture's file extension, which is \"dds\" in every shipped record.",
-            "type": "cstring"
-           },
-           {
-            "name": "hash2",
-            "note": "A second hash.",
-            "type": "u32"
-           }
-          ]
-         }
+         "array": "SKYRIM_MODT_ENTRY"
         }
        }
       ]
      }
+    }
+   ]
+  },
+  "SKYRIM_MODT_ENTRY": {
+   "struct": [
+    {
+     "name": "hash",
+     "note": "The texture's hash.",
+     "type": "u32"
+    },
+    {
+     "name": "extension",
+     "note": "The texture's file extension, which is \"dds\" in every shipped record.",
+     "type": "cstring"
+    },
+    {
+     "name": "hash2",
+     "note": "A second hash.",
+     "type": "u32"
     }
    ]
   }

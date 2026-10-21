@@ -114,6 +114,19 @@ fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, Stri
         Prim::I64 => Value::from(c.i64().map_err(e)?),
         Prim::F32 => Value::from(c.f32().map_err(e)? as f64),
         Prim::F64 => Value::from(c.f64().map_err(e)?),
+        Prim::PeekU32 => {
+            // The first four bytes, read without consuming them, so a union
+            // can pick the field's shape before the field is read.
+            if c.remaining() < 4 {
+                return Err(format!(
+                    "peek_u32: read of 4 bytes at offset {} exceeds length {}",
+                    c.pos,
+                    c.data.len()
+                ));
+            }
+            let b = &c.data[c.pos..c.pos + 4];
+            Value::from(u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64)
+        }
         Prim::FormId => {
             let v = c.u32().map_err(e)?;
             if let Some(f) = ctx.on_formid.as_mut() {
@@ -240,6 +253,30 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 .or_else(|| variants.iter().find(|(n, _)| n.is_none()))
                 .ok_or_else(|| format!("no union variant for {left} bytes"))?;
             decode_type(&chosen.1, c, ctx)
+        }
+        TypeDef::PeekUnion {
+            cases,
+            default,
+            variants,
+        } => {
+            // The variant is chosen by the field's first word, read without
+            // consuming it: the word belongs to the field either way, so the
+            // whole field is the union.
+            if c.remaining() < 4 {
+                return Err(format!(
+                    "peek union: read of 4 bytes at offset {} exceeds length {}",
+                    c.pos,
+                    c.data.len()
+                ));
+            }
+            let b = &c.data[c.pos..c.pos + 4];
+            let word = u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64;
+            let idx = cases
+                .iter()
+                .find(|(k, _)| *k == word)
+                .map(|(_, i)| *i)
+                .unwrap_or(*default);
+            decode_type(&variants[idx], c, ctx)
         }
         TypeDef::ValueUnion {
             name,

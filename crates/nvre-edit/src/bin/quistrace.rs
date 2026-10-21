@@ -1,16 +1,34 @@
-//! PERK: the EPFT and EPFD size of every record that has both.
+//! Decode one MODT with the schema and see what happens.
 use fnv_esm::raw::visit_records;
-use fnv_esm::Plugin;
-use std::collections::BTreeMap;
+use fnv_esm::{Plugin, Schema};
 fn main() {
+    let schema = Schema::load_game("schemas/base", ["schemas/fnv", "schemas/skyrimse"]).unwrap();
     let p = Plugin::open(std::env::args().nth(1).unwrap()).unwrap();
-    let mut seen: BTreeMap<(u8, usize), usize> = BTreeMap::new();
+    let mut n = 0;
     visit_records(&p.nodes[1..], &mut |r, _| {
-        if r.header.sig != *b"PERK" { return; }
+        if r.header.sig != *b"ARTO" || n >= 3 {
+            return;
+        }
         let Ok(subs) = r.subrecords() else { return };
-        let e = subs.iter().find(|s| s.sig == *b"EPFT").map(|s| s.data[0]);
-        let d = subs.iter().find(|s| s.sig == *b"EPFD").map(|s| s.data.len());
-        if let (Some(e), Some(d)) = (e, d) { *seen.entry((e, d)).or_insert(0) += 1; }
+        for s in subs.iter() {
+            if s.sig != *b"MODT" {
+                continue;
+            }
+            let w = s
+                .data
+                .get(0..4)
+                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                .unwrap_or(0);
+            if w == 2 {
+                continue;
+            }
+            n += 1;
+            let def = schema.lookup(b"ARTO", b"MODT").unwrap();
+            println!("ARTO.MODT def type: {:?}", def.ty);
+            println!(
+                "ARTO.MODT name: {:?}",
+                schema.lookup(b"ARTO", b"MODT").map(|d| d.name.clone())
+            );
+        }
     });
-    for ((e, d), c) in seen { println!("EPFT={e} EPFD={d} bytes x{c}"); }
 }
