@@ -888,12 +888,18 @@
            }
           },
           {
+           "expose": true,
            "name": "Parent Worldspace",
            "type": "formid"
           },
           {
            "name": "Parent",
            "type": {
+            "cases": {
+             "0": 1
+            },
+            "default": 0,
+            "switch_on": "Parent Worldspace",
             "union": [
              {
               "size": 4,
@@ -11680,12 +11686,18 @@
            }
           },
           {
+           "expose": true,
            "name": "Parent Worldspace",
            "type": "formid"
           },
           {
            "name": "Parent",
            "type": {
+            "cases": {
+             "0": 1
+            },
+            "default": 0,
+            "switch_on": "Parent Worldspace",
             "union": [
              {
               "size": 4,
@@ -20318,12 +20330,18 @@
            }
           },
           {
+           "expose": true,
            "name": "Parent Worldspace",
            "type": "formid"
           },
           {
            "name": "Parent",
            "type": {
+            "cases": {
+             "0": 1
+            },
+            "default": 0,
+            "switch_on": "Parent Worldspace",
             "union": [
              {
               "size": 4,
@@ -30541,7 +30559,10 @@
      "confidence": "documented",
      "name": "Name",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MTNM. The group 'Movement Type Names' repeats this subrecord.",
-     "type": "zstring"
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
     },
     "NAM0": {
      "confidence": "documented",
@@ -35350,12 +35371,18 @@
            }
           },
           {
+           "expose": true,
            "name": "Parent Worldspace",
            "type": "formid"
           },
           {
            "name": "Parent",
            "type": {
+            "cases": {
+             "0": 1
+            },
+            "default": 0,
+            "switch_on": "Parent Worldspace",
             "union": [
              {
               "size": 4,
@@ -45620,12 +45647,18 @@
         }
        },
        {
+        "expose": true,
         "name": "Parent Worldspace",
         "type": "formid"
        },
        {
         "name": "Parent",
         "type": {
+         "cases": {
+          "0": 1
+         },
+         "default": 0,
+         "switch_on": "Parent Worldspace",
          "union": [
           {
            "size": 4,

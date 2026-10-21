@@ -462,7 +462,9 @@ class Converter:
             return {"switch": switch, "bits": bits, "cases": {}, "direct": False}
         # A comparison against zero: `if (Element.NativeValue = 0) then
         # Result := 1`. The variant is 1 when the value is zero and the
-        # default otherwise.
+        # default otherwise. The value may be held in a local first — `i :=
+        # Parent.NativeValue; if i = 0 then Result := 1;` — and the local
+        # is then compared.
         zm = re.search(
             r"if\s*\(?\s*(\w+)\.NativeValue\s*=\s*0\s*\)?\s*then\s*Result\s*:=\s*(\d+)",
             body,
@@ -471,6 +473,19 @@ class Converter:
             return {
                 "switch": switch,
                 "cases": {"0": int(zm.group(2))},
+                "bits": [],
+                "direct": False,
+            }
+        # The same, with the value in a local.
+        zm = re.search(
+            r"(\w+)\s*:=\s*(\w+)\.NativeValue\s*;.*?if\s+\1\s*=\s*0\s+then\s*Result\s*:=\s*(\d+)",
+            body,
+            re.S,
+        )
+        if zm:
+            return {
+                "switch": switch,
+                "cases": {"0": int(zm.group(3))},
                 "bits": [],
                 "direct": False,
             }
@@ -2241,7 +2256,7 @@ class Converter:
         if members is None:
             # A group of one repeating subrecord: the element is a single
             # definition rather than a list.
-            self.convert_repeating(sig, gname, parts, flat)
+            self.convert_repeating(sig, gname, parts, flat, kind)
             return
         if members == "NESTED":
             # The group's element is itself a group; its members are one
@@ -2394,7 +2409,7 @@ class Converter:
                 return members
         return None
 
-    def convert_repeating(self, sig, gname, parts, flat):
+    def convert_repeating(self, sig, gname, parts, flat, kind="wbArray"):
         """A group of one repeating subrecord: a plain list of that subrecord."""
         if len(parts) < 2:
             self.problems.append(f"{sig}: group {gname} names no element")
@@ -2426,6 +2441,12 @@ class Converter:
         schema, note = self.convert_member(ename, eargs, f"{sig}.{gname}.{ssig}")
         if schema is None:
             return
+        if kind == "wbRArrayS" and schema == "zstring":
+            # A restricted array of strings: each element is the four
+            # bytes of a code that says which one it is — a race's
+            # movement type names are "WALK", "RUN1", "SNEK", "BLDO" and
+            # "SWIM", four bytes each and nothing else.
+            schema = {"array": "u8", "count": 4}
         sname = pascal_string(eparts[1]) if len(eparts) > 1 else ssig
         flat[ssig] = {
             "name": sname or ssig,
