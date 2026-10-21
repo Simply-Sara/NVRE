@@ -725,6 +725,12 @@ class Converter:
                 if mname in GROUP_KINDS and margs is not None:
                     out.extend(self._group_members_as_subrecords(name, mname, split_args(margs)))
                     continue
+                # A named group used as a member — `wbPDTOs` — holds the
+                # subrecords of the group it names, so they are taken in too.
+                named_group = self.named_groups.get(mname.lower())
+                if named_group:
+                    out.extend(named_group)
+                    continue
                 # The member is a named definition that owns a signature.
                 sig_of = self._named_type_signature(mname)
                 if sig_of is None:

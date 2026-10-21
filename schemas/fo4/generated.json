@@ -110,6 +110,7 @@
        "XPRD",
        "XPPA",
        "INAM",
+       "PDTO",
        "TNAM"
       ],
       "subrecords": {
@@ -118,6 +119,50 @@
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ACHR.Patrol Data.INAM",
         "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "PDTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPDTO. The group 'Topic' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "expose": true,
+           "name": "Type",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Topic Ref",
+             "1": "Topic Subtype"
+            }
+           }
+          },
+          {
+           "name": "Data",
+           "type": {
+            "cases": {
+             "0": 0,
+             "1": 1
+            },
+            "default": 0,
+            "switch_on": "Type",
+            "union": [
+             {
+              "size": 4,
+              "type": "formid"
+             },
+             {
+              "size": 4,
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
        },
        "TNAM": {
         "confidence": "documented",
@@ -21575,12 +21620,14 @@
        "ANAM",
        "CNAM",
        "BNAM",
+       "PDTO",
        "PLDT",
        "PTDA",
        "TPIC",
+       "UNAM",
+       "PNAM",
        "CITC",
        "PRCB",
-       "PNAM",
        "FNAM",
        "PKC2",
        "PFO2",
@@ -21597,8 +21644,17 @@
        "BNAM": {
         "confidence": "documented",
         "name": "BNAM",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Package Data.BNAM",
-        "type": "bytes"
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Package Data.BNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+        "type": {
+         "union": [
+          {
+           "type": "bytes"
+          },
+          {
+           "type": "zstring"
+          }
+         ]
+        }
        },
        "CITC": {
         "confidence": "documented",
@@ -21647,6 +21703,50 @@
           "0": "Success Completes Package"
          },
          "flags": "u32"
+        }
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "PDTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPDTO. The group 'Topic' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "expose": true,
+           "name": "Type",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Topic Ref",
+             "1": "Topic Subtype"
+            }
+           }
+          },
+          {
+           "name": "Data",
+           "type": {
+            "cases": {
+             "0": 0,
+             "1": 1
+            },
+            "default": 0,
+            "switch_on": "Type",
+            "union": [
+             {
+              "size": 4,
+              "type": "formid"
+             },
+             {
+              "size": 4,
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             }
+            ]
+           }
+          }
+         ]
         }
        },
        "PFO2": {
@@ -21811,9 +21911,24 @@
        },
        "PNAM": {
         "confidence": "documented",
-        "name": "Procedure Type",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PNAM",
-        "type": "zstring"
+        "name": "Flags",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PNAM The same signature is also defined differently in another group of this record, so the two are alternatives and the bytes left decide which.",
+        "type": {
+         "union": [
+          {
+           "size": 4,
+           "type": {
+            "bits": {
+             "0": "Public"
+            },
+            "flags": "u32"
+           }
+          },
+          {
+           "type": "zstring"
+          }
+         ]
+        }
        },
        "PRCB": {
         "confidence": "documented",
@@ -21856,6 +21971,12 @@
         "name": "TPIC",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Package Data.TPIC",
         "type": "bytes"
+       },
+       "UNAM": {
+        "confidence": "documented",
+        "name": "Index",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), UNAM",
+        "type": "i8"
        }
       }
      },
@@ -21919,7 +22040,8 @@
       "opener": "POBA",
       "order": [
        "POBA",
-       "INAM"
+       "INAM",
+       "PDTO"
       ],
       "subrecords": {
        "INAM": {
@@ -21927,6 +22049,50 @@
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.OnBegin.INAM",
         "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "PDTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPDTO. The group 'Topic' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "expose": true,
+           "name": "Type",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Topic Ref",
+             "1": "Topic Subtype"
+            }
+           }
+          },
+          {
+           "name": "Data",
+           "type": {
+            "cases": {
+             "0": 0,
+             "1": 1
+            },
+            "default": 0,
+            "switch_on": "Type",
+            "union": [
+             {
+              "size": 4,
+              "type": "formid"
+             },
+             {
+              "size": 4,
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
        },
        "POBA": {
         "confidence": "documented",
@@ -21942,7 +22108,8 @@
       "opener": "POCA",
       "order": [
        "POCA",
-       "INAM"
+       "INAM",
+       "PDTO"
       ],
       "subrecords": {
        "INAM": {
@@ -21950,6 +22117,50 @@
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.OnChange.INAM",
         "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "PDTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPDTO. The group 'Topic' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "expose": true,
+           "name": "Type",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Topic Ref",
+             "1": "Topic Subtype"
+            }
+           }
+          },
+          {
+           "name": "Data",
+           "type": {
+            "cases": {
+             "0": 0,
+             "1": 1
+            },
+            "default": 0,
+            "switch_on": "Type",
+            "union": [
+             {
+              "size": 4,
+              "type": "formid"
+             },
+             {
+              "size": 4,
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
        },
        "POCA": {
         "confidence": "documented",
@@ -21965,7 +22176,8 @@
       "opener": "POEA",
       "order": [
        "POEA",
-       "INAM"
+       "INAM",
+       "PDTO"
       ],
       "subrecords": {
        "INAM": {
@@ -21973,6 +22185,50 @@
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.OnEnd.INAM",
         "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "PDTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPDTO. The group 'Topic' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "expose": true,
+           "name": "Type",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Topic Ref",
+             "1": "Topic Subtype"
+            }
+           }
+          },
+          {
+           "name": "Data",
+           "type": {
+            "cases": {
+             "0": 0,
+             "1": 1
+            },
+            "default": 0,
+            "switch_on": "Type",
+            "union": [
+             {
+              "size": 4,
+              "type": "formid"
+             },
+             {
+              "size": 4,
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
        },
        "POEA": {
         "confidence": "documented",
@@ -27065,7 +27321,12 @@
      "FNAM": {
       "opener": "FNAM",
       "order": [
-       "FNAM"
+       "FNAM",
+       "MODL",
+       "MODT",
+       "MODC",
+       "MODS",
+       "MODF"
       ],
       "subrecords": {
        "FNAM": {
@@ -27075,6 +27336,36 @@
         "type": {
          "struct": []
         }
+       },
+       "MODC": {
+        "confidence": "documented",
+        "name": "MODC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODC",
+        "type": "f32"
+       },
+       "MODF": {
+        "confidence": "documented",
+        "name": "MODF",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODF",
+        "type": "bytes"
+       },
+       "MODL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MODL",
+        "type": "zstring"
+       },
+       "MODS": {
+        "confidence": "documented",
+        "name": "MODS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODS",
+        "type": "formid"
+       },
+       "MODT": {
+        "confidence": "documented",
+        "name": "MODT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODT, laid out in the hand-written file",
+        "type": "FO4_MODT"
        }
       }
      },
@@ -27103,7 +27394,12 @@
      "MNAM": {
       "opener": "MNAM",
       "order": [
-       "MNAM"
+       "MNAM",
+       "MODL",
+       "MODT",
+       "MODC",
+       "MODS",
+       "MODF"
       ],
       "subrecords": {
        "MNAM": {
@@ -27113,6 +27409,36 @@
         "type": {
          "struct": []
         }
+       },
+       "MODC": {
+        "confidence": "documented",
+        "name": "MODC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODC",
+        "type": "f32"
+       },
+       "MODF": {
+        "confidence": "documented",
+        "name": "MODF",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODF",
+        "type": "bytes"
+       },
+       "MODL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MODL",
+        "type": "zstring"
+       },
+       "MODS": {
+        "confidence": "documented",
+        "name": "MODS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODS",
+        "type": "formid"
+       },
+       "MODT": {
+        "confidence": "documented",
+        "name": "MODT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODT, laid out in the hand-written file",
+        "type": "FO4_MODT"
        }
       }
      },
@@ -27314,6 +27640,11 @@
        "NAM1",
        "MNAM",
        "INDX",
+       "MODL",
+       "MODT",
+       "MODC",
+       "MODS",
+       "MODF",
        "FNAM"
       ],
       "subrecords": {
@@ -27338,6 +27669,36 @@
         "type": {
          "struct": []
         }
+       },
+       "MODC": {
+        "confidence": "documented",
+        "name": "MODC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODC",
+        "type": "f32"
+       },
+       "MODF": {
+        "confidence": "documented",
+        "name": "MODF",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODF",
+        "type": "bytes"
+       },
+       "MODL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MODL",
+        "type": "zstring"
+       },
+       "MODS": {
+        "confidence": "documented",
+        "name": "MODS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODS",
+        "type": "formid"
+       },
+       "MODT": {
+        "confidence": "documented",
+        "name": "MODT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODT, laid out in the hand-written file",
+        "type": "FO4_MODT"
        },
        "NAM1": {
         "confidence": "documented",
@@ -28540,7 +28901,8 @@
       "order": [
        "XPRD",
        "XPPA",
-       "INAM"
+       "INAM",
+       "PDTO"
       ],
       "subrecords": {
        "INAM": {
@@ -28548,6 +28910,50 @@
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REFR.Patrol.INAM",
         "type": "formid"
+       },
+       "PDTO": {
+        "confidence": "documented",
+        "name": "PDTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPDTO. The group 'Topic' repeats this subrecord.",
+        "type": {
+         "struct": [
+          {
+           "expose": true,
+           "name": "Type",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Topic Ref",
+             "1": "Topic Subtype"
+            }
+           }
+          },
+          {
+           "name": "Data",
+           "type": {
+            "cases": {
+             "0": 0,
+             "1": 1
+            },
+            "default": 0,
+            "switch_on": "Type",
+            "union": [
+             {
+              "size": 4,
+              "type": "formid"
+             },
+             {
+              "size": 4,
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
        },
        "XPPA": {
         "confidence": "documented",
@@ -35921,6 +36327,48 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(WRLD)",
    "sequence": {
     "blocks": {
+     "MODL": {
+      "opener": "MODL",
+      "order": [
+       "MODL",
+       "MODT",
+       "MODC",
+       "MODS",
+       "MODF"
+      ],
+      "subrecords": {
+       "MODC": {
+        "confidence": "documented",
+        "name": "MODC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODC",
+        "type": "f32"
+       },
+       "MODF": {
+        "confidence": "documented",
+        "name": "MODF",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODF",
+        "type": "bytes"
+       },
+       "MODL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MODL",
+        "type": "zstring"
+       },
+       "MODS": {
+        "confidence": "documented",
+        "name": "MODS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODS",
+        "type": "formid"
+       },
+       "MODT": {
+        "confidence": "documented",
+        "name": "MODT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODT, laid out in the hand-written file",
+        "type": "FO4_MODT"
+       }
+      }
+     },
      "NAM0": {
       "opener": "NAM0",
       "order": [
@@ -36595,6 +37043,48 @@
           }
          ]
         }
+       }
+      }
+     },
+     "MODL": {
+      "opener": "MODL",
+      "order": [
+       "MODL",
+       "MODT",
+       "MODC",
+       "MODS",
+       "MODF"
+      ],
+      "subrecords": {
+       "MODC": {
+        "confidence": "documented",
+        "name": "MODC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODC",
+        "type": "f32"
+       },
+       "MODF": {
+        "confidence": "documented",
+        "name": "MODF",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODF",
+        "type": "bytes"
+       },
+       "MODL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MODL",
+        "type": "zstring"
+       },
+       "MODS": {
+        "confidence": "documented",
+        "name": "MODS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODS",
+        "type": "formid"
+       },
+       "MODT": {
+        "confidence": "documented",
+        "name": "MODT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODT, laid out in the hand-written file",
+        "type": "FO4_MODT"
        }
       }
      },
