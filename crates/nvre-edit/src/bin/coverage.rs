@@ -59,7 +59,10 @@ fn main() {
         let mut cov = Coverage::default();
         let mut recs = Vec::new();
         visit_records(&p.nodes[1..], &mut |r, _| recs.push(r));
-        cov.add_records_par(&recs, &schema);
+        // A localized file holds its translatable strings as 4-byte string IDs
+        // rather than as text, so the decoder has to be told which it is.
+        let localized = p.header.is_localized();
+        cov.add_records_par_localized(&recs, &schema, localized);
         // Which signatures are still unknown, and on which record types. The
         // per-signature totals say what is left to describe; the record
         // breakdown says how much of it the editor ever shows a user.
@@ -69,6 +72,7 @@ fn main() {
         for rec in &recs {
             let rsig = rec.sig_str();
             let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, rec.header.sig);
+            ctx.localized = localized;
             let subs = rec.subrecords().expect("subs");
             // The sequence walk, so a record whose subrecords are an ordered
             // list of blocks is measured against the block each subrecord is

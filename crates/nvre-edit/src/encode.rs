@@ -478,6 +478,27 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
             out.push(0);
         }
         Prim::Bytes => out.extend_from_slice(&hex_bytes(value, path)?),
+        Prim::Localized => {
+            // The inverse of the decoder: a localized file's string ID is four
+            // bytes, and an ordinary file's is the text with its terminator.
+            // Which one the value is tells the encoder which to write, so a
+            // decoded value re-encodes to the bytes it came from.
+            match value {
+                Value::Number(n) => {
+                    let id = n
+                        .as_u64()
+                        .ok_or_else(|| kind_err(path, "string id", value))?;
+                    write_uint(Prim::U32, id, out, path)?;
+                }
+                Value::String(s) => {
+                    out.extend_from_slice(&cp1252(s, path)?);
+                    if !s.ends_with('\0') {
+                        out.push(0);
+                    }
+                }
+                _ => return Err(kind_err(path, "string or string id", value)),
+            }
+        }
     }
     Ok(())
 }
@@ -711,7 +732,22 @@ fn encode_probe(schema: &Schema, t: &TypeDef, value: &Value) -> Result<Vec<u8>, 
 
 /// The decoded form of a subrecord, ready to hand back to [`encode_sub`].
 pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> Option<Value> {
+    decoded_localized(schema, rec_sig, sub, false)
+}
+
+/// [`decoded`] for a subrecord from a file that may be *localized*.
+///
+/// A localized file holds its translatable strings as 4-byte string IDs
+/// rather than as text, so the same schema reads one or the other according
+/// to the file the subrecord came from.
+pub fn decoded_localized(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &fnv_esm::Subrecord,
+    localized: bool,
+) -> Option<Value> {
     let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    ctx.localized = localized;
     // A subrecord whose element count comes from a sibling — Skyrim's KWDA
     // taking the keyword count from KSIZ — needs that count before it can be
     // decoded on its own. The count is the subrecord's own size divided by
@@ -762,7 +798,21 @@ fn sibling_count(
 /// The check that makes the whole editor trustworthy: if this returns `false`,
 /// the encoder does not understand the field and the editor must refuse to save.
 pub fn roundtrips(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> bool {
-    let Some(value) = decoded(schema, rec_sig, sub) else {
+    roundtrips_localized(schema, rec_sig, sub, false)
+}
+
+/// [`roundtrips`] for a subrecord from a file that may be *localized*.
+///
+/// A localized file holds its translatable strings as 4-byte string IDs
+/// rather than as text, so the same schema reads one or the other according
+/// to the file the subrecord came from.
+pub fn roundtrips_localized(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &fnv_esm::Subrecord,
+    localized: bool,
+) -> bool {
+    let Some(value) = decoded_localized(schema, rec_sig, sub, localized) else {
         return false;
     };
     match encode_sub_len(schema, rec_sig, &sub.sig, &value, Some(sub.data.len())) {

@@ -77,6 +77,19 @@ pub struct DecodeCtx<'a> {
     /// The sibling subrecord that holds the element count for the subrecord
     /// being decoded, when it has one.
     pub count_from: Option<[u8; 4]>,
+    /// Whether the file the record came from is *localized*.
+    ///
+    /// A localized file holds its translatable strings as 4-byte string IDs
+    /// rather than as text, and the flag is a property of the file — the TES4
+    /// header's bit 7 — not of the record. Fallout 4's shipped masters all set
+    /// it [documented: xEdit `wbDefinitionsFO4.pas`, `wbRecord(TES4, ...)`
+    /// names bit 7 "Localized"; observed: all nine shipped masters and ESLs
+    /// carry it].
+    ///
+    /// The [`Prim::Localized`] type reads one or the other according to this
+    /// flag, so the same schema describes a localized master and an ordinary
+    /// plugin.
+    pub localized: bool,
 }
 
 impl<'a> DecodeCtx<'a> {
@@ -93,6 +106,7 @@ impl<'a> DecodeCtx<'a> {
             block_variant: None,
             counts: HashMap::new(),
             count_from: None,
+            localized: false,
         }
     }
 }
@@ -197,6 +211,23 @@ fn read_prim(p: Prim, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<Value, Stri
             Value::from(cp1252::decode(&rest[..end]))
         }
         Prim::Bytes => Value::from(to_hex(c.bytes(c.remaining()).unwrap())),
+        Prim::Localized => {
+            // A localized file holds this field as a 4-byte string ID; an
+            // ordinary file holds text. The file decides, not the schema.
+            if ctx.localized {
+                let id = c.u32().map_err(e)?;
+                Value::from(id)
+            } else {
+                let rest = c.bytes(c.remaining()).unwrap();
+                if rest.last() != Some(&0) && !rest.is_empty() {
+                    return Err(format!(
+                        "localized string not NUL-terminated: {:?}",
+                        cp1252::decode(rest)
+                    ));
+                }
+                Value::from(cp1252::decode_z(rest))
+            }
+        }
     })
 }
 
@@ -655,6 +686,15 @@ fn opener_value_of(
 
 /// Decode a whole record to JSON.
 pub fn decode_record(r: &Record, schema: &Schema) -> Value {
+    decode_record_localized(r, schema, false)
+}
+
+/// [`decode_record`] for a record from a file that may be *localized*.
+///
+/// A localized file holds its translatable strings as 4-byte string IDs
+/// rather than as text, so the same schema reads one or the other according
+/// to the file the record came from.
+pub fn decode_record_localized(r: &Record, schema: &Schema, localized: bool) -> Value {
     let mut out = json!({
         "formid": formid_str(r.header.form_id),
         "type": r.sig_str(),
@@ -676,6 +716,7 @@ pub fn decode_record(r: &Record, schema: &Schema) -> Value {
         Ok(subs) => {
             let mut arr = Vec::with_capacity(subs.len());
             let mut ctx = DecodeCtx::new(schema, r.header.sig);
+            ctx.localized = localized;
             walk_sequence(&r.header.sig, &subs, schema, &mut ctx, |s, ctx| {
                 let d = decode_sub(&r.header.sig, s, ctx);
                 let mut o = Map::new();
@@ -743,11 +784,26 @@ impl Coverage {
         schema: &'a Schema,
         on_formid: Option<&'a mut dyn FnMut(u32)>,
     ) -> RecordCoverage {
+        Self::measure_localized(r, schema, on_formid, false)
+    }
+
+    /// [`Coverage::measure`] for a record from a file that may be *localized*.
+    ///
+    /// A localized file holds its translatable strings as 4-byte string IDs
+    /// rather than as text, so the same schema reads one or the other
+    /// according to the file the record came from.
+    pub fn measure_localized<'a>(
+        r: &Record,
+        schema: &'a Schema,
+        on_formid: Option<&'a mut dyn FnMut(u32)>,
+        localized: bool,
+    ) -> RecordCoverage {
         let subs = r.subrecords().map_err(|e| e.to_string()).map(|subs| {
             let mut ctx = DecodeCtx {
                 on_formid,
                 ..DecodeCtx::new(schema, r.header.sig)
             };
+            ctx.localized = localized;
             // The same sequence walk as `decode_record`: the block decides
             // which definition a signature gets.
             let mut out = Vec::with_capacity(subs.len());
@@ -815,6 +871,18 @@ impl Coverage {
         self.add(Self::measure(r, schema, on_formid));
     }
 
+    /// [`Coverage::add_record`] for a record from a file that may be
+    /// *localized*.
+    pub fn add_record_localized<'a>(
+        &mut self,
+        r: &Record,
+        schema: &'a Schema,
+        on_formid: Option<&'a mut dyn FnMut(u32)>,
+        localized: bool,
+    ) {
+        self.add(Self::measure_localized(r, schema, on_formid, localized));
+    }
+
     /// [`Coverage::add_record`] for many records, decoded in parallel and folded in
     /// order, so the result is identical to adding them one by one.
     pub fn add_records_par(&mut self, recs: &[&Record], schema: &Schema) {
@@ -822,6 +890,25 @@ impl Coverage {
             let measured: Vec<RecordCoverage> = chunk
                 .par_iter()
                 .map(|r| Self::measure(r, schema, None))
+                .collect();
+            for rc in measured {
+                self.add(rc);
+            }
+        }
+    }
+
+    /// [`Coverage::add_records_par`] for records from a file that may be
+    /// *localized*.
+    pub fn add_records_par_localized(
+        &mut self,
+        recs: &[&Record],
+        schema: &Schema,
+        localized: bool,
+    ) {
+        for chunk in recs.chunks(4096) {
+            let measured: Vec<RecordCoverage> = chunk
+                .par_iter()
+                .map(|r| Self::measure_localized(r, schema, None, localized))
                 .collect();
             for rc in measured {
                 self.add(rc);

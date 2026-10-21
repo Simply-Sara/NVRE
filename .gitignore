@@ -3,6 +3,10 @@
 target/
 **/target/
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Editor output (mods written by examples/tests)
 *.esp
 

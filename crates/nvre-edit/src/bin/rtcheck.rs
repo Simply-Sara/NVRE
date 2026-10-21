@@ -4,7 +4,6 @@
 
 use fnv_esm::raw::visit_records;
 use fnv_esm::{Plugin, Schema};
-use nvre_edit::encode::roundtrips;
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -33,9 +32,13 @@ fn main() {
     let mut gaps: std::collections::BTreeMap<String, usize> = Default::default();
     for path in &plugins {
         let p = Plugin::open(path).expect("plugin");
+        // A localized file holds its translatable strings as 4-byte string IDs
+        // rather than as text, so the decoder has to be told which it is.
+        let localized = p.header.is_localized();
         visit_records(&p.nodes[1..], &mut |r, _| {
             for s in r.subrecords().expect("subs") {
                 let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, r.header.sig);
+                ctx.localized = localized;
                 let d = fnv_esm::decode::decode_sub(&r.header.sig, &s, &mut ctx);
                 // Only subrecords the decoder actually read can round-trip; an
                 // unknown one has no layout to invert, and an errored one has no
@@ -44,7 +47,7 @@ fn main() {
                     continue;
                 }
                 checked += 1;
-                if !roundtrips(&schema, &r.header.sig, &s) {
+                if !nvre_edit::encode::roundtrips_localized(&schema, &r.header.sig, &s, localized) {
                     *gaps
                         .entry(format!("{}.{}", r.sig_str(), s.sig_str()))
                         .or_insert(0) += 1;

@@ -95,6 +95,24 @@ pub enum Prim {
     /// xEdit's `wbString` when it is not the last member of a struct (e.g. DEBR
     /// DATA: `[u8 Percentage][string Model FileName][u8 Has Collision]`).
     CString,
+    /// A string that a *localized* file holds as a 4-byte string ID rather than
+    /// as text.
+    ///
+    /// Fallout 4's shipped masters set the file's "Localized" flag (the TES4
+    /// header's bit 7), and in such a file the fields xEdit declares as
+    /// `wbLString` — `FULL`, `DESC` and their kin — carry a `u32` index into
+    /// the file's string table instead of the text itself
+    /// [documented: xEdit `wbDefinitionsFO4.pas`, `wbLStringKC`; observed:
+    /// `FULL` is four bytes in all 43 record types of `Fallout4.esm` that carry
+    /// it, and the master sets bit 7].
+    ///
+    /// The same field in a file that is *not* localized holds ordinary text, so
+    /// this type reads one or the other according to the file the record came
+    /// from: four bytes when the file is localized, a NUL-terminated
+    /// Windows-1252 string when it is not. Which one it is comes from the
+    /// decode context, not from the schema, so a schema written once describes
+    /// both kinds of file.
+    Localized,
     /// Opaque bytes occupying the rest of the field (hex in output).
     Bytes,
     /// The field's first four bytes read as a little-endian `u32`, without
@@ -127,6 +145,7 @@ impl Prim {
             "len_string" => Prim::LenString,
             "string" => Prim::String,
             "cstring" => Prim::CString,
+            "localized" => Prim::Localized,
             "bytes" => Prim::Bytes,
             "peek_u32" => Prim::PeekU32,
             _ => return None,
@@ -144,6 +163,7 @@ impl Prim {
             | Prim::LenString
             | Prim::String
             | Prim::CString
+            | Prim::Localized
             | Prim::Bytes => None,
         }
     }

@@ -20,6 +20,16 @@ pub mod record_flags {
     pub const DELETED: u32 = 0x0000_0020;
     /// Record payload is a u32 decompressed size followed by a zlib stream.
     pub const COMPRESSED: u32 = 0x0004_0000;
+    /// The file's strings are 4-byte string IDs rather than text (TES4 only).
+    ///
+    /// A *localized* file keeps its translatable strings in a string table
+    /// beside the plugin and refers to them by index, so a localized `FULL`
+    /// holds a `u32` rather than a name [documented: xEdit
+    /// `wbDefinitionsFO4.pas`, `wbRecord(TES4, ...)` names bit 7 "Localized";
+    /// observed: all nine shipped Fallout 4 masters and ESLs set it, and
+    /// `FULL` is four bytes in every record type of `Fallout4.esm` that has
+    /// one].
+    pub const LOCALIZED: u32 = 0x0000_0080;
 }
 
 #[derive(Debug, thiserror::Error)]

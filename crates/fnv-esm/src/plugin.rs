@@ -36,6 +36,17 @@ impl PluginHeader {
     pub fn is_master(&self) -> bool {
         self.flags & raw::record_flags::MASTER != 0
     }
+
+    /// Whether the file's strings are 4-byte string IDs rather than text.
+    ///
+    /// A localized file keeps its translatable strings in a string table beside
+    /// the plugin and refers to them by index, so the fields that would hold a
+    /// name hold a `u32` instead [documented: xEdit `wbDefinitionsFO4.pas`,
+    /// `wbRecord(TES4, ...)` names bit 7 "Localized"; observed: all nine
+    /// shipped Fallout 4 masters and ESLs set it].
+    pub fn is_localized(&self) -> bool {
+        self.flags & raw::record_flags::LOCALIZED != 0
+    }
 }
 
 pub struct Plugin {
