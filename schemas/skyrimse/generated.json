@@ -3,6 +3,7 @@
  "records": {
   "ALCH": {
    "confidence": "hypothesis",
+   "merge": true,
    "name": "ALCH",
    "note": "Generated from the UESP field table for ALCH; every entry still needs checking against the shipped data.",
    "subrecords": {
@@ -68,6 +69,12 @@
      "name": "MessageIcon",
      "note": "UESP, Skyrim Mod:Mod File Format/ALCH. Message icon filename",
      "type": "zstring"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures. [observed: 32 bytes]",
+     "type": "bytes"
     },
     "YNAM": {
      "confidence": "hypothesis",
@@ -559,6 +566,7 @@
   },
   "FLOR": {
    "confidence": "hypothesis",
+   "merge": true,
    "name": "FLOR",
    "note": "Generated from the UESP field table for FLOR; every entry still needs checking against the shipped data.",
    "subrecords": {
@@ -630,6 +638,12 @@
      "name": "Pickup sound",
      "note": "UESP, Skyrim Mod:Mod File Format/FLOR. Formid of SNDR when activated",
      "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data. Its size varies with the script.",
+     "type": "bytes"
     }
    }
   },
@@ -814,6 +828,7 @@
   },
   "KEYM": {
    "confidence": "hypothesis",
+   "merge": true,
    "name": "KEYM",
    "note": "Generated from the UESP field table for KEYM; every entry still needs checking against the shipped data.",
    "subrecords": {
@@ -855,6 +870,12 @@
      "name": "Sound - Random/Looping",
      "note": "xEdit wbDefinitionsFNV.pas KEYM record",
      "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data. Its size varies with the script.",
+     "type": "bytes"
     },
     "YNAM": {
      "confidence": "hypothesis",

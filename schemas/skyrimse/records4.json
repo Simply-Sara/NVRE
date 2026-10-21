@@ -956,6 +956,12 @@
      "name": "End Marker",
      "note": "xEdit wbDefinitionsFNV.pas PERK record",
      "type": "Empty"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data. Its size varies with the script.",
+     "type": "bytes"
     }
    }
   },

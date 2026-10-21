@@ -48,6 +48,12 @@
      "note": "The formid of the actor this places.",
      "type": "formid"
     },
+    "PDTO": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 8 bytes]",
+     "type": "bytes"
+    },
     "TNAM": {
      "confidence": "documented",
      "name": "Unknown",
@@ -58,6 +64,18 @@
      "confidence": "documented",
      "name": "Script Info",
      "note": "The Papyrus script info.",
+     "type": "bytes"
+    },
+    "XHOR": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "XIS2": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 0 bytes]",
      "type": "bytes"
     },
     "XLCN": {

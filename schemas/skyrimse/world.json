@@ -665,6 +665,7 @@
   },
   "NAVI": {
    "confidence": "hypothesis",
+   "merge": true,
    "name": "Navmesh Info",
    "note": "Skyrim's NAVI holds one NVMI per navmesh triangle group. The layout is not documented: UESP's NAVM page gives only the signature, and Fallout's layout does not fit. Measured on Skyrim.esm, the 15,462 NVMI records run from 49 to 3,021 bytes, and a field four bytes in at offset 24 counts up in step with the length, but no field explains the length on its own. The contents are therefore read as raw bytes rather than decoded field by field.",
    "subrecords": {
@@ -684,6 +685,12 @@
      "confidence": "hypothesis",
      "name": "Navmesh Info",
      "note": "The navmesh's geometry. The layout is not documented, so it is read as raw bytes.",
+     "type": "bytes"
+    },
+    "NVPP": {
+     "confidence": "documented",
+     "name": "Preferred Pathing",
+     "note": "UESP, Skyrim Mod:Mod File Format/NAVI. The preferred pathing data. [observed: 25,696 bytes]",
      "type": "bytes"
     }
    }
@@ -885,6 +892,12 @@
      "note": "Only the values 0x00, 0x02 and 0x03 are seen.",
      "type": "u32"
     },
+    "XLCN": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "XLIB": {
      "confidence": "documented",
      "name": "Leveled Item Base",
@@ -1028,6 +1041,12 @@
      "name": "Scale",
      "note": "The reference's scale.",
      "type": "f32"
+    },
+    "XSPC": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
     },
     "XTEL": {
      "confidence": "documented",

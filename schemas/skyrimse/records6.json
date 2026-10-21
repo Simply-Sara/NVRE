@@ -1,6 +1,132 @@
 {
  "format": "fnv.schema/1",
  "records": {
+  "DOBJ": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Clutter",
+   "note": "UESP, Skyrim Mod:Mod File Format/DOBJ. [measured: 1 DNAM field in Skyrim.esm, 2,424 bytes]",
+   "subrecords": {
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The clutter's data. [observed: 2,424 bytes]",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The clutter's bounds.",
+     "type": "ObjectBounds"
+    }
+   }
+  },
+  "DOOR": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Door",
+   "note": "UESP, Skyrim Mod:Mod File Format/DOOR. [measured: 5 VMAD fields in Skyrim.esm, 60 to 100 bytes]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The door's flags.",
+     "type": "bytes"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The door's bounds.",
+     "type": "ObjectBounds"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data. Its size varies with the script.",
+     "type": "bytes"
+    }
+   }
+  },
+  "DUAL": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Dual",
+   "note": "UESP, Skyrim Mod:Mod File Format/DUAL. [measured: 2 DATA fields in Skyrim.esm, each 24 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The projectile, explosion, effect shader, hit effect art and impact data set, and the scale inheritance flags.",
+     "type": "DUAL_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The object's bounds.",
+     "type": "ObjectBounds"
+    }
+   }
+  },
   "EQUP": {
    "confidence": "documented",
    "merge": true,
@@ -30,6 +156,12 @@
      "name": "Full Name",
      "note": "The name shown in the game.",
      "type": "u32"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 or 8 bytes]",
+     "type": "bytes"
     },
     "PRKM": {
      "confidence": "documented",
@@ -564,6 +696,47 @@
   }
  },
  "types": {
+  "DUAL_DATA": {
+   "struct": [
+    {
+     "name": "projectile",
+     "note": "The projectile (PROJ).",
+     "type": "formid"
+    },
+    {
+     "name": "explosion",
+     "note": "The explosion (EXPL).",
+     "type": "formid"
+    },
+    {
+     "name": "effect_shader",
+     "note": "The effect shader (EFSH).",
+     "type": "formid"
+    },
+    {
+     "name": "hit_effect_art",
+     "note": "The hit effect art (ARTO).",
+     "type": "formid"
+    },
+    {
+     "name": "impact_data_set",
+     "note": "The impact data set (IPDS).",
+     "type": "formid"
+    },
+    {
+     "name": "scale_inheritance",
+     "note": "Which parts inherit the scale.",
+     "type": {
+      "bits": {
+       "0": "Hit Effect Art Inherits Scale",
+       "1": "Projectile Inherits Scale",
+       "2": "Explosion Inherits Scale"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
   "EXPL_DATA": {
    "struct": [
     {

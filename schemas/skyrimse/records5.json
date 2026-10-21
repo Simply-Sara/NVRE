@@ -74,6 +74,12 @@
      "note": "The editor id.",
      "type": "zstring"
     },
+    "ENAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "MODL": {
      "confidence": "documented",
      "name": "Model",
@@ -103,6 +109,12 @@
      "name": "Sound 1",
      "note": "xEdit wbDefinitionsFNV.pas IPCT record",
      "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data. Its size varies with the script.",
+     "type": "bytes"
     }
    }
   },
@@ -411,6 +423,30 @@
      "name": "Unknown",
      "note": "An unknown field. [observed: 12 bytes]",
      "type": "ObjectBounds"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 37 bytes]",
+     "type": "bytes"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 37 bytes]",
+     "type": "bytes"
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 37 bytes]",
+     "type": "bytes"
+    },
+    "NAM5": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 1 bytes]",
+     "type": "bytes"
     },
     "NNAM": {
      "confidence": "documented",

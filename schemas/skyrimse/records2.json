@@ -215,6 +215,24 @@
      "note": "The cloud texture's path. The signature names the layer: layer 0 is 00TX and layer n uses the character chr(ord('0')+n) followed by 0TX.",
      "type": "zstring"
     },
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer",
+     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The alternative name of cloud texture layer 2, which the layer's own texture signature otherwise carries.",
+     "type": "zstring"
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer",
+     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The alternative name of cloud texture layer 3, which the layer's own texture signature otherwise carries.",
+     "type": "zstring"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer",
+     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The alternative name of cloud texture layer 1, which the layer's own texture signature otherwise carries.",
+     "type": "zstring"
+    },
     "DALC": {
      "confidence": "documented",
      "name": "Direct Ambient And Specular Colours",
@@ -226,6 +244,12 @@
      "name": "Data",
      "note": "19 bytes of data whose layout is not documented.",
      "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer",
+     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The alternative name of cloud texture layer 0, which the layer's own texture signature otherwise carries.",
+     "type": "zstring"
     },
     "EDID": {
      "confidence": "documented",
@@ -311,6 +335,15 @@
      "name": "Visual Effect",
      "note": "The visual effect (RFCT).",
      "type": "formid"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Cloud Speed",
+     "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The alternative to the QNAM: the cloud speed of the first four layers, one byte each.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
     },
     "PNAM": {
      "confidence": "documented",
