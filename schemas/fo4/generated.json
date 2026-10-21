@@ -1327,6 +1327,13 @@
           {
            "name": "Value",
            "type": {
+            "cases": {
+             "BSDelayEffect": 2,
+             "BSOverdrive": 0,
+             "BSStateVariableFilter": 1
+            },
+            "default": 0,
+            "switch_on": "KNAM",
             "union": [
              {
               "type": {
@@ -1394,8 +1401,9 @@
        },
        "KNAM": {
         "confidence": "documented",
+        "expose": true,
         "name": "Type",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KNAM",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KNAM The value of this subrecord decides which variant a later union takes.",
         "type": "u32"
        }
       }
@@ -2362,9 +2370,30 @@
       "opener": "MOD2",
       "order": [
        "MOD2",
-       "MO2T"
+       "MO2T",
+       "MO2C",
+       "MO2S",
+       "MO2F"
       ],
       "subrecords": {
+       "MO2C": {
+        "confidence": "documented",
+        "name": "MO2C",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO2C",
+        "type": "f32"
+       },
+       "MO2F": {
+        "confidence": "documented",
+        "name": "MO2F",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO2F",
+        "type": "bytes"
+       },
+       "MO2S": {
+        "confidence": "documented",
+        "name": "MO2S",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO2S",
+        "type": "formid"
+       },
        "MO2T": {
         "confidence": "documented",
         "name": "Texture Files Hashes",
@@ -2383,9 +2412,30 @@
       "opener": "MOD3",
       "order": [
        "MOD3",
-       "MO3T"
+       "MO3T",
+       "MO3C",
+       "MO3S",
+       "MO3F"
       ],
       "subrecords": {
+       "MO3C": {
+        "confidence": "documented",
+        "name": "MO3C",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO3C",
+        "type": "f32"
+       },
+       "MO3F": {
+        "confidence": "documented",
+        "name": "MO3F",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO3F",
+        "type": "bytes"
+       },
+       "MO3S": {
+        "confidence": "documented",
+        "name": "MO3S",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO3S",
+        "type": "formid"
+       },
        "MO3T": {
         "confidence": "documented",
         "name": "Texture Files Hashes",
@@ -2404,9 +2454,30 @@
       "opener": "MOD4",
       "order": [
        "MOD4",
-       "MO4T"
+       "MO4T",
+       "MO4C",
+       "MO4S",
+       "MO4F"
       ],
       "subrecords": {
+       "MO4C": {
+        "confidence": "documented",
+        "name": "MO4C",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO4C",
+        "type": "f32"
+       },
+       "MO4F": {
+        "confidence": "documented",
+        "name": "MO4F",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO4F",
+        "type": "bytes"
+       },
+       "MO4S": {
+        "confidence": "documented",
+        "name": "MO4S",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO4S",
+        "type": "formid"
+       },
        "MO4T": {
         "confidence": "documented",
         "name": "Texture Files Hashes",
@@ -2425,9 +2496,30 @@
       "opener": "MOD5",
       "order": [
        "MOD5",
-       "MO5T"
+       "MO5T",
+       "MO5C",
+       "MO5S",
+       "MO5F"
       ],
       "subrecords": {
+       "MO5C": {
+        "confidence": "documented",
+        "name": "MO5C",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO5C",
+        "type": "f32"
+       },
+       "MO5F": {
+        "confidence": "documented",
+        "name": "MO5F",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO5F",
+        "type": "bytes"
+       },
+       "MO5S": {
+        "confidence": "documented",
+        "name": "MO5S",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO5S",
+        "type": "formid"
+       },
        "MO5T": {
         "confidence": "documented",
         "name": "Texture Files Hashes",
@@ -2723,9 +2815,17 @@
       "opener": "MOD2",
       "order": [
        "MOD2",
-       "MO2T"
+       "MO2T",
+       "MODC",
+       "MO2S"
       ],
       "subrecords": {
+       "MO2S": {
+        "confidence": "documented",
+        "name": "MO2S",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO2S",
+        "type": "formid"
+       },
        "MO2T": {
         "confidence": "documented",
         "name": "Texture Files Hashes",
@@ -2737,6 +2837,12 @@
         "name": "Model FileName",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MOD2",
         "type": "zstring"
+       },
+       "MODC": {
+        "confidence": "documented",
+        "name": "MODC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODC",
+        "type": "f32"
        }
       }
      },
@@ -2744,9 +2850,17 @@
       "opener": "MOD4",
       "order": [
        "MOD4",
-       "MO4T"
+       "MO4T",
+       "MODC",
+       "MO4S"
       ],
       "subrecords": {
+       "MO4S": {
+        "confidence": "documented",
+        "name": "MO4S",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO4S",
+        "type": "formid"
+       },
        "MO4T": {
         "confidence": "documented",
         "name": "Texture Files Hashes",
@@ -2758,6 +2872,12 @@
         "name": "Model FileName",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MOD4",
         "type": "zstring"
+       },
+       "MODC": {
+        "confidence": "documented",
+        "name": "MODC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODC",
+        "type": "f32"
        }
       }
      },
@@ -6392,7 +6512,8 @@
      "DATA": {
       "opener": "DATA",
       "order": [
-       "DATA"
+       "DATA",
+       "MODT"
       ],
       "subrecords": {
        "DATA": {
@@ -6415,6 +6536,12 @@
           }
          ]
         }
+       },
+       "MODT": {
+        "confidence": "documented",
+        "name": "MODT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODT, laid out in the hand-written file",
+        "type": "FO4_MODT"
        }
       }
      }
@@ -12284,14 +12411,66 @@
      "VNAM": {
       "opener": "VNAM",
       "order": [
-       "VNAM"
+       "VNAM",
+       "WNAM",
+       "KSIZ",
+       "KWDA",
+       "XNAM",
+       "YNAM"
       ],
       "subrecords": {
+       "KSIZ": {
+        "confidence": "documented",
+        "name": "KSIZ",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KSIZ",
+        "type": "u32"
+       },
+       "KWDA": {
+        "confidence": "documented",
+        "name": "KWDA",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbKWDAs",
+        "type": {
+         "array": "formid"
+        }
+       },
        "VNAM": {
         "confidence": "documented",
         "name": "Count",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), VNAM",
         "type": "u32"
+       },
+       "WNAM": {
+        "confidence": "documented",
+        "name": "Text",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INNR.Naming Rules.WNAM",
+        "type": "localized"
+       },
+       "XNAM": {
+        "confidence": "documented",
+        "name": "Property",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INNR.Naming Rules.XNAM",
+        "type": {
+         "struct": [
+          {
+           "name": "Value",
+           "type": "f32"
+          },
+          {
+           "name": "Target",
+           "type": "u8"
+          },
+          {
+           "name": "Op",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       "YNAM": {
+        "confidence": "documented",
+        "name": "Index",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), YNAM",
+        "type": "u16"
        }
       }
      }
@@ -14685,6 +14864,96 @@
    "confidence": "documented",
    "name": "Leveled Item",
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(LVLI)",
+   "sequence": {
+    "blocks": {
+     "LVLO": {
+      "opener": "LVLO",
+      "order": [
+       "LVLO",
+       "COED"
+      ],
+      "subrecords": {
+       "COED": {
+        "confidence": "documented",
+        "name": "COED",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
+        "type": {
+         "struct": [
+          {
+           "name": "Owner",
+           "type": "formid"
+          },
+          {
+           "name": "Global Variable / Required Rank",
+           "type": {
+            "union": [
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": "i32"
+             }
+            ]
+           }
+          },
+          {
+           "name": "Item Condition",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       "LVLO": {
+        "confidence": "documented",
+        "name": "LVLO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LVLI.Leveled List Entries.LVLO",
+        "type": {
+         "struct": [
+          {
+           "name": "Level",
+           "type": "u16"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 2
+           }
+          },
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Count",
+           "type": "u16"
+          },
+          {
+           "name": "Chance None",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          }
+         ]
+        }
+       }
+      }
+     }
+    },
+    "end": [],
+    "start": []
+   },
    "subrecords": {
     "EDID": {
      "confidence": "documented",
@@ -14781,6 +15050,90 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(LVLN)",
    "sequence": {
     "blocks": {
+     "LVLO": {
+      "opener": "LVLO",
+      "order": [
+       "LVLO",
+       "COED"
+      ],
+      "subrecords": {
+       "COED": {
+        "confidence": "documented",
+        "name": "COED",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
+        "type": {
+         "struct": [
+          {
+           "name": "Owner",
+           "type": "formid"
+          },
+          {
+           "name": "Global Variable / Required Rank",
+           "type": {
+            "union": [
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": "i32"
+             }
+            ]
+           }
+          },
+          {
+           "name": "Item Condition",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       "LVLO": {
+        "confidence": "documented",
+        "name": "LVLO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LVLN.Leveled List Entries.LVLO",
+        "type": {
+         "struct": [
+          {
+           "name": "Level",
+           "type": "u16"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 2
+           }
+          },
+          {
+           "name": "Reference",
+           "type": "formid"
+          },
+          {
+           "name": "Count",
+           "type": "i16"
+          },
+          {
+           "name": "Chance None",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          }
+         ]
+        }
+       }
+      }
+     },
      "MODL": {
       "opener": "MODL",
       "order": [
@@ -17549,10 +17902,18 @@
       "opener": "CS2H",
       "order": [
        "CS2H",
+       "CS2K",
+       "CS2D",
        "CS2E",
        "CS2F"
       ],
       "subrecords": {
+       "CS2D": {
+        "confidence": "documented",
+        "name": "Sound",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.Actor Sounds.CS2D",
+        "type": "formid"
+       },
        "CS2E": {
         "confidence": "documented",
         "name": "End Marker",
@@ -17575,6 +17936,12 @@
         "name": "Count",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CS2H",
         "type": "u32"
+       },
+       "CS2K": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.Actor Sounds.CS2K",
+        "type": "formid"
        }
       }
      },
@@ -18971,6 +19338,208 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(PACK)",
    "sequence": {
     "blocks": {
+     "ANAM": {
+      "note": " The group is also opened by another group of the same record, so their subrecords are merged.",
+      "opener": "ANAM",
+      "order": [
+       "ANAM",
+       "CNAM",
+       "BNAM",
+       "PLDT",
+       "PTDA",
+       "TPIC",
+       "CITC",
+       "PRCB",
+       "PNAM",
+       "FNAM"
+      ],
+      "subrecords": {
+       "ANAM": {
+        "confidence": "documented",
+        "expose": true,
+        "name": "Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM The value of this subrecord decides which variant a later union takes.",
+        "type": "zstring"
+       },
+       "BNAM": {
+        "confidence": "documented",
+        "name": "BNAM",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Package Data.BNAM",
+        "type": "bytes"
+       },
+       "CITC": {
+        "confidence": "documented",
+        "name": "CITC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CITC",
+        "type": "u32"
+       },
+       "CNAM": {
+        "confidence": "documented",
+        "name": "Value",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Package Data.CNAM",
+        "type": {
+         "cases": {
+          "Bool": 1,
+          "Float": 3,
+          "Int": 2,
+          "ObjectList": 3
+         },
+         "default": 0,
+         "switch_on": "ANAM",
+         "union": [
+          {
+           "type": "bytes"
+          },
+          {
+           "type": "u8"
+          },
+          {
+           "type": "u32"
+          },
+          {
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       "FNAM": {
+        "confidence": "documented",
+        "name": "Flags",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
+        "type": "u32"
+       },
+       "PLDT": {
+        "confidence": "documented",
+        "name": "PLDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPLDT",
+        "type": {
+         "struct": [
+          {
+           "name": "Type",
+           "type": "i32"
+          },
+          {
+           "name": "Location Value",
+           "type": {
+            "union": [
+             {
+              "type": "formid"
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": "u32"
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "i32"
+             },
+             {
+              "type": "i32"
+             },
+             {
+              "type": "u32"
+             },
+             {
+              "type": "u32"
+             },
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "i32"
+             }
+            ]
+           }
+          },
+          {
+           "name": "Radius",
+           "type": "i32"
+          },
+          {
+           "name": "Collection Index",
+           "type": "u32"
+          }
+         ]
+        }
+       },
+       "PNAM": {
+        "confidence": "documented",
+        "name": "Procedure Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PNAM",
+        "type": "zstring"
+       },
+       "PRCB": {
+        "confidence": "documented",
+        "name": "Root",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Procedure Tree.PRCB",
+        "type": {
+         "struct": [
+          {
+           "name": "Branch Count",
+           "type": "u32"
+          },
+          {
+           "name": "Flags",
+           "type": "u32"
+          }
+         ]
+        }
+       },
+       "PTDA": {
+        "confidence": "documented",
+        "name": "Target",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Package Data.PTDA",
+        "type": {
+         "struct": [
+          {
+           "name": "wbTargetData",
+           "type": "wbTargetData"
+          }
+         ]
+        }
+       },
+       "TPIC": {
+        "confidence": "documented",
+        "name": "TPIC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.Package Data.TPIC",
+        "type": "bytes"
+       }
+      }
+     },
      "IDLF": {
       "opener": "IDLF",
       "order": [
@@ -20663,6 +21232,12 @@
       "order": [
        "PRKE",
        "DATA",
+       "PRKC",
+       "EPFT",
+       "EPFB",
+       "EPF2",
+       "EPF3",
+       "EPFD",
        "PRKF"
       ],
       "subrecords": {
@@ -20709,6 +21284,101 @@
           }
          ]
         }
+       },
+       "EPF2": {
+        "confidence": "documented",
+        "name": "Button Label",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.EPF2",
+        "type": "localized"
+       },
+       "EPF3": {
+        "confidence": "documented",
+        "name": "Script Flags",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.EPF3",
+        "type": {
+         "struct": [
+          {
+           "name": "Script Flags",
+           "type": "u16"
+          }
+         ]
+        }
+       },
+       "EPFB": {
+        "confidence": "documented",
+        "name": "Perk Entry ID (unique)",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EPFB",
+        "type": "u16"
+       },
+       "EPFD": {
+        "confidence": "documented",
+        "name": "Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.EPFD",
+        "type": {
+         "union": [
+          {
+           "type": "bytes"
+          },
+          {
+           "type": "f32"
+          },
+          {
+           "type": {
+            "struct": [
+             {
+              "name": "Float 1",
+              "type": "f32"
+             },
+             {
+              "name": "Float 2",
+              "type": "f32"
+             }
+            ]
+           }
+          },
+          {
+           "type": "formid"
+          },
+          {
+           "type": "formid"
+          },
+          {
+           "type": "formid"
+          },
+          {
+           "type": "zstring"
+          },
+          {
+           "type": "localized"
+          },
+          {
+           "type": {
+            "struct": [
+             {
+              "name": "wbActorValue",
+              "type": "wbActorValue"
+             },
+             {
+              "name": "Float",
+              "type": "f32"
+             }
+            ]
+           }
+          }
+         ]
+        }
+       },
+       "EPFT": {
+        "confidence": "documented",
+        "name": "Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EPFT",
+        "type": "u8"
+       },
+       "PRKC": {
+        "confidence": "documented",
+        "name": "Run On (Tab Index)",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PRKC",
+        "type": "i8"
        },
        "PRKE": {
         "confidence": "documented",
@@ -22961,9 +23631,19 @@
      "INDX": {
       "opener": "INDX",
       "order": [
-       "INDX"
+       "INDX",
+       "QSDT",
+       "NAM2",
+       "CNAM",
+       "NAM0"
       ],
       "subrecords": {
+       "CNAM": {
+        "confidence": "documented",
+        "name": "Log Entry",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.Stages.CNAM",
+        "type": "localized"
+       },
        "INDX": {
         "confidence": "documented",
         "name": "INDX",
@@ -22984,6 +23664,24 @@
           }
          ]
         }
+       },
+       "NAM0": {
+        "confidence": "documented",
+        "name": "Next Quest",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.Stages.NAM0",
+        "type": "formid"
+       },
+       "NAM2": {
+        "confidence": "documented",
+        "name": "Note",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NAM2",
+        "type": "zstring"
+       },
+       "QSDT": {
+        "confidence": "documented",
+        "name": "Stage Flags",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QSDT",
+        "type": "u8"
        }
       }
      },
@@ -22992,7 +23690,8 @@
       "order": [
        "QOBJ",
        "FNAM",
-       "NNAM"
+       "NNAM",
+       "QSTA"
       ],
       "subrecords": {
        "FNAM": {
@@ -23012,6 +23711,27 @@
         "name": "Objective Index",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QOBJ",
         "type": "u16"
+       },
+       "QSTA": {
+        "confidence": "documented",
+        "name": "Target",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.Objectives.QSTA",
+        "type": {
+         "struct": [
+          {
+           "name": "Alias",
+           "type": "i32"
+          },
+          {
+           "name": "Flags",
+           "type": "u32"
+          },
+          {
+           "name": "Keyword",
+           "type": "formid"
+          }
+         ]
+        }
        }
       }
      }
@@ -23362,6 +24082,7 @@
       }
      },
      "INDX": {
+      "note": " The group is also opened by another group of the same record, so their subrecords are merged.",
       "opener": "INDX",
       "order": [
        "INDX",
@@ -23429,7 +24150,8 @@
      "MTYP": {
       "opener": "MTYP",
       "order": [
-       "MTYP"
+       "MTYP",
+       "SPED"
       ],
       "subrecords": {
        "MTYP": {
@@ -23437,15 +24159,161 @@
         "name": "Movement Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Movement Data Overrides.MTYP",
         "type": "formid"
+       },
+       "SPED": {
+        "confidence": "documented",
+        "name": "SPED",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbSPED",
+        "type": {
+         "struct": [
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Walk - Left",
+           "type": "f32"
+          },
+          {
+           "name": "Run - Left",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Walk - Right",
+           "type": "f32"
+          },
+          {
+           "name": "Run - Right",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Walk - Forward",
+           "type": "f32"
+          },
+          {
+           "name": "Run - Forward",
+           "type": "f32"
+          },
+          {
+           "name": "Sprint - Forward",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Walk - Back",
+           "type": "f32"
+          },
+          {
+           "name": "Run - Back",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Standing - Pitch",
+           "type": "f32"
+          },
+          {
+           "name": "Walk - Pitch",
+           "type": "f32"
+          },
+          {
+           "name": "Run - Pitch",
+           "type": "f32"
+          },
+          {
+           "name": "Sprint - Pitch",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Unknown",
+           "type": "f32"
+          },
+          {
+           "name": "Standing - Yaw",
+           "type": "f32"
+          },
+          {
+           "name": "Walk - Yaw",
+           "type": "f32"
+          },
+          {
+           "name": "Run - Yaw",
+           "type": "f32"
+          },
+          {
+           "name": "Sprint - Yaw",
+           "type": "f32"
+          }
+         ]
+        }
        }
       }
      },
      "NAM1": {
       "opener": "NAM1",
       "order": [
-       "NAM1"
+       "NAM1",
+       "MNAM",
+       "INDX",
+       "FNAM"
       ],
       "subrecords": {
+       "FNAM": {
+        "confidence": "documented",
+        "name": "Female Data Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Body Data.FNAM",
+        "type": {
+         "struct": []
+        }
+       },
+       "INDX": {
+        "confidence": "documented",
+        "name": "Index",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INDX",
+        "type": "u32"
+       },
+       "MNAM": {
+        "confidence": "documented",
+        "name": "Male Data Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Body Data.MNAM",
+        "type": {
+         "struct": []
+        }
+       },
        "NAM1": {
         "confidence": "documented",
         "name": "Body Data Marker",
@@ -24286,6 +25154,7 @@
       "order": [
        "XMRK",
        "FNAM",
+       "FULL",
        "TNAM"
       ],
       "subrecords": {
@@ -24294,6 +25163,12 @@
         "name": "Map Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
         "type": "u8"
+       },
+       "FULL": {
+        "confidence": "documented",
+        "name": "FULL",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbFULLReq",
+        "type": "localized"
        },
        "TNAM": {
         "confidence": "documented",
@@ -25358,6 +26233,7 @@
       "opener": "RDAT",
       "order": [
        "RDAT",
+       "ICON",
        "RDMO",
        "RDSA",
        "RDMP",
@@ -25373,6 +26249,12 @@
         "name": "Occlusion Accuracy Dist",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REGN.Region Data Entries.ANAM",
         "type": "f32"
+       },
+       "ICON": {
+        "confidence": "documented",
+        "name": "ICON",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ICON",
+        "type": "zstring"
        },
        "RDAT": {
         "confidence": "documented",
@@ -25996,10 +26878,13 @@
        "FNAM",
        "SNAM",
        "ENAM",
-       "SNAM",
        "SCQS",
        "TNAM",
        "STSC",
+       "LCEP",
+       "INTT",
+       "SSPN",
+       "CITC",
        "PTOP",
        "NTOP",
        "NETO",
@@ -26025,11 +26910,8 @@
        "CRIS",
        "DEMO",
        "DEVA",
-       "HTID",
-       "VENC",
        "PNAM",
-       "ONAM",
-       "ANAM"
+       "ONAM"
       ],
       "subrecords": {
        "ALID": {
@@ -26040,11 +26922,15 @@
        },
        "ANAM": {
         "confidence": "documented",
-        "name": "End Marker",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.ANAM",
-        "type": {
-         "struct": []
-        }
+        "name": "Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM",
+        "type": "u16"
+       },
+       "CITC": {
+        "confidence": "documented",
+        "name": "CITC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CITC",
+        "type": "u32"
        },
        "CRIS": {
         "confidence": "documented",
@@ -26125,9 +27011,20 @@
        },
        "HTID": {
         "confidence": "documented",
-        "name": "Player Headtracking",
+        "name": "HTID",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.HTID",
-        "type": "bytes"
+        "type": {
+         "union": [
+          {
+           "type": {
+            "struct": []
+           }
+          },
+          {
+           "type": "formid"
+          }
+         ]
+        }
        },
        "INAM": {
         "confidence": "documented",
@@ -26135,10 +27032,22 @@
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INAM",
         "type": "u32"
        },
+       "INTT": {
+        "confidence": "documented",
+        "name": "Phase Index",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INTT",
+        "type": "u16"
+       },
        "JOUT": {
         "confidence": "documented",
         "name": "Player Neutral Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.JOUT",
+        "type": "formid"
+       },
+       "LCEP": {
+        "confidence": "documented",
+        "name": "Scene",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.LCEP",
         "type": "formid"
        },
        "NAM0": {
@@ -26245,9 +27154,15 @@
        },
        "SNAM": {
         "confidence": "documented",
-        "name": "Timer - Max Seconds",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.SNAM",
-        "type": "f32"
+        "name": "Start Phase",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNAM",
+        "type": "u32"
+       },
+       "SSPN": {
+        "confidence": "documented",
+        "name": "Start Phase for Scene",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SSPN",
+        "type": "zstring"
        },
        "STSC": {
         "confidence": "documented",
@@ -26263,7 +27178,7 @@
        },
        "VENC": {
         "confidence": "documented",
-        "name": "Dialogue Subtype",
+        "name": "Player Positive Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.VENC",
         "type": "formid"
        }
@@ -26275,11 +27190,9 @@
        "HNAM",
        "NAM0",
        "NEXT",
-       "NEXT",
        "WNAM",
        "FNAM",
-       "SCQS",
-       "HNAM"
+       "SCQS"
       ],
       "subrecords": {
        "FNAM": {
@@ -26290,7 +27203,7 @@
        },
        "HNAM": {
         "confidence": "documented",
-        "name": "Marker Phase End",
+        "name": "Marker Phase Start",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Phases.HNAM",
         "type": {
          "struct": []
@@ -26304,7 +27217,7 @@
        },
        "NEXT": {
         "confidence": "documented",
-        "name": "Marker Completion Conditions",
+        "name": "Marker Start Conditions",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Phases.NEXT",
         "type": {
          "struct": []
@@ -27028,6 +27941,11 @@
      "name": "Data",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNDR.BNAM",
      "type": {
+      "cases": {
+       "AutoWeapon": 1
+      },
+      "default": 0,
+      "switch_on": "CNAM",
       "union": [
        {
         "type": {
@@ -27063,8 +27981,9 @@
     },
     "CNAM": {
      "confidence": "documented",
+     "expose": true,
      "name": "Descriptor Type",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CNAM",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CNAM The value of this subrecord decides which variant a later union takes.",
      "type": "u32"
     },
     "DNAM": {
@@ -30133,9 +31052,30 @@
       "opener": "MOD4",
       "order": [
        "MOD4",
-       "MO4T"
+       "MO4T",
+       "MO4S",
+       "MO4C",
+       "MO4F"
       ],
       "subrecords": {
+       "MO4C": {
+        "confidence": "documented",
+        "name": "MO4C",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO4C",
+        "type": "f32"
+       },
+       "MO4F": {
+        "confidence": "documented",
+        "name": "MO4F",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO4F",
+        "type": "bytes"
+       },
+       "MO4S": {
+        "confidence": "documented",
+        "name": "MO4S",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMO4S",
+        "type": "formid"
+       },
        "MO4T": {
         "confidence": "documented",
         "name": "Texture Files Hashes",
@@ -30849,15 +31789,47 @@
      "WLEV": {
       "opener": "WLEV",
       "order": [
-       "WLEV",
        "WLEV"
       ],
       "subrecords": {
        "WLEV": {
         "confidence": "documented",
-        "name": "Data",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WLEV",
-        "type": "bytes"
+        "name": "Dimension",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.World Default Level Data.WLEV",
+        "type": {
+         "struct": [
+          {
+           "name": "NW Cell",
+           "type": {
+            "struct": [
+             {
+              "name": "X",
+              "type": "i8"
+             },
+             {
+              "name": "Y",
+              "type": "i8"
+             }
+            ]
+           }
+          },
+          {
+           "name": "Size",
+           "type": {
+            "struct": [
+             {
+              "name": "Width",
+              "type": "u8"
+             },
+             {
+              "name": "Height",
+              "type": "u8"
+             }
+            ]
+           }
+          }
+         ]
+        }
        }
       }
      },
@@ -31199,19 +32171,12 @@
      "DALC": {
       "opener": "DALC",
       "order": [
-       "DALC",
-       "DALC",
-       "DALC",
-       "DALC",
-       "DALC",
-       "DALC",
-       "DALC",
        "DALC"
       ],
       "subrecords": {
        "DALC": {
         "confidence": "documented",
-        "name": "LateSunset",
+        "name": "Sunrise",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbAmbientColors(DALC)",
         "type": {
          "struct": [

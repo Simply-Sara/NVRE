@@ -43,13 +43,13 @@ pub struct DecodeCtx<'a> {
     /// same record, e.g. `wbPerkDATADecider` reading PRKE's Type, or
     /// `wbEPFDDecider` reading EPFT). Populated in subrecord order, so the
     /// switch target must be decoded before the subrecord that switches on it.
-    pub exposed: HashMap<([u8; 4], String), u64>,
+    pub exposed: HashMap<([u8; 4], String), String>,
     /// The record currently being decoded, for `exposed` lookups.
     pub rec_sig: [u8; 4],
     /// Field values decoded earlier in the *same* struct, for an in-struct
     /// `switch_on` (e.g. a nested `wbUnion` that reads a sibling field of its
     /// own struct rather than another subrecord).
-    pub switch_on: Option<HashMap<String, u64>>,
+    pub switch_on: Option<HashMap<String, String>>,
     /// The sequence block the decoder is currently inside, when the record has
     /// a `sequence`.
     ///
@@ -252,22 +252,31 @@ fn obj_int(v: &Value) -> Option<u64> {
     v.as_u64().or_else(|| v.get("raw").and_then(Value::as_u64))
 }
 
-/// The integer a decoded value carries for union-switch purposes.
+/// The integer a decoded value carries, for element counts.
 ///
-/// A plain integer field or a flags object already exposes its number. An enum
-/// field decodes to its name string, so the name is looked back up in the
-/// schema's value table to recover the number — the decoded JSON is left alone.
-fn switch_int(schema: &Schema, ty: &TypeDef, v: &Value) -> Option<u64> {
+/// Only plain integers count here: a count is how many elements follow, so
+/// an enum or a name is not one.
+fn switch_int(v: &Value) -> Option<u64> {
+    obj_int(v)
+}
+
+/// The text a decoded value carries for union-switch purposes.
+///
+/// A union's case keys are text, so the value is rendered as text: an
+/// integer as its decimal form, and a string as itself. An enum field
+/// decodes to its name string, so the name is the text the switch reads —
+/// the decoded JSON is left alone.
+fn switch_text(schema: &Schema, ty: &TypeDef, v: &Value) -> Option<String> {
     if let Some(n) = obj_int(v) {
-        return Some(n);
+        return Some(n.to_string());
     }
     let name = v.as_str()?;
     match schema.resolve(ty) {
         TypeDef::Enum { values, .. } => values
             .iter()
             .find(|(_, n)| n == name)
-            .map(|(k, _)| *k as u64),
-        _ => None,
+            .map(|(k, _)| k.to_string()),
+        _ => Some(name.to_string()),
     }
 }
 
@@ -323,8 +332,8 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             let switch = ctx
                 .switch_on
                 .as_ref()
-                .and_then(|s| s.get(name).copied())
-                .or_else(|| ctx.exposed.get(&(ctx.rec_sig, name.clone())).copied());
+                .and_then(|s| s.get(name).cloned())
+                .or_else(|| ctx.exposed.get(&(ctx.rec_sig, name.clone())).cloned());
             // A missing switch selects the default, mirroring xEdit's deciders
             // (e.g. wbPerkDATADecider returns 0 when the sibling PRKE is absent,
             // which is exactly the record-level case the union must also cover).
@@ -386,13 +395,13 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 // a union on it. Enum/flag values stay their JSON form, so read the
                 // raw number out of the object when present.
                 if f.expose {
-                    if let Some(n) = switch_int(schema, &f.ty, &v) {
+                    if let Some(n) = switch_text(schema, &f.ty, &v) {
                         ctx.exposed.insert((ctx.rec_sig, f.name.clone()), n);
                     }
                     // A struct that both exposes a field and switches on one needs
                     // its own field values, so keep them for in-struct lookups too.
                     if let Some(m) = ctx.switch_on.as_mut() {
-                        if let Some(n) = switch_int(schema, &f.ty, &v) {
+                        if let Some(n) = switch_text(schema, &f.ty, &v) {
                             m.insert(f.name.clone(), n);
                         }
                     }
@@ -545,14 +554,14 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
             // Keyed by the subrecord signature, not a field name, so it cannot
             // collide with a struct field of the same name (PERK's PRKE.Type).
             if def.expose {
-                if let Some(i) = switch_int(ctx.schema, &def.ty, &v) {
+                if let Some(i) = switch_text(ctx.schema, &def.ty, &v) {
                     ctx.exposed.insert((ctx.rec_sig, s.sig_str()), i);
                 }
             }
             // A subrecord's value is remembered under its own signature, so a
             // later subrecord can take its element count from it (Skyrim's
             // KSIZ holding the keyword count and KWDA holding the keywords).
-            if let Some(i) = switch_int(ctx.schema, &def.ty, &v) {
+            if let Some(i) = switch_int(&v) {
                 ctx.counts.insert(s.sig, i);
             }
             if c.is_empty() {

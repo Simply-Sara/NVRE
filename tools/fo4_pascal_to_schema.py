@@ -301,6 +301,75 @@ class Converter:
         self.records = {}        # signature -> record definition
         self.problems = []
         self.deferred = set()    # names referred to before they were defined
+        self.deciders = self._collect_deciders()
+
+    def _collect_deciders(self):
+        """What each of xEdit's decider functions decides, and by what.
+
+        A `wbUnion` may name a decider function instead of choosing its
+        variant by the bytes left: a package's value is a bool, an int or a
+        float according to the *name* in the sibling `ANAM`, and a perk's
+        data according to the type in the sibling `PRKE`. The schema
+        language expresses that as a union that switches on a sibling
+        field's value, so the decider's body is read to learn which sibling
+        it reads and which value picks which variant.
+
+        The reading is deliberately narrow — only the shapes xEdit actually
+        uses are understood — and anything not understood leaves the union
+        as it was, chosen by the bytes left.
+        """
+        out = {}
+        for m in re.finditer(
+            r"function\s+(\w*[Dd]ecider)\s*\([^)]*\)\s*:\s*Integer\s*;(.*?)\nend;",
+            self.src,
+            re.S,
+        ):
+            name, body = m.group(1), m.group(2)
+            d = self._read_decider(body)
+            if d:
+                out[name.lower()] = d
+        return out
+
+    def _read_decider(self, body):
+        """The switch field and the cases of one decider body."""
+        # The sibling the decider reads: a subrecord of the record
+        # (`RecordBySignature[PRKE]`) or an element of the container
+        # (`ElementNativeValues['EPFT']`).
+        m = re.search(r"RecordBySignature\[(\w+)\]", body)
+        if m:
+            switch = m.group(1)
+        else:
+            m = re.search(r"ElementNativeValues\['(\w+)'\]", body)
+            if m:
+                switch = m.group(1)
+            else:
+                m = re.search(r"ElementBySignature\['(\w+)'\]", body)
+                if m:
+                    switch = m.group(1)
+                else:
+                    m = re.search(r"ElementByName\['(\w+)'\]", body)
+                    if not m:
+                        return None
+                    switch = None
+        # The cases: a name compared to a string, or a number compared to a
+        # number, each giving a result.
+        cases = {}
+        for cm in re.finditer(
+            r"(?:if\s+)?(\w+)\s*(=|<>)\s*'([^']*)'\s*(?:then)?\s*Result\s*:=\s*(\d+)",
+            body,
+        ):
+            var, op, text, res = cm.groups()
+            if op == "=":
+                cases[text] = int(res)
+        if not cases:
+            # A comparison of the switch's own value with a number, where
+            # the switch is the record's element read by name.
+            for cm in re.finditer(
+                r"Result\s*:=\s*(\w+)\.NativeValue", body
+            ):
+                return {"switch": switch, "cases": {}, "direct": True}
+            return None
+        return {"switch": switch, "cases": cases, "direct": False}
 
     def run(self):
         self.collect_named_types()
@@ -1074,13 +1143,19 @@ class Converter:
         # (`wbUnion(SIG, name, decider, [members])`) and without one
         # (`wbUnion(name, decider, [members])`).
         members = None
+        decider = None
         for p in parts[1:]:
-            members = bracket_list(p)
-            if members is not None:
-                break
+            if members is None:
+                found = bracket_list(p)
+                if found is not None:
+                    members = found
+                    continue
+            if decider is None and re.fullmatch(r"wb\w*Decider", p.strip()):
+                decider = p.strip()
         if members is None:
             return "bytes", self._note(ctx)
         variants = []
+        case_index = {}
         for m in members:
             # A variant may carry a case index: `{0} wbFormIDCk(...)`.
             m = re.sub(r"^\s*\{\d+\}\s*", "", m)
@@ -1095,7 +1170,17 @@ class Converter:
                 variants.append({"type": schema})
         if not variants:
             return "bytes", self._note(ctx)
-        return {"union": variants}, self._note(ctx)
+        union: dict = {"union": variants}
+        # A union with a decider switches on a sibling's value rather than on
+        # the bytes left. The decider's body says which sibling and which
+        # value picks which variant.
+        if decider:
+            d = self.deciders.get(decider.lower())
+            if d and d.get("switch") and d.get("cases"):
+                union["switch_on"] = d["switch"]
+                union["cases"] = {k: v for k, v in d["cases"].items() if v < len(variants)}
+                union["default"] = 0
+        return union, self._note(ctx)
 
     # -- a record -----------------------------------------------------------
 
@@ -1163,7 +1248,71 @@ class Converter:
         rec["subrecords"] = flat
         if blocks:
             rec["sequence"] = {"start": [], "blocks": blocks, "end": []}
+        self._expose_switch_fields(rec)
         return rec
+
+    def _expose_switch_fields(self, rec):
+        """Mark the siblings that a union switches on, so they are kept.
+
+        A union that switches on a sibling's value needs that sibling's
+        value to be remembered, which the schema language does for a field
+        marked `expose`.
+        """
+        targets = set()
+
+        def scan(node):
+            if isinstance(node, dict):
+                sw = node.get("switch_on")
+                if isinstance(sw, str):
+                    targets.add(sw)
+                for v in node.values():
+                    scan(v)
+            elif isinstance(node, list):
+                for v in node:
+                    scan(v)
+
+        scan(rec)
+        if not targets:
+            return
+        for group in [rec.get("subrecords", {})] + [
+            b.get("subrecords", {}) for b in rec.get("sequence", {}).get("blocks", {}).values()
+        ]:
+            for sig, sub in group.items():
+                if sig in targets and "expose" not in sub:
+                    sub["expose"] = True
+                    sub["note"] = (
+                        f"{sub.get('note', '')} The value of this subrecord decides "
+                        f"which variant a later union takes."
+                    ).strip()
+
+    def _put_block(self, blocks, opener, order, subs, note):
+        """Add a block, merging it with a block that opens the same way.
+
+        xEdit gives two groups of a record the same opening subrecord — a
+        package's "Package Data" and its "Procedure Tree" both open with
+        `ANAM` — but the schema language allows one block per opener. The
+        two are merged: their orders are joined and their subrecords are
+        taken together. The merge is sound where the layouts agree, which
+        is the case for every pair the generator has met: `ANAM` is a string
+        in both, and the signatures that differ are in only one of the two.
+        """
+        existing = blocks.get(opener)
+        if existing is None:
+            blocks[opener] = {
+                "opener": opener,
+                "order": list(order),
+                "subrecords": dict(subs),
+            }
+            return
+        for sig in order:
+            if sig not in existing["order"]:
+                existing["order"].append(sig)
+        for sig, sub in subs.items():
+            existing["subrecords"].setdefault(sig, sub)
+        existing["note"] = (
+            f"{existing.get('note', note)} The group is also opened by another "
+            f"group of the same record, so their subrecords are merged."
+        )
 
     def convert_group(self, sig, kind, parts, args, flat, blocks):
         """A group: a run of subrecords that repeats, or a fixed run.
@@ -1202,11 +1351,7 @@ class Converter:
                     "note": note,
                 }
                 order.append(first)
-            blocks[order[0]] = {
-                "opener": order[0],
-                "order": order,
-                "subrecords": subs,
-            }
+            self._put_block(blocks, order[0], order, subs, "")
             return
         if members == "UNION":
             # The group's element is a union of alternative groups — a
@@ -1228,35 +1373,19 @@ class Converter:
                     order.append(first)
             if not subs:
                 return
-            blocks[order[0]] = {
-                "opener": order[0],
-                "order": order,
-                "subrecords": subs,
-            }
+            self._put_block(blocks, order[0], order, subs, "")
             return
 
         # A fixed run of several subrecords: a sequence block.
         subs = {}
         order = []
-        for m in members:
-            mname, margs, _ = match_call(m)
-            if mname is None:
+        for first, sname, schema, note in self._group_subrecords(
+            f"{sig}.{gname}", kind, parts
+        ):
+            if first in subs:
                 continue
-            mparts = split_args(margs) if margs is not None else []
-            if not mparts:
-                continue
-            first = mparts[0].strip()
-            if not is_signature(first):
-                # A nested group: the schema language has no nested block, so
-                # it is noted rather than silently dropped.
-                self.problems.append(f"{sig}: group {gname} has a nested group {mname}")
-                continue
-            schema, note = self.convert_member(mname, margs, f"{sig}.{gname}.{first}")
-            if schema is None:
-                continue
-            sname = pascal_string(mparts[1]) if len(mparts) > 1 else first
             subs[first] = {
-                "name": sname or first,
+                "name": sname,
                 "type": schema,
                 "confidence": "documented",
                 "note": note,
@@ -1265,11 +1394,7 @@ class Converter:
         if not subs:
             return
         # The block's opener is the first signature it holds.
-        blocks[order[0]] = {
-            "opener": order[0],
-            "order": order,
-            "subrecords": subs,
-        }
+        self._put_block(blocks, order[0], order, subs, "")
 
     def _is_member_list(self, members):
         """Whether a bracketed list is a list of definitions, not a sort key.

@@ -222,9 +222,16 @@ pub enum TypeDef {
     /// `cases` maps that value to a variant index; `default` is used when no case
     /// matches. `name` is the sibling field to read, which must decode to an
     /// integer (enums and flags included) earlier in the same struct.
+    ///
+    /// The value the switch reads may also be *text*. xEdit's
+    /// `wbPubPackCNAMDecider` reads a package's `ANAM`, which names the type
+    /// of the value that follows — "Bool", "Integer", "Float" — and the
+    /// variant is chosen by that name. A case's key is then the name itself,
+    /// and a case whose key is a number is the integer's decimal form, so
+    /// both kinds of switch are expressed the same way.
     ValueUnion {
         name: String,
-        cases: Vec<(u64, usize)>,
+        cases: Vec<(String, usize)>,
         default: usize,
         variants: Vec<TypeDef>,
     },
@@ -647,9 +654,10 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                     let mut cases = Vec::new();
                     if let Some(Value::Object(m)) = v.get("cases") {
                         for (k, idx) in m {
-                            let key: u64 = k
-                                .parse()
-                                .map_err(|_| SchemaError(format!("{ctx}: case key {k:?}")))?;
+                            // The key is the value the switch reads, as text:
+                            // an integer's decimal form, or the name itself
+                            // when the switch reads text.
+                            let key: String = k.clone();
                             let i = idx.as_u64().ok_or_else(|| {
                                 SchemaError(format!("{ctx}: case {k:?} needs a variant index"))
                             })? as usize;
@@ -662,7 +670,7 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                             cases.push((key, i));
                         }
                     }
-                    cases.sort_by_key(|(k, _)| *k);
+                    cases.sort_by_key(|(k, _)| k.clone());
                     let default = v
                         .get("default")
                         .and_then(Value::as_u64)
