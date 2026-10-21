@@ -76,6 +76,7 @@ fn main() {
                 }
                 if f.reencode_block(&schema, &data, i) == Ok(false) {
                     mismatch += 1;
+                    *fails.entry(format!("{} re-encodes differently", f.blocks[i].type_name)).or_insert(0) += 1;
                 }
             }
         }

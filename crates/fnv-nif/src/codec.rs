@@ -515,18 +515,28 @@ fn half_to_f32(h: u16) -> f32 {
             if mant == 0 {
                 sign << 31
             } else {
-                // A subnormal half: normalise it.
-                let mut e = -1i32;
+                // A subnormal half: its value is `mant * 2^-24`, and the
+                // leading one of the mantissa becomes the f32's implicit bit.
+                // Normalising shifts that bit up; `shift` counts how far.
                 let mut m = mant;
+                let mut shift = 0u32;
                 while m & 0x400 == 0 {
                     m <<= 1;
-                    e -= 1;
+                    shift += 1;
                 }
                 m &= 0x3ff;
-                (sign << 31) | (((e + 15 + 127) as u32) << 23) | (m << 13)
+                // The leading bit was at 10 - shift, so the value is
+                // 1.f * 2^(10 - shift - 24) and the f32's exponent field is
+                // that plus 127.
+                let exp32 = 10i32 - shift as i32 - 24 + 127;
+                (sign << 31) | ((exp32 as u32) << 23) | (m << 13)
             }
         }
-        0x1f => (sign << 31) | (0xff << 23) | (mant << 13),
+        0x1f => {
+            // A NaN: keep the payload so a half that held one comes back as
+            // the same half.
+            (sign << 31) | (0xff << 23) | (mant << 13)
+        }
         _ => (sign << 31) | ((exp + 127 - 15) << 23) | (mant << 13),
     };
     f32::from_bits(bits)
@@ -539,21 +549,43 @@ fn f32_to_half(f: f32) -> u16 {
     let exp = ((bits >> 23) & 0xff) as i32;
     let mant = bits & 0x7f_ffff;
     if exp == 0xff {
-        return sign | 0x7c00 | if mant != 0 { 0x0200 } else { 0 };
+        if mant == 0 {
+            return sign | 0x7c00;
+        }
+        // A NaN: the half's payload is the f32's top ten mantissa bits, so a
+        // NaN that came from a half comes back as the same half.
+        return sign | 0x7c00 | ((mant >> 13) as u16);
     }
+    // Round to nearest, ties to even, so a value that came from a half comes
+    // back as the same half.
     let e = exp - 127 + 15;
     if e >= 0x1f {
         return sign | 0x7c00;
     }
     if e <= 0 {
-        if e < -10 {
+        // A subnormal half. The f32's value is `M * 2^(exp - 150)`, and the
+        // half's mantissa is that value times 2^24, so the shift is
+        // `126 - exp`.
+        let m = mant | 0x80_0000;
+        let shift = 126 - exp;
+        if shift > 31 {
             return sign;
         }
-        let m = mant | 0x80_0000;
-        let shift = 14 - e;
-        return sign | ((m >> shift) as u16);
+        let mut half = (m >> shift) as u16;
+        let rest = m & ((1u32 << shift) - 1);
+        let halfway = 1u32 << (shift - 1);
+        if rest > halfway || (rest == halfway && half & 1 == 1) {
+            half += 1;
+        }
+        return sign | half;
     }
-    sign | ((e as u16) << 10) | ((mant >> 13) as u16)
+    let mut half = sign | ((e as u16) << 10) | ((mant >> 13) as u16);
+    // Round to nearest, ties to even, on the bits that are dropped.
+    let rest = mant & 0x1fff;
+    if rest > 0x1000 || (rest == 0x1000 && half & 1 == 1) {
+        half += 1;
+    }
+    half
 }
 
 fn err(path: &str, msg: String, offset: Option<usize>) -> CodecError {
@@ -604,5 +636,20 @@ fn write_int(p: Prim, x: i64, out: &mut Vec<u8>) {
         Prim::U32 | Prim::I32 | Prim::Ref | Prim::Ptr => out.extend_from_slice(&(x as u32).to_le_bytes()),
         Prim::U64 => out.extend_from_slice(&(x as u64).to_le_bytes()),
         _ => unreachable!("not an integer primitive"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{f32_to_half, half_to_f32};
+
+    /// Every half float must survive a round trip through an f32, or a block
+    /// that holds one re-encodes to different bytes.
+    #[test]
+    fn every_half_float_round_trips() {
+        for h in 0..=0xffffu16 {
+            let back = f32_to_half(half_to_f32(h));
+            assert_eq!(back, h, "half {h:#06x}");
+        }
     }
 }
