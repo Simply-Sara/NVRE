@@ -100,13 +100,14 @@
   },
   "LCRT": {
    "confidence": "documented",
+   "merge": true,
    "name": "Location Reference Type",
    "note": "UESP, Skyrim Mod:Mod File Format/LCRT. [measured: 404 CNAM fields in Skyrim.esm]",
    "subrecords": {
     "CNAM": {
      "confidence": "documented",
      "name": "Colour Code",
-     "note": "The RGB colour code. The last byte is always zero.",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCRT. The red, green and blue channels, and a fourth byte that is always zero.",
      "type": {
       "struct": [
        {
@@ -119,6 +120,10 @@
        },
        {
         "name": "b",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
         "type": "u8"
        }
       ]

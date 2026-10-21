@@ -10,7 +10,7 @@
     "CSCR": {
      "confidence": "documented",
      "name": "Close Range",
-     "note": "The style's close range multipliers.",
+     "note": "UESP, Skyrim Mod:Mod File Format/CSTY. The duelling circle and fallback multipliers, and the flank distance and stalking time.",
      "type": "CSTY_CSCR"
     },
     "CSFL": {
@@ -42,7 +42,7 @@
     "CSME": {
      "confidence": "documented",
      "name": "Melee",
-     "note": "The style's melee multipliers.",
+     "note": "UESP, Skyrim Mod:Mod File Format/CSTY. The attack, bash and special attack multipliers.",
      "type": "CSTY_CSME"
     },
     "DATA": {
@@ -515,16 +515,22 @@
  },
  "types": {
   "CSTY_CSCR": {
-   "struct": [
+   "union": [
     {
-     "name": "dueling_circle_mult",
-     "note": "The duelling circle multiplier. The default is 0.2.",
-     "type": "f32"
+     "name": "Two Multipliers",
+     "size": 8,
+     "type": {
+      "array": "f32",
+      "count": 2
+     }
     },
     {
-     "name": "dueling_fallback_mult",
-     "note": "The duelling fallback multiplier. The default is 0.2.",
-     "type": "f32"
+     "name": "Four Multipliers",
+     "size": 16,
+     "type": {
+      "array": "f32",
+      "count": 4
+     }
     }
    ]
   },
@@ -583,41 +589,22 @@
    ]
   },
   "CSTY_CSME": {
-   "struct": [
+   "union": [
     {
-     "name": "attack_staggered_mult",
-     "note": "The staggered attack multiplier. The default is 1.0.",
-     "type": "f32"
+     "name": "Seven Multipliers",
+     "size": 28,
+     "type": {
+      "array": "f32",
+      "count": 7
+     }
     },
     {
-     "name": "power_attack_staggered_mult",
-     "note": "The staggered power attack multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "power_attack_blocking_mult",
-     "note": "The blocking power attack multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "bash_mult",
-     "note": "The bash multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "bash_recoiled_mult",
-     "note": "The recoiled bash multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "bash_attack_mult",
-     "note": "The bash attack multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "bash_power_attack_mult",
-     "note": "The bash power attack multiplier. The default is 1.0.",
-     "type": "f32"
+     "name": "Eight Multipliers",
+     "size": 32,
+     "type": {
+      "array": "f32",
+      "count": 8
+     }
     }
    ]
   },

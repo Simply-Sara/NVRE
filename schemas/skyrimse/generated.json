@@ -301,6 +301,7 @@
   },
   "AVIF": {
    "confidence": "hypothesis",
+   "merge": true,
    "name": "AVIF",
    "note": "Generated from the UESP field table for AVIF; every entry still needs checking against the shipped data.",
    "subrecords": {
@@ -311,10 +312,13 @@
      "type": "zstring"
     },
     "AVSK": {
-     "confidence": "hypothesis",
-     "name": "av data?",
-     "note": "UESP, Skyrim Mod:Mod File Format/AVIF. Only present for skills with groupings.",
-     "type": "f32"
+     "confidence": "documented",
+     "name": "Actor Value Data",
+     "note": "UESP, Skyrim Mod:Mod File Format/AVIF. [measured: 20 AVSK fields of 16 bytes in Skyrim.esm]",
+     "type": {
+      "array": "f32",
+      "count": 4
+     }
     },
     "CNAM": {
      "confidence": "hypothesis",
@@ -1392,6 +1396,7 @@
   },
   "TREE": {
    "confidence": "hypothesis",
+   "merge": true,
    "name": "TREE",
    "note": "Generated from the UESP field table for TREE; every entry still needs checking against the shipped data.",
    "subrecords": {
@@ -1420,10 +1425,13 @@
      "type": "formid"
     },
     "PFPC": {
-     "confidence": "hypothesis",
-     "name": "percent chance?",
-     "note": "UESP, Skyrim Mod:Mod File Format/TREE. Always 0, unless PFIG present then always 64-64-64-64 (100)",
-     "type": "u8"
+     "confidence": "documented",
+     "name": "Percent Chance",
+     "note": "UESP, Skyrim Mod:Mod File Format/TREE. Four bytes, always zero unless the PFIG is present, when they are always 64 four times.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
     },
     "SNAM": {
      "confidence": "hypothesis",
