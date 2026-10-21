@@ -127,6 +127,26 @@
     }
    }
   },
+  "ECZN": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Encounter Zone",
+   "note": "UESP, Skyrim Mod:Mod File Format/ECZN. [measured: 278 DATA fields of 12 bytes in Skyrim.esm and 2 of 8]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The owner, the location, the rank, the minimum level, the flags and the maximum level.",
+     "type": "ECZN_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
   "EQUP": {
    "confidence": "documented",
    "merge": true,
@@ -605,6 +625,26 @@
     }
    }
   },
+  "RELA": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Relationship",
+   "note": "UESP, Skyrim Mod:Mod File Format/RELA. [measured: 642 DATA fields in Skyrim.esm, each 16 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The parent, the child, the rank, the flag and the association type.",
+     "type": "RELA_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
   "REVB": {
    "confidence": "documented",
    "merge": true,
@@ -760,6 +800,47 @@
     }
    ]
   },
+  "ECZN_DATA": {
+   "struct": [
+    {
+     "name": "owner",
+     "note": "The owner, a character (NPC_) or a faction (FACT).",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "note": "The associated location (LCTN).",
+     "type": "formid"
+    },
+    {
+     "name": "owner_rank",
+     "note": "The rank required in the faction for ownership, which is 0 or -1 when there is no faction.",
+     "type": "i8"
+    },
+    {
+     "name": "min_level",
+     "note": "The minimum level.",
+     "type": "u8"
+    },
+    {
+     "name": "flags",
+     "note": "The encounter's flags.",
+     "type": {
+      "bits": {
+       "0": "Never Resets",
+       "1": "Match PC Below Minimum Level",
+       "2": "Disable Combat Boundary"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "max_level",
+     "note": "The maximum level.",
+     "type": "u8"
+    }
+   ]
+  },
   "EXPL_DATA": {
    "struct": [
     {
@@ -861,6 +942,40 @@
     {
      "name": "location",
      "note": "The location, which points to itself in most cases.",
+     "type": "formid"
+    }
+   ]
+  },
+  "RELA_DATA": {
+   "struct": [
+    {
+     "name": "parent",
+     "note": "The parent character. Parent and child here do not necessarily mean biological parent and child; it is a generic way of describing two connected items.",
+     "type": "formid"
+    },
+    {
+     "name": "child",
+     "note": "The child character.",
+     "type": "formid"
+    },
+    {
+     "name": "rank",
+     "note": "The relationship level, from 0 to 8 in the data, which the game reads as -4 to 4.",
+     "type": "u16"
+    },
+    {
+     "name": "flags",
+     "note": "Only the highest bit is used.",
+     "type": {
+      "bits": {
+       "15": "Secret"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "association_type",
+     "note": "The association type (ASTP).",
      "type": "formid"
     }
    ]
