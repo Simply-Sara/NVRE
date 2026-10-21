@@ -1,6 +1,54 @@
 {
  "format": "fnv.schema/1",
  "records": {
+  "ASTP": {
+   "confidence": "documented",
+   "name": "Actor Sleep/Mood",
+   "note": "UESP, Skyrim Mod:Mod File Format/ASTP. [measured: 20 DATA fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The record's flags.",
+     "type": {
+      "bits": {
+       "0": "Family Association"
+      },
+      "flags": "u32"
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FCHT": {
+     "confidence": "documented",
+     "name": "Female Child Label",
+     "note": "The label for a female child.",
+     "type": "zstring"
+    },
+    "FPRT": {
+     "confidence": "documented",
+     "name": "Female Parent Label",
+     "note": "The label for a female parent.",
+     "type": "zstring"
+    },
+    "MCHT": {
+     "confidence": "documented",
+     "name": "Male Child Label",
+     "note": "The label for a male child.",
+     "type": "zstring"
+    },
+    "MPRT": {
+     "confidence": "documented",
+     "name": "Male Parent Label",
+     "note": "The label for a male parent.",
+     "type": "zstring"
+    }
+   }
+  },
   "IPCT": {
    "confidence": "documented",
    "name": "Impact",
@@ -84,6 +132,135 @@
      "name": "Model",
      "note": "The path to the .nif. It is not present when the model is a LOD.",
      "type": "zstring"
+    }
+   }
+  },
+  "SMEN": {
+   "confidence": "documented",
+   "name": "Story Manager Event",
+   "note": "UESP, Skyrim Mod:Mod File Format/SMEN. [measured: 24 of each field in Skyrim.esm]",
+   "subrecords": {
+    "CITC": {
+     "confidence": "documented",
+     "name": "Condition Count",
+     "note": "How many conditions follow.",
+     "type": "u32"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Condition Data",
+     "note": "The conditions on the event.",
+     "type": "Condition"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Always zero.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id. Only one record has one.",
+     "type": "zstring"
+    },
+    "ENAM": {
+     "confidence": "documented",
+     "name": "Short Name",
+     "note": "The event type code, a four-character code that is not NUL-terminated, for example ADIA or DEAD.",
+     "type": "string"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Always the SMBN whose editor id is 'Root'.",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Next",
+     "note": "Zero, or a reference to another SMEN.",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Always zero.",
+     "type": "u32"
+    }
+   }
+  },
+  "SNCT": {
+   "confidence": "documented",
+   "name": "Sound Category",
+   "note": "UESP, Skyrim Mod:Mod File Format/SNCT. [measured: 18 FNAM and 18 VNAM fields in Skyrim.esm, each 4 and 2 bytes]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The category's flags.",
+     "type": {
+      "bits": {
+       "0": "Mute When Submerged",
+       "1": "Should Appear on Menu"
+      },
+      "flags": "u32"
+     }
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent Name",
+     "note": "The parent category (SNCT).",
+     "type": "formid"
+    },
+    "UNAM": {
+     "confidence": "documented",
+     "name": "Default Menu Value",
+     "note": "The default menu value, on the same scale as the static volume multiplier.",
+     "type": "u16"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Static Volume Multiplier",
+     "note": "The static volume multiplier. The value is really a float: 0 is 0.0 and 0xFFFF is 1.0.",
+     "type": "u16"
+    }
+   }
+  },
+  "SPGD": {
+   "confidence": "documented",
+   "name": "Precipitation",
+   "note": "UESP, Skyrim Mod:Mod File Format/SPGD. [measured: 16 DATA fields in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The precipitation's data.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
     }
    }
   },
