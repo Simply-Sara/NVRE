@@ -29575,6 +29575,12 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.ATKR",
      "type": "formid"
     },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BNAM",
+     "type": "zstring"
+    },
     "BOD2": {
      "confidence": "documented",
      "name": "BOD2",
@@ -30094,6 +30100,18 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.FLMV",
      "type": "formid"
     },
+    "FMRI": {
+     "confidence": "documented",
+     "name": "Index",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FMRI",
+     "type": "u32"
+    },
+    "FMRN": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.FMRN",
+     "type": "localized"
+    },
     "FNAM": {
      "confidence": "documented",
      "name": "Female Marker",
@@ -30185,6 +30203,60 @@
      "name": "MODT",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbMODT, laid out in the hand-written file",
      "type": "FO4_MODT"
+    },
+    "MPGN": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MPGN",
+     "type": "zstring"
+    },
+    "MPGS": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPGS",
+     "type": "bytes"
+    },
+    "MPPC": {
+     "confidence": "documented",
+     "name": "Count",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MPPC",
+     "type": "u32"
+    },
+    "MPPF": {
+     "confidence": "documented",
+     "name": "MPPF",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPF",
+     "type": "bytes"
+    },
+    "MPPI": {
+     "confidence": "documented",
+     "name": "Index",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MPPI",
+     "type": "u32"
+    },
+    "MPPK": {
+     "confidence": "documented",
+     "name": "MPPK",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPK",
+     "type": "bytes"
+    },
+    "MPPM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MPPM",
+     "type": "zstring"
+    },
+    "MPPN": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPN",
+     "type": "localized"
+    },
+    "MPPT": {
+     "confidence": "documented",
+     "name": "Texture",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPT",
+     "type": "formid"
     },
     "MTNM": {
      "confidence": "documented",
@@ -30302,8 +30374,40 @@
     "PNAM": {
      "confidence": "documented",
      "name": "FaceGen - Main clamp",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.PNAM",
-     "type": "f32"
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.PNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read. The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+     "type": {
+      "union": [
+       {
+        "size": 4,
+        "type": {
+         "union": [
+          {
+           "size": 4,
+           "type": "f32"
+          },
+          {
+           "size": 4,
+           "type": {
+            "bits": {
+             "0": "Public"
+            },
+            "flags": "u32"
+           }
+          }
+         ]
+        }
+       },
+       {
+        "size": 4,
+        "type": {
+         "bits": {
+          "0": "Public"
+         },
+         "flags": "u32"
+        }
+       }
+      ]
+     }
     },
     "PRPS": {
      "confidence": "documented",
@@ -30392,8 +30496,30 @@
     "UNAM": {
      "confidence": "documented",
      "name": "FaceGen - Face clamp",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.UNAM",
-     "type": "f32"
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.UNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read. The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+     "type": {
+      "union": [
+       {
+        "size": 4,
+        "type": {
+         "union": [
+          {
+           "size": 4,
+           "type": "f32"
+          },
+          {
+           "size": 1,
+           "type": "i8"
+          }
+         ]
+        }
+       },
+       {
+        "size": 1,
+        "type": "i8"
+       }
+      ]
+     }
     },
     "UNWP": {
      "confidence": "documented",
@@ -39007,28 +39133,64 @@
     "start": []
    },
    "subrecords": {
-    "\u00000TX": {
+    "00TX": {
      "confidence": "documented",
      "name": "Cloud Texture Layer #0",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _00_0TX",
      "type": "zstring"
     },
-    "\u00100TX": {
+    "10TX": {
      "confidence": "documented",
      "name": "Cloud Texture Layer #1",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _10_0TX",
      "type": "zstring"
     },
-    " 0TX": {
+    "20TX": {
      "confidence": "documented",
      "name": "Cloud Texture Layer #2",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _20_0TX",
      "type": "zstring"
     },
-    "00TX": {
+    "30TX": {
      "confidence": "documented",
      "name": "Cloud Texture Layer #3",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _30_0TX",
+     "type": "zstring"
+    },
+    "40TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #4",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _40_0TX",
+     "type": "zstring"
+    },
+    "50TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #5",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _50_0TX",
+     "type": "zstring"
+    },
+    "60TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #6",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _60_0TX",
+     "type": "zstring"
+    },
+    "70TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #7",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _70_0TX",
+     "type": "zstring"
+    },
+    "80TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #8",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _80_0TX",
+     "type": "zstring"
+    },
+    "90TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer #9",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _90_0TX",
      "type": "zstring"
     },
     ":0TX": {
@@ -39065,12 +39227,6 @@
      "confidence": "documented",
      "name": "Cloud Texture Layer #15",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _3F_0TX",
-     "type": "zstring"
-    },
-    "@0TX": {
-     "confidence": "documented",
-     "name": "Cloud Texture Layer #4",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _40_0TX",
      "type": "zstring"
     },
     "A0TX": {
@@ -43620,12 +43776,6 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ONAM",
      "type": "bytes"
     },
-    "P0TX": {
-     "confidence": "documented",
-     "name": "Cloud Texture Layer #5",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _50_0TX",
-     "type": "zstring"
-    },
     "PNAM": {
      "confidence": "documented",
      "name": "Cloud Colors",
@@ -43757,30 +43907,6 @@
      "name": "Visibility Mult",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WTHR.WNAM",
      "type": "f32"
-    },
-    "`0TX": {
-     "confidence": "documented",
-     "name": "Cloud Texture Layer #6",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _60_0TX",
-     "type": "zstring"
-    },
-    "p0TX": {
-     "confidence": "documented",
-     "name": "Cloud Texture Layer #7",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _70_0TX",
-     "type": "zstring"
-    },
-    "\u00800TX": {
-     "confidence": "documented",
-     "name": "Cloud Texture Layer #8",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _80_0TX",
-     "type": "zstring"
-    },
-    "\u00900TX": {
-     "confidence": "documented",
-     "name": "Cloud Texture Layer #9",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), _90_0TX",
-     "type": "zstring"
     }
    }
   },

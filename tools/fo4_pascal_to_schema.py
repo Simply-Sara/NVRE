@@ -304,15 +304,43 @@ def signature_of(text):
     return None
 
 
-def sig_key(text):
+def declared_signatures(src):
+    """The signatures the unit declares, by the name it gives them.
+
+    xEdit writes a signature whose bytes are not all printable as an
+    identifier with the first byte in hex — `_00_IAD` — and declares what
+    it stands for: `_00_IAD: TwbSignature = #$00'IAD';`. The declaration
+    is the authority, because the name is only a spelling: `_10_0TX` is
+    declared as `#$31'0TX'`, which is "10TX", not the byte 0x10.
+    """
+    out = {}
+    for m in re.finditer(
+        r"(_[0-9A-Fa-f]{2}_[A-Za-z0-9]{3})\s*:\s*TwbSignature\s*=\s*#\$"
+        r"([0-9A-Fa-f]{2})'([^']*)'",
+        src,
+    ):
+        name, byte, rest = m.group(1), m.group(2), m.group(3)
+        if len(rest) != 3:
+            continue
+        out[name.lower()] = bytes([int(byte, 16)]) + rest.encode("latin-1")
+    return out
+
+
+def sig_key(text, declared=None):
     """The key a signature is written under in the schema.
 
     The key is the signature's four bytes, so a signature whose first byte
-    is a control character is written as that character.
+    is a control character is written as that character. The unit's own
+    declaration of the signature is the authority.
     """
+    text = text.strip()
+    if declared:
+        raw = declared.get(text.lower())
+        if raw is not None:
+            return raw.decode("latin-1")
     raw = signature_of(text)
     if raw is None:
-        return text.strip()
+        return text
     return raw.decode("latin-1")
 
 
@@ -339,6 +367,10 @@ class Converter:
         self.type_notes = {}     # Pascal variable name -> note
         self.type_sigs = {}      # Pascal variable name -> the signature it owns
         self.named_groups = {}   # named type -> the subrecords its group holds
+        self.local_groups = {}   # a procedure's group -> the subrecords it holds
+        # The signatures the unit declares under a name of its own, which is
+        # the authority for what those names stand for.
+        self.declared_sigs = declared_signatures(self.src)
         self.records = {}        # signature -> record definition
         self.problems = []
         self.deferred = set()    # names referred to before they were defined
@@ -427,6 +459,9 @@ class Converter:
 
     def run(self):
         self.collect_named_types()
+        # The groups a procedure builds are collected before the records,
+        # because a record that uses one holds its subrecords.
+        self.collect_local_groups()
         self.collect_records()
         self.resolve_deferred()
         return self
@@ -485,7 +520,7 @@ class Converter:
         for p in parts:
             p = p.strip()
             if is_signature(p):
-                return sig_key(p)
+                return self._sig_key(p)
         return self._named_type_signature(kind)
 
     def _canonical(self, name):
@@ -792,7 +827,7 @@ class Converter:
             # The signature is written under its four bytes, so a signature
             # whose first byte is a control character is written as that
             # character.
-            first = sig_key(first)
+            first = self._sig_key(first)
             schema, note = self.convert_member(mname, margs, f"{name}.{first}")
             if schema is None:
                 continue
@@ -906,6 +941,64 @@ class Converter:
                     text = re.sub(rf"\b{p}\b", v, text)
                 self.expand_record_call(text)
 
+    def collect_local_groups(self):
+        """The groups a local procedure builds.
+
+        xEdit's `wbMorphGroups` and `wbFaceMorphs` build a group of
+        subrecords and hand it to a record as a member; the group's
+        subrecords are what the record holds, and the group itself needs
+        no construct of its own beyond the block it becomes.
+        """
+        for m in re.finditer(
+            r"function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*:\s*IwbSubRecordArrayDef",
+            self.src,
+        ):
+            pname = m.group(1)
+            body = self._procedure_body(m.end() - 1)
+            if body is None:
+                continue
+            params = re.findall(r"(\w+)\s*:\s*string", body[0])
+            for call in re.finditer(rf"\b{pname}\s*\(", self.src):
+                if call.start() < m.start():
+                    continue
+                args, _ = self._call_args(self.src, call.end() - 1)
+                if args is None:
+                    continue
+                cparts = split_args(args)
+                if len(cparts) < len(params):
+                    continue
+                values = dict(zip(params, cparts))
+                text = body[1]
+                for p, v in values.items():
+                    text = re.sub(rf"\b{p}\b", v, text)
+                self.expand_group_call(text, pname)
+
+    def expand_group_call(self, text, pname):
+        """Convert the group a procedure body builds."""
+        m = re.search(r"\b(wbRArray|wbRArrayS|wbRStruct|wbRStructSK|wbRStructs|wbRStructsSK)\s*\(", text)
+        if not m:
+            return
+        args, _ = self._call_args(text, m.end() - 1)
+        if args is None:
+            return
+        parts = split_args(args)
+        if not parts:
+            return
+        gname = pascal_string(parts[0]) or m.group(1)
+        flat = {}
+        blocks = {}
+        self.convert_group(gname, m.group(1), parts, args, flat, blocks)
+        # The group is held under the procedure's name, because that is how
+        # a record refers to it.
+        subs = []
+        for sig, sub in flat.items():
+            subs.append((sig, sub["name"], sub["type"], sub["note"]))
+        for opener, block in blocks.items():
+            for sig, sub in block["subrecords"].items():
+                subs.append((sig, sub["name"], sub["type"], sub["note"]))
+        if subs:
+            self.local_groups[pname.lower()] = subs
+
     def expand_record_call(self, text):
         """Convert a `wbRecord`/`wbRefRecord` call found in an expanded body."""
         m = re.search(r"\b(wbRecord|wbRefRecord)\s*\(", text)
@@ -957,8 +1050,10 @@ class Converter:
         start = self.src.find("begin", i)
         if start < 0:
             return None
+        # The `begin` that opens the body is not counted: the `end;` that
+        # closes the procedure is the one at depth zero.
+        j = start + 5
         depth = 0
-        j = start
         while j < n:
             word = self.src[j:j + 5].lower()
             if word == "begin" or word == "case ":
@@ -1111,6 +1206,10 @@ class Converter:
             )
         self.problems.append(f"{ctx}: unhandled {kind}")
         return None, None
+
+    def _sig_key(self, text):
+        """The key a signature is written under, from the unit's declaration."""
+        return sig_key(text, self.declared_sigs)
 
     def _note(self, ctx):
         return f"{SOURCE}, {ctx}"
@@ -1599,6 +1698,13 @@ class Converter:
                 if mname in GROUP_KINDS:
                     self.convert_group(sig, mname, parts, args, flat, blocks)
                     continue
+                # A group a procedure builds — `wbMorphGroups('Male Morph
+                # Groups')` — holds the subrecords of the group it names.
+                local = self.local_groups.get(mname.lower())
+                if local:
+                    for first_s, sname, schema, note in local:
+                        self._merge_sub(flat, [], first_s, sname, schema, note)
+                    continue
                 # A named group used as a member — `wbCTDAs` — holds the
                 # subrecords of the group it names, so it becomes a block.
                 named = self.named_groups.get(mname.lower())
@@ -1616,7 +1722,7 @@ class Converter:
             # The signature is written under its four bytes, so a signature
             # whose first byte is a control character is written as that
             # character.
-            first = sig_key(first)
+            first = self._sig_key(first)
             schema, note = self.convert_member(mname, args, f"{sig}.{first}")
             if schema is None:
                 continue
@@ -1927,7 +2033,7 @@ class Converter:
         if not eparts or not is_signature(eparts[0]):
             self.problems.append(f"{sig}: group {gname} element is not a subrecord")
             return
-        ssig = sig_key(eparts[0])
+        ssig = self._sig_key(eparts[0])
         schema, note = self.convert_member(ename, eargs, f"{sig}.{gname}.{ssig}")
         if schema is None:
             return
