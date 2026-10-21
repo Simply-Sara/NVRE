@@ -47215,7 +47215,11 @@
          "type": "len_string_u16"
         }
        ]
-      }
+      },
+      "count_bits": [
+       "Flags",
+       3
+      ]
      }
     }
    ]
@@ -47259,7 +47263,11 @@
          "type": "len_string_u16"
         }
        ]
-      }
+      },
+      "count_bits": [
+       "Flags",
+       8
+      ]
      }
     }
    ]
@@ -47379,7 +47387,11 @@
          "type": "len_string_u16"
         }
        ]
-      }
+      },
+      "count_bits": [
+       "Flags",
+       3
+      ]
      }
     },
     {

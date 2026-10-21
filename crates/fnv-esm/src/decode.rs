@@ -456,6 +456,42 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                     obj.insert(f.name.clone(), Value::Array(out));
                     continue;
                 }
+                // A count-bits array reads its element count from the set
+                // bits of a sibling field (xEdit's
+                // `wbScriptFragmentsInfoCounter`, which counts a script's
+                // fragments by how many of the first three of its flags are
+                // set).
+                if let TypeDef::Array {
+                    count_bits: Some((name, bits)),
+                    ..
+                } = &schema.resolve(&f.ty)
+                {
+                    let v = obj.get(name).and_then(switch_int).ok_or_else(|| {
+                        format!(
+                            "{}: count_bits {name:?} has no earlier integer value",
+                            f.name
+                        )
+                    })?;
+                    let n = (0..*bits)
+                        .filter(|b| v & (1u64 << *b) != 0)
+                        .count();
+                    let TypeDef::Array { elem, .. } = schema.resolve(&f.ty) else {
+                        unreachable!()
+                    };
+                    let mut out = Vec::new();
+                    for i in 0..n {
+                        let before = c.pos;
+                        out.push(
+                            decode_type(elem, c, ctx)
+                                .map_err(|e| format!("{}: [{i}]: {e}", f.name))?,
+                        );
+                        if c.pos == before {
+                            return Err(format!("{}: array element consumed no bytes", f.name));
+                        }
+                    }
+                    obj.insert(f.name.clone(), Value::Array(out));
+                    continue;
+                }
                 let v = decode_type(&f.ty, c, ctx).map_err(|e| format!("{}: {e}", f.name))?;
                 // `expose` records an integer field so a later subrecord can switch
                 // a union on it. Enum/flag values stay their JSON form, so read the

@@ -1641,7 +1641,8 @@ class Converter:
         than from the data — `wbOMODDataIncludeCounter` reads the struct's
         own "Include Count" field — and the schema language's `count_field`
         says the same thing. The callback's body is read for the field it
-        names.
+        names. A callback that counts the set bits of a field says so, and
+        the schema's `count_bits` says it.
         """
         for p in parts:
             p = p.strip()
@@ -1653,7 +1654,13 @@ class Converter:
         return None
 
     def _collect_counters(self):
-        """The sibling field each count callback reads."""
+        """The sibling field each count callback reads.
+
+        A callback either reads a field's value — `Container.ElementNative
+        // Values['Include Count']` — or counts the set bits of a field's
+        // value, which is how xEdit counts a script's fragments: one for
+        // each of the first three of the script's flags that is set.
+        """
         out = {}
         for m in re.finditer(
             r"function\s+(\w*Counter)\s*\([^)]*\)\s*:\s*Cardinal\s*;(.*?)\nend;",
@@ -1663,10 +1670,19 @@ class Converter:
             body = m.group(2)
             # The field the callback reads: it asks the container for the
             # element's native value by name.
-            fm = re.search(r"ElementNativeValues\['([^']+)'\]", body)
+            fm = re.search(
+                r"Element(?:NativeValues|ByName)\['([^']+)'\]", body
+            )
             if not fm:
                 continue
-            out[m.group(1).lower()] = fm.group(1)
+            name = fm.group(1)
+            # The number of bits it counts, if it counts bits: the loop
+            # `for i := 0 to 2` says how many.
+            lm = re.search(r"for\s+i\s*:=\s*0\s+to\s+(\d+)\s+do", body, re.I)
+            if lm and re.search(r"F\s+and\s+1", body):
+                out[m.group(1).lower()] = {"field": name, "bits": int(lm.group(1)) + 1}
+            else:
+                out[m.group(1).lower()] = {"field": name, "bits": None}
         return out
 
     def _convert_array(self, parts, ctx):
@@ -1696,8 +1712,14 @@ class Converter:
         # data, which the schema language's `count_field` says.
         counter = self._counter_field(parts)
         if counter:
+            field = counter["field"]
+            if counter.get("bits") is not None:
+                return (
+                    {"array": elem, "count_bits": [field, counter["bits"]]},
+                    self._note(ctx),
+                )
             return (
-                {"array": elem, "count_field": counter},
+                {"array": elem, "count_field": field},
                 self._note(ctx),
             )
         if count < 0:

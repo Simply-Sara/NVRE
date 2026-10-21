@@ -211,6 +211,14 @@ pub enum TypeDef {
         count: Option<usize>,
         count_prefix: Option<Prim>,
         count_field: Option<String>,
+        /// The count is the number of set bits among the first `n` of a
+        /// sibling field's value.
+        ///
+        /// xEdit's `wbScriptFragmentsInfoCounter` counts a script's
+        /// fragments by how many of the first three of its flags are set,
+        /// one fragment for each, so the array's length is not in the data
+        /// and not in a field of its own.
+        count_bits: Option<(String, u32)>,
     },
     Enum {
         base: Prim,
@@ -573,11 +581,42 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                         "{ctx}: count_field cannot be combined with \"count\" or \"count_prefix\""
                     )));
                 }
+                // The count is the number of set bits among the first `n` of
+                // a sibling field's value: `{"array": T, "count_bits":
+                // ["Flags", 3]}`.
+                let count_bits = match v.get("count_bits") {
+                    None => None,
+                    Some(c) => {
+                        let arr = c.as_array().ok_or_else(|| {
+                            SchemaError(format!("{ctx}: count_bits must be an array"))
+                        })?;
+                        if arr.len() != 2 {
+                            return Err(SchemaError(format!(
+                                "{ctx}: count_bits must be a field name and a bit count"
+                            )));
+                        }
+                        let name = arr[0].as_str().map(str::to_string).ok_or_else(|| {
+                            SchemaError(format!("{ctx}: count_bits field name"))
+                        })?;
+                        let n = arr[1].as_u64().ok_or_else(|| {
+                            SchemaError(format!("{ctx}: count_bits bit count"))
+                        })? as u32;
+                        Some((name, n))
+                    }
+                };
+                if count_bits.is_some()
+                    && (count.is_some() || count_prefix.is_some() || count_field.is_some())
+                {
+                    return Err(SchemaError(format!(
+                        "{ctx}: count_bits cannot be combined with another count"
+                    )));
+                }
                 Ok(TypeDef::Array {
                     elem: Box::new(parse_type(elem, ctx)?),
                     count,
                     count_prefix,
                     count_field,
+                    count_bits,
                 })
             } else if let Some(base) = v.get("enum") {
                 let base = base
@@ -1533,6 +1572,7 @@ impl Schema {
                 count: Some(c),
                 count_prefix: None,
                 count_field: None,
+                count_bits: None,
             } => Some(self.fixed_size(elem)? * c),
             // A fill-the-rest array, a count-prefixed array, a count-field array and a
             // malformed array carrying both `count` and `count_prefix` (rejected at

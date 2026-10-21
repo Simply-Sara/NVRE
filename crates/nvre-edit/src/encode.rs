@@ -175,6 +175,33 @@ pub fn encode_type(
                                 }
                             }
                         }
+                        // A count-bits array's length is implied by the
+                        // sibling field's set bits, so the two must agree.
+                        if let TypeDef::Array {
+                            count_bits: Some((name, bits)),
+                            ..
+                        } = schema.resolve(&f.ty)
+                        {
+                            let want = obj.get(name).and_then(|x| {
+                                x.as_u64().or_else(|| x.get("value").and_then(Value::as_u64))
+                            });
+                            let n = want.map(|w| {
+                                (0..*bits)
+                                    .filter(|b| w & (1u64 << *b) != 0)
+                                    .count()
+                            });
+                            match (n, v.as_array()) {
+                                (Some(n), Some(arr)) if arr.len() == n => {}
+                                _ => {
+                                    return Err(EncodeError::Value {
+                                        path: sub.clone(),
+                                        msg: format!(
+                                            "count_bits {name:?} does not match this array's length"
+                                        ),
+                                    })
+                                }
+                            }
+                        }
                         encode_type(schema, &f.ty, v, out, &sub)?;
                     }
                 }
