@@ -850,6 +850,12 @@
       "array": "bytes"
      }
     },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Sound - Random/Looping",
+     "note": "xEdit wbDefinitionsFNV.pas KEYM record",
+     "type": "formid"
+    },
     "YNAM": {
      "confidence": "hypothesis",
      "name": "pickupSound",

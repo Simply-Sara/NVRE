@@ -695,6 +695,7 @@
      "CTDA",
      "CIS1",
      "CIS2",
+     "CNAM",
      "IDLC",
      "IDLA",
      "IDLF",
@@ -715,6 +716,12 @@
      "name": "Variable Name",
      "note": "The auxiliary data for the CTDA, replacing its second argument.",
      "type": "zstring"
+    },
+    "CNAM": {
+     "confidence": "observed",
+     "name": "Activity Type",
+     "note": "The activity's type, a four-byte code such as 'Bool' or 'Int'. It appears in the main record, before the activity list. [observed: 4 bytes]",
+     "type": "string"
     },
     "CTDA": {
      "confidence": "documented",
