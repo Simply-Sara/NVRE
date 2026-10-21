@@ -4298,6 +4298,7 @@ dependencies = [
  "fnv-world",
  "nvf-assets",
  "nvre-edit",
+ "nvre-nif",
  "nvre-util",
  "serde",
  "serde_json",
@@ -4313,6 +4314,17 @@ dependencies = [
  "flate2",
  "proptest",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "nvre-nif"
+version = "0.1.0"
+dependencies = [
+ "nvre-util",
+ "proptest",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]

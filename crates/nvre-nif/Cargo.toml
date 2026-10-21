@@ -1,0 +1,15 @@
+[package]
+name = "nvre-nif"
+description = "NVRE's NIF reader: schema-driven block layouts, the scene graph, and animation"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+nvre-util = { path = "../nvre-util" }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+proptest = "1"
