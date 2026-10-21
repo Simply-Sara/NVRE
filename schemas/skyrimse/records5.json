@@ -441,55 +441,139 @@
  },
  "types": {
   "MATO_DATA": {
-   "struct": [
+   "union": [
     {
-     "name": "falloff_scale",
-     "type": "f32"
+     "name": "Seven Floats",
+     "size": 28,
+     "type": {
+      "struct": [
+       {
+        "name": "falloff_scale",
+        "type": "f32"
+       },
+       {
+        "name": "falloff_bias",
+        "type": "f32"
+       },
+       {
+        "name": "noise_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "material_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       }
+      ]
+     }
     },
     {
-     "name": "falloff_bias",
-     "type": "f32"
+     "name": "Eight Floats",
+     "size": 32,
+     "type": {
+      "struct": [
+       {
+        "name": "falloff_scale",
+        "type": "f32"
+       },
+       {
+        "name": "falloff_bias",
+        "type": "f32"
+       },
+       {
+        "name": "noise_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "material_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       },
+       {
+        "name": "normal_dampener",
+        "type": "f32"
+       }
+      ]
+     }
     },
     {
-     "name": "noise_uv_scale",
-     "type": "f32"
-    },
-    {
-     "name": "material_uv_scale",
-     "type": "f32"
-    },
-    {
-     "name": "dir_proj_x",
-     "type": "f32"
-    },
-    {
-     "name": "dir_proj_y",
-     "type": "f32"
-    },
-    {
-     "name": "dir_proj_z",
-     "type": "f32"
-    },
-    {
-     "name": "normal_dampener",
-     "type": "f32"
-    },
-    {
-     "name": "single_pass_r",
-     "type": "f32"
-    },
-    {
-     "name": "single_pass_g",
-     "type": "f32"
-    },
-    {
-     "name": "single_pass_b",
-     "type": "f32"
-    },
-    {
-     "name": "single_pass",
-     "note": "Whether the material is a single pass.",
-     "type": "u32"
+     "name": "Twelve Fields",
+     "size": 48,
+     "type": {
+      "struct": [
+       {
+        "name": "falloff_scale",
+        "type": "f32"
+       },
+       {
+        "name": "falloff_bias",
+        "type": "f32"
+       },
+       {
+        "name": "noise_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "material_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       },
+       {
+        "name": "normal_dampener",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_r",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_g",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_b",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass",
+        "note": "Whether the material is a single pass.",
+        "type": "u32"
+       }
+      ]
+     }
     }
    ]
   }

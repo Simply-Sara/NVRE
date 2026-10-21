@@ -130,7 +130,7 @@
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/AMMO. [KYWD 0x000917E7] VendorItemArrow, [KYWD 0x0010D501] WeapTypeBoundArrow",
      "type": {
-      "array": "bytes"
+      "array": "formid"
      }
     },
     "MICO": {
@@ -1254,7 +1254,7 @@
      "name": "keywords",
      "note": "UESP, Skyrim Mod:Mod File Format/SLGM. [KYWD 0x000937A3] VendorItemSoulGem",
      "type": {
-      "array": "bytes"
+      "array": "formid"
      }
     },
     "NAM0": {

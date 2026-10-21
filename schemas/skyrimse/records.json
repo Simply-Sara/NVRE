@@ -3,6 +3,7 @@
  "records": {
   "CSTY": {
    "confidence": "documented",
+   "merge": true,
    "name": "Combat Style",
    "note": "UESP, Skyrim Mod:Mod File Format/CSTY. The float arrays vary in length: the general array is 2, 8 or 10 floats, the melee one 7 or 8, the close range one 2 or 4, and the flight one 1 to 8. [measured: 144 CSTY records in Skyrim.esm]",
    "subrecords": {
@@ -23,7 +24,7 @@
     "CSGD": {
      "confidence": "documented",
      "name": "General",
-     "note": "The style's general multipliers.",
+     "note": "UESP, Skyrim Mod:Mod File Format/CSTY. The style's general multipliers. [measured: 8, 32 or 40 bytes in Skyrim.esm]",
      "type": "CSTY_CSGD"
     },
     "CSLR": {
@@ -528,46 +529,56 @@
    ]
   },
   "CSTY_CSGD": {
-   "struct": [
+   "union": [
     {
-     "name": "offensive_mult",
-     "note": "The offensive multiplier.",
-     "type": "f32"
+     "name": "Two Multipliers",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "offensive_mult",
+        "note": "The offensive multiplier.",
+        "type": "f32"
+       },
+       {
+        "name": "defensive_mult",
+        "note": "The defensive multiplier.",
+        "type": "f32"
+       }
+      ]
+     }
     },
     {
-     "name": "defensive_mult",
-     "note": "The defensive multiplier.",
-     "type": "f32"
+     "name": "Eight Multipliers",
+     "size": 32,
+     "type": {
+      "struct": [
+       {
+        "name": "multipliers",
+        "note": "The offensive, defensive, group offensive, melee equipment, magic equipment, ranged equipment, magic and unarmed multipliers.",
+        "type": {
+         "array": "f32",
+         "count": 8
+        }
+       }
+      ]
+     }
     },
     {
-     "name": "group_offensive_mult",
-     "note": "The group offensive multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "melee_equipment_mult",
-     "note": "The melee equipment multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "magic_equipment_mult",
-     "note": "The magic equipment multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "ranged_equipment_mult",
-     "note": "The ranged equipment multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "shout_equipment_mult",
-     "note": "The shout equipment multiplier. The default is 1.0.",
-     "type": "f32"
-    },
-    {
-     "name": "unarmed_mult",
-     "note": "The unarmed multiplier. The default is 1.0.",
-     "type": "f32"
+     "name": "Ten Multipliers",
+     "size": 40,
+     "type": {
+      "struct": [
+       {
+        "name": "multipliers",
+        "note": "The multipliers, two more than the eight-multiplier form.",
+        "type": {
+         "array": "f32",
+         "count": 10
+        }
+       }
+      ]
+     }
     }
    ]
   },

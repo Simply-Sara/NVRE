@@ -248,10 +248,26 @@
     "JNAM": {
      "confidence": "documented",
      "name": "Cloud Texture Alpha",
-     "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night alphas.",
+     "note": "The cloud texture's alphas: the sunrise, day, sunset and night alpha of each layer. [measured: 512 bytes]",
      "type": {
-      "array": "WTHR_JNAM",
-      "count": 32
+      "union": [
+       {
+        "name": "Four Layers",
+        "size": 64,
+        "type": {
+         "array": "WTHR_JNAM",
+         "count": 4
+        }
+       },
+       {
+        "name": "Thirty Two Layers",
+        "size": 512,
+        "type": {
+         "array": "WTHR_JNAM",
+         "count": 32
+        }
+       }
+      ]
      }
     },
     "LNAM": {
@@ -299,10 +315,26 @@
     "PNAM": {
      "confidence": "documented",
      "name": "Cloud Texture Colour",
-     "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night colours.",
+     "note": "The cloud texture's colours: the sunrise, day, sunset and night colour of each layer. [measured: 512 bytes in 83 of Skyrim.esm's WTHR records and 64 bytes in one]",
      "type": {
-      "array": "WTHR_PNAM",
-      "count": 32
+      "union": [
+       {
+        "name": "Four Layers",
+        "size": 64,
+        "type": {
+         "array": "WTHR_PNAM",
+         "count": 4
+        }
+       },
+       {
+        "name": "Thirty Two Layers",
+        "size": 512,
+        "type": {
+         "array": "WTHR_PNAM",
+         "count": 32
+        }
+       }
+      ]
      }
     },
     "QNAM": {
