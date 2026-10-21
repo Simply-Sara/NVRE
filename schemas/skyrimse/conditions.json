@@ -115,8 +115,8 @@
         "type": "u32"
        },
        {
-        "name": "unknown",
-        "note": "Always zero.",
+        "name": "extra_words",
+        "note": "How many four-byte words follow the texture entries.",
         "type": "u32"
        },
        {
@@ -125,6 +125,14 @@
         "type": {
          "array": "SKYRIM_DMDT_ENTRY",
          "count_field": "count"
+        }
+       },
+       {
+        "name": "extra",
+        "note": "The words after the textures.",
+        "type": {
+         "array": "u32",
+         "count_field": "extra_words"
         }
        }
       ]
@@ -187,8 +195,8 @@
         "type": "u32"
        },
        {
-        "name": "unknown",
-        "note": "Always zero.",
+        "name": "extra_words",
+        "note": "How many four-byte words follow the texture entries.",
         "type": "u32"
        },
        {
@@ -197,6 +205,14 @@
         "type": {
          "array": "SKYRIM_MODT_ENTRY",
          "count_field": "count"
+        }
+       },
+       {
+        "name": "extra",
+        "note": "The words after the textures. Their meaning is not documented.",
+        "type": {
+         "array": "u32",
+         "count_field": "extra_words"
         }
        }
       ]
@@ -260,7 +276,7 @@
         "type": "u32"
        },
        {
-        "name": "unknown",
+        "name": "extra_words",
         "type": "u32"
        },
        {
