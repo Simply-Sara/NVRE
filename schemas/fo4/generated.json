@@ -478,7 +478,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -513,6 +520,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -1337,7 +1423,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -1372,6 +1465,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -1705,7 +1877,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -1740,6 +1919,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -2068,14 +2326,35 @@
      "BSMP": {
       "opener": "BSMP",
       "order": [
-       "BSMP"
+       "BSMP",
+       "BSMB",
+       "BSMS",
+       "BMMP"
       ],
       "subrecords": {
+       "BMMP": {
+        "confidence": "documented",
+        "name": "BMMP",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbBSMPSequence.BMMP",
+        "type": "bytes"
+       },
+       "BSMB": {
+        "confidence": "documented",
+        "name": "Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BSMB",
+        "type": "zstring"
+       },
        "BSMP": {
         "confidence": "documented",
         "name": "Gender",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BSMP",
         "type": "u32"
+       },
+       "BSMS": {
+        "confidence": "documented",
+        "name": "Values",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbBSMPSequence.BSMS",
+        "type": "bytes"
        }
       }
      },
@@ -2294,7 +2573,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -2329,6 +2615,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -2400,14 +2765,121 @@
       "opener": "OBTE",
       "order": [
        "OBTE",
+       "OBTF",
+       "FULL",
+       "OBTS",
        "STOP"
       ],
       "subrecords": {
+       "FULL": {
+        "confidence": "documented",
+        "name": "FULL",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbFULL",
+        "type": "localized"
+       },
        "OBTE": {
         "confidence": "documented",
         "name": "Count",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), OBTE",
         "type": "u32"
+       },
+       "OBTF": {
+        "confidence": "documented",
+        "name": "Editor Only",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbObjectTemplate.OBTF",
+        "type": {
+         "struct": []
+        }
+       },
+       "OBTS": {
+        "confidence": "documented",
+        "name": "OBTS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbOBTSReq",
+        "type": {
+         "struct": [
+          {
+           "name": "Include Count",
+           "type": "u32"
+          },
+          {
+           "name": "Property Count",
+           "type": "u32"
+          },
+          {
+           "name": "Level Min",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Level Max",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Addon Index",
+           "type": "i16"
+          },
+          {
+           "name": "Default",
+           "type": "u8"
+          },
+          {
+           "name": "Keywords",
+           "type": {
+            "array": "formid"
+           }
+          },
+          {
+           "name": "Min Level For Ranks",
+           "type": "u8"
+          },
+          {
+           "name": "Alt Levels Per Tier",
+           "type": "u8"
+          },
+          {
+           "name": "Includes",
+           "type": {
+            "array": {
+             "struct": [
+              {
+               "name": "Mod",
+               "type": "formid"
+              },
+              {
+               "name": "Attach Point Index",
+               "type": "u8"
+              },
+              {
+               "name": "Optional",
+               "type": "u8"
+              },
+              {
+               "name": "Don't Use All",
+               "type": "u8"
+              }
+             ]
+            }
+           }
+          },
+          {
+           "name": "wbObjectModProperties",
+           "type": "wbObjectModProperties"
+          }
+         ]
+        }
        },
        "STOP": {
         "confidence": "documented",
@@ -3082,7 +3554,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -3117,6 +3596,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -5118,11 +5676,80 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(CONT)",
    "sequence": {
     "blocks": {
+     "CNTO": {
+      "opener": "CNTO",
+      "order": [
+       "CNTO",
+       "COED"
+      ],
+      "subrecords": {
+       "CNTO": {
+        "confidence": "documented",
+        "name": "CNTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCNTO.CNTO",
+        "type": {
+         "struct": [
+          {
+           "name": "Item",
+           "type": "formid"
+          },
+          {
+           "name": "Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "COED": {
+        "confidence": "documented",
+        "name": "COED",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
+        "type": {
+         "struct": [
+          {
+           "name": "Owner",
+           "type": "formid"
+          },
+          {
+           "name": "Global Variable / Required Rank",
+           "type": {
+            "union": [
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": "i32"
+             }
+            ]
+           }
+          },
+          {
+           "name": "Item Condition",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      }
+     },
      "DEST": {
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -5157,6 +5784,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -5987,7 +6693,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -6022,6 +6735,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -7674,6 +8466,47 @@
    "confidence": "documented",
    "name": "Faction",
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(FACT)",
+   "sequence": {
+    "blocks": {
+     "RNAM": {
+      "opener": "RNAM",
+      "order": [
+       "RNAM",
+       "MNAM",
+       "FNAM",
+       "INAM"
+      ],
+      "subrecords": {
+       "FNAM": {
+        "confidence": "documented",
+        "name": "Female Title",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.Ranks.FNAM",
+        "type": "localized"
+       },
+       "INAM": {
+        "confidence": "documented",
+        "name": "Insignia (unused)",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INAM",
+        "type": "zstring"
+       },
+       "MNAM": {
+        "confidence": "documented",
+        "name": "Male Title",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.Ranks.MNAM",
+        "type": "localized"
+       },
+       "RNAM": {
+        "confidence": "documented",
+        "name": "Rank#",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RNAM",
+        "type": "u32"
+       }
+      }
+     }
+    },
+    "end": [],
+    "start": []
+   },
    "subrecords": {
     "CITC": {
      "confidence": "documented",
@@ -7968,7 +8801,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -8003,6 +8843,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -8332,11 +9251,80 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(FURN)",
    "sequence": {
     "blocks": {
+     "CNTO": {
+      "opener": "CNTO",
+      "order": [
+       "CNTO",
+       "COED"
+      ],
+      "subrecords": {
+       "CNTO": {
+        "confidence": "documented",
+        "name": "CNTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCNTO.CNTO",
+        "type": {
+         "struct": [
+          {
+           "name": "Item",
+           "type": "formid"
+          },
+          {
+           "name": "Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "COED": {
+        "confidence": "documented",
+        "name": "COED",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
+        "type": {
+         "struct": [
+          {
+           "name": "Owner",
+           "type": "formid"
+          },
+          {
+           "name": "Global Variable / Required Rank",
+           "type": {
+            "union": [
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": "i32"
+             }
+            ]
+           }
+          },
+          {
+           "name": "Item Condition",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      }
+     },
      "DEST": {
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -8371,6 +9359,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -8456,14 +9523,121 @@
       "opener": "OBTE",
       "order": [
        "OBTE",
+       "OBTF",
+       "FULL",
+       "OBTS",
        "STOP"
       ],
       "subrecords": {
+       "FULL": {
+        "confidence": "documented",
+        "name": "FULL",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbFULL",
+        "type": "localized"
+       },
        "OBTE": {
         "confidence": "documented",
         "name": "Count",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), OBTE",
         "type": "u32"
+       },
+       "OBTF": {
+        "confidence": "documented",
+        "name": "Editor Only",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbObjectTemplate.OBTF",
+        "type": {
+         "struct": []
+        }
+       },
+       "OBTS": {
+        "confidence": "documented",
+        "name": "OBTS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbOBTSReq",
+        "type": {
+         "struct": [
+          {
+           "name": "Include Count",
+           "type": "u32"
+          },
+          {
+           "name": "Property Count",
+           "type": "u32"
+          },
+          {
+           "name": "Level Min",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Level Max",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Addon Index",
+           "type": "i16"
+          },
+          {
+           "name": "Default",
+           "type": "u8"
+          },
+          {
+           "name": "Keywords",
+           "type": {
+            "array": "formid"
+           }
+          },
+          {
+           "name": "Min Level For Ranks",
+           "type": "u8"
+          },
+          {
+           "name": "Alt Levels Per Tier",
+           "type": "u8"
+          },
+          {
+           "name": "Includes",
+           "type": {
+            "array": {
+             "struct": [
+              {
+               "name": "Mod",
+               "type": "formid"
+              },
+              {
+               "name": "Attach Point Index",
+               "type": "u8"
+              },
+              {
+               "name": "Optional",
+               "type": "u8"
+              },
+              {
+               "name": "Don't Use All",
+               "type": "u8"
+              }
+             ]
+            }
+           }
+          },
+          {
+           "name": "wbObjectModProperties",
+           "type": "wbObjectModProperties"
+          }
+         ]
+        }
        },
        "STOP": {
         "confidence": "documented",
@@ -10730,7 +11904,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -10765,6 +11946,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -11323,7 +12583,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -11358,6 +12625,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -12783,7 +14129,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -12818,6 +14171,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -14128,7 +15560,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -14163,6 +15602,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -14555,7 +16073,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -14590,6 +16115,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -15879,6 +17483,68 @@
        }
       }
      },
+     "CNTO": {
+      "opener": "CNTO",
+      "order": [
+       "CNTO",
+       "COED"
+      ],
+      "subrecords": {
+       "CNTO": {
+        "confidence": "documented",
+        "name": "CNTO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCNTO.CNTO",
+        "type": {
+         "struct": [
+          {
+           "name": "Item",
+           "type": "formid"
+          },
+          {
+           "name": "Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "COED": {
+        "confidence": "documented",
+        "name": "COED",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
+        "type": {
+         "struct": [
+          {
+           "name": "Owner",
+           "type": "formid"
+          },
+          {
+           "name": "Global Variable / Required Rank",
+           "type": {
+            "union": [
+             {
+              "type": {
+               "array": "u8",
+               "count": 4
+              }
+             },
+             {
+              "type": "formid"
+             },
+             {
+              "type": "i32"
+             }
+            ]
+           }
+          },
+          {
+           "name": "Item Condition",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      }
+     },
      "CS2H": {
       "opener": "CS2H",
       "order": [
@@ -15916,7 +17582,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -15951,6 +17624,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -16015,14 +17767,121 @@
       "opener": "OBTE",
       "order": [
        "OBTE",
+       "OBTF",
+       "FULL",
+       "OBTS",
        "STOP"
       ],
       "subrecords": {
+       "FULL": {
+        "confidence": "documented",
+        "name": "FULL",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbFULL",
+        "type": "localized"
+       },
        "OBTE": {
         "confidence": "documented",
         "name": "Count",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), OBTE",
         "type": "u32"
+       },
+       "OBTF": {
+        "confidence": "documented",
+        "name": "Editor Only",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbObjectTemplate.OBTF",
+        "type": {
+         "struct": []
+        }
+       },
+       "OBTS": {
+        "confidence": "documented",
+        "name": "OBTS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbOBTSReq",
+        "type": {
+         "struct": [
+          {
+           "name": "Include Count",
+           "type": "u32"
+          },
+          {
+           "name": "Property Count",
+           "type": "u32"
+          },
+          {
+           "name": "Level Min",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Level Max",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Addon Index",
+           "type": "i16"
+          },
+          {
+           "name": "Default",
+           "type": "u8"
+          },
+          {
+           "name": "Keywords",
+           "type": {
+            "array": "formid"
+           }
+          },
+          {
+           "name": "Min Level For Ranks",
+           "type": "u8"
+          },
+          {
+           "name": "Alt Levels Per Tier",
+           "type": "u8"
+          },
+          {
+           "name": "Includes",
+           "type": {
+            "array": {
+             "struct": [
+              {
+               "name": "Mod",
+               "type": "formid"
+              },
+              {
+               "name": "Attach Point Index",
+               "type": "u8"
+              },
+              {
+               "name": "Optional",
+               "type": "u8"
+              },
+              {
+               "name": "Don't Use All",
+               "type": "u8"
+              }
+             ]
+            }
+           }
+          },
+          {
+           "name": "wbObjectModProperties",
+           "type": "wbObjectModProperties"
+          }
+         ]
+        }
        },
        "STOP": {
         "confidence": "documented",
@@ -18797,6 +20656,95 @@
    "confidence": "documented",
    "name": "Perk",
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(PERK)",
+   "sequence": {
+    "blocks": {
+     "PRKE": {
+      "opener": "PRKE",
+      "order": [
+       "PRKE",
+       "DATA",
+       "PRKF"
+      ],
+      "subrecords": {
+       "DATA": {
+        "confidence": "documented",
+        "name": "Effect Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.DATA",
+        "type": {
+         "union": [
+          {
+           "type": {
+            "struct": [
+             {
+              "name": "Quest",
+              "type": "formid"
+             },
+             {
+              "name": "Quest Stage",
+              "type": "u16"
+             }
+            ]
+           }
+          },
+          {
+           "type": "formid"
+          },
+          {
+           "type": {
+            "struct": [
+             {
+              "name": "Entry Point",
+              "type": "u8"
+             },
+             {
+              "name": "Function",
+              "type": "u8"
+             },
+             {
+              "name": "Perk Condition Tab Count",
+              "type": "u8"
+             }
+            ]
+           }
+          }
+         ]
+        }
+       },
+       "PRKE": {
+        "confidence": "documented",
+        "name": "PRKE",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.PRKE",
+        "type": {
+         "struct": [
+          {
+           "name": "Type",
+           "type": "u8"
+          },
+          {
+           "name": "Rank",
+           "type": "u8"
+          },
+          {
+           "name": "Priority",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       "PRKF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.PRKF",
+        "type": {
+         "struct": []
+        }
+       }
+      }
+     }
+    },
+    "end": [],
+    "start": []
+   },
    "subrecords": {
     "DATA": {
      "confidence": "documented",
@@ -20366,7 +22314,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -20401,6 +22356,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -20656,6 +22690,18 @@
        "ALFI",
        "ALFR",
        "ALUA",
+       "ALFA",
+       "KNAM",
+       "ALRT",
+       "ALEQ",
+       "ALEA",
+       "ALCO",
+       "ALCA",
+       "ALCL",
+       "ALNA",
+       "ALNT",
+       "ALFE",
+       "ALFD",
        "ALCC",
        "KSIZ",
        "KWDA",
@@ -20676,11 +22722,40 @@
        "ALMI"
       ],
       "subrecords": {
+       "ALCA": {
+        "confidence": "documented",
+        "name": "Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALCA",
+        "type": {
+         "struct": [
+          {
+           "name": "Alias",
+           "type": "i16"
+          },
+          {
+           "name": "Create",
+           "type": "u16"
+          }
+         ]
+        }
+       },
        "ALCC": {
         "confidence": "documented",
         "name": "Closest To Alias",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCC",
         "type": "i32"
+       },
+       "ALCL": {
+        "confidence": "documented",
+        "name": "Level",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCL",
+        "type": "u32"
+       },
+       "ALCO": {
+        "confidence": "documented",
+        "name": "Object",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALCO",
+        "type": "formid"
        },
        "ALCS": {
         "confidence": "documented",
@@ -20700,12 +22775,45 @@
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALDN",
         "type": "formid"
        },
+       "ALEA": {
+        "confidence": "documented",
+        "name": "Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALEA",
+        "type": "i32"
+       },
        "ALED": {
         "confidence": "documented",
         "name": "Alias End",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALED",
         "type": {
          "struct": []
+        }
+       },
+       "ALEQ": {
+        "confidence": "documented",
+        "name": "Quest",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALEQ",
+        "type": "formid"
+       },
+       "ALFA": {
+        "confidence": "documented",
+        "name": "Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFA",
+        "type": "i32"
+       },
+       "ALFD": {
+        "confidence": "documented",
+        "name": "Event Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFD",
+        "type": "bytes"
+       },
+       "ALFE": {
+        "confidence": "documented",
+        "name": "From Event",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFE",
+        "type": {
+         "array": "u8",
+         "count": 4
         }
        },
        "ALFI": {
@@ -20756,6 +22864,24 @@
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALMI",
         "type": "u8"
        },
+       "ALNA": {
+        "confidence": "documented",
+        "name": "Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALNA",
+        "type": "i32"
+       },
+       "ALNT": {
+        "confidence": "documented",
+        "name": "Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALNT",
+        "type": "u32"
+       },
+       "ALRT": {
+        "confidence": "documented",
+        "name": "Ref Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALRT",
+        "type": "formid"
+       },
        "ALST": {
         "confidence": "documented",
         "name": "Reference Alias ID",
@@ -20790,6 +22916,12 @@
         "confidence": "documented",
         "name": "Guard warn override package list",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.GWOR",
+        "type": "formid"
+       },
+       "KNAM": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.KNAM",
         "type": "formid"
        },
        "KSIZ": {
@@ -21181,14 +23313,35 @@
      "BSMP": {
       "opener": "BSMP",
       "order": [
-       "BSMP"
+       "BSMP",
+       "BSMB",
+       "BSMS",
+       "BMMP"
       ],
       "subrecords": {
+       "BMMP": {
+        "confidence": "documented",
+        "name": "BMMP",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbBSMPSequence.BMMP",
+        "type": "bytes"
+       },
+       "BSMB": {
+        "confidence": "documented",
+        "name": "Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BSMB",
+        "type": "zstring"
+       },
        "BSMP": {
         "confidence": "documented",
         "name": "Gender",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BSMP",
         "type": "u32"
+       },
+       "BSMS": {
+        "confidence": "documented",
+        "name": "Values",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbBSMPSequence.BSMS",
+        "type": "bytes"
        }
       }
      },
@@ -21299,6 +23452,133 @@
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Body Data.NAM1",
         "type": {
          "struct": []
+        }
+       }
+      }
+     },
+     "PHWT": {
+      "opener": "PHWT",
+      "order": [
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT",
+       "PHWT"
+      ],
+      "subrecords": {
+       "PHWT": {
+        "confidence": "documented",
+        "name": "PHWT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbPhonemeTargets",
+        "type": {
+         "struct": [
+          {
+           "name": "Aah / LipBigAah",
+           "type": "f32"
+          },
+          {
+           "name": "BigAah / LipDST",
+           "type": "f32"
+          },
+          {
+           "name": "BMP / LipEee",
+           "type": "f32"
+          },
+          {
+           "name": "ChJsh / LipFV",
+           "type": "f32"
+          },
+          {
+           "name": "DST / LipK",
+           "type": "f32"
+          },
+          {
+           "name": "Eee / LipL",
+           "type": "f32"
+          },
+          {
+           "name": "Eh / LipR",
+           "type": "f32"
+          },
+          {
+           "name": "FV / LipTh",
+           "type": "f32"
+          },
+          {
+           "name": "I",
+           "type": "f32"
+          },
+          {
+           "name": "K",
+           "type": "f32"
+          },
+          {
+           "name": "N",
+           "type": "f32"
+          },
+          {
+           "name": "Oh",
+           "type": "f32"
+          },
+          {
+           "name": "OohQ",
+           "type": "f32"
+          },
+          {
+           "name": "R",
+           "type": "f32"
+          },
+          {
+           "name": "TH",
+           "type": "f32"
+          },
+          {
+           "name": "W",
+           "type": "f32"
+          },
+          {
+           "name": "unknown",
+           "type": "bytes"
+          }
+         ]
         }
        }
       }
@@ -24248,6 +26528,74 @@
         "type": "FO4_MODT"
        }
       }
+     },
+     "ONAM": {
+      "opener": "ONAM",
+      "order": [
+       "ONAM",
+       "DATA"
+      ],
+      "subrecords": {
+       "DATA": {
+        "confidence": "documented",
+        "name": "Placements",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCOL.Parts.DATA",
+        "type": {
+         "array": {
+          "struct": [
+           {
+            "name": "Position",
+            "type": {
+             "struct": [
+              {
+               "name": "X",
+               "type": "f32"
+              },
+              {
+               "name": "Y",
+               "type": "f32"
+              },
+              {
+               "name": "Z",
+               "type": "f32"
+              }
+             ]
+            }
+           },
+           {
+            "name": "Rotation",
+            "type": {
+             "struct": [
+              {
+               "name": "X",
+               "type": "f32"
+              },
+              {
+               "name": "Y",
+               "type": "f32"
+              },
+              {
+               "name": "Z",
+               "type": "f32"
+              }
+             ]
+            }
+           },
+           {
+            "name": "Scale",
+            "type": "f32"
+           }
+          ]
+         }
+        }
+       },
+       "ONAM": {
+        "confidence": "documented",
+        "name": "Static",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCOL.Parts.ONAM",
+        "type": "formid"
+       }
+      }
      }
     },
     "end": [],
@@ -25887,7 +28235,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -25922,6 +28277,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -27570,7 +30004,14 @@
       "opener": "DEST",
       "order": [
        "DEST",
-       "DAMC"
+       "DAMC",
+       "DSTD",
+       "DSTA",
+       "DMDL",
+       "DMDT",
+       "DMDC",
+       "DMDS",
+       "DSTF"
       ],
       "subrecords": {
        "DAMC": {
@@ -27605,6 +30046,85 @@
            }
           }
          ]
+        }
+       },
+       "DMDC": {
+        "confidence": "documented",
+        "name": "DMDC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDC",
+        "type": "f32"
+       },
+       "DMDL": {
+        "confidence": "documented",
+        "name": "Model FileName",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDL",
+        "type": "zstring"
+       },
+       "DMDS": {
+        "confidence": "documented",
+        "name": "DMDS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDMDS",
+        "type": "formid"
+       },
+       "DMDT": {
+        "confidence": "documented",
+        "name": "DMDT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DMDT",
+        "type": "bytes"
+       },
+       "DSTA": {
+        "confidence": "documented",
+        "name": "Sequence Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DSTA",
+        "type": "zstring"
+       },
+       "DSTD": {
+        "confidence": "documented",
+        "name": "Destruction Stage Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTD",
+        "type": {
+         "struct": [
+          {
+           "name": "Health %",
+           "type": "u8"
+          },
+          {
+           "name": "Index",
+           "type": "u8"
+          },
+          {
+           "name": "Model Damage Stage",
+           "type": "u8"
+          },
+          {
+           "name": "Flags",
+           "type": "u8"
+          },
+          {
+           "name": "Self Damage per Second",
+           "type": "i32"
+          },
+          {
+           "name": "Explosion",
+           "type": "formid"
+          },
+          {
+           "name": "Debris",
+           "type": "formid"
+          },
+          {
+           "name": "Debris Count",
+           "type": "i32"
+          }
+         ]
+        }
+       },
+       "DSTF": {
+        "confidence": "documented",
+        "name": "End Marker",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbDEST.DSTF",
+        "type": {
+         "struct": []
         }
        }
       }
@@ -27676,14 +30196,121 @@
       "opener": "OBTE",
       "order": [
        "OBTE",
+       "OBTF",
+       "FULL",
+       "OBTS",
        "STOP"
       ],
       "subrecords": {
+       "FULL": {
+        "confidence": "documented",
+        "name": "FULL",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbFULL",
+        "type": "localized"
+       },
        "OBTE": {
         "confidence": "documented",
         "name": "Count",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), OBTE",
         "type": "u32"
+       },
+       "OBTF": {
+        "confidence": "documented",
+        "name": "Editor Only",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbObjectTemplate.OBTF",
+        "type": {
+         "struct": []
+        }
+       },
+       "OBTS": {
+        "confidence": "documented",
+        "name": "OBTS",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbOBTSReq",
+        "type": {
+         "struct": [
+          {
+           "name": "Include Count",
+           "type": "u32"
+          },
+          {
+           "name": "Property Count",
+           "type": "u32"
+          },
+          {
+           "name": "Level Min",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Level Max",
+           "type": "u8"
+          },
+          {
+           "name": "Unused",
+           "type": {
+            "array": "u8",
+            "count": 1
+           }
+          },
+          {
+           "name": "Addon Index",
+           "type": "i16"
+          },
+          {
+           "name": "Default",
+           "type": "u8"
+          },
+          {
+           "name": "Keywords",
+           "type": {
+            "array": "formid"
+           }
+          },
+          {
+           "name": "Min Level For Ranks",
+           "type": "u8"
+          },
+          {
+           "name": "Alt Levels Per Tier",
+           "type": "u8"
+          },
+          {
+           "name": "Includes",
+           "type": {
+            "array": {
+             "struct": [
+              {
+               "name": "Mod",
+               "type": "formid"
+              },
+              {
+               "name": "Attach Point Index",
+               "type": "u8"
+              },
+              {
+               "name": "Optional",
+               "type": "u8"
+              },
+              {
+               "name": "Don't Use All",
+               "type": "u8"
+              }
+             ]
+            }
+           }
+          },
+          {
+           "name": "wbObjectModProperties",
+           "type": "wbObjectModProperties"
+          }
+         ]
+        }
        },
        "STOP": {
         "confidence": "documented",

@@ -534,6 +534,15 @@ class Converter:
             mparts = split_args(margs) if margs is not None else []
             first = mparts[0].strip() if mparts else ""
             if not is_signature(first):
+                # A group inside the group: the schema language has no nested
+                # block, so its subrecords are taken into this one.
+                if mname in GROUP_KINDS and margs is not None:
+                    out.extend(
+                        self._group_subrecords(
+                            name, mname, split_args(margs)
+                        )
+                    )
+                    continue
                 # The member is a named definition that owns a signature.
                 sig_of = self._named_type_signature(mname)
                 if sig_of is None:
@@ -936,11 +945,7 @@ class Converter:
         members = None
         for p in parts[1:]:
             candidate = bracket_list(p)
-            if candidate and all(
-                (match_call(m)[0] is not None)
-                or re.fullmatch(r"wb[A-Za-z0-9_]+", m.strip())
-                for m in candidate
-            ):
+            if candidate and self._is_member_list(candidate):
                 members = candidate
                 break
         if members is None:
@@ -1266,6 +1271,22 @@ class Converter:
             "subrecords": subs,
         }
 
+    def _is_member_list(self, members):
+        """Whether a bracketed list is a list of definitions, not a sort key.
+
+        xEdit's `wbRStructsSK(name, kind, [sortkey], [members], ...)` puts a
+        sort key — a list of integers — before the members, and the two are
+        both bracketed lists. A sort key's entries are numbers, never
+        definitions.
+        """
+        if not members:
+            return False
+        return all(
+            (match_call(m)[0] is not None)
+            or re.fullmatch(r"wb[A-Za-z0-9_]+", m.strip())
+            for m in members
+        )
+
     def _group_members(self, parts):
         """The group's member list, or None if it holds a single element.
 
@@ -1276,7 +1297,7 @@ class Converter:
         """
         for p in parts[1:]:
             members = bracket_list(p)
-            if members is not None:
+            if members is not None and self._is_member_list(members):
                 return members
         # The element is a single definition. If it is itself a group, the
         # members are inside it.
