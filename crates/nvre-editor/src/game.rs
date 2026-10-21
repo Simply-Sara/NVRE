@@ -92,7 +92,6 @@ pub struct GameProfile {
     /// A game's own directory is named here; the chain is worked out from the
     /// family's and the version's names, so a game with no directory of its
     /// own shares its family's layouts unchanged.
-    pub nif_schema_subdir: &'static str,
     /// The directory holding the NIF layouts this game's family shares.
     pub nif_schema_family_dir: &'static str,
     /// The directory holding this version's own NIF differences.
@@ -106,7 +105,6 @@ pub struct GameProfile {
 /// schemas are measured against real data.
 pub const FNV: GameProfile = GameProfile {
     id: "fnv",
-    nif_schema_subdir: "fnv",
     nif_schema_family_dir: "",
     nif_schema_version_dir: "fnv",
     name: "Fallout: New Vegas",
@@ -132,7 +130,6 @@ pub const FNV: GameProfile = GameProfile {
 /// FNV, so the asset layer already works; only the record layouts are missing.
 pub const FO3: GameProfile = GameProfile {
     id: "fo3",
-    nif_schema_subdir: "fnv",
     nif_schema_family_dir: "fnv",
     nif_schema_version_dir: "fo3",
     name: "Fallout 3",
@@ -160,7 +157,6 @@ pub const FO3: GameProfile = GameProfile {
 /// Skyrim (Legendary Edition). BSA v104, like FNV and Fallout 3.
 pub const SKYRIM: GameProfile = GameProfile {
     id: "skyrim",
-    nif_schema_subdir: "skyrim",
     nif_schema_family_dir: "skyrim",
     nif_schema_version_dir: "skyrimle",
     name: "Skyrim",
@@ -184,7 +180,7 @@ pub const SKYRIM: GameProfile = GameProfile {
     schema_version_dir: "skyrimle",
     notes: &[
         "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimle",
-        "NIF schema is the FNV corpus's; Skyrim's NIFs are bs_version 83 and would decode with the wrong conditions",
+        "NIF schema is complete for the geometry: over its whole mesh archive, 631,970 blocks, no unknown block, every block that decoded re-encoding byte-identically, and the 60,362 shapes and 62,524 shape data blocks failing nothing",
         "its archives are BSA v104, which the editor's VFS reads, so the models load",
     ],
 };
@@ -195,7 +191,6 @@ pub const SKYRIM: GameProfile = GameProfile {
 /// reads v104 only — hence the archive list is empty and the note says so.
 pub const SKYRIM_SE: GameProfile = GameProfile {
     id: "skyrimse",
-    nif_schema_subdir: "skyrim",
     nif_schema_family_dir: "skyrim",
     nif_schema_version_dir: "skyrimse",
     name: "Skyrim Special Edition",
@@ -208,9 +203,9 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     schema_family_dir: "skyrim",
     schema_version_dir: "skyrimse",
     notes: &[
-        "no record schemas yet: schemas/skyrimse has not been measured against Skyrim.esm",
+        "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimse",
         "archives are BSA v105/LZ4: read by the bsa105 crate, but the editor's VFS is still v104-only, so loose files only until it is switched",
-        "NIF schema is the FNV corpus's; Skyrim SE's NIFs are bs_version 130+ and are rejected by the header",
+        "its NIF blocks all decode, but the packed vertex format its shapes use is unfinished, so its geometry is not yet exact",
     ],
 };
 
@@ -218,7 +213,6 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
 /// FNV's — the largest of the four to bring up.
 pub const FALLOUT_4: GameProfile = GameProfile {
     id: "fo4",
-    nif_schema_subdir: "fo4",
     nif_schema_family_dir: "",
     nif_schema_version_dir: "fo4",
     name: "Fallout 4",

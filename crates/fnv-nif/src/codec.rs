@@ -451,7 +451,9 @@ impl<'a> Codec<'a> {
             TypeRef::Enum { storage, .. } => write_int(*storage, v.as_int().ok_or_else(mismatch)?, out),
             TypeRef::Prim(p) => match (p, v) {
                 (Prim::F32, Value::Float(f)) => out.extend_from_slice(&f.to_le_bytes()),
-                (Prim::HFloat, Value::Float(f)) => out.extend_from_slice(&f32_to_half(*f).to_le_bytes()),
+                (Prim::HFloat, Value::Float(f)) => {
+                    out.extend_from_slice(&f32_to_half(*f).to_le_bytes())
+                }
                 (Prim::NormByte, Value::Float(f)) => {
                     let v = ((*f + 1.0) * 127.0).round().clamp(0.0, 255.0) as u8;
                     out.push(v);

@@ -27,7 +27,7 @@
      "type": "ref"
     }
    ],
-   "note": "Skyrim's AVObject has no properties array. Fallout's has a count and an array between the scale and the collision object; reading them where there are none put every field after the scale a fixed distance off, which is what made NiNode, NiCamera and BSFadeNode fail."
+   "note": "Skyrim's AV object has no properties array. Fallout's has a count and an array between the scale and the collision object; reading them where there are none put every field after the scale a fixed distance off, which is what made NiNode, NiCamera and BSFadeNode fail."
   },
   "NiTriShapeData": {
    "inherit": "NiTriBasedGeomData",
@@ -1039,6 +1039,187 @@
      "type": "u32"
     }
    ]
+  },
+  "BSFurnitureMarkerNode": {
+   "inherit": "NiNode",
+   "fields": []
+  },
+  "BSSkyShaderProperty": {
+   "inherit": "BSShaderProperty",
+   "fields": [
+    {
+     "name": "shader_flags",
+     "type": "u32"
+    },
+    {
+     "name": "shader_flags_2",
+     "type": "u32"
+    },
+    {
+     "name": "uv_offset",
+     "type": "vec2"
+    },
+    {
+     "name": "uv_scale",
+     "type": "vec2"
+    },
+    {
+     "name": "source_texture",
+     "type": "sized_string"
+    },
+    {
+     "name": "sky_object_type",
+     "type": "u32"
+    }
+   ]
+  },
+  "BSWaterShaderProperty": {
+   "inherit": "BSShaderProperty",
+   "fields": [
+    {
+     "name": "shader_flags",
+     "type": "u32"
+    },
+    {
+     "name": "shader_flags_2",
+     "type": "u32"
+    },
+    {
+     "name": "uv_offset",
+     "type": "vec2"
+    },
+    {
+     "name": "uv_scale",
+     "type": "vec2"
+    },
+    {
+     "name": "water_shader_flags",
+     "type": "u32"
+    }
+   ]
+  },
+  "bhkBallSocketConstraintChain": {
+   "inherit": "bhkSerializable",
+   "fields": [
+    {
+     "name": "num_pivots",
+     "type": "u32"
+    },
+    {
+     "name": "pivots",
+     "type": "bhkBallAndSocketConstraintCInfo",
+     "length": "num_pivots / 2"
+    },
+    {
+     "name": "tau",
+     "type": "f32"
+    },
+    {
+     "name": "damping",
+     "type": "f32"
+    },
+    {
+     "name": "constraint_force_mixing",
+     "type": "f32"
+    },
+    {
+     "name": "max_error_distance",
+     "type": "f32"
+    },
+    {
+     "name": "constraint_chain_info",
+     "type": "bhkConstraintChainCInfo"
+    }
+   ]
+  },
+  "BSProceduralLightningController": {
+   "inherit": "NiTimeController",
+   "fields": [
+    {
+     "name": "interpolator_generation",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_mutation",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_subdivision",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_num_branches",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_num_branches_var",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_length",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_length_var",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_width",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_arc_offset",
+     "type": "ref"
+    },
+    {
+     "name": "subdivisions",
+     "type": "u16"
+    },
+    {
+     "name": "num_branches",
+     "type": "u16"
+    },
+    {
+     "name": "num_branches_variation",
+     "type": "u16"
+    },
+    {
+     "name": "length",
+     "type": "f32"
+    },
+    {
+     "name": "length_variation",
+     "type": "f32"
+    },
+    {
+     "name": "width",
+     "type": "f32"
+    },
+    {
+     "name": "child_width_mult",
+     "type": "f32"
+    },
+    {
+     "name": "arc_offset",
+     "type": "f32"
+    },
+    {
+     "name": "fade_main_bolt",
+     "type": "bool"
+    },
+    {
+     "name": "fade_child_bolts",
+     "type": "bool"
+    },
+    {
+     "name": "animate_arc_offset",
+     "type": "bool"
+    },
+    {
+     "name": "shader_property",
+     "type": "ref"
+    }
+   ]
   }
  },
  "structs": {
@@ -1388,6 +1569,35 @@
      "name": "welding_info",
      "type": "u16",
      "length": "num_welding_info"
+    }
+   ]
+  },
+  "bhkBallAndSocketConstraintCInfo": {
+   "fields": [
+    {
+     "name": "pivot_a",
+     "type": "vec4"
+    },
+    {
+     "name": "pivot_b",
+     "type": "vec4"
+    }
+   ]
+  },
+  "bhkConstraintChainCInfo": {
+   "fields": [
+    {
+     "name": "num_chained_entities",
+     "type": "u32"
+    },
+    {
+     "name": "chained_entities",
+     "type": "ptr",
+     "length": "num_chained_entities"
+    },
+    {
+     "name": "constraint_info",
+     "type": "bhkConstraintCInfo"
     }
    ]
   }
