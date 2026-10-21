@@ -290,6 +290,43 @@ pub struct RecordDef {
     pub subrecords: BTreeMap<String, SubDef>,
     /// The order the subrecords appear in, when the schema says.
     pub order: Vec<String>,
+    /// The record's sequence, when it is one.
+    pub sequence: Option<SequenceDef>,
+}
+
+/// A record that is an ordered list of blocks.
+///
+/// A sequence record's subrecords come in groups. Each group is opened by a
+/// signature, and the signatures that follow it are the group's contents, in
+/// the order the schema gives.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct SequenceDef {
+    /// The subrecords that come before the first block.
+    pub start: Vec<String>,
+    /// The subrecords that come after the last block.
+    pub end: Vec<String>,
+    /// The blocks, by the name the schema gives them.
+    pub blocks: BTreeMap<String, BlockDef>,
+}
+
+/// One block of a sequence.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct BlockDef {
+    /// The signature that opens the block.
+    pub opener: String,
+    /// The signatures the block holds, in order.
+    pub order: Vec<String>,
+    /// The block's subrecords.
+    pub subrecords: BTreeMap<String, SubDef>,
+    /// The block's variants: a subrecord's layout may depend on a value.
+    pub variants: BTreeMap<String, VariantDef>,
+}
+
+/// A variant of a subrecord: a layout chosen by a value.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct VariantDef {
+    /// The subrecords the variant holds.
+    pub subrecords: BTreeMap<String, SubDef>,
 }
 
 /// One subrecord of a record.
@@ -386,8 +423,28 @@ impl Schema {
         }
         if let Some(records) = obj.get("records").and_then(|v| v.as_object()) {
             for (name, def) in records {
-                self.records
-                    .insert(name.clone(), self.parse_record(name, def)?);
+                let mut r = self.parse_record(name, def)?;
+                // A record that says "merge" *adds to* the one it shadows
+                // rather than replacing it: its own subrecords are added or
+                // replace their counterparts, and the shadowed record's
+                // other subrecords stay. That is what a game needs when
+                // only some of a record's subrecords differ.
+                let merges = def.get("merge").and_then(|v| v.as_bool()).unwrap_or(false);
+                if merges {
+                    if let Some(prev) = self.records.get(name) {
+                        for (sig, sd) in &prev.subrecords {
+                            r.subrecords
+                                .entry(sig.clone())
+                                .or_insert_with(|| sd.clone());
+                        }
+                        for sig in &prev.order {
+                            if !r.order.contains(sig) {
+                                r.order.push(sig.clone());
+                            }
+                        }
+                    }
+                }
+                self.records.insert(name.clone(), r);
             }
         }
         if let Some(types) = obj.get("types").and_then(|v| v.as_object()) {
@@ -491,7 +548,110 @@ impl Schema {
                 .filter_map(|v| v.as_str().map(str::to_string))
                 .collect();
         }
+        // A record that is a sequence: an ordered list of blocks.
+        if let Some(seq) = o.get("sequence") {
+            out.sequence = Some(self.parse_sequence(seq)?);
+        }
         Ok(out)
+    }
+
+    /// Read a record's sequence.
+    fn parse_sequence(&self, seq: &Json) -> Result<SequenceDef, String> {
+        let Some(o) = seq.as_object() else {
+            return Err("a sequence is not an object".into());
+        };
+        let list = |k: &str| -> Vec<String> {
+            o.get(k)
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let mut blocks = BTreeMap::new();
+        if let Some(bs) = o.get("blocks").and_then(|v| v.as_object()) {
+            for (name, def) in bs {
+                blocks.insert(name.clone(), self.parse_block(def)?);
+            }
+        }
+        Ok(SequenceDef {
+            start: list("start"),
+            end: list("end"),
+            blocks,
+        })
+    }
+
+    /// Read one block of a sequence.
+    fn parse_block(&self, def: &Json) -> Result<BlockDef, String> {
+        let Some(o) = def.as_object() else {
+            return Err("a block is not an object".into());
+        };
+        let mut subrecords = BTreeMap::new();
+        if let Some(subs) = o.get("subrecords").and_then(|v| v.as_object()) {
+            for (sig, sdef) in subs {
+                let (ty, optional, count_from, expose) = self.parse_sub(sdef)?;
+                subrecords.insert(
+                    sig.to_string(),
+                    SubDef {
+                        name: sdef
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or_default()
+                            .to_string(),
+                        ty,
+                        optional,
+                        count_from,
+                        expose,
+                    },
+                );
+            }
+        }
+        let mut variants = BTreeMap::new();
+        if let Some(vs) = o.get("variants").and_then(|v| v.as_object()) {
+            for (vname, vdef) in vs {
+                let mut vsub = BTreeMap::new();
+                if let Some(subs) = vdef.get("subrecords").and_then(|v| v.as_object()) {
+                    for (sig, sdef) in subs {
+                        let (ty, optional, count_from, expose) = self.parse_sub(sdef)?;
+                        vsub.insert(
+                            sig.to_string(),
+                            SubDef {
+                                name: sdef
+                                    .get("name")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or_default()
+                                    .to_string(),
+                                ty,
+                                optional,
+                                count_from,
+                                expose,
+                            },
+                        );
+                    }
+                }
+                variants.insert(vname.clone(), VariantDef { subrecords: vsub });
+            }
+        }
+        Ok(BlockDef {
+            opener: o
+                .get("opener")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string(),
+            order: o
+                .get("order")
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            subrecords,
+            variants,
+        })
     }
 
     /// Read a subrecord's type and its flags.

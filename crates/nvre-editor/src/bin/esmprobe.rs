@@ -53,6 +53,7 @@ fn main() {
     // Which subrecords are unexplained, by type.
     let mut by_type: std::collections::BTreeMap<String, (u64, u64, u64, u64)> =
         std::collections::BTreeMap::new();
+    let mut seen_unknown: std::collections::HashSet<String> = std::collections::HashSet::new();
     for p in &plugins {
         let path = PathBuf::from(p);
         let data = std::fs::read(&path).expect("the plugin");
@@ -61,8 +62,21 @@ fn main() {
             let (_, rc) = nvre_esm::decode::decode_record(r, &schema);
             for sc in &rc.subrecords {
                 if std::env::var("NVRE_ESM_TRACE").is_ok() {
-                    if let nvre_esm::decode::SubStatus::Error(e) = &sc.status {
-                        println!("  {}: {}", String::from_utf8_lossy(&sc.sig), e);
+                    match &sc.status {
+                        nvre_esm::decode::SubStatus::Error(e) => {
+                            println!("  {}: {}", String::from_utf8_lossy(&sc.sig), e)
+                        }
+                        nvre_esm::decode::SubStatus::Unknown => {
+                            if !seen_unknown.insert(String::from_utf8_lossy(&sc.sig).into_owned()) {
+                                continue;
+                            }
+                            println!(
+                                "  {} is unknown, in a record of type {:?}",
+                                String::from_utf8_lossy(&sc.sig),
+                                String::from_utf8_lossy(&rc.sig)
+                            );
+                        }
+                        _ => {}
                     }
                 }
                 let e = by_type

@@ -13,7 +13,7 @@
 //! shows up as a number that is not 100%, not as a program that crashes.
 
 use crate::raw::{Record, Subrecord};
-use crate::schema::{ArrayCount, Prim, Schema, SubDef, Type, TypeDef};
+use crate::schema::{ArrayCount, BlockDef, Prim, Schema, SequenceDef, SubDef, Type, TypeDef};
 use nvre_util::{cp1252, Cursor};
 use serde_json::{Map, Value as Json};
 use std::collections::HashMap;
@@ -92,6 +92,49 @@ impl DecodedSub {
     /// The subrecord's type as text.
     pub fn sig_str(&self) -> String {
         String::from_utf8_lossy(&self.sig).into_owned()
+    }
+}
+
+/// Decode a subrecord against a block's own definition.
+fn decode_sub_in(
+    b: &BlockDef,
+    sig: &str,
+    s: &Subrecord,
+    ctx: &mut DecodeCtx<'_>,
+    scope: &Map<String, Json>,
+) -> DecodedSub {
+    let Some(def) = b.subrecords.get(sig) else {
+        return DecodedSub {
+            sig: s.sig,
+            value: None,
+            status: SubStatus::Unknown,
+            name: None,
+        };
+    };
+    let mut c = Cursor::new(&s.data);
+    match decode_subdef(def, &mut c, ctx) {
+        Ok(v) => {
+            let used = c.pos;
+            let total = s.data.len();
+            let status = if used == total {
+                SubStatus::Ok
+            } else {
+                SubStatus::Trailing { used, total }
+            };
+            ctx.values.insert(sig.to_string(), v.clone());
+            DecodedSub {
+                sig: s.sig,
+                value: Some(v),
+                status,
+                name: Some(def.name.clone()),
+            }
+        }
+        Err(e) => DecodedSub {
+            sig: s.sig,
+            value: None,
+            status: SubStatus::Error(e),
+            name: Some(def.name.clone()),
+        },
     }
 }
 
@@ -425,23 +468,122 @@ pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
         ..Default::default()
     };
     let mut m = Map::new();
-    for s in &r.subrecords {
-        let d = decode_sub(&r.header.sig, s, &mut ctx);
-        match d.status {
-            SubStatus::Ok => cov.ok_count += 1,
-            SubStatus::Unknown => cov.unknown_count += 1,
-            SubStatus::Trailing { .. } => cov.trailing_count += 1,
-            SubStatus::Error(_) => cov.error_count += 1,
+    // A record that is a sequence is read as one: its subrecords come in
+    // blocks, and a subrecord's meaning depends on the block it is in.
+    let rec_key = String::from_utf8_lossy(&r.header.sig).into_owned();
+    let sequence = schema
+        .records
+        .get(&rec_key)
+        .and_then(|d| d.sequence.clone());
+    let decoded = match sequence {
+        Some(seq) => decode_sequence(&seq, r, &mut ctx, &mut cov),
+        None => {
+            for s in &r.subrecords {
+                let d = decode_sub(&r.header.sig, s, &mut ctx);
+                count(&mut cov, &d);
+                if let Some(v) = d.value.clone() {
+                    m.insert(d.sig_str(), v);
+                }
+            }
+            m
         }
-        cov.subrecords.push(SubCoverage {
-            sig: d.sig,
-            status: d.status.clone(),
-        });
-        if let Some(v) = d.value.clone() {
-            m.insert(d.sig_str(), v);
+    };
+    (Json::Object(decoded), cov)
+}
+
+/// Add a decoded subrecord to the coverage.
+fn count(cov: &mut RecordCoverage, d: &DecodedSub) {
+    match d.status {
+        SubStatus::Ok => cov.ok_count += 1,
+        SubStatus::Unknown => cov.unknown_count += 1,
+        SubStatus::Trailing { .. } => cov.trailing_count += 1,
+        SubStatus::Error(_) => cov.error_count += 1,
+    }
+    cov.subrecords.push(SubCoverage {
+        sig: d.sig,
+        status: d.status.clone(),
+    });
+}
+
+/// Decode a record that is a sequence of blocks.
+///
+/// The subrecords before the first block are the record's own; then each
+/// block is opened by its signature, and the subrecords that follow belong to
+/// it until the next block opens.
+fn decode_sequence(
+    seq: &SequenceDef,
+    r: &Record,
+    ctx: &mut DecodeCtx<'_>,
+    cov: &mut RecordCoverage,
+) -> Map<String, Json> {
+    let mut m = Map::new();
+    // The block that is open, and where in it we are.
+    let mut open: Option<&BlockDef> = None;
+    // The subrecords of the block that is open.
+    let mut block_subs: Vec<(String, Json)> = Vec::new();
+    for s in &r.subrecords {
+        let sig = String::from_utf8_lossy(&s.sig).into_owned();
+        // A signature that opens a block starts one — unless the block that
+        // is open expects it, in which case it is that block's own
+        // subrecord. The order is what tells the two apart: a signature may
+        // both open a block and be a subrecord of another.
+        let expected_here = open.map(|b| b.order.contains(&sig)).unwrap_or(false);
+        let opener = if expected_here {
+            None
+        } else {
+            seq.blocks.values().find(|b| b.opener == sig)
+        };
+        if let Some(b) = opener {
+            // The block that was open ends.
+            if let Some(prev) = open.take() {
+                store_block(&mut m, prev, &mut block_subs);
+            }
+            open = Some(b);
+            block_subs.clear();
+            // The opener itself is a subrecord of the block.
+            let d = decode_sub_in(b, &sig, s, ctx, &m);
+            count(cov, &d);
+            if let Some(v) = d.value.clone() {
+                block_subs.push((sig, v));
+            }
+            continue;
+        }
+        // A subrecord of the block that is open, or of the record.
+        let def: Option<&SubDef> = open.and_then(|b| b.subrecords.get(&sig));
+        let d = match def {
+            Some(_) => decode_sub_in(open.unwrap(), &sig, s, ctx, &m),
+            None => decode_sub(&r.header.sig, s, ctx),
+        };
+        count(cov, &d);
+        match d.value.clone() {
+            Some(v) => {
+                if open.is_some() {
+                    block_subs.push((sig, v));
+                } else {
+                    m.insert(sig, v);
+                }
+            }
+            None => {}
         }
     }
-    (Json::Object(m), cov)
+    // The last block ends with the record.
+    if let Some(prev) = open {
+        store_block(&mut m, prev, &mut block_subs);
+    }
+    m
+}
+
+/// Store a block's subrecords under the block's name.
+fn store_block(m: &mut Map<String, Json>, b: &BlockDef, subs: &mut Vec<(String, Json)>) {
+    if subs.is_empty() {
+        return;
+    }
+    let mut inner = Map::new();
+    for (k, v) in subs.drain(..) {
+        inner.insert(k, v);
+    }
+    let name = b.opener.clone();
+    m.insert(name, Json::Object(inner));
 }
 
 /// How well one subrecord was explained.
