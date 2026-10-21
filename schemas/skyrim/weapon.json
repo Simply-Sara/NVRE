@@ -1,0 +1,337 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "ACHR": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Actor",
+   "note": "UESP, Skyrim Mod:Mod File Format/ACHR. An ACHR is an actor placed in the world. [measured: 5,639 XLCN and 2,701 XLRT fields in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Locational Data",
+     "note": "The actor's x, y and z position and rotation, in radians.",
+     "type": {
+      "struct": [
+       {
+        "name": "position",
+        "type": {
+         "array": "f32",
+         "count": 3
+        }
+       },
+       {
+        "name": "rotation",
+        "type": {
+         "array": "f32",
+         "count": 3
+        }
+       }
+      ]
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base Object",
+     "note": "The formid of the actor this places.",
+     "type": "formid"
+    },
+    "PDTO": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 8 bytes]",
+     "type": "bytes"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The Papyrus script info.",
+     "type": "bytes"
+    },
+    "XHOR": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "XIS2": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 0 bytes]",
+     "type": "bytes"
+    },
+    "XLCN": {
+     "confidence": "documented",
+     "name": "Location",
+     "note": "The LCTN record the actor is in.",
+     "type": "formid"
+    },
+    "XLKR": {
+     "confidence": "documented",
+     "name": "Linked Reference",
+     "note": "The keyword and the REFR the reference is linked to, usually a STAT. [measured: 12,778 of the 12,782 XLKR fields in Skyrim.esm are 8 bytes]",
+     "type": "REFR_XLKR"
+    },
+    "XLRT": {
+     "confidence": "documented",
+     "name": "Location Ref Type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    }
+   }
+  },
+  "LVLI": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Leveled Item",
+   "note": "UESP, Skyrim Mod:Mod File Format/LVLI. A leveled item is a list of entries, each with a level, an item and a count. [measured: 3,075 LVLD and LVLF fields and 3,056 LLCT fields in Skyrim.esm; the three are single bytes, not the dwords the names might suggest]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "LLCT": {
+     "confidence": "documented",
+     "name": "Entry Count",
+     "note": "How many entries the list has, which is the number of LVLO records.",
+     "type": "u8"
+    },
+    "LVLD": {
+     "confidence": "documented",
+     "name": "Chance For No Spawn",
+     "note": "The chance that an item on this list is not spawned at all. For example, 75 means there is a 25% chance to spawn an item.",
+     "type": "u8"
+    },
+    "LVLF": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "0x01 = All Levels, which sets it to calculate for every entry below the player level and choose randomly among them. 0x02 = Each, which repeats the check every time the list is called rather than reusing the result. 0x04 = Use All, which uses every entry when the list is called. 0x08 = Special Loot.",
+     "type": "u8"
+    },
+    "LVLG": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "Leveled Object",
+     "note": "The leveled item's contents.",
+     "type": "bytes"
+    }
+   }
+  },
+  "WEAP": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Weapon",
+   "note": "UESP, Skyrim Mod:Mod File Format/WEAP. [measured: 2,484 WEAP records in Skyrim.esm; DATA is 10 bytes, CRDT is 24 and DNAM is 100]",
+   "subrecords": {
+    "BAMT": {
+     "confidence": "documented",
+     "name": "Alternate Block Material",
+     "note": "A MATT record.",
+     "type": "formid"
+    },
+    "BIDS": {
+     "confidence": "documented",
+     "name": "Bash Impact Data Set",
+     "note": "An IPDS record.",
+     "type": "formid"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Template",
+     "note": "The WEAP record to use as a template.",
+     "type": "formid"
+    },
+    "CRDT": {
+     "confidence": "documented",
+     "name": "Critical Damage",
+     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. The Special Edition's CRDT is 24 bytes; the base's is Fallout's 16-byte form. [measured: 24 bytes in every CRDT field in Skyrim.esm]",
+     "type": "WEAP_CRDT"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The weapon's value, weight and base damage.",
+     "type": "WEAP_DATA"
+    },
+    "DESC": {
+     "confidence": "documented",
+     "name": "Description",
+     "note": "The description shown in the game.",
+     "type": "u32"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Weapon Data",
+     "note": "The weapon's animation type, speed, reach, flags, ranges, rumble, skill and stagger.",
+     "type": "WEAP_DNAM"
+    },
+    "EAMT": {
+     "confidence": "documented",
+     "name": "Enchantment Amount",
+     "note": "The enchantment charge amount.",
+     "type": "u16"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "EITM": {
+     "confidence": "documented",
+     "name": "Enchantment",
+     "note": "An ENCH record.",
+     "type": "formid"
+    },
+    "ETYP": {
+     "confidence": "documented",
+     "name": "Equip Type",
+     "note": "The EQUP record giving the slot the weapon is used in, typically BothHands or EitherHand.",
+     "type": "formid"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Swing Impact Data Set",
+     "note": "The normal weapon swing's impact data set (IPDS).",
+     "type": "formid"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "The keywords. There is one per KSIZ, and KSIZ is a sibling subrecord rather than a count in the data, so the count comes from it.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model file's name.",
+     "type": "zstring"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "Used when overriding a nif's textures with texture sets.",
+     "type": "bytes"
+    },
+    "MODT": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data.",
+     "type": "bytes"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Attack Loop Sound",
+     "note": "An SNDR record. Not found in the original files.",
+     "type": "formid"
+    },
+    "NAM8": {
+     "confidence": "documented",
+     "name": "Unequip Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "Equip Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Embedded Weapon Node",
+     "note": "The embedded weapon's node.",
+     "type": "zstring"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The weapon's bounds, always 12 bytes.",
+     "type": "ObjectBounds"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Attack Sound",
+     "note": "The attack sound (trap fire), an SNDR record.",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Attack Fail Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "UNAM": {
+     "confidence": "documented",
+     "name": "Idle Sound",
+     "note": "An SNDR record.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The scripting info.",
+     "type": "bytes"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Sound Detection Level",
+     "note": "How much sound using the weapon makes. It seems to be used when working out whether a nearby NPC notices the actor using it: 0 = Loud, 1 = Normal, 2 = Silent, 3 = Very Loud.",
+     "type": "u32"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "First Person Model Object",
+     "note": "The STAT record for the first person model. It affects the inventory item's display.",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Attack Sound 2D",
+     "note": "An SNDR record.",
+     "type": "formid"
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,5529 @@
+{
+ "format": "fnv.schema/1",
+ "types": {
+  "ACBS": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "The character base flags. The CK applies the Is CharGen Face Preset flag to NPC_ forms in RPRF, and will not generate FaceGen while it is set.",
+     "type": {
+      "bits": {
+       "0": "Female",
+       "1": "Essential",
+       "11": "Protected",
+       "14": "Summonable",
+       "16": "Doesn't Bleed",
+       "18": "Owned/Follow",
+       "19": "Opposite Gender Anims",
+       "2": "Is CharGen Face Preset",
+       "20": "Simple Actor",
+       "21": "Looped Script",
+       "28": "Looped Audio",
+       "29": "Ghost/Non-Interactable",
+       "3": "Respawn",
+       "31": "Invulnerable",
+       "4": "Auto Calc Stats",
+       "5": "Unique",
+       "6": "Doesn't Affect Stealth Meter",
+       "7": "PC Level Mult",
+       "8": "Audio Template"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "magicka_offset",
+     "note": "The magicka offset.",
+     "type": "i16"
+    },
+    {
+     "name": "stamina_offset",
+     "note": "The stamina offset.",
+     "type": "i16"
+    },
+    {
+     "name": "level",
+     "note": "The level, or the PC level multiplier times 1000 when the PC Level Mult flag is set.",
+     "type": "u16"
+    },
+    {
+     "name": "calc_min_level",
+     "note": "The lowest level the game may calculate for this character.",
+     "type": "u16"
+    },
+    {
+     "name": "calc_max_level",
+     "note": "The highest level the game may calculate for this character.",
+     "type": "u16"
+    },
+    {
+     "name": "speed_multiplier",
+     "note": "The speed multiplier.",
+     "type": "u16"
+    },
+    {
+     "name": "disposition_base",
+     "note": "The base disposition.",
+     "type": "u16"
+    },
+    {
+     "name": "template_data_flags",
+     "note": "Which parts of the NPC record the template overwrites. Bit 6 is unused.",
+     "type": {
+      "bits": {
+       "0": "Use Traits",
+       "1": "Use Stats",
+       "10": "Use Def Pack List",
+       "11": "Use Attack Data",
+       "12": "Use Keywords",
+       "2": "Use Factions",
+       "3": "Use Spelllist",
+       "4": "Use AI Data",
+       "5": "Use AI Packages",
+       "6": "Use Base Data",
+       "8": "Use Inventory",
+       "9": "Use Script"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "health_offset",
+     "note": "The health offset.",
+     "type": "i16"
+    },
+    {
+     "name": "bleedout_override",
+     "note": "The bleedout override.",
+     "type": "u16"
+    }
+   ]
+  },
+  "ACHR_XLRT": {
+   "struct": [
+    {
+     "name": "location_ref_type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    }
+   ]
+  },
+  "ACTI_PNAM": {
+   "struct": [
+    {
+     "name": "r",
+     "note": "The red channel of the default primitive colour.",
+     "type": "u8"
+    },
+    {
+     "name": "g",
+     "note": "The green channel of the default primitive colour.",
+     "type": "u8"
+    },
+    {
+     "name": "b",
+     "note": "The blue channel of the default primitive colour.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Always zero.",
+     "type": "u8"
+    }
+   ]
+  },
+  "AIDT": {
+   "struct": [
+    {
+     "name": "aggression",
+     "note": "How readily the character attacks.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Unaggressive",
+       "1": "Aggressive",
+       "2": "Very Aggressive",
+       "3": "Frenzied"
+      }
+     }
+    },
+    {
+     "name": "confidence",
+     "note": "How readily the character fights.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Cowardly",
+       "1": "Cautious",
+       "2": "Average",
+       "3": "Brave",
+       "4": "Foolhardy"
+      }
+     }
+    },
+    {
+     "name": "energy",
+     "note": "How much the character wants to attack.",
+     "type": "u8"
+    },
+    {
+     "name": "morality",
+     "note": "What the character considers a crime.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Any Crime",
+       "1": "Violence Against Enemies",
+       "2": "Property Crime Only",
+       "3": "No Crime"
+      }
+     }
+    },
+    {
+     "name": "mood",
+     "note": "The character's mood.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Neutral",
+       "1": "Angry",
+       "2": "Fear",
+       "3": "Happy",
+       "4": "Sad",
+       "5": "Surprised",
+       "6": "Puzzled",
+       "7": "Disgusted"
+      }
+     }
+    },
+    {
+     "name": "assistance",
+     "note": "Who the character helps.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Helps Nobody",
+       "1": "Helps Allies",
+       "2": "Helps Friends And Allies"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "note": "Bit 0 enables the three radius values below.",
+     "type": {
+      "bits": {
+       "0": "Aggro Radius Behavior"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "Sometimes present; may be junk.",
+     "type": "u8"
+    },
+    {
+     "name": "warn",
+     "note": "The distance at which the character warns.",
+     "type": "u32"
+    },
+    {
+     "name": "warn_attack",
+     "note": "The distance at which the character warns and attacks.",
+     "type": "u32"
+    },
+    {
+     "name": "attack",
+     "note": "The distance at which the character attacks.",
+     "type": "u32"
+    }
+   ]
+  },
+  "ARMA_ALT": {
+   "struct": [
+    {
+     "name": "name_length",
+     "note": "The length of the alternate texture's name.",
+     "type": "u32"
+    },
+    {
+     "name": "name",
+     "note": "The alternate texture's name.",
+     "type": "string"
+    },
+    {
+     "name": "texture_set",
+     "note": "The alternate texture set (TXST).",
+     "type": "formid"
+    },
+    {
+     "name": "model_index",
+     "note": "The model the alternate applies to.",
+     "type": "u32"
+    }
+   ]
+  },
+  "ARMA_BOD2": {
+   "struct": [
+    {
+     "name": "biped_object_flags",
+     "note": "The biped object flags.",
+     "type": "u32"
+    },
+    {
+     "name": "general_flags",
+     "note": "The general flags.",
+     "type": "u32"
+    }
+   ]
+  },
+  "ARMA_BODT": {
+   "struct": [
+    {
+     "name": "biped_object_flags",
+     "note": "The biped object flags.",
+     "type": "u32"
+    },
+    {
+     "name": "general_flags",
+     "note": "The general flags.",
+     "type": "u32"
+    },
+    {
+     "name": "armor_type",
+     "note": "The armor type. Clothing is the default when it is not given.",
+     "type": "u32"
+    }
+   ]
+  },
+  "ARMA_DNAM": {
+   "struct": [
+    {
+     "name": "male_priority",
+     "note": "The male priority.",
+     "type": "u8"
+    },
+    {
+     "name": "female_priority",
+     "note": "The female priority.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": "u32"
+    },
+    {
+     "name": "detection_sound_value",
+     "note": "The detection sound's value.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "u8"
+    },
+    {
+     "name": "weapon_adjust",
+     "note": "The weapon adjustment.",
+     "type": "f32"
+    }
+   ]
+  },
+  "ARMO_BOD2": {
+   "struct": [
+    {
+     "name": "biped_object_flags",
+     "note": "The biped object flags.",
+     "type": "u32"
+    },
+    {
+     "name": "general_flags",
+     "note": "The general flags.",
+     "type": "u32"
+    },
+    {
+     "name": "armor_type",
+     "note": "The armor type. Only the 12-byte BODT has it; the 8-byte BOD2 does not.",
+     "type": "u32"
+    }
+   ]
+  },
+  "ARMO_BOD2_8": {
+   "struct": [
+    {
+     "name": "biped_object_flags",
+     "note": "The biped object flags.",
+     "type": "u32"
+    },
+    {
+     "name": "general_flags",
+     "note": "The general flags.",
+     "type": "u32"
+    }
+   ]
+  },
+  "ARMO_BODT": {
+   "union": [
+    {
+     "name": "Body Template",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Body Template With Armour Type",
+     "size": 12,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       },
+       {
+        "name": "armor_type",
+        "note": "The armour type. Clothing is the default when it is not given.",
+        "type": "u32"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "ARMO_DATA": {
+   "struct": [
+    {
+     "name": "value",
+     "note": "The base value. For unenchanted armor this is the gold value.",
+     "type": "u32"
+    },
+    {
+     "name": "weight",
+     "note": "The weight.",
+     "type": "f32"
+    }
+   ]
+  },
+  "ARTO_DNAM": {
+   "enum": "u32",
+   "values": {
+    "0": "Magic Casting",
+    "1": "Magic Hit Effect",
+    "2": "Enchantment Effect"
+   }
+  },
+  "ATKD": {
+   "struct": [
+    {
+     "name": "damage_mult",
+     "note": "The damage multiplier.",
+     "type": "f32"
+    },
+    {
+     "name": "attack_chance",
+     "note": "The chance of attacking.",
+     "type": "f32"
+    },
+    {
+     "name": "attack_spell",
+     "note": "The spell used.",
+     "type": "formid"
+    },
+    {
+     "name": "flags",
+     "note": "The attack's behaviour flags.",
+     "type": {
+      "bits": {
+       "0": "Ignore Weapon",
+       "1": "Bash Attack",
+       "2": "Power Attack",
+       "3": "Left Attack",
+       "4": "Rotating Attack"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "attack_angle",
+     "note": "The attack angle.",
+     "type": "f32"
+    },
+    {
+     "name": "strike_angle",
+     "note": "The strike angle.",
+     "type": "f32"
+    },
+    {
+     "name": "stagger",
+     "note": "The stagger.",
+     "type": "f32"
+    },
+    {
+     "name": "attack_type",
+     "note": "The attack type.",
+     "type": "formid"
+    },
+    {
+     "name": "knockdown",
+     "note": "The knockdown.",
+     "type": "f32"
+    },
+    {
+     "name": "recovery_time",
+     "note": "The recovery time.",
+     "type": "f32"
+    },
+    {
+     "name": "fatigue_mult",
+     "note": "The fatigue multiplier.",
+     "type": "f32"
+    }
+   ]
+  },
+  "CELL_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "The cell's flags. The field is sometimes only one byte long. The Can't Travel From Here flag is only valid for interior cells.",
+     "type": {
+      "bits": {
+       "0": "Interior",
+       "1": "Has Water",
+       "2": "Can't Travel From Here",
+       "3": "No LOD Water",
+       "5": "Public Area",
+       "6": "Hand Changed",
+       "7": "Show Sky",
+       "8": "Use Sky Lighting"
+      },
+      "flags": "u16"
+     }
+    }
+   ]
+  },
+  "CELL_MHDT": {
+   "struct": [
+    {
+     "name": "anchor",
+     "note": "The vertical reference, usually near the cell's terrain minimum.",
+     "type": "f32"
+    },
+    {
+     "name": "grid",
+     "note": "A 32 by 32 grid of per-quad height ceilings, column-major. The byte at index col * 32 + row covers the 128 by 128 game unit quad at (col, row), with col 0 the west edge and row 0 the south edge. Each byte is the maximum height for that quad above the anchor, and vanilla cells use roughly 110 game units per step. The terrain rendering does not use this; LAND's VHGT gives the ground geometry separately.",
+     "type": {
+      "array": "i8",
+      "count": 1024
+     }
+    }
+   ]
+  },
+  "CELL_XCLC": {
+   "struct": [
+    {
+     "name": "x",
+     "note": "The cell's x coordinate in the grid.",
+     "type": "i32"
+    },
+    {
+     "name": "y",
+     "note": "The cell's y coordinate in the grid.",
+     "type": "i32"
+    },
+    {
+     "name": "flags",
+     "note": "The high bits look random.",
+     "type": {
+      "bits": {
+       "0": "Force Hide Land Quad 1",
+       "1": "Force Hide Land Quad 2",
+       "2": "Force Hide Land Quad 3",
+       "3": "Force Hide Land Quad 4"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
+  "CLAS_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "Possibly flags, but not shown in the editor.",
+     "type": "u32"
+    },
+    {
+     "name": "training_skill",
+     "note": "The skill a trainer class teaches, given as an actor value index.",
+     "type": "u8"
+    },
+    {
+     "name": "training_level",
+     "note": "The level the trainer teaches to. Zero when the class does not train.",
+     "type": "u8"
+    },
+    {
+     "name": "skill_weights",
+     "note": "The weight of each skill, in actor value index order.",
+     "type": {
+      "array": "u8",
+      "count": 18
+     }
+    },
+    {
+     "name": "bleedout_default",
+     "note": "The default bleedout.",
+     "type": "f32"
+    },
+    {
+     "name": "voice_points",
+     "note": "The voice points.",
+     "type": "u32"
+    },
+    {
+     "name": "health_weight",
+     "note": "The weight of health.",
+     "type": "u8"
+    },
+    {
+     "name": "magicka_weight",
+     "note": "The weight of magicka.",
+     "type": "u8"
+    },
+    {
+     "name": "stamina_weight",
+     "note": "The weight of stamina.",
+     "type": "u8"
+    },
+    {
+     "name": "flags2",
+     "note": "0x01 seems to indicate a guard.",
+     "type": "u8"
+    }
+   ]
+  },
+  "CLFM_CNAM": {
+   "struct": [
+    {
+     "name": "r",
+     "note": "The red channel.",
+     "type": "u8"
+    },
+    {
+     "name": "g",
+     "note": "The green channel.",
+     "type": "u8"
+    },
+    {
+     "name": "b",
+     "note": "The blue channel.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Always zero.",
+     "type": "u8"
+    }
+   ]
+  },
+  "COLL_CNAM": {
+   "struct": [
+    {
+     "name": "layer",
+     "note": "The collision layer.",
+     "type": "u32"
+    }
+   ]
+  },
+  "CONT_CNTO": {
+   "struct": [
+    {
+     "name": "item",
+     "note": "The item, which is an object or a leveled list.",
+     "type": "formid"
+    },
+    {
+     "name": "count",
+     "note": "How many.",
+     "type": "u32"
+    }
+   ]
+  },
+  "CONT_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "The container's flags.",
+     "type": {
+      "bits": {
+       "0": "Allow Sounds When Container Animation Exists",
+       "1": "Respawns",
+       "2": "Show Owner"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "weight",
+     "note": "Mis-aligned, and always zero.",
+     "type": "f32"
+    }
+   ]
+  },
+  "CSTY_CSCR": {
+   "union": [
+    {
+     "name": "Two Multipliers",
+     "size": 8,
+     "type": {
+      "array": "f32",
+      "count": 2
+     }
+    },
+    {
+     "name": "Four Multipliers",
+     "size": 16,
+     "type": {
+      "array": "f32",
+      "count": 4
+     }
+    }
+   ]
+  },
+  "CSTY_CSGD": {
+   "union": [
+    {
+     "name": "Two Multipliers",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "offensive_mult",
+        "note": "The offensive multiplier.",
+        "type": "f32"
+       },
+       {
+        "name": "defensive_mult",
+        "note": "The defensive multiplier.",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Eight Multipliers",
+     "size": 32,
+     "type": {
+      "struct": [
+       {
+        "name": "multipliers",
+        "note": "The offensive, defensive, group offensive, melee equipment, magic equipment, ranged equipment, magic and unarmed multipliers.",
+        "type": {
+         "array": "f32",
+         "count": 8
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Ten Multipliers",
+     "size": 40,
+     "type": {
+      "struct": [
+       {
+        "name": "multipliers",
+        "note": "The multipliers, two more than the eight-multiplier form.",
+        "type": {
+         "array": "f32",
+         "count": 10
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "CSTY_CSME": {
+   "union": [
+    {
+     "name": "Seven Multipliers",
+     "size": 28,
+     "type": {
+      "array": "f32",
+      "count": 7
+     }
+    },
+    {
+     "name": "Eight Multipliers",
+     "size": 32,
+     "type": {
+      "array": "f32",
+      "count": 8
+     }
+    }
+   ]
+  },
+  "Condition": {
+   "struct": [
+    {
+     "name": "operator",
+     "note": "The upper 3 bits are the compare operator (0 = Equal to, 1 = Not equal to, 2 = Greater than, 3 = Greater than or equal to, 4 = Less than, 5 = Less than or equal to) and the lower 5 bits are flags: 0x01 = OR (otherwise conditions are ANDed together), 0x02 = Parameters (use aliases), 0x04 = Use global, 0x08 = Use Pack Data, 0x10 = Swap Subject and Target. The flags are mutually exclusive where noted: 0x02 and 0x08 both claim the parameters.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown",
+     "note": "Unused data.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "comparison_value_raw",
+     "note": "The value the function result is compared against: a float, or a GLOB formid when the 0x04 Use global flag is set. Decoded here as a raw u32, the same as Fallout's.",
+     "type": "u32"
+    },
+    {
+     "name": "function",
+     "note": "The condition function's index. UESP's Skyrim function list gives the index as 'the index given on the above page, minus 4096'. Most Oblivion indices remain valid, and Skyrim adds hundreds more.",
+     "type": "u16"
+    },
+    {
+     "name": "padding",
+     "note": "Padding. The bytes are unused but may be non-zero.",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    },
+    {
+     "name": "parameter1_raw",
+     "note": "The first parameter: a number, or a formid when the function takes one. Zero when the function needs no parameter. A string parameter is a CIS1 subrecord following the CTDA instead.",
+     "type": "u32"
+    },
+    {
+     "name": "parameter2_raw",
+     "note": "The second parameter, same shape as the first. A string parameter is a CIS2 subrecord following the CTDA instead.",
+     "type": "u32"
+    },
+    {
+     "name": "run_on",
+     "note": "How the condition applies: 0 = Subject, 1 = Target, 2 = Reference (see the reference field), 3 = Combat Target, 4 = Linked Reference, 5 = Quest Alias, 6 = Package Data, 7 = Event Data. Unlike Fallout's, this field is always present in Skyrim.",
+     "type": "u32"
+    },
+    {
+     "name": "reference_raw",
+     "note": "The function's reference \u2014 the formid the function is applied to, such as the target of an isDead check. Zero when no reference is needed. Always present in Skyrim.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown2",
+     "note": "The index of the package data or quest alias to run on. -1 means 'none', and it is also used for other run-on types. This is Skyrim's extra trailing field: Fallout's CTDA is 20, 24 or 28 bytes, Skyrim's is always 32, the difference being this field plus Run On and Reference always being present. [measured: all 83,759 CTDA subrecords in Skyrim.esm are exactly 32 bytes]",
+     "type": "i32"
+    }
+   ]
+  },
+  "DIAL_DATA": {
+   "struct": [
+    {
+     "name": "custom",
+     "note": "The custom flag, and the scene's do-all-before-repeating flag. Both are bits of this byte, not bytes of their own \u2014 the whole DATA is 4 bytes.",
+     "type": {
+      "bits": {
+       "0": "Custom",
+       "1": "Scene Do All Before Repeating"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "dialogue_tab",
+     "note": "The quest dialogue tab. There are some discrepancies with the internal CK data, so it is probably unused.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Player Dialogue",
+       "1": "Favor Dialogue",
+       "2": "Scenes",
+       "3": "Combat",
+       "4": "Favors",
+       "5": "Detection",
+       "6": "Service",
+       "7": "Misc"
+      }
+     }
+    },
+    {
+     "name": "subtype_id",
+     "note": "The subtype's numeric id. It is unreliable, and unused when an SNAM follows the DATA.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Always zero.",
+     "type": "u8"
+    }
+   ]
+  },
+  "DUAL_DATA": {
+   "struct": [
+    {
+     "name": "projectile",
+     "note": "The projectile (PROJ).",
+     "type": "formid"
+    },
+    {
+     "name": "explosion",
+     "note": "The explosion (EXPL).",
+     "type": "formid"
+    },
+    {
+     "name": "effect_shader",
+     "note": "The effect shader (EFSH).",
+     "type": "formid"
+    },
+    {
+     "name": "hit_effect_art",
+     "note": "The hit effect art (ARTO).",
+     "type": "formid"
+    },
+    {
+     "name": "impact_data_set",
+     "note": "The impact data set (IPDS).",
+     "type": "formid"
+    },
+    {
+     "name": "scale_inheritance",
+     "note": "Which parts inherit the scale.",
+     "type": {
+      "bits": {
+       "0": "Hit Effect Art Inherits Scale",
+       "1": "Projectile Inherits Scale",
+       "2": "Explosion Inherits Scale"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
+  "ECZN_DATA": {
+   "struct": [
+    {
+     "name": "owner",
+     "note": "The owner, a character (NPC_) or a faction (FACT).",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "note": "The associated location (LCTN).",
+     "type": "formid"
+    },
+    {
+     "name": "owner_rank",
+     "note": "The rank required in the faction for ownership, which is 0 or -1 when there is no faction.",
+     "optional": true,
+     "type": "i8"
+    },
+    {
+     "name": "min_level",
+     "note": "The minimum level.",
+     "optional": true,
+     "type": "u8"
+    },
+    {
+     "name": "flags",
+     "note": "The encounter's flags.",
+     "optional": true,
+     "type": {
+      "bits": {
+       "0": "Never Resets",
+       "1": "Match PC Below Minimum Level",
+       "2": "Disable Combat Boundary"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "max_level",
+     "note": "The maximum level.",
+     "optional": true,
+     "type": "u8"
+    }
+   ]
+  },
+  "EXPL_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "type": "u32"
+    },
+    {
+     "name": "words",
+     "note": "The rest of the data, whose layout is not documented.",
+     "type": {
+      "array": "u32"
+     }
+    }
+   ]
+  },
+  "FACT_PLVD": {
+   "struct": [
+    {
+     "name": "specification_type",
+     "note": "Where the goods may be sold. 2 and 6 are not used in the original files.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Near Reference",
+       "1": "In Cell",
+       "12": "Near Self",
+       "2": "Near Package Start Location",
+       "3": "Near Editor Location",
+       "6": "Linked Reference"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "note": "The reference, cell or keyword, depending on the specification type.",
+     "type": "formid"
+    },
+    {
+     "name": "unused",
+     "note": "Unused.",
+     "type": "u32"
+    }
+   ]
+  },
+  "FACT_VENV": {
+   "struct": [
+    {
+     "name": "start_hour",
+     "note": "The hour the vendor starts at.",
+     "type": "u16"
+    },
+    {
+     "name": "end_hour",
+     "note": "The hour the vendor stops at.",
+     "type": "u16"
+    },
+    {
+     "name": "radius",
+     "note": "The radius the vendor trades in.",
+     "type": "u32"
+    },
+    {
+     "name": "buys_stolen",
+     "note": "1 = the vendor buys stolen items. The CK's wording is misleading.",
+     "type": "u8"
+    },
+    {
+     "name": "no_trade",
+     "note": "1 = the vendor does not sell or buy, so it trades everything except what is in the vendor list.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Unused.",
+     "type": "u16"
+    }
+   ]
+  },
+  "FACT_XNAM": {
+   "struct": [
+    {
+     "name": "faction",
+     "note": "The other faction.",
+     "type": "formid"
+    },
+    {
+     "name": "modifier",
+     "note": "A modifier that appears to be unused: it is no longer editable in the CK and is only non-zero for one faction.",
+     "type": "i32"
+    },
+    {
+     "name": "combat",
+     "note": "How the two factions treat each other.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Neutral",
+       "1": "Enemy",
+       "2": "Ally",
+       "3": "Friend"
+      }
+     }
+    }
+   ]
+  },
+  "FSTS_XCNT": {
+   "struct": [
+    {
+     "name": "walking",
+     "note": "The count of the walking set.",
+     "type": "u32"
+    },
+    {
+     "name": "running",
+     "note": "The count of the running set.",
+     "type": "u32"
+    },
+    {
+     "name": "sprinting",
+     "note": "The count of the sprinting set.",
+     "type": "u32"
+    },
+    {
+     "name": "sneaking",
+     "note": "The count of the sneaking set.",
+     "type": "u32"
+    },
+    {
+     "name": "swimming",
+     "note": "The count of the swimming set.",
+     "type": "u32"
+    }
+   ]
+  },
+  "HAZD_DATA": {
+   "struct": [
+    {
+     "name": "limit",
+     "type": "u32"
+    },
+    {
+     "name": "radius",
+     "type": "f32"
+    },
+    {
+     "name": "lifetime",
+     "type": "f32"
+    },
+    {
+     "name": "is_radius",
+     "type": "f32"
+    },
+    {
+     "name": "target_interval",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Affects Player Only",
+       "1": "Inherit Duration from Spawn Spell",
+       "2": "Align to Impact Normal",
+       "3": "Inherit Radius from Spawn Spell",
+       "4": "Drop to Ground"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "spell",
+     "type": "formid"
+    },
+    {
+     "name": "light",
+     "type": "formid"
+    },
+    {
+     "name": "impact_data_set",
+     "type": "formid"
+    },
+    {
+     "name": "sound",
+     "type": "formid"
+    }
+   ]
+  },
+  "IDLE_DATA": {
+   "struct": [
+    {
+     "name": "min_looping_seconds",
+     "note": "The minimum looping time. When both the minimum and maximum are 255, the animation loops forever.",
+     "type": "u8"
+    },
+    {
+     "name": "max_looping_seconds",
+     "note": "The maximum looping time.",
+     "type": "u8"
+    },
+    {
+     "name": "flags",
+     "note": "The animation's flags.",
+     "type": {
+      "bits": {
+       "1": "Sequence",
+       "2": "Not Attacking",
+       "3": "Blocking"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": "u8"
+    },
+    {
+     "name": "replay_delay",
+     "note": "The delay before the animation replays.",
+     "type": "u16"
+    }
+   ]
+  },
+  "IMGS_CNAM": {
+   "struct": [
+    {
+     "name": "saturation",
+     "note": "The saturation.",
+     "type": "f32"
+    },
+    {
+     "name": "brightness",
+     "note": "The brightness.",
+     "type": "f32"
+    },
+    {
+     "name": "contrast",
+     "note": "The contrast.",
+     "type": "f32"
+    }
+   ]
+  },
+  "IMGS_HNAM": {
+   "struct": [
+    {
+     "name": "eye_adapt_speed",
+     "note": "How fast the eye adapts.",
+     "type": "f32"
+    },
+    {
+     "name": "bloom_blur_radius",
+     "note": "The bloom's blur radius.",
+     "type": "f32"
+    },
+    {
+     "name": "bloom_threshold",
+     "note": "The bloom's threshold.",
+     "type": "f32"
+    },
+    {
+     "name": "bloom_scale",
+     "note": "The bloom's scale.",
+     "type": "f32"
+    },
+    {
+     "name": "receive_bloom_threshold",
+     "note": "The threshold at which bloom is received.",
+     "type": "f32"
+    },
+    {
+     "name": "white",
+     "note": "The white point.",
+     "type": "f32"
+    },
+    {
+     "name": "sunlight_scale",
+     "note": "The sunlight's scale.",
+     "type": "f32"
+    },
+    {
+     "name": "sky_scale",
+     "note": "The sky's scale.",
+     "type": "f32"
+    },
+    {
+     "name": "eye_adapt_strength",
+     "note": "How strongly the eye adapts.",
+     "type": "f32"
+    }
+   ]
+  },
+  "IMGS_TNAM": {
+   "struct": [
+    {
+     "name": "tint_amount",
+     "note": "How much tint there is.",
+     "type": "f32"
+    },
+    {
+     "name": "red",
+     "note": "The red channel of the tint.",
+     "type": "f32"
+    },
+    {
+     "name": "green",
+     "note": "The green channel of the tint.",
+     "type": "f32"
+    },
+    {
+     "name": "blue",
+     "note": "The blue channel of the tint.",
+     "type": "f32"
+    }
+   ]
+  },
+  "INFO_DATA": {
+   "struct": [
+    {
+     "name": "dialogue_tab",
+     "note": "The quest dialogue tab. This sub-field is absent from the newer ENAM field and is presumably unused.",
+     "type": {
+      "enum": "u16",
+      "values": {
+       "0": "Player Dialogue",
+       "1": "Favor Dialogue",
+       "2": "Scenes",
+       "3": "Combat",
+       "4": "Favors",
+       "5": "Detection",
+       "6": "Service",
+       "7": "Misc"
+      }
+     }
+    },
+    {
+     "name": "flags",
+     "note": "The response's flags. Bit 11 is inverted from the CK's display.",
+     "type": {
+      "bits": {
+       "0": "Goodbye",
+       "1": "Random",
+       "10": "Can Move While Greeting",
+       "11": "Has No Lip File",
+       "12": "Requires Post-Processing",
+       "13": "Has Audio Output Override",
+       "14": "Spends Favor Points",
+       "2": "Say Once",
+       "4": "On Activation",
+       "5": "Random End",
+       "6": "Invisible Continue",
+       "7": "Walk Away",
+       "8": "Walk Away Invisible In Menu",
+       "9": "Force Subtitle"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "reset_time",
+     "note": "Days until the response resets. This DATA field's reset time is in days, unlike the ENAM field's.",
+     "type": "f32"
+    }
+   ]
+  },
+  "INFO_TRDT": {
+   "struct": [
+    {
+     "name": "emotion_type",
+     "note": "The response's emotion.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Neutral",
+       "1": "Anger",
+       "2": "Disgust",
+       "3": "Fear",
+       "4": "Sad",
+       "5": "Happy",
+       "6": "Surprise",
+       "7": "Puzzled"
+      }
+     }
+    },
+    {
+     "name": "emotion_value",
+     "note": "The emotion's strength, 0 to 100.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown1",
+     "note": "Always zero.",
+     "type": "i32"
+    },
+    {
+     "name": "id",
+     "note": "The response's number.",
+     "type": "u8"
+    },
+    {
+     "name": "junk",
+     "note": "Junk.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "sound_file",
+     "note": "The sound file.",
+     "type": "formid"
+    },
+    {
+     "name": "use_emo_anim",
+     "note": "Whether the emotion animation is used.",
+     "type": "u8"
+    },
+    {
+     "name": "junk2",
+     "note": "Junk.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "INGR_EFIT": {
+   "struct": [
+    {
+     "name": "magnitude",
+     "note": "The effect's magnitude. For the auto-calc the game treats a magnitude below 1 as 1, and a duration of 0 as 10.",
+     "type": "f32"
+    },
+    {
+     "name": "area_of_effect",
+     "note": "The effect's area.",
+     "type": "u32"
+    },
+    {
+     "name": "duration",
+     "note": "How long the effect lasts. Zero means it is instant.",
+     "type": "u32"
+    }
+   ]
+  },
+  "IPDS_PNAM": {
+   "struct": [
+    {
+     "name": "material",
+     "note": "The material type (MATT).",
+     "type": "formid"
+    },
+    {
+     "name": "impact",
+     "note": "The impact data (IPCT), which is generally the same for all the pairs.",
+     "type": "formid"
+    }
+   ]
+  },
+  "KYWD_CNAM": {
+   "struct": [
+    {
+     "name": "r",
+     "note": "The red channel.",
+     "type": "u8"
+    },
+    {
+     "name": "g",
+     "note": "The green channel.",
+     "type": "u8"
+    },
+    {
+     "name": "b",
+     "note": "The blue channel.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Always zero.",
+     "type": "u8"
+    }
+   ]
+  },
+  "LCTN_LCEC": {
+   "struct": [
+    {
+     "name": "world",
+     "note": "The WRLD the encounter zone is in.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": {
+      "array": "i16",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "LCTN_LCEP": {
+   "struct": [
+    {
+     "name": "actor",
+     "note": "The actor (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "The reference (REFR).",
+     "type": "formid"
+    },
+    {
+     "name": "extra",
+     "note": "Four more bytes, which vary though the first is always zero.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    }
+   ]
+  },
+  "LCTN_LCPR": {
+   "struct": [
+    {
+     "name": "actor",
+     "note": "The actor (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "cell_or_world",
+     "note": "The cell or worldspace, where 0x3C is Tamriel.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "type": "i16"
+    },
+    {
+     "name": "unknown2",
+     "type": "i16"
+    }
+   ]
+  },
+  "LCTN_LCSR": {
+   "struct": [
+    {
+     "name": "reference_type",
+     "note": "The reference type (LCRT).",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "The reference (REFR) or actor (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "cell_or_world",
+     "note": "The cell or worldspace, where 0x3C is Tamriel.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "type": "i16"
+    },
+    {
+     "name": "unknown2",
+     "type": "i16"
+    }
+   ]
+  },
+  "LCTN_LCUN": {
+   "struct": [
+    {
+     "name": "npc",
+     "note": "The character (NPC_).",
+     "type": "formid"
+    },
+    {
+     "name": "actor",
+     "note": "The actor reference (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "note": "The location, which points to itself in most cases.",
+     "type": "formid"
+    }
+   ]
+  },
+  "LGTM_DALC": {
+   "union": [
+    {
+     "name": "Colours Only",
+     "size": 24,
+     "type": {
+      "struct": [
+       {
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Colours And Fresnel Power",
+     "size": 32,
+     "type": {
+      "struct": [
+       {
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown",
+        "note": "Always zero.",
+        "type": "u32"
+       },
+       {
+        "name": "fresnel_power",
+        "note": "The Fresnel power, from 0 to 1.",
+        "type": "f32"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "LSCR_ONAM": {
+   "struct": [
+    {
+     "name": "min",
+     "note": "The lowest rotation allowed.",
+     "type": "i16"
+    },
+    {
+     "name": "max",
+     "note": "The highest rotation allowed.",
+     "type": "i16"
+    }
+   ]
+  },
+  "LSCR_RNAM": {
+   "struct": [
+    {
+     "name": "x",
+     "note": "The x rotation.",
+     "type": "i16"
+    },
+    {
+     "name": "y",
+     "note": "The y rotation.",
+     "type": "i16"
+    },
+    {
+     "name": "z",
+     "note": "The z rotation.",
+     "type": "i16"
+    }
+   ]
+  },
+  "LTEX_HNAM": {
+   "struct": [
+    {
+     "name": "friction",
+     "note": "The friction.",
+     "type": "u8"
+    },
+    {
+     "name": "restitution",
+     "note": "The restitution.",
+     "type": "u8"
+    }
+   ]
+  },
+  "LVSP_LVLO": {
+   "struct": [
+    {
+     "name": "level",
+     "type": "u32"
+    },
+    {
+     "name": "spell",
+     "type": "formid"
+    },
+    {
+     "name": "count",
+     "type": "u32"
+    }
+   ]
+  },
+  "MATO_DATA": {
+   "union": [
+    {
+     "name": "Seven Floats",
+     "size": 28,
+     "type": {
+      "struct": [
+       {
+        "name": "falloff_scale",
+        "type": "f32"
+       },
+       {
+        "name": "falloff_bias",
+        "type": "f32"
+       },
+       {
+        "name": "noise_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "material_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Eight Floats",
+     "size": 32,
+     "type": {
+      "struct": [
+       {
+        "name": "falloff_scale",
+        "type": "f32"
+       },
+       {
+        "name": "falloff_bias",
+        "type": "f32"
+       },
+       {
+        "name": "noise_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "material_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       },
+       {
+        "name": "normal_dampener",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Twelve Fields",
+     "size": 48,
+     "type": {
+      "struct": [
+       {
+        "name": "falloff_scale",
+        "type": "f32"
+       },
+       {
+        "name": "falloff_bias",
+        "type": "f32"
+       },
+       {
+        "name": "noise_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "material_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       },
+       {
+        "name": "normal_dampener",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_r",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_g",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_b",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass",
+        "note": "Whether the material is a single pass.",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Thirteen Fields",
+     "size": 52,
+     "type": {
+      "struct": [
+       {
+        "name": "falloff_scale",
+        "type": "f32"
+       },
+       {
+        "name": "falloff_bias",
+        "type": "f32"
+       },
+       {
+        "name": "noise_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "material_uv_scale",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_x",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_y",
+        "type": "f32"
+       },
+       {
+        "name": "dir_proj_z",
+        "type": "f32"
+       },
+       {
+        "name": "normal_dampener",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_r",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_g",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass_b",
+        "type": "f32"
+       },
+       {
+        "name": "single_pass",
+        "note": "Whether the material is a single pass.",
+        "type": "u32"
+       },
+       {
+        "name": "unknown12",
+        "note": "Unknown.",
+        "type": "u32"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "MATT_CNAM": {
+   "struct": [
+    {
+     "name": "r",
+     "note": "The red channel, from 0.0 to 1.0. The CK shows 0.0 as 0 and 1.0 as 255.",
+     "type": "f32"
+    },
+    {
+     "name": "g",
+     "note": "The green channel.",
+     "type": "f32"
+    },
+    {
+     "name": "b",
+     "note": "The blue channel.",
+     "type": "f32"
+    }
+   ]
+  },
+  "MOVT_INAM": {
+   "struct": [
+    {
+     "name": "directional_scale",
+     "note": "The scale is 57.296.",
+     "type": "f32"
+    },
+    {
+     "name": "movement_speed_scale",
+     "note": "The scale is 57.296.",
+     "type": "f32"
+    },
+    {
+     "name": "rotation_speed_scale",
+     "note": "The scale is 57.296.",
+     "type": "f32"
+    }
+   ]
+  },
+  "MOVT_SPED": {
+   "struct": [
+    {
+     "name": "left_walk",
+     "type": "f32"
+    },
+    {
+     "name": "left_run",
+     "type": "f32"
+    },
+    {
+     "name": "right_walk",
+     "type": "f32"
+    },
+    {
+     "name": "right_run",
+     "type": "f32"
+    },
+    {
+     "name": "forward_walk",
+     "type": "f32"
+    },
+    {
+     "name": "forward_run",
+     "type": "f32"
+    },
+    {
+     "name": "back_walk",
+     "type": "f32"
+    },
+    {
+     "name": "back_run",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_in_place_walk",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_in_place_run",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_while_moving_run",
+     "note": "Only present when the INAM is.",
+     "optional": true,
+     "type": "f32"
+    }
+   ]
+  },
+  "MUSC_PNAM": {
+   "struct": [
+    {
+     "name": "priority",
+     "note": "1 is the highest priority and 100 the lowest.",
+     "type": "u16"
+    },
+    {
+     "name": "ducking",
+     "note": "The ducking in dB, scaled by 100: 126 means 1.26, and the maximum of 10000 means 100.00.",
+     "type": "u16"
+    }
+   ]
+  },
+  "MUST_CNAM": {
+   "enum": "u32",
+   "values": {
+    "1859641416": "Single Track",
+    "2712257749": "Silent Track",
+    "603355331": "Palette"
+   }
+  },
+  "MUST_LNAM": {
+   "struct": [
+    {
+     "name": "loop_begins",
+     "note": "Where the loop begins, in seconds.",
+     "type": "f32"
+    },
+    {
+     "name": "loop_ends",
+     "note": "Where the loop ends, in seconds.",
+     "type": "f32"
+    },
+    {
+     "name": "loop_count",
+     "note": "How many times the track loops.",
+     "type": "u32"
+    }
+   ]
+  },
+  "NPC_DNAM": {
+   "struct": [
+    {
+     "name": "base_skill_one_handed",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_two_handed",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_marksman",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_block",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_smithing",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_heavy_armor",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_light_armor",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_pickpocket",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_lockpicking",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_sneak",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_alchemy",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_speechcraft",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_alteration",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_conjuration",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_destruction",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_illusion",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_restoration",
+     "type": "u8"
+    },
+    {
+     "name": "base_skill_enchanting",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_one_handed",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_two_handed",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_marksman",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_block",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_smithing",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_heavy_armor",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_light_armor",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_pickpocket",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_lockpicking",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_sneak",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_alchemy",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_speechcraft",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_alteration",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_conjuration",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_destruction",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_illusion",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_restoration",
+     "type": "u8"
+    },
+    {
+     "name": "mod_skill_enchanting",
+     "type": "u8"
+    },
+    {
+     "name": "calculated_health",
+     "note": "Calculated when auto-calc stats is on, and random otherwise.",
+     "type": "u16"
+    },
+    {
+     "name": "calculated_magicka",
+     "note": "Calculated when auto-calc stats is on, and random otherwise.",
+     "type": "u16"
+    },
+    {
+     "name": "calculated_stamina",
+     "note": "Calculated when auto-calc stats is on, and random otherwise.",
+     "type": "u16"
+    },
+    {
+     "name": "unused",
+     "note": "Unused.",
+     "type": "u16"
+    },
+    {
+     "name": "far_away_model_distance",
+     "note": "The far away model distance.",
+     "type": "f32"
+    },
+    {
+     "name": "geared_up_weapons",
+     "note": "The geared up weapons.",
+     "type": "u8"
+    },
+    {
+     "name": "unused2",
+     "note": "Unused.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "NPC_FACE_MORPH": {
+   "struct": [
+    {
+     "name": "nose_long_short",
+     "note": "-1 short to 1 long.",
+     "type": "f32"
+    },
+    {
+     "name": "nose_up_down",
+     "note": "-1 down to 1 up.",
+     "type": "f32"
+    },
+    {
+     "name": "jaw_up_down",
+     "note": "-1 up to 1 down.",
+     "type": "f32"
+    },
+    {
+     "name": "jaw_narrow_wide",
+     "note": "-1 narrow to 1 wide.",
+     "type": "f32"
+    },
+    {
+     "name": "jaw_forward_back",
+     "note": "-1 back to 1 forward.",
+     "type": "f32"
+    },
+    {
+     "name": "cheeks_up_down",
+     "note": "-1 down to 1 up.",
+     "type": "f32"
+    },
+    {
+     "name": "cheeks_forward_back",
+     "note": "-1 forward to 1 back.",
+     "type": "f32"
+    },
+    {
+     "name": "eyes_up_down",
+     "note": "-1 down to 1 up.",
+     "type": "f32"
+    },
+    {
+     "name": "eyes_in_out",
+     "note": "-1 in to 1 out.",
+     "type": "f32"
+    },
+    {
+     "name": "brows_up_down",
+     "note": "-1 down to 1 up.",
+     "type": "f32"
+    },
+    {
+     "name": "brows_in_out",
+     "note": "-1 in to 1 out.",
+     "type": "f32"
+    },
+    {
+     "name": "brows_forward_back",
+     "note": "-1 back to 1 forward.",
+     "type": "f32"
+    },
+    {
+     "name": "lips_up_down",
+     "note": "-1 down to 1 up.",
+     "type": "f32"
+    },
+    {
+     "name": "lips_in_out",
+     "note": "-1 in to 1 out.",
+     "type": "f32"
+    },
+    {
+     "name": "chin_thin_wide",
+     "note": "-1 thin to 1 wide.",
+     "type": "f32"
+    },
+    {
+     "name": "chin_up_down",
+     "note": "-1 up to 1 down.",
+     "type": "f32"
+    },
+    {
+     "name": "chin_underbite_overbite",
+     "note": "-1 overbite to 1 underbite.",
+     "type": "f32"
+    },
+    {
+     "name": "eyes_forward_back",
+     "note": "-1 back to 1 forward.",
+     "type": "f32"
+    },
+    {
+     "name": "unknown",
+     "note": "Only ever 00 00 00 00 or FF FF 7F 7F.",
+     "type": "u32"
+    }
+   ]
+  },
+  "NPC_FACE_PARTS": {
+   "struct": [
+    {
+     "name": "nose",
+     "note": "The nose preset.",
+     "type": "i32"
+    },
+    {
+     "name": "unknown",
+     "note": "Set to -1 on most humanoids.",
+     "type": "i32"
+    },
+    {
+     "name": "eyes",
+     "note": "The eyes preset.",
+     "type": "i32"
+    },
+    {
+     "name": "mouth",
+     "note": "The mouth preset.",
+     "type": "i32"
+    }
+   ]
+  },
+  "NPC_SKIN_TONE": {
+   "struct": [
+    {
+     "name": "r",
+     "note": "The red channel, divided by 255.",
+     "type": "f32"
+    },
+    {
+     "name": "g",
+     "note": "The green channel, divided by 255.",
+     "type": "f32"
+    },
+    {
+     "name": "b",
+     "note": "The blue channel, divided by 255.",
+     "type": "f32"
+    }
+   ]
+  },
+  "PDTO": {
+   "struct": [
+    {
+     "name": "type",
+     "note": "What the topic value is.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Dialogue",
+       "1": "Topic Subtype"
+      }
+     }
+    },
+    {
+     "name": "value",
+     "note": "A DIAL formid when the type is Dialogue; otherwise a four-character string such as \"HELO\" for the Hello subtype.",
+     "type": "u32"
+    }
+   ]
+  },
+  "PHZD_DATA": {
+   "struct": [
+    {
+     "name": "x",
+     "note": "The x coordinate.",
+     "type": "f32"
+    },
+    {
+     "name": "y",
+     "note": "The y coordinate.",
+     "type": "f32"
+    },
+    {
+     "name": "z",
+     "note": "The z coordinate.",
+     "type": "f32"
+    },
+    {
+     "name": "rx",
+     "note": "The x rotation.",
+     "type": "f32"
+    },
+    {
+     "name": "ry",
+     "note": "The y rotation.",
+     "type": "f32"
+    },
+    {
+     "name": "rz",
+     "note": "The z rotation.",
+     "type": "f32"
+    }
+   ]
+  },
+  "PKCU": {
+   "struct": [
+    {
+     "name": "unknown",
+     "note": "Possibly flags. The values range from 1 to 34.",
+     "type": "u32"
+    },
+    {
+     "name": "package_template",
+     "note": "The PACK record used as a template. Only a record whose package type is Package Template may be used, and only in a record whose type is Package.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown2",
+     "note": "Possibly flags. The values range from 0 to 29.",
+     "type": "u32"
+    }
+   ]
+  },
+  "PKDT": {
+   "struct": [
+    {
+     "name": "misc_flags",
+     "note": "Only the flags with a visible effect in the CK are listed. Many others are set in the game data and are probably holdovers from Oblivion.",
+     "type": {
+      "bits": {
+       "10": "Once Per Day",
+       "13": "Preferred Speed",
+       "17": "Always Sneak",
+       "18": "Allow Swimming",
+       "2": "Must Complete",
+       "20": "Ignore Combat",
+       "21": "Weapons Unequipped",
+       "23": "Weapon Drawn",
+       "27": "No Combat Alert",
+       "29": "Wear Sleep Outfit",
+       "3": "Maintain Speed At Goal",
+       "6": "At Package Start Unlock Doors",
+       "7": "On Package Change Unlock Doors"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "package_type",
+     "note": "Only the first bit is relevant: set means Package Template, clear means Package. The value 0x12 is always set, so the byte is usually 0x12.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "1": "Package Template"
+      }
+     }
+    },
+    {
+     "name": "interrupt_override",
+     "note": "Only the values 0 (None) and 4 (Combat) are observed.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "None",
+       "4": "Combat"
+      }
+     }
+    },
+    {
+     "name": "preferred_speed",
+     "note": "Only relevant when the Preferred Speed flag (0x2000) is set.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Walk",
+       "1": "Jog",
+       "2": "Run",
+       "3": "Fast Walk"
+      }
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "Possibly padding.",
+     "type": "u8"
+    },
+    {
+     "name": "interrupt_flags",
+     "note": "The interrupt behaviour flags.",
+     "type": {
+      "bits": {
+       "0": "Hellos To Player",
+       "1": "Random Conversations",
+       "2": "Observe Combat Behavior",
+       "3": "Greet Corpse Behavior"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
+  "PLDT": {
+   "struct": [
+    {
+     "name": "type",
+     "note": "What kind of location this is.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Near Reference",
+       "1": "In Cell",
+       "12": "Near Self",
+       "2": "Near Package Start Location",
+       "3": "Near Editor Location",
+       "6": "Near Linked Reference",
+       "8": "Alias (Reference)",
+       "9": "Alias (Location)"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "note": "The location. A formid for Near Reference, In Cell and Near Linked Reference; an alias id for Alias (Reference); a formid for Alias (Location); unused otherwise.",
+     "type": "u32"
+    },
+    {
+     "name": "radius",
+     "note": "The radius around the location.",
+     "type": "i32"
+    }
+   ]
+  },
+  "PTDA": {
+   "struct": [
+    {
+     "name": "type",
+     "note": "What kind of target this is.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Specific Reference",
+       "1": "Object ID",
+       "2": "Object Type",
+       "3": "Linked Reference",
+       "4": "Ref Alias",
+       "6": "Self"
+      }
+     }
+    },
+    {
+     "name": "target",
+     "note": "The target: a formid for Specific Reference, Object ID and Linked Reference; a lookup value for Object Type (11 = Weapons: Any); an alias id for Ref Alias; unused for Self.",
+     "type": "u32"
+    },
+    {
+     "name": "count",
+     "note": "Always 0 in the shipped Skyrim records.",
+     "type": "i32"
+    }
+   ]
+  },
+  "QUST_CNTO": {
+   "struct": [
+    {
+     "name": "item_id",
+     "note": "The item.",
+     "type": "formid"
+    },
+    {
+     "name": "item_count",
+     "note": "How many.",
+     "type": "u32"
+    }
+   ]
+  },
+  "QUST_DNAM": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "0x02 is unused and 0x10 is used but not shown in the CK.",
+     "type": {
+      "bits": {
+       "0": "Start Game Enabled",
+       "2": "Wilderness Encounter",
+       "3": "Allow Repeated Stages"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "flags2",
+     "note": "0x08 is unused and 0x10 is used but not shown in the CK.",
+     "type": {
+      "bits": {
+       "0": "Run Once",
+       "1": "Exclude From Dialogue Export",
+       "2": "Warn On Alias Fill Failure"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "priority",
+     "note": "A value from 0 to 100.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown",
+     "note": "Possibly filler. The observed values are 0, 25, 101, 108, 111 and 204; only 0 and 204 occur more than once.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown2",
+     "note": "Always zero.",
+     "type": "i32"
+    },
+    {
+     "name": "quest_type",
+     "note": "The quest's type. Miscellaneous is the one whose name is hidden in the quest log and whose objectives alone are shown.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Main Quest",
+       "10": "DLC01 - Vampire",
+       "11": "DLC02 - Dragonborn",
+       "2": "Mages' Guild",
+       "3": "Thieves' Guild",
+       "4": "Dark Brotherhood",
+       "5": "Companion Quests",
+       "6": "Miscellaneous",
+       "7": "Daedric Quests",
+       "8": "Side Quests",
+       "9": "Civil War"
+      }
+     }
+    }
+   ]
+  },
+  "QUST_INDX": {
+   "struct": [
+    {
+     "name": "index",
+     "note": "The journal index of the quest stage. Stage numbers are not guaranteed to be unique within a quest.",
+     "type": "i16"
+    },
+    {
+     "name": "flags",
+     "note": "The stage's flag options.",
+     "type": {
+      "bits": {
+       "1": "Start Up Stage",
+       "2": "Shut Down Stage",
+       "3": "Keep Instance Data From Here On"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "Possibly filler. Nothing in the CK corresponds to it; the values range from -110 to 127 and do not look like flags.",
+     "type": "i8"
+    }
+   ]
+  },
+  "QUST_QSTA": {
+   "struct": [
+    {
+     "name": "target_alias",
+     "note": "The alias this quest objective targets, as an AliasID.",
+     "type": "i32"
+    },
+    {
+     "name": "flags",
+     "note": "0 = the compass marker does not ignore locks, 1 = it does.",
+     "type": "i32"
+    }
+   ]
+  },
+  "RACE_DATA": {
+   "union": [
+    {
+     "name": "Original Edition",
+     "size": 128,
+     "type": {
+      "struct": [
+       {
+        "name": "skill_1",
+        "note": "The first skill, as an actor list value.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_bonus_1",
+        "note": "The racial bonus for the first skill.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_2",
+        "note": "The second skill, as an actor list value.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_bonus_2",
+        "note": "The racial bonus for the second skill.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_3",
+        "note": "The third skill, as an actor list value.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_bonus_3",
+        "note": "The racial bonus for the third skill.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_4",
+        "note": "The fourth skill, as an actor list value.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_bonus_4",
+        "note": "The racial bonus for the fourth skill.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_5",
+        "note": "The fifth skill, as an actor list value.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_bonus_5",
+        "note": "The racial bonus for the fifth skill.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_6",
+        "note": "The sixth skill, as an actor list value.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_bonus_6",
+        "note": "The racial bonus for the sixth skill.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_7",
+        "note": "The seventh skill, as an actor list value.",
+        "type": "u8"
+       },
+       {
+        "name": "skill_bonus_7",
+        "note": "The racial bonus for the seventh skill.",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "note": "Padding.",
+        "type": "u16"
+       },
+       {
+        "name": "height_male",
+        "note": "The male height.",
+        "type": "f32"
+       },
+       {
+        "name": "height_female",
+        "note": "The female height.",
+        "type": "f32"
+       },
+       {
+        "name": "weight_male",
+        "note": "The male weight.",
+        "type": "f32"
+       },
+       {
+        "name": "weight_female",
+        "note": "The female weight.",
+        "type": "f32"
+       },
+       {
+        "name": "flags",
+        "note": "The race's flags.",
+        "type": {
+         "bits": {
+          "0": "Playable",
+          "1": "FaceGen Head",
+          "10": "Not Pushable",
+          "11": "No Combat In Water",
+          "12": "No Rotating To Head-Track",
+          "13": "Don't Show Blood Spray",
+          "14": "Don't Show Blood Decal",
+          "15": "Uses Head Track Anims",
+          "16": "Spells Align w/Magic Node",
+          "17": "Use World Raycasts For FootIK",
+          "18": "Allow Ragdoll Collision",
+          "19": "Regen HP In Combat",
+          "2": "Child",
+          "20": "Can't Open Doors",
+          "21": "Allow PC Dialogue",
+          "22": "No Knockdowns",
+          "23": "Allow Pickpocket",
+          "24": "Always Use Proxy Controller",
+          "25": "Don't Show Weapon Blood",
+          "26": "Overlay Head Part List",
+          "27": "Override Head Part List",
+          "28": "Can Pickup Items",
+          "29": "Allow Multiple Membrane Shaders",
+          "3": "Tilt Front/Back",
+          "30": "Can Dual Wield",
+          "31": "Avoids Roads",
+          "4": "Tilt Left/Right",
+          "5": "No Shadow",
+          "6": "Swims",
+          "7": "Flies",
+          "8": "Walks",
+          "9": "Immobile"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "starting_health",
+        "note": "The race's starting health.",
+        "type": "f32"
+       },
+       {
+        "name": "starting_magicka",
+        "note": "The race's starting magicka.",
+        "type": "f32"
+       },
+       {
+        "name": "starting_stamina",
+        "note": "The race's starting stamina.",
+        "type": "f32"
+       },
+       {
+        "name": "base_carry_weight",
+        "note": "The base carry weight.",
+        "type": "f32"
+       },
+       {
+        "name": "base_mass",
+        "note": "The base mass.",
+        "type": "f32"
+       },
+       {
+        "name": "acceleration_rate",
+        "note": "The acceleration rate.",
+        "type": "f32"
+       },
+       {
+        "name": "deceleration_rate",
+        "note": "The deceleration rate.",
+        "type": "f32"
+       },
+       {
+        "name": "size",
+        "note": "The race's size.",
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Small",
+          "1": "Medium",
+          "2": "Large",
+          "3": "Extra Large"
+         }
+        }
+       },
+       {
+        "name": "head_biped_object",
+        "note": "The head's biped object, an index into the biped object names.",
+        "type": "u32"
+       },
+       {
+        "name": "hair_biped_object",
+        "note": "The hair's biped object.",
+        "type": "u32"
+       },
+       {
+        "name": "injured_health_pct",
+        "note": "The injured health percentage, from 0 to 1.",
+        "type": "f32"
+       },
+       {
+        "name": "shield_biped_object",
+        "note": "The shield's biped object.",
+        "type": "u32"
+       },
+       {
+        "name": "health_regen",
+        "note": "The health regeneration.",
+        "type": "f32"
+       },
+       {
+        "name": "magicka_regen",
+        "note": "The magicka regeneration.",
+        "type": "f32"
+       },
+       {
+        "name": "stamina_regen",
+        "note": "The stamina regeneration.",
+        "type": "f32"
+       },
+       {
+        "name": "unarmed_damage",
+        "note": "The unarmed damage.",
+        "type": "f32"
+       },
+       {
+        "name": "unarmed_reach",
+        "note": "The unarmed reach.",
+        "type": "f32"
+       },
+       {
+        "name": "body_biped_object",
+        "note": "The body's biped object.",
+        "type": "u32"
+       },
+       {
+        "name": "aim_angle_tolerance",
+        "note": "The aim angle tolerance.",
+        "type": "f32"
+       },
+       {
+        "name": "unknown",
+        "note": "Unknown.",
+        "type": "u32"
+       },
+       {
+        "name": "angular_acceleration_rate",
+        "note": "The angular acceleration rate.",
+        "type": "f32"
+       },
+       {
+        "name": "angular_tolerance",
+        "note": "The angular tolerance.",
+        "type": "f32"
+       },
+       {
+        "name": "flags2",
+        "note": "Only the identified values are listed.",
+        "type": {
+         "bits": {
+          "0": "Use Advanced Avoidance",
+          "1": "Non-Hostile",
+          "4": "Allow Mounted Combat"
+         },
+         "flags": "u32"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Special Edition",
+     "size": 164,
+     "type": {
+      "union": [
+       {
+        "name": "Original Edition",
+        "size": 128,
+        "type": {
+         "struct": [
+          {
+           "name": "skill_1",
+           "note": "The first skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_1",
+           "note": "The racial bonus for the first skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_2",
+           "note": "The second skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_2",
+           "note": "The racial bonus for the second skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_3",
+           "note": "The third skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_3",
+           "note": "The racial bonus for the third skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_4",
+           "note": "The fourth skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_4",
+           "note": "The racial bonus for the fourth skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_5",
+           "note": "The fifth skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_5",
+           "note": "The racial bonus for the fifth skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_6",
+           "note": "The sixth skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_6",
+           "note": "The racial bonus for the sixth skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_7",
+           "note": "The seventh skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_7",
+           "note": "The racial bonus for the seventh skill.",
+           "type": "u8"
+          },
+          {
+           "name": "unused",
+           "note": "Padding.",
+           "type": "u16"
+          },
+          {
+           "name": "height_male",
+           "note": "The male height.",
+           "type": "f32"
+          },
+          {
+           "name": "height_female",
+           "note": "The female height.",
+           "type": "f32"
+          },
+          {
+           "name": "weight_male",
+           "note": "The male weight.",
+           "type": "f32"
+          },
+          {
+           "name": "weight_female",
+           "note": "The female weight.",
+           "type": "f32"
+          },
+          {
+           "name": "flags",
+           "note": "The race's flags.",
+           "type": {
+            "bits": {
+             "0": "Playable",
+             "1": "FaceGen Head",
+             "10": "Not Pushable",
+             "11": "No Combat In Water",
+             "12": "No Rotating To Head-Track",
+             "13": "Don't Show Blood Spray",
+             "14": "Don't Show Blood Decal",
+             "15": "Uses Head Track Anims",
+             "16": "Spells Align w/Magic Node",
+             "17": "Use World Raycasts For FootIK",
+             "18": "Allow Ragdoll Collision",
+             "19": "Regen HP In Combat",
+             "2": "Child",
+             "20": "Can't Open Doors",
+             "21": "Allow PC Dialogue",
+             "22": "No Knockdowns",
+             "23": "Allow Pickpocket",
+             "24": "Always Use Proxy Controller",
+             "25": "Don't Show Weapon Blood",
+             "26": "Overlay Head Part List",
+             "27": "Override Head Part List",
+             "28": "Can Pickup Items",
+             "29": "Allow Multiple Membrane Shaders",
+             "3": "Tilt Front/Back",
+             "30": "Can Dual Wield",
+             "31": "Avoids Roads",
+             "4": "Tilt Left/Right",
+             "5": "No Shadow",
+             "6": "Swims",
+             "7": "Flies",
+             "8": "Walks",
+             "9": "Immobile"
+            },
+            "flags": "u32"
+           }
+          },
+          {
+           "name": "starting_health",
+           "note": "The race's starting health.",
+           "type": "f32"
+          },
+          {
+           "name": "starting_magicka",
+           "note": "The race's starting magicka.",
+           "type": "f32"
+          },
+          {
+           "name": "starting_stamina",
+           "note": "The race's starting stamina.",
+           "type": "f32"
+          },
+          {
+           "name": "base_carry_weight",
+           "note": "The base carry weight.",
+           "type": "f32"
+          },
+          {
+           "name": "base_mass",
+           "note": "The base mass.",
+           "type": "f32"
+          },
+          {
+           "name": "acceleration_rate",
+           "note": "The acceleration rate.",
+           "type": "f32"
+          },
+          {
+           "name": "deceleration_rate",
+           "note": "The deceleration rate.",
+           "type": "f32"
+          },
+          {
+           "name": "size",
+           "note": "The race's size.",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Small",
+             "1": "Medium",
+             "2": "Large",
+             "3": "Extra Large"
+            }
+           }
+          },
+          {
+           "name": "head_biped_object",
+           "note": "The head's biped object, an index into the biped object names.",
+           "type": "u32"
+          },
+          {
+           "name": "hair_biped_object",
+           "note": "The hair's biped object.",
+           "type": "u32"
+          },
+          {
+           "name": "injured_health_pct",
+           "note": "The injured health percentage, from 0 to 1.",
+           "type": "f32"
+          },
+          {
+           "name": "shield_biped_object",
+           "note": "The shield's biped object.",
+           "type": "u32"
+          },
+          {
+           "name": "health_regen",
+           "note": "The health regeneration.",
+           "type": "f32"
+          },
+          {
+           "name": "magicka_regen",
+           "note": "The magicka regeneration.",
+           "type": "f32"
+          },
+          {
+           "name": "stamina_regen",
+           "note": "The stamina regeneration.",
+           "type": "f32"
+          },
+          {
+           "name": "unarmed_damage",
+           "note": "The unarmed damage.",
+           "type": "f32"
+          },
+          {
+           "name": "unarmed_reach",
+           "note": "The unarmed reach.",
+           "type": "f32"
+          },
+          {
+           "name": "body_biped_object",
+           "note": "The body's biped object.",
+           "type": "u32"
+          },
+          {
+           "name": "aim_angle_tolerance",
+           "note": "The aim angle tolerance.",
+           "type": "f32"
+          },
+          {
+           "name": "unknown",
+           "note": "Unknown.",
+           "type": "u32"
+          },
+          {
+           "name": "angular_acceleration_rate",
+           "note": "The angular acceleration rate.",
+           "type": "f32"
+          },
+          {
+           "name": "angular_tolerance",
+           "note": "The angular tolerance.",
+           "type": "f32"
+          },
+          {
+           "name": "flags2",
+           "note": "Only the identified values are listed.",
+           "type": {
+            "bits": {
+             "0": "Use Advanced Avoidance",
+             "1": "Non-Hostile",
+             "4": "Allow Mounted Combat"
+            },
+            "flags": "u32"
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "Special Edition",
+        "size": 164,
+        "type": {
+         "struct": [
+          {
+           "name": "skill_1",
+           "note": "The first skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_1",
+           "note": "The racial bonus for the first skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_2",
+           "note": "The second skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_2",
+           "note": "The racial bonus for the second skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_3",
+           "note": "The third skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_3",
+           "note": "The racial bonus for the third skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_4",
+           "note": "The fourth skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_4",
+           "note": "The racial bonus for the fourth skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_5",
+           "note": "The fifth skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_5",
+           "note": "The racial bonus for the fifth skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_6",
+           "note": "The sixth skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_6",
+           "note": "The racial bonus for the sixth skill.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_7",
+           "note": "The seventh skill, as an actor list value.",
+           "type": "u8"
+          },
+          {
+           "name": "skill_bonus_7",
+           "note": "The racial bonus for the seventh skill.",
+           "type": "u8"
+          },
+          {
+           "name": "unused",
+           "note": "Padding.",
+           "type": "u16"
+          },
+          {
+           "name": "height_male",
+           "note": "The male height.",
+           "type": "f32"
+          },
+          {
+           "name": "height_female",
+           "note": "The female height.",
+           "type": "f32"
+          },
+          {
+           "name": "weight_male",
+           "note": "The male weight.",
+           "type": "f32"
+          },
+          {
+           "name": "weight_female",
+           "note": "The female weight.",
+           "type": "f32"
+          },
+          {
+           "name": "flags",
+           "note": "The race's flags.",
+           "type": {
+            "bits": {
+             "0": "Playable",
+             "1": "FaceGen Head",
+             "10": "Not Pushable",
+             "11": "No Combat In Water",
+             "12": "No Rotating To Head-Track",
+             "13": "Don't Show Blood Spray",
+             "14": "Don't Show Blood Decal",
+             "15": "Uses Head Track Anims",
+             "16": "Spells Align w/Magic Node",
+             "17": "Use World Raycasts For FootIK",
+             "18": "Allow Ragdoll Collision",
+             "19": "Regen HP In Combat",
+             "2": "Child",
+             "20": "Can't Open Doors",
+             "21": "Allow PC Dialogue",
+             "22": "No Knockdowns",
+             "23": "Allow Pickpocket",
+             "24": "Always Use Proxy Controller",
+             "25": "Don't Show Weapon Blood",
+             "26": "Overlay Head Part List",
+             "27": "Override Head Part List",
+             "28": "Can Pickup Items",
+             "29": "Allow Multiple Membrane Shaders",
+             "3": "Tilt Front/Back",
+             "30": "Can Dual Wield",
+             "31": "Avoids Roads",
+             "4": "Tilt Left/Right",
+             "5": "No Shadow",
+             "6": "Swims",
+             "7": "Flies",
+             "8": "Walks",
+             "9": "Immobile"
+            },
+            "flags": "u32"
+           }
+          },
+          {
+           "name": "starting_health",
+           "note": "The race's starting health.",
+           "type": "f32"
+          },
+          {
+           "name": "starting_magicka",
+           "note": "The race's starting magicka.",
+           "type": "f32"
+          },
+          {
+           "name": "starting_stamina",
+           "note": "The race's starting stamina.",
+           "type": "f32"
+          },
+          {
+           "name": "base_carry_weight",
+           "note": "The base carry weight.",
+           "type": "f32"
+          },
+          {
+           "name": "base_mass",
+           "note": "The base mass.",
+           "type": "f32"
+          },
+          {
+           "name": "acceleration_rate",
+           "note": "The acceleration rate.",
+           "type": "f32"
+          },
+          {
+           "name": "deceleration_rate",
+           "note": "The deceleration rate.",
+           "type": "f32"
+          },
+          {
+           "name": "size",
+           "note": "The race's size.",
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Small",
+             "1": "Medium",
+             "2": "Large",
+             "3": "Extra Large"
+            }
+           }
+          },
+          {
+           "name": "head_biped_object",
+           "note": "The head's biped object, an index into the biped object names.",
+           "type": "u32"
+          },
+          {
+           "name": "hair_biped_object",
+           "note": "The hair's biped object.",
+           "type": "u32"
+          },
+          {
+           "name": "injured_health_pct",
+           "note": "The injured health percentage, from 0 to 1.",
+           "type": "f32"
+          },
+          {
+           "name": "shield_biped_object",
+           "note": "The shield's biped object.",
+           "type": "u32"
+          },
+          {
+           "name": "health_regen",
+           "note": "The health regeneration.",
+           "type": "f32"
+          },
+          {
+           "name": "magicka_regen",
+           "note": "The magicka regeneration.",
+           "type": "f32"
+          },
+          {
+           "name": "stamina_regen",
+           "note": "The stamina regeneration.",
+           "type": "f32"
+          },
+          {
+           "name": "unarmed_damage",
+           "note": "The unarmed damage.",
+           "type": "f32"
+          },
+          {
+           "name": "unarmed_reach",
+           "note": "The unarmed reach.",
+           "type": "f32"
+          },
+          {
+           "name": "body_biped_object",
+           "note": "The body's biped object.",
+           "type": "u32"
+          },
+          {
+           "name": "aim_angle_tolerance",
+           "note": "The aim angle tolerance.",
+           "type": "f32"
+          },
+          {
+           "name": "unknown",
+           "note": "Unknown.",
+           "type": "u32"
+          },
+          {
+           "name": "angular_acceleration_rate",
+           "note": "The angular acceleration rate.",
+           "type": "f32"
+          },
+          {
+           "name": "angular_tolerance",
+           "note": "The angular tolerance.",
+           "type": "f32"
+          },
+          {
+           "name": "flags2",
+           "note": "Only the identified values are listed.",
+           "type": {
+            "bits": {
+             "0": "Use Advanced Avoidance",
+             "1": "Non-Hostile",
+             "4": "Allow Mounted Combat"
+            },
+            "flags": "u32"
+           }
+          },
+          {
+           "name": "mount_data_offset_x",
+           "note": "The mount data's x offset.",
+           "type": "u32"
+          },
+          {
+           "name": "mount_data_offset_y",
+           "note": "The mount data's y offset.",
+           "type": "u32"
+          },
+          {
+           "name": "unknown2",
+           "note": "Unknown.",
+           "type": {
+            "array": "u32",
+            "count": 7
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "RACE_SPED": {
+   "struct": [
+    {
+     "name": "left_walk",
+     "type": "f32"
+    },
+    {
+     "name": "left_run",
+     "type": "f32"
+    },
+    {
+     "name": "right_walk",
+     "type": "f32"
+    },
+    {
+     "name": "right_run",
+     "type": "f32"
+    },
+    {
+     "name": "forward_walk",
+     "type": "f32"
+    },
+    {
+     "name": "forward_run",
+     "type": "f32"
+    },
+    {
+     "name": "back_walk",
+     "type": "f32"
+    },
+    {
+     "name": "back_run",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_walk",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_run",
+     "type": "f32"
+    },
+    {
+     "name": "unknown",
+     "type": "f32"
+    }
+   ]
+  },
+  "REFR_XALP": {
+   "struct": [
+    {
+     "name": "current_alpha_cutoff",
+     "note": "The current alpha cutoff.",
+     "type": "u8"
+    },
+    {
+     "name": "default_alpha_cutoff",
+     "note": "The default alpha cutoff.",
+     "type": "u8"
+    }
+   ]
+  },
+  "REFR_XAPR": {
+   "struct": [
+    {
+     "name": "reference",
+     "note": "A REFR, usually to a STAT.",
+     "type": "formid"
+    },
+    {
+     "name": "delay",
+     "note": "The delay.",
+     "type": "f32"
+    }
+   ]
+  },
+  "REFR_XLIG": {
+   "struct": [
+    {
+     "name": "fov_offset",
+     "note": "The field of view offset from the base object, in degrees.",
+     "type": "f32"
+    },
+    {
+     "name": "fade_offset",
+     "note": "The fade offset from the base object.",
+     "type": "f32"
+    },
+    {
+     "name": "end_distance_cap",
+     "note": "The end distance cap.",
+     "type": "f32"
+    },
+    {
+     "name": "shadow_depth_bias",
+     "note": "The shadow depth bias.",
+     "type": "f32"
+    }
+   ]
+  },
+  "REFR_XLKR": {
+   "union": [
+    {
+     "name": "Keyword Only",
+     "size": 4,
+     "type": {
+      "struct": [
+       {
+        "name": "keyword",
+        "note": "Zero, or a KYWD \u2014 usually LinkCarryStart or LinkCarryEnd.",
+        "type": "formid"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Keyword And Reference",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "keyword",
+        "note": "Zero, or a KYWD \u2014 usually LinkCarryStart or LinkCarryEnd.",
+        "type": "formid"
+       },
+       {
+        "name": "reference",
+        "note": "A REFR, usually to a STAT. FURN also appears here.",
+        "type": "formid"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "REFR_XLOC": {
+   "struct": [
+    {
+     "name": "level",
+     "note": "The lock's level: -1 requires a key, 0 is Novice, 25 is Apprentice, 50 is Adept, 75 is Expert and 100 is Master.",
+     "type": "i8"
+    },
+    {
+     "name": "flags1",
+     "note": "Flags, whose meaning is not known.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "key",
+     "note": "The KEYM record.",
+     "type": "formid"
+    },
+    {
+     "name": "flags2",
+     "note": "Flags, whose meaning is mostly not known.",
+     "type": {
+      "bits": {
+       "2": "Leveled"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "flags3",
+     "note": "Flags, whose meaning is not known.",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    },
+    {
+     "name": "unused",
+     "note": "Zero.",
+     "type": {
+      "array": "u8",
+      "count": 8
+     }
+    }
+   ]
+  },
+  "REFR_XLRT": {
+   "struct": [
+    {
+     "name": "location_ref_type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    }
+   ]
+  },
+  "REFR_XNDP": {
+   "struct": [
+    {
+     "name": "navmesh",
+     "note": "The NAVM the pivot is on.",
+     "type": "formid"
+    },
+    {
+     "name": "triangle_index",
+     "note": "The navmesh triangle's index.",
+     "type": "u16"
+    },
+    {
+     "name": "padding",
+     "note": "Padding.",
+     "type": "u16"
+    }
+   ]
+  },
+  "REFR_XPRM": {
+   "struct": [
+    {
+     "name": "bounds",
+     "note": "The bounds divided by two.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    {
+     "name": "color",
+     "note": "The colour, divided by 255.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "0.15, 0.2, 0.25 and 1.0 are seen; the same for any given base object.",
+     "type": "f32"
+    },
+    {
+     "name": "shape",
+     "note": "The primitive's shape.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "1": "Box",
+       "2": "Sphere",
+       "3": "Portal Box",
+       "4": "Unknown"
+      }
+     }
+    }
+   ]
+  },
+  "REFR_XRMR": {
+   "struct": [
+    {
+     "name": "count",
+     "note": "How many XLRM follow.",
+     "type": "u8"
+    },
+    {
+     "name": "flags",
+     "note": "The values 0x01 to 0x20 appear to be unknown.",
+     "type": {
+      "bits": {
+       "6": "Has Image Space",
+       "7": "Has Lighting Template"
+      },
+      "flags": "u8"
+     }
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": {
+      "array": "u8",
+      "count": 2
+     }
+    }
+   ]
+  },
+  "REFR_XTEL": {
+   "struct": [
+    {
+     "name": "destination",
+     "note": "The DOOR the teleport goes to.",
+     "type": "formid"
+    },
+    {
+     "name": "position",
+     "note": "The x, y and z position.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    {
+     "name": "rotation",
+     "note": "The x, y and z rotation, in radians.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    {
+     "name": "flags",
+     "note": "The teleport's flags.",
+     "type": {
+      "bits": {
+       "0": "No Alarm"
+      },
+      "flags": "u32"
+     }
+    }
+   ]
+  },
+  "RELA_DATA": {
+   "struct": [
+    {
+     "name": "parent",
+     "note": "The parent character. Parent and child here do not necessarily mean biological parent and child; it is a generic way of describing two connected items.",
+     "type": "formid"
+    },
+    {
+     "name": "child",
+     "note": "The child character.",
+     "type": "formid"
+    },
+    {
+     "name": "rank",
+     "note": "The relationship level, from 0 to 8 in the data, which the game reads as -4 to 4.",
+     "type": "u16"
+    },
+    {
+     "name": "flags",
+     "note": "Only the highest bit is used.",
+     "type": {
+      "bits": {
+       "15": "Secret"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "association_type",
+     "note": "The association type (ASTP).",
+     "type": "formid"
+    }
+   ]
+  },
+  "RFCT_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "The effect's flags.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown",
+     "note": "Unknown.",
+     "type": "u32"
+    },
+    {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "u32"
+    }
+   ]
+  },
+  "SHOU_SNAM": {
+   "struct": [
+    {
+     "name": "word",
+     "note": "The word of power (WOOP).",
+     "type": "formid"
+    },
+    {
+     "name": "spell",
+     "note": "The spell the word casts (SPEL).",
+     "type": "formid"
+    },
+    {
+     "name": "recovery_time",
+     "note": "How long the shout takes to recharge. For the player's dragon shouts it is the total recharge time, and for the others it is usually a small arbitrary number.",
+     "type": "f32"
+    }
+   ]
+  },
+  "SKYRIM_DMDT": {
+   "cases": {
+    "2": 0
+   },
+   "default": 1,
+   "peek": true,
+   "union": [
+    {
+     "name": "Headered",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "note": "Always 2 in the shipped data.",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "note": "How many texture entries follow.",
+        "type": "u32"
+       },
+       {
+        "name": "extra_words",
+        "note": "How many four-byte words follow the texture entries.",
+        "type": "u32"
+       },
+       {
+        "name": "textures",
+        "note": "The destruction stage's textures.",
+        "type": {
+         "array": "SKYRIM_DMDT_ENTRY",
+         "count_field": "count"
+        }
+       },
+       {
+        "name": "extra",
+        "note": "The words after the textures.",
+        "type": {
+         "array": "u32",
+         "count_field": "extra_words"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Bare",
+     "type": {
+      "struct": [
+       {
+        "name": "textures",
+        "note": "The destruction stage's textures, with no header and no count.",
+        "type": {
+         "array": "SKYRIM_DMDT_ENTRY"
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "SKYRIM_DMDT_ENTRY": {
+   "struct": [
+    {
+     "name": "hash",
+     "note": "The texture's hash.",
+     "type": "u32"
+    },
+    {
+     "name": "extension",
+     "note": "The texture's file extension, which is \"dds\" in every shipped record.",
+     "type": "cstring"
+    },
+    {
+     "name": "hash2",
+     "note": "A second hash.",
+     "type": "u32"
+    }
+   ]
+  },
+  "SKYRIM_MODT": {
+   "cases": {
+    "2": 0
+   },
+   "default": 1,
+   "peek": true,
+   "union": [
+    {
+     "name": "Headered",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "note": "Always 2 in the shipped data.",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "note": "How many texture entries follow.",
+        "type": "u32"
+       },
+       {
+        "name": "extra_words",
+        "note": "How many four-byte words follow the texture entries.",
+        "type": "u32"
+       },
+       {
+        "name": "textures",
+        "note": "The model's textures.",
+        "type": {
+         "array": "SKYRIM_MODT_ENTRY",
+         "count_field": "count"
+        }
+       },
+       {
+        "name": "extra",
+        "note": "The words after the textures. Their meaning is not documented.",
+        "type": {
+         "array": "u32",
+         "count_field": "extra_words"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Bare",
+     "type": {
+      "struct": [
+       {
+        "name": "textures",
+        "note": "The model's textures, with no header and no count: the entries fill the field.",
+        "type": {
+         "array": "SKYRIM_MODT_ENTRY"
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "SKYRIM_MODT_ENTRY": {
+   "struct": [
+    {
+     "name": "hash",
+     "note": "The texture's hash.",
+     "type": "u32"
+    },
+    {
+     "name": "extension",
+     "note": "The texture's file extension, which is \"dds\" in all but a few hundred of the shipped entries.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "hash2",
+     "note": "A second hash.",
+     "type": "u32"
+    }
+   ]
+  },
+  "SKYRIM_NAM2": {
+   "cases": {
+    "2": 0
+   },
+   "default": 1,
+   "peek": true,
+   "union": [
+    {
+     "name": "Headered",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "type": "u32"
+       },
+       {
+        "name": "extra_words",
+        "type": "u32"
+       },
+       {
+        "name": "textures",
+        "type": {
+         "array": "SKYRIM_MODT_ENTRY",
+         "count_field": "count"
+        }
+       },
+       {
+        "name": "extra",
+        "note": "The words after the textures. Their meaning is not documented.",
+        "type": {
+         "array": "u32",
+         "count_field": "extra_words"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Bare",
+     "type": {
+      "struct": [
+       {
+        "name": "textures",
+        "type": {
+         "array": "SKYRIM_MODT_ENTRY"
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "SNDR_BNAM": {
+   "struct": [
+    {
+     "name": "frequency_shift",
+     "note": "The percentage frequency shift.",
+     "type": "i8"
+    },
+    {
+     "name": "frequency_variance",
+     "note": "The percentage frequency variance.",
+     "type": "u8"
+    },
+    {
+     "name": "priority",
+     "note": "The priority. The default is 128.",
+     "type": "u8"
+    },
+    {
+     "name": "db_variance",
+     "note": "The decibel variance.",
+     "type": "u8"
+    },
+    {
+     "name": "static_attenuation",
+     "note": "The static attenuation in decibels. The stored value is a hundred times the actual value.",
+     "type": "u16"
+    }
+   ]
+  },
+  "SNDR_LNAM": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "At most one of the looping flags can be set.",
+     "type": {
+      "bits": {
+       "1": "Unknown 1",
+       "11": "Looping: Loop",
+       "12": "Looping: Envelope Fast",
+       "13": "Looping: Envelope Slow",
+       "2": "Unknown 2"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "unused",
+     "note": "Unused.",
+     "type": "u8"
+    },
+    {
+     "name": "rumble_send",
+     "note": "The rumble's send level. The small value is seven times the lower four bits and the big value seven times the upper four bits.",
+     "type": "u8"
+    }
+   ]
+  },
+  "SOPM_ANAM": {
+   "struct": [
+    {
+     "name": "unknown",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    {
+     "name": "min_distance",
+     "type": "f32"
+    },
+    {
+     "name": "max_distance",
+     "type": "f32"
+    },
+    {
+     "name": "curve",
+     "type": {
+      "array": "u8",
+      "count": 5
+     }
+    },
+    {
+     "name": "padding",
+     "type": {
+      "array": "u8",
+      "count": 3
+     }
+    }
+   ]
+  },
+  "STAT_DNAM": {
+   "union": [
+    {
+     "name": "Eight Bytes",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "max_angle",
+        "note": "The maximum angle, 30 to 120 degrees.",
+        "type": "f32"
+       },
+       {
+        "name": "directional_material",
+        "note": "The directional material (MATO).",
+        "type": "formid"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Twelve Bytes",
+     "size": 12,
+     "type": {
+      "struct": [
+       {
+        "name": "max_angle",
+        "note": "The maximum angle, 30 to 120 degrees.",
+        "type": "f32"
+       },
+       {
+        "name": "directional_material",
+        "note": "The directional material (MATO).",
+        "type": "formid"
+       },
+       {
+        "name": "unknown",
+        "note": "Unknown.",
+        "type": "u32"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "TXST_OBND": {
+   "struct": [
+    {
+     "name": "x1",
+     "type": "i16"
+    },
+    {
+     "name": "y1",
+     "type": "i16"
+    },
+    {
+     "name": "z1",
+     "type": "i16"
+    },
+    {
+     "name": "x2",
+     "type": "i16"
+    },
+    {
+     "name": "y2",
+     "type": "i16"
+    },
+    {
+     "name": "z2",
+     "type": "i16"
+    }
+   ]
+  },
+  "WEAP_CRDT": {
+   "struct": [
+    {
+     "name": "critical_damage",
+     "note": "The critical damage, 0 to 13.",
+     "type": "u16"
+    },
+    {
+     "name": "unknown1",
+     "note": "Unknown.",
+     "type": "u16"
+    },
+    {
+     "name": "critical_mult",
+     "note": "The critical damage multiplier, 0 to 1.5.",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "note": "The critical effect's flags.",
+     "type": {
+      "bits": {
+       "0": "Critical Effect On Death"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "u32"
+    },
+    {
+     "name": "critical_spell",
+     "note": "The critical spell effect (SPEL).",
+     "type": "formid"
+    },
+    {
+     "name": "unknown3",
+     "note": "Unknown.",
+     "type": "u32"
+    }
+   ]
+  },
+  "WEAP_DATA": {
+   "struct": [
+    {
+     "name": "value",
+     "note": "The weapon's value.",
+     "type": "i32"
+    },
+    {
+     "name": "weight",
+     "note": "The weapon's weight.",
+     "type": "f32"
+    },
+    {
+     "name": "damage",
+     "note": "The base damage.",
+     "type": "i16"
+    }
+   ]
+  },
+  "WEAP_DNAM": {
+   "struct": [
+    {
+     "name": "anim_type",
+     "note": "The weapon's animation type. Other is used by the unarmed weapon, the weapon versions of the knife and fork, and the unpatched woodcutter's axe.",
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Other",
+       "1": "One Hand Sword",
+       "2": "One Hand Dagger",
+       "3": "One Hand Axe",
+       "4": "One Hand Mace",
+       "5": "Two Hand Sword",
+       "6": "Two Hand Axe",
+       "7": "Bow",
+       "8": "Staff",
+       "9": "Crossbow"
+      }
+     }
+    },
+    {
+     "name": "unknown1",
+     "note": "Unknown.",
+     "type": "i8"
+    },
+    {
+     "name": "unknown2",
+     "note": "Unknown.",
+     "type": "i16"
+    },
+    {
+     "name": "speed",
+     "note": "The weapon's speed.",
+     "type": "f32"
+    },
+    {
+     "name": "reach",
+     "note": "For a melee weapon, a multiplier used in the reach formula: the combat distance times the NPC scale times the weapon reach.",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "note": "The weapon's flags. The CK's Playable checkbox is the inverse of the Unplayable flag.",
+     "type": {
+      "bits": {
+       "0": "Ignores Normal Weapon Resistance",
+       "1": "Automatic",
+       "2": "Has Scope",
+       "3": "Can't Drop",
+       "4": "Hide Backpack",
+       "5": "Embedded Weapon",
+       "6": "Don't Use 1st Person IS Animations",
+       "7": "Unplayable"
+      },
+      "flags": "u16"
+     }
+    },
+    {
+     "name": "flags2",
+     "note": "Possibly more flags, but it has the constant value 145 in every record.",
+     "type": "u16"
+    },
+    {
+     "name": "sight_fov",
+     "note": "The angle of view when using iron sights. Deprecated, since it is done by zooming in.",
+     "type": "f32"
+    },
+    {
+     "name": "blank1",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "vats_to_hit",
+     "note": "The base VATS to-hit chance. Possibly obsolete; only the values 0 and 5 occur.",
+     "type": "u8"
+    },
+    {
+     "name": "unknown3",
+     "note": "-1 in every record.",
+     "type": "i8"
+    },
+    {
+     "name": "projectiles",
+     "note": "The number of projectiles per ammo object. Possibly obsolete; it is 1 in every record.",
+     "type": "u8"
+    },
+    {
+     "name": "embedded_weapon",
+     "note": "The embedded weapon's actor value, where adding 46 gives the actor value index. The CK allows 0 PerceptionCondition through 6 BrainCondition. Only valid when the Embedded Weapon flag is set.",
+     "type": "i8"
+    },
+    {
+     "name": "min_range",
+     "note": "The combat AI does not need to be closer than this.",
+     "type": "f32"
+    },
+    {
+     "name": "max_range",
+     "note": "The combat AI does not want to be further away than this.",
+     "type": "f32"
+    },
+    {
+     "name": "unknown4",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "combat_flags",
+     "note": "The weapon's combat flags.",
+     "type": {
+      "bits": {
+       "0": "Player Only",
+       "1": "NPCs Use Ammo",
+       "10": "Alternate Rumble",
+       "11": "Long Bursts",
+       "12": "Non-Hostile",
+       "13": "Bound Weapon",
+       "2": "No Jam After Reload",
+       "4": "Minor Crime",
+       "5": "Fixed Range",
+       "6": "Not Used In Normal Combat",
+       "8": "Don't Use 3rd Person IS Animations",
+       "9": "Burst Shot"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "unknown5",
+     "note": "1 in every record.",
+     "type": "f32"
+    },
+    {
+     "name": "unknown6",
+     "note": "The values range from 0.1 to 5, but it is not shown in the CK.",
+     "type": "f32"
+    },
+    {
+     "name": "rumble_left",
+     "note": "The left motor's rumble strength.",
+     "type": "f32"
+    },
+    {
+     "name": "rumble_right",
+     "note": "The right motor's rumble strength.",
+     "type": "f32"
+    },
+    {
+     "name": "rumble_duration",
+     "note": "The rumble's duration.",
+     "type": "f32"
+    },
+    {
+     "name": "blank2",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "blank3",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "blank4",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "skill",
+     "note": "The skill that governs the weapon's use, as an actor value. For a staff it is a magic skill rather than a weapon skill, but that is apparently ignored. It is -1 for a weapon without a governing skill.",
+     "type": "i32"
+    },
+    {
+     "name": "blank5",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "blank6",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "resist",
+     "note": "An actor value: the CK allows 39 DamageResist through 44 MagicResist, or -1 for none. It is always -1 in the original files.",
+     "type": "i32"
+    },
+    {
+     "name": "blank7",
+     "note": "Zero in every record.",
+     "type": "u32"
+    },
+    {
+     "name": "stagger",
+     "note": "The stagger.",
+     "type": "f32"
+    }
+   ]
+  },
+  "WRLD_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "The worldspace's flags.",
+     "type": {
+      "bits": {
+       "0": "Small World",
+       "1": "Can't Fast Travel From Here",
+       "3": "No LOD Water",
+       "4": "No Landscape",
+       "5": "No Sky",
+       "6": "Fixed Dimensions"
+      },
+      "flags": "u8"
+     }
+    }
+   ]
+  },
+  "WRLD_MNAM": {
+   "union": [
+    {
+     "name": "Original Edition",
+     "size": 16,
+     "type": {
+      "struct": [
+       {
+        "name": "width",
+        "note": "The usable width of the map.",
+        "type": "u32"
+       },
+       {
+        "name": "height",
+        "note": "The usable height of the map.",
+        "type": "u32"
+       },
+       {
+        "name": "nw_cell_x",
+        "note": "The north-west cell's x coordinate.",
+        "type": "i16"
+       },
+       {
+        "name": "nw_cell_y",
+        "note": "The north-west cell's y coordinate.",
+        "type": "i16"
+       },
+       {
+        "name": "se_cell_x",
+        "note": "The south-east cell's x coordinate.",
+        "type": "i16"
+       },
+       {
+        "name": "se_cell_y",
+        "note": "The south-east cell's y coordinate.",
+        "type": "i16"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Special Edition",
+     "size": 28,
+     "type": {
+      "union": [
+       {
+        "name": "Original Edition",
+        "size": 16,
+        "type": {
+         "struct": [
+          {
+           "name": "width",
+           "note": "The usable width of the map.",
+           "type": "u32"
+          },
+          {
+           "name": "height",
+           "note": "The usable height of the map.",
+           "type": "u32"
+          },
+          {
+           "name": "nw_cell_x",
+           "note": "The north-west cell's x coordinate.",
+           "type": "i16"
+          },
+          {
+           "name": "nw_cell_y",
+           "note": "The north-west cell's y coordinate.",
+           "type": "i16"
+          },
+          {
+           "name": "se_cell_x",
+           "note": "The south-east cell's x coordinate.",
+           "type": "i16"
+          },
+          {
+           "name": "se_cell_y",
+           "note": "The south-east cell's y coordinate.",
+           "type": "i16"
+          }
+         ]
+        }
+       },
+       {
+        "name": "Special Edition",
+        "size": 28,
+        "type": {
+         "struct": [
+          {
+           "name": "width",
+           "note": "The usable width of the map.",
+           "type": "u32"
+          },
+          {
+           "name": "height",
+           "note": "The usable height of the map.",
+           "type": "u32"
+          },
+          {
+           "name": "nw_cell_x",
+           "note": "The north-west cell's x coordinate.",
+           "type": "i16"
+          },
+          {
+           "name": "nw_cell_y",
+           "note": "The north-west cell's y coordinate.",
+           "type": "i16"
+          },
+          {
+           "name": "se_cell_x",
+           "note": "The south-east cell's x coordinate.",
+           "type": "i16"
+          },
+          {
+           "name": "se_cell_y",
+           "note": "The south-east cell's y coordinate.",
+           "type": "i16"
+          },
+          {
+           "name": "min_height",
+           "note": "The camera's minimum height. The default is 50000. New as of Skyrim 1.8, and its purpose is not known.",
+           "type": "f32"
+          },
+          {
+           "name": "max_height",
+           "note": "The camera's maximum height. The default is 80000.",
+           "type": "f32"
+          },
+          {
+           "name": "initial_pitch",
+           "note": "The camera's initial pitch. The default is 50.",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "WRLD_RNAM": {
+   "struct": [
+    {
+     "name": "cell_x",
+     "note": "The cell's x grid coordinate.",
+     "type": "i16"
+    },
+    {
+     "name": "cell_y",
+     "note": "The cell's y grid coordinate.",
+     "type": "i16"
+    },
+    {
+     "name": "count",
+     "note": "How many reference pairs follow.",
+     "type": "u32"
+    },
+    {
+     "name": "references",
+     "note": "The references that place a base object of object size 512 or greater. Such references change from the full model to the LOD at grid 11 rather than 5.",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "reference",
+         "type": "formid"
+        },
+        {
+         "name": "cell_x",
+         "type": "i16"
+        },
+        {
+         "name": "cell_y",
+         "type": "i16"
+        }
+       ]
+      },
+      "count_field": "count"
+     }
+    }
+   ]
+  },
+  "WTHR_CLOUD_SPEED": {
+   "struct": [
+    {
+     "name": "layers",
+     "note": "One byte per layer. The float is encoded as a uint8, where 0x00 is -0.1, 0x7f is 0 and 0xfe is 0.1.",
+     "type": {
+      "array": "u8",
+      "count": 32
+     }
+    }
+   ]
+  },
+  "WTHR_DALC": {
+   "union": [
+    {
+     "name": "Colours Only",
+     "size": 24,
+     "type": {
+      "struct": [
+       {
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Colours And Fresnel Power",
+     "size": 32,
+     "type": {
+      "struct": [
+       {
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown",
+        "note": "Always zero.",
+        "type": "u32"
+       },
+       {
+        "name": "fresnel_power",
+        "note": "The Fresnel power, from 0 to 1.",
+        "type": "f32"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "WTHR_JNAM": {
+   "struct": [
+    {
+     "name": "sunrise",
+     "note": "The alpha at sunrise.",
+     "type": "f32"
+    },
+    {
+     "name": "day",
+     "note": "The alpha at day.",
+     "type": "f32"
+    },
+    {
+     "name": "sunset",
+     "note": "The alpha at sunset.",
+     "type": "f32"
+    },
+    {
+     "name": "night",
+     "note": "The alpha at night.",
+     "type": "f32"
+    }
+   ]
+  },
+  "WTHR_PNAM": {
+   "struct": [
+    {
+     "name": "sunrise",
+     "note": "The colour at sunrise.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "day",
+     "note": "The colour at day.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "sunset",
+     "note": "The colour at sunset.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "night",
+     "note": "The colour at night.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       },
+       {
+        "name": "unused",
+        "type": "u8"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

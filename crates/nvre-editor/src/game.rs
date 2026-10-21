@@ -80,9 +80,12 @@ pub struct GameProfile {
     /// This game's record schemas, as a subdirectory of the repo's `schemas/`.
     pub schema_subdir: &'static str,
     /// The directory holding the layouts this game's family shares, if it has
-    /// one. Fallout 3 and Fallout: New Vegas are the same family; Skyrim and
-    /// Fallout 4 are their own, and have none yet.
+    /// one. Fallout 3 and Fallout: New Vegas are the same family, and so are
+    /// Skyrim and Skyrim Special Edition: the two versions differ in a
+    /// handful of records, and the rest is shared.
     pub schema_family_dir: &'static str,
+    /// The directory holding this version's own differences from its family.
+    pub schema_version_dir: &'static str,
     /// What this game cannot do yet, for the UI to say plainly rather than
     /// showing an empty viewport as if it were the game's fault.
     pub notes: &'static [&'static str],
@@ -106,6 +109,7 @@ pub const FNV: GameProfile = GameProfile {
     archive_format: ArchiveFormat::Bsa104,
     steam_folder: Some("Fallout New Vegas"),
     schema_subdir: "fnv",
+    schema_version_dir: "fnv",
     schema_family_dir: "",
     notes: &[],
 };
@@ -131,6 +135,7 @@ pub const FO3: GameProfile = GameProfile {
     archive_format: ArchiveFormat::Bsa104,
     steam_folder: Some("Fallout 3"),
     schema_subdir: "fo3",
+    schema_version_dir: "fo3",
     schema_family_dir: "fnv",
     notes: &[],
 };
@@ -154,11 +159,13 @@ pub const SKYRIM: GameProfile = GameProfile {
     ],
     archive_format: ArchiveFormat::Bsa104,
     steam_folder: Some("Skyrim"),
-    schema_subdir: "skyrim",
-    schema_family_dir: "",
+    schema_subdir: "skyrimle",
+    schema_family_dir: "skyrim",
+    schema_version_dir: "skyrimle",
     notes: &[
-        "no record schemas yet: schemas/skyrim has not been measured against Skyrim.esm",
+        "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimle",
         "NIF schema is the FNV corpus's; Skyrim's NIFs are bs_version 83 and would decode with the wrong conditions",
+        "its archives are BSA v104, which the editor's VFS reads, so the models load",
     ],
 };
 
@@ -175,7 +182,8 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     archive_format: ArchiveFormat::Bsa105,
     steam_folder: Some("Skyrim Special Edition"),
     schema_subdir: "skyrimse",
-    schema_family_dir: "",
+    schema_family_dir: "skyrim",
+    schema_version_dir: "skyrimse",
     notes: &[
         "no record schemas yet: schemas/skyrimse has not been measured against Skyrim.esm",
         "archives are BSA v105/LZ4: read by the bsa105 crate, but the editor's VFS is still v104-only, so loose files only until it is switched",
@@ -194,6 +202,7 @@ pub const FALLOUT_4: GameProfile = GameProfile {
     archive_format: ArchiveFormat::Unreadable,
     steam_folder: Some("Fallout 4"),
     schema_subdir: "fo4",
+    schema_version_dir: "fo4",
     schema_family_dir: "",
     notes: &[
         "no record schemas yet: schemas/fo4 has not been measured against Fallout4.esm",
@@ -394,56 +403,56 @@ impl GameProfile {
 
     /// Load this game's record schema.
     ///
-    /// The chain is `base -> <family> -> <game>`, and nothing else.
+    /// The chain is `base -> <family> -> <version>`, and nothing else.
     ///
     /// The base holds only what every supported game has, and its layouts
     /// are the ones that decode correctly in all of them. A record or a type
     /// that one family has belongs to that family's directory: Skyrim's
     /// `NPC_` and Fallout's `NPC_` share a signature and nothing else, so
-    /// neither can live in the base. A game that differs from its family
-    /// supplies its own directory over the family's.
+    /// neither can live in the base.
     ///
-    /// A game's directory carries a `base -> ../base` symlink, so it is also
+    /// A family is a set of versions of the same game. Fallout: New Vegas and
+    /// Fallout 3 are one family, and so are Skyrim and Skyrim Special
+    /// Edition: the two Skyrim versions differ in a handful of records and
+    /// share the rest, so the shared layouts live in the family's directory
+    /// and each version's directory holds only its own differences.
+    ///
+    /// A directory carries a `base -> ../base` symlink, so it is also
     /// readable on its own; `load_game` skips the files reached through that
     /// symlink, which is what keeps the base from merging twice.
     pub fn load_schema(&self) -> Result<fnv_esm::Schema, String> {
-        let (base, overlay) = self.schema_dirs();
+        let (base, _) = self.schema_dirs();
         let mut chain: Vec<std::path::PathBuf> = Vec::new();
         if let Some(family) = self.schema_family() {
             chain.push(family);
         }
-        if let Some(ov) = overlay {
-            // Fallout: New Vegas's own directory is its family directory, so
-            // it is not loaded twice.
-            if ov != self.fnv_dir() {
-                chain.push(ov);
-            }
+        if let Some(version) = self.schema_version() {
+            chain.push(version);
         }
         fnv_esm::Schema::load_game(&base, chain).map_err(|e| e.to_string())
     }
 
     /// The directory holding the layouts this game's family shares.
-    ///
-    /// Fallout: New Vegas and Fallout 3 are the same family: their records
-    /// share most of their layouts, and a record only one of them has stays
-    /// in that family's directory. Skyrim and Fallout 4 are their own
-    /// families and have no shared layer yet.
     fn schema_family(&self) -> Option<std::path::PathBuf> {
-        if self.schema_family_dir.is_empty() {
+        self.schema_dir(self.schema_family_dir)
+    }
+
+    /// The directory holding this version's own differences from its family.
+    fn schema_version(&self) -> Option<std::path::PathBuf> {
+        self.schema_dir(self.schema_version_dir)
+    }
+
+    /// One of the repo's schema directories, by its name.
+    fn schema_dir(&self, name: &str) -> Option<std::path::PathBuf> {
+        if name.is_empty() {
             None
         } else {
             Some(
                 Path::new(env!("CARGO_MANIFEST_DIR"))
                     .join("../../schemas")
-                    .join(self.schema_family_dir),
+                    .join(name),
             )
         }
-    }
-
-    /// `schemas/fnv`: the Fallout directory, which is the game directory for
-    /// Fallout: New Vegas itself and the family layer for Fallout 3.
-    fn fnv_dir(&self) -> std::path::PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv")
     }
 
     /// Open the game's assets: its archive set over `data_dir`, plus the NIF

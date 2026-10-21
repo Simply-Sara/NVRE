@@ -1,0 +1,364 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "ARMA": {
+   "confidence": "documented",
+   "name": "Armor Addon",
+   "note": "UESP, Skyrim Mod:Mod File Format/ARMA. An armour addon is a model worn over a body part, and it has one model per race group. [measured: 766 ARMA records in Skyrim.esm; BODT is 12 bytes and DNAM is 12]",
+   "subrecords": {
+    "BOD2": {
+     "confidence": "documented",
+     "name": "Body Template",
+     "note": "The body template, 8 bytes. It is mutually exclusive with BODT.",
+     "type": "ARMA_BOD2"
+    },
+    "BODT": {
+     "confidence": "documented",
+     "name": "Body Template",
+     "note": "The body template, 12 bytes. It is mutually exclusive with BOD2.",
+     "type": "ARMA_BODT"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The male and female priorities, a detection sound value and the weapon adjustment.",
+     "type": "ARMA_DNAM"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MO2S": {
+     "confidence": "documented",
+     "name": "Alternate Texture Sets",
+     "note": "The alternate texture sets: how many there are, then each one's name, texture set and model index.",
+     "type": "bytes"
+    },
+    "MO2T": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data, a run of 12-byte structs.",
+     "type": "bytes"
+    },
+    "MO3S": {
+     "confidence": "documented",
+     "name": "Alternate Texture Sets",
+     "note": "The alternate texture sets.",
+     "type": "bytes"
+    },
+    "MO3T": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data, a run of 12-byte structs.",
+     "type": "bytes"
+    },
+    "MO4S": {
+     "confidence": "documented",
+     "name": "Alternate Texture Sets",
+     "note": "The alternate texture sets.",
+     "type": "bytes"
+    },
+    "MO4T": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data, a run of 12-byte structs.",
+     "type": "bytes"
+    },
+    "MO5T": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data, a run of 12-byte structs.",
+     "type": "bytes"
+    },
+    "MOD2": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, relative to Models\\.",
+     "type": "zstring"
+    },
+    "MOD3": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, relative to Models\\.",
+     "type": "zstring"
+    },
+    "MOD4": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, relative to Models\\.",
+     "type": "zstring"
+    },
+    "MOD5": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, relative to Models\\.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model the addon's data comes from.",
+     "type": "formid"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Primary Race",
+     "note": "The RACE the addon is primarily for. No preference is given for the races that are also listed, but it must have at least this one.",
+     "type": "formid"
+    },
+    "SNDD": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "The sound the addon's material makes.",
+     "type": "formid"
+    }
+   }
+  },
+  "CLFM": {
+   "confidence": "documented",
+   "name": "Color",
+   "note": "UESP, Skyrim Mod:Mod File Format/CLFM. [measured: 178 CLFM records in Skyrim.esm; CNAM is 4 bytes]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Colour",
+     "note": "The red, green and blue channels. The fourth byte is always zero.",
+     "type": "CLFM_CNAM"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Playable",
+     "note": "Whether the colour is playable.",
+     "type": "u32"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The full name.",
+     "type": "u32"
+    }
+   }
+  },
+  "CONT": {
+   "confidence": "documented",
+   "name": "Container",
+   "note": "UESP, Skyrim Mod:Mod File Format/CONT. [measured: 436 CONT records in Skyrim.esm; DATA is 5 bytes and CNTO is 8]",
+   "subrecords": {
+    "CNTO": {
+     "confidence": "documented",
+     "name": "Container Object",
+     "note": "An item in the container and how many of it there are.",
+     "type": "CONT_CNTO"
+    },
+    "COCT": {
+     "confidence": "documented",
+     "name": "Object Count",
+     "note": "How many CNTO and COED records follow.",
+     "type": "u32"
+    },
+    "COED": {
+     "confidence": "documented",
+     "name": "Owner And Health",
+     "note": "The owner and health of the item. It occurs once in the game data.",
+     "type": "bytes"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The container's flags and its weight, which is mis-aligned and always zero.",
+     "type": "CONT_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The container's bounds.",
+     "type": "ObjectBounds"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Close Sound",
+     "note": "The sound (SNDR) played when the container closes.",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Open Sound",
+     "note": "The sound (SNDR) played when the container opens.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data.",
+     "type": "bytes"
+    }
+   }
+  },
+  "MATT": {
+   "confidence": "documented",
+   "name": "Material",
+   "note": "UESP, Skyrim Mod:Mod File Format/MATT. [measured: 78 MATT records in Skyrim.esm; CNAM is 12 bytes]",
+   "subrecords": {
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Buoyancy",
+     "note": "The material's buoyancy. The values in Skyrim.esm run from -1.0 to +1.0.",
+     "type": "f32"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Havok Display Colour",
+     "note": "The material's red, green and blue channels, each from 0.0 to 1.0.",
+     "type": "MATT_CNAM"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "0x01 = Stair Material, 0x02 = Arrows Stick.",
+     "type": {
+      "bits": {
+       "0": "Stair Material",
+       "1": "Arrows Stick"
+      },
+      "flags": "u32"
+     }
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Havok Impact Data Set",
+     "note": "The impact data set (IPDS).",
+     "type": "formid"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Material Name",
+     "note": "The material's name.",
+     "type": "zstring"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent Material",
+     "note": "The MATT record this one is based on.",
+     "type": "formid"
+    }
+   }
+  },
+  "SMBN": {
+   "confidence": "documented",
+   "name": "Story Manager Branch Node",
+   "note": "UESP, Skyrim Mod:Mod File Format/SMBN. [measured: 99 SMBN records in Skyrim.esm]",
+   "subrecords": {
+    "CIS2": {
+     "confidence": "documented",
+     "name": "Variable Name",
+     "note": "An optional variable name, for example \"::playerAllegiance_var\".",
+     "type": "zstring"
+    },
+    "CITC": {
+     "confidence": "documented",
+     "name": "Condition Count",
+     "note": "How many CTDA records follow.",
+     "type": "u32"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Conditions",
+     "note": "The conditions on the branch.",
+     "type": "Condition"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The branch's flags. 0x01 is known, and very large values such as 0x10000 and 0x100000 occur.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent",
+     "note": "The parent SMBN, SMEN or SMQN.",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sibling",
+     "note": "Zero for the first child, or the prior sibling.",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Always zero.",
+     "type": "u32"
+    }
+   }
+  }
+ }
+}

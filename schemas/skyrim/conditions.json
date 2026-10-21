@@ -1,0 +1,47 @@
+{
+ "common": {
+  "CIS1": {
+   "confidence": "documented",
+   "name": "Variable Name",
+   "note": "The variable name that replaces the CTDA's first argument. It trails a CTDA that uses a string parameter, and the CTDA's parameter 1 is then a very high value. [UESP, Skyrim Mod:Mod File Format/CTDA Field. Seen in IDLE, PACK and CPTH.]",
+   "type": "zstring"
+  },
+  "CIS2": {
+   "confidence": "documented",
+   "name": "Variable Name",
+   "note": "The variable name that replaces the CTDA's second argument. It trails a CTDA that uses a string parameter. [UESP, Skyrim Mod:Mod File Format/CTDA Field. Seen in FACT, ENCH, SPEL, COBJ, QUST, IDLE, PACK, LSCR, PERK, SMBN, SMQN, SCEN and INFO.]",
+   "type": "zstring"
+  },
+  "CTDA": {
+   "confidence": "documented",
+   "name": "Condition",
+   "note": "UESP, Skyrim Mod:Mod File Format/CTDA Field. The condition reads as <Reference>.<Function>(<Param1>, <Param2>) <Operator> <Value>. [measured: every CTDA in Skyrim.esm is exactly 32 bytes, so Run On, Reference and the trailing index are all present \u2014 Fallout's CTDA has only the first two of the three, and its last two fields are optional.]",
+   "type": "Condition"
+  },
+  "DESC": {
+   "confidence": "documented",
+   "name": "Description",
+   "note": "UESP's lstring: an index into the game's string table, not a string of its own. The base's is Fallout's string. [measured: 4 bytes in every DESC field in Skyrim.esm]",
+   "type": "u32"
+  },
+  "DMDT": {
+   "confidence": "documented",
+   "name": "Destruction Stage Model Texture Hashes",
+   "note": "UESP, Skyrim Mod:Mod File Format/ACTI. Skyrim's DMDT has a twelve-byte header \u2014 the version, the entry count and a flag \u2014 and then the texture entries, which is the same shape as its MODT. The base's is an array of Fallout texture hashes.",
+   "type": "SKYRIM_DMDT"
+  },
+  "FULL": {
+   "confidence": "documented",
+   "name": "Full Name",
+   "note": "UESP's lstring: an index into the game's string table, not a string of its own. The base's is Fallout's string. [measured: 4 bytes in every FULL field in Skyrim.esm]",
+   "type": "u32"
+  },
+  "MODT": {
+   "confidence": "documented",
+   "name": "Model Texture Hashes",
+   "note": "The model's texture hashes. Skyrim's MODT comes in two forms. Most have a 12-byte header \u2014 a version of 2, the entry count and a zero \u2014 and then the entries; the rest have no header at all and the entries simply fill the field. Each entry is 12 bytes: a hash, the \"dds\" extension and a second hash. The first word says which form it is, so the header is read first and the rest follows the form it implies. [measured: 12,057 of Skyrim.esm's MODT fields have no header, and 8,538 have one; every field is a multiple of twelve, and the headered ones are twelve more than a multiple of twelve.]",
+   "type": "SKYRIM_MODT"
+  }
+ },
+ "format": "fnv.schema/1"
+}

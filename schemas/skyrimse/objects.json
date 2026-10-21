@@ -2,9 +2,8 @@
  "format": "fnv.schema/1",
  "records": {
   "ARMO": {
-   "confidence": "observed",
+   "merge": true,
    "name": "Armor",
-   "note": "Skyrim's ARMO is FNV's with a shorter DATA. Measured on Skyrim.esm (2,762 instances): DATA is 8 bytes against FNV's, where the schema's `weight` field reads past the end. 8 bytes is value u32 + weight f32; the damage and armor-rating fields FNV declares are absent. [observed: 8B x2,762]",
    "subrecords": {
     "DATA": {
      "confidence": "observed",
@@ -37,9 +36,8 @@
    }
   },
   "WEAP": {
-   "confidence": "documented",
+   "merge": true,
    "name": "Weapon",
-   "note": "Skyrim's WEAP is FNV's with a shorter DATA. Measured on Skyrim.esm (2,484 instances, record versions 40 and 44): DATA is 10 bytes against FNV's, where the schema's `weight` field reads past the end. FNV's DATA is value u32, weight f32, damage u16, then the game-specific tail; Skyrim's stops after 10 bytes, so the schema's trailing fields are dropped here rather than guessed at. DNAM is 100 bytes and decodes with FNV's layout unchanged \u2014 only its `aim_arc` offset in FNV's copy is one byte short of the subrecord, which is an FNV schema gap, not a Skyrim difference. [observed: 10B x2,484]",
    "subrecords": {
     "DATA": {
      "confidence": "observed",

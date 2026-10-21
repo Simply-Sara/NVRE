@@ -1,0 +1,152 @@
+{
+ "format": "fnv.schema/1",
+ "types": {
+  "AMMO_DATA": {
+   "struct": [
+    {
+     "name": "projectile",
+     "note": "The projectile (PROJ).",
+     "type": "formid"
+    },
+    {
+     "name": "flags",
+     "note": "The ammunition's flags.",
+     "type": {
+      "bits": {
+       "0": "Ignores Normal Weapon Resistance",
+       "1": "Non-Playable",
+       "2": "Non-Bolt (Arrow/Bolt)"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "damage",
+     "note": "The damage.",
+     "type": "f32"
+    },
+    {
+     "name": "value",
+     "note": "The item's gold value.",
+     "type": "i32"
+    }
+   ]
+  },
+  "ARMO_BODT": {
+   "union": [
+    {
+     "name": "Body Template",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Body Template With Armour Type",
+     "size": 12,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       },
+       {
+        "name": "armor_type",
+        "note": "The armour type. Clothing is the default when it is not given.",
+        "type": "u32"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "RACE_BODT": {
+   "union": [
+    {
+     "name": "Body Template",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Body Template With Armour Type",
+     "size": 12,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       },
+       {
+        "name": "armor_type",
+        "note": "The armour type. Clothing is the default when it is not given.",
+        "type": "u32"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "WEAP_CRDT_LE": {
+   "struct": [
+    {
+     "name": "critical_damage",
+     "note": "The critical damage, 0 to 13.",
+     "type": "u16"
+    },
+    {
+     "name": "unknown1",
+     "note": "Unknown.",
+     "type": "u16"
+    },
+    {
+     "name": "critical_mult",
+     "note": "The critical damage multiplier, 0 to 1.5.",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "note": "The critical effect's flags.",
+     "type": {
+      "bits": {
+       "0": "Critical Effect On Death"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "critical_spell",
+     "note": "The critical spell effect (SPEL).",
+     "type": "formid"
+    }
+   ]
+  }
+ }
+}

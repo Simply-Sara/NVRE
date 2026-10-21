@@ -1,0 +1,71 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "AMMO": {
+   "merge": true,
+   "name": "Ammunition",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "UESP, Skyrim Mod:Mod File Format/AMMO. The ammunition's data, 16 bytes in the original edition and 20 in the Special Edition. [measured: 16 bytes in every DATA field in Skyrim.esm]",
+     "type": "AMMO_DATA"
+    }
+   }
+  },
+  "ARMO": {
+   "merge": true,
+   "name": "Armor",
+   "subrecords": {
+    "BODT": {
+     "confidence": "documented",
+     "name": "Body Template",
+     "note": "UESP, Skyrim Mod:Mod File Format/ARMO. The body template, 8 or 12 bytes. [measured: 8 bytes in 9 of Skyrim.esm's records and 12 in the rest]",
+     "type": "ARMO_BODT"
+    }
+   }
+  },
+  "RACE": {
+   "merge": true,
+   "name": "Race",
+   "subrecords": {
+    "BODT": {
+     "confidence": "documented",
+     "name": "Body Template",
+     "note": "UESP, Skyrim Mod:Mod File Format/RACE. The body template, 12 bytes. The Special Edition carries it in a BOD2 instead. [measured: 12 bytes in every BODT field in Skyrim.esm]",
+     "type": "RACE_BODT"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "General Race Stats",
+     "note": "UESP, Skyrim Mod:Mod File Format/RACE. The race's stats, 128 bytes. The Special Edition's is 164. [measured: 128 bytes in every DATA field in Skyrim.esm]",
+     "type": "RACE_DATA"
+    }
+   }
+  },
+  "WEAP": {
+   "merge": true,
+   "name": "Weapon",
+   "subrecords": {
+    "CRDT": {
+     "confidence": "documented",
+     "name": "Critical Damage",
+     "note": "UESP, Skyrim Mod:Mod File Format/WEAP. The critical damage, the multiplier, the flags and the critical spell. The Special Edition's is 24 bytes. [measured: 16 bytes in every CRDT field in Skyrim.esm]",
+     "type": "WEAP_CRDT_LE"
+    }
+   }
+  },
+  "WRLD": {
+   "merge": true,
+   "name": "Worldspace",
+   "subrecords": {
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Map Size",
+     "note": "UESP, Skyrim Mod:Mod File Format/WRLD. The map's usable width and height and its corner cells. The Special Edition's also carries the camera's height and pitch limits. [measured: 16 bytes in every MNAM field in Skyrim.esm]",
+     "type": "WRLD_MNAM"
+    }
+   }
+  }
+ }
+}

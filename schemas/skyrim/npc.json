@@ -1,0 +1,400 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "NPC_": {
+   "confidence": "documented",
+   "name": "Actor",
+   "note": "UESP, Skyrim Mod:Mod File Format/NPC_. [measured: 5,118 NPC_ records in Skyrim.esm; ACBS is 24 bytes here against Fallout New Vegas's 20, and DNAM is 52 bytes.]",
+   "subrecords": {
+    "ACBS": {
+     "confidence": "documented",
+     "name": "Character Base Stats",
+     "note": "The character base stats: flags, offsets, level and speed.",
+     "type": "ACBS"
+    },
+    "AIDT": {
+     "confidence": "documented",
+     "name": "AI Data",
+     "note": "The character's AI: aggression, confidence, morality and the aggro radii.",
+     "type": "AIDT"
+    },
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "ATKD": {
+     "confidence": "documented",
+     "name": "Attack Data",
+     "note": "The racial attack data, 44 bytes, shared with RACE.",
+     "type": "ATKD"
+    },
+    "ATKE": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "A 24-byte struct whose meaning is not documented.",
+     "type": "bytes"
+    },
+    "ATKR": {
+     "confidence": "documented",
+     "name": "Attack Race",
+     "note": "The RACE to take the attack data from.",
+     "type": "formid"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Class",
+     "note": "The character's class (CLAS).",
+     "type": "formid"
+    },
+    "COCT": {
+     "confidence": "documented",
+     "name": "Combat Style",
+     "note": "The character's combat style.",
+     "type": "formid"
+    },
+    "CRIF": {
+     "confidence": "documented",
+     "name": "Crime Faction",
+     "note": "The character's crime faction (FACT).",
+     "type": "formid"
+    },
+    "CSCR": {
+     "confidence": "documented",
+     "name": "Audio Template",
+     "note": "The NPC_ to take the sound template from.",
+     "type": "formid"
+    },
+    "CSDC": {
+     "confidence": "documented",
+     "name": "Sound Chance",
+     "note": "The chance the sound plays, 0 to 100. Always follows a CSDI.",
+     "type": "u8"
+    },
+    "CSDI": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "The sound to play, tied to the latest CSDT.",
+     "type": "formid"
+    },
+    "CSDT": {
+     "confidence": "documented",
+     "name": "Sound Type",
+     "note": "The event the sound is tied to.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Idle",
+       "1": "Aware",
+       "2": "Attack",
+       "3": "Hit",
+       "4": "Death",
+       "5": "Weapon",
+       "6": "Movement Loop",
+       "7": "Conscious Loop"
+      }
+     }
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length; marks the position of DNAM.",
+     "type": "bytes"
+    },
+    "DEST": {
+     "confidence": "documented",
+     "name": "Destruction Data",
+     "note": "The destructible object data.",
+     "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Skill And Stat Data",
+     "note": "The 18 base skills, the 18 mod skills, and the character's stats.",
+     "type": "NPC_DNAM"
+    },
+    "DOFT": {
+     "confidence": "documented",
+     "name": "Default Outfit",
+     "note": "The default outfit (OTFT).",
+     "type": "formid"
+    },
+    "DPLT": {
+     "confidence": "documented",
+     "name": "Default Package List",
+     "note": "The default package list (FLST).",
+     "type": "formid"
+    },
+    "DSTD": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "A 20-byte struct.",
+     "type": "bytes"
+    },
+    "DSTF": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Zero-length.",
+     "type": "bytes"
+    },
+    "ECOR": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FTST": {
+     "confidence": "documented",
+     "name": "Face Texture Set",
+     "note": "The face complexion (TXST).",
+     "type": "formid"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "UESP's lstring: an index into the game's string table, not a string of its own. [measured: 4 bytes in every such field in Skyrim.esm]",
+     "type": "u32"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Gift Filter",
+     "note": "The gifts (FLST).",
+     "type": "formid"
+    },
+    "HCLF": {
+     "confidence": "documented",
+     "name": "Hair Color",
+     "note": "The hair color (CLFM).",
+     "type": "formid"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Death Item",
+     "note": "The death item (LVLI).",
+     "type": "formid"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "The keywords. There is one per KSIZ, and KSIZ is a sibling subrecord rather than a count in the data, so the count comes from it.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "NAM5": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Flags or a marker; always FF 00.",
+     "type": "i16"
+    },
+    "NAM6": {
+     "confidence": "documented",
+     "name": "Height",
+     "note": "The NPC height multiplier.",
+     "type": "f32"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Weight",
+     "note": "The NPC weight multiplier.",
+     "type": "f32"
+    },
+    "NAM8": {
+     "confidence": "documented",
+     "name": "Sound Level",
+     "note": "How loud the character is.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Loud",
+       "1": "Normal",
+       "2": "Silent",
+       "3": "Very Loud"
+      }
+     }
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "Face Morph Values",
+     "note": "Eighteen face morph floats and an unknown value.",
+     "type": "NPC_FACE_MORPH"
+    },
+    "NAMA": {
+     "confidence": "documented",
+     "name": "Face Parts",
+     "note": "The face part presets, counted from zero.",
+     "type": "NPC_FACE_PARTS"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "Always 12 bytes, even when zero. Two three-component int16 vectors, the same ObjectBounds as the other games.",
+     "type": "ObjectBounds"
+    },
+    "PKID": {
+     "confidence": "documented",
+     "name": "AI Package",
+     "note": "The character's AI package (PACK).",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Head Parts",
+     "note": "The head part addons (HDPT) \u2014 hair, eyes, scars.",
+     "type": "formid"
+    },
+    "PRKR": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An 8-byte struct.",
+     "type": "bytes"
+    },
+    "PRKZ": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Skin Tone",
+     "note": "The skin tone's red, green and blue channels.",
+     "type": "NPC_SKIN_TONE"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Race",
+     "note": "The character's race (RACE).",
+     "type": "formid"
+    },
+    "SHRT": {
+     "confidence": "documented",
+     "name": "Short Alias",
+     "note": "UESP's lstring: an index into the game's string table, not a string of its own. [measured: 4 bytes in every such field in Skyrim.esm]",
+     "type": "u32"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Faction",
+     "note": "The character's faction (FACT) and rank.",
+     "type": {
+      "struct": [
+       {
+        "name": "faction",
+        "type": "formid"
+       },
+       {
+        "name": "rank",
+        "note": "Most are 0; the player's factions are often -1.",
+        "type": "i8"
+       },
+       {
+        "name": "unused",
+        "note": "Unused.",
+        "type": {
+         "array": "u8",
+         "count": 3
+        }
+       }
+      ]
+     }
+    },
+    "SOFT": {
+     "confidence": "documented",
+     "name": "Sleep Outfit",
+     "note": "The sleeping outfit (OTFT).",
+     "type": "formid"
+    },
+    "SPCT": {
+     "confidence": "documented",
+     "name": "Spell Count",
+     "note": "How many spells follow.",
+     "type": "u32"
+    },
+    "SPLO": {
+     "confidence": "documented",
+     "name": "Spell",
+     "note": "A spell (SPEL) or a shout (SHOU). There is one per SPCT.",
+     "type": "formid"
+    },
+    "SPOR": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "TIAS": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "The unknown field after each TINV. The values run from -1 to 1234.",
+     "type": "i16"
+    },
+    "TINC": {
+     "confidence": "documented",
+     "name": "Tint Color",
+     "note": "The face tinting colour, four bytes of rgba. One follows each TINI; the last byte is 00 in most records and FF in some.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    },
+    "TINI": {
+     "confidence": "documented",
+     "name": "Tint Item",
+     "note": "The face tint layer, an enumeration whose values run from 1 to 69.",
+     "type": "u16"
+    },
+    "TINV": {
+     "confidence": "documented",
+     "name": "Tint Value",
+     "note": "A hundred times the interpolation value. One follows each TINC.",
+     "type": "i32"
+    },
+    "TPLT": {
+     "confidence": "documented",
+     "name": "Template",
+     "note": "The base template (NPC_ or LVLN).",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The attached script's info.",
+     "type": "bytes"
+    },
+    "VTCK": {
+     "confidence": "documented",
+     "name": "Voice Type",
+     "note": "The voice type (VTYP).",
+     "type": "formid"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Worn Armor",
+     "note": "The worn armor skin (ARMO).",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Combat Style",
+     "note": "The combat style (CSTY).",
+     "type": "formid"
+    }
+   }
+  }
+ }
+}

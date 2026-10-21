@@ -7,14 +7,19 @@ schemas/fnv/     the Fallout family: Fallout: New Vegas's own types, and the
                  records where its layout differs from the base's. Fallout 3
                  loads this as its family layer.
 schemas/fo3/     Fallout 3's own types and differences.
-schemas/skyrim/  Skyrim LE's own types and differences.
-schemas/skyrimse/Skyrim Special Edition's own types and differences.
+schemas/skyrim/  the Skyrim family: the layouts the original edition and the
+                 Special Edition share.
+schemas/skyrimle/the original edition's own types and differences.
+schemas/skyrimse/the Special Edition's own types and differences.
 schemas/fo4/     Fallout 4's own types and differences.
 ```
 
-The chain is `base -> family -> game`. Fallout 3 and Fallout: New Vegas are the
-same family and share a layer; Skyrim and Fallout 4 are their own families and
-have none yet.
+The chain is `base -> family -> version`. A family is a set of versions of the
+same game. Fallout 3 and Fallout: New Vegas are one family, and so are Skyrim
+and Skyrim Special Edition: the two Skyrim versions differ in six records and
+share the rest, so the shared layouts live in `schemas/skyrim` and each
+version's directory holds only its own differences. Fallout 4 is its own
+family and has no shared layer yet.
 
 Oblivion is not in this set. Its container revision predates the `TES4` layout
 the reader parses, so `Oblivion.esm` does not open at all; nothing measured for
@@ -132,11 +137,11 @@ Current numbers through the full chain:
 |---|---|---|
 | Fallout: New Vegas | 100.00% (2,321,456) | byte-identical |
 | Fallout 3 | 100.00% (2,634,084) | byte-identical |
-| Skyrim LE | 66.75% | — |
+| Skyrim LE | 100.00% (4,130,941) | byte-identical |
 | Skyrim SE | 100.00% (4,131,332) | byte-identical (3,674,003) |
 | Fallout 4 | 60.14% | — |
 
-The Skyrim SE figures are for `base + skyrimse` alone:
+The Skyrim figures are for `base + skyrim + skyrim<version>` alone:
 
 | Master | Subrecords | Coverage |
 |---|---|---|
@@ -145,6 +150,24 @@ The Skyrim SE figures are for `base + skyrimse` alone:
 | `Dawnguard.esm` | 513,461 | 100.00% |
 | `Dragonborn.esm` | 812,296 | 100.00% |
 | `HearthFires.esm` | 114,323 | 100.00% |
+
+And the original edition's, over `base + skyrim + skyrimle`:
+
+| Master | Subrecords | Coverage |
+|---|---|---|
+| `Skyrim.esm` | 4,130,941 | 100.00% |
+| `Update.esm` | 86,370 | 100.00% |
+| `Dawnguard.esm` | 509,751 | 100.00% |
+| `Dragonborn.esm` | 811,372 | 100.00% |
+| `HearthFires.esm` | 101,056 | 100.00% |
+
+The two versions differ in six records — `AMMO`, `ARMO`, `RACE`, `WATR`,
+`WEAP` and `WRLD` — and the differences are the ones UESP names: the
+original edition's `AMMO.DATA` is 16 bytes and the Special Edition's is 20,
+its `RACE.DATA` is 128 and the Special Edition's is 164, its `WEAP.CRDT` is
+16 and the Special Edition's is 24, and its `WRLD.MNAM` is 16 and the
+Special Edition's is 28. The body template moved from `RACE.BODT` to
+`RACE.BOD2`, and `ARMO` grew a `BOD2` of its own.
 
 ## Adding a record to `base`
 

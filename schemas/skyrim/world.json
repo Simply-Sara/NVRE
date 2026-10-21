@@ -1,0 +1,1515 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "ARMO": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Armor",
+   "note": "UESP, Skyrim Mod:Mod File Format/ARMO. Skyrim's armor carries a body template, a base value and a weight, and separate male and female models. [measured: 2,762 ARMO records in Skyrim.esm; DATA is 8 bytes and BOD2 is 8 bytes in almost all of them]",
+   "subrecords": {
+    "BAMT": {
+     "confidence": "documented",
+     "name": "Bash Material",
+     "note": "The MATT. Only shields have one.",
+     "type": "formid"
+    },
+    "BIDS": {
+     "confidence": "documented",
+     "name": "Bash Impact Data Set",
+     "note": "The IPDS. Only shields have one.",
+     "type": "formid"
+    },
+    "BOD2": {
+     "confidence": "documented",
+     "name": "Body Template",
+     "note": "The body template, 8 bytes. The armor type is in BODT, which is 12 bytes. [measured: BOD2 is 8 bytes in 2,752 of Skyrim.esm's 2,762 ARMO records, and BODT is 8 or 12 bytes in the other ten]",
+     "type": "ARMO_BOD2_8"
+    },
+    "BODT": {
+     "confidence": "documented",
+     "name": "Body Template",
+     "note": "The body template, 8 or 12 bytes. The 12-byte form carries the armor type as well. [measured: 766 of Skyrim.esm's ARMO records have a BODT and the rest have a BOD2]",
+     "type": "ARMO_BODT"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The armour's base value and weight.",
+     "type": "ARMO_DATA"
+    },
+    "DESC": {
+     "confidence": "documented",
+     "name": "Description",
+     "note": "Usually zero, unless the enchantment is not a standard one such as the Archmage Robes.",
+     "type": "u32"
+    },
+    "DEST": {
+     "confidence": "documented",
+     "name": "Destruction Data",
+     "note": "The destructible object data, with the DSTD, DMDL, DMDT and DMDS fields.",
+     "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Armor Rating",
+     "note": "The base armor rating times a hundred. Only the lower sixteen bits are used.",
+     "type": "u32"
+    },
+    "EAMT": {
+     "confidence": "documented",
+     "name": "Enchantment Amount",
+     "note": "The enchantment's amount.",
+     "type": "u16"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "EITM": {
+     "confidence": "documented",
+     "name": "Enchantment",
+     "note": "The enchantment (ENCH). There can be only one.",
+     "type": "formid"
+    },
+    "ETYP": {
+     "confidence": "documented",
+     "name": "Equip Slot",
+     "note": "The EQUP record. Only shields have one.",
+     "type": "formid"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "ICO2": {
+     "confidence": "documented",
+     "name": "Female Inventory Image",
+     "note": "The female inventory image's filename.",
+     "type": "zstring"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Inventory Image",
+     "note": "The inventory image's filename.",
+     "type": "zstring"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "The keywords. There is one per KSIZ, and KSIZ is a sibling subrecord rather than a count in the data, so the count comes from it.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "MIC2": {
+     "confidence": "documented",
+     "name": "Female Message Image",
+     "note": "The female message image's filename.",
+     "type": "zstring"
+    },
+    "MICO": {
+     "confidence": "documented",
+     "name": "Message Image",
+     "note": "The message image's filename.",
+     "type": "zstring"
+    },
+    "MO2S": {
+     "confidence": "documented",
+     "name": "Male Alternate Textures",
+     "note": "The alternate textures, used when overriding a nif's textures with texture sets.",
+     "type": "bytes"
+    },
+    "MO2T": {
+     "confidence": "documented",
+     "name": "Male Model Data",
+     "note": "The male model's texture data.",
+     "type": "bytes"
+    },
+    "MO4S": {
+     "confidence": "documented",
+     "name": "Female Alternate Textures",
+     "note": "The alternate textures, used when overriding a nif's textures with texture sets.",
+     "type": "bytes"
+    },
+    "MO4T": {
+     "confidence": "documented",
+     "name": "Female Model Data",
+     "note": "The female model's texture data.",
+     "type": "bytes"
+    },
+    "MOD2": {
+     "confidence": "documented",
+     "name": "Male Model",
+     "note": "The male model, relative to MaleModels\\.",
+     "type": "zstring"
+    },
+    "MOD4": {
+     "confidence": "documented",
+     "name": "Female Model",
+     "note": "The female model, relative to FemaleModels\\.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The armour's model, with the MODB, MODT, MODS and MODD fields.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "Always 12 bytes, even when all zero.",
+     "type": "ObjectBounds"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Race",
+     "note": "The RACE the armour is for. It is 0x19, the default race, for most records.",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Template",
+     "note": "The ARMO record to use as a template.",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The scripting info.",
+     "type": "bytes"
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Pickup Sound",
+     "note": "The sound (SNDR) played when the armour is picked up.",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Drop Sound",
+     "note": "The sound (SNDR) played when the armour is dropped.",
+     "type": "formid"
+    }
+   }
+  },
+  "CELL": {
+   "confidence": "documented",
+   "name": "Cell",
+   "note": "UESP, Skyrim Mod:Mod File Format/CELL. A cell holds either an interior or an exterior, in a top group of its own or inside a worldspace. [measured: 15,269 MHDT fields of 1,028 bytes each and 6,019 TVDT fields of 684 bytes each in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The cell's flags. The field is one byte in 331 of Skyrim.esm's 17,568 cells and two bytes in the rest.",
+     "type": {
+      "union": [
+       {
+        "name": "One Byte",
+        "size": 1,
+        "type": {
+         "bits": {
+          "0": "Interior",
+          "1": "Has Water",
+          "2": "Can't Travel From Here",
+          "3": "No LOD Water",
+          "5": "Public Area",
+          "6": "Hand Changed",
+          "7": "Show Sky",
+          "8": "Use Sky Lighting"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "Two Bytes",
+        "size": 2,
+        "type": "CELL_DATA"
+       }
+      ]
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Location",
+     "note": "The cell's location (LCTN).",
+     "type": "formid"
+    },
+    "LTMP": {
+     "confidence": "documented",
+     "name": "Lighting Template",
+     "note": "The interior lighting (LGTM).",
+     "type": "formid"
+    },
+    "MHDT": {
+     "confidence": "documented",
+     "name": "Max Height Data",
+     "note": "The per-quad height ceilings the dragon flight system uses to work out the clearance over the cell's exterior airspace. The terrain rendering does not use it.",
+     "type": "CELL_MHDT"
+    },
+    "TVDT": {
+     "confidence": "documented",
+     "name": "Tree Data",
+     "note": "684 bytes of tree data.",
+     "type": "bytes"
+    },
+    "XCAS": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "XCCM": {
+     "confidence": "documented",
+     "name": "Climate",
+     "note": "The climate, for an interior cell that behaves like an exterior one. It is only in interior cells.",
+     "type": "formid"
+    },
+    "XCIM": {
+     "confidence": "documented",
+     "name": "Climate",
+     "note": "The climate (CLMT).",
+     "type": "formid"
+    },
+    "XCLC": {
+     "confidence": "documented",
+     "name": "Grid Location",
+     "note": "The cell's grid location and flags. Always in an exterior cell and never in an interior one.",
+     "type": "CELL_XCLC"
+    },
+    "XCLL": {
+     "confidence": "documented",
+     "name": "Lighting",
+     "note": "The cell's lighting, 92 bytes in most cells and 64 in one. The layout is not documented in full, so it is left opaque.",
+     "type": "bytes"
+    },
+    "XCLR": {
+     "confidence": "documented",
+     "name": "Regions",
+     "note": "The regions containing the cell. It is a run of formids with no count of its own.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "XCLW": {
+     "confidence": "documented",
+     "name": "Water Type",
+     "note": "The water (WATR).",
+     "type": "formid"
+    },
+    "XCMO": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "XCWT": {
+     "confidence": "documented",
+     "name": "Water",
+     "note": "The water (WATR) for this cell.",
+     "type": "formid"
+    },
+    "XEZN": {
+     "confidence": "documented",
+     "name": "Encounter Zone",
+     "note": "The encounter zone (ECZN).",
+     "type": "formid"
+    },
+    "XILL": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "The id of an NPC_ or a FLST. It is only in interior cells.",
+     "type": "formid"
+    },
+    "XLCN": {
+     "confidence": "documented",
+     "name": "Location",
+     "note": "The cell's location (LCTN).",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u8"
+    },
+    "XOWN": {
+     "confidence": "documented",
+     "name": "Owner",
+     "note": "The owning NPC or faction. It is only in interior cells.",
+     "type": "formid"
+    },
+    "XWCN": {
+     "confidence": "documented",
+     "name": "Water Current Size",
+     "note": "The size of the XWCU divided by sixteen. Only one occurrence, with the value 0x04.",
+     "type": "u32"
+    },
+    "XWCS": {
+     "confidence": "documented",
+     "name": "Water Current Size",
+     "note": "The size of the XWCU divided by sixteen. The CK changes this into the use of XWCN, and it always has the value three in Skyrim.esm.",
+     "type": "u32"
+    },
+    "XWCU": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "The water current's linear and angular velocity, and a struct of zeroes. The layout is not documented, so it is left opaque.",
+     "type": "bytes"
+    },
+    "XWEM": {
+     "confidence": "documented",
+     "name": "Water Environment Map",
+     "note": "The water environment map. It is only in interior cells.",
+     "type": "zstring"
+    }
+   }
+  },
+  "FACT": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Faction",
+   "note": "UESP, Skyrim Mod:Mod File Format/FACT. [measured: 996 VENV fields in Skyrim.esm]",
+   "subrecords": {
+    "CITC": {
+     "confidence": "documented",
+     "name": "Condition Count",
+     "note": "How many conditions follow. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "CRGR": {
+     "confidence": "documented",
+     "name": "Crime Group",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Crime Factions List (FLST)",
+     "type": "formid"
+    },
+    "CRVA": {
+     "confidence": "documented",
+     "name": "Crime Gold",
+     "note": "The crime gold, a struct of 12, 16 or 20 bytes depending on the record version.",
+     "type": "bytes"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "CTDA",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Conditions, with leading CITC field. Vendor will only buy/sell when these conditions are met.",
+     "type": "bytes"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "flags",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Flags",
+     "type": "u32"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The faction's data.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "editorID",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Faction name",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Female Rank Title",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Female title",
+     "type": "u32"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "name",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Full name",
+     "type": "u32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Rank Insignia (Unused)",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "zstring"
+    },
+    "JAIL": {
+     "confidence": "documented",
+     "name": "Prison Marker",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - The exterior jail marker for the faction's prison.",
+     "type": "formid"
+    },
+    "JOUT": {
+     "confidence": "documented",
+     "name": "Jail Outfit",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. OTFT formid - Jail outfit the player is given.",
+     "type": "formid"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Male Rank Title",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Male title",
+     "type": "u32"
+    },
+    "PLCN": {
+     "confidence": "documented",
+     "name": "Player Belongings Chest",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Player's inventory is stored in this chest.",
+     "type": "formid"
+    },
+    "PLVD": {
+     "confidence": "documented",
+     "name": "PLVD",
+     "note": "Where the goods may be sold.",
+     "type": "FACT_PLVD"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Rank ID",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Rank ID",
+     "type": "u32"
+    },
+    "STOL": {
+     "confidence": "documented",
+     "name": "Evidence Chest",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Stolen goods are stored in this chest.",
+     "type": "formid"
+    },
+    "VENC": {
+     "confidence": "documented",
+     "name": "Vendor Chest",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Reference to vendor chest (REFR)",
+     "type": "formid"
+    },
+    "VEND": {
+     "confidence": "documented",
+     "name": "Vendor List",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Merchandise list (FLST)",
+     "type": "formid"
+    },
+    "VENV": {
+     "confidence": "documented",
+     "name": "VENV",
+     "note": "The vendor's hours and radius. It is all zeroes unless the faction is a vendor, and it is always present from record version 29 on and never before it.",
+     "type": "FACT_VENV"
+    },
+    "WAIT": {
+     "confidence": "documented",
+     "name": "Follower Wait Marker",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Marker the player's followers are assigned to wait at.",
+     "type": "formid"
+    },
+    "WMI1": {
+     "confidence": "documented",
+     "name": "Reputation",
+     "note": "xEdit wbDefinitionsFNV.pas FACT record",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Interfaction Relations",
+     "note": "The faction's relations with another faction.",
+     "type": "FACT_XNAM"
+    }
+   }
+  },
+  "LCTN": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Location",
+   "note": "UESP, Skyrim Mod:Mod File Format/LCTN. A location holds the population that belongs to it: the actors, the unique actors, the static references and the enable points. [measured: 572 LCSR and 354 LCEC fields in Skyrim.esm]",
+   "subrecords": {
+    "ACEC": {
+     "confidence": "documented",
+     "name": "Encounter",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The encounter: a worldspace and a run of int16 pairs. Since Dawnguard this field is named ACEC rather than LCEC, and the contents are the same.",
+     "type": {
+      "struct": [
+       {
+        "name": "world",
+        "note": "The worldspace (WRLD).",
+        "type": "formid"
+       },
+       {
+        "name": "points",
+        "note": "The encounter's points, in pairs.",
+        "type": {
+         "array": "i16"
+        }
+       }
+      ]
+     }
+    },
+    "ACEP": {
+     "confidence": "documented",
+     "name": "Enable Points",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The enable points: a run of twelve-byte structs with no count of their own. Since Dawnguard this field is named ACEP rather than LCEP, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCEP"
+     }
+    },
+    "ACID": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. Since Dawnguard this field is named ACID rather than LCID. It is a run of form ids with no count of its own. [observed: 124, 172 and 352 bytes]",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "ACPR": {
+     "confidence": "documented",
+     "name": "Population Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The population refs: a run of twelve-byte structs with no count of their own. Since Dawnguard this field is named ACPR rather than LCPR, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCPR"
+     }
+    },
+    "ACSR": {
+     "confidence": "documented",
+     "name": "Static Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The static refs: a run of sixteen-byte structs with no count of their own. Since Dawnguard this field is named ACSR rather than LCSR, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCSR"
+     }
+    },
+    "ACUN": {
+     "confidence": "documented",
+     "name": "Unique Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The unique refs: a run of twelve-byte structs with no count of their own. Since Dawnguard this field is named ACUN rather than LCUN, and the contents are the same.",
+     "type": {
+      "array": "LCTN_LCUN"
+     }
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "A KYWD record. There is one per KSIZ.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "LCEC": {
+     "confidence": "documented",
+     "name": "Encounter",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The encounter: a worldspace and a run of int16 pairs.",
+     "type": {
+      "struct": [
+       {
+        "name": "world",
+        "note": "The worldspace (WRLD).",
+        "type": "formid"
+       },
+       {
+        "name": "points",
+        "note": "The encounter's points, in pairs.",
+        "type": {
+         "array": "i16"
+        }
+       }
+      ]
+     }
+    },
+    "LCEP": {
+     "confidence": "documented",
+     "name": "Enable Points",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The enable points: a run of twelve-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCEP"
+     }
+    },
+    "LCID": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "LCPR": {
+     "confidence": "documented",
+     "name": "Population Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The population refs: a run of twelve-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCPR"
+     }
+    },
+    "LCSR": {
+     "confidence": "documented",
+     "name": "Static Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The static refs: a run of sixteen-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCSR"
+     }
+    },
+    "LCUN": {
+     "confidence": "documented",
+     "name": "Unique Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The unique refs: a run of twelve-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCUN"
+     }
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent Location",
+     "note": "The parent LCTN.",
+     "type": "formid"
+    },
+    "RCEC": {
+     "confidence": "documented",
+     "name": "Encounter",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. Since Dawnguard this field is named RCEC rather than LCEC. [observed: 8 bytes]",
+     "type": "bytes"
+    },
+    "RCPR": {
+     "confidence": "documented",
+     "name": "Population References",
+     "note": "The actors. There is only one instance of this in the game data.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    }
+   }
+  },
+  "NAVI": {
+   "confidence": "hypothesis",
+   "merge": true,
+   "name": "Navmesh Info",
+   "note": "Skyrim's NAVI holds one NVMI per navmesh triangle group. The layout is not documented: UESP's NAVM page gives only the signature, and Fallout's layout does not fit. Measured on Skyrim.esm, the 15,462 NVMI records run from 49 to 3,021 bytes, and a field four bytes in at offset 24 counts up in step with the length, but no field explains the length on its own. The contents are therefore read as raw bytes rather than decoded field by field.",
+   "subrecords": {
+    "NVCI": {
+     "confidence": "hypothesis",
+     "name": "Connection",
+     "note": "The navmesh's connections. The layout is not documented, so it is read as raw bytes.",
+     "type": "bytes"
+    },
+    "NVER": {
+     "confidence": "hypothesis",
+     "name": "Version",
+     "note": "The navmesh's version.",
+     "type": "u32"
+    },
+    "NVMI": {
+     "confidence": "hypothesis",
+     "name": "Navmesh Info",
+     "note": "The navmesh's geometry. The layout is not documented, so it is read as raw bytes.",
+     "type": "bytes"
+    },
+    "NVPP": {
+     "confidence": "documented",
+     "name": "Preferred Pathing",
+     "note": "UESP, Skyrim Mod:Mod File Format/NAVI. The preferred pathing data. [observed: 25,696 bytes]",
+     "type": "bytes"
+    },
+    "NVSI": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "UESP, Skyrim Mod:Mod File Format/NAVI. Appears since Dawnguard and seems to be only NAVM references. It is a run of form ids with no count of its own. [observed: 4, 20, 24 and 236 bytes]",
+     "type": {
+      "array": "formid"
+     }
+    }
+   }
+  },
+  "REFR": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Reference",
+   "note": "UESP, Skyrim Mod:Mod File Format/REFR. A reference places a base object in the world. INAM means two things: the image space in the header, and the patrol data's idle name in the marker set. The header's INAM is the one decoded here, since the idle name is far rarer. [measured: 10,103 XLIG, 8,783 XLRT, 3,179 PDTO and 2,702 XLIB fields in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Locational Data",
+     "note": "The reference's x, y and z position and rotation, in radians. The floor of x or y divided by 4096 gives the cell location.",
+     "type": {
+      "struct": [
+       {
+        "name": "position",
+        "type": {
+         "array": "f32",
+         "count": 3
+        }
+       },
+       {
+        "name": "rotation",
+        "type": {
+         "array": "f32",
+         "count": 3
+        }
+       }
+      ]
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Marker Flags",
+     "note": "0x01 = Visible, 0x02 = Can Travel To, 0x04 = Show All Hidden.",
+     "type": "u8"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The marker's name in the game.",
+     "type": "u32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Image Space",
+     "note": "The image space. INAM is used differently in another context.",
+     "type": "formid"
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Lighting Template",
+     "note": "The lighting template.",
+     "type": "formid"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Base Object",
+     "note": "The formid of whatever the reference places.",
+     "type": "formid"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length; it appears with XACT when the object is open by default.",
+     "type": "bytes"
+    },
+    "PDTO": {
+     "confidence": "documented",
+     "name": "Patrol Data Topic",
+     "note": "The same struct as PACK's PDTO field.",
+     "type": "PDTO"
+    },
+    "SCHR": {
+     "confidence": "documented",
+     "name": "Old Script",
+     "note": "The old scripting field.",
+     "type": "bytes"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Marker Type",
+     "note": "The icon for the map marker, an enumeration.",
+     "type": "u16"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The scripting info.",
+     "type": "bytes"
+    },
+    "XACT": {
+     "confidence": "documented",
+     "name": "Activation",
+     "note": "Always 0x0d. It appears with ONAM when the object is open by default.",
+     "type": "u32"
+    },
+    "XALP": {
+     "confidence": "documented",
+     "name": "Alpha Cutoff",
+     "note": "The current and default alpha cutoffs. Which one the CK shows is not always clear.",
+     "type": "REFR_XALP"
+    },
+    "XAPD": {
+     "confidence": "documented",
+     "name": "Activation Parent Flags",
+     "note": "0x01 = Parent Activate Only.",
+     "type": "u8"
+    },
+    "XAPR": {
+     "confidence": "documented",
+     "name": "Activation Parent",
+     "note": "The REFR to activate, usually a STAT, and the delay.",
+     "type": "REFR_XAPR"
+    },
+    "XATR": {
+     "confidence": "documented",
+     "name": "Attach Reference",
+     "note": "The reference to attach to.",
+     "type": "formid"
+    },
+    "XCNT": {
+     "confidence": "documented",
+     "name": "Item Count",
+     "note": "How many items are in the container, when there is more than one.",
+     "type": "u32"
+    },
+    "XCVL": {
+     "confidence": "documented",
+     "name": "Water Current Linear Velocity",
+     "note": "The x, y and z linear velocity of the water current.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    "XCVR": {
+     "confidence": "documented",
+     "name": "Water Current Rotational Velocity",
+     "note": "The x, y and z rotational velocity of the water current.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    "XCZA": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "XCZC": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "XEMI": {
+     "confidence": "documented",
+     "name": "Emitted Light",
+     "note": "The emitted light (LIGH).",
+     "type": "formid"
+    },
+    "XEZN": {
+     "confidence": "documented",
+     "name": "Encounter Zone",
+     "note": "The encounter zone (ECZN).",
+     "type": "formid"
+    },
+    "XFVC": {
+     "confidence": "documented",
+     "name": "Favor Cost",
+     "note": "The favour the reference costs.",
+     "type": "f32"
+    },
+    "XHTW": {
+     "confidence": "documented",
+     "name": "Head Tracking Weight",
+     "note": "The head tracking weight.",
+     "type": "f32"
+    },
+    "XIS2": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length; present when the reference is ignored by something.",
+     "type": "bytes"
+    },
+    "XLCM": {
+     "confidence": "documented",
+     "name": "Type",
+     "note": "Only the values 0x00, 0x02 and 0x03 are seen.",
+     "type": "u32"
+    },
+    "XLCN": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "XLIB": {
+     "confidence": "documented",
+     "name": "Leveled Item Base",
+     "note": "The LVLI of the objects that use this as a base.",
+     "type": "formid"
+    },
+    "XLIG": {
+     "confidence": "documented",
+     "name": "Light Data",
+     "note": "UESP, Skyrim Mod:Mod File Format/REFR. The light's field of view offset, fade offset, end distance cap and shadow depth bias. [measured: 16 bytes in every XLIG field in Skyrim.esm but one, which is 20]",
+     "type": {
+      "union": [
+       {
+        "name": "Sixteen Bytes",
+        "size": 16,
+        "type": {
+         "struct": [
+          {
+           "name": "field_of_view_offset",
+           "type": "f32"
+          },
+          {
+           "name": "fade_offset",
+           "type": "f32"
+          },
+          {
+           "name": "end_distance_cap",
+           "type": "f32"
+          },
+          {
+           "name": "shadow_depth_bias",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "Twenty Bytes",
+        "size": 20,
+        "type": {
+         "struct": [
+          {
+           "name": "field_of_view_offset",
+           "type": "f32"
+          },
+          {
+           "name": "fade_offset",
+           "type": "f32"
+          },
+          {
+           "name": "end_distance_cap",
+           "type": "f32"
+          },
+          {
+           "name": "shadow_depth_bias",
+           "type": "f32"
+          },
+          {
+           "name": "unknown",
+           "type": "u32"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    "XLKR": {
+     "confidence": "documented",
+     "name": "Linked Reference",
+     "note": "The keyword and the REFR the reference is linked to, usually a STAT.",
+     "type": "REFR_XLKR"
+    },
+    "XLOC": {
+     "confidence": "documented",
+     "name": "Lock Information",
+     "note": "The lock's level, its key and its flags.",
+     "type": "REFR_XLOC"
+    },
+    "XLRL": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An LCTN. It is not in the shipped .esm files, and the CK adds it when the reference is edited.",
+     "type": "formid"
+    },
+    "XLRM": {
+     "confidence": "documented",
+     "name": "Location Room Marker",
+     "note": "A REFR, usually to a STAT.",
+     "type": "formid"
+    },
+    "XLRT": {
+     "confidence": "documented",
+     "name": "Location Ref Type",
+     "note": "The LCRT record.",
+     "type": "formid"
+    },
+    "XLTW": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "XMBO": {
+     "confidence": "documented",
+     "name": "Model Bounds",
+     "note": "The x, y and z bounds. They are usually the same as the XPRM bounds.",
+     "type": {
+      "array": "f32",
+      "count": 3
+     }
+    },
+    "XMBP": {
+     "confidence": "documented",
+     "name": "MultiBound Primitive Marker",
+     "note": "The multi-bound primitive's marker. [observed: 0 bytes]",
+     "type": "bytes"
+    },
+    "XMBR": {
+     "confidence": "documented",
+     "name": "Multi Bound Reference",
+     "note": "The multi-bound reference.",
+     "type": "formid"
+    },
+    "XMRK": {
+     "confidence": "documented",
+     "name": "Map Marker Data",
+     "note": "The map marker's data. [observed: 0 bytes]",
+     "type": "bytes"
+    },
+    "XNDP": {
+     "confidence": "documented",
+     "name": "Door Pivot",
+     "note": "The navmesh triangle the door pivots on.",
+     "type": "REFR_XNDP"
+    },
+    "XOCP": {
+     "confidence": "documented",
+     "name": "Occlusion Plane Data",
+     "note": "The occlusion plane's data. [observed: 36 bytes]",
+     "type": "bytes"
+    },
+    "XOWN": {
+     "confidence": "documented",
+     "name": "Owner",
+     "note": "The owner. It is usually a FACT, but a horse or a dog has an NPC_.",
+     "type": "formid"
+    },
+    "XPOD": {
+     "confidence": "documented",
+     "name": "Portal Destination",
+     "note": "The origin and destination REFR of a portal.",
+     "type": {
+      "array": "formid",
+      "count": 2
+     }
+    },
+    "XPPA": {
+     "confidence": "documented",
+     "name": "Marker",
+     "note": "Zero-length. XPRD, XPPA, PDTO and INAM are a set.",
+     "type": "bytes"
+    },
+    "XPRD": {
+     "confidence": "documented",
+     "name": "Patrol Data",
+     "note": "The patrol data's idle time.",
+     "type": "f32"
+    },
+    "XPRM": {
+     "confidence": "documented",
+     "name": "Primitive",
+     "note": "The reference's primitive: its bounds, its colour and its shape.",
+     "type": "REFR_XPRM"
+    },
+    "XPWR": {
+     "confidence": "documented",
+     "name": "Reflected By",
+     "note": "The reference that reflects this one.",
+     "type": "formid"
+    },
+    "XRDS": {
+     "confidence": "documented",
+     "name": "Radius",
+     "note": "About 1.25. It controls the radii on objects like lights.",
+     "type": "f32"
+    },
+    "XRGD": {
+     "confidence": "documented",
+     "name": "Ragdoll Data",
+     "note": "A long binary stream whose contents are not understood.",
+     "type": "bytes"
+    },
+    "XRMR": {
+     "confidence": "documented",
+     "name": "Reference Marker",
+     "note": "The marker the reference sits in, and how many XLRM follow.",
+     "type": "REFR_XRMR"
+    },
+    "XSCL": {
+     "confidence": "documented",
+     "name": "Scale",
+     "note": "The reference's scale.",
+     "type": "f32"
+    },
+    "XSPC": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "XTEL": {
+     "confidence": "documented",
+     "name": "Door Teleport",
+     "note": "The door the teleport goes to, and where.",
+     "type": "REFR_XTEL"
+    },
+    "XTNM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "XTRI": {
+     "confidence": "documented",
+     "name": "Primitive",
+     "note": "The primitive's collision layer, chosen by matching the BNAM field of a COLL form.",
+     "type": "u32"
+    },
+    "XWCN": {
+     "confidence": "documented",
+     "name": "Water Current Count",
+     "note": "The size of the XWCU divided by sixteen.",
+     "type": "u32"
+    },
+    "XWCU": {
+     "confidence": "documented",
+     "name": "Water Current",
+     "note": "The water current, a series of sixteen-byte structures. There seem to be three of them.",
+     "type": "bytes"
+    }
+   }
+  },
+  "STAT": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Static",
+   "note": "UESP, Skyrim Mod:Mod File Format/STAT. [measured: 824 MNAM fields in Skyrim.esm]",
+   "subrecords": {
+    "BRUS": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "UESP, Skyrim Mod:Mod File Format/STAT. [measured: 8 bytes in most records and 12 in Update.esm's 379 and a few of Dawnguard.esm's]",
+     "type": "STAT_DNAM"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "LOD Data",
+     "note": "The static's level of detail models, present when the HasDistanceLOD flag is set. It is 1,040 bytes: four 260-byte model paths, from the high detail model to the low detail one, with junk after each terminated string. The first empty string is the lowest detail model, so if the second is empty the third and fourth are too.",
+     "type": "bytes"
+    },
+    "MO2S": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures.",
+     "type": "bytes"
+    },
+    "MO4S": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures.",
+     "type": "bytes"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The static's model, with the MODB, MODT, MODS and MODD fields.",
+     "type": "bytes"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures.",
+     "type": "bytes"
+    },
+    "MODT": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The static's bounds, always 12 bytes.",
+     "type": "ObjectBounds"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Race",
+     "note": "The RACE the static belongs to.",
+     "type": "formid"
+    }
+   }
+  },
+  "WRLD": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Worldspace",
+   "note": "UESP, Skyrim Mod:Mod File Format/WRLD. A worldspace holds a nested group with a CELL and the exterior cell blocks. [measured: 11,105 RNAM fields in Skyrim.esm, holding the large references that place a base object of object size 512 or greater]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Climate",
+     "note": "The climate (CLMT).",
+     "type": "formid"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The worldspace's flags.",
+     "type": "WRLD_DATA"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Land Data",
+     "note": "The default land and ocean water levels. They are -27000 and -14000.0 for Tamriel.",
+     "type": {
+      "array": "f32",
+      "count": 2
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The worldspace's name in the construction kit.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "The worldspace's name in the game.",
+     "type": "u32"
+    },
+    "LTMP": {
+     "confidence": "documented",
+     "name": "Lighting Template",
+     "note": "The interior lighting (LGTM).",
+     "type": "formid"
+    },
+    "MHDT": {
+     "confidence": "documented",
+     "name": "Max Height Data",
+     "note": "Eight bytes of the min and max x and y cell grid coordinates, then an ordered array of four-byte structs listing the max heights per quad in each cell. The four bytes are zero when the cell the entry refers to does not exist.",
+     "type": "bytes"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Map Size",
+     "note": "The map's size, its corner cells and the camera's height and pitch limits.",
+     "type": "WRLD_MNAM"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Cloud Model",
+     "note": "The cloud model, with an optional MODT.",
+     "type": "bytes"
+    },
+    "NAM0": {
+     "confidence": "observed",
+     "name": "Unknown",
+     "note": "An unknown field of two words. [observed: 8 bytes]",
+     "type": {
+      "struct": [
+       {
+        "name": "unknown1",
+        "type": "u32"
+       },
+       {
+        "name": "unknown2",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Water Type",
+     "note": "The water (WATR).",
+     "type": "formid"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "LOD Water Type",
+     "note": "The LOD water type. It is always a WATR formid.",
+     "type": "formid"
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "LOD Water Height",
+     "note": "The LOD ocean water level. It is -14000.0 for Tamriel.",
+     "type": "f32"
+    },
+    "NAM9": {
+     "confidence": "observed",
+     "name": "Unknown",
+     "note": "An unknown field of two words. [observed: 8 bytes]",
+     "type": {
+      "struct": [
+       {
+        "name": "unknown1",
+        "type": "u32"
+       },
+       {
+        "name": "unknown2",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    "NAMA": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "The distant LOD multiplier.",
+     "type": "f32"
+    },
+    "OFST": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field whose size varies with the worldspace. [observed: 120 to 113,836 bytes]",
+     "type": "bytes"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field, 16 bytes.",
+     "type": "bytes"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 2 bytes]",
+     "type": "u16"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Large References",
+     "note": "The references that place a base object of object size 512 or greater, with the cell each one is in.",
+     "type": "WRLD_RNAM"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 53 bytes]",
+     "type": "bytes"
+    },
+    "UNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 55 bytes]",
+     "type": "bytes"
+    },
+    "WCTR": {
+     "confidence": "documented",
+     "name": "Fixed Dimension Center Cell",
+     "note": "The centre cell's x and y coordinates.",
+     "type": {
+      "array": "i16",
+      "count": 2
+     }
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "XEZN": {
+     "confidence": "documented",
+     "name": "Encounter Zone",
+     "note": "The encounter zone (ECZN).",
+     "type": "formid"
+    },
+    "XLCN": {
+     "confidence": "documented",
+     "name": "Location",
+     "note": "The location (LCTN).",
+     "type": "formid"
+    },
+    "XWEM": {
+     "confidence": "observed",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 37 and 43 bytes]",
+     "type": "zstring"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    }
+   }
+  }
+ }
+}
