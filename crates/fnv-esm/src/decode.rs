@@ -46,6 +46,14 @@ pub struct DecodeCtx<'a> {
     pub exposed: HashMap<([u8; 4], String), SwitchValue>,
     /// The record currently being decoded, for `exposed` lookups.
     pub rec_sig: [u8; 4],
+    /// The subrecord currently being decoded, for `exposed` lookups.
+    ///
+    /// A field of a subrecord's own struct is exposed under its own name,
+    /// but a field of a *struct* that is the whole of a subrecord is
+    /// exposed under the subrecord's signature and the field's name —
+    /// "PRKE.Type" — so that a later subrecord can switch on it
+    /// (xEdit's `wbPerkDATADecider` reading the type in the perk's PRKE).
+    pub sub_sig: Option<[u8; 4]>,
     /// Field values decoded earlier in the *same* struct, for an in-struct
     /// `switch_on` (e.g. a nested `wbUnion` that reads a sibling field of its
     /// own struct rather than another subrecord).
@@ -100,6 +108,7 @@ impl<'a> DecodeCtx<'a> {
             on_formid: None,
             exposed: HashMap::new(),
             rec_sig,
+            sub_sig: None,
             switch_on: None,
             block: None,
             block_value: None,
@@ -453,7 +462,18 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 // raw number out of the object when present.
                 if f.expose {
                     if let Some(n) = switch_value(schema, &f.ty, &v) {
-                        ctx.exposed.insert((ctx.rec_sig, f.name.clone()), n);
+                        ctx.exposed.insert((ctx.rec_sig, f.name.clone()), n.clone());
+                        // A field of a subrecord's own struct is exposed
+                        // under the subrecord's name and the field's, so
+                        // that a later subrecord can switch on it.
+                        if let Some(sig) = ctx.sub_sig {
+                            let key = format!(
+                                "{}.{}",
+                                String::from_utf8_lossy(&sig),
+                                f.name
+                            );
+                            ctx.exposed.insert((ctx.rec_sig, key), n);
+                        }
                     }
                     // A struct that both exposes a field and switches on one needs
                     // its own field values, so keep them for in-struct lookups too.
@@ -601,7 +621,12 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
     // array decoder needs to know before it reads the elements.
     let saved_from = ctx.count_from;
     ctx.count_from = def.count_from;
+    // While the subrecord is being read, a field of its own struct is
+    // exposed under the subrecord's name as well as its own.
+    let saved_sub = ctx.sub_sig;
+    ctx.sub_sig = Some(s.sig);
     let decoded = decode_type(&def.ty, &mut c, ctx);
+    ctx.sub_sig = saved_sub;
     ctx.count_from = saved_from;
     match decoded {
         Ok(v) => {

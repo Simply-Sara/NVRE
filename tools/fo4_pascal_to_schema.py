@@ -407,6 +407,23 @@ class Converter:
 
     def _read_decider(self, body):
         """The switch field and the cases of one decider body."""
+        # A decider may read a *field* of a *sibling subrecord* — xEdit's
+        # `wbPerkDATADecider` reads the type in the perk's PRKE — and then
+        # the switch is that field of that subrecord, named "SIG.Field".
+        m = re.search(
+            r"RecordBySignature\[(\w+)\].*?ElementByName\['([^']+)'\]",
+            body,
+            re.S,
+        )
+        if m:
+            return {
+                "switch": f"{m.group(1)}.{m.group(2)}",
+                "cases": {},
+                "bits": [],
+                "direct": True,
+                "switch_field": m.group(2),
+                "switch_sub": m.group(1),
+            }
         # The sibling the decider reads: a subrecord of the record
         # (`RecordBySignature[PRKE]`) or an element of the container
         # (`ElementNativeValues['EPFT']`).
@@ -1494,6 +1511,8 @@ class Converter:
                 continue
             target = by_name.get(switch)
             if target is None:
+                # The switch names a field of a sibling subrecord, which is
+                # settled when the record is built.
                 continue
             if direct:
                 values = self._enum_values(target.get("type"))
@@ -1916,7 +1935,54 @@ class Converter:
         if blocks:
             rec["sequence"] = {"start": [], "blocks": blocks, "end": []}
         self._expose_switch_fields(rec)
+        self._resolve_sub_switches(rec, flat, blocks)
         return rec
+
+    def _resolve_sub_switches(self, rec, flat, blocks):
+        """Settle a union that switches on a field of a sibling subrecord.
+
+        xEdit's `wbPerkDATADecider` reads the type in the perk's PRKE, and
+        the perk's effect data is a form id or a spell or an entry point
+        according to that type. The switch names the field of the sibling
+        — "PRKE.Type" — and the cases are that field's own values, which
+        the sibling's own definition gives. The field is marked so that its
+        value is kept.
+        """
+        groups = [flat] + [b.get("subrecords", {}) for b in blocks.values()]
+        for group in groups:
+            for sig, sub in group.items():
+                ty = sub.get("type")
+                if not isinstance(ty, dict):
+                    continue
+                switch = ty.get("switch_on")
+                if not switch or "." not in switch:
+                    continue
+                sub_sig, field = switch.split(".", 1)
+                # The sibling's own definition, and the field within it.
+                target_sub = None
+                for g in groups:
+                    if sub_sig in g:
+                        target_sub = g[sub_sig]
+                        break
+                if target_sub is None:
+                    continue
+                target_ty = target_sub.get("type")
+                if not isinstance(target_ty, dict) or "struct" not in target_ty:
+                    continue
+                field_def = None
+                for f in target_ty["struct"]:
+                    if f.get("name") == field:
+                        field_def = f
+                        break
+                if field_def is None:
+                    continue
+                values = self._enum_values(field_def.get("type"))
+                if not values:
+                    continue
+                n = len(ty.get("union", []))
+                ty["cases"] = {str(k): k for k in values if k < n}
+                ty["default"] = 0
+                field_def["expose"] = True
 
     def _expose_switch_fields(self, rec):
         """Mark the siblings that a union switches on, so they are kept.

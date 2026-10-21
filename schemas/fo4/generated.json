@@ -25349,7 +25349,13 @@
           null
          ],
          "_direct": true,
-         "switch_on": "PRKE",
+         "cases": {
+          "0": 0,
+          "1": 1,
+          "2": 2
+         },
+         "default": 0,
+         "switch_on": "PRKE.Type",
          "union": [
           {
            "size": 6,
@@ -25696,12 +25702,12 @@
        },
        "PRKE": {
         "confidence": "documented",
-        "expose": true,
         "name": "PRKE",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.PRKE The value of this subrecord decides which variant a later union takes.",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.PRKE",
         "type": {
          "struct": [
           {
+           "expose": true,
            "name": "Type",
            "type": {
             "enum": "u8",
