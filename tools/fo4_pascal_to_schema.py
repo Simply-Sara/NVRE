@@ -350,7 +350,9 @@ class Converter:
                     m = re.search(r"ElementByName\['(\w+)'\]", body)
                     if not m:
                         return None
-                    switch = None
+                    # The decider reads a *field* of its own struct, and the
+                    # field's value is the result as it stands.
+                    switch = m.group(1)
         # The cases: a name compared to a string, or a number compared to a
         # number, each giving a result.
         cases = {}
@@ -540,7 +542,7 @@ class Converter:
             # `CTDA` subrecord — and a record that uses the name as a group's
             # element needs the subrecords it holds.
             if kind in GROUP_KINDS:
-                subs = self._group_subrecords(var, kind, split_args(args))
+                subs = self._group_members_as_subrecords(var, kind, split_args(args))
                 if subs:
                     self.named_groups[var.lower()] = subs
                     # A group whose element is a named group holds that
@@ -597,6 +599,97 @@ class Converter:
         if members in ("NAMED", "UNION"):
             return []
         return self._group_subrecords(name, kind, parts)
+
+    def _type_size(self, ty):
+        """The size of a layout in bytes, or None if it fills the rest.
+
+        A union's variants are told apart by the bytes left, so each
+        variant needs to say how many bytes it takes. A layout whose size
+        is not fixed — text, or bytes — fills the rest.
+        """
+        if isinstance(ty, str):
+            if ty in ("u8", "i8"):
+                return 1
+            if ty in ("u16", "i16"):
+                return 2
+            if ty in ("u32", "i32", "f32", "formid"):
+                return 4
+            if ty in ("u64", "i64", "f64"):
+                return 8
+            if ty in ("bytes", "zstring", "len_string", "localized", "cstring"):
+                return None
+            named = self.types.get(ty) or self.types.get(self._canonical(ty))
+            if named is not None:
+                return self._type_size(named)
+            return None
+        if isinstance(ty, dict):
+            if "enum" in ty:
+                return self._type_size(ty["enum"])
+            if "flags" in ty:
+                return self._type_size(ty["flags"])
+            if "struct" in ty:
+                total = 0
+                for f in ty["struct"]:
+                    s = self._type_size(f.get("type"))
+                    if s is None:
+                        return None
+                    total += s
+                return total
+            if "array" in ty:
+                elem = self._type_size(ty["array"])
+                count = ty.get("count")
+                if elem is None or not isinstance(count, int):
+                    return None
+                return elem * count
+            if "union" in ty:
+                # A union's own size is the largest of its variants, but
+                # only if they all fit.
+                sizes = [self._type_size(v.get("type")) for v in ty["union"]]
+                if any(s is None for s in sizes):
+                    return None
+                return max(sizes) if sizes else None
+        return None
+
+    def _merge_sub(self, subs, order, first, sname, schema, note):
+        """Add a subrecord to a group, offering alternatives if it repeats.
+
+        A group may hold the same signature twice with different layouts: a
+        scene's action opens with a two-byte type and ends with an empty
+        marker of the same signature. The two are offered as alternatives,
+        and the bytes left decide which is read.
+        """
+        if first not in subs:
+            subs[first] = {
+                "name": sname,
+                "type": schema,
+                "confidence": "documented",
+                "note": note,
+            }
+            order.append(first)
+            return
+        existing = subs[first]
+        if existing.get("type") == schema:
+            return
+        variants = []
+        for t in (existing.get("type"), schema):
+            if t is None:
+                continue
+            if not any(v.get("type") == t for v in variants):
+                size = self._type_size(t)
+                v = {"type": t}
+                if size is not None:
+                    v["size"] = size
+                variants.append(v)
+        subs[first] = {
+            "name": existing.get("name", first),
+            "type": {"union": variants},
+            "confidence": "documented",
+            "note": (
+                f"{existing.get('note', '')} The same signature appears twice in "
+                f"this group with different layouts, so the two are "
+                f"alternatives and the bytes left decide which is read."
+            ).strip(),
+        }
 
     def _group_subrecords(self, name, kind, parts):
         """The subrecords a named group holds, as (signature, definition)."""
@@ -992,17 +1085,62 @@ class Converter:
         # `wbInteger` has two forms: with a signature
         # (`wbInteger(SIG, name, intType, ...)`) and without one
         # (`wbInteger(name, intType, ...)`), so the type is the argument
-        # after the name either way.
+        # after the name either way. The formatter is the argument after
+        # that: an enum names its values, and a flag set names its bits.
         if len(parts) >= 3 and is_signature(parts[0].strip()):
             it = parts[2].strip()
             note_ctx = parts[0].strip()
+            fmt = parts[3].strip() if len(parts) > 3 else ""
         elif len(parts) >= 2:
             it = parts[1].strip()
             note_ctx = parts[0].strip()
+            fmt = parts[2].strip() if len(parts) > 2 else ""
         else:
             return "u32", self._note(parts[0] if parts else "?")
         ty = INT_TYPES.get(it, "u32")
+        values = self._formatter_values(fmt)
+        if values is not None:
+            kind, table = values
+            if kind == "enum":
+                return (
+                    {"enum": ty, "values": {str(k): v for k, v in table.items()}},
+                    self._note(note_ctx),
+                )
+            return (
+                {"flags": ty, "bits": {str(k): v for k, v in table.items()}},
+                self._note(note_ctx),
+            )
         return ty, self._note(note_ctx)
+
+    def _formatter_values(self, fmt):
+        """The values an enum or a flag set gives, as number -> name."""
+        if not fmt:
+            return None
+        name, args, _ = match_call(fmt)
+        if name is None or name not in ("wbEnum", "wbFlags") or args is None:
+            return None
+        members = bracket_list(args)
+        if members is None:
+            return None
+        kind = "enum" if name == "wbEnum" else "flags"
+        table = {}
+        n = 0
+        for m in members:
+            m = m.strip()
+            # A member may carry an explicit index: `{3} 'Cave'`.
+            idx = None
+            im = re.match(r"^\{(\d+)\}\s*(.*)$", m, re.S)
+            if im:
+                idx = int(im.group(1))
+                m = im.group(2).strip()
+            text = pascal_string(m)
+            if text is None:
+                continue
+            table[idx if idx is not None else n] = text
+            n = idx + 1 if idx is not None else n + 1
+        if not table:
+            return None
+        return kind, table
 
     def _convert_byte_array(self, parts):
         # `wbByteArray` has the same two forms as `wbInteger`, so the size
@@ -1046,7 +1184,56 @@ class Converter:
                 fields.append(f)
         if not fields:
             return {"struct": []}, self._note(ctx)
+        fields = self._resolve_direct_switches(fields, ctx)
         return {"struct": fields}, self._note(ctx)
+
+    def _resolve_direct_switches(self, fields, ctx):
+        """Give a union that switches on a field its own value the cases.
+
+        xEdit's `wbTypeDecider` reads a struct's own field and uses its
+        value as the variant's index: a topic's data is a form id or a
+        four-byte name according to its type, which is an enum of its own.
+        The cases are that enum's values, so the switch reads the same
+        numbers the enum gives.
+        """
+        by_name = {f.get("name"): f for f in fields if isinstance(f, dict)}
+        for f in fields:
+            if not isinstance(f, dict):
+                continue
+            ty = f.get("type")
+            if not isinstance(ty, dict) or not ty.pop("_direct", False):
+                continue
+            switch = ty.get("switch_on")
+            target = by_name.get(switch)
+            if target is None:
+                continue
+            values = self._enum_values(target.get("type"))
+            if not values:
+                continue
+            n = len(ty.get("union", []))
+            # The switch reads the enum's value, which the decoder renders
+            # as the number the enum gives, so the case's key is that
+            # number and the value is the variant.
+            ty["cases"] = {str(k): k for k in values if k < n}
+            ty["default"] = 0
+            target["expose"] = True
+        return fields
+
+    def _enum_values(self, ty):
+        """The values of an enum field, as number -> name."""
+        if isinstance(ty, dict) and "values" in ty and "enum" in ty:
+            out = {}
+            for k, v in ty["values"].items():
+                try:
+                    out[int(k)] = v
+                except (TypeError, ValueError):
+                    continue
+            return out
+        if isinstance(ty, str):
+            named = self.types.get(ty) or self.types.get(self._canonical(ty))
+            if isinstance(named, dict):
+                return self._enum_values(named)
+        return {}
 
     def convert_field(self, text, ctx):
         """A member of a struct: a named field, with no signature."""
@@ -1187,7 +1374,11 @@ class Converter:
                 continue
             schema, _ = self.convert_member(name, args, f"{ctx}.{sub[0]}")
             if schema is not None:
-                variants.append({"type": schema})
+                size = self._type_size(schema)
+                v = {"type": schema}
+                if size is not None:
+                    v["size"] = size
+                variants.append(v)
         if not variants:
             return "bytes", self._note(ctx)
         union: dict = {"union": variants}
@@ -1196,10 +1387,19 @@ class Converter:
         # value picks which variant.
         if decider:
             d = self.deciders.get(decider.lower())
-            if d and d.get("switch") and d.get("cases"):
-                union["switch_on"] = d["switch"]
-                union["cases"] = {k: v for k, v in d["cases"].items() if v < len(variants)}
-                union["default"] = 0
+            if d and d.get("switch"):
+                if d.get("direct"):
+                    # The switch's own value is the variant's index, so the
+                    # cases are the switch field's own values, which the
+                    # struct's own fields give.
+                    union["switch_on"] = d["switch"]
+                    union["_direct"] = True
+                elif d.get("cases"):
+                    union["switch_on"] = d["switch"]
+                    union["cases"] = {
+                        k: v for k, v in d["cases"].items() if v < len(variants)
+                    }
+                    union["default"] = 0
         return union, self._note(ctx)
 
     # -- a record -----------------------------------------------------------
@@ -1249,12 +1449,7 @@ class Converter:
                 # A helper called with a signature — `wbAmbientColors(DALC)` —
                 # has no name of its own; the signature names it.
                 sname = first
-            flat[first] = {
-                "name": sname or first,
-                "type": schema,
-                "confidence": "documented",
-                "note": note,
-            }
+            self._merge_sub(flat, [], first, sname or first, schema, note)
         if not flat and not blocks:
             return None
 
@@ -1328,7 +1523,36 @@ class Converter:
             if sig not in existing["order"]:
                 existing["order"].append(sig)
         for sig, sub in subs.items():
-            existing["subrecords"].setdefault(sig, sub)
+            existing_sub = existing["subrecords"].get(sig)
+            if existing_sub is None:
+                existing["subrecords"][sig] = sub
+                continue
+            if existing_sub.get("type") == sub.get("type"):
+                continue
+            # The same signature means two things in the two groups — a
+            # scene's phase opens with a two-byte type, and the group ends
+            # with an empty marker of the same signature — so the two are
+            # offered as alternatives and the bytes left decide which.
+            variants = []
+            for t in (existing_sub.get("type"), sub.get("type")):
+                if t is None:
+                    continue
+                if not any(v.get("type") == t for v in variants):
+                    size = self._type_size(t)
+                    v = {"type": t}
+                    if size is not None:
+                        v["size"] = size
+                    variants.append(v)
+            existing["subrecords"][sig] = {
+                "name": existing_sub.get("name", sig),
+                "type": {"union": variants},
+                "confidence": "documented",
+                "note": (
+                    f"{existing_sub.get('note', '')} The same signature is also "
+                    f"defined differently in another group of this record, so "
+                    f"the two are alternatives and the bytes left decide which."
+                ).strip(),
+            }
         existing["note"] = (
             f"{existing.get('note', note)} The group is also opened by another "
             f"group of the same record, so their subrecords are merged."
@@ -1382,15 +1606,7 @@ class Converter:
             order = []
             for variant in self._union_variants(parts):
                 for first, sname, schema, note in variant:
-                    if first in subs:
-                        continue
-                    subs[first] = {
-                        "name": sname,
-                        "type": schema,
-                        "confidence": "documented",
-                        "note": note,
-                    }
-                    order.append(first)
+                    self._merge_sub(subs, order, first, sname, schema, note)
             if not subs:
                 return
             self._put_block(blocks, order[0], order, subs, "")
@@ -1402,15 +1618,7 @@ class Converter:
         for first, sname, schema, note in self._group_subrecords(
             f"{sig}.{gname}", kind, parts
         ):
-            if first in subs:
-                continue
-            subs[first] = {
-                "name": sname,
-                "type": schema,
-                "confidence": "documented",
-                "note": note,
-            }
-            order.append(first)
+            self._merge_sub(subs, order, first, sname, schema, note)
         if not subs:
             return
         # The block's opener is the first signature it holds.
@@ -1521,7 +1729,21 @@ class Converter:
         element = parts[1].strip()
         ename, eargs, _ = match_call(element)
         if ename is None or eargs is None:
-            self.problems.append(f"{sig}: group {gname} element {element[:40]!r}")
+            # The element may be a named definition that owns a signature —
+            # `wbPDTOs` repeats `wbPDTO`, which is the `PDTO` subrecord.
+            sig_of = self._named_type_signature(element)
+            if sig_of is None:
+                self.problems.append(f"{sig}: group {gname} element {element[:40]!r}")
+                return
+            ty, note = self._lookup_type(element)
+            if ty is None:
+                return
+            flat[sig_of] = {
+                "name": sig_of,
+                "type": ty,
+                "confidence": "documented",
+                "note": f"{note}. The group {gname!r} repeats this subrecord.",
+            }
             return
         eparts = split_args(eargs)
         if not eparts or not is_signature(eparts[0]):

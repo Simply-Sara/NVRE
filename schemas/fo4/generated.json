@@ -281,7 +281,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -337,7 +343,15 @@
      "confidence": "documented",
      "name": "XLCM",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XLCM",
-     "type": "i32"
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Easy",
+       "1": "Medium",
+       "2": "Hard",
+       "3": "Very Hard"
+      }
+     }
     },
     "XLCN": {
      "confidence": "documented",
@@ -419,7 +433,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -528,7 +547,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -590,7 +615,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -690,7 +724,16 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u16"
+     "type": {
+      "bits": {
+       "0": "No Displacement",
+       "1": "Ignored by Sandbox",
+       "2": "Unknown 2",
+       "3": "Unknown 3",
+       "4": "Is a Radio"
+      },
+      "flags": "u16"
+     }
     },
     "FTYP": {
      "confidence": "documented",
@@ -760,6 +803,7 @@
            "type": {
             "union": [
              {
+              "size": 4,
               "type": {
                "struct": [
                 {
@@ -774,6 +818,7 @@
               }
              },
              {
+              "size": 4,
               "type": "formid"
              }
             ]
@@ -842,11 +887,51 @@
            },
            {
             "name": "Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 link",
+              "1": "Edge 1-2 link",
+              "10": "Door",
+              "11": "Found",
+              "12": "Unknown 13",
+              "13": "",
+              "14": "",
+              "15": "",
+              "2": "Edge 2-0 link",
+              "3": "",
+              "4": "No Large Creatures",
+              "5": "Overlapping",
+              "6": "Preferred",
+              "7": "",
+              "8": "Unknown 9",
+              "9": "Water"
+             },
+             "flags": "u16"
+            }
            },
            {
             "name": "Cover Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 Cover Value 1/4",
+              "1": "Edge 0-1 Cover Value 2/4",
+              "10": "Edge 1-2 Left",
+              "11": "Edge 1-2 Right",
+              "12": "Unknown 13",
+              "13": "Unknown 14",
+              "14": "Unknown 15",
+              "15": "Unknown 16",
+              "2": "Edge 0-1 Cover Value 3/4",
+              "3": "Edge 0-1 Cover Value 4/4",
+              "4": "Edge 0-1 Left",
+              "5": "Edge 0-1 Right",
+              "6": "Edge 1-2 Cover Value 1/4",
+              "7": "Edge 1-2 Cover Value 2/4",
+              "8": "Edge 1-2 Cover Value 3/4",
+              "9": "Edge 1-2 Cover Value 4/4"
+             },
+             "flags": "u16"
+            }
            }
           ]
          }
@@ -901,6 +986,7 @@
             "type": {
              "union": [
               {
+               "size": 4,
                "type": "formid"
               }
              ]
@@ -1261,7 +1347,15 @@
        },
        {
         "name": "Flags",
-        "type": "u16"
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "No Master Particle System",
+          "1": "Master Particle System",
+          "2": "Always Loaded",
+          "3": "Master Particle System and Always Loaded"
+         }
+        }
        }
       ]
      }
@@ -1354,6 +1448,7 @@
             "switch_on": "KNAM",
             "union": [
              {
+              "size": 16,
               "type": {
                "struct": [
                 {
@@ -1376,6 +1471,7 @@
               }
              },
              {
+              "size": 12,
               "type": {
                "struct": [
                 {
@@ -1388,12 +1484,21 @@
                 },
                 {
                  "name": "Filter Mode",
-                 "type": "u32"
+                 "type": {
+                  "enum": "u32",
+                  "values": {
+                   "0": "High Pass",
+                   "1": "Low Pass",
+                   "2": "Band Pass",
+                   "3": "Notch"
+                  }
+                 }
                 }
                ]
               }
              },
              {
+              "size": 12,
               "type": {
                "struct": [
                 {
@@ -1422,7 +1527,14 @@
         "expose": true,
         "name": "Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KNAM The value of this subrecord decides which variant a later union takes.",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "BSOverdrive",
+          "1": "BSStateVariableFilter",
+          "2": "BSDelayEffect"
+         }
+        }
        }
       }
      }
@@ -1481,7 +1593,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -1543,7 +1661,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -1699,7 +1826,29 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "No Auto-Calc",
+          "1": "Food Item",
+          "10": "Unknown 11",
+          "11": "Unknown 12",
+          "12": "Unknown 13",
+          "13": "Unknown 14",
+          "14": "Unknown 15",
+          "15": "Unknown 16",
+          "16": "Medicine",
+          "17": "Poison",
+          "2": "Unknown 3",
+          "3": "Unknown 4",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "Unknown 7",
+          "7": "Unknown 8",
+          "8": "Unknown 9",
+          "9": "Unknown 10"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Addiction",
@@ -1935,7 +2084,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -1997,7 +2152,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -2110,7 +2274,14 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Ignores Normal Weapon Resistance",
+          "1": "Non-Playable",
+          "2": "Has Count Based 3D"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -2374,7 +2545,13 @@
         "confidence": "documented",
         "name": "Gender",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BSMP",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Male",
+          "1": "Female"
+         }
+        }
        },
        "BSMS": {
         "confidence": "documented",
@@ -2586,11 +2763,23 @@
        },
        {
         "name": "Weight slider - Male",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Unknown 0",
+          "1": "Enabled"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Weight slider - Female",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Unknown 0",
+          "1": "Enabled"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unknown",
@@ -2715,7 +2904,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -2777,7 +2972,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -3351,7 +3555,14 @@
      "confidence": "documented",
      "name": "Art Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Magic Casting",
+       "1": "Magic Hit Effect",
+       "2": "Enchantment Effect"
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -3499,7 +3710,12 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Family Association"
+      },
+      "flags": "u32"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -3548,7 +3764,43 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), AVFL",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Unknown 1",
+       "1": "Unknown 2",
+       "10": "Unknown 11",
+       "11": "Unknown 12",
+       "12": "Unknown 13",
+       "13": "Unknown 14",
+       "14": "Unknown 15",
+       "15": "Unknown 16",
+       "16": "Unknown 17",
+       "17": "Unknown 18",
+       "18": "Unknown 19",
+       "19": "Unknown 20",
+       "2": "Unknown 3",
+       "20": "Minimum 1",
+       "21": "Maximum 10",
+       "22": "Maximum 100",
+       "23": "Multiply By 100",
+       "24": "Percentage",
+       "25": "Unknown 26",
+       "26": "Damage Is Positive",
+       "27": "God Mode Immune",
+       "28": "Unknown 29",
+       "29": "Unknown 30",
+       "3": "Unknown 4",
+       "30": "Unknown 31",
+       "31": "Hardcoded",
+       "4": "Unknown 5",
+       "5": "Unknown 6",
+       "6": "Unknown 7",
+       "7": "Unknown 8",
+       "8": "Unknown 9",
+       "9": "Unknown 10"
+      },
+      "flags": "u32"
+     }
     },
     "DESC": {
      "confidence": "documented",
@@ -3578,7 +3830,21 @@
      "confidence": "documented",
      "name": "Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NAM1",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Derived Attribute",
+       "1": "Special (Attribute)",
+       "2": "Skill",
+       "3": "AI Attribute",
+       "4": "Resistance",
+       "5": "Condition",
+       "6": "Charge",
+       "7": "Int Value",
+       "8": "Variable",
+       "9": "Resource"
+      }
+     }
     }
    }
   },
@@ -3724,7 +3990,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -3786,7 +4058,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -3901,25 +4182,38 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Advance Actor Value",
+          "1": "Can't be Taken",
+          "2": "Add Spell",
+          "3": "Unknown 3",
+          "4": "Add Perk"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Teaches",
         "type": {
          "union": [
           {
+           "size": 4,
            "type": {
             "array": "u8",
             "count": 4
            }
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": "formid"
           }
          ]
@@ -4188,11 +4482,53 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Severable",
+             "1": "Hit Reaction",
+             "2": "Hit Reaction - Default",
+             "3": "Explodable",
+             "4": "Cut - Meat Cap Sever",
+             "5": "On Cripple",
+             "6": "Explodable - Absolute Chance",
+             "7": "Show Cripple Geometry"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Part Type",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Torso",
+             "1": "Head1",
+             "10": "LeftLeg1",
+             "11": "LeftLeg2",
+             "12": "LeftLeg3",
+             "13": "RightLeg1",
+             "14": "RightLeg2",
+             "15": "RightLeg3",
+             "16": "Brain",
+             "17": "Weapon",
+             "18": "Root",
+             "19": "COM",
+             "2": "Eye",
+             "20": "Pelvis",
+             "21": "Camera",
+             "22": "Offset Root",
+             "23": "Left Foot",
+             "24": "Right Foot",
+             "25": "Face Target Source",
+             "3": "LookAt",
+             "4": "Fly Grab",
+             "5": "Head2",
+             "6": "LeftArm1",
+             "7": "LeftArm2",
+             "8": "RightArm1",
+             "9": "RightArm2"
+            }
+           }
           },
           {
            "name": "Health Percent",
@@ -4461,19 +4797,55 @@
       "struct": [
        {
         "name": "Action",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Shoot",
+          "1": "Fly",
+          "2": "Hit",
+          "3": "Zoom"
+         }
+        }
        },
        {
         "name": "Location",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Attacker",
+          "1": "Projectile",
+          "2": "Target",
+          "3": "Lead Actor"
+         }
+        }
        },
        {
         "name": "Target",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Attacker",
+          "1": "Projectile",
+          "2": "Target",
+          "3": "Lead Actor"
+         }
+        }
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Position Follows Location",
+          "1": "Rotation Follows Target",
+          "2": "Don't Follow Bone",
+          "3": "First Person Camera",
+          "4": "No Tracer",
+          "5": "Start At Time Zero",
+          "6": "Don't Reset Location Spring",
+          "7": "Don't Reset Target Spring"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Time Multipliers",
@@ -4569,7 +4941,27 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u16"
+     "type": {
+      "bits": {
+       "0": "Is Interior Cell",
+       "1": "Has Water",
+       "10": "Unknown 11",
+       "11": "Sunlight Shadows",
+       "12": "Distant LOD only",
+       "13": "Player Followers Can't Travel Here",
+       "14": "Unknown 15",
+       "15": "Unknown 16",
+       "2": "Can't Travel From Here",
+       "3": "No LOD Water",
+       "4": "Unknown 5",
+       "5": "Public Area",
+       "6": "Hand Changed",
+       "7": "Show Sky",
+       "8": "Use Sky Lighting",
+       "9": "Unknown 10"
+      },
+      "flags": "u16"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -5033,7 +5425,22 @@
        },
        {
         "name": "Inherits",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Ambient Color",
+          "1": "Directional Color",
+          "10": "Light Fade Distances",
+          "2": "Fog Color",
+          "3": "Fog Near",
+          "4": "Fog Far",
+          "5": "Directional Rotation",
+          "6": "Directional Fade",
+          "7": "Clip Distance",
+          "8": "Fog Power",
+          "9": "Fog Max"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Near Height Mid",
@@ -5258,7 +5665,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -5424,7 +5836,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Playable",
+       "1": "Remapping Index",
+       "2": "Extended LUT"
+      },
+      "flags": "u32"
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -5792,7 +6211,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), GNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Trigger Volume",
+       "1": "Sensor",
+       "2": "Navmesh Obstacle"
+      },
+      "flags": "u32"
+     }
     },
     "INTV": {
      "confidence": "documented",
@@ -5814,68 +6240,6 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(CONT)",
    "sequence": {
     "blocks": {
-     "CNTO": {
-      "opener": "CNTO",
-      "order": [
-       "CNTO",
-       "COED"
-      ],
-      "subrecords": {
-       "CNTO": {
-        "confidence": "documented",
-        "name": "CNTO",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCNTO.CNTO",
-        "type": {
-         "struct": [
-          {
-           "name": "Item",
-           "type": "formid"
-          },
-          {
-           "name": "Count",
-           "type": "i32"
-          }
-         ]
-        }
-       },
-       "COED": {
-        "confidence": "documented",
-        "name": "COED",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
-        "type": {
-         "struct": [
-          {
-           "name": "Owner",
-           "type": "formid"
-          },
-          {
-           "name": "Global Variable / Required Rank",
-           "type": {
-            "union": [
-             {
-              "type": {
-               "array": "u8",
-               "count": 4
-              }
-             },
-             {
-              "type": "formid"
-             },
-             {
-              "type": "i32"
-             }
-            ]
-           }
-          },
-          {
-           "name": "Item Condition",
-           "type": "f32"
-          }
-         ]
-        }
-       }
-      }
-     },
      "DEST": {
       "opener": "DEST",
       "order": [
@@ -5912,7 +6276,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -5974,7 +6344,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -6066,7 +6445,14 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Allow Sounds When Animation",
+          "1": "Respawns",
+          "2": "Show Owner"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Weight",
@@ -6239,7 +6625,19 @@
      "confidence": "documented",
      "name": "Camera Zoom / Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Disable",
+       "1": "Shot List",
+       "2": "Dynamic Camera Times",
+       "3": "Unknown 3",
+       "4": "Unknown 4",
+       "5": "Unknown 5",
+       "6": "Randomize Paths",
+       "7": "Not Must Have Camera Shots"
+      },
+      "flags": "u8"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -6511,7 +6909,17 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Dueling",
+       "1": "Flanking",
+       "2": "Allow Dual Wielding",
+       "3": "Charging",
+       "4": "Retarget Any Nearby Melee Target",
+       "5": "Unknown 5"
+      },
+      "flags": "u32"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -6550,7 +6958,12 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Has Collision Data"
+            },
+            "flags": "u8"
+           }
           }
          ]
         }
@@ -6614,15 +7027,163 @@
       "struct": [
        {
         "name": "Topic Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Do All Before Repeating",
+          "1": "Unknown 1",
+          "2": "Unknown 2"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Category",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Player",
+          "1": "Command",
+          "2": "Scene",
+          "3": "Combat",
+          "4": "Favor",
+          "5": "Detection",
+          "6": "Service",
+          "7": "Miscellaneous"
+         }
+        }
        },
        {
         "name": "Subtype",
-        "type": "u16"
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "Custom",
+          "1": "ForceGreet",
+          "10": "Stay",
+          "100": "SceneChoice",
+          "101": "PlayerCastProjectileSpell",
+          "102": "PlayerCastSelfSpell",
+          "103": "PlayerShout",
+          "104": "Idle",
+          "105": "EnterSprintBreath",
+          "106": "EnterBowZoomBreath",
+          "107": "ExitBowZoomBreath",
+          "108": "ActorCollidewithActor",
+          "109": "PlayerinIronSights",
+          "11": "Release",
+          "110": "OutofBreath",
+          "111": "CombatGrunt",
+          "112": "LeaveWaterBreath",
+          "113": "ImpatientPostitive",
+          "114": "ImpatientNegative",
+          "115": "ImpatientNeutral",
+          "116": "ImpatientQuestion",
+          "117": "WaitingForPlayerInput",
+          "118": "Greeting",
+          "119": "PlayerActivateDoor",
+          "12": "ShowRelationships",
+          "120": "PlayerActivateTerminals",
+          "121": "PlayerActivateFurniture",
+          "122": "PlayerActivateActivators",
+          "123": "PlayerActivateContainer",
+          "124": "PlayerAquireFeaturedItem",
+          "13": "Reject",
+          "14": "Heal",
+          "15": "Assign",
+          "16": "Enter",
+          "17": "Custom",
+          "18": "Show",
+          "19": "Agree",
+          "2": "Rumors",
+          "20": "Refuse",
+          "21": "ExitFavorState",
+          "22": "MoralRefusal",
+          "23": "Trade",
+          "24": "PathingRefusal",
+          "25": "Attack",
+          "26": "PowerAttack",
+          "27": "Bash",
+          "28": "Hit",
+          "29": "Flee",
+          "3": "Custom",
+          "30": "BleedOut",
+          "31": "AvoidThreat",
+          "32": "Death",
+          "33": "Block",
+          "34": "Taunt",
+          "35": "ThrowGrenade",
+          "36": "AllyKilled",
+          "37": "OrderFallback",
+          "38": "OrderMoveUp",
+          "39": "OrderFlank",
+          "4": "Call",
+          "40": "OrderTakeCover",
+          "41": "Retreat",
+          "42": "CoverMe",
+          "43": "SuppressiveFire",
+          "44": "CrippledLimb",
+          "45": "PairedAttack",
+          "46": "Steal",
+          "47": "Yield",
+          "48": "AcceptYield",
+          "49": "PickpocketCombat",
+          "5": "Follow",
+          "50": "Assault",
+          "51": "Murder",
+          "52": "AssaultNC",
+          "53": "MurderNC",
+          "54": "PickpocketNC",
+          "55": "StealFromNC",
+          "56": "TrespassAgainstNC",
+          "57": "Trespass",
+          "58": "UNUSED01",
+          "59": "VoicePowerStartShort",
+          "6": "Move",
+          "60": "VoicePowerStartLong",
+          "61": "VoicePowerEndShort",
+          "62": "VoicePowerEndLong",
+          "63": "AlertIdle",
+          "64": "LostIdle",
+          "65": "NormalToAlert",
+          "66": "NormalToCombat",
+          "67": "NormalToLost",
+          "68": "AlertToNormal",
+          "69": "AlertToCombat",
+          "7": "Attack",
+          "70": "CombatToNormal",
+          "71": "CombatToLost",
+          "72": "LostToNormal",
+          "73": "LostToCombat",
+          "74": "DetectFriendDie",
+          "75": "ServiceRefusal",
+          "76": "Repair",
+          "77": "Travel",
+          "78": "Training",
+          "79": "BarterExit",
+          "8": "Inspect",
+          "80": "RepairExit",
+          "81": "Recharge",
+          "82": "RechargeExit",
+          "83": "TrainingExit",
+          "84": "ObserveCombat",
+          "85": "NoticeCorpse",
+          "86": "TimeToGo",
+          "87": "Goodbye",
+          "88": "Hello",
+          "89": "SwingMeleeWeapon",
+          "9": "Retrieve",
+          "90": "ShootBow",
+          "91": "ZKeyObject",
+          "92": "Jump",
+          "93": "KnockOverObject",
+          "94": "DestroyObject",
+          "95": "StandonFurniture",
+          "96": "LockedObject",
+          "97": "PickpocketTopic",
+          "98": "PursueIdleTopic",
+          "99": "SharedInfo"
+         }
+        }
        }
       ]
      }
@@ -6683,7 +7244,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Top-Level",
+       "1": "Blocking",
+       "2": "Exclusive"
+      },
+      "flags": "u32"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -6870,7 +7438,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -6932,7 +7506,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -7038,7 +7621,18 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "",
+       "1": "Automatic",
+       "2": "Hidden",
+       "3": "Minimal Use",
+       "4": "Sliding",
+       "5": "Do Not Open in Combat Search",
+       "6": "No \"To\" Text"
+      },
+      "flags": "u8"
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -7199,7 +7793,15 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Never Resets",
+          "1": "Match PC Below Minimum Level",
+          "2": "Disable Combat Boundary",
+          "3": "Workshop"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Max Level",
@@ -7282,6 +7884,7 @@
      "type": {
       "union": [
        {
+        "size": 157,
         "type": {
          "struct": [
           {
@@ -7529,7 +8132,36 @@
           },
           {
            "name": "Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "No Membrane Shader",
+             "1": "Membrane Grayscale Color",
+             "10": "Texture Effect - No Weapons",
+             "11": "Use Alpha Sorting",
+             "12": "Prefer Dismembered Limbs",
+             "13": "Unknown 13",
+             "14": "Unknown 14",
+             "15": "Particle Animated",
+             "16": "Particle Grayscale Color",
+             "17": "Particle Grayscale Alpha",
+             "18": "Unknown 18",
+             "19": "Unknown 19",
+             "2": "Membrane Grayscale Alpha",
+             "20": "Unknown 20",
+             "21": "Unknown 21",
+             "22": "Unknown 22",
+             "23": "Unknown 23",
+             "24": "Use Blood Geometry (Weapons Only)",
+             "3": "No Particle Shader",
+             "4": "Edge Effect - Inverse",
+             "5": "Affect Skin Only",
+             "6": "Texture Effect - Ignore Alpha",
+             "7": "Texture Effect - Project UVs",
+             "8": "Ignore Base Geometry Alpha",
+             "9": "Texture Effect - Lighting"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Fill/Texture Effect - Texture Scale (U)",
@@ -7543,6 +8175,7 @@
         }
        },
        {
+        "size": 395,
         "type": {
          "struct": [
           {
@@ -8124,7 +8757,36 @@
           },
           {
            "name": "Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "No Membrane Shader",
+             "1": "Membrane Grayscale Color",
+             "10": "No Weapons",
+             "11": "Unknown 11",
+             "12": "Unknown 12",
+             "13": "Unknown 13",
+             "14": "Unknown 14",
+             "15": "Particle Animated",
+             "16": "Particle Grayscale Color",
+             "17": "Particle Grayscale Alpha",
+             "18": "Unknown 18",
+             "19": "Unknown 19",
+             "2": "Membrane Grayscale Alpha",
+             "20": "Unknown 20",
+             "21": "Unknown 21",
+             "22": "Unknown 22",
+             "23": "Unknown 23",
+             "24": "Use Blood Geometry",
+             "3": "No Particle Shader",
+             "4": "Edge Effect Inverse",
+             "5": "Affect Skin Only",
+             "6": "Ignore Alpha",
+             "7": "Project UVs",
+             "8": "Ignore Base Geometry Alpha",
+             "9": "Lighting"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Fill/Texture Effect - Texture Scale (U)",
@@ -8247,7 +8909,14 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "No Auto-Calc",
+          "1": "",
+          "2": "Extend Duration On Recast"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Cast Type",
@@ -8263,7 +8932,13 @@
        },
        {
         "name": "Enchant Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Enchantment",
+          "1": "Staff Enchantment"
+         }
+        }
        },
        {
         "name": "Charge Time",
@@ -8336,7 +9011,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Use All Parents",
+       "1": "Parents Optional",
+       "2": "Item Slot"
+      },
+      "flags": "u32"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -8460,12 +9142,14 @@
         "type": {
          "union": [
           {
+           "size": 4,
            "type": {
             "array": "u8",
             "count": 4
            }
           },
           {
+           "size": 4,
            "type": "f32"
           }
          ]
@@ -8473,7 +9157,22 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Unknown 0",
+          "1": "Always Uses World Orientation",
+          "10": "Skip Underwater Tests",
+          "2": "Knock Down - Always",
+          "3": "Knock Down - By Formula",
+          "4": "Ignore LOS Check",
+          "5": "Push Explosion Source Ref Only",
+          "6": "Ignore Image Space Swap",
+          "7": "Chain",
+          "8": "No Controller Vibration",
+          "9": "Placed Object Persists"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Sound Level",
@@ -8485,7 +9184,16 @@
        },
        {
         "name": "Stagger",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "None",
+          "1": "Small",
+          "2": "Medium",
+          "3": "Large",
+          "4": "Extra Large"
+         }
+        }
        },
        {
         "name": "Spawn",
@@ -8585,7 +9293,19 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Playable",
+       "1": "Not Male",
+       "2": "Not Female",
+       "3": "Unknown 4",
+       "4": "Unknown 5",
+       "5": "Unknown 6",
+       "6": "Unknown 7",
+       "7": "Unknown 8"
+      },
+      "flags": "u8"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -8722,7 +9442,28 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Hidden From NPC",
+          "1": "Special Combat",
+          "10": "Ignore Crimes: Trespass",
+          "11": "Do Not Report Crimes Against Members",
+          "12": "Crime Gold - Use Defaults",
+          "13": "Ignore Crimes: Pickpocket",
+          "14": "Vendor",
+          "15": "Can Be Owner",
+          "16": "Ignore Crimes: Werewolf (unused)",
+          "2": "Unknown 3",
+          "3": "Unknown 4",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "Track Crime",
+          "7": "Ignore Crimes: Murder",
+          "8": "Ignore Crimes: Assault",
+          "9": "Ignore Crimes: Stealing"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -8770,65 +9511,81 @@
        {
         "name": "Location Value",
         "type": {
+         "switch_on": "Type",
          "union": [
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": {
             "array": "u8",
             "count": 4
            }
           },
           {
+           "size": 4,
            "type": {
             "array": "u8",
             "count": 4
            }
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": "u32"
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": {
             "array": "u8",
             "count": 4
            }
           },
           {
+           "size": 4,
            "type": "i32"
           },
           {
+           "size": 4,
            "type": "i32"
           },
           {
+           "size": 4,
            "type": "u32"
           },
           {
+           "size": 4,
            "type": "u32"
           },
           {
+           "size": 4,
            "type": {
             "array": "u8",
             "count": 4
            }
           },
           {
+           "size": 4,
            "type": {
             "array": "u8",
             "count": 4
            }
           },
           {
+           "size": 4,
            "type": "i32"
           }
          ]
@@ -8929,7 +9686,15 @@
        },
        {
         "name": "Group Combat Reaction",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Neutral",
+          "1": "Enemy",
+          "2": "Ally",
+          "3": "Friend"
+         }
+        }
        }
       ]
      }
@@ -8978,7 +9743,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -9040,7 +9811,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -9396,68 +10176,6 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(FURN)",
    "sequence": {
     "blocks": {
-     "CNTO": {
-      "opener": "CNTO",
-      "order": [
-       "CNTO",
-       "COED"
-      ],
-      "subrecords": {
-       "CNTO": {
-        "confidence": "documented",
-        "name": "CNTO",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCNTO.CNTO",
-        "type": {
-         "struct": [
-          {
-           "name": "Item",
-           "type": "formid"
-          },
-          {
-           "name": "Count",
-           "type": "i32"
-          }
-         ]
-        }
-       },
-       "COED": {
-        "confidence": "documented",
-        "name": "COED",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
-        "type": {
-         "struct": [
-          {
-           "name": "Owner",
-           "type": "formid"
-          },
-          {
-           "name": "Global Variable / Required Rank",
-           "type": {
-            "union": [
-             {
-              "type": {
-               "array": "u8",
-               "count": 4
-              }
-             },
-             {
-              "type": "formid"
-             },
-             {
-              "type": "i32"
-             }
-            ]
-           }
-          },
-          {
-           "name": "Item Condition",
-           "type": "f32"
-          }
-         ]
-        }
-       }
-      }
-     },
      "DEST": {
       "opener": "DEST",
       "order": [
@@ -9494,7 +10212,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -9556,7 +10280,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -9833,7 +10566,13 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u16"
+     "type": {
+      "bits": {
+       "0": "Unknown 0",
+       "1": "Ignored By Sandbox"
+      },
+      "flags": "u16"
+     }
     },
     "FNPR": {
      "confidence": "documented",
@@ -9882,7 +10621,43 @@
      "confidence": "documented",
      "name": "MNAM",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Interaction Point 0",
+       "1": "Interaction Point 1",
+       "10": "Interaction Point 10",
+       "11": "Interaction Point 11",
+       "12": "Interaction Point 12",
+       "13": "Interaction Point 13",
+       "14": "Interaction Point 14",
+       "15": "Interaction Point 15",
+       "16": "Interaction Point 16",
+       "17": "Interaction Point 17",
+       "18": "Interaction Point 18",
+       "19": "Interaction Point 19",
+       "2": "Interaction Point 2",
+       "20": "Interaction Point 20",
+       "21": "Interaction Point 21",
+       "22": "Allow Awake Sound",
+       "23": "Enter With Weapon Drawn",
+       "24": "Play Anim When Full",
+       "25": "Disables Activation",
+       "26": "Is Perch",
+       "27": "Must Exit to Talk",
+       "28": "Use Static Avoid Node",
+       "29": "Unknown 29",
+       "3": "Interaction Point 3",
+       "30": "Has Model?",
+       "31": "Unknown 31",
+       "4": "Interaction Point 4",
+       "5": "Interaction Point 5",
+       "6": "Interaction Point 6",
+       "7": "Interaction Point 7",
+       "8": "Interaction Point 8",
+       "9": "Interaction Point 9"
+      },
+      "flags": "u32"
+     }
     },
     "NAM1": {
      "confidence": "documented",
@@ -9926,6 +10701,7 @@
            "type": {
             "union": [
              {
+              "size": 4,
               "type": {
                "struct": [
                 {
@@ -9940,6 +10716,7 @@
               }
              },
              {
+              "size": 4,
               "type": "formid"
              }
             ]
@@ -10008,11 +10785,51 @@
            },
            {
             "name": "Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 link",
+              "1": "Edge 1-2 link",
+              "10": "Door",
+              "11": "Found",
+              "12": "Unknown 13",
+              "13": "",
+              "14": "",
+              "15": "",
+              "2": "Edge 2-0 link",
+              "3": "",
+              "4": "No Large Creatures",
+              "5": "Overlapping",
+              "6": "Preferred",
+              "7": "",
+              "8": "Unknown 9",
+              "9": "Water"
+             },
+             "flags": "u16"
+            }
            },
            {
             "name": "Cover Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 Cover Value 1/4",
+              "1": "Edge 0-1 Cover Value 2/4",
+              "10": "Edge 1-2 Left",
+              "11": "Edge 1-2 Right",
+              "12": "Unknown 13",
+              "13": "Unknown 14",
+              "14": "Unknown 15",
+              "15": "Unknown 16",
+              "2": "Edge 0-1 Cover Value 3/4",
+              "3": "Edge 0-1 Cover Value 4/4",
+              "4": "Edge 0-1 Left",
+              "5": "Edge 0-1 Right",
+              "6": "Edge 1-2 Cover Value 1/4",
+              "7": "Edge 1-2 Cover Value 2/4",
+              "8": "Edge 1-2 Cover Value 3/4",
+              "9": "Edge 1-2 Cover Value 4/4"
+             },
+             "flags": "u16"
+            }
            }
           ]
          }
@@ -10067,6 +10884,7 @@
             "type": {
              "union": [
               {
+               "size": 4,
                "type": "formid"
               }
              ]
@@ -10296,7 +11114,21 @@
       "struct": [
        {
         "name": "Bench Type",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "None",
+          "1": "Create Object",
+          "2": "Weapons",
+          "3": "Enchanting (unused)",
+          "4": "Enchanting Experiment (unused)",
+          "5": "Alchemy",
+          "6": "Alchemy Experiment (unused)",
+          "7": "Armor",
+          "8": "Power Armor",
+          "9": "Robot Mod"
+         }
+        }
        },
        {
         "name": "Uses Skill",
@@ -10443,7 +11275,16 @@
      "confidence": "documented",
      "name": "Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Unknown",
+       "1": "Short",
+       "2": "Long",
+       "3": "Float",
+       "4": "Boolean"
+      }
+     }
     }
    }
   },
@@ -10462,12 +11303,15 @@
         "type": "localized"
        },
        {
+        "size": 4,
         "type": "i32"
        },
        {
+        "size": 4,
         "type": "f32"
        },
        {
+        "size": 4,
         "type": "u32"
        }
       ]
@@ -10572,7 +11416,19 @@
        },
        {
         "name": "Units From Water Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Above - At Least",
+          "1": "Above - At Most",
+          "2": "Below - At Least",
+          "3": "Below - At Most",
+          "4": "Either - At Least",
+          "5": "Either - At Most",
+          "6": "Either - At Most Above",
+          "7": "Either - At Most Below"
+         }
+        }
        },
        {
         "name": "Position Range",
@@ -10592,7 +11448,14 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Vertex Lighting",
+          "1": "Uniform Scaling",
+          "2": "Fit to Slope"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unknown",
@@ -10726,7 +11589,17 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Affects Player Only",
+          "1": "Inherit Duration from Spawn Spell",
+          "2": "Align to Impact Normal",
+          "3": "Inherit Radius from Spawn Spell",
+          "4": "Drop to Ground",
+          "5": "Taper Effectiveness by Proximity"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Effect",
@@ -10878,7 +11751,14 @@
         "confidence": "documented",
         "name": "Part Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NAM0",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Race Morph",
+          "1": "Tri",
+          "2": "Chargen Morph"
+         }
+        }
        },
        "NAM1": {
         "confidence": "documented",
@@ -10903,7 +11783,17 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Playable",
+       "1": "Male",
+       "2": "Female",
+       "3": "Is Extra Part",
+       "4": "Use Solid Tint",
+       "5": "Uses Body Texture"
+      },
+      "flags": "u8"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -10927,7 +11817,21 @@
      "confidence": "documented",
      "name": "Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Misc",
+       "1": "Face",
+       "2": "Eyes",
+       "3": "Hair",
+       "4": "Facial Hair",
+       "5": "Scar",
+       "6": "Eyebrows",
+       "7": "Meatcaps",
+       "8": "Teeth",
+       "9": "Head Rear"
+      }
+     }
     },
     "RNAM": {
      "confidence": "documented",
@@ -11095,7 +11999,16 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IDLF",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Run in Sequence",
+       "1": "Unknown 1",
+       "2": "Do Once",
+       "3": "Unknown 3",
+       "4": "Ignored by Sandbox"
+      },
+      "flags": "u8"
+     }
     },
     "IDLT": {
      "confidence": "documented",
@@ -11267,7 +12180,12 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Animatable"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Duration",
@@ -11481,7 +12399,12 @@
        },
        {
         "name": "Radial Blur Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Use Target"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Radial Blur Center X",
@@ -11505,7 +12428,25 @@
        },
        {
         "name": "DoF Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Use Target",
+          "1": "Unknown 2",
+          "10": "No Sky",
+          "11": "Blur Radius Bit 2",
+          "12": "Blur Radius Bit 1",
+          "13": "Blur Radius Bit 0",
+          "2": "Unknown 3",
+          "3": "Unknown 4",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "Unknown 7",
+          "7": "Unknown 8",
+          "8": "Mode - Front",
+          "9": "Mode - Back"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Radial Blur Ramp Down",
@@ -11615,7 +12556,28 @@
        },
        {
         "name": "Sky / Blur Radius",
-        "type": "u16"
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "None",
+          "1": "Radius 0",
+          "10": "No Sky, Radius 1",
+          "11": "No Sky, Radius 2",
+          "12": "No Sky, Radius 3",
+          "13": "No Sky, Radius 4",
+          "14": "No Sky, Radius 5",
+          "15": "No Sky, Radius 6",
+          "16": "No Sky, Radius 7",
+          "2": "Radius 1",
+          "3": "Radius 2",
+          "4": "Radius 3",
+          "5": "Radius 4",
+          "6": "Radius 5",
+          "7": "Radius 6",
+          "8": "Radius 7",
+          "9": "No Sky, Radius 0"
+         }
+        }
        },
        {
         "name": "Vignette Radius",
@@ -11891,7 +12853,27 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Start Scene on End",
+          "1": "Random",
+          "10": "Can Move While Greeting",
+          "11": "No LIP File",
+          "12": "Requires post-processing",
+          "13": "Audio Output Override",
+          "14": "Has Capture",
+          "15": "Unknown 16",
+          "2": "Say Once",
+          "3": "Requires Player Activation",
+          "4": "Unknown 4",
+          "5": "Random End",
+          "6": "End Running Scene",
+          "7": "ForceGreet Hello",
+          "8": "Player Address",
+          "9": "Unknown 9"
+         },
+         "flags": "u16"
+        }
        },
        {
         "name": "Reset Hours",
@@ -11916,13 +12898,33 @@
      "confidence": "documented",
      "name": "Subtitle Priority",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Low",
+       "1": "Normal",
+       "2": "Unknown 2",
+       "3": "Force"
+      }
+     }
     },
     "INCC": {
      "confidence": "documented",
      "name": "Challenge",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INCC",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Easy",
+       "2": "Medium",
+       "3": "Hard",
+       "4": "Always Succeeds",
+       "5": "Easy Repeatable",
+       "6": "Medium Repeatable",
+       "7": "Hard Repeatable"
+      }
+     }
     },
     "INTV": {
      "confidence": "documented",
@@ -12081,7 +13083,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -12143,7 +13151,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -12292,7 +13309,20 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "No auto-calculation",
+          "1": "Food item",
+          "2": "Unknown 3",
+          "3": "Unknown 4",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "Unknown 7",
+          "7": "Unknown 8",
+          "8": "References Persist"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -12475,11 +13505,38 @@
           },
           {
            "name": "Target",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Enchantments",
+             "1": "BashImpactDataSet",
+             "10": "ActorValues",
+             "11": "Health",
+             "12": "ColorRemappingIndex",
+             "13": "MaterialSwaps",
+             "2": "BlockMaterial",
+             "3": "Keywords",
+             "4": "Weight",
+             "5": "Value",
+             "6": "Rating",
+             "7": "AddonIndex",
+             "8": "BodyPart",
+             "9": "DamageTypeValues"
+            }
+           }
           },
           {
            "name": "Op",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": ">=",
+             "1": ">",
+             "2": "<=",
+             "3": "<",
+             "4": "="
+            }
+           }
           }
          ]
         }
@@ -12507,7 +13564,16 @@
      "confidence": "documented",
      "name": "Target",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), UNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Armor",
+       "2": "Actor",
+       "3": "Furniture",
+       "4": "Weapon"
+      }
+     }
     }
    }
   },
@@ -12576,7 +13642,14 @@
        },
        {
         "name": "Effect - Orientation",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Surface Normal",
+          "1": "Projectile Vector",
+          "2": "Projectile Reflection"
+         }
+        }
        },
        {
         "name": "Angle Threshold",
@@ -12592,11 +13665,25 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Decal Data"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Impact Result",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Default",
+          "1": "Destroy",
+          "2": "Bounce",
+          "3": "Impale",
+          "4": "Stick"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -12812,7 +13899,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -12874,7 +13967,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -13802,7 +14904,13 @@
           },
           {
            "name": "Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Rotates",
+             "1": "Shrinks When Occluded"
+            },
+            "flags": "u32"
+           }
           }
          ]
         }
@@ -14358,7 +15466,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -14420,7 +15534,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -14540,7 +15663,33 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Unknown 0",
+          "1": "Can be Carried",
+          "10": "Shadow Spotlight",
+          "11": "Shadow Hemisphere",
+          "12": "Shadow OmniDirectional",
+          "13": "Unknown 13",
+          "14": "NonShadow Spotlight",
+          "15": "Non Specular",
+          "16": "Attenuation Only",
+          "17": "NonShadow Box",
+          "18": "Ignore Roughness",
+          "19": "No Rim Lighting",
+          "2": "Unknown 2",
+          "20": "Ambient Only",
+          "21": "Unknown 21",
+          "3": "Flicker",
+          "4": "Unknown 4",
+          "5": "Off By Default",
+          "6": "Unknown 6",
+          "7": "Pulse",
+          "8": "Unknown 8",
+          "9": "Unknown 9"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Falloff Exponent",
@@ -14904,17 +16053,26 @@
           {
            "name": "Global Variable / Required Rank",
            "type": {
+            "cases": {
+             "FACT": 2,
+             "NPC_": 1
+            },
+            "default": 0,
+            "switch_on": "Owner",
             "union": [
              {
+              "size": 4,
               "type": {
                "array": "u8",
                "count": 4
               }
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "i32"
              }
             ]
@@ -15001,7 +16159,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LVLF",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Calculate from all levels <= player's level",
+       "1": "Calculate for each item in count",
+       "2": "Use All"
+      },
+      "flags": "u8"
+     }
     },
     "LVLG": {
      "confidence": "documented",
@@ -15088,17 +16253,26 @@
           {
            "name": "Global Variable / Required Rank",
            "type": {
+            "cases": {
+             "FACT": 2,
+             "NPC_": 1
+            },
+            "default": 0,
+            "switch_on": "Owner",
             "union": [
              {
+              "size": 4,
               "type": {
                "array": "u8",
                "count": 4
               }
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "i32"
              }
             ]
@@ -15227,7 +16401,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LVLF",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Calculate from all levels <= player's level",
+       "1": "Calculate for each item in count",
+       "2": "Calculate All"
+      },
+      "flags": "u8"
+     }
     },
     "LVLG": {
      "confidence": "documented",
@@ -15408,7 +16589,12 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Single Pass"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -15538,7 +16724,13 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Message Box",
+       "1": "Delay Initial Display"
+      },
+      "flags": "u32"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -15604,7 +16796,43 @@
          "struct": [
           {
            "name": "Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Hostile",
+             "1": "Recover",
+             "10": "No Magnitude",
+             "11": "No Area",
+             "12": "FX Persist",
+             "13": "Unknown 14",
+             "14": "Gory Visuals",
+             "15": "Hide in UI",
+             "16": "Unknown 17",
+             "17": "No Recast",
+             "18": "Unknown 19",
+             "19": "Unknown 20",
+             "2": "Detrimental",
+             "20": "Unknown 21",
+             "21": "Power Affects Magnitude",
+             "22": "Power Affects Duration",
+             "23": "Unknown 24",
+             "24": "Unknown 25",
+             "25": "Unknown 26",
+             "26": "Painless",
+             "27": "No Hit Effect",
+             "28": "No Death Dispel",
+             "29": "Unknown 30",
+             "3": "Snap to Navmesh",
+             "30": "Unknown 31",
+             "31": "Unknown 32",
+             "4": "No Hit Event",
+             "5": "Unknown 6",
+             "6": "Unknown 7",
+             "7": "Unknown 8",
+             "8": "Dispel with Keywords",
+             "9": "No Duration"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Base Cost",
@@ -15615,30 +16843,39 @@
            "type": {
             "union": [
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              }
             ]
@@ -15963,7 +17200,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -16025,7 +17268,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -16476,7 +17728,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -16538,7 +17796,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -16814,7 +18081,18 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Plays One Selection",
+       "1": "Abrupt Transition",
+       "2": "Cycle Tracks",
+       "3": "Maintain Track Order",
+       "4": "Unknown 5",
+       "5": "Ducks Current Track",
+       "6": "Doesn't Queue"
+      },
+      "flags": "u32"
+     }
     },
     "PNAM": {
      "confidence": "documented",
@@ -16874,7 +18152,14 @@
      "confidence": "documented",
      "name": "Track Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Palette",
+       "1": "Single Track",
+       "2": "Silent Track"
+      }
+     }
     },
     "DNAM": {
      "confidence": "documented",
@@ -17105,6 +18390,7 @@
         "type": {
          "union": [
           {
+           "size": 4,
            "type": {
             "struct": [
              {
@@ -17119,6 +18405,7 @@
            }
           },
           {
+           "size": 4,
            "type": "formid"
           }
          ]
@@ -17222,6 +18509,7 @@
            "type": {
             "union": [
              {
+              "size": 4,
               "type": {
                "struct": [
                 {
@@ -17236,6 +18524,7 @@
               }
              },
              {
+              "size": 4,
               "type": "formid"
              }
             ]
@@ -17304,11 +18593,51 @@
            },
            {
             "name": "Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 link",
+              "1": "Edge 1-2 link",
+              "10": "Door",
+              "11": "Found",
+              "12": "Unknown 13",
+              "13": "",
+              "14": "",
+              "15": "",
+              "2": "Edge 2-0 link",
+              "3": "",
+              "4": "No Large Creatures",
+              "5": "Overlapping",
+              "6": "Preferred",
+              "7": "",
+              "8": "Unknown 9",
+              "9": "Water"
+             },
+             "flags": "u16"
+            }
            },
            {
             "name": "Cover Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 Cover Value 1/4",
+              "1": "Edge 0-1 Cover Value 2/4",
+              "10": "Edge 1-2 Left",
+              "11": "Edge 1-2 Right",
+              "12": "Unknown 13",
+              "13": "Unknown 14",
+              "14": "Unknown 15",
+              "15": "Unknown 16",
+              "2": "Edge 0-1 Cover Value 3/4",
+              "3": "Edge 0-1 Cover Value 4/4",
+              "4": "Edge 0-1 Left",
+              "5": "Edge 0-1 Right",
+              "6": "Edge 1-2 Cover Value 1/4",
+              "7": "Edge 1-2 Cover Value 2/4",
+              "8": "Edge 1-2 Cover Value 3/4",
+              "9": "Edge 1-2 Cover Value 4/4"
+             },
+             "flags": "u16"
+            }
            }
           ]
          }
@@ -17363,6 +18692,7 @@
             "type": {
              "union": [
               {
+               "size": 4,
                "type": "formid"
               }
              ]
@@ -17625,7 +18955,15 @@
      "confidence": "documented",
      "name": "Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Sound",
+       "1": "Voice",
+       "2": "Program",
+       "3": "Terminal"
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -17697,18 +19035,22 @@
      "type": {
       "union": [
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "formid"
        }
       ]
@@ -17802,7 +19144,43 @@
           },
           {
            "name": "Attack Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Ignore Weapon",
+             "1": "Bash Attack",
+             "10": "Unknown 10",
+             "11": "Unknown 11",
+             "12": "Unknown 12",
+             "13": "Unknown 13",
+             "14": "Unknown 14",
+             "15": "Unknown 15",
+             "16": "Unknown 16",
+             "17": "Unknown 17",
+             "18": "Unknown 18",
+             "19": "Unknown 19",
+             "2": "Power Attack",
+             "20": "Unknown 20",
+             "21": "Unknown 21",
+             "22": "Unknown 22",
+             "23": "Unknown 23",
+             "24": "Unknown 24",
+             "25": "Unknown 25",
+             "26": "Unknown 26",
+             "27": "Unknown 27",
+             "28": "Unknown 28",
+             "29": "Unknown 29",
+             "3": "Charge Attack",
+             "30": "Unknown 30",
+             "31": "Override Data",
+             "4": "Rotating Attack",
+             "5": "Continuous Attack",
+             "6": "Unknown 6",
+             "7": "Unknown 7",
+             "8": "Unknown 8",
+             "9": "Unknown 9"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Attack Angle",
@@ -17858,68 +19236,6 @@
         "name": "Weapon Slot",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbAttackData.ATKW",
         "type": "formid"
-       }
-      }
-     },
-     "CNTO": {
-      "opener": "CNTO",
-      "order": [
-       "CNTO",
-       "COED"
-      ],
-      "subrecords": {
-       "CNTO": {
-        "confidence": "documented",
-        "name": "CNTO",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCNTO.CNTO",
-        "type": {
-         "struct": [
-          {
-           "name": "Item",
-           "type": "formid"
-          },
-          {
-           "name": "Count",
-           "type": "i32"
-          }
-         ]
-        }
-       },
-       "COED": {
-        "confidence": "documented",
-        "name": "COED",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbCOED",
-        "type": {
-         "struct": [
-          {
-           "name": "Owner",
-           "type": "formid"
-          },
-          {
-           "name": "Global Variable / Required Rank",
-           "type": {
-            "union": [
-             {
-              "type": {
-               "array": "u8",
-               "count": 4
-              }
-             },
-             {
-              "type": "formid"
-             },
-             {
-              "type": "i32"
-             }
-            ]
-           }
-          },
-          {
-           "name": "Item Condition",
-           "type": "f32"
-          }
-         ]
-        }
        }
       }
      },
@@ -18006,7 +19322,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -18068,7 +19390,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -18285,6 +19616,20 @@
        }
       }
      },
+     "SPLO": {
+      "opener": "SPLO",
+      "order": [
+       "SPLO"
+      ],
+      "subrecords": {
+       "SPLO": {
+        "confidence": "documented",
+        "name": "SPLO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbSPLO. The group 'Actor Effects' repeats this subrecord.",
+        "type": "formid"
+       }
+      }
+     },
      "TETI": {
       "opener": "TETI",
       "order": [
@@ -18343,7 +19688,14 @@
          "struct": [
           {
            "name": "Data Type",
-           "type": "u16"
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "",
+             "1": "Value/Color",
+             "2": "Value"
+            }
+           }
           },
           {
            "name": "Index",
@@ -18367,7 +19719,43 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Female",
+          "1": "Essential",
+          "10": "Unknown 10",
+          "11": "Protected",
+          "12": "Unknown 12",
+          "13": "Unknown 13",
+          "14": "Summonable",
+          "15": "Unknown 15",
+          "16": "Doesn't bleed",
+          "17": "Unknown 17",
+          "18": "Bleedout Override",
+          "19": "Opposite Gender Anims",
+          "2": "Is CharGen Face Preset",
+          "20": "Simple Actor",
+          "21": "Unknown 21",
+          "22": "Unknown 22",
+          "23": "No Activation/Hellos",
+          "24": "Diffuse Alpha Test",
+          "25": "Unknown 25",
+          "26": "Unknown 26",
+          "27": "Unknown 27",
+          "28": "Unknown 28",
+          "29": "Is Ghost",
+          "3": "Respawn",
+          "30": "Unknown 30",
+          "31": "Invulnerable",
+          "4": "Auto-calc stats",
+          "5": "Unique",
+          "6": "Doesn't affect stealth meter",
+          "7": "PC Level Mult",
+          "8": "Unknown 8",
+          "9": "Calc For Each Template"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "XP Value Offset",
@@ -18378,9 +19766,11 @@
         "type": {
          "union": [
           {
+           "size": 2,
            "type": "i16"
           },
           {
+           "size": 2,
            "type": "i16"
           }
          ]
@@ -18400,7 +19790,24 @@
        },
        {
         "name": "Use Template Actors",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Traits",
+          "1": "Stats",
+          "10": "Def Pack List",
+          "11": "Attack Data",
+          "12": "Keywords",
+          "2": "Factions",
+          "3": "Spell List",
+          "4": "AI Data",
+          "5": "AI Packages",
+          "6": "Model/Animation",
+          "7": "Base Data",
+          "8": "Inventory",
+          "9": "Script"
+         },
+         "flags": "u16"
+        }
        },
        {
         "name": "Bleedout Override",
@@ -18424,11 +19831,28 @@
       "struct": [
        {
         "name": "Aggression",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Unaggressive",
+          "1": "Aggressive",
+          "2": "Very Aggressive",
+          "3": "Frenzied"
+         }
+        }
        },
        {
         "name": "Confidence",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Cowardly",
+          "1": "Cautious",
+          "2": "Average",
+          "3": "Brave",
+          "4": "Foolhardy"
+         }
+        }
        },
        {
         "name": "Energy Level",
@@ -18436,15 +19860,42 @@
        },
        {
         "name": "Responsibility",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Any crime",
+          "1": "Violence against enemies",
+          "2": "Property crime only",
+          "3": "No crime"
+         }
+        }
        },
        {
         "name": "Mood",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Neutral",
+          "1": "Angry",
+          "2": "Fear",
+          "3": "Happy",
+          "4": "Sad",
+          "5": "Surprised",
+          "6": "Puzzled",
+          "7": "Disgusted"
+         }
+        }
        },
        {
         "name": "Assistance",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Helps Nobody",
+          "1": "Helps Allies",
+          "2": "Helps Friends and Allies"
+         }
+        }
        },
        {
         "name": "Aggro",
@@ -19147,7 +20598,15 @@
        },
        {
         "name": "Form Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Armor",
+          "1": "Non-player character",
+          "2": "Weapon",
+          "3": "None"
+         }
+        }
        },
        {
         "name": "Unused",
@@ -19419,12 +20878,15 @@
            "type": "bytes"
           },
           {
+           "size": 1,
            "type": "u8"
           },
           {
+           "size": 4,
            "type": "u32"
           },
           {
+           "size": 4,
            "type": "f32"
           }
          ]
@@ -19434,7 +20896,12 @@
         "confidence": "documented",
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Success Completes Package"
+         },
+         "flags": "u32"
+        }
        },
        "PFO2": {
         "confidence": "documented",
@@ -19460,7 +20927,15 @@
           },
           {
            "name": "Preferred Speed Override",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Walk",
+             "1": "Jog",
+             "2": "Run",
+             "3": "Fast Walk"
+            }
+           }
           },
           {
            "name": "Unknown",
@@ -19497,65 +20972,81 @@
           {
            "name": "Location Value",
            "type": {
+            "switch_on": "Type",
             "union": [
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": {
                "array": "u8",
                "count": 4
               }
              },
              {
+              "size": 4,
               "type": {
                "array": "u8",
                "count": 4
               }
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": "u32"
              },
              {
+              "size": 4,
               "type": "formid"
              },
              {
+              "size": 4,
               "type": {
                "array": "u8",
                "count": 4
               }
              },
              {
+              "size": 4,
               "type": "i32"
              },
              {
+              "size": 4,
               "type": "i32"
              },
              {
+              "size": 4,
               "type": "u32"
              },
              {
+              "size": 4,
               "type": "u32"
              },
              {
+              "size": 4,
               "type": {
                "array": "u8",
                "count": 4
               }
              },
              {
+              "size": 4,
               "type": {
                "array": "u8",
                "count": 4
               }
              },
              {
+              "size": 4,
               "type": "i32"
              }
             ]
@@ -19590,7 +21081,13 @@
           },
           {
            "name": "Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Repeat when Complete",
+             "1": "Unknown 1"
+            },
+            "flags": "u32"
+           }
           }
          ]
         }
@@ -19653,7 +21150,16 @@
         "confidence": "documented",
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IDLF",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Unknown",
+          "1": "Random",
+          "2": "Run in Sequence",
+          "3": "Random, Do Once",
+          "4": "Run in Sequence, Do Once"
+         }
+        }
        },
        "IDLT": {
         "confidence": "documented",
@@ -19750,7 +21256,12 @@
         "confidence": "documented",
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PNAM",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Public"
+         },
+         "flags": "u32"
+        }
        },
        "UNAM": {
         "confidence": "documented",
@@ -19810,15 +21321,41 @@
        },
        {
         "name": "Type",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Package",
+          "1": "Package Template"
+         }
+        }
        },
        {
         "name": "Interrupt Override",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "None",
+          "1": "Spectator",
+          "2": "ObserveDead",
+          "3": "GuardWarn",
+          "4": "Combat",
+          "5": "Command Travel",
+          "6": "Command Activate",
+          "7": "Leave Workstation"
+         }
+        }
        },
        {
         "name": "Preferred Speed",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Walk",
+          "1": "Jog",
+          "2": "Run",
+          "3": "Fast Walk"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -19853,7 +21390,22 @@
        },
        {
         "name": "Day of week",
-        "type": "i8"
+        "type": {
+         "enum": "i8",
+         "values": {
+          "0": "Sunday",
+          "1": "Monday",
+          "10": "Any",
+          "2": "Tuesday",
+          "3": "Wednesday",
+          "4": "Thursday",
+          "5": "Friday",
+          "6": "Saturday",
+          "7": "Weekdays",
+          "8": "Weekends",
+          "9": "Monday, Wednesday, Friday"
+         }
+        }
        },
        {
         "name": "Date",
@@ -20125,7 +21677,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -20246,7 +21804,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -20270,7 +21833,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -20483,7 +22052,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -20604,7 +22179,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -20628,7 +22208,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -20841,7 +22427,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -20962,7 +22554,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -20986,7 +22583,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -21199,7 +22802,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -21320,7 +22929,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -21344,7 +22958,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -21394,8 +23014,11 @@
         "name": "Effect Data",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.DATA",
         "type": {
+         "_direct": true,
+         "switch_on": "PRKE",
          "union": [
           {
+           "size": 6,
            "type": {
             "struct": [
              {
@@ -21410,9 +23033,11 @@
            }
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 3,
            "type": {
             "struct": [
              {
@@ -21421,7 +23046,27 @@
              },
              {
               "name": "Function",
-              "type": "u8"
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "Unknown 0",
+                "1": "Set Value",
+                "10": "Select Spell",
+                "11": "Select Text",
+                "12": "Set to Actor Value Mult",
+                "13": "Multiply Actor Value Mult",
+                "14": "Multiply 1 + Actor Value Mult",
+                "15": "Set Text",
+                "2": "Add Value",
+                "3": "Multiply Value",
+                "4": "Add Range To Value",
+                "5": "Add Actor Value Mult",
+                "6": "Absolute Value",
+                "7": "Negative Absolute Value",
+                "8": "Add Leveled List",
+                "9": "Add Activate Choice"
+               }
+              }
              },
              {
               "name": "Perk Condition Tab Count",
@@ -21447,7 +23092,13 @@
          "struct": [
           {
            "name": "Script Flags",
-           "type": "u16"
+           "type": {
+            "bits": {
+             "0": "Run Immediately",
+             "1": "Replace Default"
+            },
+            "flags": "u16"
+           }
           }
          ]
         }
@@ -21468,9 +23119,11 @@
            "type": "bytes"
           },
           {
+           "size": 4,
            "type": "f32"
           },
           {
+           "size": 8,
            "type": {
             "struct": [
              {
@@ -21485,12 +23138,15 @@
            }
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
+           "size": 4,
            "type": "formid"
           },
           {
@@ -21500,6 +23156,7 @@
            "type": "localized"
           },
           {
+           "size": 8,
            "type": {
             "struct": [
              {
@@ -21520,7 +23177,20 @@
         "confidence": "documented",
         "name": "Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EPFT",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "None",
+          "1": "Float",
+          "2": "Float/AV,Float",
+          "3": "LVLI",
+          "4": "SPEL,lstring,flags",
+          "5": "SPEL",
+          "6": "string",
+          "7": "lstring",
+          "8": "AVIF"
+         }
+        }
        },
        "PRKC": {
         "confidence": "documented",
@@ -21530,13 +23200,21 @@
        },
        "PRKE": {
         "confidence": "documented",
+        "expose": true,
         "name": "PRKE",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.PRKE",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.PRKE The value of this subrecord decides which variant a later union takes.",
         "type": {
          "struct": [
           {
            "name": "Type",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Quest + Stage",
+             "1": "Ability",
+             "2": "Entry Point"
+            }
+           }
           },
           {
            "name": "Rank",
@@ -21867,7 +23545,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -21988,7 +23672,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -22012,7 +23701,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -22225,7 +23920,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -22346,7 +24047,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -22370,7 +24076,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -22583,7 +24295,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -22704,7 +24422,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -22728,7 +24451,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -23024,7 +24753,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -23145,7 +24880,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -23169,7 +24909,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reflection",
+          "1": "Refraction"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -23236,7 +24982,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -23298,7 +25050,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -23411,11 +25172,40 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Hitscan",
+          "1": "Explosion",
+          "10": "Disable Combat Aim Correction",
+          "11": "Penetrates Geometry",
+          "12": "Continuous Update",
+          "13": "Seeks Target",
+          "2": "Alt. Trigger",
+          "3": "Muzzle Flash",
+          "4": "Unknown 4",
+          "5": "Can Be Disabled",
+          "6": "Can Be Picked Up",
+          "7": "Supersonic",
+          "8": "Pins Limbs",
+          "9": "Pass Through Small Transparent"
+         },
+         "flags": "u16"
+        }
        },
        {
         "name": "Type",
-        "type": "u16"
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "Missile",
+          "1": "Lobber",
+          "2": "Beam",
+          "3": "Flame",
+          "4": "Cone",
+          "5": "Barrier",
+          "6": "Arrow"
+         }
+        }
        },
        {
         "name": "Gravity",
@@ -23627,7 +25417,13 @@
           },
           {
            "name": "Create",
-           "type": "u16"
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "At",
+             "1": "In"
+            }
+           }
           }
          ]
         }
@@ -23642,7 +25438,16 @@
         "confidence": "documented",
         "name": "Level",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCL",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Easy",
+          "1": "Medium",
+          "2": "Hard",
+          "3": "Very Hard",
+          "4": "None"
+         }
+        }
        },
        "ALCO": {
         "confidence": "documented",
@@ -23773,7 +25578,13 @@
         "confidence": "documented",
         "name": "Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALNT",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Linked From",
+          "1": "Linked Ref"
+         }
+        }
        },
        "ALPC": {
         "confidence": "documented",
@@ -23821,7 +25632,36 @@
         "confidence": "documented",
         "name": "FNAM",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Reserves Location/Reference",
+          "1": "Optional",
+          "10": "Protected",
+          "11": "Forced by Aliases",
+          "12": "Allow Destroyed",
+          "13": "Matching Ref - Closest",
+          "14": "Uses Stored Text",
+          "15": "Initially Disabled",
+          "16": "Allow Cleared",
+          "17": "Clear Names When Removed",
+          "18": "Matching Ref - Actors Only",
+          "19": "Create Ref - Temp",
+          "2": "Quest Object",
+          "20": "External Alias - Linked",
+          "21": "No Pickpocket",
+          "22": "Can Apply Data To Non-Aliased Refs",
+          "23": "Is Companion",
+          "24": "Optional All Scenes",
+          "3": "Allow Reuse in Quest",
+          "4": "Allow Dead",
+          "5": "Matching Ref - In Loaded Area",
+          "6": "Essential",
+          "7": "Allow Disabled",
+          "8": "Stores Text",
+          "9": "Allow Reserved"
+         },
+         "flags": "u32"
+        }
        },
        "GWOR": {
         "confidence": "documented",
@@ -23897,7 +25737,15 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Unknown 1",
+             "1": "Run On Start",
+             "2": "Run On Stop",
+             "3": "Keep Instance Data From Here On"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -23922,7 +25770,13 @@
         "confidence": "documented",
         "name": "Stage Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QSDT",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Complete Quest",
+          "1": "Fail Quest"
+         },
+         "flags": "u8"
+        }
        }
       }
      },
@@ -23939,7 +25793,13 @@
         "confidence": "documented",
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "ORed With Previous",
+          "1": "No Stats Tracking"
+         },
+         "flags": "u32"
+        }
        },
        "NNAM": {
         "confidence": "documented",
@@ -23965,7 +25825,14 @@
           },
           {
            "name": "Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Compass Marker Ignores Locks",
+             "1": "Hostile",
+             "2": "Use Straight Line Pathing"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Keyword",
@@ -23995,7 +25862,24 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Start Game Enabled",
+          "1": "Unknown 2",
+          "10": "Warn on alias fill failure",
+          "11": "Unknown 12",
+          "12": "Unknown 13",
+          "2": "Add Idle Topic To Hello",
+          "3": "Allow repeated stages",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "Unknown 7",
+          "7": "Unknown 8",
+          "8": "Run Once",
+          "9": "Exclude from dialogue export"
+         },
+         "flags": "u16"
+        }
        },
        {
         "name": "Priority",
@@ -24014,7 +25898,26 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "None",
+          "1": "Main Quest",
+          "10": "DLC03",
+          "11": "DLC04",
+          "12": "DLC05",
+          "13": "DLC06",
+          "14": "DLC07",
+          "2": "Brotherhood of Steel",
+          "3": "Institute",
+          "4": "Minutemen",
+          "5": "Railroad",
+          "6": "Miscellaneous",
+          "7": "Side Quests",
+          "8": "DLC01",
+          "9": "DLC02"
+         }
+        }
        }
       ]
      }
@@ -24212,7 +26115,43 @@
           },
           {
            "name": "Attack Flags",
-           "type": "u32"
+           "type": {
+            "bits": {
+             "0": "Ignore Weapon",
+             "1": "Bash Attack",
+             "10": "Unknown 10",
+             "11": "Unknown 11",
+             "12": "Unknown 12",
+             "13": "Unknown 13",
+             "14": "Unknown 14",
+             "15": "Unknown 15",
+             "16": "Unknown 16",
+             "17": "Unknown 17",
+             "18": "Unknown 18",
+             "19": "Unknown 19",
+             "2": "Power Attack",
+             "20": "Unknown 20",
+             "21": "Unknown 21",
+             "22": "Unknown 22",
+             "23": "Unknown 23",
+             "24": "Unknown 24",
+             "25": "Unknown 25",
+             "26": "Unknown 26",
+             "27": "Unknown 27",
+             "28": "Unknown 28",
+             "29": "Unknown 29",
+             "3": "Charge Attack",
+             "30": "Unknown 30",
+             "31": "Override Data",
+             "4": "Rotating Attack",
+             "5": "Continuous Attack",
+             "6": "Unknown 6",
+             "7": "Unknown 7",
+             "8": "Unknown 8",
+             "9": "Unknown 9"
+            },
+            "flags": "u32"
+           }
           },
           {
            "name": "Attack Angle",
@@ -24296,7 +26235,13 @@
         "confidence": "documented",
         "name": "Gender",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BSMP",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Male",
+          "1": "Female"
+         }
+        }
        },
        "BSMS": {
         "confidence": "documented",
@@ -24749,11 +26694,26 @@
          "struct": [
           {
            "name": "Role",
-           "type": "u16"
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "MT",
+             "1": "Weapon",
+             "2": "Furniture",
+             "3": "Idle",
+             "4": "Pipboy"
+            }
+           }
           },
           {
            "name": "Perspective",
-           "type": "u16"
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "3rd",
+             "1": "1st"
+            }
+           }
           }
          ]
         }
@@ -24762,6 +26722,20 @@
         "confidence": "documented",
         "name": "Keyword",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.Target Keywords.STKD. The group 'Target Keywords' repeats this subrecord.",
+        "type": "formid"
+       }
+      }
+     },
+     "SPLO": {
+      "opener": "SPLO",
+      "order": [
+       "SPLO"
+      ],
+      "subrecords": {
+       "SPLO": {
+        "confidence": "documented",
+        "name": "SPLO",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbSPLO. The group 'Actor Effects' repeats this subrecord.",
         "type": "formid"
        }
       }
@@ -24785,7 +26759,7 @@
     },
     "ANAM": {
      "confidence": "documented",
-     "name": "Female Skeletal Model",
+     "name": "Male Skeletal Model",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM",
      "type": "zstring"
     },
@@ -24874,7 +26848,43 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Playable",
+          "1": "FaceGen Head",
+          "10": "Not Pushable",
+          "11": "No Combat In Water",
+          "12": "No Rotating to Head-Track",
+          "13": "Don't Show Blood Spray",
+          "14": "Don't Show Blood Decal",
+          "15": "Uses Head Track Anims",
+          "16": "Spells Align w/Magic Node",
+          "17": "Use World Raycasts For FootIK",
+          "18": "Allow Ragdoll Collision",
+          "19": "Regen HP In Combat",
+          "2": "Child",
+          "20": "Can't Open Doors",
+          "21": "Allow PC Dialogue",
+          "22": "No Knockdowns",
+          "23": "Allow Pickpocket",
+          "24": "Always Use Proxy Controller",
+          "25": "Don't Show Weapon Blood",
+          "26": "Overlay Head Part List",
+          "27": "Override Head Part List",
+          "28": "Can Pickup Items",
+          "29": "Allow Multiple Membrane Shaders",
+          "3": "Tilt Front/Back",
+          "30": "Can Dual Wield",
+          "31": "Avoids Roads",
+          "4": "Tilt Left/Right",
+          "5": "No Shadow",
+          "6": "Swims",
+          "7": "Flies",
+          "8": "Walks",
+          "9": "Immobile"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Acceleration Rate",
@@ -24886,7 +26896,15 @@
        },
        {
         "name": "Size",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Small",
+          "1": "Medium",
+          "2": "Large",
+          "3": "Extra Large"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -24929,7 +26947,34 @@
        },
        {
         "name": "Flags 2",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Use Advanced Avoidance",
+          "1": "Non-Hostile",
+          "10": "Can Move When Knocked Down",
+          "11": "Use Large Actor Pathing",
+          "12": "Use Subsegmented Damage",
+          "13": "Flight - Defer Kill",
+          "14": "Unknown 14",
+          "15": "Flight - Allow Procedural Crash Land",
+          "16": "Disable Weapon Culling",
+          "17": "Use Optimal Speeds",
+          "18": "Has Facial Rig",
+          "19": "Can Use Crippled Limbs",
+          "2": "Floats",
+          "20": "Use Quadruped Controller",
+          "21": "Low Priority Pushable",
+          "22": "Cannot Use Playable Items",
+          "3": "Unknown 3",
+          "4": "Unknown 4",
+          "5": "Head Axis Bit 0",
+          "6": "Head Axis Bit 1",
+          "7": "Can Melee When Knocked Down",
+          "8": "Use Idle Chatter During Combat",
+          "9": "Ungendered"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Unknown",
@@ -25065,7 +27110,7 @@
     },
     "FNAM": {
      "confidence": "documented",
-     "name": "Female Data Marker",
+     "name": "Female Marker",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.FNAM",
      "type": {
       "struct": []
@@ -25143,7 +27188,7 @@
     },
     "MNAM": {
      "confidence": "documented",
-     "name": "Male Data Marker",
+     "name": "Male Marker",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.MNAM",
      "type": {
       "struct": []
@@ -25171,9 +27216,22 @@
     },
     "NAM2": {
      "confidence": "documented",
-     "name": "Collar TextureSet",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.NAM2",
-     "type": "formid"
+     "name": "Marker NAM2 #1",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.NAM2 The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+     "type": {
+      "union": [
+       {
+        "size": 0,
+        "type": {
+         "struct": []
+        }
+       },
+       {
+        "size": 4,
+        "type": "formid"
+       }
+      ]
+     }
     },
     "NAM3": {
      "confidence": "documented",
@@ -25215,7 +27273,7 @@
     },
     "NNAM": {
      "confidence": "documented",
-     "name": "Female Neck Fat Adjustments Scale",
+     "name": "Male Neck Fat Adjustments Scale",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.NNAM",
      "type": {
       "struct": [
@@ -25379,7 +27437,7 @@
     },
     "WMAP": {
      "confidence": "documented",
-     "name": "Female Wrinkle Map Path",
+     "name": "Male Wrinkle Map Path",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WMAP",
      "type": "zstring"
     },
@@ -25442,7 +27500,15 @@
         "confidence": "documented",
         "name": "Map Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Visible",
+          "1": "Can Travel To",
+          "2": "\"Show All\" Hidden",
+          "3": "Use Location Name"
+         },
+         "flags": "u8"
+        }
        },
        "FULL": {
         "confidence": "documented",
@@ -25458,7 +27524,111 @@
          "struct": [
           {
            "name": "Type",
-           "type": "u8"
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Cave",
+             "1": "City",
+             "10": "Ruins - Town",
+             "11": "Ruins - Urban",
+             "12": "Sanctuary",
+             "13": "Settlement",
+             "14": "Sewer / Utility Tunnels",
+             "15": "Vault",
+             "16": "Airfield",
+             "17": "Bunker Hill",
+             "18": "Camper",
+             "19": "Car",
+             "2": "Diamond City",
+             "20": "Church",
+             "21": "Country Club",
+             "22": "Custom House",
+             "23": "Drive-In",
+             "24": "Elevated Highway",
+             "25": "Faneuil Hall",
+             "26": "Farm",
+             "27": "Filling Station",
+             "28": "Forested",
+             "29": "Goodneighbor",
+             "3": "Encampment",
+             "30": "Graveyard",
+             "31": "Hospital",
+             "32": "Industrial Dome",
+             "33": "Industrial Stacks",
+             "34": "Institute",
+             "35": "Irish Pride",
+             "36": "Junkyard",
+             "37": "Observatory",
+             "38": "Pier",
+             "39": "Pond / Lake",
+             "4": "Factory / Industrial Site",
+             "40": "Quarry",
+             "41": "Radioactive Area",
+             "42": "Radio Tower",
+             "43": "Salem",
+             "44": "School",
+             "45": "Shipwreck",
+             "46": "Submarine",
+             "47": "Swan Pond",
+             "48": "Synth Head",
+             "49": "Town",
+             "5": "Gov't Building / Monument",
+             "50": "Brotherhood of Steel",
+             "51": "Brownstone Townhouse",
+             "52": "Bunker",
+             "53": "Castle",
+             "54": "Skyscraper",
+             "55": "Libertalia",
+             "56": "Low-Rise Building",
+             "57": "Minutemen",
+             "58": "Police Station",
+             "59": "Prydwen",
+             "6": "Metro Station",
+             "60": "Railroad - Faction",
+             "61": "Railroad",
+             "62": "Satellite",
+             "63": "Sentinel",
+             "64": "USS Constitution",
+             "65": "Mechanist LairRaider settlementVassal settlementPotential Vassal settlement",
+             "66": "Custom 66",
+             "67": "Custom 67",
+             "68": "Custom 68",
+             "69": "Custom 69",
+             "7": "Military Base",
+             "70": "Custom 70",
+             "71": "Custom 71",
+             "72": "Custom 72",
+             "73": "Custom 73",
+             "74": "Custom 74",
+             "75": "Custom 75",
+             "76": "Custom 76",
+             "77": "Custom 77",
+             "78": "Custom 78",
+             "79": "Custom 79",
+             "8": "Natural Landmark",
+             "80": "Custom 80",
+             "81": "Custom 81",
+             "82": "Custom 82",
+             "83": "Custom 83",
+             "84": "Custom 84",
+             "85": "Custom 85",
+             "86": "Custom 86",
+             "87": "Custom 87",
+             "88": "Custom 88",
+             "89": "Custom 89",
+             "9": "Office / Civic Building",
+             "90": "Custom 90",
+             "91": "Custom 91",
+             "92": "Custom 92",
+             "93": "Custom 93",
+             "94": "Custom 94",
+             "95": "Custom 95",
+             "96": "Custom 96",
+             "97": "Custom 97",
+             "98": "Custom 98",
+             "99": "Custom 99"
+            }
+           }
           },
           {
            "name": "Unused",
@@ -25549,7 +27719,19 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Unknown 1",
+             "1": "Unknown 2",
+             "2": "Unknown 3",
+             "3": "Unknown 4",
+             "4": "Unknown 5",
+             "5": "Unknown 6",
+             "6": "Has Image Space",
+             "7": "Has Lighting Template"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -25719,7 +27901,15 @@
      "confidence": "documented",
      "name": "Action Flag",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XACT",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Use Default",
+       "1": "Activate",
+       "2": "Open",
+       "3": "Open by Default"
+      },
+      "flags": "u32"
+     }
     },
     "XALP": {
      "confidence": "documented",
@@ -25855,7 +28045,13 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Set Enable State to Opposite of Parent",
+          "1": "Pop In"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -25903,7 +28099,15 @@
      "confidence": "documented",
      "name": "XLCM",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), XLCM",
-     "type": "i32"
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Easy",
+       "1": "Medium",
+       "2": "Hard",
+       "3": "Very Hard"
+      }
+     }
     },
     "XLCN": {
      "confidence": "documented",
@@ -25983,7 +28187,22 @@
       "struct": [
        {
         "name": "Level",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "None",
+          "1": "Novice 1",
+          "10": "Requires Key",
+          "2": "Novice 25",
+          "3": "Advanced",
+          "4": "Expert",
+          "5": "Master",
+          "6": "Requires Terminal",
+          "7": "Barred",
+          "8": "Chained",
+          "9": "Inaccessible"
+         }
+        }
        },
        {
         "name": "Unused",
@@ -25998,7 +28217,14 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "",
+          "1": "",
+          "2": "Leveled Lock"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -26203,7 +28429,12 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "No Crime"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unused",
@@ -26305,7 +28536,17 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "None",
+          "1": "Box",
+          "2": "Sphere",
+          "3": "Plane",
+          "4": "Line",
+          "5": "Ellipsoid"
+         }
+        }
        }
       ]
      }
@@ -26396,7 +28637,12 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Ignores Distance Checks"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -26459,7 +28705,14 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "No Alarm",
+          "1": "No Load Screen",
+          "2": "Relative Position"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Transition Interior",
@@ -26573,11 +28826,36 @@
          "struct": [
           {
            "name": "Type",
-           "type": "u32"
+           "type": {
+            "enum": "u32",
+            "values": {
+             "0": "Unknown 0",
+             "1": "Unknown 1",
+             "10": "Unknown 11",
+             "11": "Unknown 12",
+             "12": "Unknown 13",
+             "13": "Unknown 14",
+             "14": "Unknown 15",
+             "15": "Unknown 16",
+             "2": "Objects",
+             "3": "Weather",
+             "4": "Map",
+             "5": "Land",
+             "6": "Grass",
+             "7": "Sound",
+             "8": "Imposter",
+             "9": "Unknown 10"
+            }
+           }
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Override"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Priority",
@@ -26664,7 +28942,19 @@
            },
            {
             "name": "Flags",
-            "type": "u8"
+            "type": {
+             "bits": {
+              "0": "Conform to slope",
+              "1": "Paint Vertices",
+              "2": "Size Variance +/-",
+              "3": "X +/-",
+              "4": "Y +/-",
+              "5": "Z +/-",
+              "6": "Tree",
+              "7": "Huge Rock"
+             },
+             "flags": "u8"
+            }
            },
            {
             "name": "Radius wrt Parent",
@@ -26744,7 +29034,15 @@
            },
            {
             "name": "Flags",
-            "type": "u32"
+            "type": {
+             "bits": {
+              "0": "Pleasant",
+              "1": "Cloudy",
+              "2": "Rainy",
+              "3": "Snowy"
+             },
+             "flags": "u32"
+            }
            },
            {
             "name": "Chance",
@@ -26894,7 +29192,20 @@
        },
        {
         "name": "Rank",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Lover",
+          "1": "Ally",
+          "2": "Confidant",
+          "3": "Friend",
+          "4": "Acquaintance",
+          "5": "Rival",
+          "6": "Foe",
+          "7": "Enemy",
+          "8": "Archnemesis"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -26905,7 +29216,19 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Unknown 1",
+          "1": "Unknown 2",
+          "2": "Unknown 3",
+          "3": "Unknown 4",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "Unknown 7",
+          "7": "Secret"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Association Type",
@@ -27019,7 +29342,14 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Rotate to Face Target",
+          "1": "Attach to Camera",
+          "2": "Inherit Rotation"
+         },
+         "flags": "u32"
+        }
        }
       ]
      }
@@ -27167,13 +29497,33 @@
         "confidence": "documented",
         "name": "Behaviour Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Death Pause",
+          "1": "Death End",
+          "2": "Combat Pause",
+          "3": "Combat End",
+          "4": "Dialogue Pause",
+          "5": "Dialogue End",
+          "6": "OBS_COM Pause",
+          "7": "OBS_COM End"
+         },
+         "flags": "u32"
+        }
        },
        "LNAM": {
         "confidence": "documented",
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LNAM",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "No Player Activation",
+          "1": "Optional",
+          "2": "Run Only Scene Packages",
+          "3": "No Command State"
+         },
+         "flags": "u32"
+        }
        }
       }
      },
@@ -27232,8 +29582,32 @@
        "ANAM": {
         "confidence": "documented",
         "name": "Type",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM",
-        "type": "u16"
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+        "type": {
+         "union": [
+          {
+           "size": 2,
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "Dialogue",
+             "1": "Package",
+             "2": "Timer",
+             "3": "Player Dialogue",
+             "4": "Start Scene",
+             "5": "NPC Response Dialogue",
+             "6": "Radio"
+            }
+           }
+          },
+          {
+           "size": 0,
+           "type": {
+            "struct": []
+           }
+          }
+         ]
+        }
        },
        "CITC": {
         "confidence": "documented",
@@ -27316,21 +29690,68 @@
         "confidence": "documented",
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Unknown 0",
+          "1": "Unknown 1",
+          "10": "Use Dialogue Subtype",
+          "11": "Player Question Use Dialogue Subtype",
+          "12": "Keep/Clear Target on Action End",
+          "13": "Unknown 13",
+          "14": "Unknown 14",
+          "15": "Face Target",
+          "16": "Looping",
+          "17": "Headtrack Player",
+          "18": "Unknown 18",
+          "19": "Ignore For Completion",
+          "2": "Unknown 2",
+          "20": "Unknown 20",
+          "21": "Camera Speaker Target",
+          "22": "Complete Face Target",
+          "23": "Unknown 23",
+          "24": "Unknown 24",
+          "25": "Unknown 25",
+          "26": "Unknown 26",
+          "27": "NPC Positive Use Dialogue Subtype",
+          "28": "NPC Negative Use Dialogue Subtype",
+          "29": "NPC Neutral Use Dialogue Subtype",
+          "3": "Unknown 3",
+          "30": "NPC Question Use Dialogue Subtype",
+          "4": "Unknown 4",
+          "5": "Unknown 5",
+          "6": "Unknown 6",
+          "7": "Player Positive Use Dialogue Subtype / Hold Into Next Scene",
+          "8": "Player Negative Use Dialogue Subtype",
+          "9": "Player Neutral Use Dialogue Subtype"
+         },
+         "flags": "u32"
+        }
        },
        "HTID": {
         "confidence": "documented",
         "name": "HTID",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.HTID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.HTID The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
         "type": {
          "union": [
           {
+           "size": 4,
            "type": {
-            "struct": []
+            "union": [
+             {
+              "size": 0,
+              "type": {
+               "struct": []
+              }
+             },
+             {
+              "size": 4,
+              "type": "formid"
+             }
+            ]
            }
           },
           {
-           "type": "formid"
+           "type": "bytes"
           }
          ]
         }
@@ -27464,8 +29885,19 @@
        "SNAM": {
         "confidence": "documented",
         "name": "Start Phase",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNAM",
-        "type": "u32"
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+        "type": {
+         "union": [
+          {
+           "size": 4,
+           "type": "u32"
+          },
+          {
+           "size": 4,
+           "type": "f32"
+          }
+         ]
+        }
        },
        "SSPN": {
         "confidence": "documented",
@@ -27508,7 +29940,14 @@
         "confidence": "documented",
         "name": "Flags",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Start - WalkAway Phase",
+          "1": "Don't Run End Scripts on Scene Jump",
+          "2": "Start - Inherit In Templated Scenes"
+         },
+         "flags": "u16"
+        }
        },
        "HNAM": {
         "confidence": "documented",
@@ -27590,7 +30029,24 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Begin on Quest Start",
+       "1": "Stop on Quest End",
+       "10": "Unknown 10",
+       "11": "Disable Dialogue Camera",
+       "12": "No Follower Idle Chatter",
+       "2": "Unknown 2",
+       "3": "Repeat Conditions While True",
+       "4": "Interruptible",
+       "5": "Unknown 5",
+       "6": "Prevent Player Exit Dialogue",
+       "7": "Unknown 7",
+       "8": "Unknown 8",
+       "9": "Unknown 9"
+      },
+      "flags": "u32"
+     }
     },
     "INAM": {
      "confidence": "documented",
@@ -28071,7 +30527,14 @@
        },
        {
         "name": "Quest Flags",
-        "type": "u16"
+        "type": {
+         "bits": {
+          "0": "Do all before repeating",
+          "1": "Shares event",
+          "2": "Num quests to run"
+         },
+         "flags": "u16"
+        }
        }
       ]
      }
@@ -28141,7 +30604,18 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Mute When Submerged",
+       "1": "Should Appear on Menu",
+       "2": "Immune to Time Speedup",
+       "3": "Pause During Menus (Immed)",
+       "4": "Pause During Menus (Fade)",
+       "5": "Exclude from Player OPM Override",
+       "6": "Pause During Start Menu"
+      },
+      "flags": "u32"
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -28257,6 +30731,7 @@
       "switch_on": "CNAM",
       "union": [
        {
+        "size": 6,
         "type": {
          "struct": [
           {
@@ -28283,6 +30758,7 @@
         }
        },
        {
+        "size": 4,
         "type": "formid"
        }
       ]
@@ -28293,7 +30769,14 @@
      "expose": true,
      "name": "Descriptor Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CNAM The value of this subrecord decides which variant a later union takes.",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Standard",
+       "1": "Compound",
+       "2": "AutoWeapon"
+      }
+     }
     },
     "DNAM": {
      "confidence": "documented",
@@ -28334,7 +30817,15 @@
        },
        {
         "name": "Looping",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "None",
+          "1": "Loop",
+          "2": "Envelope Fast",
+          "3": "Envelope Slow"
+         }
+        }
        },
        {
         "name": "Sidechain",
@@ -28459,7 +30950,13 @@
      "confidence": "documented",
      "name": "Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MNAM",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Uses HRTF",
+       "1": "Defined Speaker Output"
+      }
+     }
     },
     "NAM1": {
      "confidence": "documented",
@@ -28469,7 +30966,19 @@
       "struct": [
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Attenuates With Distance",
+          "1": "Allows Rumble",
+          "2": "Applies Doppler",
+          "3": "Applies Distance Delay",
+          "4": "Player Output Model",
+          "5": "Try Play on Controller",
+          "6": "Causes Ducking",
+          "7": "Avoids Ducking"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Unknown",
@@ -28746,11 +31255,63 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Manual Cost Calc",
+          "1": "Unknown 2",
+          "10": "Unknown 11",
+          "11": "Unknown 12",
+          "12": "Unknown 13",
+          "13": "Unknown 14",
+          "14": "Unknown 15",
+          "15": "Unknown 16",
+          "16": "Unknown 17",
+          "17": "PC Start Spell",
+          "18": "Instant Cast",
+          "19": "Area Effect Ignores LOS",
+          "2": "Unknown 3",
+          "20": "Ignore Resistance",
+          "21": "No Absorb/Reflect",
+          "22": "Unknown 23",
+          "23": "No Dual Cast Modification",
+          "24": "Unknown 25",
+          "25": "Unknown 26",
+          "26": "Unknown 27",
+          "27": "Unknown 28",
+          "28": "Unknown 29",
+          "29": "Unknown 30",
+          "3": "Unknown 4",
+          "30": "Unknown 31",
+          "31": "Unknown 32",
+          "4": "Unknown 5",
+          "5": "Unknown 6",
+          "6": "Unknown 7",
+          "7": "Unknown 8",
+          "8": "Unknown 9",
+          "9": "Unknown 10"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Spell",
+          "1": "Disease",
+          "10": "Addiction",
+          "11": "Voice",
+          "2": "Power",
+          "3": "Lesser Power",
+          "4": "Ability",
+          "5": "Poison",
+          "6": "Unknown 6",
+          "7": "Unknown 7",
+          "8": "Unknown 8",
+          "9": "Unknown 9"
+         }
+        }
        },
        {
         "name": "Charge Time",
@@ -28890,7 +31451,13 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Rain",
+          "1": "Snow"
+         }
+        }
        },
        {
         "name": "Unknown",
@@ -29101,6 +31668,7 @@
            "type": {
             "union": [
              {
+              "size": 4,
               "type": {
                "struct": [
                 {
@@ -29115,6 +31683,7 @@
               }
              },
              {
+              "size": 4,
               "type": "formid"
              }
             ]
@@ -29183,11 +31752,51 @@
            },
            {
             "name": "Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 link",
+              "1": "Edge 1-2 link",
+              "10": "Door",
+              "11": "Found",
+              "12": "Unknown 13",
+              "13": "",
+              "14": "",
+              "15": "",
+              "2": "Edge 2-0 link",
+              "3": "",
+              "4": "No Large Creatures",
+              "5": "Overlapping",
+              "6": "Preferred",
+              "7": "",
+              "8": "Unknown 9",
+              "9": "Water"
+             },
+             "flags": "u16"
+            }
            },
            {
             "name": "Cover Flags",
-            "type": "u16"
+            "type": {
+             "bits": {
+              "0": "Edge 0-1 Cover Value 1/4",
+              "1": "Edge 0-1 Cover Value 2/4",
+              "10": "Edge 1-2 Left",
+              "11": "Edge 1-2 Right",
+              "12": "Unknown 13",
+              "13": "Unknown 14",
+              "14": "Unknown 15",
+              "15": "Unknown 16",
+              "2": "Edge 0-1 Cover Value 3/4",
+              "3": "Edge 0-1 Cover Value 4/4",
+              "4": "Edge 0-1 Left",
+              "5": "Edge 0-1 Right",
+              "6": "Edge 1-2 Cover Value 1/4",
+              "7": "Edge 1-2 Cover Value 2/4",
+              "8": "Edge 1-2 Cover Value 3/4",
+              "9": "Edge 1-2 Cover Value 4/4"
+             },
+             "flags": "u16"
+            }
            }
           ]
          }
@@ -29242,6 +31851,7 @@
             "type": {
              "union": [
               {
+               "size": 4,
                "type": "formid"
               }
              ]
@@ -29495,7 +32105,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -29557,7 +32173,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -29794,7 +32419,28 @@
         "confidence": "documented",
         "name": "Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Unknown 0",
+          "1": "Unknown 1",
+          "10": "Unknown 10",
+          "11": "Unknown 11",
+          "12": "Unknown 12",
+          "13": "Unknown 13",
+          "14": "Unknown 14",
+          "15": "Unknown 15",
+          "16": "Display Image",
+          "2": "Unknown 2",
+          "3": "Unknown 3",
+          "4": "Submenu - Terminal",
+          "5": "Submenu - Return to Top Level",
+          "6": "Submenu - Force Redraw",
+          "7": "Unknown 7",
+          "8": "Display Text",
+          "9": "Unknown 9"
+         }
+        }
        },
        "ITID": {
         "confidence": "documented",
@@ -29952,7 +32598,43 @@
      "confidence": "documented",
      "name": "MNAM",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MNAM",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Interaction Point 0",
+       "1": "Interaction Point 1",
+       "10": "Interaction Point 10",
+       "11": "Interaction Point 11",
+       "12": "Interaction Point 12",
+       "13": "Interaction Point 13",
+       "14": "Interaction Point 14",
+       "15": "Interaction Point 15",
+       "16": "Interaction Point 16",
+       "17": "Interaction Point 17",
+       "18": "Interaction Point 18",
+       "19": "Interaction Point 19",
+       "2": "Interaction Point 2",
+       "20": "Interaction Point 20",
+       "21": "Interaction Point 21",
+       "22": "Allow Awake Sound",
+       "23": "Enter With Weapon Drawn",
+       "24": "Play Anim When Full",
+       "25": "Disables Activation",
+       "26": "Is Perch",
+       "27": "Must Exit to Talk",
+       "28": "Use Static Avoid Node",
+       "29": "Unknown 29",
+       "3": "Interaction Point 3",
+       "30": "Has Model?",
+       "31": "Unknown 31",
+       "4": "Interaction Point 4",
+       "5": "Interaction Point 5",
+       "6": "Interaction Point 6",
+       "7": "Interaction Point 7",
+       "8": "Interaction Point 8",
+       "9": "Interaction Point 9"
+      },
+      "flags": "u32"
+     }
     },
     "NAM0": {
      "confidence": "documented",
@@ -30013,9 +32695,19 @@
     },
     "SNAM": {
      "confidence": "documented",
-     "name": "SNAM",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbSNAMMarkerParams",
-     "type": "bytes"
+     "name": "Looping Sound",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TERM.SNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+     "type": {
+      "union": [
+       {
+        "size": 4,
+        "type": "formid"
+       },
+       {
+        "type": "bytes"
+       }
+      ]
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -30552,7 +33244,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u16"
+     "type": {
+      "bits": {
+       "0": "No Specular Map",
+       "1": "Facegen Textures",
+       "2": "Has Model Space Normal Map"
+      },
+      "flags": "u16"
+     }
     },
     "DODT": {
      "confidence": "documented",
@@ -30692,7 +33391,13 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DNAM",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Allow Default Dialog",
+       "1": "Female"
+      },
+      "flags": "u8"
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -31116,7 +33821,14 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Dangerous",
+       "1": "Unknown 1",
+       "2": "Directional Sound"
+      },
+      "flags": "u8"
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -31264,7 +33976,13 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "VATS Targetable",
+             "1": "Large Actor Destroys"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -31326,7 +34044,16 @@
           },
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Cap Damage",
+             "1": "Disable",
+             "2": "Destroy",
+             "3": "Ignore External Dmg",
+             "4": "Becomes Dynamic"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Self Damage per Second",
@@ -31686,7 +34413,43 @@
        },
        {
         "name": "Flags",
-        "type": "u32"
+        "type": {
+         "bits": {
+          "0": "Player Only",
+          "1": "NPCs Use Ammo",
+          "10": "Unknown 11",
+          "11": "Hold Input To Power",
+          "12": "Non Hostile",
+          "13": "Bound Weapon",
+          "14": "Ignores Normal Weapon Resistance",
+          "15": "Automatic",
+          "16": "Repeatable Single Fire",
+          "17": "Can't Drop",
+          "18": "Hide Backpack",
+          "19": "Embedded Weapon",
+          "2": "No Jam After Reload",
+          "20": "Not Playable",
+          "21": "Has Scope",
+          "22": "Bolt Action",
+          "23": "Secondary Weapon",
+          "24": "Disable Shells",
+          "25": "Unknown 26",
+          "26": "Unknown 27",
+          "27": "Unknown 28",
+          "28": "Unknown 29",
+          "29": "Unknown 30",
+          "3": "Charging Reload",
+          "30": "Unknown 31",
+          "31": "Unknown 32",
+          "4": "Minor Crime",
+          "5": "Fixed Range",
+          "6": "Not Used In Normal Combat",
+          "7": "Unknown 8",
+          "8": "Crit Effect - on Death",
+          "9": "Charging Attack"
+         },
+         "flags": "u32"
+        }
        },
        {
         "name": "Capacity",
@@ -31694,7 +34457,23 @@
        },
        {
         "name": "Animation Type",
-        "type": "u8"
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "HandToHandMelee",
+          "1": "OneHandSword",
+          "10": "Grenade",
+          "11": "Mine",
+          "2": "OneHandDagger",
+          "3": "OneHandAxe",
+          "4": "OneHandMace",
+          "5": "TwoHandSword",
+          "6": "TwoHandAxe",
+          "7": "Bow",
+          "8": "Staff",
+          "9": "Gun"
+         }
+        }
        },
        {
         "name": "Damage - Secondary",
@@ -31866,7 +34645,15 @@
        },
        {
         "name": "Pattern",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Constant",
+          "1": "Square",
+          "2": "Triangle",
+          "3": "Sawtooth"
+         }
+        }
        },
        {
         "name": "Rumble - Peroid (ms)",
@@ -31923,7 +34710,16 @@
      "confidence": "documented",
      "name": "Melee Speed",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MASE",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Very Slow",
+       "1": "Slow",
+       "2": "Medium",
+       "3": "Fast",
+       "4": "Very Fast"
+      }
+     }
     },
     "MICO": {
      "confidence": "documented",
@@ -32104,38 +34900,48 @@
        "WLEV": {
         "confidence": "documented",
         "name": "Dimension",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.World Default Level Data.WLEV",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.World Default Level Data.WLEV The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
         "type": {
-         "struct": [
+         "union": [
           {
-           "name": "NW Cell",
+           "size": 4,
            "type": {
             "struct": [
              {
-              "name": "X",
-              "type": "i8"
+              "name": "NW Cell",
+              "type": {
+               "struct": [
+                {
+                 "name": "X",
+                 "type": "i8"
+                },
+                {
+                 "name": "Y",
+                 "type": "i8"
+                }
+               ]
+              }
              },
              {
-              "name": "Y",
-              "type": "i8"
+              "name": "Size",
+              "type": {
+               "struct": [
+                {
+                 "name": "Width",
+                 "type": "u8"
+                },
+                {
+                 "name": "Height",
+                 "type": "u8"
+                }
+               ]
+              }
              }
             ]
            }
           },
           {
-           "name": "Size",
-           "type": {
-            "struct": [
-             {
-              "name": "Width",
-              "type": "u8"
-             },
-             {
-              "name": "Height",
-              "type": "u8"
-             }
-            ]
-           }
+           "type": "bytes"
           }
          ]
         }
@@ -32157,7 +34963,17 @@
          "struct": [
           {
            "name": "Flags",
-           "type": "u8"
+           "type": {
+            "bits": {
+             "0": "Use Land Data",
+             "1": "Use LOD Data",
+             "2": "Use Map Data",
+             "3": "Use Water Data",
+             "4": "Use Climate Data",
+             "5": "Use Image Space Data (unused)"
+            },
+            "flags": "u8"
+           }
           },
           {
            "name": "Unknown",
@@ -32198,7 +35014,19 @@
      "confidence": "documented",
      "name": "Flags",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DATA",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Small World",
+       "1": "Can't Fast Travel",
+       "2": "Unknown 3",
+       "3": "No LOD Water",
+       "4": "No Landscape",
+       "5": "No Sky",
+       "6": "Fixed Dimensions",
+       "7": "No Grass"
+      },
+      "flags": "u8"
+     }
     },
     "DNAM": {
      "confidence": "documented",
@@ -32788,7 +35616,19 @@
        },
        {
         "name": "Flags",
-        "type": "u8"
+        "type": {
+         "bits": {
+          "0": "Weather - Pleasant",
+          "1": "Weather - Cloudy",
+          "2": "Weather - Rainy",
+          "3": "Weather - Snow",
+          "4": "Sky Statics - Always Visible",
+          "5": "Sky Statics - Follows Sun Position",
+          "6": "Rain Occlusion",
+          "7": "HUD Rain Effects"
+         },
+         "flags": "u8"
+        }
        },
        {
         "name": "Lightning Color",
@@ -37130,7 +39970,43 @@
      "confidence": "documented",
      "name": "Disabled Cloud Layers",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NAM1",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "0",
+       "1": "1",
+       "10": "10",
+       "11": "11",
+       "12": "12",
+       "13": "13",
+       "14": "14",
+       "15": "15",
+       "16": "16",
+       "17": "17",
+       "18": "18",
+       "19": "19",
+       "2": "2",
+       "20": "20",
+       "21": "21",
+       "22": "22",
+       "23": "23",
+       "24": "24",
+       "25": "25",
+       "26": "26",
+       "27": "27",
+       "28": "28",
+       "29": "29",
+       "3": "3",
+       "30": "30",
+       "31": "31",
+       "4": "4",
+       "5": "5",
+       "6": "6",
+       "7": "7",
+       "8": "8",
+       "9": "9"
+      },
+      "flags": "u32"
+     }
     },
     "NAM4": {
      "confidence": "documented",
@@ -37168,7 +40044,15 @@
        },
        {
         "name": "Type",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Default",
+          "1": "Precipitation",
+          "2": "Wind",
+          "3": "Thunder"
+         }
+        }
        }
       ]
      }
@@ -37293,7 +40177,28 @@
        },
        {
         "name": "Overlay",
-        "type": "u32"
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Default",
+          "1": "Fine",
+          "10": "Hand Painted",
+          "11": "Binoculars",
+          "12": "Cross",
+          "13": "Double Zero",
+          "14": "Rangefinder 1",
+          "15": "Rangefinder 2",
+          "16": "Rectangle",
+          "2": "Duplex",
+          "3": "German",
+          "4": "Dot",
+          "5": "Mil-Dot",
+          "6": "Circle",
+          "7": "Old Rangefind",
+          "8": "Modern Rangefind",
+          "9": "SVD"
+         }
+        }
        },
        {
         "name": "Imagespace Modifier",
@@ -37329,11 +40234,28 @@
    "struct": [
     {
      "name": "Aggression",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Unaggressive",
+       "1": "Aggressive",
+       "2": "Very Aggressive",
+       "3": "Frenzied"
+      }
+     }
     },
     {
      "name": "Confidence",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Cowardly",
+       "1": "Cautious",
+       "2": "Average",
+       "3": "Brave",
+       "4": "Foolhardy"
+      }
+     }
     },
     {
      "name": "Energy Level",
@@ -37341,15 +40263,42 @@
     },
     {
      "name": "Responsibility",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Any crime",
+       "1": "Violence against enemies",
+       "2": "Property crime only",
+       "3": "No crime"
+      }
+     }
     },
     {
      "name": "Mood",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Neutral",
+       "1": "Angry",
+       "2": "Fear",
+       "3": "Happy",
+       "4": "Sad",
+       "5": "Surprised",
+       "6": "Puzzled",
+       "7": "Disgusted"
+      }
+     }
     },
     {
      "name": "Assistance",
-     "type": "u8"
+     "type": {
+      "enum": "u8",
+      "values": {
+       "0": "Helps Nobody",
+       "1": "Helps Allies",
+       "2": "Helps Friends and Allies"
+      }
+     }
     },
     {
      "name": "Aggro",
@@ -37433,17 +40382,26 @@
     {
      "name": "Global Variable / Required Rank",
      "type": {
+      "cases": {
+       "FACT": 2,
+       "NPC_": 1
+      },
+      "default": 0,
+      "switch_on": "Owner",
       "union": [
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "i32"
        }
       ]
@@ -37640,9 +40598,99 @@
   "wbLLCT": "u8",
   "wbLVLD": "u8",
   "wbMDOB": "formid",
-  "wbMGEFType": "u32",
+  "wbMGEFType": {
+   "enum": "u32",
+   "values": {
+    "0": "Value Modifier",
+    "1": "Script",
+    "10": "Command Summoned",
+    "11": "Invisibility",
+    "12": "Light",
+    "13": "Darkness",
+    "14": "Nighteye",
+    "15": "Lock",
+    "16": "Open",
+    "17": "Bound Weapon",
+    "18": "Summon Creature",
+    "19": "Detect Life",
+    "2": "Dispel",
+    "20": "Telekinesis",
+    "21": "Paralysis",
+    "22": "Reanimate",
+    "23": "Soul Trap",
+    "24": "Turn Undead",
+    "25": "Guide",
+    "26": "Unknown 26",
+    "27": "Cure Paralysis",
+    "28": "Cure Addiction",
+    "29": "Cure Poison",
+    "3": "Cure Disease",
+    "30": "Concussion",
+    "31": "Stimpack",
+    "32": "Accumulate Magnitude",
+    "33": "Stagger",
+    "34": "Peak Value Modifier",
+    "35": "Cloak",
+    "36": "Unknown 36",
+    "37": "Slow Time",
+    "38": "Rally",
+    "39": "Enhance Weapon",
+    "4": "Absorb",
+    "40": "Spawn Hazard",
+    "41": "Etherealize",
+    "42": "Banish",
+    "43": "Spawn Scripted Ref",
+    "44": "Disguise",
+    "45": "Damage",
+    "46": "Immunity",
+    "47": "Permanent Reanimate",
+    "48": "Jetpack",
+    "49": "Chameleon",
+    "5": "Dual Value Modifier",
+    "6": "Calm",
+    "7": "Demoralize",
+    "8": "Frenzy",
+    "9": "Disarm"
+   }
+  },
   "wbMICO": "zstring",
-  "wbMNAMFurnitureMarker": "u32",
+  "wbMNAMFurnitureMarker": {
+   "bits": {
+    "0": "Interaction Point 0",
+    "1": "Interaction Point 1",
+    "10": "Interaction Point 10",
+    "11": "Interaction Point 11",
+    "12": "Interaction Point 12",
+    "13": "Interaction Point 13",
+    "14": "Interaction Point 14",
+    "15": "Interaction Point 15",
+    "16": "Interaction Point 16",
+    "17": "Interaction Point 17",
+    "18": "Interaction Point 18",
+    "19": "Interaction Point 19",
+    "2": "Interaction Point 2",
+    "20": "Interaction Point 20",
+    "21": "Interaction Point 21",
+    "22": "Allow Awake Sound",
+    "23": "Enter With Weapon Drawn",
+    "24": "Play Anim When Full",
+    "25": "Disables Activation",
+    "26": "Is Perch",
+    "27": "Must Exit to Talk",
+    "28": "Use Static Avoid Node",
+    "29": "Unknown 29",
+    "3": "Interaction Point 3",
+    "30": "Has Model?",
+    "31": "Unknown 31",
+    "4": "Interaction Point 4",
+    "5": "Interaction Point 5",
+    "6": "Interaction Point 6",
+    "7": "Interaction Point 7",
+    "8": "Interaction Point 8",
+    "9": "Interaction Point 9"
+   },
+   "flags": "u32"
+  },
   "wbMNAMNAVM": "bytes",
   "wbMO2C": "f32",
   "wbMO2F": "bytes",
@@ -37742,6 +40790,7 @@
         "type": {
          "union": [
           {
+           "size": 4,
            "type": {
             "struct": [
              {
@@ -37756,6 +40805,7 @@
            }
           },
           {
+           "size": 4,
            "type": "formid"
           }
          ]
@@ -37824,11 +40874,51 @@
         },
         {
          "name": "Flags",
-         "type": "u16"
+         "type": {
+          "bits": {
+           "0": "Edge 0-1 link",
+           "1": "Edge 1-2 link",
+           "10": "Door",
+           "11": "Found",
+           "12": "Unknown 13",
+           "13": "",
+           "14": "",
+           "15": "",
+           "2": "Edge 2-0 link",
+           "3": "",
+           "4": "No Large Creatures",
+           "5": "Overlapping",
+           "6": "Preferred",
+           "7": "",
+           "8": "Unknown 9",
+           "9": "Water"
+          },
+          "flags": "u16"
+         }
         },
         {
          "name": "Cover Flags",
-         "type": "u16"
+         "type": {
+          "bits": {
+           "0": "Edge 0-1 Cover Value 1/4",
+           "1": "Edge 0-1 Cover Value 2/4",
+           "10": "Edge 1-2 Left",
+           "11": "Edge 1-2 Right",
+           "12": "Unknown 13",
+           "13": "Unknown 14",
+           "14": "Unknown 15",
+           "15": "Unknown 16",
+           "2": "Edge 0-1 Cover Value 3/4",
+           "3": "Edge 0-1 Cover Value 4/4",
+           "4": "Edge 0-1 Left",
+           "5": "Edge 0-1 Right",
+           "6": "Edge 1-2 Cover Value 1/4",
+           "7": "Edge 1-2 Cover Value 2/4",
+           "8": "Edge 1-2 Cover Value 3/4",
+           "9": "Edge 1-2 Cover Value 4/4"
+          },
+          "flags": "u16"
+         }
         }
        ]
       }
@@ -37883,6 +40973,7 @@
          "type": {
           "union": [
            {
+            "size": 4,
             "type": "formid"
            }
           ]
@@ -38160,7 +41251,18 @@
     "struct": [
      {
       "name": "Value Type",
-      "type": "u8"
+      "type": {
+       "enum": "u8",
+       "values": {
+        "0": "Int",
+        "1": "Float",
+        "2": "Bool",
+        "3": "Unknown 3",
+        "4": "FormID,Int",
+        "5": "Enum",
+        "6": "FormID,Float"
+       }
+      }
      },
      {
       "name": "Unused",
@@ -38174,16 +41276,46 @@
       "type": {
        "union": [
         {
-         "type": "u8"
+         "size": 1,
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "SET",
+           "1": "MUL+ADD",
+           "2": "ADD"
+          }
+         }
         },
         {
-         "type": "u8"
+         "size": 1,
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "SET",
+           "1": "AND",
+           "2": "OR"
+          }
+         }
         },
         {
-         "type": "u8"
+         "size": 1,
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "SET"
+          }
+         }
         },
         {
-         "type": "u8"
+         "size": 1,
+         "type": {
+          "enum": "u8",
+          "values": {
+           "0": "SET",
+           "1": "REM",
+           "2": "ADD"
+          }
+         }
         }
        ]
       }
@@ -38211,33 +41343,42 @@
       "type": {
        "union": [
         {
+         "size": 4,
          "type": {
           "array": "u8",
           "count": 4
          }
         },
         {
+         "size": 4,
          "type": "u32"
         },
         {
+         "size": 4,
          "type": "f32"
         },
         {
+         "size": 4,
          "type": "u32"
         },
         {
+         "size": 4,
          "type": "formid"
         },
         {
+         "size": 4,
          "type": "u32"
         },
         {
+         "size": 4,
          "type": "u32"
         },
         {
+         "size": 4,
          "type": "u32"
         },
         {
+         "size": 4,
          "type": "u32"
         }
        ]
@@ -38248,18 +41389,22 @@
       "type": {
        "union": [
         {
+         "size": 4,
          "type": {
           "array": "u8",
           "count": 4
          }
         },
         {
+         "size": 4,
          "type": "u32"
         },
         {
+         "size": 4,
          "type": "f32"
         },
         {
+         "size": 4,
          "type": "u32"
         }
        ]
@@ -38275,17 +41420,32 @@
   "wbPDTO": {
    "struct": [
     {
+     "expose": true,
      "name": "Type",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Topic Ref",
+       "1": "Topic Subtype"
+      }
+     }
     },
     {
      "name": "Data",
      "type": {
+      "cases": {
+       "0": 0,
+       "1": 1
+      },
+      "default": 0,
+      "switch_on": "Type",
       "union": [
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
@@ -38305,65 +41465,81 @@
     {
      "name": "Location Value",
      "type": {
+      "switch_on": "Type",
       "union": [
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "i32"
        },
        {
+        "size": 4,
         "type": "i32"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "i32"
        }
       ]
@@ -38388,65 +41564,81 @@
     {
      "name": "Location Value",
      "type": {
+      "switch_on": "Type",
       "union": [
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "i32"
        },
        {
+        "size": 4,
         "type": "i32"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "i32"
        }
       ]
@@ -38578,7 +41770,36 @@
     }
    ]
   },
-  "wbQUSTAliasFlags": "u32",
+  "wbQUSTAliasFlags": {
+   "bits": {
+    "0": "Reserves Location/Reference",
+    "1": "Optional",
+    "10": "Protected",
+    "11": "Forced by Aliases",
+    "12": "Allow Destroyed",
+    "13": "Matching Ref - Closest",
+    "14": "Uses Stored Text",
+    "15": "Initially Disabled",
+    "16": "Allow Cleared",
+    "17": "Clear Names When Removed",
+    "18": "Matching Ref - Actors Only",
+    "19": "Create Ref - Temp",
+    "2": "Quest Object",
+    "20": "External Alias - Linked",
+    "21": "No Pickpocket",
+    "22": "Can Apply Data To Non-Aliased Refs",
+    "23": "Is Companion",
+    "24": "Optional All Scenes",
+    "3": "Allow Reuse in Quest",
+    "4": "Allow Dead",
+    "5": "Matching Ref - In Loaded Area",
+    "6": "Essential",
+    "7": "Allow Disabled",
+    "8": "Stores Text",
+    "9": "Allow Reserved"
+   },
+   "flags": "u32"
+  },
   "wbRaceRBPC": "bytes",
   "wbReqKWDAs": {
    "array": "formid"
@@ -38709,11 +41930,63 @@
     },
     {
      "name": "Flags",
-     "type": "u32"
+     "type": {
+      "bits": {
+       "0": "Manual Cost Calc",
+       "1": "Unknown 2",
+       "10": "Unknown 11",
+       "11": "Unknown 12",
+       "12": "Unknown 13",
+       "13": "Unknown 14",
+       "14": "Unknown 15",
+       "15": "Unknown 16",
+       "16": "Unknown 17",
+       "17": "PC Start Spell",
+       "18": "Instant Cast",
+       "19": "Area Effect Ignores LOS",
+       "2": "Unknown 3",
+       "20": "Ignore Resistance",
+       "21": "No Absorb/Reflect",
+       "22": "Unknown 23",
+       "23": "No Dual Cast Modification",
+       "24": "Unknown 25",
+       "25": "Unknown 26",
+       "26": "Unknown 27",
+       "27": "Unknown 28",
+       "28": "Unknown 29",
+       "29": "Unknown 30",
+       "3": "Unknown 4",
+       "30": "Unknown 31",
+       "31": "Unknown 32",
+       "4": "Unknown 5",
+       "5": "Unknown 6",
+       "6": "Unknown 7",
+       "7": "Unknown 8",
+       "8": "Unknown 9",
+       "9": "Unknown 10"
+      },
+      "flags": "u32"
+     }
     },
     {
      "name": "Type",
-     "type": "u32"
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Spell",
+       "1": "Disease",
+       "10": "Addiction",
+       "11": "Voice",
+       "2": "Power",
+       "3": "Lesser Power",
+       "4": "Ability",
+       "5": "Poison",
+       "6": "Unknown 6",
+       "7": "Unknown 7",
+       "8": "Unknown 8",
+       "9": "Unknown 9"
+      }
+     }
     },
     {
      "name": "Charge Time",
@@ -38759,7 +42032,15 @@
     }
    ]
   },
-  "wbScriptFlags": "u8",
+  "wbScriptFlags": {
+   "enum": "u8",
+   "values": {
+    "0": "Local",
+    "1": "Inherited",
+    "2": "Removed",
+    "3": "Inherited and Removed"
+   }
+  },
   "wbScriptFragments": {
    "struct": [
     {
@@ -38809,7 +42090,13 @@
     },
     {
      "name": "Flags",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "OnBegin",
+       "1": "OnEnd"
+      },
+      "flags": "u8"
+     }
     },
     {
      "name": "wbScriptEntry",
@@ -38846,7 +42133,14 @@
     },
     {
      "name": "Flags",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "OnBegin",
+       "1": "OnEnd",
+       "2": "OnChange"
+      },
+      "flags": "u8"
+     }
     },
     {
      "name": "wbScriptEntry",
@@ -38953,7 +42247,13 @@
     },
     {
      "name": "Flags",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "OnBegin",
+       "1": "OnEnd"
+      },
+      "flags": "u8"
+     }
     },
     {
      "name": "wbScriptEntry",
@@ -38987,7 +42287,13 @@
        "struct": [
         {
          "name": "Phase Flag",
-         "type": "u8"
+         "type": {
+          "bits": {
+           "0": "OnStart",
+           "1": "OnCompletion"
+          },
+          "flags": "u8"
+         }
         },
         {
          "name": "Phase Index",
@@ -39032,7 +42338,15 @@
      },
      {
       "name": "Flags",
-      "type": "u8"
+      "type": {
+       "enum": "u8",
+       "values": {
+        "0": "",
+        "1": "Edited",
+        "2": "",
+        "3": "Removed"
+       }
+      }
      },
      {
       "name": "Value",
@@ -39042,12 +42356,15 @@
          "type": "len_string"
         },
         {
+         "size": 4,
          "type": "i32"
         },
         {
+         "size": 4,
          "type": "f32"
         },
         {
+         "size": 1,
          "type": "u8"
         },
         {
@@ -39055,6 +42372,7 @@
           "array": {
            "union": [
             {
+             "size": 8,
              "type": {
               "struct": [
                {
@@ -39073,6 +42391,7 @@
              }
             },
             {
+             "size": 8,
              "type": {
               "struct": [
                {
@@ -39129,7 +42448,15 @@
              },
              {
               "name": "Flags",
-              "type": "u8"
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "",
+                "1": "Edited",
+                "2": "",
+                "3": "Removed"
+               }
+              }
              },
              {
               "name": "Value",
@@ -39139,12 +42466,15 @@
                  "type": "len_string"
                 },
                 {
+                 "size": 4,
                  "type": "i32"
                 },
                 {
+                 "size": 4,
                  "type": "f32"
                 },
                 {
+                 "size": 1,
                  "type": "u8"
                 },
                 {
@@ -39152,6 +42482,7 @@
                   "array": {
                    "union": [
                     {
+                     "size": 8,
                      "type": {
                       "struct": [
                        {
@@ -39170,6 +42501,7 @@
                      }
                     },
                     {
+                     "size": 8,
                      "type": {
                       "struct": [
                        {
@@ -39231,6 +42563,7 @@
   "wbScriptPropertyObject": {
    "union": [
     {
+     "size": 8,
      "type": {
       "struct": [
        {
@@ -39249,6 +42582,7 @@
      }
     },
     {
+     "size": 8,
      "type": {
       "struct": [
        {
@@ -39281,7 +42615,15 @@
      },
      {
       "name": "Flags",
-      "type": "u8"
+      "type": {
+       "enum": "u8",
+       "values": {
+        "0": "",
+        "1": "Edited",
+        "2": "",
+        "3": "Removed"
+       }
+      }
      },
      {
       "name": "Value",
@@ -39291,12 +42633,15 @@
          "type": "len_string"
         },
         {
+         "size": 4,
          "type": "i32"
         },
         {
+         "size": 4,
          "type": "f32"
         },
         {
+         "size": 1,
          "type": "u8"
         },
         {
@@ -39304,6 +42649,7 @@
           "array": {
            "union": [
             {
+             "size": 8,
              "type": {
               "struct": [
                {
@@ -39322,6 +42668,7 @@
              }
             },
             {
+             "size": 8,
              "type": {
               "struct": [
                {
@@ -39375,41 +42722,77 @@
   "wbTargetData": {
    "struct": [
     {
+     "expose": true,
      "name": "Type",
-     "type": "i32"
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Specific Reference",
+       "1": "Object ID",
+       "2": "Object Type",
+       "3": "Linked Reference",
+       "4": "Ref Alias",
+       "5": "Interrupt Data",
+       "6": "Self",
+       "7": "Keyword",
+       "8": "Unknown 8"
+      }
+     }
     },
     {
      "name": "Target",
      "type": {
+      "cases": {
+       "0": 0,
+       "1": 1,
+       "2": 2,
+       "3": 3,
+       "4": 4,
+       "5": 5,
+       "6": 6,
+       "7": 7,
+       "8": 8
+      },
+      "default": 0,
+      "switch_on": "Type",
       "union": [
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": "i32"
        },
        {
+        "size": 4,
         "type": "u32"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
         }
        },
        {
+        "size": 4,
         "type": "formid"
        },
        {
+        "size": 4,
         "type": {
          "array": "u8",
          "count": 4
@@ -39704,7 +43087,13 @@
     },
     {
      "name": "Flags",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "Set Enable State to Opposite of Parent",
+       "1": "Pop In"
+      },
+      "flags": "u8"
+     }
     },
     {
      "name": "Unused",
@@ -39715,7 +43104,15 @@
     }
    ]
   },
-  "wbXLCM": "i32",
+  "wbXLCM": {
+   "enum": "i32",
+   "values": {
+    "0": "Easy",
+    "1": "Medium",
+    "2": "Hard",
+    "3": "Very Hard"
+   }
+  },
   "wbXLOD": {
    "array": "f32",
    "count": 3
@@ -39735,7 +43132,12 @@
     },
     {
      "name": "Flags",
-     "type": "u8"
+     "type": {
+      "bits": {
+       "0": "No Crime"
+      },
+      "flags": "u8"
+     }
     },
     {
      "name": "Unused",
