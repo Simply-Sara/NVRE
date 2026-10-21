@@ -414,15 +414,15 @@ class Converter:
         if m:
             switch = m.group(1)
         else:
-            m = re.search(r"ElementNativeValues\['(\w+)'\]", body)
+            m = re.search(r"ElementNativeValues\['([^']+)'\]", body)
             if m:
                 switch = m.group(1)
             else:
-                m = re.search(r"ElementBySignature\['(\w+)'\]", body)
+                m = re.search(r"ElementBySignature\['([^']+)'\]", body)
                 if m:
                     switch = m.group(1)
                 else:
-                    m = re.search(r"ElementByName\['(\w+)'\]", body)
+                    m = re.search(r"ElementByName\['([^']+)'\]", body)
                     if not m:
                         return None
                     # The decider reads a *field* of its own struct, and the
@@ -439,6 +439,20 @@ class Converter:
             bits.append((int(mask, 16), int(res)))
         if bits:
             return {"switch": switch, "bits": bits, "cases": {}, "direct": False}
+        # A comparison against zero: `if (Element.NativeValue = 0) then
+        # Result := 1`. The variant is 1 when the value is zero and the
+        # default otherwise.
+        zm = re.search(
+            r"if\s*\(?\s*(\w+)\.NativeValue\s*=\s*0\s*\)?\s*then\s*Result\s*:=\s*(\d+)",
+            body,
+        )
+        if zm:
+            return {
+                "switch": switch,
+                "cases": {"0": int(zm.group(2))},
+                "bits": [],
+                "direct": False,
+            }
         # The cases: a name compared to a string, or a number compared to a
         # number, each giving a result.
         cases = {}
@@ -1183,6 +1197,10 @@ class Converter:
             return "bytes", self._note(ctx)
         if kind == "wbEmpty":
             return {"struct": []}, self._note(ctx)
+        if kind == "wbNull":
+            # A variant with no layout of its own: the case exists, and
+            # nothing is read for it.
+            return {"struct": []}, self._note(ctx)
         if kind in ("wbStruct", "wbStructSK", "wbStructExSK"):
             return self._convert_struct(parts, ctx)
         if kind in ("wbStructs", "wbStructsSK"):
@@ -1470,6 +1488,7 @@ class Converter:
             if not isinstance(ty, dict):
                 continue
             direct = ty.pop("_direct", False)
+            case_of = ty.pop("_case_of", None)
             switch = ty.get("switch_on")
             if not switch:
                 continue
@@ -1483,8 +1502,19 @@ class Converter:
                 n = len(ty.get("union", []))
                 # The switch reads the enum's value, which the decoder
                 # renders as the number the enum gives, so the case's key
-                # is that number and the value is the variant.
-                ty["cases"] = {str(k): k for k in values if k < n}
+                # is that number and the value is the variant. The variant
+                # is the one standing for that case, which is not always
+                # the variant of the same number: a union whose first case
+                # has no layout of its own has its second case as its first
+                # variant.
+                def place(case):
+                    if case_of and case in case_of:
+                        return case_of.index(case)
+                    return case
+
+                ty["cases"] = {
+                    str(k): place(k) for k in values if place(k) < n
+                }
                 ty["default"] = 0
             # The switch field's value is what the union reads, so it is
             # kept.
@@ -1697,23 +1727,64 @@ class Converter:
         if members is None:
             return "bytes", self._note(ctx)
         variants = []
-        case_index = {}
+        # Each variant's case index, which is not its place in the list: a
+        # variant xEdit gives no layout — `wbNull` — is dropped, and the
+        # ones after it keep their own indices.
+        case_of = []
         for m in members:
             # A variant may carry a case index: `{0} wbFormIDCk(...)`.
-            m = re.sub(r"^\s*\{\d+\}\s*", "", m)
+            m = m.strip()
+            idx = None
+            im = re.match(r"^\{(\d+)\}\s*(.*)$", m, re.S)
+            if im:
+                idx = int(im.group(1))
+                m = im.group(2).strip()
             name, args, _ = match_call(m)
             if name is None:
-                continue
-            sub = split_args(args) if args is not None else []
-            if not sub:
-                continue
-            schema, _ = self.convert_member(name, args, f"{ctx}.{sub[0]}")
-            if schema is not None:
+                # A member that is a bare name — `wbNull` — is a definition
+                # of its own, and reads nothing.
+                if not re.fullmatch(r"wb[A-Za-z0-9_]*", m):
+                    continue
+                schema, _ = self.convert_member(m.strip(), "", f"{ctx}.{m.strip()}")
+                if schema is None:
+                    case_of.append(idx)
+                    continue
                 size = self._type_size(schema)
                 v = {"type": schema}
                 if size is not None:
                     v["size"] = size
                 variants.append(v)
+                case_of.append(idx)
+                continue
+            if args is None:
+                # A member with no arguments of its own — `wbNull` — is a
+                # variant that reads nothing.
+                schema, _ = self.convert_member(name, "", f"{ctx}.{name}")
+                if schema is None:
+                    case_of.append(idx)
+                    continue
+                size = self._type_size(schema)
+                v = {"type": schema}
+                if size is not None:
+                    v["size"] = size
+                variants.append(v)
+                case_of.append(idx)
+                continue
+            sub = split_args(args) if args is not None else []
+            if not sub:
+                continue
+            schema, _ = self.convert_member(name, args, f"{ctx}.{sub[0]}")
+            if schema is None:
+                # A variant with no layout of its own — `wbNull` — is the
+                # empty one, and the case it stands for still exists.
+                case_of.append(idx)
+                continue
+            size = self._type_size(schema)
+            v = {"type": schema}
+            if size is not None:
+                v["size"] = size
+            variants.append(v)
+            case_of.append(idx)
         if not variants:
             return "bytes", self._note(ctx)
         union: dict = {"union": variants}
@@ -1723,27 +1794,39 @@ class Converter:
         if decider:
             d = self.deciders.get(decider.lower())
             if d and d.get("switch"):
+                # The case a value names is xEdit's case index, and the
+                # schema's cases name the variant's place in the list. The
+                # two are not the same when a variant was dropped: a union
+                # whose first case is `wbNull` has its second case as its
+                # first variant.
+                def place(case):
+                    if case in case_of:
+                        return case_of.index(case)
+                    return case
+
                 if d.get("direct"):
                     # The switch's own value is the variant's index, so the
                     # cases are the switch field's own values, which the
                     # struct's own fields give.
                     union["switch_on"] = d["switch"]
                     union["_direct"] = True
+                    union["_case_of"] = case_of
                 elif d.get("bits"):
                     # A bit test: the first mask that is set picks the
                     # variant. The masks are keyed as they are written, so
                     # the order xEdit tests them is kept.
                     union["switch_on"] = d["switch"]
                     union["bits"] = {
-                        f"{mask:#x}": variant
+                        f"{mask:#x}": place(variant)
                         for mask, variant in d["bits"]
-                        if variant < len(variants)
+                        if place(variant) < len(variants)
                     }
                     union["default"] = 0
                 elif d.get("cases"):
                     union["switch_on"] = d["switch"]
                     union["cases"] = {
-                        k: v for k, v in d["cases"].items() if v < len(variants)
+                        k: place(v) for k, v in d["cases"].items()
+                        if place(v) < len(variants)
                     }
                     union["default"] = 0
         return union, self._note(ctx)
