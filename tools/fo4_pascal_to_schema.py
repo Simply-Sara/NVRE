@@ -919,7 +919,7 @@ class Converter:
         """
         for m in re.finditer(r"procedure\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", self.src):
             pname = m.group(1)
-            body = self._procedure_body(m.end() - 1)
+            body = self._procedure_body(m.start(1))
             if body is None:
                 continue
             # The parameters the procedure takes, in order: the signature and
@@ -954,7 +954,7 @@ class Converter:
             self.src,
         ):
             pname = m.group(1)
-            body = self._procedure_body(m.end() - 1)
+            body = self._procedure_body(m.start(1))
             if body is None:
                 continue
             params = re.findall(r"(\w+)\s*:\s*string", body[0])
@@ -1028,10 +1028,17 @@ class Converter:
             self.records[sig] = rec
 
     def _procedure_body(self, open_at):
-        """A procedure's parameter list and body, as text."""
-        # The parameter list runs to the `);` that ends it.
+        """A procedure's parameter list and body, as text.
+
+        `open_at` is the position of the procedure's name; the parameter
+        list runs from the `(` that follows it to the `)` that ends it.
+        """
+        # The parameter list runs to the `)` that ends it.
+        open_paren = self.src.find("(", open_at)
+        if open_paren < 0:
+            return None
         depth = 0
-        i = open_at
+        i = open_paren
         n = len(self.src)
         while i < n:
             c = self.src[i]
@@ -1062,14 +1069,23 @@ class Converter:
                 continue
             if self.src[j:j + 3].lower() == "end":
                 # `end;` closes the procedure unless it closes a `begin`.
+                # The word must stand alone: "Blend" ends in "end" but is
+                # not a keyword.
+                before_ok = j == 0 or not (self.src[j - 1].isalnum() or self.src[j - 1] == "_")
                 after = self.src[j + 3:j + 4]
                 if after == ";":
+                    if not before_ok:
+                        j += 3
+                        continue
                     if depth == 0:
                         return params, self.src[start:j]
                     depth -= 1
                     j += 4
                     continue
                 if after in (" ", "\t", "\n", "\r"):
+                    if not before_ok:
+                        j += 3
+                        continue
                     if depth == 0:
                         return params, self.src[start:j]
                     depth -= 1

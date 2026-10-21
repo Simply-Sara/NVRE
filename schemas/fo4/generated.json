@@ -29575,12 +29575,6 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.ATKR",
      "type": "formid"
     },
-    "BNAM": {
-     "confidence": "documented",
-     "name": "Name",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BNAM",
-     "type": "zstring"
-    },
     "BOD2": {
      "confidence": "documented",
      "name": "BOD2",
@@ -30109,7 +30103,7 @@
     "FMRN": {
      "confidence": "documented",
      "name": "Name",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.FMRN",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Face Morphs.Female Face Morphs.FMRN",
      "type": "localized"
     },
     "FNAM": {
@@ -30213,7 +30207,7 @@
     "MPGS": {
      "confidence": "documented",
      "name": "Unknown",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPGS",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Morph Groups.Female Morph Groups.MPGS",
      "type": "bytes"
     },
     "MPPC": {
@@ -30225,7 +30219,7 @@
     "MPPF": {
      "confidence": "documented",
      "name": "MPPF",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPF",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Morph Groups.Female Morph Groups.MPPF",
      "type": "bytes"
     },
     "MPPI": {
@@ -30237,7 +30231,7 @@
     "MPPK": {
      "confidence": "documented",
      "name": "MPPK",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPK",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Morph Groups.Female Morph Groups.MPPK",
      "type": "bytes"
     },
     "MPPM": {
@@ -30249,13 +30243,13 @@
     "MPPN": {
      "confidence": "documented",
      "name": "Name",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPN",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Morph Groups.Female Morph Groups.MPPN",
      "type": "localized"
     },
     "MPPT": {
      "confidence": "documented",
      "name": "Texture",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRArray.None.MPPT",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Morph Groups.Female Morph Groups.MPPT",
      "type": "formid"
     },
     "MTNM": {
@@ -30374,40 +30368,8 @@
     "PNAM": {
      "confidence": "documented",
      "name": "FaceGen - Main clamp",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.PNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read. The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
-     "type": {
-      "union": [
-       {
-        "size": 4,
-        "type": {
-         "union": [
-          {
-           "size": 4,
-           "type": "f32"
-          },
-          {
-           "size": 4,
-           "type": {
-            "bits": {
-             "0": "Public"
-            },
-            "flags": "u32"
-           }
-          }
-         ]
-        }
-       },
-       {
-        "size": 4,
-        "type": {
-         "bits": {
-          "0": "Public"
-         },
-         "flags": "u32"
-        }
-       }
-      ]
-     }
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.PNAM",
+     "type": "f32"
     },
     "PRPS": {
      "confidence": "documented",
@@ -30487,39 +30449,113 @@
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.SWMV",
      "type": "formid"
     },
+    "TETI": {
+     "confidence": "documented",
+     "name": "Index",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Tint Layers.Female Tint Layers.TETI",
+     "type": {
+      "struct": [
+       {
+        "name": "Slot",
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "Forehead Mask",
+          "1": "Eyes Mask",
+          "10": "Eye Socket Upper",
+          "11": "Eye Socket Lower",
+          "12": "Skin Tone",
+          "13": "Paint",
+          "14": "Laugh Lines",
+          "15": "Cheek Color Lower",
+          "16": "Nose",
+          "17": "Chin",
+          "18": "Neck",
+          "19": "Forehead",
+          "2": "Nose Mask",
+          "20": "Dirt",
+          "21": "Scars",
+          "22": "Face Detail",
+          "23": "Brows",
+          "24": "Wrinkles",
+          "25": "Beards",
+          "3": "Ears Mask",
+          "4": "Cheeks Mask",
+          "5": "Mouth Mask",
+          "6": "Neck Mask",
+          "7": "Lip Color",
+          "8": "Cheek Color",
+          "9": "Eyeliner"
+         }
+        }
+       },
+       {
+        "name": "Index",
+        "type": "u16"
+       }
+      ]
+     }
+    },
     "TINL": {
      "confidence": "documented",
      "name": "Total Number of Tints in List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TINL",
      "type": "u16"
     },
+    "TTEB": {
+     "confidence": "documented",
+     "name": "TTEB",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Tint Layers.Female Tint Layers.TTEB",
+     "type": "bytes"
+    },
+    "TTEC": {
+     "confidence": "documented",
+     "name": "Template Colors",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Tint Layers.Female Tint Layers.TTEC",
+     "type": "bytes"
+    },
+    "TTED": {
+     "confidence": "documented",
+     "name": "Default",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Tint Layers.Female Tint Layers.TTED",
+     "type": "f32"
+    },
+    "TTEF": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TTEF",
+     "type": {
+      "bits": {
+       "0": "On/Off only",
+       "1": "Chargen Detail",
+       "2": "Takes Skin Tone"
+      },
+      "flags": "u16"
+     }
+    },
+    "TTET": {
+     "confidence": "documented",
+     "name": "Texture",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TTET. The group 'Textures' repeats this subrecord.",
+     "type": "zstring"
+    },
+    "TTGE": {
+     "confidence": "documented",
+     "name": "Category Index",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TTGE",
+     "type": "u32"
+    },
+    "TTGP": {
+     "confidence": "documented",
+     "name": "Group Name",
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), Female Tint Layers.Female Tint Layers.TTGP",
+     "type": "localized"
+    },
     "UNAM": {
      "confidence": "documented",
      "name": "FaceGen - Face clamp",
-     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.UNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read. The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
-     "type": {
-      "union": [
-       {
-        "size": 4,
-        "type": {
-         "union": [
-          {
-           "size": 4,
-           "type": "f32"
-          },
-          {
-           "size": 1,
-           "type": "i8"
-          }
-         ]
-        }
-       },
-       {
-        "size": 1,
-        "type": "i8"
-       }
-      ]
-     }
+     "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.UNAM",
+     "type": "f32"
     },
     "UNWP": {
      "confidence": "documented",
