@@ -1,15 +1,20 @@
-# schemas — a shared base plus one directory per game
+# schemas — a shared base, one directory per family, one per game
 
 ```text
-schemas/base/    the 63 record types every supported game uses, with a layout
+schemas/base/    the record types every supported game uses, with a layout
                  each of them decodes correctly. Empty of anything else.
-schemas/fnv/     Fallout: New Vegas's own types, and the records where its
-                 layout differs from the base's.
+schemas/fnv/     the Fallout family: Fallout: New Vegas's own types, and the
+                 records where its layout differs from the base's. Fallout 3
+                 loads this as its family layer.
 schemas/fo3/     Fallout 3's own types and differences.
 schemas/skyrim/  Skyrim LE's own types and differences.
 schemas/skyrimse/Skyrim Special Edition's own types and differences.
 schemas/fo4/     Fallout 4's own types and differences.
 ```
+
+The chain is `base -> family -> game`. Fallout 3 and Fallout: New Vegas are the
+same family and share a layer; Skyrim and Fallout 4 are their own families and
+have none yet.
 
 Oblivion is not in this set. Its container revision predates the `TES4` layout
 the reader parses, so `Oblivion.esm` does not open at all; nothing measured for
@@ -30,6 +35,10 @@ reads Fallout 3's copy fine while reading Skyrim's as an error, because Skyrim's
 `DATA` is empty where FNV's is 11 bytes. A type in `base` is a claim about every
 engine that will read it.
 
+A record that only one *family* has belongs to that family's directory, not the
+base. `CREA` is Fallout's and only Fallout's; Skyrim must not inherit a layout
+for a record it does not have.
+
 ## How it was decided
 
 Measured over every game installed on this machine, base master only:
@@ -38,7 +47,7 @@ Measured over every game installed on this machine, base master only:
 |---|---|---|---|---|
 | Fallout: New Vegas | `FalloutNV.esm` | 107 | 100.00% (2,321,456) | 100.00% (2,321,456) |
 | Fallout 3 | `Fallout3.esm` | 90 | 100.00% (2,634,084) | 100.00% (2,634,084) |
-| Skyrim SE | `Skyrim.esm` | 118 | 67.65% | 99.28% (4,101,737 of 4,131,332) |
+| Skyrim SE | `Skyrim.esm` | 118 | 67.65% | 100.00% (4,131,332) |
 
 The last column is what the game's own directory achieves over the base. The
 Fallout games are at 100% either way, because Fallout 3's records are Fallout
@@ -47,6 +56,9 @@ is made of: the sequence-aware records (`SCEN`, `PACK`, `QUST`), the
 game-specific layouts (`NPC_`, `RACE`, `WEAP`, `ARMO`, `CELL`, `REFR`) and
 the fields Skyrim added or changed (the 32-byte `CTDA`, the face tint fields,
 `MODT`).
+
+Every Skyrim SE master is at 100.00% with nothing but the base and Skyrim's own
+files — Fallout's directory is not in the chain at all:
 
 Fallout 4 is not measured yet: it needs a BA2 archive reader and a record
 overlay, and its strings are UTF-16 rather than the other games' Windows-1252.
@@ -82,7 +94,7 @@ would otherwise inherit a wrong layout for.
 ## Loading
 
 ```rust
-// The base first, then each game's differences over it.
+// The base first, then the family's layer, then the game's own.
 let schema = Schema::load_game("schemas/base", ["schemas/fnv", "schemas/fo3"])?;
 ```
 
@@ -103,6 +115,10 @@ cargo run --bin coverage -- --overlay schemas/fnv --overlay schemas/fo3 \
     schemas/base "$FO3"/Fallout3.esm
 cargo run --bin rtcheck   -- --overlay schemas/fnv --overlay schemas/fo3 \
     schemas/base "$FO3"/Fallout3.esm
+
+# Skyrim needs only its own directory over the base.
+cargo run --bin coverage -- --overlay schemas/skyrimse \
+    schemas/base "$SKYRIM"/Skyrim.esm
 ```
 
 `--overlay` may be repeated and the directories after the last one are the base.
@@ -115,10 +131,20 @@ Current numbers through the full chain:
 | Game | coverage | rtcheck |
 |---|---|---|
 | Fallout: New Vegas | 100.00% (2,321,456) | byte-identical |
-| Fallout 3 | 100.00% (2,634,084) | byte-identical (3,484,461) |
+| Fallout 3 | 100.00% (2,634,084) | byte-identical |
 | Skyrim LE | 66.75% | — |
-| Skyrim SE | 67.65% | — |
+| Skyrim SE | 100.00% (4,131,332) | byte-identical (3,674,003) |
 | Fallout 4 | 60.14% | — |
+
+The Skyrim SE figures are for `base + skyrimse` alone:
+
+| Master | Subrecords | Coverage |
+|---|---|---|
+| `Skyrim.esm` | 4,131,332 | 100.00% |
+| `Update.esm` | 220,368 | 100.00% |
+| `Dawnguard.esm` | 513,461 | 100.00% |
+| `Dragonborn.esm` | 812,296 | 100.00% |
+| `HearthFires.esm` | 114,323 | 100.00% |
 
 ## Adding a record to `base`
 
@@ -135,7 +161,9 @@ Current numbers through the full chain:
 Write it in that game's directory with a `note` naming the source and the
 measured instance count. A record in a game directory replaces the base's whole
 definition, so it must be complete — a partial one silently drops the
-subrecords it did not repeat.
+subrecords it did not repeat. A record that says `"merge": true` adds to the
+record it shadows instead, which is what a game that changes two fields of a
+hundred wants.
 
 ## Rules for editing
 
