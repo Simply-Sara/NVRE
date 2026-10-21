@@ -14429,7 +14429,9 @@
        },
        {
         "name": "wbScriptFragmentsInfo",
+        "note": "This is absent when nothing is left for it.",
         "optional": true,
+        "optional_if_empty": true,
         "type": "wbScriptFragmentsInfo"
        }
       ]
@@ -23908,7 +23910,9 @@
        },
        {
         "name": "wbScriptFragmentsPack",
+        "note": "This is absent when nothing is left for it.",
         "optional": true,
+        "optional_if_empty": true,
         "type": "wbScriptFragmentsPack"
        }
       ]
@@ -33709,7 +33713,9 @@
        },
        {
         "name": "wbScriptFragmentsScen",
+        "note": "This is absent when nothing is left for it.",
         "optional": true,
+        "optional_if_empty": true,
         "type": "wbScriptFragmentsScen"
        }
       ]
@@ -49183,7 +49189,9 @@
     },
     {
      "name": "wbScriptFragmentsInfo",
+     "note": "This is absent when nothing is left for it.",
      "optional": true,
+     "optional_if_empty": true,
      "type": "wbScriptFragmentsInfo"
     }
    ]
@@ -49227,7 +49235,9 @@
     },
     {
      "name": "wbScriptFragmentsPack",
+     "note": "This is absent when nothing is left for it.",
      "optional": true,
+     "optional_if_empty": true,
      "type": "wbScriptFragmentsPack"
     }
    ]
@@ -49404,7 +49414,9 @@
     },
     {
      "name": "wbScriptFragmentsScen",
+     "note": "This is absent when nothing is left for it.",
      "optional": true,
+     "optional_if_empty": true,
      "type": "wbScriptFragmentsScen"
     }
    ]

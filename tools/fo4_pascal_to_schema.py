@@ -541,6 +541,50 @@ class Converter:
         self.expose_outer_switch_fields()
         return self
 
+    def mark_absent_fragments(self):
+        """Mark the script fragments as absent when nothing is left for them.
+
+        A virtual machine adapter holds its scripts, and then its script
+        fragments — the fragments of the script that the record is about.
+        An adapter with no fragments has nothing after its scripts, so the
+        fragments are absent, which the data says by ending.
+
+        The fragments are the last field of the adapter, and their type is
+        the one that holds a counter-driven array of fragments, which is
+        how they are told apart from the other fields.
+        """
+
+        def has_counted_array(node, depth=0):
+            if depth > 6:
+                return False
+            if isinstance(node, dict):
+                if "count_bits" in node:
+                    return True
+                return any(has_counted_array(v, depth + 1) for v in node.values())
+            if isinstance(node, list):
+                return any(has_counted_array(v, depth + 1) for v in node)
+            return False
+
+        fragment_types = {
+            name for name, ty in self.types.items() if has_counted_array(ty)
+        }
+        if not fragment_types:
+            return
+        for ty in self.types.values():
+            if not isinstance(ty, dict) or "struct" not in ty:
+                continue
+            fields = ty["struct"]
+            if not fields:
+                continue
+            last = fields[-1]
+            fty = last.get("type")
+            if isinstance(fty, str) and fty in fragment_types:
+                last["optional_if_empty"] = True
+                last["note"] = (
+                    f"{last.get('note', '')} This is absent when nothing is left "
+                    f"for it."
+                ).strip()
+
     def expose_outer_switch_fields(self):
         """Mark the fields a union in one type switches on in another.
 
@@ -551,6 +595,7 @@ class Converter:
         the adapter is another. The field is found by name among the types
         and marked so that its value is kept.
         """
+        self.mark_absent_fragments()
         # Every field of every type, by name.
         fields = {}
         for name, ty in self.types.items():

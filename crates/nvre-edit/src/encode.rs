@@ -142,6 +142,9 @@ pub fn encode_type(
                     // A missing optional field simply contributes no bytes, which
                     // is how the decoder reads a struct that ends early.
                     None if f.optional => {}
+                    // A field that is absent because nothing was left for it
+                    // contributes no bytes either.
+                    Some(Value::Null) if f.optional_if_empty => {}
                     None => {
                         return Err(EncodeError::Value {
                             path: path.to_string(),

@@ -195,6 +195,12 @@ pub struct Field {
     pub name: String,
     pub ty: TypeDef,
     pub optional: bool,
+    /// Read this field only if there are bytes left.
+    ///
+    /// xEdit's script fragments are absent from a virtual machine adapter
+    /// that has none, so the struct that holds them is read only when the
+    /// adapter has something after it.
+    pub optional_if_empty: bool,
     /// Record this field's integer value in `DecodeCtx::exposed` after decoding, so a
     /// later subrecord of the same record can switch a union on it (xEdit's
     /// `RecordBySignature[PRKE]` / `ElementNativeValues['EPFT']` deciders).
@@ -502,11 +508,14 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                         &format!("{ctx}.{name}"),
                     )?;
                     let optional = f.get("optional").and_then(Value::as_bool).unwrap_or(false);
+                    let optional_if_empty =
+                        f.get("optional_if_empty").and_then(Value::as_bool).unwrap_or(false);
                     let expose = f.get("expose").and_then(Value::as_bool).unwrap_or(false);
                     out.push(Field {
                         name: name.to_string(),
                         ty,
                         optional,
+                        optional_if_empty,
                         expose,
                     });
                 }

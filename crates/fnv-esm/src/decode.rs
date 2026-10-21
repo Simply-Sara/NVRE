@@ -417,6 +417,12 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             });
             let outer = ctx.switch_on.clone().unwrap_or_default();
             for f in fields {
+                if f.optional_if_empty && c.remaining() == 0 {
+                    // The field is absent, which the data says by having
+                    // nothing left for it.
+                    obj.insert(f.name.clone(), Value::Null);
+                    continue;
+                }
                 if f.optional {
                     // The field is skipped when the bytes left are too few
                     // for it, so a struct may be shorter than its fields.
