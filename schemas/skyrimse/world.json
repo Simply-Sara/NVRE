@@ -22,12 +22,12 @@
      "confidence": "documented",
      "name": "Body Template",
      "note": "The body template, 8 bytes. The armor type is in BODT, which is 12 bytes. [measured: BOD2 is 8 bytes in 2,752 of Skyrim.esm's 2,762 ARMO records, and BODT is 8 or 12 bytes in the other ten]",
-     "type": "ARMO_BOD2"
+     "type": "ARMO_BOD2_8"
     },
     "BODT": {
      "confidence": "documented",
      "name": "Body Template",
-     "note": "The body template, 8 or 12 bytes.",
+     "note": "The body template, 8 or 12 bytes. The 12-byte form carries the armor type as well. [measured: 766 of Skyrim.esm's ARMO records have a BODT and the rest have a BOD2]",
      "type": "ARMO_BOD2"
     },
     "DATA": {
@@ -578,6 +578,12 @@
      "note": "The location's unique actors.",
      "type": "LCTN_LCUN"
     },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
     "NAM1": {
      "confidence": "documented",
      "name": "Unknown",
@@ -597,6 +603,12 @@
      "type": {
       "array": "formid"
      }
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
     }
    }
   },
@@ -1164,6 +1176,25 @@
  },
  "types": {
   "ARMO_BOD2": {
+   "struct": [
+    {
+     "name": "biped_object_flags",
+     "note": "The biped object flags.",
+     "type": "u32"
+    },
+    {
+     "name": "general_flags",
+     "note": "The general flags.",
+     "type": "u32"
+    },
+    {
+     "name": "armor_type",
+     "note": "The armor type. Only the 12-byte BODT has it; the 8-byte BOD2 does not.",
+     "type": "u32"
+    }
+   ]
+  },
+  "ARMO_BOD2_8": {
    "struct": [
     {
      "name": "biped_object_flags",

@@ -53,6 +53,12 @@
      "note": "An unknown field.",
      "type": "formid"
     },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The Papyrus script info.",
+     "type": "bytes"
+    },
     "XLCN": {
      "confidence": "documented",
      "name": "Location",

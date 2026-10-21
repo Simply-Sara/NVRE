@@ -12,6 +12,12 @@
      "note": "The destructible object data, with the DSTD, DMDL, DMDT, DMDS and DSTF fields.",
      "type": "bytes"
     },
+    "DMDS": {
+     "confidence": "documented",
+     "name": "Destruction Data",
+     "note": "The destruction data's message set.",
+     "type": "bytes"
+    },
     "EDID": {
      "confidence": "documented",
      "name": "Editor ID",
@@ -55,6 +61,12 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODB, MODT, MODS and MODD fields.",
+     "type": "bytes"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "Used when overriding a nif's textures with texture sets.",
      "type": "bytes"
     },
     "OBND": {
