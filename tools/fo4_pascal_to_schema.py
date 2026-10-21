@@ -1644,16 +1644,18 @@ class Converter:
         if members == "UNION":
             # The group's element is a union of alternative groups — a
             # landscape's layers are either a base layer or an alpha layer.
-            # Every variant's subrecords belong to the block, because the
-            # schema language has no way to say which variant a record used.
-            subs = {}
-            order = []
+            # Each variant is a block of its own, opened by the signature
+            # that starts it, because the variants do not start with the
+            # same one: a base layer opens with BTXT and an alpha layer
+            # with ATXT.
             for variant in self._union_variants(parts):
+                subs = {}
+                order = []
                 for first, sname, schema, note in variant:
                     self._merge_sub(subs, order, first, sname, schema, note)
-            if not subs:
-                return
-            self._put_block(blocks, order[0], order, subs, "")
+                if not subs:
+                    continue
+                self._put_block(blocks, order[0], order, subs, "")
             return
 
         # A fixed run of several subrecords: a sequence block.

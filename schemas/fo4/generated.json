@@ -14886,10 +14886,9 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(LAND)",
    "sequence": {
     "blocks": {
-     "BTXT": {
-      "opener": "BTXT",
+     "ATXT": {
+      "opener": "ATXT",
       "order": [
-       "BTXT",
        "ATXT",
        "VTXT"
       ],
@@ -14922,6 +14921,20 @@
          ]
         }
        },
+       "VTXT": {
+        "confidence": "documented",
+        "name": "Alpha Layer Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Layers'.wbRStructSK.VTXT",
+        "type": "bytes"
+       }
+      }
+     },
+     "BTXT": {
+      "opener": "BTXT",
+      "order": [
+       "BTXT"
+      ],
+      "subrecords": {
        "BTXT": {
         "confidence": "documented",
         "name": "BTXT",
@@ -14949,12 +14962,6 @@
           }
          ]
         }
-       },
-       "VTXT": {
-        "confidence": "documented",
-        "name": "Alpha Layer Data",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Layers'.wbRStructSK.VTXT",
-        "type": "bytes"
        }
       }
      }
@@ -26425,6 +26432,159 @@
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(QUST)",
    "sequence": {
     "blocks": {
+     "ALCS": {
+      "opener": "ALCS",
+      "order": [
+       "ALCS",
+       "ALMI"
+      ],
+      "subrecords": {
+       "ALCS": {
+        "confidence": "documented",
+        "name": "Collection Alias ID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCS",
+        "type": "u32"
+       },
+       "ALMI": {
+        "confidence": "documented",
+        "name": "Max Initial Fill Count",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALMI",
+        "type": "u8"
+       }
+      }
+     },
+     "ALLS": {
+      "opener": "ALLS",
+      "order": [
+       "ALLS",
+       "ALID",
+       "FNAM",
+       "ALFI",
+       "ALFL",
+       "ALFA",
+       "KNAM",
+       "ALEQ",
+       "ALEA",
+       "ALFE",
+       "ALFD",
+       "ALCC",
+       "ALED"
+      ],
+      "subrecords": {
+       "ALCC": {
+        "confidence": "documented",
+        "name": "Closest To Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCC",
+        "type": "i32"
+       },
+       "ALEA": {
+        "confidence": "documented",
+        "name": "Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALEA",
+        "type": "i32"
+       },
+       "ALED": {
+        "confidence": "documented",
+        "name": "Alias End",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALED",
+        "type": {
+         "struct": []
+        }
+       },
+       "ALEQ": {
+        "confidence": "documented",
+        "name": "Quest",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALEQ",
+        "type": "formid"
+       },
+       "ALFA": {
+        "confidence": "documented",
+        "name": "Alias",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFA",
+        "type": "i32"
+       },
+       "ALFD": {
+        "confidence": "documented",
+        "name": "Event Data",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFD",
+        "type": "bytes"
+       },
+       "ALFE": {
+        "confidence": "documented",
+        "name": "From Event",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFE",
+        "type": {
+         "array": "u8",
+         "count": 4
+        }
+       },
+       "ALFI": {
+        "confidence": "documented",
+        "name": "Force Into Alias When Filled",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFI",
+        "type": "i32"
+       },
+       "ALFL": {
+        "confidence": "documented",
+        "name": "Specific Location",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFL",
+        "type": "formid"
+       },
+       "ALID": {
+        "confidence": "documented",
+        "name": "Alias Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALID",
+        "type": "zstring"
+       },
+       "ALLS": {
+        "confidence": "documented",
+        "name": "Location Alias ID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALLS",
+        "type": "u32"
+       },
+       "FNAM": {
+        "confidence": "documented",
+        "name": "FNAM",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
+        "type": {
+         "bits": {
+          "0": "Reserves Location/Reference",
+          "1": "Optional",
+          "10": "Protected",
+          "11": "Forced by Aliases",
+          "12": "Allow Destroyed",
+          "13": "Matching Ref - Closest",
+          "14": "Uses Stored Text",
+          "15": "Initially Disabled",
+          "16": "Allow Cleared",
+          "17": "Clear Names When Removed",
+          "18": "Matching Ref - Actors Only",
+          "19": "Create Ref - Temp",
+          "2": "Quest Object",
+          "20": "External Alias - Linked",
+          "21": "No Pickpocket",
+          "22": "Can Apply Data To Non-Aliased Refs",
+          "23": "Is Companion",
+          "24": "Optional All Scenes",
+          "3": "Allow Reuse in Quest",
+          "4": "Allow Dead",
+          "5": "Matching Ref - In Loaded Area",
+          "6": "Essential",
+          "7": "Allow Disabled",
+          "8": "Stores Text",
+          "9": "Allow Reserved"
+         },
+         "flags": "u32"
+        }
+       },
+       "KNAM": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.KNAM",
+        "type": "formid"
+       }
+      }
+     },
      "ALST": {
       "opener": "ALST",
       "order": [
@@ -26462,11 +26622,7 @@
        "ALFC",
        "ALPC",
        "VTCK",
-       "ALED",
-       "ALLS",
-       "ALFL",
-       "ALCS",
-       "ALMI"
+       "ALED"
       ],
       "subrecords": {
        "ALCA": {
@@ -26518,12 +26674,6 @@
         "name": "Object",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALCO",
         "type": "formid"
-       },
-       "ALCS": {
-        "confidence": "documented",
-        "name": "Collection Alias ID",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALCS",
-        "type": "u32"
        },
        "ALDI": {
         "confidence": "documented",
@@ -26590,12 +26740,6 @@
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALFI",
         "type": "i32"
        },
-       "ALFL": {
-        "confidence": "documented",
-        "name": "Specific Location",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFL",
-        "type": "formid"
-       },
        "ALFR": {
         "confidence": "documented",
         "name": "Forced Reference",
@@ -26619,18 +26763,6 @@
         "name": "Linked Aliases",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALLA",
         "type": "bytes"
-       },
-       "ALLS": {
-        "confidence": "documented",
-        "name": "Location Alias ID",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALLS",
-        "type": "u32"
-       },
-       "ALMI": {
-        "confidence": "documented",
-        "name": "Max Initial Fill Count",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALMI",
-        "type": "u8"
        },
        "ALNA": {
         "confidence": "documented",
