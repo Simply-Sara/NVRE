@@ -1,0 +1,1030 @@
+{
+ "format": "fnv.nif.schema/1",
+ "_comment": "The Skyrim family: the NIF layouts the original edition and the Special Edition share. Measured over the original edition's 18,930 meshes; the Special Edition's own differences live in its own directory.",
+ "blocks": {
+  "NiAVObject": {
+   "inherit": "NiObjectNET",
+   "abstract": true,
+   "fields": [
+    {
+     "name": "flags",
+     "type": "u32"
+    },
+    {
+     "name": "translation",
+     "type": "vec3"
+    },
+    {
+     "name": "rotation",
+     "type": "mat33"
+    },
+    {
+     "name": "scale",
+     "type": "f32"
+    },
+    {
+     "name": "collision_object",
+     "type": "ref"
+    }
+   ],
+   "note": "Skyrim's AVObject has no properties array. Fallout's has a count and an array between the scale and the collision object; reading them where there are none put every field after the scale a fixed distance off, which is what made NiNode, NiCamera and BSFadeNode fail."
+  },
+  "NiTriShapeData": {
+   "inherit": "NiTriBasedGeomData",
+   "fields": [
+    {
+     "name": "num_triangle_points",
+     "type": "u32"
+    },
+    {
+     "name": "has_triangles",
+     "type": "bool"
+    },
+    {
+     "name": "triangles",
+     "type": "triangle",
+     "length": "num_triangles",
+     "cond": "has_triangles"
+    },
+    {
+     "name": "num_match_groups",
+     "type": "u16"
+    },
+    {
+     "name": "match_groups",
+     "type": "MatchGroup",
+     "length": "num_match_groups"
+    }
+   ]
+  },
+  "BSLightingShaderProperty": {
+   "inherit": "NiObject",
+   "fields": [
+    {
+     "name": "shader_type",
+     "type": "u32"
+    },
+    {
+     "name": "name",
+     "type": "string"
+    },
+    {
+     "name": "extra_data",
+     "type": "ref"
+    },
+    {
+     "name": "controller",
+     "type": "ref"
+    },
+    {
+     "name": "shader_flags",
+     "type": "u32"
+    },
+    {
+     "name": "shader_flags_2",
+     "type": "u32"
+    },
+    {
+     "name": "uv_offset",
+     "type": "vec2"
+    },
+    {
+     "name": "uv_scale",
+     "type": "vec2"
+    },
+    {
+     "name": "texture_set",
+     "type": "ref"
+    },
+    {
+     "name": "emissive_color",
+     "type": "color3"
+    },
+    {
+     "name": "emissive_multiple",
+     "type": "f32"
+    },
+    {
+     "name": "texture_clamp_mode",
+     "type": "u8"
+    },
+    {
+     "name": "padding",
+     "type": "u8",
+     "length": "3"
+    },
+    {
+     "name": "alpha",
+     "type": "f32"
+    },
+    {
+     "name": "refraction_strength",
+     "type": "f32"
+    },
+    {
+     "name": "glossiness",
+     "type": "f32"
+    },
+    {
+     "name": "lighting_effect_1",
+     "type": "f32"
+    },
+    {
+     "name": "lighting_effect_2",
+     "type": "f32"
+    },
+    {
+     "name": "environment_map_scale",
+     "type": "f32"
+    },
+    {
+     "name": "environment_map_scale_2",
+     "type": "f32",
+     "cond": "shader_type == 1",
+     "note": "nif.xml: the environment-map shader's own scale."
+    },
+    {
+     "name": "parallax_inner_layer_thickness",
+     "type": "f32",
+     "cond": "shader_type == 11"
+    },
+    {
+     "name": "parallax_refraction_scale",
+     "type": "f32",
+     "cond": "shader_type == 11"
+    },
+    {
+     "name": "parallax_inner_layer_texture_scale",
+     "type": "vec2",
+     "cond": "shader_type == 11"
+    },
+    {
+     "name": "parallax_envmap_strength",
+     "type": "f32",
+     "cond": "shader_type == 11"
+    },
+    {
+     "name": "sparkle_parameters",
+     "type": "vec4",
+     "cond": "shader_type == 14"
+    },
+    {
+     "name": "eye_cubemap_scale",
+     "type": "f32",
+     "cond": "shader_type == 16"
+    },
+    {
+     "name": "left_eye_reflection_center",
+     "type": "vec3",
+     "cond": "shader_type == 16"
+    },
+    {
+     "name": "right_eye_reflection_center",
+     "type": "vec3",
+     "cond": "shader_type == 16"
+    },
+    {
+     "name": "skin_tint_color",
+     "type": "color3"
+    },
+    {
+     "name": "skin_tint_color_2",
+     "type": "color3",
+     "cond": "shader_type == 5",
+     "note": "nif.xml: the skin-tint shader's own colour."
+    },
+    {
+     "name": "hair_tint_color",
+     "type": "color3",
+     "cond": "shader_type == 6",
+     "note": "nif.xml: the hair-tint shader's own colour."
+    }
+   ]
+  },
+  "BSShaderProperty": {
+   "inherit": "NiShadeProperty",
+   "fields": [],
+   "note": "nif.xml marks BSShaderProperty's four fields NI_BS_LTE_FO3, so a Skyrim shader property has none of them and carries its own flags."
+  },
+  "NiShadeProperty": {
+   "inherit": "NiObject",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    },
+    {
+     "name": "extra_data",
+     "type": "ref"
+    },
+    {
+     "name": "controller",
+     "type": "ref"
+    }
+   ],
+   "note": "A Skyrim shader property carries a plain extra-data pointer where the rest of the game carries a count and a list, so it has no extra-data array of its own. Measured: the pointer reads 0xFFFFFFFF. It inherits NiObject rather than NiProperty because NiProperty would add the extra-data array back."
+  },
+  "BSBehaviorGraphExtraData": {
+   "inherit": "NiExtraData",
+   "fields": [
+    {
+     "name": "behaviour_graph_file",
+     "type": "string"
+    },
+    {
+     "name": "controls_base_skeleton",
+     "type": "bool"
+    }
+   ]
+  },
+  "BSBoneLODExtraData": {
+   "inherit": "NiExtraData",
+   "fields": [
+    {
+     "name": "bone_lod_count",
+     "type": "u32"
+    },
+    {
+     "name": "bone_lod_info",
+     "type": "BoneLOD",
+     "length": "bone_lod_count"
+    }
+   ]
+  },
+  "BSEffectShaderProperty": {
+   "inherit": "NiShadeProperty",
+   "fields": [
+    {
+     "name": "shader_flags",
+     "type": "u32"
+    },
+    {
+     "name": "shader_flags_2",
+     "type": "u32"
+    },
+    {
+     "name": "uv_offset",
+     "type": "vec2"
+    },
+    {
+     "name": "uv_scale",
+     "type": "vec2"
+    },
+    {
+     "name": "source_texture",
+     "type": "sized_string"
+    },
+    {
+     "name": "texture_clamp_mode",
+     "type": "u8"
+    },
+    {
+     "name": "lighting_influence",
+     "type": "u8"
+    },
+    {
+     "name": "env_map_min_lod",
+     "type": "u8"
+    },
+    {
+     "name": "unused_byte",
+     "type": "u8"
+    },
+    {
+     "name": "falloff_start_angle",
+     "type": "f32"
+    },
+    {
+     "name": "falloff_stop_angle",
+     "type": "f32"
+    },
+    {
+     "name": "falloff_start_opacity",
+     "type": "f32"
+    },
+    {
+     "name": "falloff_stop_opacity",
+     "type": "f32"
+    },
+    {
+     "name": "refraction_power",
+     "type": "f32"
+    },
+    {
+     "name": "base_color",
+     "type": "color4"
+    },
+    {
+     "name": "base_color_scale",
+     "type": "f32"
+    },
+    {
+     "name": "greyscale_texture",
+     "type": "sized_string"
+    }
+   ]
+  },
+  "BSEffectShaderPropertyFloatController": {
+   "inherit": "NiFloatInterpController",
+   "fields": [
+    {
+     "name": "controlled_variable",
+     "type": "u32"
+    }
+   ]
+  },
+  "BSEffectShaderPropertyColorController": {
+   "inherit": "NiPoint3InterpController",
+   "fields": [
+    {
+     "name": "controlled_color",
+     "type": "u32"
+    }
+   ]
+  },
+  "BSLightingShaderPropertyFloatController": {
+   "inherit": "NiFloatInterpController",
+   "fields": [
+    {
+     "name": "controlled_variable",
+     "type": "u32"
+    }
+   ]
+  },
+  "BSInvMarker": {
+   "inherit": "NiExtraData",
+   "fields": [
+    {
+     "name": "rotation_x",
+     "type": "u16"
+    },
+    {
+     "name": "rotation_y",
+     "type": "u16"
+    },
+    {
+     "name": "rotation_z",
+     "type": "u16"
+    },
+    {
+     "name": "zoom",
+     "type": "f32"
+    }
+   ]
+  },
+  "BSLagBoneController": {
+   "inherit": "NiTimeController",
+   "fields": [
+    {
+     "name": "linear_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "linear_rotation",
+     "type": "f32"
+    },
+    {
+     "name": "maximum_distance",
+     "type": "f32"
+    }
+   ]
+  },
+  "BSPSysInheritVelocityModifier": {
+   "inherit": "NiPSysModifier",
+   "fields": [
+    {
+     "name": "inherit_object",
+     "type": "ptr"
+    },
+    {
+     "name": "chance_to_inherit",
+     "type": "f32"
+    },
+    {
+     "name": "velocity_multiplier",
+     "type": "f32"
+    },
+    {
+     "name": "velocity_variation",
+     "type": "f32"
+    }
+   ]
+  },
+  "BSPSysLODModifier": {
+   "inherit": "NiPSysModifier",
+   "fields": [
+    {
+     "name": "lod_begin_distance",
+     "type": "f32"
+    },
+    {
+     "name": "lod_end_distance",
+     "type": "f32"
+    },
+    {
+     "name": "end_emit_scale",
+     "type": "f32"
+    },
+    {
+     "name": "end_size",
+     "type": "f32"
+    }
+   ]
+  },
+  "BSPSysScaleModifier": {
+   "inherit": "NiPSysModifier",
+   "fields": [
+    {
+     "name": "num_scales",
+     "type": "u32"
+    },
+    {
+     "name": "scales",
+     "type": "f32",
+     "length": "num_scales"
+    }
+   ]
+  },
+  "BSPSysSubTexModifier": {
+   "inherit": "NiPSysModifier",
+   "fields": [
+    {
+     "name": "start_frame",
+     "type": "f32"
+    },
+    {
+     "name": "start_frame_fudge",
+     "type": "f32"
+    },
+    {
+     "name": "end_frame",
+     "type": "f32"
+    },
+    {
+     "name": "loop_start_frame",
+     "type": "f32"
+    },
+    {
+     "name": "loop_start_frame_fudge",
+     "type": "f32"
+    },
+    {
+     "name": "frame_count",
+     "type": "f32"
+    },
+    {
+     "name": "frame_count_fudge",
+     "type": "f32"
+    }
+   ]
+  },
+  "NiBooleanExtraData": {
+   "inherit": "NiExtraData",
+   "fields": [
+    {
+     "name": "boolean_data",
+     "type": "u8"
+    }
+   ]
+  },
+  "NiStringsExtraData": {
+   "inherit": "NiExtraData",
+   "fields": [
+    {
+     "name": "num_strings",
+     "type": "u32"
+    },
+    {
+     "name": "data",
+     "type": "sized_string",
+     "length": "num_strings"
+    }
+   ]
+  },
+  "NiGeometryData": {
+   "inherit": "NiObject",
+   "abstract": true,
+   "fields": [
+    {
+     "name": "group_id",
+     "type": "i32"
+    },
+    {
+     "name": "num_vertices",
+     "type": "u16",
+     "exclude": [
+      "NiPSysData"
+     ]
+    },
+    {
+     "name": "num_vertices",
+     "type": "u16",
+     "only": [
+      "NiPSysData"
+     ],
+     "cond": "bs_version < 34"
+    },
+    {
+     "name": "bs_max_vertices",
+     "type": "u16",
+     "only": [
+      "NiPSysData"
+     ],
+     "cond": "version == 0x14020007 && bs_version >= 34",
+     "note": "nif.xml: Bethesda 20.2 particle data stores a maximum count here and no per-vertex arrays."
+    },
+    {
+     "name": "keep_flags",
+     "type": "u8"
+    },
+    {
+     "name": "compress_flags",
+     "type": "u8"
+    },
+    {
+     "name": "has_vertices",
+     "type": "bool"
+    },
+    {
+     "name": "vertices",
+     "type": "vec3",
+     "length": "num_vertices",
+     "cond": "has_vertices"
+    },
+    {
+     "name": "data_flags",
+     "type": "u16",
+     "note": "nif.xml NiGeometryDataFlags: bits 0-5 UV set count, 12-15 tangent method.",
+     "cond": "!(version == 0x14020007 && bs_version > 0)"
+    },
+    {
+     "name": "bs_data_flags",
+     "type": "u16",
+     "note": "nif.xml BSGeometryDataFlags: bit 0 has UV, bits 6-11 Havok material, bit 12 has tangents.",
+     "cond": "version == 0x14020007 && bs_version > 0"
+    },
+    {
+     "name": "geometry_flags",
+     "type": "u8",
+     "length": "4",
+     "note": "Skyrim's four flag bytes after the data flags, where Fallout has none."
+    },
+    {
+     "name": "has_normals",
+     "type": "bool"
+    },
+    {
+     "name": "normals",
+     "type": "vec3",
+     "length": "num_vertices",
+     "cond": "has_normals"
+    },
+    {
+     "name": "tangents",
+     "type": "vec3",
+     "length": "num_vertices",
+     "cond": "has_normals && ((data_flags | bs_data_flags) & 4096) != 0"
+    },
+    {
+     "name": "bitangents",
+     "type": "vec3",
+     "length": "num_vertices",
+     "cond": "has_normals && ((data_flags | bs_data_flags) & 4096) != 0"
+    },
+    {
+     "name": "bounding_sphere",
+     "type": "NiBound"
+    },
+    {
+     "name": "has_vertex_colors",
+     "type": "bool"
+    },
+    {
+     "name": "vertex_colors",
+     "type": "color4",
+     "length": "num_vertices",
+     "cond": "has_vertex_colors"
+    },
+    {
+     "name": "uv_sets",
+     "type": "vec2",
+     "length": "(data_flags & 63) | (bs_data_flags & 1)",
+     "width": "num_vertices"
+    },
+    {
+     "name": "consistency_flags",
+     "type": "ConsistencyType"
+    },
+    {
+     "name": "additional_data",
+     "type": "ref"
+    }
+   ]
+  },
+  "NiGeometry": {
+   "inherit": "NiAVObject",
+   "abstract": true,
+   "fields": [
+    {
+     "name": "data",
+     "type": "ref"
+    },
+    {
+     "name": "skin_instance",
+     "type": "ref"
+    },
+    {
+     "name": "material_data",
+     "type": "MaterialData"
+    },
+    {
+     "name": "shader_property",
+     "type": "ref"
+    },
+    {
+     "name": "alpha_property",
+     "type": "ref"
+    }
+   ],
+   "note": "nif.xml marks the shader and alpha properties BS_GT_FO3, so a Skyrim geometry carries them and Fallout's does not. Measured: eight bytes more than the base's layout."
+  },
+  "bhkRigidBody": {
+   "inherit": "bhkEntity",
+   "fields": [
+    {
+     "name": "rigid_body_info",
+     "type": "bhkRigidBodyCInfo2010"
+    },
+    {
+     "name": "num_constraints",
+     "type": "u32"
+    },
+    {
+     "name": "constraints",
+     "type": "ref",
+     "length": "num_constraints"
+    },
+    {
+     "name": "body_flags",
+     "type": "u32"
+    }
+   ],
+   "note": "nif.xml: the body flags are a u32 below bs_version 76 and a u16 from there up; measured over Skyrim's bodies, most carry the u32 form."
+  },
+  "bhkRigidBodyT": {
+   "inherit": "bhkRigidBody",
+   "note": "nif.xml <niobject name=\"bhkRigidBodyT\">; the same layout as the rigid body, with the translation and rotation applied."
+  },
+  "NiParticleSystem": {
+   "inherit": "NiParticles",
+   "fields": [
+    {
+     "name": "far_begin",
+     "type": "u16"
+    },
+    {
+     "name": "far_end",
+     "type": "u16"
+    },
+    {
+     "name": "near_begin",
+     "type": "u16"
+    },
+    {
+     "name": "near_end",
+     "type": "u16"
+    },
+    {
+     "name": "world_space",
+     "type": "bool"
+    },
+    {
+     "name": "num_modifiers",
+     "type": "u32"
+    },
+    {
+     "name": "modifiers",
+     "type": "ref",
+     "length": "num_modifiers"
+    }
+   ],
+   "note": "nif.xml marks the four fade distances BS_GTE_SKY, so a Skyrim particle system has them and Fallout's does not."
+  },
+  "BSNiAlphaPropertyTestRefController": {
+   "inherit": "NiFloatInterpController",
+   "fields": [
+    {
+     "name": "interpolator_1_generation",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_2_mutation",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_3_subdivision",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_4_num_branches",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_5_num_branches_var",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_6_length",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_7_length_var",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_8_width",
+     "type": "ref"
+    },
+    {
+     "name": "interpolator_9_arc_offset",
+     "type": "ref"
+    },
+    {
+     "name": "subdivisions",
+     "type": "u16"
+    },
+    {
+     "name": "num_branches",
+     "type": "u16"
+    },
+    {
+     "name": "num_branches_variation",
+     "type": "u16"
+    },
+    {
+     "name": "length",
+     "type": "f32"
+    },
+    {
+     "name": "length_variation",
+     "type": "f32"
+    },
+    {
+     "name": "width",
+     "type": "f32"
+    },
+    {
+     "name": "child_width_mult",
+     "type": "f32"
+    },
+    {
+     "name": "arc_offset",
+     "type": "f32"
+    },
+    {
+     "name": "fade_main_bolt",
+     "type": "bool"
+    },
+    {
+     "name": "fade_child_bolts",
+     "type": "bool"
+    },
+    {
+     "name": "animate_arc_offset",
+     "type": "bool"
+    },
+    {
+     "name": "shader_property",
+     "type": "ref"
+    }
+   ]
+  }
+ },
+ "structs": {
+  "SkinPartition": {
+   "fields": [
+    {
+     "name": "num_vertices",
+     "type": "u16"
+    },
+    {
+     "name": "num_triangles",
+     "type": "u16"
+    },
+    {
+     "name": "num_bones",
+     "type": "u16"
+    },
+    {
+     "name": "num_strips",
+     "type": "u16"
+    },
+    {
+     "name": "num_weights_per_vertex",
+     "type": "u16"
+    },
+    {
+     "name": "bones",
+     "type": "u16",
+     "length": "num_bones"
+    },
+    {
+     "name": "has_vertex_map",
+     "type": "bool"
+    },
+    {
+     "name": "vertex_map",
+     "type": "u16",
+     "length": "num_vertices",
+     "cond": "has_vertex_map"
+    },
+    {
+     "name": "has_vertex_weights",
+     "type": "bool"
+    },
+    {
+     "name": "vertex_weights",
+     "type": "f32",
+     "length": "num_vertices",
+     "width": "num_weights_per_vertex",
+     "cond": "has_vertex_weights"
+    },
+    {
+     "name": "strip_lengths",
+     "type": "u16",
+     "length": "num_strips"
+    },
+    {
+     "name": "has_faces",
+     "type": "bool"
+    },
+    {
+     "name": "strips",
+     "type": "u16",
+     "length": "num_strips",
+     "width": "strip_lengths",
+     "cond": "has_faces && num_strips != 0"
+    },
+    {
+     "name": "triangles",
+     "type": "triangle",
+     "length": "num_triangles",
+     "cond": "has_faces && num_strips == 0"
+    },
+    {
+     "name": "has_bone_indices",
+     "type": "bool"
+    },
+    {
+     "name": "bone_indices",
+     "type": "u8",
+     "length": "num_vertices",
+     "width": "num_weights_per_vertex",
+     "cond": "has_bone_indices"
+    },
+    {
+     "name": "lod_level",
+     "type": "u8"
+    },
+    {
+     "name": "global_vb",
+     "type": "bool"
+    }
+   ],
+   "note": "Skyrim's skin partition ends with a LOD level and a global-vertex-buffer flag, which Fallout's has no room for. nif.xml marks both with vercond BS_GT_FO3, so they are present whenever bs_version > 34."
+  },
+  "BoneLOD": {
+   "fields": [
+    {
+     "name": "distance",
+     "type": "u32"
+    },
+    {
+     "name": "bone_name",
+     "type": "string"
+    }
+   ]
+  },
+  "bhkRigidBodyCInfo2010": {
+   "fields": [
+    {
+     "name": "unused_01",
+     "type": "bytes",
+     "length": 4
+    },
+    {
+     "name": "havok_filter",
+     "type": "HavokFilter"
+    },
+    {
+     "name": "unused_02",
+     "type": "bytes",
+     "length": 4
+    },
+    {
+     "name": "collision_response",
+     "type": "hkResponseType"
+    },
+    {
+     "name": "unused_03",
+     "type": "u8"
+    },
+    {
+     "name": "process_contact_callback_delay",
+     "type": "u16"
+    },
+    {
+     "name": "unused_04",
+     "type": "bytes",
+     "length": 4
+    },
+    {
+     "name": "translation",
+     "type": "vec4"
+    },
+    {
+     "name": "rotation",
+     "type": "vec4"
+    },
+    {
+     "name": "linear_velocity",
+     "type": "vec4"
+    },
+    {
+     "name": "angular_velocity",
+     "type": "vec4"
+    },
+    {
+     "name": "inertia_tensor",
+     "type": "mat34"
+    },
+    {
+     "name": "center",
+     "type": "vec4"
+    },
+    {
+     "name": "mass",
+     "type": "f32"
+    },
+    {
+     "name": "linear_damping",
+     "type": "f32"
+    },
+    {
+     "name": "angular_damping",
+     "type": "f32"
+    },
+    {
+     "name": "friction",
+     "type": "f32"
+    },
+    {
+     "name": "restitution",
+     "type": "f32"
+    },
+    {
+     "name": "max_linear_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "max_angular_velocity",
+     "type": "f32"
+    },
+    {
+     "name": "penetration_depth",
+     "type": "f32"
+    },
+    {
+     "name": "motion_system",
+     "type": "hkMotionType"
+    },
+    {
+     "name": "deactivator_type",
+     "type": "hkDeactivatorType"
+    },
+    {
+     "name": "solver_deactivation",
+     "type": "hkSolverDeactivation"
+    },
+    {
+     "name": "quality_type",
+     "type": "hkQualityType"
+    },
+    {
+     "name": "num_shape_keys_in_contact_point",
+     "type": "u8"
+    },
+    {
+     "name": "force_collided_onto_ppu",
+     "type": "bool"
+    },
+    {
+     "name": "unused_05",
+     "type": "bytes",
+     "length": 18
+    }
+   ],
+   "note": "nif.xml's bhkRigidBodyCInfo2010, which a Skyrim body carries: a shape-key count and a flag where the 550/660 form Fallout uses has neither. Measured: the trailing unused block is six bytes longer than the 550/660 form's, and a minority of Skyrim's bodies use the shorter form."
+  }
+ }
+}

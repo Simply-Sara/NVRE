@@ -1,0 +1,5 @@
+{
+ "format": "fnv.nif.schema/1",
+ "_comment": "Skyrim Special Edition's own NIF layouts. Not yet measured: the Special Edition's archives are BSA v105 and the editor's VFS reads v104 only, so its meshes are not reachable yet.",
+ "blocks": {}
+}

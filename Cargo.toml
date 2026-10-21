@@ -46,6 +46,7 @@ clap = { version = "4", features = ["derive", "env"] }
 [patch."https://github.com/LootJunkieAzza/NVForever.git"]
 fnv-world = { path = "crates/fnv-world" }
 fnv-esm = { path = "crates/fnv-esm" }
+fnv-nif = { path = "crates/fnv-nif" }
 
 # Enable high optimization for external dependencies in dev/debug builds.
 # Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.

@@ -2990,7 +2990,6 @@ dependencies = [
 [[package]]
 name = "fnv-nif"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
  "fnv-util",
  "serde_json",

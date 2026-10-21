@@ -28,13 +28,6 @@ struct Args {
     /// detected game's own `schemas/<game>`.
     #[arg(long)]
     esm_schema: Option<PathBuf>,
-    /// NIF schema directory, for the viewport's models. Still upstream's: NIF
-    /// layout is not NVRE's to own, and NVForever's is the reference.
-    #[arg(
-        long,
-        default_value = concat!(env!("CARGO_MANIFEST_DIR"), "/../../NVForever/schemas/nif")
-    )]
-    nif_schema: PathBuf,
     /// The plugin to edit. Defaults to the game's own master.
     #[arg(long)]
     plugin: Option<String>,
@@ -444,7 +437,7 @@ fn open_selected(
     let schema_dir = resolve_schema_dir(&args, game);
     for _ in events.read() {
         // The game's archives and NIF schema, opened once for the session.
-        let assets = match game.open_asset_data(&data_dir, &args.nif_schema) {
+        let assets = match game.open_asset_data(&data_dir) {
             Ok(g) => g,
             Err(e) => {
                 commands.insert_resource(nvre_editor::OpenFailed(format!("{}: {}", game.name, e)));

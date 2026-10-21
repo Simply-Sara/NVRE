@@ -1,0 +1,21 @@
+{
+ "format": "fnv.nif.schema/1",
+ "_comment": "Skyrim: The Original Edition's own NIF layouts.",
+ "blocks": {
+  "NiSkinPartition": {
+   "inherit": "NiObject",
+   "fields": [
+    {
+     "name": "num_partitions",
+     "type": "u32"
+    },
+    {
+     "name": "partitions",
+     "type": "SkinPartition",
+     "length": "num_partitions"
+    }
+   ],
+   "note": "The partition count is a u32 in Skyrim, where Fallout's is a u16."
+  }
+ }
+}

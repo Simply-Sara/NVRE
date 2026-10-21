@@ -86,6 +86,17 @@ pub struct GameProfile {
     pub schema_family_dir: &'static str,
     /// The directory holding this version's own differences from its family.
     pub schema_version_dir: &'static str,
+    /// This game's NIF schemas, as a subdirectory of the repo's `schemas/nif/`.
+    ///
+    /// The same chain as the record schemas: a base, a family and a version.
+    /// A game's own directory is named here; the chain is worked out from the
+    /// family's and the version's names, so a game with no directory of its
+    /// own shares its family's layouts unchanged.
+    pub nif_schema_subdir: &'static str,
+    /// The directory holding the NIF layouts this game's family shares.
+    pub nif_schema_family_dir: &'static str,
+    /// The directory holding this version's own NIF differences.
+    pub nif_schema_version_dir: &'static str,
     /// What this game cannot do yet, for the UI to say plainly rather than
     /// showing an empty viewport as if it were the game's fault.
     pub notes: &'static [&'static str],
@@ -95,6 +106,9 @@ pub struct GameProfile {
 /// schemas are measured against real data.
 pub const FNV: GameProfile = GameProfile {
     id: "fnv",
+    nif_schema_subdir: "fnv",
+    nif_schema_family_dir: "",
+    nif_schema_version_dir: "fnv",
     name: "Fallout: New Vegas",
     editor_name: "New Vegas Rust Editor",
     master: "FalloutNV.esm",
@@ -118,6 +132,9 @@ pub const FNV: GameProfile = GameProfile {
 /// FNV, so the asset layer already works; only the record layouts are missing.
 pub const FO3: GameProfile = GameProfile {
     id: "fo3",
+    nif_schema_subdir: "fnv",
+    nif_schema_family_dir: "fnv",
+    nif_schema_version_dir: "fo3",
     name: "Fallout 3",
     editor_name: "Fallout 3 Rust Editor",
     master: "Fallout3.esm",
@@ -143,6 +160,9 @@ pub const FO3: GameProfile = GameProfile {
 /// Skyrim (Legendary Edition). BSA v104, like FNV and Fallout 3.
 pub const SKYRIM: GameProfile = GameProfile {
     id: "skyrim",
+    nif_schema_subdir: "skyrim",
+    nif_schema_family_dir: "skyrim",
+    nif_schema_version_dir: "skyrimle",
     name: "Skyrim",
     editor_name: "Skyrim Rust Editor",
     master: "Skyrim.esm",
@@ -175,6 +195,9 @@ pub const SKYRIM: GameProfile = GameProfile {
 /// reads v104 only — hence the archive list is empty and the note says so.
 pub const SKYRIM_SE: GameProfile = GameProfile {
     id: "skyrimse",
+    nif_schema_subdir: "skyrim",
+    nif_schema_family_dir: "skyrim",
+    nif_schema_version_dir: "skyrimse",
     name: "Skyrim Special Edition",
     editor_name: "Skyrim SE Rust Editor",
     master: "Skyrim.esm",
@@ -195,6 +218,9 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
 /// FNV's — the largest of the four to bring up.
 pub const FALLOUT_4: GameProfile = GameProfile {
     id: "fo4",
+    nif_schema_subdir: "fo4",
+    nif_schema_family_dir: "",
+    nif_schema_version_dir: "fo4",
     name: "Fallout 4",
     editor_name: "Fallout 4 Rust Editor",
     master: "Fallout4.esm",
@@ -432,6 +458,41 @@ impl GameProfile {
         fnv_esm::Schema::load_game(&base, chain).map_err(|e| e.to_string())
     }
 
+    /// Load this game's NIF schema.
+    ///
+    /// The chain is `base -> family -> version`, and nothing else, exactly as
+    /// the record schemas are layered.
+    ///
+    /// The base holds the layouts every game shares, and its conditions are
+    /// bounded by Fallout's own `bs_version` 11-34. A family holds the
+    /// layouts its versions share, and a version holds its own differences.
+    /// A layer *replaces* the blocks it names, so a version's file carries a
+    /// complete block rather than a patch to one.
+    pub fn load_nif_schema(&self) -> Result<fnv_nif::Schema, String> {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/nif/base");
+        let mut chain: Vec<PathBuf> = Vec::new();
+        if let Some(family) = self.nif_schema_dir(self.nif_schema_family_dir) {
+            chain.push(family);
+        }
+        if let Some(version) = self.nif_schema_dir(self.nif_schema_version_dir) {
+            chain.push(version);
+        }
+        fnv_nif::Schema::load_game(&base, chain).map_err(|e| e.to_string())
+    }
+
+    /// One of the repo's NIF schema directories, by its name.
+    fn nif_schema_dir(&self, name: &str) -> Option<PathBuf> {
+        if name.is_empty() {
+            None
+        } else {
+            Some(
+                Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../schemas/nif")
+                    .join(name),
+            )
+        }
+    }
+
     /// The directory holding the layouts this game's family shares.
     fn schema_family(&self) -> Option<std::path::PathBuf> {
         self.schema_dir(self.schema_family_dir)
@@ -466,7 +527,6 @@ impl GameProfile {
     pub fn open_asset_data(
         &self,
         data_dir: &Path,
-        nif_schema_dir: &Path,
     ) -> Result<nvf_assets::GameData, String> {
         let order = match self.archive_format {
             ArchiveFormat::Bsa104 => {
@@ -500,7 +560,8 @@ impl GameProfile {
             }
         };
         let vfs = fnv_vfs::Vfs::open(data_dir, &order).map_err(|e| e.to_string())?;
-        let schema = fnv_nif::Schema::load_dir(nif_schema_dir).map_err(|e| e.to_string())?;
+        // Each game's own NIF schema, layered over the shared base.
+        let schema = self.load_nif_schema()?;
         Ok(nvf_assets::GameData {
             vfs: std::sync::Arc::new(vfs),
             schema: std::sync::Arc::new(schema),
