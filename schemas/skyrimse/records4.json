@@ -1,0 +1,1080 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "ANIO": {
+   "confidence": "documented",
+   "name": "Animation Object",
+   "note": "UESP, Skyrim Mod:Mod File Format/ANIO. [measured: 62 BNAM fields in Skyrim.esm, each 18 bytes]",
+   "subrecords": {
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Unload Event",
+     "note": "The event sent when the object is unloaded. It is almost always 'AnimObjectUnequip'.",
+     "type": "zstring"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Animation",
+     "note": "xEdit wbDefinitionsFNV.pas ANIO record",
+     "type": "formid"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
+    }
+   }
+  },
+  "APPA": {
+   "confidence": "documented",
+   "name": "Apparatus",
+   "note": "UESP, Skyrim Mod:Mod File Format/APPA. [measured: 45 DATA fields in Skyrim.esm, each 8 bytes, and 45 QUAL fields, each 4 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The apparatus's data, 8 bytes.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "ITXT": {
+     "confidence": "documented",
+     "name": "Inventory Text",
+     "note": "The inventory text.",
+     "type": "u32"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The apparatus's bounds.",
+     "type": "ObjectBounds"
+    },
+    "QUAL": {
+     "confidence": "documented",
+     "name": "Quality",
+     "note": "The apparatus's quality.",
+     "type": "u32"
+    }
+   }
+  },
+  "ASPC": {
+   "confidence": "documented",
+   "name": "Acoustic Space",
+   "note": "UESP, Skyrim Mod:Mod File Format/ASPC. [measured: 34 BNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Environment Type",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "None",
+       "1": "Default",
+       "10": "Cave",
+       "11": "Arena",
+       "12": "Hangar",
+       "13": "Carpeted Hallway",
+       "14": "Hallway",
+       "15": "Stone Corridor",
+       "16": "Alley",
+       "17": "Forest",
+       "18": "City",
+       "19": "Mountains",
+       "2": "Generic",
+       "20": "Quarry",
+       "21": "Plain",
+       "22": "Parkinglot",
+       "23": "Sewerpipe",
+       "24": "Underwater",
+       "25": "Small Room",
+       "26": "Medium Room",
+       "27": "Large Room",
+       "28": "Medium Hall",
+       "29": "Large Hall",
+       "3": "Padded Cell",
+       "30": "Plate",
+       "4": "Room",
+       "5": "Bathroom",
+       "6": "Livingroom",
+       "7": "Stone Room",
+       "8": "Auditorium",
+       "9": "Concerthall"
+      }
+     }
+    },
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Reverb",
+     "note": "The reverb (REVB) the acoustic space uses.",
+     "type": "formid"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Is Interior",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record",
+     "type": "u32"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The bounds of the acoustic space in the cell.",
+     "type": "ObjectBounds"
+    },
+    "RDAT": {
+     "confidence": "documented",
+     "name": "Region Data",
+     "note": "The region sound (REGN).",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Ambient",
+     "note": "The ambient sound (SNDR).",
+     "type": "formid"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Walla Trigger Count",
+     "note": "xEdit wbDefinitionsFNV.pas ASPC record",
+     "type": "u32"
+    }
+   }
+  },
+  "FACT": {
+   "confidence": "documented",
+   "name": "Faction",
+   "note": "UESP, Skyrim Mod:Mod File Format/FACT. [measured: 36 CITC fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "CITC": {
+     "confidence": "documented",
+     "name": "Condition Count",
+     "note": "How many conditions follow.",
+     "type": "u32"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Condition",
+     "note": "The conditions on the faction.",
+     "type": "Condition"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "xEdit wbDefinitionsFNV.pas FACT record; SetOptionalFrom(1)",
+     "type": {
+      "struct": [
+       {
+        "name": "flags1",
+        "type": {
+         "bits": {
+          "0": "Hidden from PC",
+          "1": "Evil",
+          "2": "Special Combat"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "flags2",
+        "optional": true,
+        "type": {
+         "bits": {
+          "0": "Track Crime",
+          "1": "Allow Sell"
+         },
+         "flags": "u8"
+        }
+       },
+       {
+        "name": "unused",
+        "optional": true,
+        "type": {
+         "array": "u8",
+         "count": 2
+        }
+       }
+      ]
+     }
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The faction's data.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Rank Female Title",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Rank Insignia (Unused)",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "zstring"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Rank Male Title",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "zstring"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Rank#",
+     "note": "xEdit wbDefinitionsFNV.pas wbFactionRank record",
+     "type": "i32"
+    },
+    "WMI1": {
+     "confidence": "documented",
+     "name": "Reputation",
+     "note": "xEdit wbDefinitionsFNV.pas FACT record",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Relation",
+     "note": "xEdit wbDefinitionsCommon.pas wbFactionRelations via xEdit wbDefinitionsFNV.pas FACT record; non-TES4 branch with Group Combat Reaction",
+     "type": "FactionRelation"
+    }
+   }
+  },
+  "FSTS": {
+   "confidence": "documented",
+   "name": "Flying Stairs",
+   "note": "UESP, Skyrim Mod:Mod File Format/FSTS. [measured: 35 DATA fields in Skyrim.esm, 16 to 96 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The stairs' data, whose layout is not documented.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
+  "HAZD": {
+   "confidence": "documented",
+   "name": "Hazard",
+   "note": "UESP, Skyrim Mod:Mod File Format/HAZD. [measured: 44 DATA fields in Skyrim.esm, each 40 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The hazard's limit, radius, lifetime, is radius, target interval, flags, and its spell, light, impact data set and sound.",
+     "type": "HAZD_DATA"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "The is mod.",
+     "type": "formid"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The path to the .nif.",
+     "type": "zstring"
+    },
+    "MODT": {
+     "confidence": "documented",
+     "name": "Model Data",
+     "note": "The model's texture data.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "Always 12 bytes, even when all zero.",
+     "type": "ObjectBounds"
+    }
+   }
+  },
+  "LVLI": {
+   "confidence": "documented",
+   "name": "Leveled Item",
+   "note": "UESP, Skyrim Mod:Mod File Format/LVLI. [measured: 65 LVLG fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "LVLD": {
+     "confidence": "documented",
+     "name": "Chance None",
+     "note": "The chance that the list has nothing in it.",
+     "type": "u8"
+    },
+    "LVLF": {
+     "confidence": "documented",
+     "name": "Level List Flags",
+     "note": "The level list's flags.",
+     "type": "u8"
+    },
+    "LVLG": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "Leveled List Entry",
+     "note": "xEdit wbDefinitionsCommon.pas wbLeveledListEntry via xEdit wbDefinitionsFNV.pas LVLI record; SetOptionalFrom(3); pre-FO4 branch ends with wbUnused(2)",
+     "type": "LeveledListEntry"
+    }
+   }
+  },
+  "LVSP": {
+   "confidence": "documented",
+   "name": "Leveled Spell",
+   "note": "UESP, Skyrim Mod:Mod File Format/LVSP. [measured: 82 LVLO fields in Skyrim.esm, each 12 bytes]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "LLCT": {
+     "confidence": "documented",
+     "name": "List Item Count",
+     "note": "How many LVLO records follow.",
+     "type": "u8"
+    },
+    "LVLD": {
+     "confidence": "documented",
+     "name": "Chance None",
+     "note": "The chance that the list has nothing in it.",
+     "type": "u8"
+    },
+    "LVLF": {
+     "confidence": "documented",
+     "name": "Level List Flags",
+     "note": "The level list's flags.",
+     "type": "u8"
+    },
+    "LVLO": {
+     "confidence": "documented",
+     "name": "List Item",
+     "note": "The item's level, the spell and how many there are.",
+     "type": "LVSP_LVLO"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "The bounds.",
+     "type": "ObjectBounds"
+    }
+   }
+  },
+  "MESG": {
+   "confidence": "documented",
+   "name": "Message",
+   "note": "UESP, Skyrim Mod:Mod File Format/MESG. [measured: 46 QNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "DESC": {
+     "confidence": "documented",
+     "name": "Message Text",
+     "note": "The text the game displays.",
+     "type": "u32"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The message's flags.",
+     "type": {
+      "bits": {
+       "0": "Message Box",
+       "1": "Auto-Display"
+      },
+      "flags": "u32"
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Title",
+     "note": "The optional category name.",
+     "type": "u32"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Always zero.",
+     "type": "u32"
+    },
+    "ITXT": {
+     "confidence": "documented",
+     "name": "Button Text",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record",
+     "type": "zstring"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM0, 0)",
+     "type": "bytes"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM1, 0)",
+     "type": "bytes"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM2, 0)",
+     "type": "bytes"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM3, 0)",
+     "type": "bytes"
+    },
+    "NAM4": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM4, 0)",
+     "type": "bytes"
+    },
+    "NAM5": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM5, 0)",
+     "type": "bytes"
+    },
+    "NAM6": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM6, 0)",
+     "type": "bytes"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM7, 0)",
+     "type": "bytes"
+    },
+    "NAM8": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM8, 0)",
+     "type": "bytes"
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "Unused",
+     "note": "xEdit wbDefinitionsFNV.pas MESG record; wbUnused(NAM9, 0)",
+     "type": "bytes"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Quest",
+     "note": "The quest (QUST) this message belongs to.",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Time",
+     "note": "How long the message is shown for. The editor ignores it when the message box flag is set.",
+     "type": "u32"
+    }
+   }
+  },
+  "MUSC": {
+   "confidence": "documented",
+   "name": "Music",
+   "note": "UESP, Skyrim Mod:Mod File Format/MUSC. [measured: 50 PNAM and 50 WNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "dB (positive = Loop)",
+     "note": "xEdit wbDefinitionsFNV.pas MUSC record",
+     "type": "f32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The music's flags.",
+     "type": {
+      "bits": {
+       "0": "Plays One Selection",
+       "1": "Abrupt Transition",
+       "2": "Cycle Tracks",
+       "3": "Maintain Track Order",
+       "5": "Ducks Current Track"
+      },
+      "flags": "u32"
+     }
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The priority, where 1 is the highest and 100 the lowest, and the ducking in dB scaled by 100.",
+     "type": "MUSC_PNAM"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Music Tracks",
+     "note": "The MUST records the music plays. There is no count of its own, so it is a run of form ids.",
+     "type": "bytes"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Fade Duration",
+     "note": "The fade duration in seconds.",
+     "type": "f32"
+    }
+   }
+  },
+  "PERK": {
+   "confidence": "documented",
+   "name": "Perk",
+   "note": "UESP, Skyrim Mod:Mod File Format/PERK. [measured: 76 NNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "PERK carries two meanings for DATA. xEdit wbDefinitionsFNV.pas PERK: the record-level wbStruct(DATA, 'Data', [Trait, Min Level, Num Ranks, Playable, Hidden]).SetOptionalFrom(4) \u2014 3 bytes normally, 4 or 5 with the trailing optional bytes; and inside wbRStructSK('Effect', ...) the union wbUnion(DATA, 'Effect Data', wbPerkDATADecider, [Quest + Stage (8 bytes: QUST FormID, u16 stage, 2 unused), Ability (SPEL FormID), Entry Point (u8 Entry Point enum, u8 Function enum, u8 Perk Condition Tab Count)]). wbPerkDATADecider reads PRKE.Type from the enclosing record and returns 0 when no PRKE precedes the DATA, so the record-level struct is the union's default. Verified across all six masters: 36x8, 72x4 (PRKE 1), 261x3 (PRKE 2), and 3/4/5-byte record-level forms; the entry point enum is left unnamed because the 74-entry table would dwarf the schema",
+     "type": {
+      "cases": {
+       "0": 0,
+       "1": 1,
+       "2": 2
+      },
+      "default": 3,
+      "switch_on": "type",
+      "union": [
+       {
+        "name": "Quest + Stage",
+        "type": {
+         "struct": [
+          {
+           "name": "quest",
+           "type": "formid"
+          },
+          {
+           "name": "quest_stage",
+           "type": "u16"
+          },
+          {
+           "name": "unused_2",
+           "type": "bytes"
+          }
+         ]
+        }
+       },
+       {
+        "name": "Ability",
+        "type": "formid"
+       },
+       {
+        "name": "Entry Point",
+        "type": {
+         "struct": [
+          {
+           "name": "entry_point",
+           "type": {
+            "enum": "u8",
+            "values": {}
+           }
+          },
+          {
+           "name": "function",
+           "type": {
+            "enum": "u8",
+            "values": {
+             "0": "Unknown",
+             "1": "Set Value",
+             "2": "Add Value",
+             "3": "Multiply Value",
+             "4": "Add Range To Value",
+             "5": "Add Actor Value Mult",
+             "6": "Absolute Value",
+             "7": "Negative Absolute Value",
+             "8": "Add Leveled List",
+             "9": "Add Activate Choice"
+            }
+           }
+          },
+          {
+           "name": "perk_condition_tab_count",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "type": {
+         "union": [
+          {
+           "size": 3,
+           "type": {
+            "struct": [
+             {
+              "name": "trait",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "min_level",
+              "type": "u8"
+             },
+             {
+              "name": "num_ranks",
+              "type": "u8"
+             }
+            ]
+           }
+          },
+          {
+           "size": 4,
+           "type": {
+            "struct": [
+             {
+              "name": "trait",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "min_level",
+              "type": "u8"
+             },
+             {
+              "name": "num_ranks",
+              "type": "u8"
+             },
+             {
+              "name": "playable",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             }
+            ]
+           }
+          },
+          {
+           "size": 5,
+           "type": {
+            "struct": [
+             {
+              "name": "trait",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "min_level",
+              "type": "u8"
+             },
+             {
+              "name": "num_ranks",
+              "type": "u8"
+             },
+             {
+              "name": "playable",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             },
+             {
+              "name": "hidden",
+              "type": {
+               "enum": "u8",
+               "values": {
+                "0": "No",
+                "1": "Yes"
+               }
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    "DESC": {
+     "confidence": "documented",
+     "name": "Description",
+     "note": "The perk's description.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "EPF2": {
+     "confidence": "documented",
+     "name": "Epf2",
+     "note": "The perk's rank data.",
+     "type": "bytes"
+    },
+    "EPF3": {
+     "confidence": "documented",
+     "name": "Run Immediately",
+     "note": "xEdit wbDefinitionsFNV.pas PERK record",
+     "type": {
+      "enum": "u16",
+      "values": {
+       "0": "False",
+       "1": "True"
+      }
+     }
+    },
+    "EPFD": {
+     "confidence": "documented",
+     "name": "Entry Point Function Parameter Data",
+     "note": "xEdit wbDefinitionsFNV.pas PERK wbUnion(EPFD, 'Data', wbEPFDDecider, [wbByteArray('Unknown'), wbFloat('Float'), wbStruct('Float, Float', [..]), wbFormIDCk('Leveled Item', [LVLI]), wbEmpty('None (Script)'), wbStruct('Actor Value, Float', [Actor Value, Float])]); decider reads the sibling EPFT, and remaps 2 -> 5 when the effect's Function is 5; verified 252x4-byte (EPFT=1) and 2x4-byte (EPFT=3) across the six masters",
+     "type": {
+      "cases": {
+       "1": 1,
+       "2": 2,
+       "3": 3,
+       "4": 4,
+       "5": 5,
+       "6": 5
+      },
+      "default": 0,
+      "switch_on": "EPFT",
+      "union": [
+       {
+        "name": "Unknown",
+        "type": "bytes"
+       },
+       {
+        "name": "Float",
+        "type": "f32"
+       },
+       {
+        "name": "Float, Float",
+        "type": {
+         "struct": [
+          {
+           "name": "float_1",
+           "type": "f32"
+          },
+          {
+           "name": "float_2",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "Leveled Item",
+        "type": "formid"
+       },
+       {
+        "name": "None (Script)",
+        "type": {
+         "struct": []
+        }
+       },
+       {
+        "name": "Actor Value, Float",
+        "type": {
+         "struct": [
+          {
+           "name": "actor_value",
+           "type": "u32"
+          },
+          {
+           "name": "float",
+           "type": "f32"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    "EPFT": {
+     "confidence": "documented",
+     "expose": true,
+     "name": "Entry Point Function Parameter Type",
+     "note": "xEdit wbDefinitionsFNV.pas PERK wbInteger(EPFT, 'Type', itU8, wbPerkEPFTToStr, wbPerkEPFTToInt).SetDontShow; `expose` on the value: the EPFD union below switches on it (wbEPFDDecider reads sibling EPFT)",
+     "type": "u8"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Icon",
+     "note": "The perk's icon.",
+     "type": "zstring"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "PRKC": {
+     "confidence": "documented",
+     "name": "Perk Condition Run On",
+     "note": "xEdit wbDefinitionsFNV.pas PERK record; custom-formatted s8 (wbPRKCToStr)",
+     "type": "i8"
+    },
+    "PRKE": {
+     "confidence": "documented",
+     "name": "Effect Header",
+     "note": "xEdit wbDefinitionsFNV.pas PERK wbRStructSK(PRKE, [1,2,0], 'Header', [wbPerkEffectType, Rank, Priority]); type enum from wbDefinitionsCommon.pas wbPerkEffectType. `expose` on type: the DATA union below switches on it (wbPerkDATADecider reads PRKE.Type from the record)",
+     "type": {
+      "struct": [
+       {
+        "expose": true,
+        "name": "type",
+        "type": {
+         "enum": "u8",
+         "values": {
+          "0": "Quest + Stage",
+          "1": "Ability",
+          "2": "Entry Point"
+         }
+        }
+       },
+       {
+        "name": "rank",
+        "type": "u8"
+       },
+       {
+        "name": "priority",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    "PRKF": {
+     "confidence": "documented",
+     "name": "End Marker",
+     "note": "xEdit wbDefinitionsFNV.pas PERK record",
+     "type": "Empty"
+    }
+   }
+  },
+  "WOOP": {
+   "confidence": "documented",
+   "name": "Word of Power",
+   "note": "UESP, Skyrim Mod:Mod File Format/WOOP. [measured: 81 TNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The record's name. For the words of power the player can use it is the dragon language name, with numbers standing for the vowel combinations.",
+     "type": "u32"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Translation",
+     "note": "The word's translation into the localised language. The record always exists, and is sometimes empty.",
+     "type": "u32"
+    }
+   }
+  }
+ },
+ "types": {
+  "HAZD_DATA": {
+   "struct": [
+    {
+     "name": "limit",
+     "type": "u32"
+    },
+    {
+     "name": "radius",
+     "type": "f32"
+    },
+    {
+     "name": "lifetime",
+     "type": "f32"
+    },
+    {
+     "name": "is_radius",
+     "type": "f32"
+    },
+    {
+     "name": "target_interval",
+     "type": "f32"
+    },
+    {
+     "name": "flags",
+     "type": {
+      "bits": {
+       "0": "Affects Player Only",
+       "1": "Inherit Duration from Spawn Spell",
+       "2": "Align to Impact Normal",
+       "3": "Inherit Radius from Spawn Spell",
+       "4": "Drop to Ground"
+      },
+      "flags": "u32"
+     }
+    },
+    {
+     "name": "spell",
+     "type": "formid"
+    },
+    {
+     "name": "light",
+     "type": "formid"
+    },
+    {
+     "name": "impact_data_set",
+     "type": "formid"
+    },
+    {
+     "name": "sound",
+     "type": "formid"
+    }
+   ]
+  },
+  "LVSP_LVLO": {
+   "struct": [
+    {
+     "name": "level",
+     "type": "u32"
+    },
+    {
+     "name": "spell",
+     "type": "formid"
+    },
+    {
+     "name": "count",
+     "type": "u32"
+    }
+   ]
+  },
+  "MUSC_PNAM": {
+   "struct": [
+    {
+     "name": "priority",
+     "note": "1 is the highest priority and 100 the lowest.",
+     "type": "u16"
+    },
+    {
+     "name": "ducking",
+     "note": "The ducking in dB, scaled by 100: 126 means 1.26, and the maximum of 10000 means 100.00.",
+     "type": "u16"
+    }
+   ]
+  }
+ }
+}
