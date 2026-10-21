@@ -834,90 +834,48 @@
     "EPFD": {
      "confidence": "documented",
      "name": "Entry Point Function Parameter Data",
-     "note": "UESP, Skyrim Mod:Mod File Format/PERK. The parameter data, whose shape the sibling EPFT decides. [measured: 402 EPFD fields of 4 bytes and 36 of 8 bytes in Skyrim.esm, all with EPFT of 1]",
+     "note": "UESP, Skyrim Mod:Mod File Format/PERK. The parameter data, whose shape the sibling EPFT decides: 1 is a float, 2 an actor value and a factor, 3 and 5 a form id and 6 a zstring. [measured: EPFT of 1 gives 4 bytes, 2 gives 8, 5 gives 4 and 6 gives 15 or 18 in Skyrim.esm]",
      "type": {
       "cases": {
-       "1": 1,
-       "2": 2,
-       "3": 3,
-       "4": 4,
-       "5": 5,
-       "6": 5
+       "1": 0,
+       "2": 1,
+       "3": 2,
+       "5": 2,
+       "6": 3
       },
-      "default": 0,
+      "default": 4,
       "switch_on": "EPFT",
       "union": [
        {
-        "name": "Unknown",
-        "type": "bytes"
-       },
-       {
         "name": "Float",
-        "type": {
-         "union": [
-          {
-           "name": "One Float",
-           "size": 4,
-           "type": "f32"
-          },
-          {
-           "name": "Two Floats",
-           "size": 8,
-           "type": {
-            "struct": [
-             {
-              "name": "float_1",
-              "type": "f32"
-             },
-             {
-              "name": "float_2",
-              "type": "f32"
-             }
-            ]
-           }
-          }
-         ]
-        }
+        "type": "f32"
        },
        {
-        "name": "Float, Float",
-        "type": {
-         "struct": [
-          {
-           "name": "float_1",
-           "type": "f32"
-          },
-          {
-           "name": "float_2",
-           "type": "f32"
-          }
-         ]
-        }
-       },
-       {
-        "name": "Leveled Item",
-        "type": "formid"
-       },
-       {
-        "name": "None (Script)",
-        "type": {
-         "struct": []
-        }
-       },
-       {
-        "name": "Actor Value, Float",
+        "name": "Actor Value And Factor",
         "type": {
          "struct": [
           {
            "name": "actor_value",
-           "type": "u32"
+           "type": "f32"
           },
           {
-           "name": "float",
+           "name": "factor",
            "type": "f32"
           }
          ]
         }
+       },
+       {
+        "name": "Form ID",
+        "type": "formid"
+       },
+       {
+        "name": "Game Message",
+        "type": "zstring"
+       },
+       {
+        "name": "Unknown",
+        "type": "bytes"
        }
       ]
      }

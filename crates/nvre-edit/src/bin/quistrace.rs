@@ -1,18 +1,16 @@
-//! ACTI: the 76-byte DMDT.
+//! PERK: the EPFT and EPFD size of every record that has both.
 use fnv_esm::raw::visit_records;
 use fnv_esm::Plugin;
+use std::collections::BTreeMap;
 fn main() {
     let p = Plugin::open(std::env::args().nth(1).unwrap()).unwrap();
-    let mut n = 0;
+    let mut seen: BTreeMap<(u8, usize), usize> = BTreeMap::new();
     visit_records(&p.nodes[1..], &mut |r, _| {
-        if r.header.sig != *b"ACTI" || n >= 2 { return; }
+        if r.header.sig != *b"PERK" { return; }
         let Ok(subs) = r.subrecords() else { return };
-        for s in subs.iter() {
-            if s.sig != *b"DMDT" || s.data.len() != 76 { continue; }
-            n += 1;
-            for (i, c) in s.data.chunks(12).enumerate() {
-                println!("   {i:2}: {}", c.iter().map(|b| format!("{b:02x}")).collect::<String>());
-            }
-        }
+        let e = subs.iter().find(|s| s.sig == *b"EPFT").map(|s| s.data[0]);
+        let d = subs.iter().find(|s| s.sig == *b"EPFD").map(|s| s.data.len());
+        if let (Some(e), Some(d)) = (e, d) { *seen.entry((e, d)).or_insert(0) += 1; }
     });
+    for ((e, d), c) in seen { println!("EPFT={e} EPFD={d} bytes x{c}"); }
 }
