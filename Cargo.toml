@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/fnv-dds"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,8 +10,8 @@ license = "GPL-3.0-or-later"
 [workspace.dependencies]
 # NVRE's own crates, by path. These are NVRE's code, not a copy of anyone
 # else's: `nvre-util` is the byte cursor, the Windows-1252 text and the
-# SHA-256 that every format crate speaks, and `nvre-inflate` is the zlib
-# reader.
+# SHA-256 that every format crate speaks, `nvre-inflate` is the zlib
+# reader, and `crates/fnv-dds` is the texture reader.
 nvre-util = { path = "crates/nvre-util" }
 nvre-inflate = { path = "crates/nvre-inflate" }
 
@@ -54,6 +54,7 @@ fnv-world = { path = "crates/fnv-world" }
 fnv-esm = { path = "crates/fnv-esm" }
 fnv-nif = { path = "crates/fnv-nif" }
 fnv-vfs = { path = "crates/fnv-vfs" }
+fnv-dds = { path = "crates/fnv-dds" }
 
 # Enable high optimization for external dependencies in dev/debug builds.
 # Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.

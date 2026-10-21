@@ -2944,8 +2944,8 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 [[package]]
 name = "fnv-dds"
 version = "0.1.0"
-source = "git+https://github.com/LootJunkieAzza/NVForever.git#3ef436ee5fdce2e4fb935195efe076992dea850a"
 dependencies = [
+ "proptest",
  "thiserror 2.0.21",
 ]
 
@@ -4263,14 +4263,6 @@ dependencies = [
  "fnv-dds",
  "fnv-nif",
  "fnv-vfs",
-]
-
-[[package]]
-name = "nvre-dds"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "thiserror 2.0.21",
 ]
 
 [[package]]
