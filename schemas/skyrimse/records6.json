@@ -251,14 +251,31 @@
     "LCEC": {
      "confidence": "documented",
      "name": "Encounter",
-     "note": "The encounter zone the location sits in.",
-     "type": "LCTN_LCEC"
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The encounter: a worldspace and a run of int16 pairs.",
+     "type": {
+      "struct": [
+       {
+        "name": "world",
+        "note": "The worldspace (WRLD).",
+        "type": "formid"
+       },
+       {
+        "name": "points",
+        "note": "The encounter's points, in pairs.",
+        "type": {
+         "array": "i16"
+        }
+       }
+      ]
+     }
     },
     "LCEP": {
      "confidence": "documented",
      "name": "Enable Points",
-     "note": "The points at which the location's actors are enabled.",
-     "type": "LCTN_LCEP"
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The enable points: a run of twelve-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCEP"
+     }
     },
     "LCID": {
      "confidence": "documented",
@@ -270,21 +287,27 @@
     },
     "LCPR": {
      "confidence": "documented",
-     "name": "Population References",
-     "note": "The actors that populate the location.",
-     "type": "LCTN_LCPR"
+     "name": "Population Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The population refs: a run of twelve-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCPR"
+     }
     },
     "LCSR": {
      "confidence": "documented",
-     "name": "Static References",
-     "note": "The location's static references, each with the ref type that finds them.",
-     "type": "LCTN_LCSR"
+     "name": "Static Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The static refs: a run of sixteen-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCSR"
+     }
     },
     "LCUN": {
      "confidence": "documented",
-     "name": "Unique References",
-     "note": "The location's unique actors.",
-     "type": "LCTN_LCUN"
+     "name": "Unique Refs",
+     "note": "UESP, Skyrim Mod:Mod File Format/LCTN. The unique refs: a run of twelve-byte structs with no count of their own.",
+     "type": {
+      "array": "LCTN_LCUN"
+     }
     },
     "MNAM": {
      "confidence": "documented",
@@ -749,6 +772,96 @@
      "type": {
       "array": "u32"
      }
+    }
+   ]
+  },
+  "LCTN_LCEP": {
+   "struct": [
+    {
+     "name": "actor",
+     "note": "The actor (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "The reference (REFR).",
+     "type": "formid"
+    },
+    {
+     "name": "extra",
+     "note": "Four more bytes, which vary though the first is always zero.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
+    }
+   ]
+  },
+  "LCTN_LCPR": {
+   "struct": [
+    {
+     "name": "actor",
+     "note": "The actor (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "cell_or_world",
+     "note": "The cell or worldspace, where 0x3C is Tamriel.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "type": "i16"
+    },
+    {
+     "name": "unknown2",
+     "type": "i16"
+    }
+   ]
+  },
+  "LCTN_LCSR": {
+   "struct": [
+    {
+     "name": "reference_type",
+     "note": "The reference type (LCRT).",
+     "type": "formid"
+    },
+    {
+     "name": "reference",
+     "note": "The reference (REFR) or actor (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "cell_or_world",
+     "note": "The cell or worldspace, where 0x3C is Tamriel.",
+     "type": "formid"
+    },
+    {
+     "name": "unknown",
+     "type": "i16"
+    },
+    {
+     "name": "unknown2",
+     "type": "i16"
+    }
+   ]
+  },
+  "LCTN_LCUN": {
+   "struct": [
+    {
+     "name": "npc",
+     "note": "The character (NPC_).",
+     "type": "formid"
+    },
+    {
+     "name": "actor",
+     "note": "The actor reference (ACHR).",
+     "type": "formid"
+    },
+    {
+     "name": "location",
+     "note": "The location, which points to itself in most cases.",
+     "type": "formid"
     }
    ]
   }
