@@ -18368,6 +18368,20 @@
            "name": "Assoc. Item",
            "optional": true,
            "type": {
+            "cases": {
+             "12": 1,
+             "17": 2,
+             "18": 3,
+             "25": 4,
+             "34": 8,
+             "35": 5,
+             "36": 6,
+             "39": 7,
+             "40": 4,
+             "46": 6
+            },
+            "default": 0,
+            "switch_on": "Archetype",
             "union": [
              {
               "size": 4,
@@ -25624,6 +25638,11 @@
         "name": "Data",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.Effects.EPFD",
         "type": {
+         "cases": {
+          "14": 8
+         },
+         "default": 0,
+         "switch_on": "EPFT",
          "union": [
           {
            "type": "bytes"
@@ -25685,8 +25704,9 @@
        },
        "EPFT": {
         "confidence": "documented",
+        "expose": true,
         "name": "Type",
-        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EPFT",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EPFT The value of this subrecord decides which variant a later union takes.",
         "type": {
          "enum": "u8",
          "values": {
@@ -47416,6 +47436,7 @@
       "type": "len_string_u16"
      },
      {
+      "expose": true,
       "name": "Type",
       "type": {
        "enum": "u8",
@@ -47456,6 +47477,23 @@
      {
       "name": "Value",
       "type": {
+       "cases": {
+        "1": 1,
+        "11": 8,
+        "12": 9,
+        "13": 10,
+        "14": 11,
+        "15": 12,
+        "17": 13,
+        "2": 2,
+        "3": 3,
+        "4": 4,
+        "5": 5,
+        "6": 6,
+        "7": 7
+       },
+       "default": 0,
+       "switch_on": "Type",
        "union": [
         {
          "size": 0,
@@ -47538,6 +47576,7 @@
              "type": "len_string_u16"
             },
             {
+             "expose": true,
              "name": "Type",
              "type": {
               "enum": "u8",
@@ -47578,6 +47617,21 @@
             {
              "name": "Value",
              "type": {
+              "cases": {
+               "1": 1,
+               "11": 8,
+               "12": 9,
+               "13": 10,
+               "14": 11,
+               "2": 2,
+               "3": 3,
+               "4": 4,
+               "5": 5,
+               "6": 6,
+               "7": 7
+              },
+              "default": 0,
+              "switch_on": "Type",
               "union": [
                {
                 "size": 0,
@@ -47748,6 +47802,7 @@
              "type": "len_string_u16"
             },
             {
+             "expose": true,
              "name": "Type",
              "type": {
               "enum": "u8",
@@ -47788,6 +47843,21 @@
             {
              "name": "Value",
              "type": {
+              "cases": {
+               "1": 1,
+               "11": 8,
+               "12": 9,
+               "13": 10,
+               "14": 11,
+               "2": 2,
+               "3": 3,
+               "4": 4,
+               "5": 5,
+               "6": 6,
+               "7": 7
+              },
+              "default": 0,
+              "switch_on": "Type",
               "union": [
                {
                 "size": 0,
@@ -48036,6 +48106,7 @@
               "type": "len_string_u16"
              },
              {
+              "expose": true,
               "name": "Type",
               "type": {
                "enum": "u8",
@@ -48076,6 +48147,21 @@
              {
               "name": "Value",
               "type": {
+               "cases": {
+                "1": 1,
+                "11": 8,
+                "12": 9,
+                "13": 10,
+                "14": 11,
+                "2": 2,
+                "3": 3,
+                "4": 4,
+                "5": 5,
+                "6": 6,
+                "7": 7
+               },
+               "default": 0,
+               "switch_on": "Type",
                "union": [
                 {
                  "size": 0,
@@ -48296,6 +48382,7 @@
       "type": "len_string_u16"
      },
      {
+      "expose": true,
       "name": "Type",
       "type": {
        "enum": "u8",
@@ -48336,6 +48423,21 @@
      {
       "name": "Value",
       "type": {
+       "cases": {
+        "1": 1,
+        "11": 8,
+        "12": 9,
+        "13": 10,
+        "14": 11,
+        "2": 2,
+        "3": 3,
+        "4": 4,
+        "5": 5,
+        "6": 6,
+        "7": 7
+       },
+       "default": 0,
+       "switch_on": "Type",
        "union": [
         {
          "size": 0,

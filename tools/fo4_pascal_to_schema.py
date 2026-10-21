@@ -471,10 +471,10 @@ class Converter:
                 "direct": False,
             }
         # A table of cases: `case ValueType of 0: Result := 0; 2: Result
-        # := 1; end`. The value names the result directly.
-        cm = re.search(
-            r"case\s+\w+\s+of(.*?)\bend\b", body, re.S | re.I
-        )
+        # := 1; end`, or the same over an expression — `case
+        # Integer(Container.ElementNativeValues['Type']) of`. The value
+        # names the result directly.
+        cm = re.search(r"case\b[^:]*?\bof\b(.*?)\bend\b", body, re.S | re.I)
         if cm:
             cases = {}
             for km in re.finditer(
@@ -1539,19 +1539,8 @@ class Converter:
                 n = len(ty.get("union", []))
                 # The switch reads the enum's value, which the decoder
                 # renders as the number the enum gives, so the case's key
-                # is that number and the value is the variant. The variant
-                # is the one standing for that case, which is not always
-                # the variant of the same number: a union whose first case
-                # has no layout of its own has its second case as its first
-                # variant.
-                def place(case):
-                    if case_of and case in case_of:
-                        return case_of.index(case)
-                    return case
-
-                ty["cases"] = {
-                    str(k): place(k) for k in values if place(k) < n
-                }
+                # is that number and the value is the variant.
+                ty["cases"] = {str(k): k for k in values if k < n}
                 ty["default"] = 0
             # The switch field's value is what the union reads, so it is
             # kept.
@@ -1831,16 +1820,8 @@ class Converter:
         if decider:
             d = self.deciders.get(decider.lower())
             if d and d.get("switch"):
-                # The case a value names is xEdit's case index, and the
-                # schema's cases name the variant's place in the list. The
-                # two are not the same when a variant was dropped: a union
-                # whose first case is `wbNull` has its second case as its
-                # first variant.
-                def place(case):
-                    if case in case_of:
-                        return case_of.index(case)
-                    return case
-
+                # The decider's result is the variant's place in the list,
+                # which is xEdit's own order, so no mapping is needed.
                 if d.get("direct"):
                     # The switch's own value is the variant's index, so the
                     # cases are the switch field's own values, which the
@@ -1854,16 +1835,15 @@ class Converter:
                     # the order xEdit tests them is kept.
                     union["switch_on"] = d["switch"]
                     union["bits"] = {
-                        f"{mask:#x}": place(variant)
+                        f"{mask:#x}": variant
                         for mask, variant in d["bits"]
-                        if place(variant) < len(variants)
+                        if variant < len(variants)
                     }
                     union["default"] = 0
                 elif d.get("cases"):
                     union["switch_on"] = d["switch"]
                     union["cases"] = {
-                        k: place(v) for k, v in d["cases"].items()
-                        if place(v) < len(variants)
+                        k: v for k, v in d["cases"].items() if v < len(variants)
                     }
                     union["default"] = 0
         return union, self._note(ctx)
