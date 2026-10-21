@@ -113,6 +113,135 @@
     }
    }
   },
+  "INGR": {
+   "confidence": "documented",
+   "name": "Ingredient",
+   "note": "UESP, Skyrim Mod:Mod File Format/INGR. An ingredient has a value, a weight, and a list of effects. [measured: 376 EFIT fields in Skyrim.esm, each 12 bytes]",
+   "subrecords": {
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Conditions",
+     "note": "The conditions on the effect.",
+     "type": "Condition"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Item Data",
+     "note": "The ingredient's value and weight.",
+     "type": {
+      "struct": [
+       {
+        "name": "value",
+        "type": "u32"
+       },
+       {
+        "name": "weight",
+        "type": "f32"
+       }
+      ]
+     }
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "EFID": {
+     "confidence": "documented",
+     "name": "Effect ID",
+     "note": "The magic effect (MGEF).",
+     "type": "formid"
+    },
+    "EFIT": {
+     "confidence": "documented",
+     "name": "Effect Item",
+     "note": "The effect's magnitude, area and duration.",
+     "type": "INGR_EFIT"
+    },
+    "ENIT": {
+     "confidence": "documented",
+     "name": "Enchanted Item",
+     "note": "The ingredient's value and its flags: 0x001 = Manual Calc, 0x002 = Food, 0x100 = References Persist.",
+     "type": {
+      "struct": [
+       {
+        "name": "value",
+        "type": "u32"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Manual Calc",
+          "1": "Food",
+          "8": "References Persist"
+         },
+         "flags": "u32"
+        }
+       }
+      ]
+     }
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Icon",
+     "note": "The inventory icon's filename.",
+     "type": "zstring"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "A KYWD record. There is one per KSIZ.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The ground model.",
+     "type": "bytes"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "Always 12 bytes, even when all zero.",
+     "type": "ObjectBounds"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The Papyrus script data. In the main game files it is only used for Briarhearts.",
+     "type": "bytes"
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Pickup Sound",
+     "note": "The sound (SNDR) played when the item is picked up.",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Drop Sound",
+     "note": "The sound (SNDR) played when the item is dropped.",
+     "type": "formid"
+    }
+   }
+  },
   "LSCR": {
    "confidence": "documented",
    "name": "Load Screen",
@@ -174,6 +303,49 @@
       "array": "f32",
       "count": 3
      }
+    }
+   }
+  },
+  "LTEX": {
+   "confidence": "documented",
+   "name": "Lighting Texture",
+   "note": "UESP, Skyrim Mod:Mod File Format/LTEX. [measured: HNAM is 2 bytes in every LTEX]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Grass",
+     "note": "The grass (GRAS). It is not required.",
+     "type": "formid"
+    },
+    "HNAM": {
+     "confidence": "documented",
+     "name": "Havok Data",
+     "note": "The friction and the restitution.",
+     "type": "LTEX_HNAM"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Material",
+     "note": "The material (MATT).",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Texture Specular Exponent",
+     "note": "Always 0x1E, which is 30.",
+     "type": "u8"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Texture",
+     "note": "The texture set (TXST).",
+     "type": "formid"
     }
    }
   },
@@ -530,6 +702,25 @@
     }
    ]
   },
+  "INGR_EFIT": {
+   "struct": [
+    {
+     "name": "magnitude",
+     "note": "The effect's magnitude. For the auto-calc the game treats a magnitude below 1 as 1, and a duration of 0 as 10.",
+     "type": "f32"
+    },
+    {
+     "name": "area_of_effect",
+     "note": "The effect's area.",
+     "type": "u32"
+    },
+    {
+     "name": "duration",
+     "note": "How long the effect lasts. Zero means it is instant.",
+     "type": "u32"
+    }
+   ]
+  },
   "LSCR_ONAM": {
    "struct": [
     {
@@ -560,6 +751,20 @@
      "name": "z",
      "note": "The z rotation.",
      "type": "i16"
+    }
+   ]
+  },
+  "LTEX_HNAM": {
+   "struct": [
+    {
+     "name": "friction",
+     "note": "The friction.",
+     "type": "u8"
+    },
+    {
+     "name": "restitution",
+     "note": "The restitution.",
+     "type": "u8"
     }
    ]
   },
