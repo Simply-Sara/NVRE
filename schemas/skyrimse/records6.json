@@ -296,10 +296,10 @@
      "type": "formid"
     },
     "RDOT": {
-     "confidence": "documented",
+     "confidence": "observed",
      "name": "Owner Type",
-     "note": "The owner type.",
-     "type": "formid"
+     "note": "The owner type. It is empty in Skyrim.esm. [observed: 0 bytes]",
+     "type": "bytes"
     },
     "RDSA": {
      "confidence": "documented",

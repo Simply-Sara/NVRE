@@ -834,7 +834,7 @@
     "EPFD": {
      "confidence": "documented",
      "name": "Entry Point Function Parameter Data",
-     "note": "xEdit wbDefinitionsFNV.pas PERK wbUnion(EPFD, 'Data', wbEPFDDecider, [wbByteArray('Unknown'), wbFloat('Float'), wbStruct('Float, Float', [..]), wbFormIDCk('Leveled Item', [LVLI]), wbEmpty('None (Script)'), wbStruct('Actor Value, Float', [Actor Value, Float])]); decider reads the sibling EPFT, and remaps 2 -> 5 when the effect's Function is 5; verified 252x4-byte (EPFT=1) and 2x4-byte (EPFT=3) across the six masters",
+     "note": "UESP, Skyrim Mod:Mod File Format/PERK. The parameter data, whose shape the sibling EPFT decides. [measured: 402 EPFD fields of 4 bytes and 36 of 8 bytes in Skyrim.esm, all with EPFT of 1]",
      "type": {
       "cases": {
        "1": 1,
@@ -853,7 +853,31 @@
        },
        {
         "name": "Float",
-        "type": "f32"
+        "type": {
+         "union": [
+          {
+           "name": "One Float",
+           "size": 4,
+           "type": "f32"
+          },
+          {
+           "name": "Two Floats",
+           "size": 8,
+           "type": {
+            "struct": [
+             {
+              "name": "float_1",
+              "type": "f32"
+             },
+             {
+              "name": "float_2",
+              "type": "f32"
+             }
+            ]
+           }
+          }
+         ]
+        }
        },
        {
         "name": "Float, Float",

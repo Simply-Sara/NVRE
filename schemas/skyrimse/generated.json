@@ -687,12 +687,12 @@
      "type": "u32"
     },
     "KWDA": {
-     "confidence": "hypothesis",
+     "confidence": "documented",
      "count_from": "KSIZ",
      "name": "keywords",
-     "note": "UESP, Skyrim Mod:Mod File Format/FURN. KYWD[]",
+     "note": "UESP, Skyrim Mod:Mod File Format/FURN. The keywords, one form id per KSIZ.",
      "type": {
-      "array": "bytes"
+      "array": "formid"
      }
     },
     "MNAM": {
