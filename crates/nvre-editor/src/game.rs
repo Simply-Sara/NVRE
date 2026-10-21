@@ -205,7 +205,7 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     notes: &[
         "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimse",
         "archives are BSA v105/LZ4: read by the bsa105 crate, but the editor's VFS is still v104-only, so loose files only until it is switched",
-        "its NIF blocks all decode, but the packed vertex format its shapes use is unfinished, so its geometry is not yet exact",
+        "its NIF blocks all decode and its shapes are measured, but the packed vertex format its shapes use is read as raw bytes, so its geometry is not yet exact",
     ],
 };
 

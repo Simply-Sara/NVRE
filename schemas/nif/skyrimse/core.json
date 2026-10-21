@@ -69,47 +69,50 @@
      "type": "ref"
     },
     {
-     "name": "num_triangles",
-     "type": "u32"
+     "name": "shader_property",
+     "type": "ref"
     },
     {
-     "name": "num_vertices",
-     "type": "u32"
+     "name": "alpha_property",
+     "type": "ref"
     },
     {
      "name": "vertex_desc",
      "type": "u64"
     },
     {
+     "name": "num_triangles",
+     "type": "u16"
+    },
+    {
+     "name": "num_vertices",
+     "type": "u16"
+    },
+    {
+     "name": "data_size",
+     "type": "u32"
+    },
+    {
      "name": "vertex_data",
-     "type": "BSVertexData",
-     "length": "num_vertices",
-     "arg": "vertex_desc >> 44"
+     "type": "bytes",
+     "length": "data_size - num_triangles * 6"
     },
     {
      "name": "triangles",
      "type": "triangle",
      "length": "num_triangles"
+    },
+    {
+     "name": "trailing",
+     "type": "u32"
     }
    ],
-   "note": "nif.xml's BSTriShape: the Special Edition holds its vertices in the shape itself, in a packed format the vertex description describes, where the original edition keeps them in a separate NiTriShapeData block. The triangle and vertex counts are u32 here, where nif.xml has a ushort for the triangles."
+   "note": "nif.xml's BSTriShape: the Special Edition holds its vertices in the shape itself, in a packed format, where the original edition keeps them in a separate NiTriShapeData block. Measured: the data size is the vertex data's bytes plus the triangles' six bytes each, so the vertex data is the data size less the triangles; a word follows the triangles. The vertex description's low nibble is the vertex's size in four-byte words, and its next nibbles are the word offsets of the UV, the normal, the tangent and the colour. The packed vertices themselves are read by the NIF reader, not by the schema: their layout is a function of the description, and the schema language has no way to say 'a field whose size another field decides'."
   },
   "NiAVObject": {
-   "inherit": "NiObject",
+   "inherit": "NiObjectNET",
    "abstract": true,
    "fields": [
-    {
-     "name": "name",
-     "type": "string"
-    },
-    {
-     "name": "extra_data",
-     "type": "ref"
-    },
-    {
-     "name": "controller",
-     "type": "ref"
-    },
     {
      "name": "flags",
      "type": "u32"
@@ -131,7 +134,30 @@
      "type": "ref"
     }
    ],
-   "note": "The Special Edition's AV object. Measured: it has no properties array, like the original edition's, but it does carry a collision object where the original edition's shape does not."
+   "note": "The Special Edition's AV object. Like the original edition's, it has no properties array; the two are otherwise the same."
+  },
+  "NiNode": {
+   "inherit": "NiAVObject",
+   "fields": [
+    {
+     "name": "num_effects",
+     "type": "u32"
+    },
+    {
+     "name": "effects",
+     "type": "ref",
+     "length": "num_effects"
+    },
+    {
+     "name": "num_children",
+     "type": "u32"
+    },
+    {
+     "name": "children",
+     "type": "ref",
+     "length": "num_children"
+    }
+   ]
   }
  },
  "structs": {
