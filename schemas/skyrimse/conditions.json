@@ -227,8 +227,11 @@
     },
     {
      "name": "extension",
-     "note": "The texture's file extension, which is \"dds\" in every shipped record.",
-     "type": "cstring"
+     "note": "The texture's file extension, which is \"dds\" in all but a few hundred of the shipped entries.",
+     "type": {
+      "array": "u8",
+      "count": 4
+     }
     },
     {
      "name": "hash2",
