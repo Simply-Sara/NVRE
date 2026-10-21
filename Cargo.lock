@@ -4321,6 +4321,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
+ "bsa105",
  "bytes",
  "clap",
  "egui_tiles",

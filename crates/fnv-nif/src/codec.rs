@@ -270,6 +270,26 @@ impl<'a> Codec<'a> {
                 Prim::Ref => Value::Ref(c.i32().map_err(oob)?),
                 Prim::Ptr => Value::Ptr(c.i32().map_err(oob)?),
                 Prim::F32 => Value::Float(c.f32().map_err(oob)?),
+                Prim::HFloat => Value::Float(half_to_f32(c.u16().map_err(oob)?)),
+                Prim::NormByte => Value::Float((c.u8().map_err(oob)? as f32) / 127.0 - 1.0),
+                Prim::ByteVec3 => {
+                    let b = c.bytes(3).map_err(oob)?;
+                    Value::IntList(b.iter().map(|x| *x as i64).collect())
+                }
+                Prim::HalfVec3 => {
+                    let mut v = Vec::with_capacity(3);
+                    for _ in 0..3 {
+                        v.push(half_to_f32(c.u16().map_err(oob)?));
+                    }
+                    Value::Floats(v)
+                }
+                Prim::HalfVec2 => {
+                    let mut v = Vec::with_capacity(2);
+                    for _ in 0..2 {
+                        v.push(half_to_f32(c.u16().map_err(oob)?));
+                    }
+                    Value::Floats(v)
+                }
                 Prim::String if self.file.version >= V20_1_0_3 => {
                     let idx = c.u32().map_err(oob)?;
                     let text = self.file.strings.and_then(|s| s.get(idx as usize)).map(RawString::text);
@@ -431,6 +451,26 @@ impl<'a> Codec<'a> {
             TypeRef::Enum { storage, .. } => write_int(*storage, v.as_int().ok_or_else(mismatch)?, out),
             TypeRef::Prim(p) => match (p, v) {
                 (Prim::F32, Value::Float(f)) => out.extend_from_slice(&f.to_le_bytes()),
+                (Prim::HFloat, Value::Float(f)) => out.extend_from_slice(&f32_to_half(*f).to_le_bytes()),
+                (Prim::NormByte, Value::Float(f)) => {
+                    let v = ((*f + 1.0) * 127.0).round().clamp(0.0, 255.0) as u8;
+                    out.push(v);
+                }
+                (Prim::ByteVec3, Value::IntList(xs)) => {
+                    for x in xs.iter().take(3) {
+                        out.push(*x as u8);
+                    }
+                }
+                (Prim::HalfVec3, Value::Floats(xs)) => {
+                    for x in xs.iter().take(3) {
+                        out.extend_from_slice(&f32_to_half(*x).to_le_bytes());
+                    }
+                }
+                (Prim::HalfVec2, Value::Floats(xs)) => {
+                    for x in xs.iter().take(2) {
+                        out.extend_from_slice(&f32_to_half(*x).to_le_bytes());
+                    }
+                }
                 (Prim::Ref | Prim::Ptr, Value::Ref(r) | Value::Ptr(r)) => out.extend_from_slice(&r.to_le_bytes()),
                 (Prim::String, Value::Str { index: Some(i), .. }) if self.file.version >= V20_1_0_3 => {
                     out.extend_from_slice(&i.to_le_bytes())
@@ -461,6 +501,57 @@ impl<'a> Codec<'a> {
         }
         Ok(())
     }
+}
+
+/// A 16-bit float, as the IEEE half format.
+fn half_to_f32(h: u16) -> f32 {
+    let sign = ((h >> 15) & 1) as u32;
+    let exp = ((h >> 10) & 0x1f) as u32;
+    let mant = (h & 0x3ff) as u32;
+    let bits = match exp {
+        0 => {
+            if mant == 0 {
+                sign << 31
+            } else {
+                // A subnormal half: normalise it.
+                let mut e = -1i32;
+                let mut m = mant;
+                while m & 0x400 == 0 {
+                    m <<= 1;
+                    e -= 1;
+                }
+                m &= 0x3ff;
+                (sign << 31) | (((e + 15 + 127) as u32) << 23) | (m << 13)
+            }
+        }
+        0x1f => (sign << 31) | (0xff << 23) | (mant << 13),
+        _ => (sign << 31) | ((exp + 127 - 15) << 23) | (mant << 13),
+    };
+    f32::from_bits(bits)
+}
+
+/// A 32-bit float, as the IEEE half format.
+fn f32_to_half(f: f32) -> u16 {
+    let bits = f.to_bits();
+    let sign = ((bits >> 16) & 0x8000) as u16;
+    let exp = ((bits >> 23) & 0xff) as i32;
+    let mant = bits & 0x7f_ffff;
+    if exp == 0xff {
+        return sign | 0x7c00 | if mant != 0 { 0x0200 } else { 0 };
+    }
+    let e = exp - 127 + 15;
+    if e >= 0x1f {
+        return sign | 0x7c00;
+    }
+    if e <= 0 {
+        if e < -10 {
+            return sign;
+        }
+        let m = mant | 0x80_0000;
+        let shift = 14 - e;
+        return sign | ((m >> shift) as u16);
+    }
+    sign | ((e as u16) << 10) | ((mant >> 13) as u16)
 }
 
 fn err(path: &str, msg: String, offset: Option<usize>) -> CodecError {

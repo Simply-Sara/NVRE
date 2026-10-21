@@ -198,6 +198,18 @@
      "type": "color3",
      "cond": "shader_type == 6",
      "note": "nif.xml: the hair-tint shader's own colour."
+    },
+    {
+     "name": "max_passes",
+     "type": "f32",
+     "cond": "shader_type == 7",
+     "note": "nif.xml: the parallax-occlusion shader's own maximum passes."
+    },
+    {
+     "name": "scale",
+     "type": "f32",
+     "cond": "shader_type == 7",
+     "note": "nif.xml: the parallax-occlusion shader's own scale."
     }
    ]
   },
@@ -657,7 +669,7 @@
     },
     {
      "name": "num_constraints",
-     "type": "u32"
+     "type": "u16"
     },
     {
      "name": "constraints",
@@ -667,9 +679,15 @@
     {
      "name": "body_flags",
      "type": "u32"
+    },
+    {
+     "name": "padding",
+     "type": "u8",
+     "length": "2",
+     "note": "Two bytes between the body flags and the end of the block. Most of Skyrim's bodies have four more than this; what decides it is not yet known."
     }
    ],
-   "note": "nif.xml: the body flags are a u32 below bs_version 76 and a u16 from there up; measured over Skyrim's bodies, most carry the u32 form."
+   "note": "nif.xml: the body flags are a u32 below bs_version 76 and a u16 from there up; measured over Skyrim's bodies, they read as a u32 here."
   },
   "bhkRigidBodyT": {
    "inherit": "bhkRigidBody",
@@ -712,90 +730,313 @@
   },
   "BSNiAlphaPropertyTestRefController": {
    "inherit": "NiFloatInterpController",
+   "note": "nif.xml lists nine interpolator references and a run of lightning settings for this, but Skyrim's block is exactly the float interpolator controller and nothing more. Measured: 30 bytes, which the base's layout accounts for exactly."
+  },
+  "NiPSysData": {
+   "inherit": "NiParticlesData",
    "fields": [
     {
-     "name": "interpolator_1_generation",
-     "type": "ref"
+     "name": "particle_info",
+     "type": "NiParticleInfo",
+     "length": "num_vertices",
+     "cond": "1 == 1"
     },
     {
-     "name": "interpolator_2_mutation",
-     "type": "ref"
-    },
-    {
-     "name": "interpolator_3_subdivision",
-     "type": "ref"
-    },
-    {
-     "name": "interpolator_4_num_branches",
-     "type": "ref"
-    },
-    {
-     "name": "interpolator_5_num_branches_var",
-     "type": "ref"
-    },
-    {
-     "name": "interpolator_6_length",
-     "type": "ref"
-    },
-    {
-     "name": "interpolator_7_length_var",
-     "type": "ref"
-    },
-    {
-     "name": "interpolator_8_width",
-     "type": "ref"
-    },
-    {
-     "name": "interpolator_9_arc_offset",
-     "type": "ref"
-    },
-    {
-     "name": "subdivisions",
-     "type": "u16"
-    },
-    {
-     "name": "num_branches",
-     "type": "u16"
-    },
-    {
-     "name": "num_branches_variation",
-     "type": "u16"
-    },
-    {
-     "name": "length",
-     "type": "f32"
-    },
-    {
-     "name": "length_variation",
-     "type": "f32"
-    },
-    {
-     "name": "width",
-     "type": "f32"
-    },
-    {
-     "name": "child_width_mult",
-     "type": "f32"
-    },
-    {
-     "name": "arc_offset",
-     "type": "f32"
-    },
-    {
-     "name": "fade_main_bolt",
+     "name": "has_rotation_speeds",
      "type": "bool"
     },
     {
-     "name": "fade_child_bolts",
-     "type": "bool"
+     "name": "rotation_speeds",
+     "type": "f32",
+     "length": "num_vertices",
+     "cond": "has_rotation_speeds && 1 == 1"
     },
     {
-     "name": "animate_arc_offset",
-     "type": "bool"
+     "name": "num_added_particles",
+     "type": "u16",
+     "cond": "1 == 1"
     },
     {
-     "name": "shader_property",
+     "name": "added_particles_base",
+     "type": "u16",
+     "cond": "1 == 1"
+    }
+   ],
+   "note": "nif.xml's BS202 condition excludes these fields from a 20.2.0.7 file, but Skyrim's particle data holds them: measured, the block is 21 bytes longer than the base's layout accounts for."
+  },
+  "BSLODTriShape": {
+   "inherit": "NiTriShape",
+   "fields": [
+    {
+     "name": "lod0_size",
+     "type": "u32"
+    },
+    {
+     "name": "lod1_size",
+     "type": "u32"
+    },
+    {
+     "name": "lod2_size",
+     "type": "u32"
+    }
+   ]
+  },
+  "BSLeafAnimNode": {
+   "inherit": "NiNode",
+   "fields": []
+  },
+  "BSLightingShaderPropertyColorController": {
+   "inherit": "NiPoint3InterpController",
+   "fields": [
+    {
+     "name": "controlled_color",
+     "type": "u32"
+    }
+   ]
+  },
+  "BSPSysHavokUpdateModifier": {
+   "inherit": "NiPSysModifier",
+   "fields": [
+    {
+     "name": "modifier",
      "type": "ref"
+    }
+   ]
+  },
+  "BSPSysRecycleBoundModifier": {
+   "inherit": "NiPSysModifier",
+   "fields": [
+    {
+     "name": "bound_offset",
+     "type": "vec3"
+    },
+    {
+     "name": "bound_extent",
+     "type": "vec3"
+    },
+    {
+     "name": "bound_object",
+     "type": "ptr"
+    }
+   ]
+  },
+  "BSTreeNode": {
+   "inherit": "NiNode",
+   "fields": [
+    {
+     "name": "num_bones_1",
+     "type": "u32"
+    },
+    {
+     "name": "bones_1",
+     "type": "ref",
+     "length": "num_bones_1"
+    },
+    {
+     "name": "num_bones_2",
+     "type": "u32"
+    },
+    {
+     "name": "bones",
+     "type": "ref",
+     "length": "num_bones_2"
+    }
+   ]
+  },
+  "NiSwitchNode": {
+   "inherit": "NiNode",
+   "fields": [
+    {
+     "name": "switch_node_flags",
+     "type": "u32"
+    },
+    {
+     "name": "index",
+     "type": "u32"
+    }
+   ]
+  },
+  "NiMeshPSysData": {
+   "inherit": "NiPSysData",
+   "fields": [
+    {
+     "name": "default_pool_size",
+     "type": "u32"
+    },
+    {
+     "name": "fill_pools_on_load",
+     "type": "bool"
+    },
+    {
+     "name": "num_generations",
+     "type": "u32"
+    },
+    {
+     "name": "generations",
+     "type": "u32",
+     "length": "num_generations"
+    },
+    {
+     "name": "particle_meshes",
+     "type": "ref"
+    }
+   ]
+  },
+  "NiMeshParticleSystem": {
+   "inherit": "NiParticleSystem",
+   "fields": []
+  },
+  "bhkCompressedMeshShape": {
+   "inherit": "bhkShape",
+   "fields": [
+    {
+     "name": "target",
+     "type": "ptr"
+    },
+    {
+     "name": "user_data",
+     "type": "u32"
+    },
+    {
+     "name": "radius",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_float_1",
+     "type": "f32"
+    },
+    {
+     "name": "scale",
+     "type": "vec4"
+    },
+    {
+     "name": "radius_copy",
+     "type": "f32"
+    },
+    {
+     "name": "scale_copy",
+     "type": "vec4"
+    },
+    {
+     "name": "data",
+     "type": "ref"
+    }
+   ]
+  },
+  "bhkCompressedMeshShapeData": {
+   "inherit": "bhkShape",
+   "fields": [
+    {
+     "name": "bits_per_index",
+     "type": "u32"
+    },
+    {
+     "name": "bits_per_w_index",
+     "type": "u32"
+    },
+    {
+     "name": "mask_w_index",
+     "type": "u32"
+    },
+    {
+     "name": "mask_index",
+     "type": "u32"
+    },
+    {
+     "name": "error",
+     "type": "f32"
+    },
+    {
+     "name": "aabb",
+     "type": "hkAabb"
+    },
+    {
+     "name": "welding_type",
+     "type": "u32"
+    },
+    {
+     "name": "material_type",
+     "type": "u32"
+    },
+    {
+     "name": "num_materials_32",
+     "type": "u32"
+    },
+    {
+     "name": "materials_32",
+     "type": "u32",
+     "length": "num_materials_32"
+    },
+    {
+     "name": "num_materials_16",
+     "type": "u16"
+    },
+    {
+     "name": "materials_16",
+     "type": "u16",
+     "length": "num_materials_16"
+    },
+    {
+     "name": "num_materials_8",
+     "type": "u16"
+    },
+    {
+     "name": "materials_8",
+     "type": "u8",
+     "length": "num_materials_8"
+    },
+    {
+     "name": "num_materials",
+     "type": "u32"
+    },
+    {
+     "name": "chunk_materials",
+     "type": "bhkMeshMaterial",
+     "length": "num_materials"
+    },
+    {
+     "name": "num_named_materials",
+     "type": "u32"
+    },
+    {
+     "name": "num_transforms",
+     "type": "u32"
+    },
+    {
+     "name": "chunk_transforms",
+     "type": "bhkQsTransform",
+     "length": "num_transforms"
+    },
+    {
+     "name": "num_big_verts",
+     "type": "u32"
+    },
+    {
+     "name": "big_verts",
+     "type": "vec4",
+     "length": "num_big_verts"
+    },
+    {
+     "name": "num_big_tris",
+     "type": "u32"
+    },
+    {
+     "name": "big_tris",
+     "type": "bhkCMSBigTri",
+     "length": "num_big_tris"
+    },
+    {
+     "name": "num_chunks",
+     "type": "u32"
+    },
+    {
+     "name": "chunks",
+     "type": "bhkCMSChunk",
+     "length": "num_chunks"
+    },
+    {
+     "name": "num_convex_piece_a",
+     "type": "u32"
     }
    ]
   }
@@ -1021,10 +1262,134 @@
     {
      "name": "unused_05",
      "type": "bytes",
-     "length": 18
+     "length": 12
     }
    ],
-   "note": "nif.xml's bhkRigidBodyCInfo2010, which a Skyrim body carries: a shape-key count and a flag where the 550/660 form Fallout uses has neither. Measured: the trailing unused block is six bytes longer than the 550/660 form's, and a minority of Skyrim's bodies use the shorter form."
+   "note": "nif.xml's bhkRigidBodyCInfo2010, which a Skyrim body carries: a shape-key count and a flag where the 550/660 form Fallout uses has neither. Measured: the constraint count is a u16 and sits two bytes earlier than the 550/660 form would put it."
+  },
+  "hkAabb": {
+   "fields": [
+    {
+     "name": "min",
+     "type": "vec4"
+    },
+    {
+     "name": "max",
+     "type": "vec4"
+    }
+   ]
+  },
+  "bhkMeshMaterial": {
+   "fields": [
+    {
+     "name": "material",
+     "type": "u32"
+    },
+    {
+     "name": "filter",
+     "type": "HavokFilter"
+    }
+   ]
+  },
+  "bhkQsTransform": {
+   "fields": [
+    {
+     "name": "translation",
+     "type": "vec4"
+    },
+    {
+     "name": "rotation",
+     "type": "vec4"
+    }
+   ]
+  },
+  "bhkCMSBigTri": {
+   "fields": [
+    {
+     "name": "triangle",
+     "type": "triangle"
+    },
+    {
+     "name": "material",
+     "type": "u32"
+    },
+    {
+     "name": "welding_info",
+     "type": "u16"
+    }
+   ]
+  },
+  "UshortVector3": {
+   "fields": [
+    {
+     "name": "x",
+     "type": "u16"
+    },
+    {
+     "name": "y",
+     "type": "u16"
+    },
+    {
+     "name": "z",
+     "type": "u16"
+    }
+   ]
+  },
+  "bhkCMSChunk": {
+   "fields": [
+    {
+     "name": "translation",
+     "type": "vec4"
+    },
+    {
+     "name": "material_index",
+     "type": "u32"
+    },
+    {
+     "name": "reference",
+     "type": "u16"
+    },
+    {
+     "name": "transform_index",
+     "type": "u16"
+    },
+    {
+     "name": "num_vertices",
+     "type": "u32"
+    },
+    {
+     "name": "vertices",
+     "type": "UshortVector3",
+     "length": "num_vertices / 3"
+    },
+    {
+     "name": "num_indices",
+     "type": "u32"
+    },
+    {
+     "name": "indices",
+     "type": "u16",
+     "length": "num_indices"
+    },
+    {
+     "name": "num_strips",
+     "type": "u32"
+    },
+    {
+     "name": "strips",
+     "type": "u16",
+     "length": "num_strips"
+    },
+    {
+     "name": "num_welding_info",
+     "type": "u32"
+    },
+    {
+     "name": "welding_info",
+     "type": "u16",
+     "length": "num_welding_info"
+    }
+   ]
   }
  }
 }

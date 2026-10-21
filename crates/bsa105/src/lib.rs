@@ -81,6 +81,8 @@ pub enum Bsa105Error {
     Decompress { path: String, err: String },
     #[error("layout error: {0}")]
     Layout(String),
+    #[error("no such file in the archive: {0}")]
+    Missing(String),
 }
 
 impl From<io::Error> for Bsa105Error {
@@ -690,6 +692,19 @@ impl Archive {
             }
         }
         None
+    }
+
+    /// The bytes of one file, by its full path.
+    ///
+    /// The convenience form of [`Archive::find`] and [`Archive::extract`]:
+    /// a caller that knows a path gets the file's bytes without holding a
+    /// borrow on the archive across the extraction.
+    pub fn extract_by_path(&mut self, path: &str) -> Result<Vec<u8>, Bsa105Error> {
+        let (fi, ri) = self
+            .find(path)
+            .ok_or_else(|| Bsa105Error::Missing(path.to_string()))?;
+        let record = self.folders[fi].files[ri].clone();
+        self.extract(&record)
     }
 }
 

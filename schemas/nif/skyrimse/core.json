@@ -1,5 +1,221 @@
 {
  "format": "fnv.nif.schema/1",
  "_comment": "Skyrim Special Edition's own NIF layouts. Not yet measured: the Special Edition's archives are BSA v105 and the editor's VFS reads v104 only, so its meshes are not reachable yet.",
- "blocks": {}
+ "blocks": {
+  "bhkCompressedMeshShape": {
+   "inherit": "bhkShape",
+   "fields": [
+    {
+     "name": "target",
+     "type": "ptr"
+    },
+    {
+     "name": "user_data",
+     "type": "u32"
+    },
+    {
+     "name": "radius",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_float_1",
+     "type": "f32"
+    },
+    {
+     "name": "scale",
+     "type": "vec4"
+    },
+    {
+     "name": "radius_copy",
+     "type": "f32"
+    },
+    {
+     "name": "scale_copy",
+     "type": "vec4"
+    },
+    {
+     "name": "data",
+     "type": "ref"
+    }
+   ]
+  },
+  "BSDynamicTriShape": {
+   "inherit": "BSTriShape",
+   "fields": [
+    {
+     "name": "dynamic_data_size",
+     "type": "u32"
+    },
+    {
+     "name": "vertices",
+     "type": "vec4",
+     "length": "dynamic_data_size / 16"
+    }
+   ]
+  },
+  "BSFurnitureMarkerNode": {
+   "inherit": "NiNode",
+   "fields": []
+  },
+  "BSTriShape": {
+   "inherit": "NiAVObject",
+   "fields": [
+    {
+     "name": "bounding_sphere",
+     "type": "NiBound"
+    },
+    {
+     "name": "skin",
+     "type": "ref"
+    },
+    {
+     "name": "num_triangles",
+     "type": "u32"
+    },
+    {
+     "name": "num_vertices",
+     "type": "u32"
+    },
+    {
+     "name": "vertex_desc",
+     "type": "u64"
+    },
+    {
+     "name": "vertex_data",
+     "type": "BSVertexData",
+     "length": "num_vertices",
+     "arg": "vertex_desc >> 44"
+    },
+    {
+     "name": "triangles",
+     "type": "triangle",
+     "length": "num_triangles"
+    }
+   ],
+   "note": "nif.xml's BSTriShape: the Special Edition holds its vertices in the shape itself, in a packed format the vertex description describes, where the original edition keeps them in a separate NiTriShapeData block. The triangle and vertex counts are u32 here, where nif.xml has a ushort for the triangles."
+  },
+  "NiAVObject": {
+   "inherit": "NiObject",
+   "abstract": true,
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    },
+    {
+     "name": "extra_data",
+     "type": "ref"
+    },
+    {
+     "name": "controller",
+     "type": "ref"
+    },
+    {
+     "name": "flags",
+     "type": "u32"
+    },
+    {
+     "name": "translation",
+     "type": "vec3"
+    },
+    {
+     "name": "rotation",
+     "type": "mat33"
+    },
+    {
+     "name": "scale",
+     "type": "f32"
+    },
+    {
+     "name": "collision_object",
+     "type": "ref"
+    }
+   ],
+   "note": "The Special Edition's AV object. Measured: it has no properties array, like the original edition's, but it does carry a collision object where the original edition's shape does not."
+  }
+ },
+ "structs": {
+  "BSVertexData": {
+   "fields": [
+    {
+     "name": "vertex",
+     "type": "vec3",
+     "cond": "(arg & 0x401) == 0x401"
+    },
+    {
+     "name": "bitangent_x",
+     "type": "f32",
+     "cond": "(arg & 0x411) == 0x411"
+    },
+    {
+     "name": "unused_w",
+     "type": "u32",
+     "cond": "(arg & 0x411) == 0x401"
+    },
+    {
+     "name": "vertex",
+     "type": "half_vec3",
+     "cond": "(arg & 0x401) == 0x1"
+    },
+    {
+     "name": "bitangent_x",
+     "type": "hfloat",
+     "cond": "(arg & 0x411) == 0x11"
+    },
+    {
+     "name": "unused_w",
+     "type": "u16",
+     "cond": "(arg & 0x411) == 0x1"
+    },
+    {
+     "name": "uv",
+     "type": "half_vec2",
+     "cond": "(arg & 0x2) != 0"
+    },
+    {
+     "name": "normal",
+     "type": "byte_vec3",
+     "cond": "(arg & 0x8) != 0"
+    },
+    {
+     "name": "bitangent_y",
+     "type": "normbyte",
+     "cond": "(arg & 0x8) != 0"
+    },
+    {
+     "name": "tangent",
+     "type": "byte_vec3",
+     "cond": "(arg & 0x18) == 0x18"
+    },
+    {
+     "name": "bitangent_z",
+     "type": "normbyte",
+     "cond": "(arg & 0x18) == 0x18"
+    },
+    {
+     "name": "vertex_colors",
+     "type": "byte_color4",
+     "cond": "(arg & 0x20) != 0"
+    },
+    {
+     "name": "bone_weights",
+     "type": "hfloat",
+     "length": "4",
+     "cond": "(arg & 0x40) != 0"
+    },
+    {
+     "name": "bone_indices",
+     "type": "u8",
+     "length": "4",
+     "cond": "(arg & 0x40) != 0"
+    },
+    {
+     "name": "eye_data",
+     "type": "f32",
+     "cond": "(arg & 0x100) != 0"
+    }
+   ],
+   "note": "nif.xml's BSVertexData: the Special Edition's packed vertex, whose layout the vertex description's attribute flags choose. The argument is the description shifted down to those flags."
+  }
+ }
 }

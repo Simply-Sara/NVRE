@@ -72,6 +72,16 @@ pub enum Prim {
     Mat44,
     /// Three u16 vertex indices.
     Triangle,
+    /// A 16-bit floating point number.
+    HFloat,
+    /// Three 16-bit floating point numbers.
+    HalfVec3,
+    /// Two 16-bit floating point numbers.
+    HalfVec2,
+    /// Three bytes, a normal or a tangent.
+    ByteVec3,
+    /// A single byte holding a value in the range -1 to 1.
+    NormByte,
     /// Padding to the next multiple of the field's length argument.
     ///
     /// Some games align a block's contents to a boundary and pad the rest.
@@ -111,6 +121,11 @@ impl Prim {
             "mat44" => Prim::Mat44,
             "triangle" => Prim::Triangle,
             "align" => Prim::Align,
+            "hfloat" => Prim::HFloat,
+            "half_vec3" => Prim::HalfVec3,
+            "half_vec2" => Prim::HalfVec2,
+            "byte_vec3" => Prim::ByteVec3,
+            "normbyte" => Prim::NormByte,
             _ => return None,
         })
     }
@@ -152,6 +167,11 @@ impl Prim {
             Prim::String | Prim::SizedString => 4,
             Prim::ByteColor4 => 4,
             Prim::Triangle => 6,
+            Prim::HFloat => 2,
+            Prim::HalfVec3 => 6,
+            Prim::HalfVec2 => 4,
+            Prim::ByteVec3 => 3,
+            Prim::NormByte => 1,
             _ => 1,
         }
     }

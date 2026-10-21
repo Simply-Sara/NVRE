@@ -25,6 +25,7 @@ fnv-world.workspace = true
 nvf-assets = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 fnv-dds = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+bsa105 = { path = "../bsa105" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
