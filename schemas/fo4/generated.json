@@ -4469,6 +4469,7 @@
      "type": {
       "struct": [
        {
+        "expose": true,
         "name": "Flags",
         "optional": true,
         "type": {
@@ -4486,6 +4487,13 @@
         "name": "Teaches",
         "optional": true,
         "type": {
+         "bits": {
+          "0x1": 1,
+          "0x10": 3,
+          "0x4": 2
+         },
+         "default": 0,
+         "switch_on": "Flags",
          "union": [
           {
            "size": 4,
@@ -17237,6 +17245,7 @@
         "type": {
          "struct": [
           {
+           "expose": true,
            "name": "Owner",
            "type": "formid"
           },
@@ -17443,6 +17452,7 @@
         "type": {
          "struct": [
           {
+           "expose": true,
            "name": "Owner",
            "type": "formid"
           },
@@ -21122,6 +21132,7 @@
      "type": {
       "struct": [
        {
+        "expose": true,
         "name": "Flags",
         "optional": true,
         "type": {
@@ -21171,6 +21182,11 @@
         "name": "Level",
         "optional": true,
         "type": {
+         "bits": {
+          "0x80": 1
+         },
+         "default": 0,
+         "switch_on": "Flags",
          "union": [
           {
            "size": 2,
@@ -43756,6 +43772,7 @@
   "wbCOED": {
    "struct": [
     {
+     "expose": true,
      "name": "Owner",
      "type": "formid"
     },

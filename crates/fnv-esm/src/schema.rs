@@ -237,9 +237,17 @@ pub enum TypeDef {
     /// variant is chosen by that name. A case's key is then the name itself,
     /// and a case whose key is a number is the integer's decimal form, so
     /// both kinds of switch are expressed the same way.
+    ///
+    /// The variant may also be chosen by a *bit* of the switch's value:
+    /// xEdit's `wbNPCLevelDecider` reads an actor's flags and picks the
+    /// level's shape by whether bit 7 is set, and `wbBOOKTeachesDecider`
+    /// reads a book's flags and picks by the first of bits 0, 2 and 4 that
+    /// is set. `bits` lists those bits with the variant each picks, in the
+    /// order xEdit tests them, and the first bit that is set wins.
     ValueUnion {
         name: String,
         cases: Vec<(String, usize)>,
+        bits: Vec<(u64, usize)>,
         default: usize,
         variants: Vec<TypeDef>,
     },
@@ -424,6 +432,21 @@ pub struct Schema {
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("schema error: {0}")]
 pub struct SchemaError(pub String);
+
+/// A bit mask for a union's bit test, from the schema's key.
+///
+/// The key is the mask itself, in hex as xEdit writes it — "0x80" or "80"
+/// for the same bit. A key of only digits is read as a decimal mask.
+fn parse_bit_mask(k: &str) -> Result<u64, ()> {
+    let k = k.trim();
+    if let Some(hex) = k.strip_prefix("0x").or_else(|| k.strip_prefix("0X")) {
+        return u64::from_str_radix(hex, 16).map_err(|_| ());
+    }
+    if k.chars().all(|c| c.is_ascii_digit()) {
+        return k.parse::<u64>().map_err(|_| ());
+    }
+    u64::from_str_radix(k, 16).map_err(|_| ())
+}
 
 fn sig4(s: &str, ctx: &str) -> Result<[u8; 4], SchemaError> {
     let b = s.as_bytes();
@@ -679,6 +702,28 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                         }
                     }
                     cases.sort_by_key(|(k, _)| k.clone());
+                    // The variant may also be chosen by a bit of the
+                    // switch's value: the masks are listed in the order
+                    // xEdit tests them, and the first one that is set wins.
+                    // A mask may name more than one bit, as xEdit's own
+                    // tests do.
+                    let mut bits = Vec::new();
+                    if let Some(Value::Object(bm)) = v.get("bits") {
+                        for (k, idx) in bm {
+                            let mask = parse_bit_mask(k)
+                                .map_err(|_| SchemaError(format!("{ctx}: bit key {k:?}")))?;
+                            let i = idx.as_u64().ok_or_else(|| {
+                                SchemaError(format!("{ctx}: bit {k:?} needs a variant index"))
+                            })? as usize;
+                            if i >= out.len() {
+                                return Err(SchemaError(format!(
+                                    "{ctx}: bit {k:?} names variant {i}, but there are only {}",
+                                    out.len()
+                                )));
+                            }
+                            bits.push((mask, i));
+                        }
+                    }
                     let default = v
                         .get("default")
                         .and_then(Value::as_u64)
@@ -693,6 +738,7 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                     return Ok(TypeDef::ValueUnion {
                         name,
                         cases,
+                        bits,
                         default,
                         variants: out.into_iter().map(|(_, t)| t).collect(),
                     });

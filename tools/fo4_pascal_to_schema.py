@@ -353,6 +353,17 @@ class Converter:
                     # The decider reads a *field* of its own struct, and the
                     # field's value is the result as it stands.
                     switch = m.group(1)
+        # A bit test: `if i and $01 <> 0 then Result := 1`, and the next
+        # test after it. The first bit that is set picks the variant.
+        bits = []
+        for bm in re.finditer(
+            r"if\s+(\w+)\s+and\s+\$([0-9A-Fa-f]+)\s*<>\s*0\s*then\s*Result\s*:=\s*(\d+)",
+            body,
+        ):
+            var, mask, res = bm.groups()
+            bits.append((int(mask, 16), int(res)))
+        if bits:
+            return {"switch": switch, "bits": bits, "cases": {}, "direct": False}
         # The cases: a name compared to a string, or a number compared to a
         # number, each giving a result.
         cases = {}
@@ -371,7 +382,7 @@ class Converter:
             ):
                 return {"switch": switch, "cases": {}, "direct": True}
             return None
-        return {"switch": switch, "cases": cases, "direct": False}
+        return {"switch": switch, "cases": cases, "bits": [], "direct": False}
 
     def run(self):
         self.collect_named_types()
@@ -1274,34 +1285,41 @@ class Converter:
         return flag.lower() == "true"
 
     def _resolve_direct_switches(self, fields, ctx):
-        """Give a union that switches on a field its own value the cases.
+        """Finish a union that switches on a field of the same struct.
 
-        xEdit's `wbTypeDecider` reads a struct's own field and uses its
-        value as the variant's index: a topic's data is a form id or a
-        four-byte name according to its type, which is an enum of its own.
-        The cases are that enum's values, so the switch reads the same
-        numbers the enum gives.
+        Two things are settled here. A union that xEdit decides by a
+        decider reading the struct's own field — `wbTypeDecider` reading
+        the field's value as the variant's index — gets its cases from the
+        switch field's own values, so the switch reads the same numbers
+        the enum gives. And the switch field is marked so that its value
+        is kept, which is what the union reads.
         """
         by_name = {f.get("name"): f for f in fields if isinstance(f, dict)}
         for f in fields:
             if not isinstance(f, dict):
                 continue
             ty = f.get("type")
-            if not isinstance(ty, dict) or not ty.pop("_direct", False):
+            if not isinstance(ty, dict):
                 continue
+            direct = ty.pop("_direct", False)
             switch = ty.get("switch_on")
+            if not switch:
+                continue
             target = by_name.get(switch)
             if target is None:
                 continue
-            values = self._enum_values(target.get("type"))
-            if not values:
-                continue
-            n = len(ty.get("union", []))
-            # The switch reads the enum's value, which the decoder renders
-            # as the number the enum gives, so the case's key is that
-            # number and the value is the variant.
-            ty["cases"] = {str(k): k for k in values if k < n}
-            ty["default"] = 0
+            if direct:
+                values = self._enum_values(target.get("type"))
+                if not values:
+                    continue
+                n = len(ty.get("union", []))
+                # The switch reads the enum's value, which the decoder
+                # renders as the number the enum gives, so the case's key
+                # is that number and the value is the variant.
+                ty["cases"] = {str(k): k for k in values if k < n}
+                ty["default"] = 0
+            # The switch field's value is what the union reads, so it is
+            # kept.
             target["expose"] = True
         return fields
 
@@ -1492,6 +1510,17 @@ class Converter:
                     # struct's own fields give.
                     union["switch_on"] = d["switch"]
                     union["_direct"] = True
+                elif d.get("bits"):
+                    # A bit test: the first mask that is set picks the
+                    # variant. The masks are keyed as they are written, so
+                    # the order xEdit tests them is kept.
+                    union["switch_on"] = d["switch"]
+                    union["bits"] = {
+                        f"{mask:#x}": variant
+                        for mask, variant in d["bits"]
+                        if variant < len(variants)
+                    }
+                    union["default"] = 0
                 elif d.get("cases"):
                     union["switch_on"] = d["switch"]
                     union["cases"] = {
