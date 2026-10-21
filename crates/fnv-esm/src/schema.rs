@@ -225,6 +225,11 @@ pub enum TypeDef {
         /// one fragment for each, so the array's length is not in the data
         /// and not in a field of its own.
         count_bits: Option<(String, u32)>,
+        /// The count is the sum of two sibling fields' values.
+        ///
+        /// Fallout 4's model textures are as many as the header's count of
+        /// textures and its count of materials together.
+        count_sum: Option<(String, String)>,
     },
     Enum {
         base: Prim,
@@ -628,12 +633,45 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                         "{ctx}: count_bits cannot be combined with another count"
                     )));
                 }
+                // The count is the sum of two sibling fields' values:
+                // `{"array": T, "count_sum": ["count", "materials"]}`.
+                let count_sum = match v.get("count_sum") {
+                    None => None,
+                    Some(c) => {
+                        let arr = c.as_array().ok_or_else(|| {
+                            SchemaError(format!("{ctx}: count_sum must be an array"))
+                        })?;
+                        if arr.len() != 2 {
+                            return Err(SchemaError(format!(
+                                "{ctx}: count_sum must be two field names"
+                            )));
+                        }
+                        let a = arr[0].as_str().map(str::to_string).ok_or_else(|| {
+                            SchemaError(format!("{ctx}: count_sum field name"))
+                        })?;
+                        let b = arr[1].as_str().map(str::to_string).ok_or_else(|| {
+                            SchemaError(format!("{ctx}: count_sum field name"))
+                        })?;
+                        Some((a, b))
+                    }
+                };
+                if count_sum.is_some()
+                    && (count.is_some()
+                        || count_prefix.is_some()
+                        || count_field.is_some()
+                        || count_bits.is_some())
+                {
+                    return Err(SchemaError(format!(
+                        "{ctx}: count_sum cannot be combined with another count"
+                    )));
+                }
                 Ok(TypeDef::Array {
                     elem: Box::new(parse_type(elem, ctx)?),
                     count,
                     count_prefix,
                     count_field,
                     count_bits,
+                    count_sum,
                 })
             } else if let Some(base) = v.get("enum") {
                 let base = base
@@ -1601,6 +1639,7 @@ impl Schema {
                 count_prefix: None,
                 count_field: None,
                 count_bits: None,
+                count_sum: None,
             } => Some(self.fixed_size(elem)? * c),
             // A fill-the-rest array, a count-prefixed array, a count-field array and a
             // malformed array carrying both `count` and `count_prefix` (rejected at

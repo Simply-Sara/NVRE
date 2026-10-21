@@ -211,6 +211,35 @@ pub fn encode_type(
                                 }
                             }
                         }
+                        // A count-sum array's length is the sum of two
+                        // sibling fields' values, so the two must agree.
+                        if let TypeDef::Array {
+                            count_sum: Some((a, b)),
+                            ..
+                        } = schema.resolve(&f.ty)
+                        {
+                            let get = |n: &str| -> Option<u64> {
+                                obj.get(n).and_then(|x| {
+                                    x.as_u64()
+                                        .or_else(|| x.get("value").and_then(Value::as_u64))
+                                })
+                            };
+                            let want = match (get(a), get(b)) {
+                                (Some(x), Some(y)) => Some((x + y) as usize),
+                                _ => None,
+                            };
+                            match (want, v.as_array()) {
+                                (Some(n), Some(arr)) if arr.len() == n => {}
+                                _ => {
+                                    return Err(EncodeError::Value {
+                                        path: sub.clone(),
+                                        msg: format!(
+                                            "count_sum {a:?} and {b:?} do not match this array's length"
+                                        ),
+                                    })
+                                }
+                            }
+                        }
                         // A count-bits array's length is implied by the
                         // sibling field's set bits, so the two must agree.
                         if let TypeDef::Array {
