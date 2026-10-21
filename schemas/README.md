@@ -34,13 +34,23 @@ engine that will read it.
 
 Measured over every game installed on this machine, base master only:
 
-| Game | Master | Types | Coverage of FNV's schema |
-|---|---|---|---|
-| Fallout: New Vegas | `FalloutNV.esm` | 107 | 100.00% (2,321,456) |
-| Fallout 3 | `Fallout3.esm` | 90 | 100.00% (2,634,084) |
-| Skyrim LE | `Skyrim.esm` | 118 | 66.75% |
-| Skyrim SE | `Skyrim.esm` | 118 | 67.65% |
-| Fallout 4 | `Fallout4.esm` | 137 | 60.14% |
+| Game | Master | Types | Coverage of FNV's schema | Coverage of the game's own |
+|---|---|---|---|---|
+| Fallout: New Vegas | `FalloutNV.esm` | 107 | 100.00% (2,321,456) | 100.00% (2,321,456) |
+| Fallout 3 | `Fallout3.esm` | 90 | 100.00% (2,634,084) | 100.00% (2,634,084) |
+| Skyrim SE | `Skyrim.esm` | 118 | 67.65% | 99.28% (4,101,737 of 4,131,332) |
+
+The last column is what the game's own directory achieves over the base. The
+Fallout games are at 100% either way, because Fallout 3's records are Fallout
+New Vegas's. Skyrim's own directory is what the difference between the columns
+is made of: the sequence-aware records (`SCEN`, `PACK`, `QUST`), the
+game-specific layouts (`NPC_`, `RACE`, `WEAP`, `ARMO`, `CELL`, `REFR`) and
+the fields Skyrim added or changed (the 32-byte `CTDA`, the face tint fields,
+`MODT`).
+
+Fallout 4 is not measured yet: it needs a BA2 archive reader and a record
+overlay, and its strings are UTF-16 rather than the other games' Windows-1252.
+Its coverage against FNV's schema alone is 60.14%.
 
 The intersection of all five is 77 types. Of those, 63 decode with zero
 unknowns and zero errors in every game and moved to `base`:
@@ -140,6 +150,108 @@ subrecords it did not repeat.
   for that claim is the coverage run against each game's master, and it goes in
   the record's `note`.
 - `ok_percent` should rise and `trailing` and `error` should stay at zero.
+
+## A subrecord's count can come from a sibling
+
+Some records carry a count in one subrecord and the elements in another:
+Skyrim's `KSIZ` holds the number of keywords and `KWDA` holds them all in one
+subrecord. The count is in a different subrecord from the elements, so it
+cannot be a struct's `count_field`, and there was no way to express it.
+
+A subrecord can name a `count_from` sibling. The count has to come *first*,
+since it must have been read by the time the elements are:
+
+```json
+"KWDA": { "name": "Keyword", "type": { "array": "formid" }, "count_from": "KSIZ" }
+```
+
+The subrecord's value is remembered under its own signature as each subrecord
+is decoded, so a later one can take its count from it. A subrecord decoded on
+its own — which is what the encoder does when it checks that a field
+re-encodes to the bytes it came from — recovers the count from its own size,
+which divides evenly by the element size.
+
+## Sequences, and the two kinds of block
+
+Some records are not a bag of subrecords but a list of blocks, where the same
+signature means different things depending on which block it is in. `SCEN` is
+the case that needs it: its `ALID` opens the actor list *and* is a field
+inside an action, so the signature alone cannot say which definition applies.
+
+A record with a `sequence` gives the blocks it has:
+
+```json
+"sequence": {
+  "start": ["EDID", "VMAD", "FNAM"],
+  "blocks": {
+    "actor": {
+      "opener": "ALID",
+      "order": ["LNAM", "DNAM"],
+      "subrecords": { "ALID": { "name": "Alias ID", "type": "u32" } }
+    }
+  },
+  "end": ["PNAM", "INAM", "VNAM"]
+}
+```
+
+- `opener` is the signature that starts the block.
+- `order` lists the signatures that follow the opener, in the order they
+  appear. A signature in the order **continues** the current block; one that is
+  not in the order, and is a known opener, **starts** a new block. That is what
+  tells `SCEN`'s `ALID` apart: inside an action it is where the action's order
+  says it should be, so it continues that block; at the head of the actor list
+  it is not expected, so it opens one.
+- `subrecords` is the block's own definitions. A signature defined in a block
+  means that block's version of it, and the block's definition wins over the
+  record's own map.
+- `start` and `end` are the subrecords outside any block.
+
+A block may also choose its layout by the opener's **value**, not just by its
+signature. Skyrim's `PACK` opens a public activity with an `ANAM` whose value
+names the activity's type — "Bool", "Float", "Location", "Topic" — and the
+field that follows is decoded against that type:
+
+```json
+"variants": {
+  "Bool":     { "subrecords": { "CNAM": { "name": "Bool Value", "type": "u8" } } },
+  "Location": { "subrecords": { "PLDT": { "name": "Location Value", "type": "PLDT" } } }
+}
+```
+
+A value that is not listed falls back to the block's own `subrecords`. The
+choice holds for the whole block, not just the opener, so the field *after*
+the opener is decoded against the variant the opener named.
+
+The decoder walks the sequence and records the block each subrecord is in
+(`DecodeCtx::block`), so `Schema::lookup_in_block` can pick the right
+definition. `Coverage` uses the same walk, so a sequence record is measured
+against its blocks.
+
+## Overlays replace, they do not merge
+
+A later directory in the chain **replaces** a record, a `common` subrecord or a
+named type that an earlier one defined. It does not merge them. So a record
+that is not the same in every game cannot live in `base` — the base holds only
+what is the same everywhere, and a game that differs supplies its own copy.
+
+`Condition` is the worked example. Fallout's `CTDA` is 20, 24 or 28 bytes
+(Run On and Reference are optional); Skyrim's is always 32 bytes (Run On,
+Reference and a trailing index are all present). So `Condition` and the
+`CTDA` common subrecord live in `schemas/fnv/conditions.json` and
+`schemas/fo3/conditions.json` — not in `base`.
+
+## Generating a game's schemas from UESP
+
+`tools/uesp_to_schema.py` reads the field table on a UESP record page and
+writes the records and subrecords, with the type taken from a small mapping
+and every entry marked as a `hypothesis` so it is clear what still needs
+checking against the shipped data. It covers the record types whose pages are
+a plain field table; the ones with a structure of their own — `SCEN`, `PACK`,
+`QUST`, `DIAL`, `INFO`, `RACE`, `NPC_` — are written by hand.
+
+The generated file is `schemas/skyrimse/generated.json`. Running the script
+rewrites it, so the hand-written files are the ones that hold the layouts the
+tables do not give.
 
 ## Provenance
 
