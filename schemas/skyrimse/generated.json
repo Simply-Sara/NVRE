@@ -551,115 +551,6 @@
     }
    }
   },
-  "FACT": {
-   "confidence": "hypothesis",
-   "name": "FACT",
-   "note": "Generated from the UESP field table for FACT; every entry still needs checking against the shipped data.",
-   "subrecords": {
-    "CRGR": {
-     "confidence": "hypothesis",
-     "name": "Crime Group",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Crime Factions List (FLST)",
-     "type": "formid"
-    },
-    "CRVA": {
-     "confidence": "hypothesis",
-     "name": "Crime Gold",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Size varies in record versions 30 and below, additional fields are those at the end of the structure. Seems to be required normally, but one record, MS08AlikrFaction (000215D3) in Skyrim.esm, doesn't have one.",
-     "type": "bytes"
-    },
-    "DATA": {
-     "confidence": "hypothesis",
-     "name": "flags",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Flags",
-     "type": "u32"
-    },
-    "EDID": {
-     "confidence": "hypothesis",
-     "name": "editorID",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Faction name",
-     "type": "zstring"
-    },
-    "FNAM": {
-     "confidence": "hypothesis",
-     "name": "Female Rank Title",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Female title",
-     "type": "u32"
-    },
-    "FULL": {
-     "confidence": "hypothesis",
-     "name": "name",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Full name",
-     "type": "u32"
-    },
-    "JAIL": {
-     "confidence": "hypothesis",
-     "name": "Prison Marker",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - The exterior jail marker for the faction's prison.",
-     "type": "formid"
-    },
-    "JOUT": {
-     "confidence": "hypothesis",
-     "name": "Jail Outfit",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. OTFT formid - Jail outfit the player is given.",
-     "type": "formid"
-    },
-    "MNAM": {
-     "confidence": "hypothesis",
-     "name": "Male Rank Title",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Male title",
-     "type": "u32"
-    },
-    "PLCN": {
-     "confidence": "hypothesis",
-     "name": "Player Belongings Chest",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Player's inventory is stored in this chest.",
-     "type": "formid"
-    },
-    "PLVD": {
-     "confidence": "hypothesis",
-     "name": "PLVD",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Where to sell goods",
-     "type": "bytes"
-    },
-    "RNAM": {
-     "confidence": "hypothesis",
-     "name": "Rank ID",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Rank ID",
-     "type": "u32"
-    },
-    "STOL": {
-     "confidence": "hypothesis",
-     "name": "Evidence Chest",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Stolen goods are stored in this chest.",
-     "type": "formid"
-    },
-    "VENC": {
-     "confidence": "hypothesis",
-     "name": "Vendor Chest",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Reference to vendor chest (REFR)",
-     "type": "formid"
-    },
-    "VEND": {
-     "confidence": "hypothesis",
-     "name": "Vendor List",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Merchandise list (FLST)",
-     "type": "formid"
-    },
-    "WAIT": {
-     "confidence": "hypothesis",
-     "name": "Follower Wait Marker",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Marker the player's followers are assigned to wait at.",
-     "type": "formid"
-    },
-    "XNAM": {
-     "confidence": "hypothesis",
-     "name": "Interfaction Relations",
-     "note": "UESP, Skyrim Mod:Mod File Format/FACT.",
-     "type": "bytes"
-    }
-   }
-  },
   "FLOR": {
    "confidence": "hypothesis",
    "name": "FLOR",
@@ -1314,6 +1205,12 @@
      "name": "editorID",
      "note": "UESP, Skyrim Mod:Mod File Format/SLGM. Record Editor ID",
      "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "hypothesis",
+     "name": "itemName",
+     "note": "UESP, Skyrim Mod:Mod File Format/SLGM. Full (in-game) name",
+     "type": "u32"
     },
     "KSIZ": {
      "confidence": "hypothesis",

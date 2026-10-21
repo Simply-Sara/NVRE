@@ -72,6 +72,9 @@ def parse_table(text):
         if len(parts) < 4:
             continue
         marker = parts[0].strip()
+        # Some pages put a version range in its own column, such as "29+".
+        if re.fullmatch(r"\d+\+?", parts[1].strip()):
+            parts = [parts[0]] + parts[2:]
         # Some pages have a "V" column between the marker and the field.
         if parts[1].strip() in {"V", ""} and len(parts) > 4:
             parts = [parts[0]] + parts[2:]
@@ -128,11 +131,14 @@ def type_of(typ, note):
     return "bytes"
 
 
-# The records these files define by hand. The generator leaves them alone.
-HAND_WRITTEN = {
+# The records whose structure the field tables do not give, and the few whose
+# types the tables only name. They are written by hand, and the generator
+# leaves them alone.
+SKIPPED_RECORDS = {
     "SCEN", "PACK", "QUST", "DIAL", "INFO", "RACE", "NPC_",
     "WEAP", "ACHR", "LVLI", "ACTI", "IDLE", "SMQN", "WTHR", "SNDR",
     "NAVM", "IPDS", "DLBR", "DLVW", "WRLD", "CELL", "REFR", "ARMO", "STAT",
+    "FACT",
 }
 
 
@@ -141,7 +147,7 @@ def main():
     records = {}
     for path in sorted(SCRATCH.glob("*.txt")):
         rec = path.stem
-        if rec in HAND_WRITTEN:
+        if rec in SKIPPED_RECORDS:
             continue  # already written by hand
         text = path.read_text()
         rows = parse_table(text)
@@ -180,6 +186,12 @@ def main():
     dest = out_dir / "generated.json"
     dest.write_text(json.dumps(out, indent=1, sort_keys=True))
     print(f"{dest}: {len(records)} records")
+
+    # The hand-written files carry the records whose structure the tables do
+    # not give, and a few whose types the tables only name. They are listed
+    # here so a run of this script does not silently drop one.
+    derived = set(records)
+    print(f"note: {len(SKIPPED_RECORDS)} records are written by hand")
 
 
 if __name__ == "__main__":

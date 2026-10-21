@@ -21,7 +21,9 @@
        "DMAX",
        "DMIN",
        "DEMO",
-       "DEVA"
+       "DEVA",
+       "PNAM",
+       "SCHR"
       ],
       "subrecords": {
        "ALID": {
@@ -135,10 +137,22 @@
         "note": "zstring. A phase's NAM0 is the phase description and an action's is the action description; the two blocks carry their own definitions because the same signature means different things in each.",
         "type": "zstring"
        },
+       "PNAM": {
+        "confidence": "documented",
+        "name": "Package IDs",
+        "note": "The package ids, for a package action. It is a formid, but a package action may carry more than one.",
+        "type": "formid"
+       },
+       "SCHR": {
+        "confidence": "documented",
+        "name": "Old Script",
+        "note": "The old scripting field.",
+        "type": "bytes"
+       },
        "SNAM": {
         "confidence": "documented",
         "name": "Start Phase",
-        "note": "uint32, the phase the action starts at, zero-based.",
+        "note": "The phase the action starts at, zero-based. A timer action repurposes this field as its duration, and it then appears in addition to the start phase.",
         "type": "u32"
        }
       }
@@ -177,7 +191,10 @@
        "CTDA",
        "NEXT",
        "CTDA",
+       "SCHR",
+       "QNAM",
        "NEXT",
+       "SCHR",
        "WNAM",
        "HNAM"
       ],
@@ -206,6 +223,18 @@
         "note": "Zero-length. 'Delineates start conditions from completion conditions.' [observed: always 0 bytes, and it appears twice per phase in the shipped data \u2014 once between the start and completion conditions and once to close them]",
         "type": "bytes"
        },
+       "QNAM": {
+        "confidence": "observed",
+        "name": "Unknown",
+        "note": "An unknown field. It appears in a phase alongside the NEXT and SCHR markers, and UESP's SCEN page does not list it. [observed: 3,514 of them in Skyrim.esm, each 4 bytes]",
+        "type": "u32"
+       },
+       "SCHR": {
+        "confidence": "documented",
+        "name": "Old Script",
+        "note": "The old scripting field. It appears twice in a phase, once after the start conditions and once after the completion conditions.",
+        "type": "bytes"
+       },
        "WNAM": {
         "confidence": "documented",
         "name": "Phase Width",
@@ -218,8 +247,7 @@
     "end": [
      "PNAM",
      "INAM",
-     "VNAM",
-     "DATA"
+     "VNAM"
     ],
     "start": [
      "EDID",
@@ -228,6 +256,12 @@
     ]
    },
    "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Action Type",
+     "note": "The action's type: 0 = Dialogue, 1 = Package, 2 = Timer. It opens an action block.",
+     "type": "u16"
+    },
     "CTDA": {
      "confidence": "documented",
      "name": "Scene Conditions",
@@ -258,13 +292,13 @@
     "INAM": {
      "confidence": "documented",
      "name": "Max Action",
-     "note": "uint32, the highest action number. 'In rare cases, this may be higher than the highest action number, possibly indicating deleted actions.' Distinct from an action's INAM, which is the action's own number.",
+     "note": "The highest action number. It can be higher than the highest action number, which may indicate deleted actions. This is not an action's own INAM, which is the action's number.",
      "type": "u32"
     },
     "PNAM": {
      "confidence": "documented",
      "name": "Parent Quest",
-     "note": "formid.",
+     "note": "The quest that owns the scene.",
      "type": "formid"
     },
     "VMAD": {
@@ -276,7 +310,7 @@
     "VNAM": {
      "confidence": "documented",
      "name": "Behavior Settings",
-     "note": "uint32[4] \u2014 the 'Set all' check boxes at the top of the Actor Behavior dialogue: 0 = Set all Normal, 1 = Set all Pause, 2 = Set all End, 3 = Don't set all.",
+     "note": "The four 'set all' check boxes at the top of the actor behaviour dialogue.",
      "type": {
       "array": "u32",
       "count": 4

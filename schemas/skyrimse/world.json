@@ -387,6 +387,127 @@
     }
    }
   },
+  "FACT": {
+   "confidence": "documented",
+   "name": "Faction",
+   "note": "UESP, Skyrim Mod:Mod File Format/FACT. [measured: 996 VENV fields in Skyrim.esm]",
+   "subrecords": {
+    "CRGR": {
+     "confidence": "documented",
+     "name": "Crime Group",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Crime Factions List (FLST)",
+     "type": "formid"
+    },
+    "CRVA": {
+     "confidence": "documented",
+     "name": "Crime Gold",
+     "note": "The crime gold, a struct of 12, 16 or 20 bytes depending on the record version.",
+     "type": "bytes"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "CTDA",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Conditions, with leading CITC field. Vendor will only buy/sell when these conditions are met.",
+     "type": "bytes"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "flags",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Flags",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "editorID",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Faction name",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Female Rank Title",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Female title",
+     "type": "u32"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "name",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Full name",
+     "type": "u32"
+    },
+    "JAIL": {
+     "confidence": "documented",
+     "name": "Prison Marker",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - The exterior jail marker for the faction's prison.",
+     "type": "formid"
+    },
+    "JOUT": {
+     "confidence": "documented",
+     "name": "Jail Outfit",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. OTFT formid - Jail outfit the player is given.",
+     "type": "formid"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Male Rank Title",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Male title",
+     "type": "u32"
+    },
+    "PLCN": {
+     "confidence": "documented",
+     "name": "Player Belongings Chest",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Player's inventory is stored in this chest.",
+     "type": "formid"
+    },
+    "PLVD": {
+     "confidence": "documented",
+     "name": "PLVD",
+     "note": "Where the goods may be sold.",
+     "type": "FACT_PLVD"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Rank ID",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Rank ID",
+     "type": "u32"
+    },
+    "STOL": {
+     "confidence": "documented",
+     "name": "Evidence Chest",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Stolen goods are stored in this chest.",
+     "type": "formid"
+    },
+    "VENC": {
+     "confidence": "documented",
+     "name": "Vendor Chest",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Reference to vendor chest (REFR)",
+     "type": "formid"
+    },
+    "VEND": {
+     "confidence": "documented",
+     "name": "Vendor List",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. Merchandise list (FLST)",
+     "type": "formid"
+    },
+    "VENV": {
+     "confidence": "documented",
+     "name": "VENV",
+     "note": "The vendor's hours and radius. It is all zeroes unless the faction is a vendor, and it is always present from record version 29 on and never before it.",
+     "type": "FACT_VENV"
+    },
+    "WAIT": {
+     "confidence": "documented",
+     "name": "Follower Wait Marker",
+     "note": "UESP, Skyrim Mod:Mod File Format/FACT. REFR formid - Marker the player's followers are assigned to wait at.",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Interfaction Relations",
+     "note": "The faction's relations with another faction.",
+     "type": "FACT_XNAM"
+    }
+   }
+  },
   "NAVI": {
    "confidence": "hypothesis",
    "name": "Navmesh Info",
@@ -1027,6 +1148,96 @@
        "3": "Force Hide Land Quad 4"
       },
       "flags": "u32"
+     }
+    }
+   ]
+  },
+  "FACT_PLVD": {
+   "struct": [
+    {
+     "name": "specification_type",
+     "note": "Where the goods may be sold. 2 and 6 are not used in the original files.",
+     "type": {
+      "enum": "u32",
+      "values": {
+       "0": "Near Reference",
+       "1": "In Cell",
+       "12": "Near Self",
+       "2": "Near Package Start Location",
+       "3": "Near Editor Location",
+       "6": "Linked Reference"
+      }
+     }
+    },
+    {
+     "name": "location",
+     "note": "The reference, cell or keyword, depending on the specification type.",
+     "type": "formid"
+    },
+    {
+     "name": "unused",
+     "note": "Unused.",
+     "type": "u32"
+    }
+   ]
+  },
+  "FACT_VENV": {
+   "struct": [
+    {
+     "name": "start_hour",
+     "note": "The hour the vendor starts at.",
+     "type": "u16"
+    },
+    {
+     "name": "end_hour",
+     "note": "The hour the vendor stops at.",
+     "type": "u16"
+    },
+    {
+     "name": "radius",
+     "note": "The radius the vendor trades in.",
+     "type": "u32"
+    },
+    {
+     "name": "buys_stolen",
+     "note": "1 = the vendor buys stolen items. The CK's wording is misleading.",
+     "type": "u8"
+    },
+    {
+     "name": "no_trade",
+     "note": "1 = the vendor does not sell or buy, so it trades everything except what is in the vendor list.",
+     "type": "u8"
+    },
+    {
+     "name": "unused",
+     "note": "Unused.",
+     "type": "u16"
+    }
+   ]
+  },
+  "FACT_XNAM": {
+   "struct": [
+    {
+     "name": "faction",
+     "note": "The other faction.",
+     "type": "formid"
+    },
+    {
+     "name": "modifier",
+     "note": "A modifier that appears to be unused: it is no longer editable in the CK and is only non-zero for one faction.",
+     "type": "i32"
+    },
+    {
+     "name": "combat",
+     "note": "How the two factions treat each other.",
+     "type": {
+      "enum": "i32",
+      "values": {
+       "0": "Neutral",
+       "1": "Enemy",
+       "2": "Ally",
+       "3": "Friend"
+      }
      }
     }
    ]

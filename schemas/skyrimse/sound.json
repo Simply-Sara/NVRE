@@ -35,19 +35,47 @@
   "DLVW": {
    "confidence": "documented",
    "name": "Dialogue View",
-   "note": "UESP, Skyrim Mod:Mod File Format/DLVW. [measured: 2,738 BNAM fields in Skyrim.esm]",
+   "note": "UESP, Skyrim Mod:Mod File Format/DLVW. A dialogue view is a flowchart-like view of existing dialogues, and is strictly a user interface for creating and editing them. [measured: 1,126 QNAM, 1,120 DNAM and 1,112 ENAM fields in Skyrim.esm]",
    "subrecords": {
     "BNAM": {
      "confidence": "documented",
+     "name": "Branches",
+     "note": "The dialogue branches (DLBR) the view uses. A view with branches appears to exclude it having topics.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Show All Text",
+     "note": "Whether Show All Text is selected in the CK.",
+     "type": "u8"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ENAM": {
+     "confidence": "documented",
      "name": "Unknown",
-     "note": "An unknown field.",
+     "note": "Zero for a view with branches, and 7 for a view with topics.",
      "type": "u32"
     },
-    "FULL": {
+    "QNAM": {
      "confidence": "documented",
-     "name": "Full Name",
-     "note": "The name shown in the game.",
-     "type": "u32"
+     "name": "Parent Quest",
+     "note": "The QUST the view belongs to.",
+     "type": "formid"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Topics",
+     "note": "The dialogue topics (DIAL) the view uses. A view with topics appears to exclude it having branches.",
+     "type": {
+      "array": "formid"
+     }
     }
    }
   },
