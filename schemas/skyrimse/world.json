@@ -28,7 +28,7 @@
      "confidence": "documented",
      "name": "Body Template",
      "note": "The body template, 8 or 12 bytes. The 12-byte form carries the armor type as well. [measured: 766 of Skyrim.esm's ARMO records have a BODT and the rest have a BOD2]",
-     "type": "ARMO_BOD2"
+     "type": "ARMO_BODT"
     },
     "DATA": {
      "confidence": "documented",

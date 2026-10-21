@@ -360,152 +360,352 @@
    ]
   },
   "LGTM_DALC": {
-   "struct": [
+   "union": [
     {
-     "name": "directional_ambient_x_plus",
-     "note": "The directional ambient on the x+ side.",
+     "name": "Colours Only",
+     "size": 24,
      "type": {
       "struct": [
        {
-        "name": "r",
-        "type": "u8"
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "g",
-        "type": "u8"
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "b",
-        "type": "u8"
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        }
       ]
      }
     },
     {
-     "name": "directional_ambient_x_minus",
-     "note": "The directional ambient on the x- side.",
+     "name": "Colours And Fresnel Power",
+     "size": 32,
      "type": {
       "struct": [
        {
-        "name": "r",
-        "type": "u8"
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "g",
-        "type": "u8"
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "b",
-        "type": "u8"
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown",
+        "note": "Always zero.",
+        "type": "u32"
+       },
+       {
+        "name": "fresnel_power",
+        "note": "The Fresnel power, from 0 to 1.",
+        "type": "f32"
        }
       ]
      }
-    },
-    {
-     "name": "directional_ambient_y_plus",
-     "note": "The directional ambient on the y+ side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "directional_ambient_y_minus",
-     "note": "The directional ambient on the y- side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "directional_ambient_z_plus",
-     "note": "The directional ambient on the z+ side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "directional_ambient_z_minus",
-     "note": "The directional ambient on the z- side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "specular_color",
-     "note": "The specular colour.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "fresnel_power",
-     "note": "The Fresnel power, from 0 to 1.",
-     "optional": true,
-     "type": "f32"
     }
    ]
   },
@@ -557,152 +757,352 @@
    ]
   },
   "WTHR_DALC": {
-   "struct": [
+   "union": [
     {
-     "name": "directional_ambient_x_plus",
-     "note": "The directional ambient on the x+ side.",
+     "name": "Colours Only",
+     "size": 24,
      "type": {
       "struct": [
        {
-        "name": "r",
-        "type": "u8"
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "g",
-        "type": "u8"
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "b",
-        "type": "u8"
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        }
       ]
      }
     },
     {
-     "name": "directional_ambient_x_minus",
-     "note": "The directional ambient on the x- side.",
+     "name": "Colours And Fresnel Power",
+     "size": 32,
      "type": {
       "struct": [
        {
-        "name": "r",
-        "type": "u8"
+        "name": "directional_ambient_x_plus",
+        "note": "The directional ambient on the x+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "g",
-        "type": "u8"
+        "name": "directional_ambient_x_minus",
+        "note": "The directional ambient on the x- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
        },
        {
-        "name": "b",
-        "type": "u8"
+        "name": "directional_ambient_y_plus",
+        "note": "The directional ambient on the y+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_y_minus",
+        "note": "The directional ambient on the y- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_plus",
+        "note": "The directional ambient on the z+ side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "directional_ambient_z_minus",
+        "note": "The directional ambient on the z- side.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "specular_color",
+        "note": "The specular colour.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown_color",
+        "note": "An eighth colour, whose use is not documented.",
+        "type": {
+         "struct": [
+          {
+           "name": "r",
+           "type": "u8"
+          },
+          {
+           "name": "g",
+           "type": "u8"
+          },
+          {
+           "name": "b",
+           "type": "u8"
+          }
+         ]
+        }
+       },
+       {
+        "name": "unknown",
+        "note": "Always zero.",
+        "type": "u32"
+       },
+       {
+        "name": "fresnel_power",
+        "note": "The Fresnel power, from 0 to 1.",
+        "type": "f32"
        }
       ]
      }
-    },
-    {
-     "name": "directional_ambient_y_plus",
-     "note": "The directional ambient on the y+ side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "directional_ambient_y_minus",
-     "note": "The directional ambient on the y- side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "directional_ambient_z_plus",
-     "note": "The directional ambient on the z+ side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "directional_ambient_z_minus",
-     "note": "The directional ambient on the z- side.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "specular_color",
-     "note": "The specular colour.",
-     "type": {
-      "struct": [
-       {
-        "name": "r",
-        "type": "u8"
-       },
-       {
-        "name": "g",
-        "type": "u8"
-       },
-       {
-        "name": "b",
-        "type": "u8"
-       }
-      ]
-     }
-    },
-    {
-     "name": "fresnel_power",
-     "note": "The Fresnel power, from 0 to 1.",
-     "optional": true,
-     "type": "f32"
     }
    ]
   }
