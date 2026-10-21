@@ -1,6 +1,44 @@
 {
  "format": "fnv.schema/1",
  "records": {
+  "CLAS": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Class",
+   "note": "UESP, Skyrim Mod:Mod File Format/CLAS. [measured: 138 DATA fields in Skyrim.esm, each 36 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The class's flags, training skill and level, skill weights, bleedout default, voice points and attribute weights.",
+     "type": "CLAS_DATA"
+    },
+    "DESC": {
+     "confidence": "documented",
+     "name": "Description",
+     "note": "The description.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Icon",
+     "note": "The menu image.",
+     "type": "zstring"
+    }
+   }
+  },
   "DOBJ": {
    "confidence": "documented",
    "merge": true,
@@ -409,7 +447,7 @@
      "confidence": "hypothesis",
      "name": "count",
      "note": "UESP, Skyrim Mod:Mod File Format/MISC. Number of formids in the following KWDA subrecord",
-     "type": "bytes"
+     "type": "u32"
     },
     "KWDA": {
      "confidence": "hypothesis",
@@ -759,6 +797,63 @@
   }
  },
  "types": {
+  "CLAS_DATA": {
+   "struct": [
+    {
+     "name": "flags",
+     "note": "Possibly flags, but not shown in the editor.",
+     "type": "u32"
+    },
+    {
+     "name": "training_skill",
+     "note": "The skill a trainer class teaches, given as an actor value index.",
+     "type": "u8"
+    },
+    {
+     "name": "training_level",
+     "note": "The level the trainer teaches to. Zero when the class does not train.",
+     "type": "u8"
+    },
+    {
+     "name": "skill_weights",
+     "note": "The weight of each skill, in actor value index order.",
+     "type": {
+      "array": "u8",
+      "count": 18
+     }
+    },
+    {
+     "name": "bleedout_default",
+     "note": "The default bleedout.",
+     "type": "f32"
+    },
+    {
+     "name": "voice_points",
+     "note": "The voice points.",
+     "type": "u32"
+    },
+    {
+     "name": "health_weight",
+     "note": "The weight of health.",
+     "type": "u8"
+    },
+    {
+     "name": "magicka_weight",
+     "note": "The weight of magicka.",
+     "type": "u8"
+    },
+    {
+     "name": "stamina_weight",
+     "note": "The weight of stamina.",
+     "type": "u8"
+    },
+    {
+     "name": "flags2",
+     "note": "0x01 seems to indicate a guard.",
+     "type": "u8"
+    }
+   ]
+  },
   "DUAL_DATA": {
    "struct": [
     {

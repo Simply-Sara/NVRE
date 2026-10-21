@@ -1094,6 +1094,7 @@
   },
   "MISC": {
    "confidence": "hypothesis",
+   "merge": true,
    "name": "MISC",
    "note": "Generated from the UESP field table for MISC; every entry still needs checking against the shipped data.",
    "subrecords": {
@@ -1125,7 +1126,7 @@
      "confidence": "hypothesis",
      "name": "count",
      "note": "UESP, Skyrim Mod:Mod File Format/MISC. Number of formids in the following KWDA subrecord",
-     "type": "bytes"
+     "type": "u32"
     },
     "KWDA": {
      "confidence": "hypothesis",
