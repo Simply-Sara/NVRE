@@ -32,6 +32,55 @@
     }
    }
   },
+  "EFSH": {
+   "confidence": "documented",
+   "name": "Effect Shader",
+   "note": "UESP, Skyrim Mod:Mod File Format/EFSH. [measured: 324 EFSH records in Skyrim.esm; the DATA shader runs from 308 to 400 bytes, always a multiple of four]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Shader Data",
+     "note": "The shader's data, whose layout is not documented.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ICO2": {
+     "confidence": "documented",
+     "name": "Looped Effect",
+     "note": "The path to the .dds.",
+     "type": "zstring"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Start Effect",
+     "note": "The path to the .dds.",
+     "type": "zstring"
+    },
+    "NAM7": {
+     "confidence": "documented",
+     "name": "Post Effect",
+     "note": "The path to the .dds.",
+     "type": "zstring"
+    },
+    "NAM8": {
+     "confidence": "documented",
+     "name": "Looped Gradient",
+     "note": "The path to the .dds.",
+     "type": "zstring"
+    },
+    "NAM9": {
+     "confidence": "documented",
+     "name": "End Gradient",
+     "note": "The path to the .dds.",
+     "type": "zstring"
+    }
+   }
+  },
   "KYWD": {
    "confidence": "documented",
    "name": "Keyword",
@@ -48,6 +97,103 @@
      "name": "Editor ID",
      "note": "The editor id.",
      "type": "zstring"
+    }
+   }
+  },
+  "LGTM": {
+   "confidence": "documented",
+   "name": "Lighting Template",
+   "note": "UESP, Skyrim Mod:Mod File Format/LGTM. [measured: 97 DALC fields in Skyrim.esm, 32 bytes each]",
+   "subrecords": {
+    "DALC": {
+     "confidence": "documented",
+     "name": "Direct Ambient And Specular Colours",
+     "note": "The directional ambient on each of the six sides, the specular colour and the Fresnel power.",
+     "type": "LGTM_DALC"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Lighting",
+     "note": "The ambient, directional and fog colours, the fog near and far distances, the directional rotation, the directional fade, the fog clip distance and power, the fog max, and the two light fade distances.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    }
+   }
+  },
+  "MGEF": {
+   "confidence": "documented",
+   "name": "Magic Effect",
+   "note": "UESP, Skyrim Mod:Mod File Format/MGEF. The base's version of this record has a different DATA, so Skyrim's own is used. [measured: 950 MGEF records in Skyrim.esm; DATA is 152 bytes, DNAM 4 and SNDD a run of 8-byte entries]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The effect's main data, 152 bytes. The layout is not documented, so it is read as raw bytes.",
+     "type": "bytes"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The effect's data. [measured: 4 bytes in every MGEF]",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "ESCE": {
+     "confidence": "documented",
+     "name": "Counter Effects",
+     "note": "xEdit wbDefinitionsFNV.pas MGEF record",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "A KYWD record. There is one per KSIZ.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "MDOB": {
+     "confidence": "documented",
+     "name": "Menu Display Object",
+     "note": "The object shown in the menu.",
+     "type": "formid"
+    },
+    "SNDD": {
+     "confidence": "documented",
+     "name": "Sound",
+     "note": "The sounds the effect plays, a run of 8-byte entries with no count of its own.",
+     "type": "bytes"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Info",
+     "note": "The script info.",
+     "type": "bytes"
     }
    }
   },
@@ -213,6 +359,156 @@
     }
    ]
   },
+  "LGTM_DALC": {
+   "struct": [
+    {
+     "name": "directional_ambient_x_plus",
+     "note": "The directional ambient on the x+ side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "directional_ambient_x_minus",
+     "note": "The directional ambient on the x- side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "directional_ambient_y_plus",
+     "note": "The directional ambient on the y+ side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "directional_ambient_y_minus",
+     "note": "The directional ambient on the y- side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "directional_ambient_z_plus",
+     "note": "The directional ambient on the z+ side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "directional_ambient_z_minus",
+     "note": "The directional ambient on the z- side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "specular_color",
+     "note": "The specular colour.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "fresnel_power",
+     "note": "The Fresnel power, from 0 to 1.",
+     "optional": true,
+     "type": "f32"
+    }
+   ]
+  },
   "RFCT_DATA": {
    "struct": [
     {
@@ -263,7 +559,8 @@
   "WTHR_DALC": {
    "struct": [
     {
-     "name": "sunrise",
+     "name": "directional_ambient_x_plus",
+     "note": "The directional ambient on the x+ side.",
      "type": {
       "struct": [
        {
@@ -282,7 +579,8 @@
      }
     },
     {
-     "name": "day",
+     "name": "directional_ambient_x_minus",
+     "note": "The directional ambient on the x- side.",
      "type": {
       "struct": [
        {
@@ -301,7 +599,8 @@
      }
     },
     {
-     "name": "sunset",
+     "name": "directional_ambient_y_plus",
+     "note": "The directional ambient on the y+ side.",
      "type": {
       "struct": [
        {
@@ -320,7 +619,8 @@
      }
     },
     {
-     "name": "night",
+     "name": "directional_ambient_y_minus",
+     "note": "The directional ambient on the y- side.",
      "type": {
       "struct": [
        {
@@ -337,6 +637,72 @@
        }
       ]
      }
+    },
+    {
+     "name": "directional_ambient_z_plus",
+     "note": "The directional ambient on the z+ side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "directional_ambient_z_minus",
+     "note": "The directional ambient on the z- side.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "specular_color",
+     "note": "The specular colour.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "fresnel_power",
+     "note": "The Fresnel power, from 0 to 1.",
+     "optional": true,
+     "type": "f32"
     }
    ]
   }

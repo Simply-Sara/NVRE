@@ -1,154 +1,530 @@
 {
-  "format": "fnv.schema/1",
-  "types": {
-    "SHOU_SNAM": {
-      "struct": [
-        { "name": "word", "type": "formid", "note": "The word of power (WOOP)." },
-        { "name": "spell", "type": "formid", "note": "The spell the word casts (SPEL)." },
-        { "name": "recovery_time", "type": "f32", "note": "How long the shout takes to recharge. For the player's dragon shouts it is the total recharge time, and for the others it is usually a small arbitrary number." }
-      ]
+ "format": "fnv.schema/1",
+ "records": {
+  "COLL": {
+   "confidence": "documented",
+   "name": "Collision",
+   "note": "UESP, Skyrim Mod:Mod File Format/COLL. [measured: 55 COLL records in Skyrim.esm; CNAM is a run of layer names]",
+   "subrecords": {
+    "BNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
     },
-    "MOVT_SPED": {
-      "struct": [
-        { "name": "left_walk", "type": "f32" },
-        { "name": "left_run", "type": "f32" },
-        { "name": "right_walk", "type": "f32" },
-        { "name": "right_run", "type": "f32" },
-        { "name": "forward_walk", "type": "f32" },
-        { "name": "forward_run", "type": "f32" },
-        { "name": "back_walk", "type": "f32" },
-        { "name": "back_run", "type": "f32" },
-        { "name": "rotate_in_place_walk", "type": "f32" },
-        { "name": "rotate_in_place_run", "type": "f32" },
-        { "name": "rotate_while_moving_run", "type": "f32", "optional": true, "note": "Only present when the INAM is." }
-      ]
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Collision Layers",
+     "note": "The names of the collision's layers. There is no count of its own, so it is a run of names.",
+     "type": "zstring"
     },
-    "MOVT_INAM": {
-      "struct": [
-        { "name": "directional_scale", "type": "f32", "note": "The scale is 57.296." },
-        { "name": "movement_speed_scale", "type": "f32", "note": "The scale is 57.296." },
-        { "name": "rotation_speed_scale", "type": "f32", "note": "The scale is 57.296." }
-      ]
+    "DESC": {
+     "confidence": "documented",
+     "name": "Description",
+     "note": "The collision's description.",
+     "type": "u32"
     },
-    "WTHR_CLOUD_SPEED": {
-      "struct": [
-        { "name": "layers", "type": { "array": "u8", "count": 32 }, "note": "One byte per layer. The float is encoded as a uint8, where 0x00 is -0.1, 0x7f is 0 and 0xfe is 0.1." }
-      ]
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
     },
-    "WTHR_PNAM": {
-      "struct": [
-        {
-          "name": "sunrise", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] },
-          "note": "The colour at sunrise."
-        },
-        {
-          "name": "day", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] },
-          "note": "The colour at day."
-        },
-        {
-          "name": "sunset", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] },
-          "note": "The colour at sunset."
-        },
-        {
-          "name": "night", "type": { "struct": [ { "name": "r", "type": "u8" }, { "name": "g", "type": "u8" }, { "name": "b", "type": "u8" } ] },
-          "note": "The colour at night."
-        }
-      ]
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
     },
-    "WTHR_JNAM": {
-      "struct": [
-        { "name": "sunrise", "type": "f32", "note": "The alpha at sunrise." },
-        { "name": "day", "type": "f32", "note": "The alpha at day." },
-        { "name": "sunset", "type": "f32", "note": "The alpha at sunset." },
-        { "name": "night", "type": "f32", "note": "The alpha at night." }
-      ]
+    "GNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
     },
-    "COLL_CNAM": {
-      "struct": [
-        { "name": "layer", "type": "u32", "note": "The collision layer." }
-      ]
+    "INTV": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "The collision's name.",
+     "type": "zstring"
     }
+   }
   },
-  "records": {
-    "SHOU": {
-      "name": "Shout",
-      "confidence": "documented",
-      "note": "UESP, Skyrim Mod:Mod File Format/SHOU. A shout is three words, each with a spell and a recovery time. [measured: 225 SNAM fields in Skyrim.esm, each 12 bytes]",
-      "subrecords": {
-        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
-        "FULL": { "name": "Full Name", "confidence": "documented", "note": "The name shown in the game.", "type": "u32" },
-        "MDOB": { "name": "Inventory Model", "confidence": "documented", "note": "The model (STAT) shown in the inventory.", "type": "formid" },
-        "DESC": { "name": "Description", "confidence": "documented", "note": "The shout's description, or zero if it has none.", "type": "u32" },
-        "SNAM": { "name": "Shout Data", "confidence": "documented", "note": "One of the shout's three words: the word of power, the spell it casts and the recovery time.", "type": "SHOU_SNAM" }
-      }
+  "FSTP": {
+   "confidence": "documented",
+   "name": "Footstep",
+   "note": "UESP, Skyrim Mod:Mod File Format/FSTP. [measured: 116 FSTP records in Skyrim.esm]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Action Name",
+     "note": "The action's name, for example FootLeft or FootScuffRight. It does not correspond with an AACT.",
+     "type": "zstring"
     },
-    "MOVT": {
-      "name": "Movement",
-      "confidence": "documented",
-      "note": "UESP, Skyrim Mod:Mod File Format/MOVT. [measured: SPED is 44 bytes in 77 of Skyrim.esm's MOVT records and 40 in the rest, the difference being the rotate-while-moving run that only appears when the INAM does]",
-      "subrecords": {
-        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
-        "MNAM": { "name": "Name", "confidence": "documented", "note": "The simplified name, usually the editor id without the trailing _MT.", "type": "zstring" },
-        "SPED": { "name": "Default Data", "confidence": "documented", "note": "The movement's speeds: the walk and run of each direction, and the rotation in place and while moving.", "type": "MOVT_SPED" },
-        "INAM": { "name": "Anim Change Thresholds", "confidence": "documented", "note": "The directional, movement speed and rotation speed scales. Each is 57.296.", "type": "MOVT_INAM" }
-      }
+    "DATA": {
+     "confidence": "documented",
+     "name": "Impact Data",
+     "note": "The impact data set (IPDS).",
+     "type": "formid"
     },
-    "FSTP": {
-      "name": "Footstep",
-      "confidence": "documented",
-      "note": "UESP, Skyrim Mod:Mod File Format/FSTP. [measured: 116 FSTP records in Skyrim.esm]",
-      "subrecords": {
-        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
-        "DATA": { "name": "Impact Data", "confidence": "documented", "note": "The impact data set (IPDS).", "type": "formid" },
-        "ANAM": { "name": "Action Name", "confidence": "documented", "note": "The action's name, for example FootLeft or FootScuffRight. It does not correspond with an AACT.", "type": "zstring" }
-      }
-    },
-    "SOPM": {
-      "name": "Sound Output Model",
-      "confidence": "documented",
-      "note": "UESP, Skyrim Mod:Mod File Format/SOPM. [measured: 69 SOPM records in Skyrim.esm]",
-      "subrecords": {
-        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
-        "MNAM": { "name": "Name", "confidence": "documented", "note": "The model's name.", "type": "u32" },
-        "ANAM": { "name": "Animation", "confidence": "documented", "note": "The animation the model plays.", "type": "zstring" },
-        "CNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" },
-        "FNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" },
-        "NAM1": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" },
-        "ONAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field, 24 bytes.", "type": "bytes" },
-        "SNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field, 16 bytes.", "type": "bytes" }
-      }
-    },
-    "COLL": {
-      "name": "Collision",
-      "confidence": "documented",
-      "note": "UESP, Skyrim Mod:Mod File Format/COLL. [measured: 55 COLL records in Skyrim.esm; CNAM is a run of layer names]",
-      "subrecords": {
-        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
-        "DESC": { "name": "Description", "confidence": "documented", "note": "The collision's description.", "type": "u32" },
-        "BNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" },
-        "FNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" },
-        "GNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" },
-        "INTV": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" },
-        "MNAM": { "name": "Name", "confidence": "documented", "note": "The collision's name.", "type": "zstring" },
-        "CNAM": { "name": "Collision Layers", "confidence": "documented", "note": "The names of the collision's layers. There is no count of its own, so it is a run of names.", "type": "zstring" }
-      }
-    },
-    "WTHR": {
-      "name": "Weather",
-      "confidence": "documented",
-      "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The cloud textures have a signature per layer: 00TX is layer 0, and layer n uses a texture whose signature is the character 0 plus n followed by 0TX. [measured: 1,537 WTHR records in Skyrim.esm; the cloud texture colour is 512 bytes and the alpha 512 bytes]",
-      "subrecords": {
-        "EDID": { "name": "Editor ID", "confidence": "documented", "note": "The editor id.", "type": "zstring" },
-        "LNAM": { "name": "Texture Layer Count", "confidence": "documented", "note": "How many texture layers the clouds have. It is always 0x04 or 0x1d.", "type": "u32" },
-        "MNAM": { "name": "Precipitation", "confidence": "documented", "note": "The precipitation (SPGD).", "type": "formid" },
-        "NNAM": { "name": "Visual Effect", "confidence": "documented", "note": "The visual effect (RFCT).", "type": "formid" },
-        "RNAM": { "name": "Cloud Speed Y", "confidence": "documented", "note": "32 bytes, one per layer. The byte for layer n is a float encoded as a uint8, where 0x00 is -0.1, 0x7f is 0 and 0xfe is 0.1.", "type": "WTHR_CLOUD_SPEED" },
-        "QNAM": { "name": "Cloud Speed X", "confidence": "documented", "note": "32 bytes, one per layer, encoded as the cloud speed Y is.", "type": "WTHR_CLOUD_SPEED" },
-        "PNAM": { "name": "Cloud Texture Colour", "confidence": "documented", "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night colours.", "type": { "array": "WTHR_PNAM", "count": 32 } },
-        "JNAM": { "name": "Cloud Texture Alpha", "confidence": "documented", "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night alphas.", "type": { "array": "WTHR_JNAM", "count": 32 } },
-        "NAM0": { "name": "Colours", "confidence": "documented", "note": "208, 224 or 272 bytes of 16-byte structs, each with the sunrise, day, sunset and night colours. The n-th struct is the sky upper, fog near, a layer that seems to be ignored, ambient, sunlight, sun, stars, sky lower, horizon, effect lightning, cloud LOD diffuse, cloud LOD ambient, fog far, and others.", "type": "bytes" },
-        "TNAM": { "name": "Unknown", "confidence": "documented", "note": "An unknown field.", "type": "u32" }
-      }
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
     }
+   }
+  },
+  "MOVT": {
+   "confidence": "documented",
+   "name": "Movement",
+   "note": "UESP, Skyrim Mod:Mod File Format/MOVT. [measured: SPED is 44 bytes in 77 of Skyrim.esm's MOVT records and 40 in the rest, the difference being the rotate-while-moving run that only appears when the INAM does]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "INAM": {
+     "confidence": "documented",
+     "name": "Anim Change Thresholds",
+     "note": "The directional, movement speed and rotation speed scales. Each is 57.296.",
+     "type": "MOVT_INAM"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "The simplified name, usually the editor id without the trailing _MT.",
+     "type": "zstring"
+    },
+    "SPED": {
+     "confidence": "documented",
+     "name": "Default Data",
+     "note": "The movement's speeds: the walk and run of each direction, and the rotation in place and while moving.",
+     "type": "MOVT_SPED"
+    }
+   }
+  },
+  "SHOU": {
+   "confidence": "documented",
+   "name": "Shout",
+   "note": "UESP, Skyrim Mod:Mod File Format/SHOU. A shout is three words, each with a spell and a recovery time. [measured: 225 SNAM fields in Skyrim.esm, each 12 bytes]",
+   "subrecords": {
+    "DESC": {
+     "confidence": "documented",
+     "name": "Description",
+     "note": "The shout's description, or zero if it has none.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "MDOB": {
+     "confidence": "documented",
+     "name": "Inventory Model",
+     "note": "The model (STAT) shown in the inventory.",
+     "type": "formid"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Shout Data",
+     "note": "One of the shout's three words: the word of power, the spell it casts and the recovery time.",
+     "type": "SHOU_SNAM"
+    }
+   }
+  },
+  "SOPM": {
+   "confidence": "documented",
+   "name": "Sound Output Model",
+   "note": "UESP, Skyrim Mod:Mod File Format/SOPM. [measured: 69 SOPM records in Skyrim.esm]",
+   "subrecords": {
+    "ANAM": {
+     "confidence": "documented",
+     "name": "Animation",
+     "note": "The animation the model plays.",
+     "type": "zstring"
+    },
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "The model's name.",
+     "type": "u32"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "ONAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field, 24 bytes.",
+     "type": "bytes"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field, 16 bytes.",
+     "type": "bytes"
+    }
+   }
+  },
+  "WTHR": {
+   "confidence": "documented",
+   "name": "Weather",
+   "note": "UESP, Skyrim Mod:Mod File Format/WTHR. The cloud textures have a signature per layer: 00TX is layer 0, and layer n uses a texture whose signature is the character 0 plus n followed by 0TX. [measured: 1,537 WTHR records in Skyrim.esm; the cloud texture colour is 512 bytes, the alpha 512 bytes, and DALC is 24 or 32 bytes]",
+   "subrecords": {
+    "DALC": {
+     "confidence": "documented",
+     "name": "Direct Ambient And Specular Colours",
+     "note": "The directional ambient on each of the six sides, the specular colour and the Fresnel power.",
+     "type": "WTHR_DALC"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "19 bytes of data whose layout is not documented.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "32 bytes whose layout is not documented.",
+     "type": "bytes"
+    },
+    "IMSP": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "16 bytes whose layout is not documented.",
+     "type": "bytes"
+    },
+    "JNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Alpha",
+     "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night alphas.",
+     "type": {
+      "array": "WTHR_JNAM",
+      "count": 32
+     }
+    },
+    "LNAM": {
+     "confidence": "documented",
+     "name": "Texture Layer Count",
+     "note": "How many texture layers the clouds have. It is always 0x04 or 0x1d.",
+     "type": "u32"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Precipitation",
+     "note": "The precipitation (SPGD).",
+     "type": "formid"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Colours",
+     "note": "208, 224 or 272 bytes of 16-byte structs, each with the sunrise, day, sunset and night colours. The n-th struct is the sky upper, fog near, a layer that seems to be ignored, ambient, sunlight, sun, stars, sky lower, horizon, effect lightning, cloud LOD diffuse, cloud LOD ambient, fog far, and others.",
+     "type": "bytes"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Visual Effect",
+     "note": "The visual effect (RFCT).",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Cloud Texture Colour",
+     "note": "512 bytes: 32 structs of 16 bytes, one per layer, each with the sunrise, day, sunset and night colours.",
+     "type": {
+      "array": "WTHR_PNAM",
+      "count": 32
+     }
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Cloud Speed X",
+     "note": "32 bytes, one per layer, encoded as the cloud speed Y is.",
+     "type": "WTHR_CLOUD_SPEED"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Cloud Speed Y",
+     "note": "32 bytes, one per layer. The byte for layer n is a float encoded as a uint8, where 0x00 is -0.1, 0x7f is 0 and 0xfe is 0.1.",
+     "type": "WTHR_CLOUD_SPEED"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    }
+   }
   }
+ },
+ "types": {
+  "COLL_CNAM": {
+   "struct": [
+    {
+     "name": "layer",
+     "note": "The collision layer.",
+     "type": "u32"
+    }
+   ]
+  },
+  "MOVT_INAM": {
+   "struct": [
+    {
+     "name": "directional_scale",
+     "note": "The scale is 57.296.",
+     "type": "f32"
+    },
+    {
+     "name": "movement_speed_scale",
+     "note": "The scale is 57.296.",
+     "type": "f32"
+    },
+    {
+     "name": "rotation_speed_scale",
+     "note": "The scale is 57.296.",
+     "type": "f32"
+    }
+   ]
+  },
+  "MOVT_SPED": {
+   "struct": [
+    {
+     "name": "left_walk",
+     "type": "f32"
+    },
+    {
+     "name": "left_run",
+     "type": "f32"
+    },
+    {
+     "name": "right_walk",
+     "type": "f32"
+    },
+    {
+     "name": "right_run",
+     "type": "f32"
+    },
+    {
+     "name": "forward_walk",
+     "type": "f32"
+    },
+    {
+     "name": "forward_run",
+     "type": "f32"
+    },
+    {
+     "name": "back_walk",
+     "type": "f32"
+    },
+    {
+     "name": "back_run",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_in_place_walk",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_in_place_run",
+     "type": "f32"
+    },
+    {
+     "name": "rotate_while_moving_run",
+     "note": "Only present when the INAM is.",
+     "optional": true,
+     "type": "f32"
+    }
+   ]
+  },
+  "SHOU_SNAM": {
+   "struct": [
+    {
+     "name": "word",
+     "note": "The word of power (WOOP).",
+     "type": "formid"
+    },
+    {
+     "name": "spell",
+     "note": "The spell the word casts (SPEL).",
+     "type": "formid"
+    },
+    {
+     "name": "recovery_time",
+     "note": "How long the shout takes to recharge. For the player's dragon shouts it is the total recharge time, and for the others it is usually a small arbitrary number.",
+     "type": "f32"
+    }
+   ]
+  },
+  "WTHR_CLOUD_SPEED": {
+   "struct": [
+    {
+     "name": "layers",
+     "note": "One byte per layer. The float is encoded as a uint8, where 0x00 is -0.1, 0x7f is 0 and 0xfe is 0.1.",
+     "type": {
+      "array": "u8",
+      "count": 32
+     }
+    }
+   ]
+  },
+  "WTHR_JNAM": {
+   "struct": [
+    {
+     "name": "sunrise",
+     "note": "The alpha at sunrise.",
+     "type": "f32"
+    },
+    {
+     "name": "day",
+     "note": "The alpha at day.",
+     "type": "f32"
+    },
+    {
+     "name": "sunset",
+     "note": "The alpha at sunset.",
+     "type": "f32"
+    },
+    {
+     "name": "night",
+     "note": "The alpha at night.",
+     "type": "f32"
+    }
+   ]
+  },
+  "WTHR_PNAM": {
+   "struct": [
+    {
+     "name": "sunrise",
+     "note": "The colour at sunrise.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "day",
+     "note": "The colour at day.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "sunset",
+     "note": "The colour at sunset.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    },
+    {
+     "name": "night",
+     "note": "The colour at night.",
+     "type": {
+      "struct": [
+       {
+        "name": "r",
+        "type": "u8"
+       },
+       {
+        "name": "g",
+        "type": "u8"
+       },
+       {
+        "name": "b",
+        "type": "u8"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
 }
