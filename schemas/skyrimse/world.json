@@ -1093,6 +1093,12 @@
      "note": "The LCRT record.",
      "type": "formid"
     },
+    "XLTW": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
     "XMBO": {
      "confidence": "documented",
      "name": "Model Bounds",

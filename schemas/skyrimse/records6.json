@@ -361,6 +361,38 @@
     }
    }
   },
+  "EYES": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Eyes",
+   "note": "UESP, Skyrim Mod:Mod File Format/EYES. [measured: 8 DATA fields of 1 byte in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "An unknown field. [observed: 1 byte]",
+     "type": "u8"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "UESP's lstring: an index into the game's string table.",
+     "type": "u32"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Icon",
+     "note": "The eye's icon.",
+     "type": "zstring"
+    }
+   }
+  },
   "FSTS": {
    "confidence": "documented",
    "merge": true,
