@@ -4298,9 +4298,25 @@ dependencies = [
  "fnv-world",
  "nvf-assets",
  "nvre-edit",
+ "nvre-esm",
  "nvre-nif",
  "nvre-util",
  "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
+name = "nvre-esm"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "memmap2",
+ "nvre-inflate",
+ "nvre-util",
+ "proptest",
+ "rayon",
  "serde_json",
  "thiserror 2.0.21",
  "tracing",

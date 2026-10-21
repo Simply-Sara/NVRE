@@ -1,0 +1,19 @@
+[package]
+name = "nvre-esm"
+description = "NVRE's record reader: the TES4 container, and schema-driven record layouts"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+bytes = "1.9"
+nvre-util = { path = "../nvre-util" }
+nvre-inflate = { path = "../nvre-inflate" }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+tracing = "0.1"
+memmap2 = "0.9"
+rayon = "1"
+
+[dev-dependencies]
+proptest = "1"

@@ -1,0 +1,575 @@
+//! Decoding a record's fields against a schema, and measuring how much of
+//! the data the schema explains.
+//!
+//! Two things happen here, and they are worth separating:
+//!
+//! - **Decoding** a record turns its subrecords' bytes into values, using
+//!   the schema's layouts.
+//! - **Measuring** a record says how much of its data the schema accounts
+//!   for: every byte explained, or a byte the schema does not mention, or a
+//!   subrecord the schema has no layout for.
+//!
+//! The measure is what makes a schema trustworthy. A layout that is wrong
+//! shows up as a number that is not 100%, not as a program that crashes.
+
+use crate::raw::{Record, Subrecord};
+use crate::schema::{ArrayCount, Prim, Schema, SubDef, Type, TypeDef};
+use nvre_util::{cp1252, Cursor};
+use serde_json::{Map, Value as Json};
+use std::collections::HashMap;
+
+/// How well the schema explains one subrecord.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SubStatus {
+    /// Every byte was accounted for.
+    Ok,
+    /// The schema has no layout for this subrecord.
+    Unknown,
+    /// The subrecord was read, but some bytes are unaccounted for.
+    Trailing {
+        /// How many bytes were read.
+        used: usize,
+        /// How many bytes the subrecord holds.
+        total: usize,
+    },
+    /// The subrecord could not be read.
+    Error(String),
+}
+
+impl SubStatus {
+    /// A short name for the status.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SubStatus::Ok => "ok",
+            SubStatus::Unknown => "unknown",
+            SubStatus::Trailing { .. } => "trailing",
+            SubStatus::Error(_) => "error",
+        }
+    }
+}
+
+/// The state a record's decoding carries: what has been read so far, and
+/// what the schema says about the record.
+pub struct DecodeCtx<'a> {
+    /// The schema.
+    pub schema: &'a Schema,
+    /// The record's four-byte type.
+    pub rec_sig: [u8; 4],
+    /// The values read so far, by the subrecord they came from.
+    pub values: HashMap<String, Json>,
+}
+
+impl<'a> DecodeCtx<'a> {
+    /// A context for a record of the given type.
+    pub fn new(schema: &'a Schema, rec_sig: [u8; 4]) -> DecodeCtx<'a> {
+        DecodeCtx {
+            schema,
+            rec_sig,
+            values: HashMap::new(),
+        }
+    }
+}
+
+/// A FormID as text, with its master's index.
+pub fn formid_str(v: u32) -> String {
+    format!("{v:08X}")
+}
+
+/// A decoded subrecord.
+#[derive(Debug, Clone)]
+pub struct DecodedSub {
+    /// The subrecord's four-byte type.
+    pub sig: [u8; 4],
+    /// The value the subrecord decoded to, when it decoded.
+    pub value: Option<Json>,
+    /// How well the schema explained it.
+    pub status: SubStatus,
+    /// The field's name, when the schema has one.
+    pub name: Option<String>,
+}
+
+impl DecodedSub {
+    /// The subrecord's type as text.
+    pub fn sig_str(&self) -> String {
+        String::from_utf8_lossy(&self.sig).into_owned()
+    }
+}
+
+/// Decode one subrecord.
+pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> DecodedSub {
+    let sig = String::from_utf8_lossy(&s.sig).into_owned();
+    let rec_key = String::from_utf8_lossy(rec_sig).into_owned();
+    let def = ctx
+        .schema
+        .records
+        .get(&rec_key)
+        .and_then(|r| r.subrecords.get(&sig))
+        // A subrecord any record may carry: the editor ID and its like.
+        .or_else(|| ctx.schema.common_subrecords.get(&sig));
+    let Some(def) = def else {
+        return DecodedSub {
+            sig: s.sig,
+            value: None,
+            status: SubStatus::Unknown,
+            name: None,
+        };
+    };
+    let mut c = Cursor::new(&s.data);
+    match decode_subdef(def, &mut c, ctx) {
+        Ok(v) => {
+            let used = c.pos;
+            let total = s.data.len();
+            let status = if used == total {
+                SubStatus::Ok
+            } else {
+                SubStatus::Trailing { used, total }
+            };
+            ctx.values.insert(sig.clone(), v.clone());
+            DecodedSub {
+                sig: s.sig,
+                value: Some(v),
+                status,
+                name: Some(def.name.clone()),
+            }
+        }
+        Err(e) => DecodedSub {
+            sig: s.sig,
+            value: None,
+            status: SubStatus::Error(e),
+            name: Some(def.name.clone()),
+        },
+    }
+}
+
+/// Decode a subrecord against its definition.
+fn decode_subdef(
+    def: &SubDef,
+    c: &mut Cursor<'_>,
+    ctx: &mut DecodeCtx<'_>,
+) -> Result<Json, String> {
+    // A subrecord that holds a count of elements: the count comes from
+    // another subrecord's value.
+    if let Some(count_from) = &def.count_from {
+        let n = ctx
+            .values
+            .get(count_from)
+            .and_then(Json::as_u64)
+            .ok_or_else(|| format!("the count of {count_from:?} is not known yet"))?
+            as usize;
+        return decode_counted(&def.ty, n, c, ctx);
+    }
+    decode_type_value(&def.ty, c, ctx)
+}
+
+/// Decode a type's value.
+fn decode_type_value(
+    ty: &Type,
+    c: &mut Cursor<'_>,
+    ctx: &mut DecodeCtx<'_>,
+) -> Result<Json, String> {
+    match ty {
+        Type::Prim(p) => decode_prim(*p, c),
+        Type::Named(n) => {
+            // An enum: the value, and the name it has.
+            if let Some(values) = ctx.schema.enum_values(n) {
+                let v = decode_prim(ctx.schema.enum_storage(n), c)?;
+                let i = v.as_i64().unwrap_or(0);
+                let name = values.get(&i).cloned();
+                let mut m = Map::new();
+                m.insert("value".into(), v);
+                if let Some(name) = name {
+                    m.insert("name".into(), Json::String(name));
+                }
+                return Ok(Json::Object(m));
+            }
+            // A struct, or a union.
+            let Some(td) = ctx.schema.type_def(n) else {
+                return Err(format!("the unknown type {n:?}"));
+            };
+            if !td.union.is_empty() {
+                return decode_type_value(&Type::Union(td.union.clone()), c, ctx);
+            }
+            decode_struct(td, c, ctx)
+        }
+        Type::Enum { storage, values } => {
+            let v = decode_prim(*storage, c)?;
+            let i = v.as_i64().unwrap_or(0);
+            let mut m = Map::new();
+            m.insert("value".into(), v);
+            if let Some(name) = values.get(&i) {
+                m.insert("name".into(), Json::String(name.clone()));
+            }
+            Ok(Json::Object(m))
+        }
+        Type::Bits { storage, bits } => {
+            let v = decode_prim(*storage, c)?;
+            let i = v.as_i64().unwrap_or(0);
+            let mut m = Map::new();
+            m.insert("value".into(), v);
+            let mut fields = Map::new();
+            for b in bits {
+                fields.insert(b.name.clone(), Json::from(b.value(i)));
+            }
+            m.insert("fields".into(), Json::Object(fields));
+            Ok(Json::Object(m))
+        }
+        Type::Inline(fields) => {
+            let td = TypeDef {
+                fields: fields.clone(),
+                values: Default::default(),
+                bits: Vec::new(),
+                storage: Prim::U32,
+                union: Vec::new(),
+            };
+            decode_struct(&td, c, ctx)
+        }
+        Type::Array { of, count } => {
+            // How many elements: a fixed count, a field's value, or a
+            // length in the data itself.
+            let n = match count {
+                ArrayCount::Fixed(n) => *n,
+                ArrayCount::FromField(f) => ctx
+                    .values
+                    .get(f)
+                    .and_then(Json::as_u64)
+                    .ok_or_else(|| format!("the count of {f:?} is not known yet"))?
+                    as usize,
+                ArrayCount::Prefix(p) => {
+                    let len = c.u32().map_err(|e: nvre_util::OutOfBounds| e.to_string())?;
+                    len as usize
+                }
+            };
+            decode_counted(of, n, c, ctx)
+        }
+        Type::Union(variants) => {
+            // A union's variant is chosen by its size: the one whose size
+            // matches what is left in the subrecord.
+            let left = c.remaining();
+            let chosen = variants
+                .iter()
+                .find(|v| v.size == Some(left))
+                .or_else(|| variants.iter().find(|v| v.size.is_none()))
+                .or_else(|| variants.first());
+            match chosen {
+                Some(v) => decode_type_value(&v.ty, c, ctx),
+                None => Err("a union has no variants".into()),
+            }
+        }
+    }
+}
+
+/// Decode a struct's fields.
+fn decode_struct(
+    td: &TypeDef,
+    c: &mut Cursor<'_>,
+    ctx: &mut DecodeCtx<'_>,
+) -> Result<Json, String> {
+    let mut m = Map::new();
+    for f in &td.fields {
+        // An optional field may be absent: the data runs out before it, and
+        // that is not an error.
+        if f.optional && c.remaining() == 0 {
+            continue;
+        }
+        let v = if let Some(count_from) = &f.count_from {
+            // The count comes from another field of the same struct.
+            let n = m
+                .get(count_from)
+                .and_then(Json::as_u64)
+                .ok_or_else(|| format!("the count of {count_from:?} is not known yet"))?
+                as usize;
+            decode_counted(&f.ty, n, c, ctx)?
+        } else {
+            decode_type_value(&f.ty, c, ctx)?
+        };
+        m.insert(f.name.clone(), v);
+    }
+    Ok(Json::Object(m))
+}
+
+/// Decode `n` elements of a type.
+fn decode_counted(
+    ty: &Type,
+    n: usize,
+    c: &mut Cursor<'_>,
+    ctx: &mut DecodeCtx<'_>,
+) -> Result<Json, String> {
+    // A counted array of a primitive is a list of them.
+    if let Type::Prim(p) = ty {
+        if *p == Prim::Bytes {
+            let b = c.bytes(n).map_err(|e| e.to_string())?;
+            return Ok(Json::from(hex_of(b)));
+        }
+        let mut out = Vec::with_capacity(n.min(4096));
+        for _ in 0..n {
+            out.push(decode_prim(*p, c)?);
+        }
+        return Ok(Json::Array(out));
+    }
+    let mut out = Vec::with_capacity(n.min(4096));
+    for _ in 0..n {
+        out.push(decode_type_value(ty, c, ctx)?);
+    }
+    Ok(Json::Array(out))
+}
+
+/// Decode a primitive.
+fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
+    let e = |e: nvre_util::OutOfBounds| e.to_string();
+    Ok(match p {
+        Prim::U8 => Json::from(c.u8().map_err(e)?),
+        Prim::I8 => Json::from(c.i8().map_err(e)?),
+        Prim::U16 => Json::from(c.u16().map_err(e)?),
+        Prim::I16 => Json::from(c.i16().map_err(e)?),
+        Prim::U32 => Json::from(c.u32().map_err(e)?),
+        Prim::I32 => Json::from(c.i32().map_err(e)?),
+        Prim::U64 => Json::from(c.u64().map_err(e)?),
+        Prim::I64 => Json::from(c.i64().map_err(e)?),
+        Prim::F32 => Json::from(c.f32().map_err(e)?),
+        Prim::Bool => Json::from(c.u8().map_err(e)? != 0),
+        Prim::FormId => Json::from(c.u32().map_err(e)?),
+        Prim::ZString => {
+            let bytes = c.bytes(c.remaining()).map_err(e)?;
+            Json::String(cp1252::decode_z(bytes))
+        }
+        Prim::String => {
+            let len = c.u16().map_err(e)? as usize;
+            let bytes = c.bytes(len).map_err(e)?;
+            Json::String(cp1252::decode(bytes))
+        }
+        Prim::Bytes => {
+            let b = c.bytes(c.remaining()).map_err(e)?;
+            Json::from(hex_of(b))
+        }
+        Prim::CString => {
+            // A NUL-terminated string.
+            let bytes = c.bytes(c.remaining()).map_err(e)?;
+            Json::String(cp1252::decode_z(bytes))
+        }
+        Prim::LenString => {
+            // A string of a one-byte length and that many bytes.
+            let len = c.u8().map_err(e)? as usize;
+            let bytes = c.bytes(len).map_err(e)?;
+            Json::String(cp1252::decode(bytes))
+        }
+        Prim::ZStringArray => {
+            // An array of strings, each with a one-byte length, until the
+            // data runs out.
+            let mut out = Vec::new();
+            while c.remaining() > 0 {
+                let len = c.u8().map_err(e)? as usize;
+                if len == 0 {
+                    break;
+                }
+                let bytes = c.bytes(len).map_err(e)?;
+                out.push(Json::String(cp1252::decode(bytes)));
+            }
+            Json::Array(out)
+        }
+    })
+}
+
+/// Bytes as lower-case hex.
+fn hex_of(b: &[u8]) -> String {
+    nvre_util::sha256::to_hex(b)
+}
+
+/// Decode a record, and measure how much of it the schema explains.
+pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
+    let mut ctx = DecodeCtx::new(schema, r.header.sig);
+    let mut cov = RecordCoverage {
+        sig: r.header.sig,
+        form_id: r.header.form_id,
+        ..Default::default()
+    };
+    let mut m = Map::new();
+    for s in &r.subrecords {
+        let d = decode_sub(&r.header.sig, s, &mut ctx);
+        match d.status {
+            SubStatus::Ok => cov.ok_count += 1,
+            SubStatus::Unknown => cov.unknown_count += 1,
+            SubStatus::Trailing { .. } => cov.trailing_count += 1,
+            SubStatus::Error(_) => cov.error_count += 1,
+        }
+        cov.subrecords.push(SubCoverage {
+            sig: d.sig,
+            status: d.status.clone(),
+        });
+        if let Some(v) = d.value.clone() {
+            m.insert(d.sig_str(), v);
+        }
+    }
+    (Json::Object(m), cov)
+}
+
+/// How well one subrecord was explained.
+#[derive(Debug, Clone)]
+pub struct SubCoverage {
+    /// The subrecord's four-byte type.
+    pub sig: [u8; 4],
+    /// How well it was explained.
+    pub status: SubStatus,
+}
+
+/// How well one record was explained.
+#[derive(Debug, Clone, Default)]
+pub struct RecordCoverage {
+    /// The record's four-byte type.
+    pub sig: [u8; 4],
+    /// The record's FormID.
+    pub form_id: u32,
+    /// Each subrecord's coverage.
+    pub subrecords: Vec<SubCoverage>,
+    /// How many subrecords were fully explained.
+    pub ok_count: u64,
+    /// How many the schema does not know.
+    pub unknown_count: u64,
+    /// How many had bytes left over.
+    pub trailing_count: u64,
+    /// How many could not be read.
+    pub error_count: u64,
+}
+
+impl RecordCoverage {
+    /// How many of the record's subrecords were fully explained.
+    pub fn ok(&self) -> u64 {
+        self.ok_count
+    }
+
+    /// How many of the record's subrecords the schema does not know.
+    pub fn unknown(&self) -> u64 {
+        self.unknown_count
+    }
+
+    /// How many of the record's subrecords had bytes left over.
+    pub fn trailing(&self) -> u64 {
+        self.trailing_count
+    }
+
+    /// How many of the record's subrecords could not be read.
+    pub fn error(&self) -> u64 {
+        self.error_count
+    }
+}
+
+/// The coverage of a whole file.
+#[derive(Debug, Clone, Default)]
+pub struct Coverage {
+    /// The records, by their four-byte type.
+    pub by_type: HashMap<String, RecordCoverage>,
+    /// How many subrecords were fully explained.
+    pub ok: u64,
+    /// How many the schema does not know.
+    pub unknown: u64,
+    /// How many had bytes left over.
+    pub trailing: u64,
+    /// How many could not be read.
+    pub error: u64,
+    /// How many subrecords there were.
+    pub total: u64,
+}
+
+impl Coverage {
+    /// The totals: total, ok, unknown, trailing, error.
+    pub fn totals(&self) -> (u64, u64, u64, u64, u64) {
+        (self.total, self.ok, self.unknown, self.trailing, self.error)
+    }
+
+    /// Measure a record, and add it to the totals.
+    pub fn add(&mut self, rc: RecordCoverage) {
+        self.ok += rc.ok();
+        self.unknown += rc.unknown();
+        self.trailing += rc.trailing();
+        self.error += rc.error();
+        self.total += rc.subrecords.len() as u64;
+        let key = String::from_utf8_lossy(&rc.sig).into_owned();
+        match self.by_type.get_mut(&key) {
+            Some(e) => {
+                e.ok_count += rc.ok();
+                e.unknown_count += rc.unknown();
+                e.trailing_count += rc.trailing();
+                e.error_count += rc.error();
+            }
+            None => {
+                self.by_type.insert(key, rc);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::raw::{RecordHeader, Subrecord};
+
+    fn schema() -> Schema {
+        let j: Json = serde_json::from_str(
+            r#"{"format":"nvre.esm.schema/1",
+                "records":{"TEST":{"subrecords":{
+                  "NAME":{"type":"formid"},
+                  "DATA":{"type":"PosRot"}}}},
+                "types":{"PosRot":{"struct":[
+                  {"name":"x","type":"f32"},
+                  {"name":"y","type":"f32"},
+                  {"name":"z","type":"f32"}]}}}"#,
+        )
+        .unwrap();
+        let mut s = Schema::new();
+        s.merge(&j).unwrap();
+        s
+    }
+
+    fn record(subs: Vec<(&[u8; 4], Vec<u8>)>) -> Record {
+        Record {
+            header: RecordHeader {
+                sig: *b"TEST",
+                data_size: 0,
+                flags: 0,
+                form_id: 1,
+                vc_info: 0,
+                form_version: 0,
+                vc_info2: 0,
+            },
+            subrecords: subs
+                .into_iter()
+                .map(|(sig, data)| Subrecord {
+                    sig: *sig,
+                    data: bytes::Bytes::from(data),
+                })
+                .collect(),
+            payload: bytes::Bytes::new(),
+            offset: 0,
+        }
+    }
+
+    #[test]
+    fn a_record_decodes() {
+        let s = schema();
+        let mut data = Vec::new();
+        data.extend_from_slice(&42u32.to_le_bytes());
+        let r = record(vec![(b"NAME", data)]);
+        let (v, cov) = decode_record(&r, &s);
+        assert_eq!(v["NAME"], Json::from(42));
+        assert_eq!(cov.ok(), 1);
+        assert_eq!(cov.error(), 0);
+    }
+
+    #[test]
+    fn a_subrecord_the_schema_does_not_know_is_unknown() {
+        let s = schema();
+        let r = record(vec![(b"ZZZZ", vec![1, 2, 3, 4])]);
+        let (_, cov) = decode_record(&r, &s);
+        assert_eq!(cov.unknown(), 1);
+    }
+
+    #[test]
+    fn a_subrecord_with_bytes_left_over_is_trailing() {
+        let s = schema();
+        let mut data = Vec::new();
+        data.extend_from_slice(&42u32.to_le_bytes());
+        data.extend_from_slice(&[0, 0, 0, 0]);
+        let r = record(vec![(b"NAME", data)]);
+        let (_, cov) = decode_record(&r, &s);
+        assert_eq!(cov.trailing(), 1);
+    }
+}
