@@ -236,6 +236,54 @@
      "type": "u32"
     }
    ]
+  },
+  "SKYRIM_NAM2": {
+   "cases": {
+    "2": 0
+   },
+   "default": 1,
+   "peek": true,
+   "union": [
+    {
+     "name": "Headered",
+     "type": {
+      "struct": [
+       {
+        "name": "version",
+        "type": "u32"
+       },
+       {
+        "name": "count",
+        "type": "u32"
+       },
+       {
+        "name": "unknown",
+        "type": "u32"
+       },
+       {
+        "name": "textures",
+        "type": {
+         "array": "SKYRIM_MODT_ENTRY",
+         "count_field": "count"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Bare",
+     "type": {
+      "struct": [
+       {
+        "name": "textures",
+        "type": {
+         "array": "SKYRIM_MODT_ENTRY"
+        }
+       }
+      ]
+     }
+    }
+   ]
   }
  }
 }

@@ -1334,6 +1334,47 @@
     }
    ]
   },
+  "ARMO_BODT": {
+   "union": [
+    {
+     "name": "Body Template",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       }
+      ]
+     }
+    },
+    {
+     "name": "Body Template With Armour Type",
+     "size": 12,
+     "type": {
+      "struct": [
+       {
+        "name": "biped_object_flags",
+        "type": "u32"
+       },
+       {
+        "name": "general_flags",
+        "type": "u32"
+       },
+       {
+        "name": "armor_type",
+        "note": "The armour type. Clothing is the default when it is not given.",
+        "type": "u32"
+       }
+      ]
+     }
+    }
+   ]
+  },
   "ARMO_DATA": {
    "struct": [
     {
@@ -1663,16 +1704,37 @@
    ]
   },
   "REFR_XLKR": {
-   "struct": [
+   "union": [
     {
-     "name": "keyword",
-     "note": "Zero, or a KYWD \u2014 usually LinkCarryStart or LinkCarryEnd.",
-     "type": "formid"
+     "name": "Keyword Only",
+     "size": 4,
+     "type": {
+      "struct": [
+       {
+        "name": "keyword",
+        "note": "Zero, or a KYWD \u2014 usually LinkCarryStart or LinkCarryEnd.",
+        "type": "formid"
+       }
+      ]
+     }
     },
     {
-     "name": "reference",
-     "note": "A REFR, usually to a STAT. FURN also appears here.",
-     "type": "formid"
+     "name": "Keyword And Reference",
+     "size": 8,
+     "type": {
+      "struct": [
+       {
+        "name": "keyword",
+        "note": "Zero, or a KYWD \u2014 usually LinkCarryStart or LinkCarryEnd.",
+        "type": "formid"
+       },
+       {
+        "name": "reference",
+        "note": "A REFR, usually to a STAT. FURN also appears here.",
+        "type": "formid"
+       }
+      ]
+     }
     }
    ]
   },

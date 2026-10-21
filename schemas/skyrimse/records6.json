@@ -254,6 +254,49 @@
     }
    }
   },
+  "PROJ": {
+   "confidence": "documented",
+   "name": "Projectile",
+   "note": "UESP, Skyrim Mod:Mod File Format/PROJ. [measured: 12 NAM2 fields in Skyrim.esm, 12 to 24 bytes]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The projectile's data.",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Muzzle Flash Model Texture Hashes",
+     "note": "UESP, Skyrim Mod:Mod File Format/PROJ. The muzzle flash's textures, in the same two forms as Skyrim's MODT.",
+     "type": "SKYRIM_NAM2"
+    },
+    "VNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    }
+   }
+  },
   "REGN": {
    "confidence": "documented",
    "name": "Region",
