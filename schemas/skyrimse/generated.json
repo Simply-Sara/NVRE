@@ -595,6 +595,12 @@
       "array": "formid"
      }
     },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures. [observed: 33 and 38 bytes]",
+     "type": "bytes"
+    },
     "PFIG": {
      "confidence": "hypothesis",
      "name": "Ingredient",

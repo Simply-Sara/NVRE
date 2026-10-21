@@ -278,6 +278,18 @@
      "note": "An unknown field.",
      "type": "u32"
     },
+    "NAM2": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 16 bytes]",
+     "type": "bytes"
+    },
+    "NAM3": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 16 bytes]",
+     "type": "bytes"
+    },
     "NNAM": {
      "confidence": "documented",
      "name": "Visual Effect",

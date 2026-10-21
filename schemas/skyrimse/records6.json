@@ -1,0 +1,484 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "EQUP": {
+   "confidence": "documented",
+   "name": "Equipment",
+   "note": "UESP, Skyrim Mod:Mod File Format/EQUP. [measured: 7 DATA fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "PRKM": {
+     "confidence": "documented",
+     "name": "Perk",
+     "note": "The perk the equipment grants.",
+     "type": "formid"
+    }
+   }
+  },
+  "LCTN": {
+   "confidence": "documented",
+   "name": "Location",
+   "note": "UESP, Skyrim Mod:Mod File Format/LCTN. [measured: 12 NAM0 and 9 FNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "CNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "KSIZ": {
+     "confidence": "documented",
+     "name": "Keyword Count",
+     "note": "How many keywords follow.",
+     "type": "u32"
+    },
+    "KWDA": {
+     "confidence": "documented",
+     "count_from": "KSIZ",
+     "name": "Keyword",
+     "note": "A KYWD record. There is one per KSIZ.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "LCEC": {
+     "confidence": "documented",
+     "name": "Encounter",
+     "note": "The encounter zone the location sits in.",
+     "type": "LCTN_LCEC"
+    },
+    "LCEP": {
+     "confidence": "documented",
+     "name": "Enable Points",
+     "note": "The points at which the location's actors are enabled.",
+     "type": "LCTN_LCEP"
+    },
+    "LCID": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "LCPR": {
+     "confidence": "documented",
+     "name": "Population References",
+     "note": "The actors that populate the location.",
+     "type": "LCTN_LCPR"
+    },
+    "LCSR": {
+     "confidence": "documented",
+     "name": "Static References",
+     "note": "The location's static references, each with the ref type that finds them.",
+     "type": "LCTN_LCSR"
+    },
+    "LCUN": {
+     "confidence": "documented",
+     "name": "Unique References",
+     "note": "The location's unique actors.",
+     "type": "LCTN_LCUN"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "NAM1": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent Location",
+     "note": "The parent LCTN.",
+     "type": "formid"
+    },
+    "RCPR": {
+     "confidence": "documented",
+     "name": "Population References",
+     "note": "The actors. There is only one instance of this in the game data.",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "u32"
+    }
+   }
+  },
+  "MISC": {
+   "confidence": "documented",
+   "name": "Miscellaneous",
+   "note": "UESP, Skyrim Mod:Mod File Format/MISC. [measured: 13 MODS and 11 VMAD fields in Skyrim.esm]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "hypothesis",
+     "name": "Value & Weight Data",
+     "note": "UESP, Skyrim Mod:Mod File Format/MISC. 8-Bytes For Value & Weight",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Full Name",
+     "note": "The name shown in the game.",
+     "type": "u32"
+    },
+    "ICON": {
+     "confidence": "hypothesis",
+     "name": "Inventory Image",
+     "note": "UESP, Skyrim Mod:Mod File Format/MISC. Inventory Image Filename",
+     "type": "zstring"
+    },
+    "ITXT": {
+     "confidence": "documented",
+     "name": "Inventory Text",
+     "note": "The inventory text.",
+     "type": "u32"
+    },
+    "KSIZ": {
+     "confidence": "hypothesis",
+     "name": "count",
+     "note": "UESP, Skyrim Mod:Mod File Format/MISC. Number of formids in the following KWDA subrecord",
+     "type": "bytes"
+    },
+    "KWDA": {
+     "confidence": "hypothesis",
+     "count_from": "KSIZ",
+     "name": "keywords",
+     "note": "UESP, Skyrim Mod:Mod File Format/MISC. Formid array of keywords",
+     "type": {
+      "array": "formid"
+     }
+    },
+    "MICO": {
+     "confidence": "hypothesis",
+     "name": "Message Immage",
+     "note": "UESP, Skyrim Mod:Mod File Format/MISC. Message Immage Filename",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model",
+     "note": "The model, with the MODT and MODS fields.",
+     "type": "bytes"
+    },
+    "MODS": {
+     "confidence": "documented",
+     "name": "Alternate Textures",
+     "note": "The alternate textures.",
+     "type": "bytes"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Sound - Random/Looping",
+     "note": "xEdit wbDefinitionsFNV.pas MISC record",
+     "type": "formid"
+    },
+    "VMAD": {
+     "confidence": "documented",
+     "name": "Script Data",
+     "note": "The script data.",
+     "type": "bytes"
+    },
+    "YNAM": {
+     "confidence": "hypothesis",
+     "name": "pickupSound",
+     "note": "UESP, Skyrim Mod:Mod File Format/MISC. Sound(SNDR) played when picked up",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "hypothesis",
+     "name": "dropSound",
+     "note": "UESP, Skyrim Mod:Mod File Format/MISC. Sound(SNDR) played when dropped",
+     "type": "formid"
+    }
+   }
+  },
+  "REGN": {
+   "confidence": "documented",
+   "name": "Region",
+   "note": "UESP, Skyrim Mod:Mod File Format/REGN. [measured: 53 RDSA fields in Skyrim.esm, 12 to 708 bytes]",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "RCLR": {
+     "confidence": "documented",
+     "name": "Clutter",
+     "note": "The clutter in the region.",
+     "type": "formid"
+    },
+    "RDAT": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The region's data.",
+     "type": "bytes"
+    },
+    "RDID": {
+     "confidence": "documented",
+     "name": "Region Data",
+     "note": "The region's data.",
+     "type": "bytes"
+    },
+    "RDMO": {
+     "confidence": "documented",
+     "name": "Moon",
+     "note": "The moon.",
+     "type": "formid"
+    },
+    "RDMP": {
+     "confidence": "documented",
+     "name": "Moon Phase",
+     "note": "The moon phase.",
+     "type": "formid"
+    },
+    "RDOT": {
+     "confidence": "documented",
+     "name": "Owner Type",
+     "note": "The owner type.",
+     "type": "formid"
+    },
+    "RDSA": {
+     "confidence": "documented",
+     "name": "Region Data",
+     "note": "The region's data, whose size varies with the region.",
+     "type": "bytes"
+    },
+    "RDSB": {
+     "confidence": "documented",
+     "name": "Bounds",
+     "note": "The region's bounds.",
+     "type": "bytes"
+    },
+    "RDSD": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "RDSI": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "bytes"
+    },
+    "RDWT": {
+     "confidence": "documented",
+     "name": "Weight",
+     "note": "The region's weight.",
+     "type": "f32"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "The region's name.",
+     "type": "zstring"
+    },
+    "RPLD": {
+     "confidence": "observed",
+     "name": "Region Points",
+     "note": "One area's polygon in worldspace units: x, y pairs [documented: xEdit wbRPLDAfterLoad reads each entry's two elements as numbers; observed: VMapGoodspringsRegion's six points span x -76216..-67372, y -6064..10250, around Goodsprings]",
+     "type": {
+      "array": {
+       "struct": [
+        {
+         "name": "x",
+         "type": "f32"
+        },
+        {
+         "name": "y",
+         "type": "f32"
+        }
+       ]
+      }
+     }
+    },
+    "RPLI": {
+     "confidence": "documented",
+     "name": "Parent Location",
+     "note": "The region's parent location.",
+     "type": "formid"
+    },
+    "WNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field.",
+     "type": "formid"
+    }
+   }
+  },
+  "REVB": {
+   "confidence": "documented",
+   "name": "Reverb",
+   "note": "UESP, Skyrim Mod:Mod File Format/REVB. [measured: 10 DATA fields in Skyrim.esm, each 14 bytes]",
+   "subrecords": {
+    "DATA": {
+     "confidence": "documented",
+     "name": "Data",
+     "note": "The reverb's data. [observed: 14 bytes]",
+     "type": "bytes"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "NAME": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "The reverb's name.",
+     "type": "zstring"
+    }
+   }
+  },
+  "SMQN": {
+   "confidence": "documented",
+   "name": "Story Manager Quest Node",
+   "note": "UESP, Skyrim Mod:Mod File Format/SMQN. [measured: 17 MNAM and 7 FNAM fields in Skyrim.esm, each 4 bytes]",
+   "subrecords": {
+    "CIS2": {
+     "confidence": "documented",
+     "name": "Variable Name",
+     "note": "An optional variable name, for example \"::playerAllegiance_var\".",
+     "type": "zstring"
+    },
+    "CITC": {
+     "confidence": "documented",
+     "name": "Condition Count",
+     "note": "How many conditions follow.",
+     "type": "u32"
+    },
+    "CTDA": {
+     "confidence": "documented",
+     "name": "Condition",
+     "note": "The conditions on the node.",
+     "type": "Condition"
+    },
+    "DNAM": {
+     "confidence": "documented",
+     "name": "Flags",
+     "note": "The event's flags. 0x01 is known, and very large values such as 0x10000 and 0x100000 occur.",
+     "type": "u32"
+    },
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "The editor id.",
+     "type": "zstring"
+    },
+    "FNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "MNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 4 bytes]",
+     "type": "u32"
+    },
+    "NNAM": {
+     "confidence": "documented",
+     "name": "Quest Node",
+     "note": "A QUST formid. There is one per QNAM, each optionally followed by an RNAM.",
+     "type": "formid"
+    },
+    "PNAM": {
+     "confidence": "documented",
+     "name": "Parent",
+     "note": "The parent SMQN, SMEN or SMBN.",
+     "type": "formid"
+    },
+    "QNAM": {
+     "confidence": "documented",
+     "name": "Quest Node Count",
+     "note": "How many NNAM records follow.",
+     "type": "u32"
+    },
+    "RNAM": {
+     "confidence": "documented",
+     "name": "Reset Time",
+     "note": "The time until the reset. The CK shows the value divided by 24 and labelled as hours, which is probably days.",
+     "type": "f32"
+    },
+    "SNAM": {
+     "confidence": "documented",
+     "name": "Sibling",
+     "note": "Zero for the first child, or the prior sibling.",
+     "type": "formid"
+    },
+    "XNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "Always zero.",
+     "type": "u32"
+    }
+   }
+  }
+ }
+}

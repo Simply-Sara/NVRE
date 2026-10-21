@@ -890,17 +890,35 @@
       "count": 3
      }
     },
+    "XMBP": {
+     "confidence": "documented",
+     "name": "MultiBound Primitive Marker",
+     "note": "The multi-bound primitive's marker. [observed: 0 bytes]",
+     "type": "bytes"
+    },
     "XMBR": {
      "confidence": "documented",
      "name": "Multi Bound Reference",
      "note": "The multi-bound reference.",
      "type": "formid"
     },
+    "XMRK": {
+     "confidence": "documented",
+     "name": "Map Marker Data",
+     "note": "The map marker's data. [observed: 0 bytes]",
+     "type": "bytes"
+    },
     "XNDP": {
      "confidence": "documented",
      "name": "Door Pivot",
      "note": "The navmesh triangle the door pivots on.",
      "type": "REFR_XNDP"
+    },
+    "XOCP": {
+     "confidence": "documented",
+     "name": "Occlusion Plane Data",
+     "note": "The occlusion plane's data. [observed: 36 bytes]",
+     "type": "bytes"
     },
     "XOWN": {
      "confidence": "documented",
@@ -1191,6 +1209,18 @@
      "name": "Large References",
      "note": "The references that place a base object of object size 512 or greater, with the cell each one is in.",
      "type": "WRLD_RNAM"
+    },
+    "TNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 53 bytes]",
+     "type": "bytes"
+    },
+    "UNAM": {
+     "confidence": "documented",
+     "name": "Unknown",
+     "note": "An unknown field. [observed: 55 bytes]",
+     "type": "bytes"
     },
     "WCTR": {
      "confidence": "documented",
