@@ -4,7 +4,6 @@
 
 use nvre_esm::raw::visit_nodes;
 use nvre_esm::{Plugin, Schema};
-use nvre_edit::encode::roundtrips;
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -33,23 +32,39 @@ fn main() {
     let mut gaps: std::collections::BTreeMap<String, usize> = Default::default();
     for path in &plugins {
         let p = Plugin::open(path).expect("plugin");
+        let localized = p.header.is_localized();
         visit_nodes(&p.nodes, &mut |r, _| {
-            for s in r.subrecords().expect("subs") {
-                let mut ctx = nvre_esm::decode::DecodeCtx::new(&schema, r.header.sig);
-                let d = nvre_esm::decode::decode_sub(&r.header.sig, &s, &mut ctx);
-                // Only subrecords the decoder actually read can round-trip; an
-                // unknown one has no layout to invert, and an errored one has no
-                // value at all.
-                if d.value.is_none() {
-                    continue;
+            let subs = r.subrecords().expect("subs");
+            let mut ctx = nvre_esm::decode::DecodeCtx::new(&schema, r.header.sig);
+            ctx.localized = localized;
+            nvre_edit::encode::clear_exposed();
+            nvre_esm::decode::walk_sequence(&r.header.sig, &subs, &schema, &mut ctx, |s, ctx| {
+                let d = nvre_esm::decode::decode_sub(&r.header.sig, s, ctx);
+                if let (Some(v), Some(def)) = (
+                    &d.value,
+                    schema.lookup_in_block(&r.header.sig, &s.sig, ctx.block.as_deref()),
+                ) {
+                    nvre_edit::encode::expose_subrecord(&schema, def, &s.sig, v);
                 }
+                let Some(value) = d.value else {
+                    return;
+                };
                 checked += 1;
-                if !roundtrips(&schema, &r.header.sig, &s) {
+                let written = nvre_edit::encode::encode_sub_len_in_block_variant(
+                    &schema,
+                    &r.header.sig,
+                    &s.sig,
+                    &value,
+                    Some(s.data.len()),
+                    ctx.block.as_deref(),
+                    ctx.block_variant_name.as_deref(),
+                );
+                if !matches!(written, Ok(ref b) if *b == s.data) {
                     *gaps
                         .entry(format!("{}.{}", r.sig_str(), s.sig_str()))
                         .or_insert(0) += 1;
                 }
-            }
+            });
         });
         println!("{path}: {checked} decoded so far");
     }

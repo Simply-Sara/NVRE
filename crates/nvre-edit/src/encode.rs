@@ -90,6 +90,146 @@ fn repeated_name(fields: &[FieldDef]) -> Option<String> {
     None
 }
 
+// The values a union may switch on, kept while a struct is written.
+thread_local! {
+    static SWITCH_VALUES: std::cell::RefCell<Vec<std::collections::HashMap<String, String>>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+    static EXPOSED_VALUES: std::cell::RefCell<std::collections::HashMap<String, String>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Remembers a subrecord's value for a later subrecord's union to switch on.
+pub fn expose_subrecord(
+    schema: &Schema,
+    def: &nvre_esm::schema::SubDef,
+    sig: &[u8; 4],
+    value: &Value,
+) {
+    if !def.expose {
+        return;
+    }
+    let text = match value {
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => match schema.resolve_def(&def.ty) {
+            TypeDef::Enum { values, .. } => match values.iter().find(|(_, n)| n == s) {
+                Some((k, _)) => k.to_string(),
+                None => s.clone(),
+            },
+            _ => s.clone(),
+        },
+        _ => return,
+    };
+    EXPOSED_VALUES.with(|c| {
+        c.borrow_mut()
+            .insert(nvre_util::tag_str(sig).to_string(), text);
+    });
+}
+
+/// Clears the remembered exposed values, for a new record.
+pub fn clear_exposed() {
+    EXPOSED_VALUES.with(|c| c.borrow_mut().clear());
+}
+
+/// The variant a union's switch picks, if the switch has a value.
+fn switch_variant(
+    name: &str,
+    cases: &[(String, usize)],
+    bits: &[(u64, usize)],
+    default: usize,
+) -> Option<usize> {
+    let key = SWITCH_VALUES
+        .with(|c| {
+            let stack = c.borrow();
+            stack.last().and_then(|m| m.get(name).cloned())
+        })
+        .or_else(|| EXPOSED_VALUES.with(|c| c.borrow().get(name).cloned()))?;
+    if !bits.is_empty() {
+        let n = key.parse::<u64>().unwrap_or(0);
+        return Some(
+            bits.iter()
+                .find(|(mask, _)| n & mask != 0)
+                .map(|(_, i)| *i)
+                .unwrap_or(default),
+        );
+    }
+    Some(
+        cases
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, i)| *i)
+            .unwrap_or(default),
+    )
+}
+
+/// Keeps the switch values for the length of a struct's writing.
+struct SwitchValuesGuard;
+
+impl SwitchValuesGuard {
+    fn push(values: std::collections::HashMap<String, String>) -> Self {
+        SWITCH_VALUES.with(|c| c.borrow_mut().push(values));
+        SwitchValuesGuard
+    }
+}
+
+impl Drop for SwitchValuesGuard {
+    fn drop(&mut self) {
+        SWITCH_VALUES.with(|c| {
+            c.borrow_mut().pop();
+        });
+    }
+}
+
+/// The value of a named field, as the switch would read it.
+fn switch_value_of(
+    _schema: &Schema,
+    obj: &serde_json::Map<String, Value>,
+    field: &FieldDef,
+) -> Option<String> {
+    let v = obj.get(&field.name)?;
+    if let Some(s) = v.as_str() {
+        if let TypeDef::Enum { values, .. } = &field.ty {
+            if let Some((k, _)) = values.iter().find(|(_, n)| n == s) {
+                return Some(k.to_string());
+            }
+        }
+        return Some(s.to_string());
+    }
+    if let Some(n) = v.as_i64() {
+        return Some(n.to_string());
+    }
+    if let Some(n) = v.as_u64() {
+        return Some(n.to_string());
+    }
+    if let Some(n) = v.get("value").and_then(Value::as_i64) {
+        return Some(n.to_string());
+    }
+    None
+}
+
+thread_local! {
+    static FORM_VERSION: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Set the record's format version for the length of the write.
+pub fn set_form_version(v: u32) -> FormVersionGuard {
+    FORM_VERSION.with(|c| {
+        let old = c.get();
+        c.set(v);
+        FormVersionGuard(Some(old))
+    })
+}
+
+/// Restores the form version when the write is done.
+pub struct FormVersionGuard(Option<u32>);
+
+impl Drop for FormVersionGuard {
+    fn drop(&mut self) {
+        if let Some(old) = self.0 {
+            FORM_VERSION.with(|c| c.set(old));
+        }
+    }
+}
+
 /// Encode `value` according to `t`, appending to `out`.
 ///
 /// `path` is the field path used in error messages ("DATA.rotation_radians.z").
@@ -138,16 +278,27 @@ pub fn encode_type(
                     msg: format!("field {extra:?} is not part of this layout"),
                 });
             }
+            // A union inside the struct may switch on one of the struct's
+            // own fields, so the fields' values are kept while the struct is
+            // written.
+            let mut switch_values = std::collections::HashMap::new();
+            for f in fields {
+                if let Some(v) = switch_value_of(schema, obj, f) {
+                    switch_values.insert(f.name.clone(), v);
+                }
+            }
+            let _switch_guard = SwitchValuesGuard::push(switch_values);
             for f in fields {
                 match obj.get(&f.name) {
                     // A missing optional field simply contributes no bytes, which
                     // is how the decoder reads a struct that ends early.
-                    None if f.optional => {}
+                    None if f.optional || f.optional_if_empty => {}
+                    Some(Value::Null) if f.optional || f.optional_if_empty => {}
                     None => {
                         return Err(EncodeError::Value {
                             path: path.to_string(),
                             msg: format!("missing field {:?}", f.name),
-                        })
+                        });
                     }
                     Some(v) => {
                         let sub = if path.is_empty() {
@@ -172,6 +323,78 @@ pub fn encode_type(
                                         msg: format!(
                                         "count_field {name:?} does not match this array's length"
                                     ),
+                                    })
+                                }
+                            }
+                        }
+                        if let TypeDef::Array {
+                            count_pow: Some(name),
+                            ..
+                        } = &f.ty
+                        {
+                            let want = obj.get(name).and_then(|x| {
+                                x.as_u64()
+                                    .or_else(|| x.get("value").and_then(Value::as_u64))
+                            });
+                            let n = want.map(|w| (w * w) as usize);
+                            match (n, v.as_array()) {
+                                (Some(n), Some(arr)) if arr.len() == n => {}
+                                _ => {
+                                    return Err(EncodeError::Value {
+                                        path: sub.clone(),
+                                        msg: format!(
+                                            "count_pow {name:?} does not match this array's length"
+                                        ),
+                                    })
+                                }
+                            }
+                        }
+                        if let TypeDef::Array {
+                            count_sum: Some((a, b)),
+                            ..
+                        } = &f.ty
+                        {
+                            let get = |n: &str| -> Option<u64> {
+                                obj.get(n).and_then(|x| {
+                                    x.as_u64()
+                                        .or_else(|| x.get("value").and_then(Value::as_u64))
+                                })
+                            };
+                            let want = match (get(a), get(b)) {
+                                (Some(x), Some(y)) => Some((x + y) as usize),
+                                _ => None,
+                            };
+                            match (want, v.as_array()) {
+                                (Some(n), Some(arr)) if arr.len() == n => {}
+                                _ => {
+                                    return Err(EncodeError::Value {
+                                        path: sub.clone(),
+                                        msg: format!(
+                                            "count_sum {a:?} and {b:?} do not match this array's length"
+                                        ),
+                                    })
+                                }
+                            }
+                        }
+                        if let TypeDef::Array {
+                            count_bits: Some((name, bits)),
+                            ..
+                        } = &f.ty
+                        {
+                            let want = obj.get(name).and_then(|x| {
+                                x.as_u64()
+                                    .or_else(|| x.get("value").and_then(Value::as_u64))
+                            });
+                            let n =
+                                want.map(|w| (0..*bits).filter(|b| w & (1u64 << *b) != 0).count());
+                            match (n, v.as_array()) {
+                                (Some(n), Some(arr)) if arr.len() == n => {}
+                                _ => {
+                                    return Err(EncodeError::Value {
+                                        path: sub.clone(),
+                                        msg: format!(
+                                            "count_bits {name:?} does not match this array's length"
+                                        ),
                                     })
                                 }
                             }
@@ -314,6 +537,16 @@ pub fn encode_type(
                 }),
             }
         }
+        TypeDef::Repeat(elem) => {
+            let arr = value.as_array().ok_or_else(|| EncodeError::Value {
+                path: path.to_string(),
+                msg: "expected an array of repeated values".into(),
+            })?;
+            for v in arr {
+                encode_type(schema, elem, v, out, path)?;
+            }
+            Ok(())
+        }
         TypeDef::PeekUnion { variants, .. } => {
             // The switch word is part of the field, so the variant has to be
             // picked from the value alone. Each variant is tried in order and
@@ -340,12 +573,27 @@ pub fn encode_type(
                 }),
             }
         }
-        TypeDef::ValueUnion { variants, .. } => {
-            // A value-decided union carries no switch in the bytes, so the variant
-            // must be picked from the value alone. Each variant is tried in order
-            // and the first that encodes without error wins — same as the plain
-            // union, except the caller (record-level) already validated that the
-            // chosen variant matches the sibling switch value.
+        TypeDef::ValueUnion {
+            name,
+            variants,
+            min_version,
+            cases,
+            bits,
+            default,
+            ..
+        } => {
+            if let Some(idx) = switch_variant(name, cases, bits, *default) {
+                return encode_type(schema, &variants[idx], value, out, path);
+            }
+            if let Some(min) = min_version {
+                let v = FORM_VERSION.with(|c| c.get());
+                let idx = if v >= *min {
+                    1.min(variants.len() - 1)
+                } else {
+                    0
+                };
+                return encode_type(schema, &variants[idx], value, out, path);
+            }
             let mut first_err = None;
             for (i, vt) in variants.iter().enumerate() {
                 let mut probe = Vec::new();
@@ -470,6 +718,14 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
             write_uint(Prim::U32, b.len() as u64, out, path)?;
             out.extend_from_slice(&b);
         }
+        Prim::LenStringU16 => {
+            let s = value
+                .as_str()
+                .ok_or_else(|| kind_err(path, "string", value))?;
+            let b = cp1252(s, path)?;
+            write_uint(Prim::U16, b.len() as u64, out, path)?;
+            out.extend_from_slice(&b);
+        }
         Prim::String => {
             let s = value
                 .as_str()
@@ -486,6 +742,23 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
             out.push(0);
         }
         Prim::Bytes => out.extend_from_slice(&hex_bytes(value, path)?),
+        Prim::Localized => {
+            match value {
+                Value::Number(n) => {
+                    let id = n
+                        .as_u64()
+                        .ok_or_else(|| kind_err(path, "string id", value))?;
+                    write_uint(Prim::U32, id, out, path)?;
+                }
+                Value::String(s) => {
+                    out.extend_from_slice(&cp1252(s, path)?);
+                    if !s.ends_with('\0') {
+                        out.push(0);
+                    }
+                }
+                _ => return Err(kind_err(path, "string or string id", value)),
+            }
+        }
     }
     Ok(())
 }
@@ -642,27 +915,116 @@ pub fn encode_sub(
 /// others — and the first variant that encodes is not necessarily the one
 /// the data used. When the original length is known, the variant that
 /// matches it is the one to write.
-pub fn encode_sub_len(
+/// Writes a subrecord that is known to be inside a block of its record's sequence.
+pub fn encode_sub_len_in_block(
     schema: &Schema,
     rec_sig: &[u8; 4],
     sub_sig: &[u8; 4],
     value: &Value,
     orig_len: Option<usize>,
+    block: Option<&str>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let def = schema
-        .lookup(rec_sig, sub_sig)
-        .ok_or_else(|| EncodeError::Value {
-            path: nvre_util::tag_str(sub_sig),
-            msg: format!(
-                "no layout for {}.{}",
-                nvre_util::tag_str(rec_sig),
-                nvre_util::tag_str(sub_sig)
-            ),
-        })?;
+    encode_sub_len_in_block_variant(schema, rec_sig, sub_sig, value, orig_len, block, None)
+}
+
+/// Writes a subrecord that is known to be inside a block of its record's
+/// sequence, and in the block's chosen variant.
+pub fn encode_sub_len_in_block_variant(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    value: &Value,
+    orig_len: Option<usize>,
+    block: Option<&str>,
+    variant: Option<&str>,
+) -> Result<Vec<u8>, EncodeError> {
+    let sub_str = nvre_util::tag_str(sub_sig);
+    let rec_str = nvre_util::tag_str(rec_sig);
+    let mut defs: Vec<&nvre_esm::schema::SubDef> = Vec::new();
+    if let Some(seq) = schema
+        .records
+        .get(&rec_str)
+        .and_then(|r| r.sequence.as_ref())
+    {
+        if let Some(bd) = block.and_then(|b| {
+            seq.blocks.get(b).or_else(|| {
+                seq.blocks
+                    .values()
+                    .find(|bd| bd.opener == b || bd.openers.iter().any(|o| o == b))
+            })
+        }) {
+            if let Some(v) = variant {
+                if let Some(vd) = bd.variants.get(v) {
+                    if let Some(d) = vd.subrecords.get(&sub_str) {
+                        defs.push(d);
+                    }
+                }
+            }
+            if let Some(d) = bd.subrecords.get(&sub_str) {
+                if !defs.iter().any(|e| std::ptr::eq(*e, d)) {
+                    defs.push(d);
+                }
+            }
+        }
+    }
+    if let Some(d) = schema.lookup(rec_sig, sub_sig) {
+        if !defs.iter().any(|e| std::ptr::eq(*e, d)) {
+            defs.push(d);
+        }
+    }
+    if let Some(seq) = schema
+        .records
+        .get(&rec_str)
+        .and_then(|r| r.sequence.as_ref())
+    {
+        for bd in seq.blocks.values() {
+            if let Some(d) = bd.subrecords.get(&sub_str) {
+                if !defs.iter().any(|e| std::ptr::eq(*e, d)) {
+                    defs.push(d);
+                }
+            }
+        }
+    }
+    if defs.is_empty() {
+        return Err(EncodeError::Value {
+            path: sub_str.clone(),
+            msg: format!("no layout for {rec_str}.{sub_str}"),
+        });
+    }
+    let mut last_err = None;
+    let mut first_ok = None;
+    for def in defs {
+        match encode_sub_with(schema, def, value, orig_len) {
+            Ok(bytes) => {
+                if orig_len == Some(bytes.len()) {
+                    return Ok(bytes);
+                }
+                if first_ok.is_none() {
+                    first_ok = Some(bytes);
+                }
+            }
+            Err(e) => last_err = Some(e),
+        }
+    }
+    if let Some(bytes) = first_ok {
+        return Ok(bytes);
+    }
+    Err(last_err.unwrap_or_else(|| EncodeError::Value {
+        path: sub_str,
+        msg: format!("no layout for {rec_str}.{sub_sig:?}"),
+    }))
+}
+
+fn encode_sub_with(
+    schema: &Schema,
+    def: &nvre_esm::schema::SubDef,
+    value: &Value,
+    orig_len: Option<usize>,
+) -> Result<Vec<u8>, EncodeError> {
+    let resolved = schema.resolve_def(&def.ty);
     if let Some(want) = schema.fixed_size(&def.ty) {
-        // A union is not fixed-size; the variant decides.
-        if !matches!(schema.resolve_def(&def.ty), TypeDef::Union(_)) {
-            let probe = encode_probe(schema, &schema.resolve_def(&def.ty), value)?;
+        if !matches!(resolved, TypeDef::Union(_)) {
+            let probe = encode_probe(schema, &resolved, value)?;
             if probe.len() != want {
                 return Err(EncodeError::Value {
                     path: def.name.clone(),
@@ -675,11 +1037,24 @@ pub fn encode_sub_len(
             return Ok(probe);
         }
     }
-    if let (TypeDef::ValueUnion { variants, .. }, Some(len)) = (schema.resolve_def(&def.ty), orig_len) {
-        // The variant that writes as many bytes as the data took is the one
-        // the data used. Each is tried and the one whose length matches
-        // wins; a variant that encodes to a different length is not the
-        // one that was read.
+    if let (
+        TypeDef::ValueUnion {
+            ref variants,
+            ref name,
+            ref cases,
+            ref bits,
+            default,
+            ..
+        },
+        Some(len),
+    ) = (&resolved, orig_len)
+    {
+        if let Some(idx) = switch_variant(name, cases, bits, *default) {
+            let bytes = encode_probe(schema, &variants[idx], value)?;
+            if bytes.len() == len {
+                return Ok(bytes);
+            }
+        }
         for vt in variants.iter() {
             if let Ok(bytes) = encode_probe(schema, vt, value) {
                 if bytes.len() == len {
@@ -688,10 +1063,7 @@ pub fn encode_sub_len(
             }
         }
     }
-    if let (TypeDef::Union(variants), Some(len)) = (schema.resolve_def(&def.ty), orig_len) {
-        // The variant that writes as many bytes as the data took is the one
-        // the data used. Only the variants with a known size can be told
-        // apart this way.
+    if let (TypeDef::Union(variants), Some(len)) = (&resolved, orig_len) {
         let mut sized: Vec<(usize, &TypeDef)> = variants
             .iter()
             .filter_map(|(n, t)| n.map(|n| (n, t)))
@@ -708,7 +1080,18 @@ pub fn encode_sub_len(
             }
         }
     }
-    encode_probe(schema, &schema.resolve_def(&def.ty), value)
+    encode_probe(schema, &resolved, value)
+}
+
+/// Encode a subrecord, knowing how many bytes it took.
+pub fn encode_sub_len(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    value: &Value,
+    orig_len: Option<usize>,
+) -> Result<Vec<u8>, EncodeError> {
+    encode_sub_len_in_block(schema, rec_sig, sub_sig, value, orig_len, None)
 }
 
 fn encode_probe(schema: &Schema, t: &TypeDef, value: &Value) -> Result<Vec<u8>, EncodeError> {
@@ -719,11 +1102,34 @@ fn encode_probe(schema: &Schema, t: &TypeDef, value: &Value) -> Result<Vec<u8>, 
 
 /// The decoded form of a subrecord, ready to hand back to [`encode_sub`].
 pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &nvre_esm::Subrecord) -> Option<Value> {
+    decoded_localized(schema, rec_sig, sub, false)
+}
+
+/// Decodes a subrecord that is in a block of its record's sequence.
+pub fn decoded_in_block(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &nvre_esm::Subrecord,
+    block: Option<&str>,
+) -> Option<Value> {
     let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, *rec_sig);
-    // A subrecord whose element count comes from a sibling — Skyrim's KWDA
-    // taking the keyword count from KSIZ — needs that count before it can be
-    // decoded on its own. The count is the subrecord's own size divided by
-    // the element size, so it can be recovered without the sibling.
+    ctx.block = block.map(str::to_string);
+    let d = nvre_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
+    match d.status {
+        nvre_esm::decode::SubStatus::Ok => d.value,
+        _ => None,
+    }
+}
+
+/// Decodes a subrecord, specifying whether the parent plugin is localized.
+pub fn decoded_localized(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &nvre_esm::Subrecord,
+    localized: bool,
+) -> Option<Value> {
+    let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    ctx.localized = localized;
     if let Some(def) = schema.lookup(rec_sig, &sub.sig) {
         if let Some(from) = def.count_from.clone() {
             if let Some(n) = sibling_count(schema, rec_sig, &from, &sub.sig, sub) {
@@ -766,11 +1172,34 @@ fn sibling_count(
 }
 
 /// Re-encode a subrecord from its decoded value and compare with the original.
-///
-/// The check that makes the whole editor trustworthy: if this returns `false`,
-/// the encoder does not understand the field and the editor must refuse to save.
 pub fn roundtrips(schema: &Schema, rec_sig: &[u8; 4], sub: &nvre_esm::Subrecord) -> bool {
-    let Some(value) = decoded(schema, rec_sig, sub) else {
+    roundtrips_localized(schema, rec_sig, sub, false)
+}
+
+/// Re-encode a subrecord in a block of its record's sequence and compare with the original.
+pub fn roundtrips_in_block(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &nvre_esm::Subrecord,
+    block: Option<&str>,
+) -> bool {
+    let Some(value) = decoded_in_block(schema, rec_sig, sub, block) else {
+        return false;
+    };
+    match encode_sub_len_in_block(schema, rec_sig, &sub.sig, &value, Some(sub.data.len()), block) {
+        Ok(bytes) => bytes == sub.data,
+        Err(_) => false,
+    }
+}
+
+/// Re-encode a subrecord, specifying whether the parent plugin is localized.
+pub fn roundtrips_localized(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &nvre_esm::Subrecord,
+    localized: bool,
+) -> bool {
+    let Some(value) = decoded_localized(schema, rec_sig, sub, localized) else {
         return false;
     };
     match encode_sub_len(schema, rec_sig, &sub.sig, &value, Some(sub.data.len())) {

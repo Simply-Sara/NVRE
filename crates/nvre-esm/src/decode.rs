@@ -51,6 +51,19 @@ impl SubStatus {
     }
 }
 
+/// A value decoded for a union's switch to match against.
+#[derive(Debug, Clone)]
+pub struct SwitchValue {
+    pub text: String,
+    pub number: Option<i64>,
+}
+
+impl SwitchValue {
+    pub fn text_only(text: String) -> Self {
+        SwitchValue { text, number: None }
+    }
+}
+
 /// The state a record's decoding carries: what has been read so far, and
 /// what the schema says about the record.
 pub struct DecodeCtx<'a> {
@@ -72,7 +85,7 @@ pub struct DecodeCtx<'a> {
     /// A subrecord may be read against a value another subrecord of the
     /// same record holds: the `PERK` record's `DATA` is one thing or
     /// another depending on the `PRKE` beside it.
-    pub exposed: HashMap<(String, String), i64>,
+    pub exposed: HashMap<(String, String), SwitchValue>,
     /// The subrecords of the block that is open, when the block's opener
     /// names a variant.
     ///
@@ -80,12 +93,20 @@ pub struct DecodeCtx<'a> {
     /// activity's type, and the field after it is decoded against that
     /// type's definition.
     pub block_variant: Option<BTreeMap<String, SubDef>>,
+    /// The name of the variant chosen for the open block.
+    pub block_variant_name: Option<String>,
+    /// The name of the block that is open, if any.
+    pub block: Option<String>,
     /// The values of the struct being read, for a union inside it to be
     /// read against.
     ///
     /// The map is saved and restored around a nested struct, so a nested
     /// struct does not see its parent's fields.
-    pub switch_on: Option<HashMap<String, i64>>,
+    pub switch_on: Option<HashMap<String, SwitchValue>>,
+    /// The record's format version.
+    pub form_version: u32,
+    /// Whether the file is localized.
+    pub localized: bool,
 }
 
 impl<'a> DecodeCtx<'a> {
@@ -95,10 +116,14 @@ impl<'a> DecodeCtx<'a> {
             schema,
             rec_sig,
             block_variant: None,
+            block_variant_name: None,
+            block: None,
             values: HashMap::new(),
             counts: HashMap::new(),
             exposed: HashMap::new(),
             switch_on: None,
+            form_version: 0,
+            localized: false,
         }
     }
 }
@@ -188,25 +213,31 @@ fn decode_sub_in(
 pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> DecodedSub {
     let sig = String::from_utf8_lossy(&s.sig).into_owned();
     let rec_key = String::from_utf8_lossy(rec_sig).into_owned();
-    let def = ctx
-        .schema
-        .records
-        .get(&rec_key)
-        .and_then(|r| {
-            r.subrecords.get(&sig).or_else(|| {
-                // A signature that is only partly known: the weather
-                // record's texture layers are `00TX`, `10TX`, `20TX` and
-                // on, so the schema gives the suffix and the signature is
-                // matched against its trailing bytes.
-                r.wildcards.iter().find(|(suffix, _)| {
-                    suffix.len() <= sig.len()
-                        && sig.as_bytes()[sig.len() - suffix.len()..] == suffix[..]
-                }).map(|(_, d)| d)
+    let block_def = ctx.block.as_ref().and_then(|bname| {
+        let seq = ctx.schema.records.get(&rec_key).and_then(|r| r.sequence.as_ref())?;
+        let b = seq.blocks.get(bname).or_else(|| seq.blocks.values().find(|b| &b.opener == bname))?;
+        ctx.block_variant.as_ref().and_then(|v| v.get(&sig)).cloned().or_else(|| b.subrecords.get(&sig).cloned())
+    });
+    let def = block_def.or_else(|| {
+        ctx.schema
+            .records
+            .get(&rec_key)
+            .and_then(|r| {
+                r.subrecords.get(&sig).cloned().or_else(|| {
+                    // A signature that is only partly known: the weather
+                    // record's texture layers are `00TX`, `10TX`, `20TX` and
+                    // on, so the schema gives the suffix and the signature is
+                    // matched against its trailing bytes.
+                    r.wildcards.iter().find(|(suffix, _)| {
+                        suffix.len() <= sig.len()
+                            && sig.as_bytes()[sig.len() - suffix.len()..] == suffix[..]
+                    }).map(|(_, d)| d.clone())
+                })
             })
-        })
-        // A subrecord any record may carry: the editor ID and its like.
-        .or_else(|| ctx.schema.common_subrecords.get(&sig));
-    let Some(def) = def else {
+            // A subrecord any record may carry: the editor ID and its like.
+            .or_else(|| ctx.schema.common_subrecords.get(&sig).cloned())
+    });
+    let Some(def) = &def else {
         return DecodedSub {
             sig: s.sig,
             error: None,
@@ -273,11 +304,27 @@ fn decode_type_value(
     scope: &Map<String, Json>,
 ) -> Result<Json, String> {
     match ty {
-        Type::Prim(p) => decode_prim(*p, c),
+        Type::Prim(p) => decode_prim(*p, c, ctx),
+        Type::Repeat(inner) => {
+            let mut elems = Vec::new();
+            let mut i = 0usize;
+            while c.remaining() > 0 {
+                let before = c.pos;
+                elems.push(
+                    decode_type_value(inner, c, ctx, scope)
+                        .map_err(|e| format!("[{i}]: {e}"))?,
+                );
+                if c.pos == before {
+                    return Err("a repeat element read no bytes".into());
+                }
+                i += 1;
+            }
+            Ok(Json::Array(elems))
+        }
         Type::Named(n) => {
             // An enum: the value, and the name it has.
             if let Some(values) = ctx.schema.enum_values(n) {
-                let v = decode_prim(ctx.schema.enum_storage(n), c)?;
+                let v = decode_prim(ctx.schema.enum_storage(n), c, ctx)?;
                 let i = v.as_i64().unwrap_or(0);
                 let name = values.get(&i).cloned();
                 let mut m = Map::new();
@@ -291,10 +338,13 @@ fn decode_type_value(
             let Some(td) = ctx.schema.type_def(n) else {
                 return Err(format!("the unknown type {n:?}"));
             };
+            if let Some(alias) = &td.alias {
+                return decode_type_value(alias, c, ctx, scope);
+            }
             // A named type that is a set of flags: the flags are stored as
             // one number, and each flag is a bit of it.
             if !td.bits.is_empty() {
-                let v = decode_prim(td.storage, c)?;
+                let v = decode_prim(td.storage, c, ctx)?;
                 let i = v.as_i64().unwrap_or(0);
                 let mut m = Map::new();
                 m.insert("value".into(), v);
@@ -308,7 +358,7 @@ fn decode_type_value(
             // A named type that is a set of names: the value is stored as
             // one number, and the name it has is read from it.
             if !td.values.is_empty() {
-                let v = decode_prim(td.storage, c)?;
+                let v = decode_prim(td.storage, c, ctx)?;
                 let i = v.as_i64().unwrap_or(0);
                 let mut m = Map::new();
                 m.insert("value".into(), v);
@@ -334,7 +384,7 @@ fn decode_type_value(
             decode_struct(td, c, ctx, scope)
         }
         Type::Enum { storage, values } => {
-            let v = decode_prim(*storage, c)?;
+            let v = decode_prim(*storage, c, ctx)?;
             let i = v.as_i64().unwrap_or(0);
             let mut m = Map::new();
             m.insert("value".into(), v);
@@ -344,7 +394,7 @@ fn decode_type_value(
             Ok(Json::Object(m))
         }
         Type::Bits { storage, bits } => {
-            let v = decode_prim(*storage, c)?;
+            let v = decode_prim(*storage, c, ctx)?;
             let i = v.as_i64().unwrap_or(0);
             let mut m = Map::new();
             m.insert("value".into(), v);
@@ -364,6 +414,7 @@ fn decode_type_value(
                 storage: Prim::U32,
                 union: Vec::new(),
                 value_union: None,
+                alias: None,
             };
             decode_struct(&td, c, ctx, scope)
         }
@@ -429,6 +480,40 @@ fn decode_type_value(
                     };
                     len as usize
                 }
+                ArrayCount::Bits(field, max_bits) => {
+                    let flags = scope
+                        .get(field)
+                        .and_then(Json::as_u64)
+                        .or_else(|| ctx.values.get(field).and_then(Json::as_u64))
+                        .unwrap_or(0);
+                    let mask = if *max_bits >= 64 {
+                        !0
+                    } else {
+                        (1u64 << *max_bits) - 1
+                    };
+                    (flags & mask).count_ones() as usize
+                }
+                ArrayCount::Sum(a, b) => {
+                    let na = scope
+                        .get(a)
+                        .and_then(Json::as_u64)
+                        .or_else(|| ctx.values.get(a).and_then(Json::as_u64))
+                        .unwrap_or(0);
+                    let nb = scope
+                        .get(b)
+                        .and_then(Json::as_u64)
+                        .or_else(|| ctx.values.get(b).and_then(Json::as_u64))
+                        .unwrap_or(0);
+                    (na + nb) as usize
+                }
+                ArrayCount::Pow(f) => {
+                    let side = scope
+                        .get(f)
+                        .and_then(Json::as_u64)
+                        .or_else(|| ctx.values.get(f).and_then(Json::as_u64))
+                        .unwrap_or(0) as usize;
+                    side * side
+                }
             };
             decode_counted(of, n, c, ctx, scope)
         }
@@ -466,7 +551,7 @@ fn decode_struct(
     for f in &td.fields {
         // An optional field may be absent: the data runs out before it, and
         // that is not an error.
-        if f.optional && c.remaining() == 0 {
+        if (f.optional || f.optional_if_empty) && c.remaining() == 0 {
             continue;
         }
         let v = if let Some(count_from) = &f.count_from {
@@ -486,7 +571,7 @@ fn decode_struct(
         // struct: the `PERK` record's `PRKE` holds the type of the effect,
         // and the `DATA` beside it is one thing or another depending on it.
         if f.publish || f.expose {
-            if let Some(n) = switch_value(&v) {
+            if let Some(sv) = switch_value(&v) {
                 // The value is published record-wide, so a union in a
                 // subrecord that comes later is read against it.
                 ctx.exposed.insert(
@@ -494,11 +579,11 @@ fn decode_struct(
                         String::from_utf8_lossy(&ctx.rec_sig).into_owned(),
                         f.name.clone(),
                     ),
-                    n,
+                    sv.clone(),
                 );
                 // And in the struct's own map, for a union beside it.
                 if let Some(sw) = ctx.switch_on.as_mut() {
-                    sw.insert(f.name.clone(), n);
+                    sw.insert(f.name.clone(), sv);
                 }
             }
         }
@@ -525,7 +610,7 @@ fn decode_counted(
         }
         let mut out = Vec::with_capacity(n.min(4096));
         for _ in 0..n {
-            out.push(decode_prim(*p, c)?);
+            out.push(decode_prim(*p, c, ctx)?);
         }
         return Ok(Json::Array(out));
     }
@@ -564,7 +649,7 @@ fn type_size(schema: &Schema, ty: &Type) -> Option<usize> {
 }
 
 /// Decode a primitive.
-fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
+fn decode_prim(p: Prim, c: &mut Cursor<'_>, ctx: &DecodeCtx<'_>) -> Result<Json, String> {
     let e = |e: nvre_util::OutOfBounds| e.to_string();
     Ok(match p {
         Prim::U8 => Json::from(c.u8().map_err(e)?),
@@ -588,8 +673,44 @@ fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
         // rewrites it, and both want it in one shape.
         Prim::FormId => Json::String(format!("0x{:08X}", c.u32().map_err(e)?)),
         Prim::ZString => {
-            let bytes = c.bytes(c.remaining()).map_err(e)?;
-            Json::String(cp1252::decode_z(bytes))
+            let rest = c.bytes(c.remaining()).map_err(e)?;
+            let n = match rest.iter().position(|b| *b == 0) {
+                Some(n) => n,
+                None => {
+                    if rest.is_empty() {
+                        return Ok(Json::String(String::new()));
+                    }
+                    return Err(format!(
+                        "zstring not NUL-terminated: {:?}",
+                        cp1252::decode(rest)
+                    ));
+                }
+            };
+            let text = cp1252::decode(&rest[..n]);
+            c.pos -= rest.len() - n - 1;
+            Json::String(text)
+        }
+        Prim::Localized => {
+            if ctx.localized {
+                Json::from(c.u32().map_err(e)?)
+            } else {
+                let rest = c.bytes(c.remaining()).map_err(e)?;
+                let n = match rest.iter().position(|b| *b == 0) {
+                    Some(n) => n,
+                    None => {
+                        if rest.is_empty() {
+                            return Ok(Json::String(String::new()));
+                        }
+                        return Err(format!(
+                            "localized string not NUL-terminated: {:?}",
+                            cp1252::decode(rest)
+                        ));
+                    }
+                };
+                let text = cp1252::decode(&rest[..n]);
+                c.pos -= rest.len() - n - 1;
+                Json::String(text)
+            }
         }
         Prim::String => {
             // The rest of the data is the text.
@@ -629,6 +750,13 @@ fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
                 .map_err(|oob| format!("the length {n} exceeds the field: {oob}"))?;
             Json::String(cp1252::decode(bytes))
         }
+        Prim::LenStringU16 => {
+            let n = c.u16().map_err(e)? as usize;
+            let bytes = c
+                .bytes(n)
+                .map_err(|oob| format!("the length {n} exceeds the field: {oob}"))?;
+            Json::String(cp1252::decode(bytes))
+        }
         Prim::ZStringArray => {
             // A list of NUL-separated strings, closed by a NUL.
             let rest = c.bytes(c.remaining()).map_err(e)?;
@@ -651,7 +779,18 @@ fn hex_of(b: &[u8]) -> String {
 
 /// Decode a record, and measure how much of it the schema explains.
 pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
+    decode_record_localized(r, schema, false)
+}
+
+/// Decode a record, specifying whether the parent plugin is localized.
+pub fn decode_record_localized(
+    r: &Record,
+    schema: &Schema,
+    localized: bool,
+) -> (Json, RecordCoverage) {
     let mut ctx = DecodeCtx::new(schema, r.header.sig);
+    ctx.form_version = r.header.form_version as u32;
+    ctx.localized = localized;
     let mut cov = RecordCoverage {
         sig: r.header.sig,
         form_id: r.header.form_id,
@@ -684,8 +823,7 @@ pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
         .unwrap_or_default();
     let subs = match r.subrecords() {
         Ok(s) => s,
-        Err(e) => {
-            cov.error_count += 1;
+        Err(_e) => {
             cov.error_count += 1;
             return (Json::Object(m), cov);
         }
@@ -736,14 +874,45 @@ fn count(cov: &mut RecordCoverage, d: &DecodedSub, size: usize) {
     });
 }
 
-/// The number a value holds, when it is one: the switch value a union's
-/// variant is chosen by.
-fn switch_value(v: &Json) -> Option<i64> {
+/// The value a field holds for union-switching purposes.
+fn switch_value(v: &Json) -> Option<SwitchValue> {
     match v {
-        Json::Number(n) => n.as_i64(),
-        Json::Object(m) => m.get("value").and_then(|v| v.as_i64()),
-        // A FormID is text, so its number is read back out of the text.
-        Json::String(s) => u32::from_str_radix(s.strip_prefix("0x")?, 16).ok().map(|v| v as i64),
+        Json::Number(n) => {
+            let i = n.as_i64()?;
+            Some(SwitchValue {
+                text: i.to_string(),
+                number: Some(i),
+            })
+        }
+        Json::Object(m) => {
+            if let Some(n) = m.get("value").and_then(|v| v.as_i64()) {
+                Some(SwitchValue {
+                    text: n.to_string(),
+                    number: Some(n),
+                })
+            } else if let Some(s) = m.get("name").and_then(|v| v.as_str()) {
+                Some(SwitchValue::text_only(s.to_string()))
+            } else {
+                None
+            }
+        }
+        Json::String(s) => {
+            if let Some(hex) = s.strip_prefix("0x") {
+                if let Ok(n) = u32::from_str_radix(hex, 16) {
+                    return Some(SwitchValue {
+                        text: s.clone(),
+                        number: Some(n as i64),
+                    });
+                }
+            }
+            if let Ok(n) = s.parse::<i64>() {
+                return Some(SwitchValue {
+                    text: s.clone(),
+                    number: Some(n),
+                });
+            }
+            Some(SwitchValue::text_only(s.clone()))
+        }
         _ => None,
     }
 }
@@ -785,29 +954,54 @@ fn decode_value_union(
     ctx: &mut DecodeCtx<'_>,
     scope: &Map<String, Json>,
 ) -> Result<Json, String> {
-    // The decider is looked for in three places, in order: the struct being
-    // read, the record's own published values, and the record's published
-    // subrecords.
-    let switch = scope
-        .get(&vu.switch_on)
-        .and_then(|v| v.as_i64())
-        .or_else(|| {
-            ctx.switch_on
-                .as_ref()
-                .and_then(|m| m.get(&vu.switch_on).copied())
-        })
-        .or_else(|| {
-            // The decider may be a subrecord of the same record that was
-            // decoded earlier.
-            ctx.exposed
-                .get(&(
-                    String::from_utf8_lossy(&ctx.rec_sig).into_owned(),
-                    vu.switch_on.clone(),
-                ))
-                .copied()
-        });
+    let switch = if let Some(min) = vu.min_version {
+        if ctx.form_version >= min {
+            Some(SwitchValue {
+                text: "1".into(),
+                number: Some(1),
+            })
+        } else {
+            Some(SwitchValue {
+                text: "0".into(),
+                number: Some(0),
+            })
+        }
+    } else {
+        scope
+            .get(&vu.switch_on)
+            .and_then(switch_value)
+            .or_else(|| {
+                ctx.switch_on
+                    .as_ref()
+                    .and_then(|m| m.get(&vu.switch_on).cloned())
+            })
+            .or_else(|| {
+                ctx.exposed
+                    .get(&(
+                        String::from_utf8_lossy(&ctx.rec_sig).into_owned(),
+                        vu.switch_on.clone(),
+                    ))
+                    .cloned()
+            })
+    };
     let idx = match switch {
-        Some(v) => vu.cases.get(&v).copied().unwrap_or(vu.default),
+        Some(sv) => {
+            let mut matched = None;
+            if !vu.bits.is_empty() {
+                if let Some(num) = sv.number {
+                    for (mask, var_idx) in &vu.bits {
+                        if (num as u64) & mask != 0 {
+                            matched = Some(*var_idx);
+                            break;
+                        }
+                    }
+                }
+            }
+            if matched.is_none() {
+                matched = vu.cases.get(&sv.text).copied();
+            }
+            matched.unwrap_or(vu.default)
+        }
         None => vu.default,
     };
     let Some(variant) = vu.variants.get(idx) else {
@@ -828,6 +1022,7 @@ fn decode_sequence(
     ctx: &mut DecodeCtx<'_>,
     cov: &mut RecordCoverage,
 ) -> Map<String, Json> {
+    let rec_key = String::from_utf8_lossy(&rec_sig).into_owned();
     let mut m = Map::new();
     // The block that is open, and where in it we are.
     let mut open: Option<&BlockDef> = None;
@@ -843,34 +1038,50 @@ fn decode_sequence(
         let opener = if expected_here {
             None
         } else {
-            seq.blocks.values().find(|b| b.opener == sig)
+            seq.blocks.values().find(|b| b.openers.contains(&sig) || b.opener == sig)
         };
         if let Some(b) = opener {
-            // The block that was open ends.
-            if let Some(prev) = open.take() {
-                store_block(&mut m, prev, &mut block_subs);
-            }
-            open = Some(b);
-            block_subs.clear();
-            // A new block starts with no variant chosen.
-            ctx.block_variant = None;
-            // The opener itself is a subrecord of the block.
-            let d = decode_sub_in(b, &sig, s, ctx, &m);
-            count(cov, &d, s.data.len());
-            if let Some(v) = d.value.clone() {
-                block_subs.push((sig, v.clone()));
-                // A block that switches on its opener's value keeps that
-                // choice for the whole block, not just for the opener: the
-                // field after it is decoded against that type's definition.
-                if !b.variants.is_empty() {
-                    if let Some(name) = variant_name(&v) {
-                        if let Some(var) = b.variants.get(&name) {
-                            ctx.block_variant = Some(var.subrecords.clone());
+            let flat_fits = if b.own_first {
+                ctx.schema
+                    .records
+                    .get(&rec_key)
+                    .and_then(|rd| rd.subrecords.get(&sig))
+                    .and_then(|d| ctx.schema.fixed_size(&d.ty))
+                    .map(|n| n == s.data.len())
+                    .unwrap_or(false)
+            } else {
+                false
+            };
+            if !flat_fits {
+                // The block that was open ends.
+                if let Some(prev) = open.take() {
+                    store_block(&mut m, prev, &mut block_subs);
+                }
+                open = Some(b);
+                ctx.block = Some(b.opener.clone());
+                block_subs.clear();
+                // A new block starts with no variant chosen.
+                ctx.block_variant = None;
+                ctx.block_variant_name = None;
+                // The opener itself is a subrecord of the block.
+                let d = decode_sub_in(b, &sig, s, ctx, &m);
+                count(cov, &d, s.data.len());
+                if let Some(v) = d.value.clone() {
+                    block_subs.push((sig, v.clone()));
+                    // A block that switches on its opener's value keeps that
+                    // choice for the whole block, not just for the opener: the
+                    // field after it is decoded against that type's definition.
+                    if !b.variants.is_empty() {
+                        if let Some(name) = variant_name(&v) {
+                            if let Some(var) = b.variants.get(&name) {
+                                ctx.block_variant = Some(var.subrecords.clone());
+                                ctx.block_variant_name = Some(name);
+                            }
                         }
                     }
                 }
+                continue;
             }
-            continue;
         }
         // A subrecord of the block that is open, or of the record. The
         // block's chosen variant says which fields the block holds, so it
@@ -912,6 +1123,23 @@ fn variant_name(v: &Json) -> Option<String> {
 
 /// Walk a record's subrecords, giving each one to the caller.
 ///
+/// The block a subrecord is in, when the record is a sequence.
+pub fn block_of(
+    rec_sig: &[u8; 4],
+    subs: &[Subrecord],
+    schema: &Schema,
+    want: [u8; 4],
+) -> Option<String> {
+    let mut ctx = DecodeCtx::new(schema, *rec_sig);
+    let mut found = None;
+    walk_sequence(rec_sig, subs, schema, &mut ctx, |s, c| {
+        if found.is_none() && s.sig == want {
+            found = c.block.clone();
+        }
+    });
+    found
+}
+
 /// A record that is a sequence is walked a block at a time: the context
 /// says which block is open, so a subrecord's meaning is known before it
 /// is read.
@@ -922,9 +1150,10 @@ pub fn walk_sequence(
     ctx: &mut DecodeCtx<'_>,
     mut f: impl FnMut(&Subrecord, &mut DecodeCtx<'_>),
 ) {
+    let rec_key = String::from_utf8_lossy(rec_sig).into_owned();
     let seq = schema
         .records
-        .get(String::from_utf8_lossy(rec_sig).as_ref())
+        .get(&rec_key)
         .and_then(|rd| rd.sequence.as_ref());
     let Some(seq) = seq else {
         for s in subs {
@@ -940,23 +1169,40 @@ pub fn walk_sequence(
         // is open expects it.
         let expected_here = open.map(|b| b.order.contains(&sig)).unwrap_or(false);
         if !expected_here {
-            if let Some(b) = seq.blocks.values().find(|b| b.opener == sig) {
-                if let Some(prev) = open {
+            if let Some(b) = seq.blocks.values().find(|b| b.openers.contains(&sig) || b.opener == sig) {
+                let flat_fits = if b.own_first {
+                    schema
+                        .records
+                        .get(&rec_key)
+                        .and_then(|rd| rd.subrecords.get(&sig))
+                        .and_then(|d| schema.fixed_size(&d.ty))
+                        .map(|n| n == s.data.len())
+                        .unwrap_or(false)
+                } else {
+                    false
+                };
+                if !flat_fits {
+                    if let Some(prev) = open {
+                        ctx.block_variant = None;
+                        ctx.block_variant_name = None;
+                        let _ = prev;
+                    }
+                    open = Some(b);
+                    ctx.block = Some(b.opener.clone());
                     ctx.block_variant = None;
-                    let _ = prev;
+                    ctx.block_variant_name = None;
                 }
-                open = Some(b);
-                ctx.block_variant = None;
             }
         }
         f(s, ctx);
         // The opener's value picks the block's variant.
         if let Some(b) = open {
-            if b.opener == sig && !b.variants.is_empty() {
+            if (b.opener == sig || b.openers.contains(&sig)) && !b.variants.is_empty() {
                 let value = ctx.values.get(&sig).and_then(variant_name);
                 if let Some(name) = value {
                     if let Some(var) = b.variants.get(&name) {
                         ctx.block_variant = Some(var.subrecords.clone());
+                        ctx.block_variant_name = Some(name);
                     }
                 }
             }
@@ -1108,8 +1354,13 @@ impl Coverage {
     /// Measure a record, and add it to the totals.
     /// Measure a list of records and fold them into the totals.
     pub fn add_records(&mut self, recs: &[&Record], schema: &Schema) {
+        self.add_records_localized(recs, schema, false);
+    }
+
+    /// Measure a list of records from a file that may be localized.
+    pub fn add_records_localized(&mut self, recs: &[&Record], schema: &Schema, localized: bool) {
         for r in recs {
-            let (_value, rc) = decode_record(r, schema);
+            let (_value, rc) = decode_record_localized(r, schema, localized);
             self.add(rc);
         }
     }

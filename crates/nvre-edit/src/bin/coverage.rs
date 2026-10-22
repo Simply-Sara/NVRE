@@ -69,7 +69,8 @@ fn main() {
         let mut cov = Coverage::default();
         let mut recs = Vec::new();
         visit_nodes(&p.nodes, &mut |r, _| recs.push(r));
-        cov.add_records(&recs, &schema);
+        let localized = p.header.is_localized();
+        cov.add_records_localized(&recs, &schema, localized);
         // Which signatures are still unknown, and on which record types. The
         // per-signature totals say what is left to describe; the record
         // breakdown says how much of it the editor ever shows a user.
@@ -79,6 +80,7 @@ fn main() {
         for rec in &recs {
             let rsig = rec.sig_str();
             let mut ctx = nvre_esm::decode::DecodeCtx::new(&schema, rec.header.sig);
+            ctx.localized = localized;
             let subs = rec.subrecords().expect("subs");
             // The sequence walk, so a record whose subrecords are an ordered
             // list of blocks is measured against the block each subrecord is

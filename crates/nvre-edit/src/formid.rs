@@ -95,6 +95,13 @@ fn remap_value(
             }
             Some(())
         }
+        TypeDef::Repeat(inner) => {
+            let arr = value.as_array_mut()?;
+            for v in arr.iter_mut() {
+                remap_value(schema, inner, v, map, changed)?;
+            }
+            Some(())
+        }
         TypeDef::Struct(fields) => {
             let obj = value.as_object_mut()?;
             for f in fields {

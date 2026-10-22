@@ -20,7 +20,6 @@
 //! The record's 24 bytes are the payload size, the flags, the FormID, the
 //! version-control words, and the format version.
 
-use bytes::Bytes;
 use nvre_util::{tag_str, Cursor};
 use std::borrow::Cow;
 
@@ -39,6 +38,8 @@ pub mod record_flags {
     pub const MASTER: u32 = 0x0000_0001;
     /// The record was deleted.
     pub const DELETED: u32 = 0x0000_0020;
+    /// The file's strings are 4-byte string IDs rather than text (TES4 only).
+    pub const LOCALIZED: u32 = 0x0000_0080;
     /// The payload is a u32 decompressed size and then a zlib stream.
     pub const COMPRESSED: u32 = 0x0004_0000;
 }
@@ -204,6 +205,23 @@ impl Record {
         self.header.sig_str()
     }
 
+    /// The record types whose payload may be compressed inside the record.
+    ///
+    /// Fallout 4 compresses four of its record types *inside* the record, so
+    /// the payload is not a run of subrecords but a `u32` giving the
+    /// uncompressed size and then a zlib stream.
+    pub const INFLATED: [[u8; 4]; 4] = [*b"LAND", *b"CELL", *b"NAVM", *b"NPC_"];
+
+    /// Whether this record's payload may be compressed inside the record.
+    pub fn may_be_inflated(&self) -> bool {
+        Self::INFLATED.iter().any(|s| s == &self.header.sig)
+    }
+
+    /// Whether this record's payload *is* compressed inside the record.
+    pub fn is_inflated(&self) -> bool {
+        self.may_be_inflated() && self.raw.len() > 5 && is_zlib_header(&self.raw[4..])
+    }
+
     /// Whether the record is flagged as deleted.
     pub fn is_deleted(&self) -> bool {
         self.header.flags & record_flags::DELETED != 0
@@ -305,6 +323,11 @@ impl PluginHeader {
         self.flags & record_flags::MASTER != 0
     }
 
+    /// Whether the file's strings are 4-byte string IDs rather than text.
+    pub fn is_localized(&self) -> bool {
+        self.flags & record_flags::LOCALIZED != 0
+    }
+
     /// The value of a field, if it is there.
     pub fn get(&self, name: &str) -> Option<&[u8]> {
         self.fields
@@ -376,11 +399,6 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
     // The fields the editor and the writer need, read out of the header's
     // own subrecords.
     let field = |name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v);
-    let zstring = |name: &str| {
-        field(name)
-            .map(|v| nvre_util::cp1252::decode_z(v))
-            .filter(|s| !s.is_empty())
-    };
     let version = field("HEDR")
         .and_then(|v| v.get(..4))
         .map(|v| f32::from_le_bytes([v[0], v[1], v[2], v[3]]))
@@ -393,12 +411,9 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
         .and_then(|v| v.get(..4))
         .map(|v| u32::from_le_bytes([v[0], v[1], v[2], v[3]]))
         .unwrap_or(0);
-    let author = zstring("CNST").and_then(|a| {
-        // The author is the text up to the first NUL.
-        field("CNST").map(|v| {
-            let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
-            nvre_util::cp1252::decode(&v[..end])
-        })
+    let author = field("CNST").map(|v| {
+        let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
+        nvre_util::cp1252::decode(&v[..end])
     });
     let description = field("DESC").map(|v| {
         let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
@@ -544,6 +559,7 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
 }
 
 /// Read records until the group ends.
+#[allow(dead_code)]
 fn parse_records(c: &mut Cursor<'_>, data: &[u8], end: usize) -> Result<Vec<Record>, EsmError> {
     let mut out = Vec::new();
     loop {
@@ -621,6 +637,30 @@ fn parse_record(
     }))
 }
 
+/// Whether the bytes at the head of a buffer are a zlib stream.
+///
+/// A zlib stream starts with a two-byte header: the compression method and
+/// flags, then a check value. The common forms are `78 9c` (the default
+/// compression), `78 da` (the best compression) and `78 01` (no
+/// compression) [documented: the zlib format, RFC 1950].
+pub fn is_zlib_header(b: &[u8]) -> bool {
+    if b.len() < 2 {
+        return false;
+    }
+    let cmf = b[0];
+    let flg = b[1];
+    // The compression method must be 8 (deflate) and the two bytes together
+    // must be a multiple of 31.
+    if cmf & 0x0f != 8 {
+        return false;
+    }
+    if ((cmf as u16) * 256 + flg as u16) % 31 != 0 {
+        return false;
+    }
+    // A preset dictionary is not used here, and the header must not say so.
+    flg & 0x20 == 0
+}
+
 /// Read a record's subrecords.
 ///
 /// The `XXXX` form is resolved here: it is a subrecord whose size field is
@@ -686,6 +726,24 @@ pub fn payload(record: &Record) -> Result<Cow<'_, [u8]>, EsmError> {
 pub fn payload_checked(
     record: &Record,
 ) -> Result<(Cow<'_, [u8]>, nvre_inflate::Trailer), EsmError> {
+    if record.is_inflated() {
+        let raw = &record.raw;
+        if raw.len() < 6 {
+            return Err(EsmError::Decompress {
+                offset: record.offset,
+                form_id: record.header.form_id,
+                msg: "inflated payload shorter than 6 bytes".into(),
+            });
+        }
+        let size = u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]) as usize;
+        return nvre_inflate::zlib_decompress_ex(&raw[4..], Some(size))
+            .map(|(d, t)| (Cow::Owned(d), t))
+            .map_err(|e| EsmError::Decompress {
+                offset: record.offset,
+                form_id: record.header.form_id,
+                msg: e.to_string(),
+            });
+    }
     if !record.is_compressed() {
         return Ok((
             Cow::Borrowed(&record.raw),

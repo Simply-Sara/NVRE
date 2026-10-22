@@ -2,7 +2,7 @@
 //!
 //! The same numbers `fnvtool esm coverage` prints, measured with
 //! `nvre-esm` rather than upstream's `fnv-esm`.
-use nvre_esm::decode::decode_record;
+use nvre_esm::decode::decode_record_localized;
 use nvre_esm::raw::visit_records;
 use nvre_esm::{Plugin, Schema};
 use std::collections::BTreeMap;
@@ -68,9 +68,10 @@ fn main() {
         let mut unknown = 0u64;
         let mut trailing = 0u64;
         let mut error = 0u64;
+        let localized = p.header.is_localized();
         for rec in &recs {
             let rsig = rec.sig_str();
-            let (_value, cov) = decode_record(rec, &schema);
+            let (_value, cov) = decode_record_localized(rec, &schema, localized);
             total += cov.subrecords.len() as u64;
             ok += cov.ok_count;
             unknown += cov.unknown_count;
