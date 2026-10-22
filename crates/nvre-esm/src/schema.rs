@@ -196,6 +196,8 @@ pub enum Type {
     Inline(Vec<Field>),
     /// A set of variants, one of which is chosen by its size.
     Union(Vec<Variant>),
+    /// A set of variants, one of which is chosen by another field's value.
+    ValueUnion(ValueUnion),
     /// An array: a count, and what the elements are.
     Array {
         /// What the elements are.
@@ -263,6 +265,12 @@ pub struct Field {
     pub count_from: Option<String>,
     /// The field is shown in the editor's inspector.
     pub expose: bool,
+    /// The field's value is published, so a union in the same struct may
+    /// be read against it.
+    ///
+    /// The `PERK` record's `PRKE` holds the type of the effect, and the
+    /// `DATA` beside it is one thing or another depending on it.
+    pub publish: bool,
 }
 
 /// A named type: a struct, or a set of names.
@@ -281,6 +289,22 @@ pub struct TypeDef {
     pub union: Vec<Variant>,
     /// The union chosen by the value of another field, when it is one.
     pub value_union: Option<ValueUnion>,
+    /// The union chosen by the field's first word, when it is one.
+    ///
+    /// The word is read without consuming it: it belongs to the field either
+    /// way, so the whole field is the union.
+    pub peek_union: Option<PeekUnion>,
+}
+
+/// A union whose variant is chosen by the field's first word.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PeekUnion {
+    /// The word each variant is chosen by.
+    pub cases: BTreeMap<i64, usize>,
+    /// The variant to use when no case matches.
+    pub default: usize,
+    /// The variants.
+    pub variants: Vec<Variant>,
 }
 
 /// A union whose variant is chosen by another field's value.
@@ -307,6 +331,13 @@ pub struct RecordDef {
     pub name: String,
     /// The subrecords, by their four-byte type.
     pub subrecords: BTreeMap<String, SubDef>,
+    /// The subrecords whose signature is only partly known, by the suffix
+    /// their signature ends with.
+    ///
+    /// A weather record's texture layers are named `00TX`, `10TX`, `20TX`
+    /// and on, so the schema gives the suffix `0TX` and the signature is
+    /// matched against its trailing bytes.
+    pub wildcards: Vec<(Vec<u8>, SubDef)>,
     /// The order the subrecords appear in, when the schema says.
     pub order: Vec<String>,
     /// The record's sequence, when it is one.
@@ -361,6 +392,9 @@ pub struct SubDef {
     pub count_from: Option<String>,
     /// The subrecord is shown in the editor's inspector.
     pub expose: bool,
+    /// The subrecord's value is published, so a union beside it may be read
+    /// against it.
+    pub publish: bool,
 }
 
 /// A fault in a schema.
@@ -390,8 +424,26 @@ impl Schema {
     }
 
     /// Read a schema from a directory of JSON files.
+    ///
+    /// A directory that holds a `base` entry which resolves outside itself —
+    /// the symlink a game directory carries — is a game directory: the base
+    /// is read first, and the directory's own files are laid over it.
     pub fn load_dir(dir: &Path) -> Result<Schema, SchemaError> {
-        let mut s = Schema::new();
+        let linked_base = dir.join("base");
+        let base = if linked_base.is_dir()
+            && linked_base
+                .canonicalize()
+                .map(|c| c != dir.canonicalize().unwrap_or_default().join("base"))
+                .unwrap_or(false)
+        {
+            Some(linked_base.canonicalize().unwrap_or(linked_base))
+        } else {
+            None
+        };
+        let mut s = match &base {
+            Some(b) => Schema::load_dir(b)?,
+            None => Schema::new(),
+        };
         s.load_layer(dir)?;
         s.check()?;
         Ok(s)
@@ -475,11 +527,14 @@ impl Schema {
             for (name, def) in common {
                 // A common entry is either a subrecord any record may carry,
                 // or a type a subrecord may use. A subrecord's name is four
-                // bytes of uppercase text.
-                if name.len() == 4 && name.chars().all(|c| c.is_ascii_uppercase()) {
+                // bytes of uppercase text, which may hold digits: `MOD2` is
+                // a subrecord, and so is `MODL`.
+                if name.len() == 4
+                    && name.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+                {
                     if let Some(d) = def.as_object() {
                         if d.get("type").is_some() && d.get("struct").is_none() {
-                            let (ty, optional, count_from, expose) =
+                            let (ty, optional, count_from, expose, publish) =
                                 self.parse_sub(&Json::Object(d.clone()))?;
                             self.common_subrecords.insert(
                                 name.to_string(),
@@ -493,6 +548,7 @@ impl Schema {
                                     optional,
                                     count_from,
                                     expose,
+                                    publish,
                                 },
                             );
                             continue;
@@ -512,6 +568,7 @@ impl Schema {
                             Type::Enum { values, .. } => values.clone(),
                             _ => BTreeMap::new(),
                         },
+                        peek_union: None,
                         bits: match &ty {
                             Type::Bits { bits, .. } => bits.clone(),
                             _ => Vec::new(),
@@ -545,7 +602,35 @@ impl Schema {
         // The subrecords: a map, and sometimes an order.
         if let Some(subs) = o.get("subrecords").and_then(|v| v.as_object()) {
             for (sig, sdef) in subs {
-                let (ty, optional, count_from, expose) = self.parse_sub(sdef)?;
+                // A key that starts with an asterisk names a suffix rather
+                // than a whole signature: `0TX` matches `00TX`, `10TX` and
+                // so on.
+                if let Some(suffix) = sig.strip_prefix('*') {
+                    let b = suffix.as_bytes();
+                    if b.is_empty() || b.len() > 4 {
+                        return Err(format!(
+                            "the wildcard suffix {suffix:?} of {name:?} must be 1 to 4 bytes"
+                        ));
+                    }
+                    let (ty, optional, count_from, expose, publish) = self.parse_sub(sdef)?;
+                    out.wildcards.push((
+                        b.to_vec(),
+                        SubDef {
+                            name: sdef
+                                .get("name")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or_default()
+                                .to_string(),
+                            ty,
+                            optional,
+                            count_from,
+                            expose,
+                            publish,
+                        },
+                    ));
+                    continue;
+                }
+                let (ty, optional, count_from, expose, publish) = self.parse_sub(sdef)?;
                 out.subrecords.insert(
                     sig.clone(),
                     SubDef {
@@ -558,6 +643,7 @@ impl Schema {
                         optional,
                         count_from,
                         expose,
+                        publish,
                     },
                 );
             }
@@ -611,7 +697,7 @@ impl Schema {
         let mut subrecords = BTreeMap::new();
         if let Some(subs) = o.get("subrecords").and_then(|v| v.as_object()) {
             for (sig, sdef) in subs {
-                let (ty, optional, count_from, expose) = self.parse_sub(sdef)?;
+                let (ty, optional, count_from, expose, publish) = self.parse_sub(sdef)?;
                 subrecords.insert(
                     sig.to_string(),
                     SubDef {
@@ -624,6 +710,7 @@ impl Schema {
                         optional,
                         count_from,
                         expose,
+                        publish,
                     },
                 );
             }
@@ -634,7 +721,7 @@ impl Schema {
                 let mut vsub = BTreeMap::new();
                 if let Some(subs) = vdef.get("subrecords").and_then(|v| v.as_object()) {
                     for (sig, sdef) in subs {
-                        let (ty, optional, count_from, expose) = self.parse_sub(sdef)?;
+                        let (ty, optional, count_from, expose, publish) = self.parse_sub(sdef)?;
                         vsub.insert(
                             sig.to_string(),
                             SubDef {
@@ -647,6 +734,7 @@ impl Schema {
                                 optional,
                                 count_from,
                                 expose,
+                                publish,
                             },
                         );
                     }
@@ -675,7 +763,10 @@ impl Schema {
     }
 
     /// Read a subrecord's type and its flags.
-    fn parse_sub(&self, def: &Json) -> Result<(Type, bool, Option<String>, bool), String> {
+    fn parse_sub(
+        &self,
+        def: &Json,
+    ) -> Result<(Type, bool, Option<String>, bool, bool), String> {
         let t = def.get("type").ok_or("a subrecord has no type")?;
         let ty = self.parse_type_value(t)?;
         let optional = def
@@ -687,7 +778,10 @@ impl Schema {
             .and_then(|v| v.as_str())
             .map(str::to_string);
         let expose = def.get("expose").and_then(|v| v.as_bool()).unwrap_or(false);
-        Ok((ty, optional, count_from, expose))
+        // A subrecord that is published holds the value a union beside it is
+        // read against.
+        let publish = def.get("publish").and_then(|v| v.as_bool()).unwrap_or(false);
+        Ok((ty, optional, count_from, expose, publish))
     }
 
     /// Read a type's value: a name, a primitive, or an object.
@@ -713,6 +807,26 @@ impl Schema {
                             u.get("type").ok_or("a union variant has no type")?,
                         )?;
                         variants.push(Variant { size, ty });
+                    }
+                    // A union whose variant is chosen by another field's
+                    // value has the cases and the decider beside the
+                    // variants.
+                    if let (Some(switch_on), Some(cases)) = (
+                        o.get("switch_on").and_then(|v| v.as_str()),
+                        o.get("cases").and_then(|v| v.as_object()),
+                    ) {
+                        let mut map = BTreeMap::new();
+                        for (k, v) in cases {
+                            if let Some(n) = v.as_u64() {
+                                map.insert(k.parse::<i64>().unwrap_or(-1), n as usize);
+                            }
+                        }
+                        return Ok(Type::ValueUnion(ValueUnion {
+                            switch_on: switch_on.to_string(),
+                            cases: map,
+                            default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
+                            variants,
+                        }));
                     }
                     return Ok(Type::Union(variants));
                 }
@@ -808,6 +922,7 @@ impl Schema {
                 .and_then(|v| v.as_str())
                 .map(str::to_string),
             expose: o.get("expose").and_then(|v| v.as_bool()).unwrap_or(false),
+            publish: o.get("publish").and_then(|v| v.as_bool()).unwrap_or(false),
         })
     }
 
@@ -833,6 +948,25 @@ impl Schema {
                     self.parse_type_value(u.get("type").ok_or("a union variant has no type")?)?;
                 union.push(Variant { size, ty });
             }
+            // A union whose variant is chosen by the field's first word:
+            // the word is read without consuming it.
+            let peek_union = if o.get("peek").and_then(|v| v.as_bool()).unwrap_or(false) {
+                let mut map = BTreeMap::new();
+                if let Some(cases) = o.get("cases").and_then(|v| v.as_object()) {
+                    for (k, v) in cases {
+                        if let Some(n) = v.as_u64() {
+                            map.insert(k.parse::<i64>().unwrap_or(-1), n as usize);
+                        }
+                    }
+                }
+                Some(PeekUnion {
+                    cases: map,
+                    default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
+                    variants: union.clone(),
+                })
+            } else {
+                None
+            };
             // A union whose variant is chosen by another field's value has
             // the cases and the decider beside the variants.
             let value_union = match (
@@ -862,6 +996,7 @@ impl Schema {
                 storage,
                 union,
                 value_union,
+                peek_union,
             });
         }
         if let Some(st) = o.get("struct").and_then(|v| v.as_array()) {
@@ -876,6 +1011,7 @@ impl Schema {
                 storage: Prim::U32,
                 union: Vec::new(),
                 value_union: None,
+                peek_union: None,
             });
         }
         if let Some(bits) = o.get("bits").and_then(|v| v.as_object()) {
@@ -886,6 +1022,7 @@ impl Schema {
                 storage,
                 union: Vec::new(),
                 value_union: None,
+                peek_union: None,
             });
         }
         let mut values = BTreeMap::new();
@@ -903,7 +1040,8 @@ impl Schema {
             bits: Vec::new(),
             storage,
             union: Vec::new(),
-                value_union: None,
+            value_union: None,
+            peek_union: None,
         })
     }
 
@@ -963,6 +1101,80 @@ impl Schema {
     ///
     /// `None` when the name is not an enum — a struct has no values, and a
     /// struct with no values is not an empty enum.
+    /// The size a type takes, when it takes one.
+    ///
+    /// `None` for a type whose size depends on the data: a field that may
+    /// be absent, an array whose count is not known, or a union whose
+    /// variants differ.
+    pub fn fixed_size(&self, ty: &Type) -> Option<usize> {
+        match ty {
+            Type::Prim(p) => p.size(),
+            Type::Enum { storage, .. } | Type::Bits { storage, .. } => storage.size(),
+            Type::Named(n) => {
+                let td = self.type_def(n)?;
+                self.type_def_size(td)
+            }
+            Type::Inline(fields) => {
+                let mut n = 0;
+                for f in fields {
+                    if f.optional {
+                        return None;
+                    }
+                    n += self.fixed_size(&f.ty)?;
+                }
+                Some(n)
+            }
+            Type::Union(variants) | Type::ValueUnion(ValueUnion { variants, .. }) => {
+                // The variants have different shapes, so the union has no
+                // fixed size unless they all agree.
+                let mut n = None;
+                for v in variants {
+                    let s = self.fixed_size(&v.ty)?;
+                    match n {
+                        None => n = Some(s),
+                        Some(prev) if prev == s => {}
+                        Some(_) => return None,
+                    }
+                }
+                n
+            }
+            Type::Array { of, count } => match count {
+                ArrayCount::Fixed(c) => self.fixed_size(of).map(|s| s * c),
+                _ => None,
+            },
+        }
+    }
+
+    /// The size a named type takes, when it takes one.
+    fn type_def_size(&self, td: &TypeDef) -> Option<usize> {
+        if !td.union.is_empty() {
+            let mut n = None;
+            for v in &td.union {
+                let s = self.fixed_size(&v.ty)?;
+                match n {
+                    None => n = Some(s),
+                    Some(prev) if prev == s => {}
+                    Some(_) => return None,
+                }
+            }
+            return n;
+        }
+        if td.value_union.is_some() {
+            return None;
+        }
+        if !td.bits.is_empty() || !td.values.is_empty() {
+            return td.storage.size();
+        }
+        let mut n = 0;
+        for f in &td.fields {
+            if f.optional {
+                return None;
+            }
+            n += self.fixed_size(&f.ty)?;
+        }
+        Some(n)
+    }
+
     pub fn enum_values(&self, name: &str) -> Option<&BTreeMap<i64, String>> {
         let t = self.types.get(name).or_else(|| self.common.get(name))?;
         if t.values.is_empty() {

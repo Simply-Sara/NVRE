@@ -338,6 +338,41 @@ fn parse_groups(c: &mut Cursor<'_>, data: &[u8], _depth: usize) -> Result<Vec<Gr
     Ok(out)
 }
 
+/// A group's contents: the records and the groups in them, in the order
+/// they are in the file.
+///
+/// The two kinds of thing may be interleaved, so the group is read in one
+/// walk rather than in two.
+fn parse_contents(
+    c: &mut Cursor<'_>,
+    data: &[u8],
+    end: usize,
+) -> Result<(Vec<Record>, Vec<Group>), EsmError> {
+    let mut records = Vec::new();
+    let mut groups = Vec::new();
+    loop {
+        let start = c.pos;
+        if start + GROUP_HEADER_SIZE > end {
+            break;
+        }
+        let sig = c.tag()?;
+        c.pos = start;
+        if sig == GRUP {
+            groups.push(parse_group(c, data, start)?);
+            continue;
+        }
+        if sig == XXXX {
+            break;
+        }
+        // A record: read its header and its payload.
+        let Some(record) = parse_record(c, data, end, start)? else {
+            break;
+        };
+        records.push(record);
+    }
+    Ok((records, groups))
+}
+
 /// Read one group.
 fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, EsmError> {
     let oob = |e: nvre_util::OutOfBounds| EsmError::Structure {
@@ -360,7 +395,9 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
             offset: start as u64,
             msg: format!("the group size {size} overruns its container"),
         })?;
-    let records = parse_records(c, data, gend)?;
+    // A group holds records, and may hold groups of its own: a worldspace
+    // holds cells, and a cell holds its own records.
+    let (records, groups) = parse_contents(c, data, gend)?;
     c.pos = gend;
     Ok(Group {
         header: GroupHeader {
@@ -373,7 +410,7 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
             unknown2: 0,
         },
         records,
-        groups: Vec::new(),
+        groups,
         offset: start as u64,
     })
 }
@@ -387,59 +424,106 @@ fn parse_records(c: &mut Cursor<'_>, data: &[u8], end: usize) -> Result<Vec<Reco
             break;
         }
         let sig = c.tag()?;
-        if sig == GRUP || sig == XXXX {
-            // A group inside a group, or the end of the group.
+        if sig == XXXX {
+            // The end of the group.
             c.pos = start;
             break;
         }
-        // The header is 24 bytes in total, the signature included, so the
-        // payload starts 20 bytes after the signature.
-        let data_size = c.u32()?;
-        let flags = c.u32()?;
-        let form_id = c.u32()?;
-        let vc_info = c.u32()?;
-        let form_version = c.u16()?;
-        let vc_info2 = c.u16()?;
-        let header = RecordHeader {
-            sig,
-            data_size,
-            flags,
-            form_id,
-            vc_info,
-            form_version,
-            vc_info2,
-        };
-        let body_end = c.pos + data_size as usize;
-        if body_end > end {
-            return Err(EsmError::Structure {
-                offset: start as u64,
-                msg: format!(
-                    "record {} claims {data_size} bytes but only {} are left",
-                    header.sig_str(),
-                    data.len() - c.pos
-                ),
-            });
+        if sig == GRUP {
+            // A group inside this one.
+            c.pos = start;
+            break;
         }
-        let body = &data[c.pos..body_end];
-        c.pos = body_end;
-        out.push(Record {
-            header,
-            subrecords: parse_subrecords(body)?,
-            payload: Bytes::copy_from_slice(body),
-            offset: start as u64,
-        });
+        c.pos = start;
+        let Some(record) = parse_record(c, data, end, start)? else {
+            break;
+        };
+        out.push(record);
     }
     Ok(out)
 }
 
+/// Read one record: its header and its payload.
+fn parse_record(
+    c: &mut Cursor<'_>,
+    data: &[u8],
+    end: usize,
+    start: usize,
+) -> Result<Option<Record>, EsmError> {
+    let _sig = c.bytes(4)?;
+    // The header is 24 bytes in total, the signature included, so the
+    // payload starts 20 bytes after the signature.
+    let data_size = c.u32()?;
+    let flags = c.u32()?;
+    let form_id = c.u32()?;
+    let vc_info = c.u32()?;
+    let form_version = c.u16()?;
+    let vc_info2 = c.u16()?;
+    let header = RecordHeader {
+        sig: [data[start], data[start + 1], data[start + 2], data[start + 3]],
+        data_size,
+        flags,
+        form_id,
+        vc_info,
+        form_version,
+        vc_info2,
+    };
+    let body_end = c.pos + data_size as usize;
+    if body_end > end {
+        return Err(EsmError::Structure {
+            offset: start as u64,
+            msg: format!(
+                "record {} claims {data_size} bytes but only {} are left",
+                header.sig_str(),
+                data.len().saturating_sub(c.pos)
+            ),
+        });
+    }
+    let body = &data[c.pos..body_end];
+    c.pos = body_end;
+    // The record's payload is kept as it is in the file: a compressed
+    // record's payload is a compressed stream, not subrecords. The
+    // subrecords are split from the uncompressed payload, by
+    // `Record::subrecords`.
+    Ok(Some(Record {
+        header,
+        subrecords: Vec::new(),
+        payload: Bytes::copy_from_slice(body),
+        offset: start as u64,
+    }))
+}
+
 /// Read a record's subrecords.
-fn parse_subrecords(body: &[u8]) -> Result<Vec<Subrecord>, EsmError> {
+///
+/// The `XXXX` form is resolved here: it is a subrecord whose size field is
+/// zero and whose payload is the size of the subrecord that follows, which
+/// is how a subrecord larger than 65535 bytes is written.
+fn parse_subrecords(body: &[u8]) -> Result<Vec<Subrecord>, (usize, String)> {
     let mut out = Vec::new();
     let mut at = 0usize;
+    // The size the `XXXX` before a subrecord says it has.
+    let mut pending: Option<u32> = None;
     while at + 6 <= body.len() {
         let sig = &body[at..at + 4];
-        let size = u16::from_le_bytes([body[at + 4], body[at + 5]]) as usize;
+        let size16 = u16::from_le_bytes([body[at + 4], body[at + 5]]) as usize;
         let data_at = at + 6;
+        if sig == XXXX {
+            if size16 != 4 || data_at + 4 > body.len() {
+                break;
+            }
+            pending = Some(u32::from_le_bytes([
+                body[data_at],
+                body[data_at + 1],
+                body[data_at + 2],
+                body[data_at + 3],
+            ]));
+            at = data_at + 4;
+            continue;
+        }
+        let (size, extended) = match pending.take() {
+            Some(s) => (s as usize, true),
+            None => (size16, false),
+        };
         let data_end = data_at + size;
         if data_end > body.len() {
             break;
@@ -447,7 +531,7 @@ fn parse_subrecords(body: &[u8]) -> Result<Vec<Subrecord>, EsmError> {
         out.push(Subrecord {
             sig: [sig[0], sig[1], sig[2], sig[3]],
             data: Bytes::copy_from_slice(&body[data_at..data_end]),
-            extended: false,
+            extended,
         });
         at = data_end;
     }
@@ -480,13 +564,6 @@ pub fn payload_checked(
             nvre_inflate::Trailer::Verified,
         ));
     }
-    if record.subrecords.is_empty() {
-        return Err(EsmError::Decompress {
-            offset: record.offset,
-            form_id: record.header.form_id,
-            msg: "the record has no payload".into(),
-        });
-    }
     // A compressed record's payload is a u32 decompressed size and then a
     // zlib stream.
     let raw = &record.payload;
@@ -508,6 +585,22 @@ pub fn payload_checked(
 }
 
 impl Record {
+    /// The record's subrecords, split from its uncompressed payload.
+    ///
+    /// A compressed record's payload is a compressed stream, so the split
+    /// happens after it is decompressed.
+    pub fn subrecords(&self) -> Result<Vec<Subrecord>, EsmError> {
+        let p = payload(self)?;
+        parse_subrecords(&p).map_err(|(pos, msg)| EsmError::Structure {
+            offset: self.offset,
+            msg: format!(
+                "record {} {:08X}: subrecord at payload+{pos}: {msg}",
+                self.sig_str(),
+                self.header.form_id
+            ),
+        })
+    }
+
     /// The record's raw bytes, as they are in the file.
     pub fn subrecords_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();

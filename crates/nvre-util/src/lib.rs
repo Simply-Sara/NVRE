@@ -124,6 +124,24 @@ impl<'a> Cursor<'a> {
         Ok(s)
     }
 
+    /// Read four bytes as a little-endian number, without moving past them.
+    ///
+    /// A union whose variant is chosen by the field's first word reads the
+    /// word this way: the word belongs to the field either way.
+    pub fn peek_u32(&self) -> Result<u32, OutOfBounds> {
+        let end = self.pos.checked_add(4).filter(|e| *e <= self.data.len());
+        let Some(end) = end else {
+            return Err(OutOfBounds {
+                pos: self.pos,
+                wanted: 4,
+                len: self.data.len(),
+            });
+        };
+        Ok(u32::from_le_bytes(
+            self.data[self.pos..end].try_into().unwrap(),
+        ))
+    }
+
     /// Read a four-byte signature.
     pub fn tag(&mut self) -> Result<[u8; 4], OutOfBounds> {
         Ok(self.bytes(4)?.try_into().unwrap())

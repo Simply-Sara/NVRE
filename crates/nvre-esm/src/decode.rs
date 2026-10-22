@@ -13,10 +13,12 @@
 //! shows up as a number that is not 100%, not as a program that crashes.
 
 use crate::raw::{Record, Subrecord};
+use crate::schema::PeekUnion;
 use crate::schema::ValueUnion;
 use crate::schema::{ArrayCount, BlockDef, Prim, Schema, SequenceDef, SubDef, Type, TypeDef};
 use nvre_util::{cp1252, Cursor};
 use serde_json::{Map, Value as Json};
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 /// How well the schema explains one subrecord.
@@ -65,6 +67,19 @@ pub struct DecodeCtx<'a> {
     /// same record holds: the `PERK` record's `DATA` is one thing or
     /// another depending on the `PRKE` beside it.
     pub exposed: HashMap<(String, String), i64>,
+    /// The subrecords of the block that is open, when the block's opener
+    /// names a variant.
+    ///
+    /// A block may switch on its opener's value: `PACK`'s `ANAM` names the
+    /// activity's type, and the field after it is decoded against that
+    /// type's definition.
+    pub block_variant: Option<BTreeMap<String, SubDef>>,
+    /// The values of the struct being read, for a union inside it to be
+    /// read against.
+    ///
+    /// The map is saved and restored around a nested struct, so a nested
+    /// struct does not see its parent's fields.
+    pub switch_on: Option<HashMap<String, i64>>,
 }
 
 impl<'a> DecodeCtx<'a> {
@@ -73,8 +88,10 @@ impl<'a> DecodeCtx<'a> {
         DecodeCtx {
             schema,
             rec_sig,
+            block_variant: None,
             values: HashMap::new(),
             exposed: HashMap::new(),
+            switch_on: None,
         }
     }
 }
@@ -112,7 +129,15 @@ fn decode_sub_in(
     ctx: &mut DecodeCtx<'_>,
     _scope: &Map<String, Json>,
 ) -> DecodedSub {
-    let Some(def) = b.subrecords.get(sig) else {
+    // A block's chosen variant wins over the block's own map: the opener's
+    // value says which fields the block holds.
+    let def = ctx
+        .block_variant
+        .as_ref()
+        .and_then(|v| v.get(sig))
+        .cloned()
+        .or_else(|| b.subrecords.get(sig).cloned());
+    let Some(def) = &def else {
         return DecodedSub {
             sig: s.sig,
             value: None,
@@ -155,7 +180,18 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> 
         .schema
         .records
         .get(&rec_key)
-        .and_then(|r| r.subrecords.get(&sig))
+        .and_then(|r| {
+            r.subrecords.get(&sig).or_else(|| {
+                // A signature that is only partly known: the weather
+                // record's texture layers are `00TX`, `10TX`, `20TX` and
+                // on, so the schema gives the suffix and the signature is
+                // matched against its trailing bytes.
+                r.wildcards.iter().find(|(suffix, _)| {
+                    suffix.len() <= sig.len()
+                        && sig.as_bytes()[sig.len() - suffix.len()..] == suffix[..]
+                }).map(|(_, d)| d)
+            })
+        })
         // A subrecord any record may carry: the editor ID and its like.
         .or_else(|| ctx.schema.common_subrecords.get(&sig));
     let Some(def) = def else {
@@ -239,6 +275,37 @@ fn decode_type_value(
             let Some(td) = ctx.schema.type_def(n) else {
                 return Err(format!("the unknown type {n:?}"));
             };
+            // A named type that is a set of flags: the flags are stored as
+            // one number, and each flag is a bit of it.
+            if !td.bits.is_empty() {
+                let v = decode_prim(td.storage, c)?;
+                let i = v.as_i64().unwrap_or(0);
+                let mut m = Map::new();
+                m.insert("value".into(), v);
+                let mut fields = Map::new();
+                for b in &td.bits {
+                    fields.insert(b.name.clone(), Json::from(b.value(i)));
+                }
+                m.insert("fields".into(), Json::Object(fields));
+                return Ok(Json::Object(m));
+            }
+            // A named type that is a set of names: the value is stored as
+            // one number, and the name it has is read from it.
+            if !td.values.is_empty() {
+                let v = decode_prim(td.storage, c)?;
+                let i = v.as_i64().unwrap_or(0);
+                let mut m = Map::new();
+                m.insert("value".into(), v);
+                if let Some(name) = td.values.get(&i) {
+                    m.insert("name".into(), Json::String(name.clone()));
+                }
+                return Ok(Json::Object(m));
+            }
+            // A union whose variant is chosen by the field's first word:
+            // Skyrim's `MODT` has a header or has not.
+            if let Some(pu) = &td.peek_union {
+                return decode_peek_union(pu, c, ctx, scope);
+            }
             // A union whose variant is chosen by another field's value:
             // the `PERK` record's `DATA` is one thing or another depending
             // on the `PRKE` beside it.
@@ -274,6 +341,7 @@ fn decode_type_value(
         }
         Type::Inline(fields) => {
             let td = TypeDef {
+                peek_union: None,
                 fields: fields.clone(),
                 values: Default::default(),
                 bits: Vec::new(),
@@ -299,13 +367,32 @@ fn decode_type_value(
                         as usize
                 }
                 ArrayCount::Rest => {
-                    // The elements fill what is left, so the count depends on
-                    // how big each one is.
-                    let size = type_size(ctx.schema, of);
+                    // The elements fill what is left. When the element has
+                    // a fixed size the count is known; when it does not,
+                    // the elements are read until the data runs out.
+                    let size = ctx.schema.fixed_size(of);
                     let left = c.remaining();
                     match size {
                         Some(n) if n > 0 => left / n,
-                        _ => 0,
+                        _ => {
+                            // The count is not known, so the elements are
+                            // read until there are no bytes left.
+                            let mut elems = Vec::new();
+                            let mut i = 0usize;
+                            while c.remaining() > 0 {
+                                let before = c.pos;
+                                elems.push(decode_type_value(of, c, ctx, scope).map_err(
+                                    |e| format!("[{i}]: {e}"),
+                                )?);
+                                if c.pos == before {
+                                    // An element that reads no bytes would
+                                    // let the loop run for ever.
+                                    return Err("an array element read no bytes".into());
+                                }
+                                i += 1;
+                            }
+                            return Ok(Json::Array(elems));
+                        }
                     }
                 }
                 ArrayCount::Prefix(p) => {
@@ -329,6 +416,7 @@ fn decode_type_value(
             };
             decode_counted(of, n, c, ctx, scope)
         }
+        Type::ValueUnion(vu) => decode_value_union(vu, c, ctx, scope),
         Type::Union(variants) => {
             // A union's variant is chosen by its size: the one whose size
             // matches what is left in the subrecord.
@@ -354,6 +442,11 @@ fn decode_struct(
     outer: &Map<String, Json>,
 ) -> Result<Json, String> {
     let mut m = Map::new();
+    // A struct's own field values are kept so a union inside it can switch
+    // on one of them. The map is saved and restored, so a nested struct does
+    // not see its parent's fields.
+    let saved_switch = ctx.switch_on.take();
+    ctx.switch_on = Some(HashMap::new());
     for f in &td.fields {
         // An optional field may be absent: the data runs out before it, and
         // that is not an error.
@@ -372,8 +465,30 @@ fn decode_struct(
         } else {
             decode_type_value(&f.ty, c, ctx, &m)?
         };
+        // A field that publishes its value is read by a union in the same
+        // struct: the `PERK` record's `PRKE` holds the type of the effect,
+        // and the `DATA` beside it is one thing or another depending on it.
+        if f.publish || f.expose {
+            if let Some(n) = switch_value(&v) {
+                // The value is published record-wide, so a union in a
+                // subrecord that comes later is read against it.
+                ctx.exposed.insert(
+                    (
+                        String::from_utf8_lossy(&ctx.rec_sig).into_owned(),
+                        f.name.clone(),
+                    ),
+                    n,
+                );
+                // And in the struct's own map, for a union beside it.
+                if let Some(sw) = ctx.switch_on.as_mut() {
+                    sw.insert(f.name.clone(), n);
+                }
+            }
+        }
         m.insert(f.name.clone(), v);
     }
+
+    ctx.switch_on = saved_switch;
     Ok(Json::Object(m))
 }
 
@@ -405,6 +520,7 @@ fn decode_counted(
 }
 
 /// How many bytes a type holds, when it is a fixed size.
+#[allow(dead_code)]
 fn type_size(schema: &Schema, ty: &Type) -> Option<usize> {
     match ty {
         Type::Prim(p) => p.size(),
@@ -459,14 +575,32 @@ fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
             Json::from(hex_of(b))
         }
         Prim::CString => {
-            // A NUL-terminated string.
-            let bytes = c.bytes(c.remaining()).map_err(e)?;
-            Json::String(cp1252::decode_z(bytes))
+            // xEdit's `wbString` inside a struct: text up to the first NUL,
+            // with the cursor left just past that NUL so the fields that
+            // follow still decode. A missing NUL means the string ran to
+            // the end of the field, which is an error rather than a silent
+            // truncation.
+            let rest = c.bytes(c.remaining()).map_err(e)?;
+            let Some(end) = rest.iter().position(|&b| b == 0) else {
+                return Err(format!(
+                    "the string is not NUL-terminated: {:?}",
+                    cp1252::decode(rest)
+                ));
+            };
+            // `bytes(n)` already moved the cursor to the end, so it is
+            // rewound to just past the NUL.
+            c.pos -= rest.len() - (end + 1);
+            Json::String(cp1252::decode(&rest[..end]))
         }
         Prim::LenString => {
-            // A string of a one-byte length and that many bytes.
-            let len = c.u8().map_err(e)? as usize;
-            let bytes = c.bytes(len).map_err(e)?;
+            // xEdit's `wbLenString`: a little-endian u32 byte count, then
+            // exactly that many bytes of text with no terminator. A length
+            // that runs past the end of the field is an error, never a
+            // truncation.
+            let n = c.u32().map_err(e)? as usize;
+            let bytes = c
+                .bytes(n)
+                .map_err(|oob| format!("the length {n} exceeds the field: {oob}"))?;
             Json::String(cp1252::decode(bytes))
         }
         Prim::ZStringArray => {
@@ -501,14 +635,39 @@ pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
     // A record that is a sequence is read as one: its subrecords come in
     // blocks, and a subrecord's meaning depends on the block it is in.
     let rec_key = String::from_utf8_lossy(&r.header.sig).into_owned();
+    let rec_sig = r.header.sig;
     let sequence = schema
         .records
         .get(&rec_key)
         .and_then(|d| d.sequence.clone());
+    // The record's subrecords are split from its uncompressed payload: a
+    // compressed record's payload is a compressed stream, so it has to be
+    // decompressed before it can be split.
+    // The subrecords of this record that are exposed: their values are
+    // published for the unions beside them.
+    let exposed_subs: Vec<String> = schema
+        .records
+        .get(&rec_key)
+        .map(|d| {
+            d.subrecords
+                .iter()
+                .filter(|(_, s)| s.expose)
+                .map(|(k, _)| k.clone())
+                .collect()
+        })
+        .unwrap_or_default();
+    let subs = match r.subrecords() {
+        Ok(s) => s,
+        Err(e) => {
+            cov.error_count += 1;
+            cov.error_count += 1;
+            return (Json::Object(m), cov);
+        }
+    };
     let decoded = match sequence {
-        Some(seq) => decode_sequence(&seq, r, &mut ctx, &mut cov),
+        Some(seq) => decode_sequence(&seq, &subs, rec_sig, &mut ctx, &mut cov),
         None => {
-            for s in &r.subrecords {
+            for s in &subs {
                 let d = decode_sub(&r.header.sig, s, &mut ctx);
                 count(&mut cov, &d);
                 if let Some(v) = d.value.clone() {
@@ -518,6 +677,15 @@ pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
                     // the `PRKE` beside it.
                     if let Some(n) = switch_value(&v) {
                         ctx.exposed.insert((rec_key.clone(), d.sig_str()), n);
+                    }
+                    // A subrecord that is exposed is published under its
+                    // own name, so a union beside it can switch on it: the
+                    // `EPFD` record's `DATA` is read against the `EPFT`
+                    // beside it.
+                    if exposed_subs.contains(&d.sig_str()) {
+                        if let Some(n) = switch_value(&v) {
+                            ctx.exposed.insert((rec_key.clone(), d.sig_str()), n);
+                        }
                     }
                 }
             }
@@ -551,6 +719,31 @@ fn switch_value(v: &Json) -> Option<i64> {
     }
 }
 
+/// Decode a union whose variant is chosen by the field's first word.
+///
+/// The word is read without consuming it: it belongs to the field either
+/// way, so the whole field is the union.
+fn decode_peek_union(
+    pu: &PeekUnion,
+    c: &mut Cursor<'_>,
+    ctx: &mut DecodeCtx<'_>,
+    scope: &Map<String, Json>,
+) -> Result<Json, String> {
+    if c.remaining() < 4 {
+        return Err(format!(
+            "the union reads a word of 4 bytes at offset {} but only {} are left",
+            c.pos,
+            c.remaining()
+        ));
+    }
+    let word = c.peek_u32().map_err(|e: nvre_util::OutOfBounds| e.to_string())? as i64;
+    let idx = pu.cases.get(&word).copied().unwrap_or(pu.default);
+    let Some(variant) = pu.variants.get(idx) else {
+        return Err(format!("the union has no variant {idx}"));
+    };
+    decode_type_value(&variant.ty, c, ctx, scope)
+}
+
 /// Decode a union whose variant is chosen by another field's value.
 ///
 /// The decider is a field of the same struct, or of an earlier subrecord of
@@ -563,9 +756,17 @@ fn decode_value_union(
     ctx: &mut DecodeCtx<'_>,
     scope: &Map<String, Json>,
 ) -> Result<Json, String> {
+    // The decider is looked for in three places, in order: the struct being
+    // read, the record's own published values, and the record's published
+    // subrecords.
     let switch = scope
         .get(&vu.switch_on)
         .and_then(|v| v.as_i64())
+        .or_else(|| {
+            ctx.switch_on
+                .as_ref()
+                .and_then(|m| m.get(&vu.switch_on).copied())
+        })
         .or_else(|| {
             // The decider may be a subrecord of the same record that was
             // decoded earlier.
@@ -593,7 +794,8 @@ fn decode_value_union(
 /// it until the next block opens.
 fn decode_sequence(
     seq: &SequenceDef,
-    r: &Record,
+    subs: &[Subrecord],
+    rec_sig: [u8; 4],
     ctx: &mut DecodeCtx<'_>,
     cov: &mut RecordCoverage,
 ) -> Map<String, Json> {
@@ -602,7 +804,7 @@ fn decode_sequence(
     let mut open: Option<&BlockDef> = None;
     // The subrecords of the block that is open.
     let mut block_subs: Vec<(String, Json)> = Vec::new();
-    for s in &r.subrecords {
+    for s in subs {
         let sig = String::from_utf8_lossy(&s.sig).into_owned();
         // A signature that opens a block starts one — unless the block that
         // is open expects it, in which case it is that block's own
@@ -621,19 +823,35 @@ fn decode_sequence(
             }
             open = Some(b);
             block_subs.clear();
+            // A new block starts with no variant chosen.
+            ctx.block_variant = None;
             // The opener itself is a subrecord of the block.
             let d = decode_sub_in(b, &sig, s, ctx, &m);
             count(cov, &d);
             if let Some(v) = d.value.clone() {
-                block_subs.push((sig, v));
+                block_subs.push((sig, v.clone()));
+                // A block that switches on its opener's value keeps that
+                // choice for the whole block, not just for the opener: the
+                // field after it is decoded against that type's definition.
+                if !b.variants.is_empty() {
+                    if let Some(name) = variant_name(&v) {
+                        if let Some(var) = b.variants.get(&name) {
+                            ctx.block_variant = Some(var.subrecords.clone());
+                        }
+                    }
+                }
             }
             continue;
         }
-        // A subrecord of the block that is open, or of the record.
-        let def: Option<&SubDef> = open.and_then(|b| b.subrecords.get(&sig));
-        let d = match def {
-            Some(_) => decode_sub_in(open.unwrap(), &sig, s, ctx, &m),
-            None => decode_sub(&r.header.sig, s, ctx),
+        // A subrecord of the block that is open, or of the record. The
+        // block's chosen variant says which fields the block holds, so it
+        // is asked first.
+        let in_block = open.is_some()
+            && (ctx.block_variant.as_ref().map(|v| v.contains_key(&sig)).unwrap_or(false)
+                || open.unwrap().subrecords.contains_key(&sig));
+        let d = match (open, in_block) {
+            (Some(b), true) => decode_sub_in(b, &sig, s, ctx, &m),
+            _ => decode_sub(&rec_sig, s, ctx),
         };
         count(cov, &d);
         match d.value.clone() {
@@ -652,6 +870,15 @@ fn decode_sequence(
         store_block(&mut m, prev, &mut block_subs);
     }
     m
+}
+
+/// The name a variant is chosen by, when the value names one.
+fn variant_name(v: &Json) -> Option<String> {
+    match v {
+        Json::String(s) => Some(s.clone()),
+        Json::Object(m) => m.get("value").and_then(|v| v.as_str()).map(str::to_string),
+        _ => None,
+    }
 }
 
 /// Store a block's subrecords under the block's name.
