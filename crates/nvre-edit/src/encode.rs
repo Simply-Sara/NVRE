@@ -1201,6 +1201,26 @@ pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> 
 /// A localized file holds its translatable strings as 4-byte string IDs
 /// rather than as text, so the same schema reads one or the other according
 /// to the file the subrecord came from.
+/// The decoded form of a subrecord that is known to be inside a block of
+/// its record's sequence.
+///
+/// A signature may mean one thing in the record's own map and another
+/// inside a block, so the block says which meaning is meant.
+pub fn decoded_in_block(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &fnv_esm::Subrecord,
+    block: Option<usize>,
+) -> Option<Value> {
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    ctx.block = block;
+    let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
+    match d.status {
+        fnv_esm::decode::SubStatus::Ok => d.value,
+        _ => None,
+    }
+}
+
 pub fn decoded_localized(
     schema: &Schema,
     rec_sig: &[u8; 4],
@@ -1282,6 +1302,35 @@ pub fn roundtrips_localized(
     }
 }
 
+/// Whether a subrecord re-encodes to the same bytes, given the block it
+/// was read in.
+///
+/// A signature may mean one thing in the record's own map and another
+/// inside a block, so the block says which meaning is meant.
+pub fn roundtrips_in_block(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &fnv_esm::Subrecord,
+    block: Option<usize>,
+) -> bool {
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
+    let Some(value) = d.value else {
+        return false;
+    };
+    match encode_sub_len_in_block(
+        schema,
+        rec_sig,
+        &sub.sig,
+        &value,
+        Some(sub.data.len()),
+        block,
+    ) {
+        Ok(bytes) => bytes == sub.data,
+        Err(_) => false,
+    }
+}
+
 /// Names of the fields of a subrecord's layout, for the property grid.
 ///
 /// A struct contributes its own field names; a bare scalar contributes the empty
@@ -1354,22 +1403,25 @@ pub struct SubView {
 pub fn sub_views(schema: &Schema, rec: &fnv_esm::Record) -> Result<Vec<SubView>, String> {
     let subs = rec.subrecords().map_err(|e| e.to_string())?;
     let mut out = Vec::with_capacity(subs.len());
-    for s in &subs {
-        let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, rec.header.sig);
-        let d = fnv_esm::decode::decode_sub(&rec.header.sig, s, &mut ctx);
+    // The record is read through the same walk the decoder uses, so a
+    // signature that means one thing in the record's own map and another
+    // inside a block is shown the way the block means it.
+    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, rec.header.sig);
+    fnv_esm::decode::walk_sequence(&rec.header.sig, &subs, schema, &mut ctx, |s, c| {
+        let d = fnv_esm::decode::decode_sub(&rec.header.sig, s, c);
         let name = d.name.clone().unwrap_or_else(|| s.sig_str());
         out.push(SubView {
             sig: s.sig_str(),
             name,
             value: d.value.unwrap_or(Value::Null),
             writable: d.status == fnv_esm::decode::SubStatus::Ok
-                && roundtrips(schema, &rec.header.sig, s),
+                && roundtrips_in_block(schema, &rec.header.sig, s, c.block),
             problem: match d.status {
                 fnv_esm::decode::SubStatus::Ok => None,
                 other => Some(d.error.unwrap_or_else(|| other.as_str().to_string())),
             },
         });
-    }
+    });
     Ok(out)
 }
 

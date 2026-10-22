@@ -1052,11 +1052,22 @@ impl Session {
         let Some(sub) = subs.iter().find(|s| &s.sig == sig) else {
             return Err(format!("{fid:08X} has no {}", fnv_util::tag_str(sig)));
         };
-        let mut decoded = nvre_edit::encode::decoded(&self.schema, &rec_sig, sub)
+        // A signature may mean one thing in the record's own map and another
+        // inside a block, so the block the subrecord falls in says which
+        // meaning is meant, both for reading it and for writing it back.
+        let block = fnv_esm::decode::block_of(&rec_sig, &subs, &self.schema, *sig);
+        let mut decoded = nvre_edit::encode::decoded_in_block(&self.schema, &rec_sig, sub, block)
             .ok_or_else(|| format!("{} does not decode", fnv_util::tag_str(sig)))?;
         set_path(&mut decoded, path, value)?;
-        let bytes = nvre_edit::encode::encode_sub(&self.schema, &rec_sig, sig, &decoded)
-            .map_err(|e| e.to_string())?;
+        let bytes = nvre_edit::encode::encode_sub_len_in_block(
+            &self.schema,
+            &rec_sig,
+            sig,
+            &decoded,
+            None,
+            block,
+        )
+        .map_err(|e| e.to_string())?;
         // A staged record has FormID 0 until the save; the edit has to reach the
         // staged copy, which is addressed by that same placeholder.
         self.doc.set_sub(fid, sig, bytes);

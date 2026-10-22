@@ -861,6 +861,27 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
 ///
 /// The two callers differ only in what they do with each decoded subrecord, so
 /// the walk lives here and both use it.
+/// The block of a record's sequence that a subrecord falls in.
+///
+/// A signature may mean one thing in the record's own map and another
+/// inside a block, so a reader that needs the block — to read the
+/// subrecord rightly, or to write it back — asks here.
+pub fn block_of(
+    rec_sig: &[u8; 4],
+    subs: &[crate::raw::Subrecord],
+    schema: &Schema,
+    want: [u8; 4],
+) -> Option<usize> {
+    let mut ctx = DecodeCtx::new(schema, *rec_sig);
+    let mut found = None;
+    walk_sequence(rec_sig, subs, schema, &mut ctx, |s, c| {
+        if found.is_none() && s.sig == want {
+            found = c.block;
+        }
+    });
+    found
+}
+
 /// Walks a record's subrecords in the order its schema gives them, and
 /// calls `f` for each with the context that says which block it is in.
 ///
