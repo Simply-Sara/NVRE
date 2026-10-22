@@ -1,0 +1,19 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "QUST": {
+   "merge": true,
+   "name": "Quest",
+   "confidence": "measured",
+   "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(QUST)",
+   "subrecords": {
+    "NNAM": {
+     "confidence": "measured",
+     "name": "Description",
+     "note": "The quest's description. xEdit declares this a plain string, but the game holds it as a string ID: measured, all 1,198 NNAM fields in Fallout4.esm are 4 bytes. The quest's own title is the FULL field, which xEdit declares a localized string.",
+     "type": "localized"
+    }
+   }
+  }
+ }
+}

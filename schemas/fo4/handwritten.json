@@ -1,0 +1,48 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "CELL": {
+   "merge": true,
+   "name": "Cell",
+   "confidence": "documented",
+   "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(CELL)",
+   "subrecords": {
+    "XCRI": {
+     "confidence": "documented",
+     "name": "Combined References",
+     "note": "The cell's combined references: how many meshes it combines and how many references it holds, then the meshes and the references. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbStruct(XCRI, 'Combined References', [...]). measured: all 4,600 XCRI subrecords in Fallout4.esm are eight bytes plus four for each mesh and four for each reference, so a reference is the form ID alone and the combined mesh xEdit shows beside it is worked out from it rather than stored.]",
+     "type": {
+      "struct": [
+       {
+        "name": "Meshes Count",
+        "note": "How many meshes the cell combines.",
+        "type": "u32"
+       },
+       {
+        "name": "References Count",
+        "note": "How many references the cell holds.",
+        "type": "u32"
+       },
+       {
+        "name": "Meshes",
+        "note": "The combined meshes.",
+        "type": {
+         "array": "u32",
+         "count_field": "Meshes Count"
+        }
+       },
+       {
+        "name": "References",
+        "note": "The references. Each is the form ID of the reference alone.",
+        "type": {
+         "array": "formid",
+         "count_field": "References Count"
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

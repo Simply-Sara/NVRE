@@ -19,6 +19,8 @@ pub enum TypeDef {
     Named(String),
     /// A struct: the fields, in order.
     Struct(Vec<FieldDef>),
+    /// A field read as many times as the bytes allow.
+    Repeat(Box<TypeDef>),
     /// An array.
     Array {
         /// What the elements are.
@@ -29,6 +31,12 @@ pub enum TypeDef {
         count_prefix: Option<Prim>,
         /// The field that holds the count, when the count is a sibling's.
         count_field: Option<String>,
+        /// The count is the set bits among the first `n` of a sibling field.
+        count_bits: Option<(String, u32)>,
+        /// The count is the sum of two sibling fields.
+        count_sum: Option<(String, String)>,
+        /// The count is a sibling field squared.
+        count_pow: Option<String>,
     },
     /// A set of names for the integers a value can hold.
     Enum {
@@ -53,12 +61,16 @@ pub enum TypeDef {
     ValueUnion {
         /// The variants.
         variants: Vec<TypeDef>,
-        /// The values that choose a variant, by value.
-        cases: Vec<(i64, usize)>,
+        /// The values that choose a variant, as text.
+        cases: Vec<(String, usize)>,
+        /// The variant each bit mask chooses.
+        bits: Vec<(u64, usize)>,
         /// The variant to use when no case matches.
         default: usize,
         /// The field the value is read from.
         name: String,
+        /// Minimum record format version required.
+        min_version: Option<u32>,
     },
     /// A layout chosen by the value's first word.
     PeekUnion {
@@ -80,6 +92,8 @@ pub struct FieldDef {
     pub ty: TypeDef,
     /// The field is optional: it may be absent.
     pub optional: bool,
+    /// Read this field only if there are bytes left.
+    pub optional_if_empty: bool,
     /// The field's value is published, so a union beside it can switch on
     /// it.
     pub expose: bool,
@@ -103,6 +117,9 @@ impl Schema {
             Type::Named(n) => match self.type_def(n) {
                 None => TypeDef::Named(n.clone()),
                 Some(td) => {
+                    if let Some(alias) = &td.alias {
+                        return self.resolve_def_depth(alias, depth + 1);
+                    }
                     if !td.bits.is_empty() {
                         return TypeDef::Flags {
                             base: td.storage,
@@ -143,9 +160,11 @@ impl Schema {
                                 .iter()
                                 .map(|v| self.resolve_def_depth(&v.ty, depth + 1))
                                 .collect(),
-                            cases: vu.cases.iter().map(|(k, v)| (*k, *v)).collect(),
+                            cases: vu.cases.clone().into_iter().collect(),
+                            bits: vu.bits.clone(),
                             default: vu.default,
                             name: vu.switch_on.clone(),
+                            min_version: vu.min_version,
                         };
                     }
                     if !td.union.is_empty() {
@@ -165,6 +184,7 @@ impl Schema {
                                 name: f.name.clone(),
                                 ty: self.resolve_def_depth(&f.ty, depth + 1),
                                 optional: f.optional,
+                                optional_if_empty: f.optional_if_empty,
                                 expose: f.expose,
                                 count_from: f.count_from.clone(),
                             })
@@ -187,11 +207,15 @@ impl Schema {
                         name: f.name.clone(),
                         ty: self.resolve_def_depth(&f.ty, depth + 1),
                         optional: f.optional,
+                        optional_if_empty: f.optional_if_empty,
                         expose: f.expose,
                         count_from: f.count_from.clone(),
                     })
                     .collect(),
             ),
+            Type::Repeat(inner) => {
+                TypeDef::Repeat(Box::new(self.resolve_def_depth(inner, depth + 1)))
+            }
             Type::Union(variants) => TypeDef::Union(
                 variants
                     .iter()
@@ -204,9 +228,11 @@ impl Schema {
                     .iter()
                     .map(|v| self.resolve_def_depth(&v.ty, depth + 1))
                     .collect(),
-                cases: vu.cases.iter().map(|(k, v)| (*k, *v)).collect(),
+                cases: vu.cases.clone().into_iter().collect(),
+                bits: vu.bits.clone(),
                 default: vu.default,
                 name: vu.switch_on.clone(),
+                min_version: vu.min_version,
             },
             Type::Array { of, count } => TypeDef::Array {
                 elem: Box::new(self.resolve_def_depth(of, depth + 1)),
@@ -220,6 +246,18 @@ impl Schema {
                 },
                 count_field: match count {
                     ArrayCount::FromField(f) => Some(f.clone()),
+                    _ => None,
+                },
+                count_bits: match count {
+                    ArrayCount::Bits(f, n) => Some((f.clone(), *n)),
+                    _ => None,
+                },
+                count_sum: match count {
+                    ArrayCount::Sum(a, b) => Some((a.clone(), b.clone())),
+                    _ => None,
+                },
+                count_pow: match count {
+                    ArrayCount::Pow(f) => Some(f.clone()),
                     _ => None,
                 },
             },
@@ -244,9 +282,22 @@ impl Schema {
             TypeDef::Array { elem, count, .. } => {
                 self.fixed_size_def(elem).map(|s| s * count.unwrap_or(0))
             }
+            TypeDef::Repeat(_) => None,
             TypeDef::Union(variants) => {
                 let mut n = None;
                 for (_, v) in variants {
+                    let s = self.fixed_size_def(v)?;
+                    match n {
+                        None => n = Some(s),
+                        Some(prev) if prev == s => {}
+                        Some(_) => return None,
+                    }
+                }
+                n
+            }
+            TypeDef::ValueUnion { variants, .. } => {
+                let mut n = None;
+                for v in variants {
                     let s = self.fixed_size_def(v)?;
                     match n {
                         None => n = Some(s),
@@ -266,6 +317,7 @@ impl Schema {
             name: field.name.clone(),
             ty: self.resolve_def(&field.ty),
             optional: field.optional,
+            optional_if_empty: field.optional_if_empty,
             expose: field.expose,
             count_from: field.count_from.clone(),
         }

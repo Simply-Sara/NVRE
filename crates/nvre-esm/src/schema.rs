@@ -106,6 +106,10 @@ pub enum Prim {
     LenString,
     /// An array of NUL-terminated strings, each with a one-byte length.
     ZStringArray,
+    /// A length-prefixed string whose length prefix is two bytes wide.
+    LenStringU16,
+    /// A string that a localized file holds as a 4-byte string ID rather than text.
+    Localized,
     /// A four-byte number, read without consuming it.
     ///
     /// It is how a union that is chosen by its field's first word sees
@@ -134,6 +138,8 @@ impl Prim {
             "bytes" => Prim::Bytes,
             "cstring" => Prim::CString,
             "len_string" => Prim::LenString,
+            "len_string_u16" => Prim::LenStringU16,
+            "localized" => Prim::Localized,
             "zstring_array" => Prim::ZStringArray,
             "peek_u32" => Prim::PeekU32,
             _ => return None,
@@ -160,6 +166,8 @@ impl Prim {
             Prim::Bytes => "bytes",
             Prim::CString => "cstring",
             Prim::LenString => "len_string",
+            Prim::LenStringU16 => "len_string_u16",
+            Prim::Localized => "localized",
             Prim::ZStringArray => "zstring_array",
             Prim::PeekU32 => "peek_u32",
         }
@@ -167,19 +175,21 @@ impl Prim {
 
     /// How many bytes the primitive holds, when it is a fixed size.
     pub fn size(self) -> Option<usize> {
-        Some(match self {
-            Prim::U8 | Prim::I8 | Prim::Bool => 1,
-            Prim::U16 | Prim::I16 => 2,
-            Prim::U32 | Prim::I32 | Prim::F32 | Prim::FormId | Prim::PeekU32 => 4,
-            Prim::F64 => 8,
-            Prim::U64 | Prim::I64 => 8,
+        match self {
+            Prim::U8 | Prim::I8 | Prim::Bool => Some(1),
+            Prim::U16 | Prim::I16 => Some(2),
+            Prim::U32 | Prim::I32 | Prim::F32 | Prim::FormId | Prim::PeekU32 => Some(4),
+            Prim::F64 => Some(8),
+            Prim::U64 | Prim::I64 => Some(8),
             Prim::ZString
             | Prim::String
             | Prim::Bytes
             | Prim::CString
             | Prim::LenString
-            | Prim::ZStringArray => return None,
-        })
+            | Prim::LenStringU16
+            | Prim::Localized
+            | Prim::ZStringArray => None,
+        }
     }
 }
 
@@ -210,6 +220,8 @@ pub enum Type {
     Union(Vec<Variant>),
     /// A set of variants, one of which is chosen by another field's value.
     ValueUnion(ValueUnion),
+    /// A field read as many times as the bytes allow.
+    Repeat(Box<Type>),
     /// An array: a count, and what the elements are.
     Array {
         /// What the elements are.
@@ -226,6 +238,12 @@ pub enum ArrayCount {
     Fixed(usize),
     /// The count is a field of the same struct, read before this one.
     FromField(String),
+    /// The count is the set bits among the first `n` of a sibling field.
+    Bits(String, u32),
+    /// The count is the sum of two sibling fields.
+    Sum(String, String),
+    /// The count is a sibling field squared.
+    Pow(String),
     /// The count is in the data: a length before the elements, in the type
     /// the schema names.
     Prefix(Prim),
@@ -273,6 +291,8 @@ pub struct Field {
     pub ty: Type,
     /// The field is optional: it may be absent.
     pub optional: bool,
+    /// Read this field only if there are bytes left.
+    pub optional_if_empty: bool,
     /// The field holds as many elements as another field's value says.
     pub count_from: Option<String>,
     /// The field is shown in the editor's inspector.
@@ -306,6 +326,8 @@ pub struct TypeDef {
     /// The word is read without consuming it: it belongs to the field either
     /// way, so the whole field is the union.
     pub peek_union: Option<PeekUnion>,
+    /// When the named type is an alias for another type or primitive.
+    pub alias: Option<Type>,
 }
 
 /// A union whose variant is chosen by the field's first word.
@@ -328,12 +350,16 @@ pub struct PeekUnion {
 pub struct ValueUnion {
     /// The field whose value chooses the variant.
     pub switch_on: String,
-    /// The variant each value chooses, by the value.
-    pub cases: BTreeMap<i64, usize>,
+    /// The variant each value chooses, by the value (as text).
+    pub cases: BTreeMap<String, usize>,
+    /// The variant each bit mask chooses.
+    pub bits: Vec<(u64, usize)>,
     /// The variant to use when no case matches.
     pub default: usize,
     /// The variants.
     pub variants: Vec<Variant>,
+    /// Minimum record format version required for the second variant.
+    pub min_version: Option<u32>,
 }
 
 /// A record's layout: its subrecords, in the order they appear.
@@ -376,6 +402,10 @@ pub struct SequenceDef {
 pub struct BlockDef {
     /// The signature that opens the block.
     pub opener: String,
+    /// Alternate signatures that can also open the block.
+    pub openers: Vec<String>,
+    /// The record's own meaning for the opening signature comes first, and the block opens on the next one.
+    pub own_first: bool,
     /// The signatures the block holds, in order.
     pub order: Vec<String>,
     /// The block's subrecords.
@@ -427,6 +457,18 @@ pub struct Schema {
     /// The common subrecords: the ones any record may carry, such as the
     /// editor ID.
     pub common_subrecords: BTreeMap<String, SubDef>,
+}
+
+/// A bit mask for a union's bit test, from the schema's key.
+fn parse_bit_mask(k: &str) -> Result<u64, ()> {
+    let k = k.trim();
+    if let Some(hex) = k.strip_prefix("0x").or_else(|| k.strip_prefix("0X")) {
+        return u64::from_str_radix(hex, 16).map_err(|_| ());
+    }
+    if k.chars().all(|c| c.is_ascii_digit()) {
+        return k.parse::<u64>().map_err(|_| ());
+    }
+    u64::from_str_radix(k, 16).map_err(|_| ())
 }
 
 impl Schema {
@@ -527,6 +569,24 @@ impl Schema {
                                 r.order.push(sig.clone());
                             }
                         }
+                        if let Some(prev_seq) = &prev.sequence {
+                            if let Some(r_seq) = &mut r.sequence {
+                                for (bname, bdef) in &prev_seq.blocks {
+                                    r_seq.blocks.entry(bname.clone()).or_insert_with(|| bdef.clone());
+                                }
+                            } else {
+                                r.sequence = Some(prev_seq.clone());
+                            }
+                        }
+                    }
+                }
+                if let Some(seq) = &mut r.sequence {
+                    for block in seq.blocks.values_mut() {
+                        for (sig, sub) in &r.subrecords {
+                            if let Some(old) = block.subrecords.get_mut(sig) {
+                                *old = sub.clone();
+                            }
+                        }
                     }
                 }
                 self.records.insert(name.clone(), r);
@@ -589,7 +649,11 @@ impl Schema {
                         },
                         storage: Prim::U32,
                         union: Vec::new(),
-                value_union: None,
+                        value_union: None,
+                        alias: match &ty {
+                            Type::Inline(_) | Type::Enum { .. } | Type::Bits { .. } => None,
+                            other => Some(other.clone()),
+                        },
                     }
                 } else {
                     self.parse_type(name, def)?
@@ -756,12 +820,26 @@ impl Schema {
                 variants.insert(vname.clone(), VariantDef { subrecords: vsub });
             }
         }
+        let opener = o
+            .get("opener")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let mut openers = vec![opener.clone()];
+        if let Some(arr) = o.get("openers").and_then(|v| v.as_array()) {
+            for v in arr {
+                if let Some(s) = v.as_str() {
+                    if !openers.iter().any(|existing| existing == s) {
+                        openers.push(s.to_string());
+                    }
+                }
+            }
+        }
+        let own_first = o.get("own_first").and_then(|v| v.as_bool()).unwrap_or(false);
         Ok(BlockDef {
-            opener: o
-                .get("opener")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string(),
+            opener,
+            openers,
+            own_first,
             order: o
                 .get("order")
                 .and_then(|v| v.as_array())
@@ -806,6 +884,10 @@ impl Schema {
                 None => Type::Named(s.clone()),
             }),
             Json::Object(o) => {
+                if let Some(r) = o.get("repeat") {
+                    let inner = self.parse_type_value(r)?;
+                    return Ok(Type::Repeat(Box::new(inner)));
+                }
                 if let Some(st) = o.get("struct").and_then(|v| v.as_array()) {
                     let mut fields = Vec::with_capacity(st.len());
                     for f in st {
@@ -823,23 +905,41 @@ impl Schema {
                         variants.push(Variant { size, ty });
                     }
                     // A union whose variant is chosen by another field's
-                    // value has the cases and the decider beside the
+                    // value or format version has the cases/decider beside the
                     // variants.
-                    if let (Some(switch_on), Some(cases)) = (
-                        o.get("switch_on").and_then(|v| v.as_str()),
-                        o.get("cases").and_then(|v| v.as_object()),
-                    ) {
+                    if o.get("switch_on").is_some() || o.get("min_version").is_some() {
+                        let switch_on = o
+                            .get("switch_on")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("form_version")
+                            .to_string();
                         let mut map = BTreeMap::new();
-                        for (k, v) in cases {
-                            if let Some(n) = v.as_u64() {
-                                map.insert(k.parse::<i64>().unwrap_or(-1), n as usize);
+                        if let Some(cases) = o.get("cases").and_then(|v| v.as_object()) {
+                            for (k, v) in cases {
+                                if let Some(n) = v.as_u64() {
+                                    map.insert(k.clone(), n as usize);
+                                }
                             }
                         }
+                        let mut bits_vec = Vec::new();
+                        if let Some(bits) = o.get("bits").and_then(|v| v.as_object()) {
+                            for (k, v) in bits {
+                                if let (Ok(mask), Some(n)) = (parse_bit_mask(k), v.as_u64()) {
+                                    bits_vec.push((mask, n as usize));
+                                }
+                            }
+                        }
+                        let min_version = o
+                            .get("min_version")
+                            .and_then(|v| v.as_u64())
+                            .map(|m| m as u32);
                         return Ok(Type::ValueUnion(ValueUnion {
-                            switch_on: switch_on.to_string(),
+                            switch_on,
                             cases: map,
+                            bits: bits_vec,
                             default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
                             variants,
+                            min_version,
                         }));
                     }
                     return Ok(Type::Union(variants));
@@ -857,6 +957,24 @@ impl Schema {
                         let p =
                             Prim::parse(p).ok_or_else(|| format!("unknown count type {p:?}"))?;
                         ArrayCount::Prefix(p)
+                    } else if let Some(arr) = o.get("count_bits").and_then(|v| v.as_array()) {
+                        if arr.len() == 2 {
+                            let f = arr[0].as_str().unwrap_or_default().to_string();
+                            let n = arr[1].as_u64().unwrap_or(0) as u32;
+                            ArrayCount::Bits(f, n)
+                        } else {
+                            ArrayCount::Rest
+                        }
+                    } else if let Some(arr) = o.get("count_sum").and_then(|v| v.as_array()) {
+                        if arr.len() == 2 {
+                            let a = arr[0].as_str().unwrap_or_default().to_string();
+                            let b = arr[1].as_str().unwrap_or_default().to_string();
+                            ArrayCount::Sum(a, b)
+                        } else {
+                            ArrayCount::Rest
+                        }
+                    } else if let Some(p) = o.get("count_pow").and_then(|v| v.as_str()) {
+                        ArrayCount::Pow(p.to_string())
                     } else {
                         // No count: the elements fill what is left.
                         ArrayCount::Rest
@@ -931,6 +1049,10 @@ impl Schema {
             name,
             ty,
             optional: o.get("optional").and_then(|v| v.as_bool()).unwrap_or(false),
+            optional_if_empty: o
+                .get("optional_if_empty")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
             count_from: o
                 .get("count_from")
                 .and_then(|v| v.as_str())
@@ -943,7 +1065,17 @@ impl Schema {
     /// Read a named type's definition.
     fn parse_type(&self, name: &str, def: &Json) -> Result<TypeDef, String> {
         let Some(o) = def.as_object() else {
-            return Err(format!("the type {name:?} is not an object"));
+            let ty = self.parse_type_value(def)?;
+            return Ok(TypeDef {
+                fields: Vec::new(),
+                values: BTreeMap::new(),
+                bits: Vec::new(),
+                storage: Prim::U32,
+                union: Vec::new(),
+                value_union: None,
+                peek_union: None,
+                alias: Some(ty),
+            });
         };
         let storage = o
             .get("storage")
@@ -983,25 +1115,42 @@ impl Schema {
             };
             // A union whose variant is chosen by another field's value has
             // the cases and the decider beside the variants.
-            let value_union = match (
-                o.get("switch_on").and_then(|v| v.as_str()),
-                o.get("cases").and_then(|v| v.as_object()),
-            ) {
-                (Some(switch_on), Some(cases)) => {
-                    let mut map = BTreeMap::new();
+            let value_union = if o.get("switch_on").is_some() || o.get("min_version").is_some() {
+                let switch_on = o
+                    .get("switch_on")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("form_version")
+                    .to_string();
+                let mut map = BTreeMap::new();
+                if let Some(cases) = o.get("cases").and_then(|v| v.as_object()) {
                     for (k, v) in cases {
                         if let Some(n) = v.as_u64() {
-                            map.insert(k.parse::<i64>().unwrap_or(-1), n as usize);
+                            map.insert(k.clone(), n as usize);
                         }
                     }
-                    Some(ValueUnion {
-                        switch_on: switch_on.to_string(),
-                        cases: map,
-                        default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
-                        variants: union.clone(),
-                    })
                 }
-                _ => None,
+                let mut bits_vec = Vec::new();
+                if let Some(bits) = o.get("bits").and_then(|v| v.as_object()) {
+                    for (k, v) in bits {
+                        if let (Ok(mask), Some(n)) = (parse_bit_mask(k), v.as_u64()) {
+                            bits_vec.push((mask, n as usize));
+                        }
+                    }
+                }
+                let min_version = o
+                    .get("min_version")
+                    .and_then(|v| v.as_u64())
+                    .map(|m| m as u32);
+                Some(ValueUnion {
+                    switch_on,
+                    cases: map,
+                    bits: bits_vec,
+                    default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
+                    variants: union.clone(),
+                    min_version,
+                })
+            } else {
+                None
             };
             return Ok(TypeDef {
                 fields: Vec::new(),
@@ -1011,6 +1160,7 @@ impl Schema {
                 union,
                 value_union,
                 peek_union,
+                alias: None,
             });
         }
         if let Some(st) = o.get("struct").and_then(|v| v.as_array()) {
@@ -1026,6 +1176,7 @@ impl Schema {
                 union: Vec::new(),
                 value_union: None,
                 peek_union: None,
+                alias: None,
             });
         }
         if let Some(bits) = o.get("bits").and_then(|v| v.as_object()) {
@@ -1037,6 +1188,7 @@ impl Schema {
                 union: Vec::new(),
                 value_union: None,
                 peek_union: None,
+                alias: None,
             });
         }
         let mut values = BTreeMap::new();
@@ -1056,6 +1208,7 @@ impl Schema {
             union: Vec::new(),
             value_union: None,
             peek_union: None,
+            alias: None,
         })
     }
 
@@ -1120,6 +1273,31 @@ impl Schema {
             .or_else(|| self.common_subrecords.get(&sub))
     }
 
+    /// Lookup a subrecord definition, prioritizing the given block if specified.
+    pub fn lookup_in_block(
+        &self,
+        rec: &[u8; 4],
+        sub: &[u8; 4],
+        block: Option<&str>,
+    ) -> Option<&SubDef> {
+        let rec_str = nvre_util::tag_str(rec);
+        let sub_str = nvre_util::tag_str(sub);
+        if let Some(b) = block {
+            if let Some(seq) = self.records.get(&rec_str).and_then(|r| r.sequence.as_ref()) {
+                if let Some(bd) = seq.blocks.get(b).or_else(|| {
+                    seq.blocks
+                        .values()
+                        .find(|bd| bd.opener == b || bd.openers.iter().any(|o| o == b))
+                }) {
+                    if let Some(d) = bd.subrecords.get(&sub_str) {
+                        return Some(d);
+                    }
+                }
+            }
+        }
+        self.lookup(rec, sub)
+    }
+
     /// Read a schema from a JSON document.
     pub fn merge_str(&mut self, text: &str) -> Result<(), String> {
         let j: Json = serde_json::from_str(text).map_err(|e| e.to_string())?;
@@ -1181,11 +1359,15 @@ impl Schema {
                 ArrayCount::Fixed(c) => self.fixed_size(of).map(|s| s * c),
                 _ => None,
             },
+            Type::Repeat(_) => None,
         }
     }
 
     /// The size a named type takes, when it takes one.
     fn type_def_size(&self, td: &TypeDef) -> Option<usize> {
+        if let Some(alias) = &td.alias {
+            return self.fixed_size(alias);
+        }
         if !td.union.is_empty() {
             let mut n = None;
             for v in &td.union {

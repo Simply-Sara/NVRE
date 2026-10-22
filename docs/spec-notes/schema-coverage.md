@@ -166,6 +166,54 @@ REFR TNAM's two meanings, REGN's `RDMP`/`RDSD`/`RDOT`, IMAD's `RDSD`/`RDSI`,
 `RADS`/`DEHY`/`HUNG`/`SLPD` DATA, `CDCK`/`RCCT`/`DOBJ`/`INGR`/`LSCT` DATA and
 `INGR ENIT`, plus the earlier MODS-family and ARMA BMDT.
 
+## 2026-10-21 — Fallout4.esm, the base master
+
+Measured with `cargo run --release --bin coverage -- --overlay schemas/fo4
+schemas/base <Data>/Fallout4.esm`.
+
+| plugin | total | ok | unknown | trailing | error |
+|---|---|---|---|---|---|
+| Fallout4.esm | 6,742,917 | **6,742,917 (100.00%)** | 0 | 0 | 0 |
+
+The schema is `schemas/fo4`, most of it generated from xEdit's
+`wbDefinitionsFO4.pas` by `tools/fo4_pascal_to_schema.py` and the rest written
+by hand from measured bytes. `docs/spec-notes/fo4.md` has the measurements;
+this is the list of what the schema language had to learn to read it.
+
+### The switches a union may use
+
+A union's variant is not always decided by the bytes left over:
+
+| the switch reads | example | how |
+|---|---|---|
+| a whole value | `PERK`'s `EPFD` on the sibling `EPFT` | `cases` |
+| a bit of a value | a book's `Teaches` on the "add perk" bit of `Flags` | `bits` |
+| a sibling field | a script property's value on the property's `Type` | `switch_on` |
+| a sibling *subrecord*'s field | `PERK`'s `DATA` on `PRKE.Type` | `switch_on` + `expose` |
+| a case table over an expression | a script property's value on `Container.ElementNativeValues['Type']` | `cases` |
+| the record's form version | `EXPL`'s `DATA` on `wbDeciderFormVersion99` | `min_version` |
+
+### The counts a field may take
+
+A count is not always in the data: a navmesh's grid is the pathing cell's
+size squared (`count_pow`), a script's fragments are counted by the flag bits
+that are set (`count_bits`), and a miscellaneous object's components are as
+many as fit (`repeat`).
+
+### The strings
+
+[observed] Fallout 4's text is Windows-1252, not UTF-16 as `schemas/README.md`
+long said. A localized file holds its translatable strings as 4-byte string
+IDs, and the switch is the *file's* — the TES4 header's bit 7 — not the
+record's.
+
+### The hand-written layouts
+
+Some layouts the generator cannot express, written from measured bytes:
+`CELL`'s combined references, `NAVM`'s navmesh, `WTHR`'s weather colours, and
+`QUST`'s description, which xEdit declares a plain string and the game holds
+as a string ID.
+
 ### Round-trip (decode → encode)
 
 Checked with `cargo run --bin rtcheck -- schemas/fnv "$NVRE_DATA"/<plugin>`:
