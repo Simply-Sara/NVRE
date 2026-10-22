@@ -276,8 +276,28 @@ pub struct TypeDef {
     pub bits: Vec<BitField>,
     /// The type the enum's values are stored as.
     pub storage: Prim,
-    /// The type's variants, when it is a union.
+    /// The type's variants, when it is a union chosen by the size of what
+    /// is left.
     pub union: Vec<Variant>,
+    /// The union chosen by the value of another field, when it is one.
+    pub value_union: Option<ValueUnion>,
+}
+
+/// A union whose variant is chosen by another field's value.
+///
+/// The decider is a field of the same struct, read before the union: the
+/// `PERK` record's `DATA` is one thing or another depending on the `PRKE`
+/// beside it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ValueUnion {
+    /// The field whose value chooses the variant.
+    pub switch_on: String,
+    /// The variant each value chooses, by the value.
+    pub cases: BTreeMap<i64, usize>,
+    /// The variant to use when no case matches.
+    pub default: usize,
+    /// The variants.
+    pub variants: Vec<Variant>,
 }
 
 /// A record's layout: its subrecords, in the order they appear.
@@ -498,6 +518,7 @@ impl Schema {
                         },
                         storage: Prim::U32,
                         union: Vec::new(),
+                value_union: None,
                     }
                 } else {
                     self.parse_type(name, def)?
@@ -812,12 +833,35 @@ impl Schema {
                     self.parse_type_value(u.get("type").ok_or("a union variant has no type")?)?;
                 union.push(Variant { size, ty });
             }
+            // A union whose variant is chosen by another field's value has
+            // the cases and the decider beside the variants.
+            let value_union = match (
+                o.get("switch_on").and_then(|v| v.as_str()),
+                o.get("cases").and_then(|v| v.as_object()),
+            ) {
+                (Some(switch_on), Some(cases)) => {
+                    let mut map = BTreeMap::new();
+                    for (k, v) in cases {
+                        if let Some(n) = v.as_u64() {
+                            map.insert(k.parse::<i64>().unwrap_or(-1), n as usize);
+                        }
+                    }
+                    Some(ValueUnion {
+                        switch_on: switch_on.to_string(),
+                        cases: map,
+                        default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
+                        variants: union.clone(),
+                    })
+                }
+                _ => None,
+            };
             return Ok(TypeDef {
                 fields: Vec::new(),
                 values: BTreeMap::new(),
                 bits: Vec::new(),
                 storage,
                 union,
+                value_union,
             });
         }
         if let Some(st) = o.get("struct").and_then(|v| v.as_array()) {
@@ -831,6 +875,7 @@ impl Schema {
                 bits: Vec::new(),
                 storage: Prim::U32,
                 union: Vec::new(),
+                value_union: None,
             });
         }
         if let Some(bits) = o.get("bits").and_then(|v| v.as_object()) {
@@ -840,6 +885,7 @@ impl Schema {
                 bits: self.parse_bits(bits)?,
                 storage,
                 union: Vec::new(),
+                value_union: None,
             });
         }
         let mut values = BTreeMap::new();
@@ -857,6 +903,7 @@ impl Schema {
             bits: Vec::new(),
             storage,
             union: Vec::new(),
+                value_union: None,
         })
     }
 

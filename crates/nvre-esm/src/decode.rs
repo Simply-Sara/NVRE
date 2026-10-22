@@ -13,6 +13,7 @@
 //! shows up as a number that is not 100%, not as a program that crashes.
 
 use crate::raw::{Record, Subrecord};
+use crate::schema::ValueUnion;
 use crate::schema::{ArrayCount, BlockDef, Prim, Schema, SequenceDef, SubDef, Type, TypeDef};
 use nvre_util::{cp1252, Cursor};
 use serde_json::{Map, Value as Json};
@@ -57,6 +58,13 @@ pub struct DecodeCtx<'a> {
     pub rec_sig: [u8; 4],
     /// The values read so far, by the subrecord they came from.
     pub values: HashMap<String, Json>,
+    /// The switch values of the subrecords of this record, by the record's
+    /// type and the subrecord's name.
+    ///
+    /// A subrecord may be read against a value another subrecord of the
+    /// same record holds: the `PERK` record's `DATA` is one thing or
+    /// another depending on the `PRKE` beside it.
+    pub exposed: HashMap<(String, String), i64>,
 }
 
 impl<'a> DecodeCtx<'a> {
@@ -66,6 +74,7 @@ impl<'a> DecodeCtx<'a> {
             schema,
             rec_sig,
             values: HashMap::new(),
+            exposed: HashMap::new(),
         }
     }
 }
@@ -230,6 +239,12 @@ fn decode_type_value(
             let Some(td) = ctx.schema.type_def(n) else {
                 return Err(format!("the unknown type {n:?}"));
             };
+            // A union whose variant is chosen by another field's value:
+            // the `PERK` record's `DATA` is one thing or another depending
+            // on the `PRKE` beside it.
+            if let Some(vu) = &td.value_union {
+                return decode_value_union(vu, c, ctx, scope);
+            }
             if !td.union.is_empty() {
                 return decode_type_value(&Type::Union(td.union.clone()), c, ctx, scope);
             }
@@ -264,6 +279,7 @@ fn decode_type_value(
                 bits: Vec::new(),
                 storage: Prim::U32,
                 union: Vec::new(),
+                value_union: None,
             };
             decode_struct(&td, c, ctx, scope)
         }
@@ -496,7 +512,13 @@ pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
                 let d = decode_sub(&r.header.sig, s, &mut ctx);
                 count(&mut cov, &d);
                 if let Some(v) = d.value.clone() {
-                    m.insert(d.sig_str(), v);
+                    m.insert(d.sig_str(), v.clone());
+                    // The value is exposed to the subrecords that come
+                    // after it: the `PERK` record's `DATA` is read against
+                    // the `PRKE` beside it.
+                    if let Some(n) = switch_value(&v) {
+                        ctx.exposed.insert((rec_key.clone(), d.sig_str()), n);
+                    }
                 }
             }
             m
@@ -517,6 +539,51 @@ fn count(cov: &mut RecordCoverage, d: &DecodedSub) {
         sig: d.sig,
         status: d.status.clone(),
     });
+}
+
+/// The number a value holds, when it is one: the switch value a union's
+/// variant is chosen by.
+fn switch_value(v: &Json) -> Option<i64> {
+    match v {
+        Json::Number(n) => n.as_i64(),
+        Json::Object(m) => m.get("value").and_then(|v| v.as_i64()),
+        _ => None,
+    }
+}
+
+/// Decode a union whose variant is chosen by another field's value.
+///
+/// The decider is a field of the same struct, or of an earlier subrecord of
+/// the same record — the `PERK` record's `DATA` is one thing or another
+/// depending on the `PRKE` beside it. A missing decider selects the
+/// default.
+fn decode_value_union(
+    vu: &ValueUnion,
+    c: &mut Cursor<'_>,
+    ctx: &mut DecodeCtx<'_>,
+    scope: &Map<String, Json>,
+) -> Result<Json, String> {
+    let switch = scope
+        .get(&vu.switch_on)
+        .and_then(|v| v.as_i64())
+        .or_else(|| {
+            // The decider may be a subrecord of the same record that was
+            // decoded earlier.
+            ctx.exposed
+                .get(&(
+                    String::from_utf8_lossy(&ctx.rec_sig).into_owned(),
+                    vu.switch_on.clone(),
+                ))
+                .copied()
+        });
+    let idx = match switch {
+        Some(v) => vu.cases.get(&v).copied().unwrap_or(vu.default),
+        None => vu.default,
+    };
+    let Some(variant) = vu.variants.get(idx) else {
+        return Err(format!("the union has no variant {idx}"));
+    };
+    decode_type_value(&variant.ty, c, ctx, scope)
 }
 
 /// Decode a record that is a sequence of blocks.
