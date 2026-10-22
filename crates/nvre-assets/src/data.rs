@@ -48,6 +48,22 @@ impl GameData {
         })
     }
 
+    /// [`GameData::open`] with explicit archives and schema layers.
+    pub fn open_with_archives<S: AsRef<str>>(
+        data_dir: &Path,
+        archives: &[S],
+        schema_dir: &Path,
+        layers: &[&str],
+    ) -> Result<GameData, String> {
+        let arch_strings: Vec<String> = archives.iter().map(|s| s.as_ref().to_string()).collect();
+        let vfs = Vfs::open(data_dir, &arch_strings).map_err(|e| e.to_string())?;
+        let schema = load_schema(schema_dir, layers)?;
+        Ok(GameData {
+            vfs: Arc::new(vfs),
+            schema: Arc::new(schema),
+        })
+    }
+
     /// [`GameData::open`] with the schema's layers over the base.
     ///
     /// The layers are named directories under `schema_dir`, in the order they

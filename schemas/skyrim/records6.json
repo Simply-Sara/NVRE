@@ -167,7 +167,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODT and MODS fields.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "OBND": {
      "confidence": "documented",
@@ -217,7 +217,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODT and MODS fields.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "OBND": {
      "confidence": "documented",
@@ -351,7 +351,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODT and MODS fields.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "OBND": {
      "confidence": "documented",
@@ -648,7 +648,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODT and MODS fields.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "MODS": {
      "confidence": "documented",
