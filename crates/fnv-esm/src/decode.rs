@@ -717,9 +717,18 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
         }
         TypeDef::Enum { base, values } => {
             let v = read_int(*base, c)?;
-            match values.iter().find(|(k, _)| *k == v) {
-                Some((_, name)) => Ok(Value::from(name.as_str())),
-                None => Ok(Value::from(v)),
+            // The name is given only when it names one value. An enum may
+            // name several values the same — a dialogue topic's subtype is
+            // "Custom" three times over — and then the number is what
+            // says which one, and it is what a re-encode needs.
+            let name = values.iter().find(|(k, _)| *k == v).map(|(_, n)| n);
+            let unique = match name {
+                None => false,
+                Some(n) => values.iter().filter(|(_, m)| m == n).count() == 1,
+            };
+            match name {
+                Some(n) if unique => Ok(Value::from(n.as_str())),
+                _ => Ok(Value::from(v)),
             }
         }
         TypeDef::Flags { base, bits } => {

@@ -1638,7 +1638,7 @@ class Converter:
             m = m.strip()
             # A member may carry an explicit index: `{3} 'Cave'`.
             idx = None
-            im = re.match(r"^\{(\d+)\}\s*(.*)$", m, re.S)
+            im = re.match(r"^\{\s*(\d+)\s*\}\s*(.*)$", m, re.S)
             if im:
                 idx = int(im.group(1))
                 m = im.group(2).strip()
@@ -2012,7 +2012,7 @@ class Converter:
             # A variant may carry a case index: `{0} wbFormIDCk(...)`.
             m = m.strip()
             idx = None
-            im = re.match(r"^\{(\d+)\}\s*(.*)$", m, re.S)
+            im = re.match(r"^\{\s*(\d+)\s*\}\s*(.*)$", m, re.S)
             if im:
                 idx = int(im.group(1))
                 m = im.group(2).strip()
