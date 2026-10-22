@@ -1,46 +1,62 @@
-//! Which cells belong to which worldspace, and which references to which cell, across a
-//! load order.
+//! Which cells belong to which worldspace, and which references to which
+//! cell, across a load order.
 //!
-//! Plugin structure (docs/spec-notes/esm.md, world.md): a worldspace's records sit in a
-//! world-children group (type 1) labelled with the WRLD FormID; exterior cells sit in
-//! block/sub-block groups inside it, each CELL record followed by a cell-children group
-//! (type 6) holding persistent (8) and temporary (9) groups of references and the cell's
-//! LAND. Interior cells sit in the top-level CELL group. Group labels are FormIDs local to
-//! the plugin. A later plugin overrides a cell or reference by repeating it with the same
-//! FormID; the last definition in load order wins, including which cell a reference is in.
+//! Plugin structure (docs/spec-notes/esm.md, world.md): a worldspace's
+//! records sit in a world-children group (type 1) labelled with the WRLD
+//! FormID; exterior cells sit in block/sub-block groups inside it, each CELL
+//! record followed by a cell-children group (type 6) holding persistent (8)
+//! and temporary (9) groups of references and the cell's LAND. Interior
+//! cells sit in the top-level CELL group. Group labels are FormIDs local to
+//! the plugin. A later plugin overrides a cell or reference by repeating it
+//! with the same FormID; the last definition in load order wins, including
+//! which cell a reference is in.
 
 use crate::fields::{formid_of, global, num, Fields};
 use fnv_esm::raw::{group_type, visit_records};
-use fnv_esm::{GroupHeader, LoadOrder, Schema};
+use fnv_esm::{GroupHeader, LoadOrder, Record, Schema};
 use std::collections::{BTreeMap, HashMap};
 
+/// A worldspace: the cells and the references that stand in it.
 #[derive(Debug, Clone, Default)]
 pub struct Worldspace {
+    /// The worldspace's FormID.
     pub form_id: u32,
+    /// The worldspace's editor ID.
     pub edid: Option<String>,
+    /// The worldspace's name.
     pub name: Option<String>,
+    /// The worldspace it takes its data from.
     pub parent: Option<u32>,
     /// WRLD PNAM: which data the worldspace takes from its parent.
     pub parent_flags: u16,
+    /// The height the land takes, when the worldspace says.
     pub default_land_height: Option<f32>,
+    /// The height the water takes, when the worldspace says.
     pub default_water_height: Option<f32>,
     /// WRLD CNAM climate and NAM2 water.
     pub climate: Option<u32>,
+    /// The climate's FormID.
     pub water: Option<u32>,
-    /// The cell placed directly in the world-children group (not in a block); it holds
-    /// the worldspace's persistent references.
+    /// The cell placed directly in the world-children group (not in a
+    /// block); it holds the worldspace's persistent references.
     pub persistent_cell: Option<u32>,
     /// Exterior cells by grid coordinate.
     pub grid: BTreeMap<(i32, i32), u32>,
 }
 
+/// A cell: a square of the world, and what stands in it.
 #[derive(Debug, Clone, Default)]
 pub struct Cell {
+    /// The cell's FormID.
     pub form_id: u32,
+    /// The cell's editor ID.
     pub edid: Option<String>,
+    /// The cell's name.
     pub name: Option<String>,
-    /// Worldspace for exterior cells (and the persistent cell); `None` for interiors.
+    /// Worldspace for exterior cells (and the persistent cell); `None` for
+    /// interiors.
     pub world: Option<u32>,
+    /// The cell's square on the grid.
     pub grid: Option<(i32, i32)>,
     /// CELL DATA flags (bit 0: interior, bit 1: has water).
     pub data_flags: u8,
@@ -52,10 +68,12 @@ pub struct Cell {
     pub plugin: usize,
     /// References whose winning placement is in this cell, by FormID.
     pub refs: Vec<u32>,
+    /// The cell's landscape record.
     pub land: Option<u32>,
 }
 
 impl Cell {
+    /// Whether the cell is indoors.
     pub fn is_interior(&self) -> bool {
         self.data_flags & 1 != 0
     }
@@ -65,11 +83,12 @@ impl Cell {
         self.data_flags & 2 != 0
     }
 
-    /// Height of the cell's water surface: none without the "has water" flag; XCLW when it
-    /// holds a real height; otherwise, outdoors, the worldspace's default water height
-    /// (WRLD DNAM), passed as `world_default` [hypothesis for the fallback, world.md §6:
-    /// 15,963 WastelandNV cells store the 3.4e38 sentinel]. The rule the renderer draws
-    /// water with and the physics swims in (physics.md §6.6).
+    /// Height of the cell's water surface: none without the "has water"
+    /// flag; XCLW when it holds a real height; otherwise, outdoors, the
+    /// worldspace's default water height (WRLD DNAM), passed as
+    /// `world_default` [hypothesis for the fallback, world.md §6: 15,963
+    /// WastelandNV cells store the 3.4e38 sentinel]. The rule the renderer
+    /// draws water with and the physics swims in (physics.md §6.6).
     pub fn water_surface(&self, world_default: Option<f32>) -> Option<f32> {
         if !self.has_water() {
             return None;
@@ -82,25 +101,33 @@ impl Cell {
     }
 }
 
+/// Where a reference stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RefEntry {
+    /// The cell the reference is in.
     pub cell: u32,
+    /// The reference's record type.
     pub sig: [u8; 4],
-    /// In a persistent-children group (type 8) rather than temporary (9) or distant (10).
+    /// In a persistent-children group (type 8) rather than temporary (9) or
+    /// distant (10).
     pub persistent: bool,
 }
 
+/// The world's cells and references, across a load order.
 #[derive(Debug, Default)]
 pub struct WorldIndex {
+    /// The worldspaces, by FormID.
     pub worldspaces: BTreeMap<u32, Worldspace>,
+    /// The cells, by FormID.
     pub cells: HashMap<u32, Cell>,
+    /// The references, by FormID.
     pub refs: HashMap<u32, RefEntry>,
     /// Children groups whose label names no CELL record in the load order.
     pub orphan_groups: Vec<u32>,
     /// Records that could not be read (FormID, message).
     pub errors: Vec<(u32, String)>,
-    /// Two cells of one worldspace with the same grid square: (world, grid, earlier
-    /// cell, later cell by FormID); the later one is used.
+    /// Two cells of one worldspace with the same grid square: (world, grid,
+    /// earlier cell, later cell by FormID); the later one is used.
     pub grid_conflicts: Vec<(u32, (i32, i32), u32, u32)>,
 }
 
@@ -108,12 +135,15 @@ pub struct WorldIndex {
 const NOT_REFS: [&[u8; 4]; 2] = [b"LAND", b"NAVM"];
 
 impl WorldIndex {
+    /// Build the index over a load order.
     pub fn build(lo: &LoadOrder, schema: &Schema) -> WorldIndex {
         let mut ix = WorldIndex::default();
         let mut lands: HashMap<u32, u32> = HashMap::new();
         for (pi, p) in lo.plugins.iter().enumerate() {
             visit_records(&p.nodes[1..], &mut |r, stack: &[&GroupHeader]| {
-                let Some(fid) = lo.to_global(pi, r.header.form_id) else { return };
+                let Some(fid) = lo.to_global(pi, r.header.form_id) else {
+                    return;
+                };
                 match &r.header.sig {
                     b"WRLD" => ix.add_world(lo, schema, pi, r, fid),
                     b"CELL" => ix.add_cell(lo, schema, pi, r, fid, stack),
@@ -128,12 +158,21 @@ impl WorldIndex {
                         }) else {
                             return;
                         };
-                        let Some(cell) = lo.to_global(pi, g.label_u32()) else { return };
+                        let Some(cell) = lo.to_global(pi, label_u32(&g.label)) else {
+                            return;
+                        };
                         if sig == b"LAND" {
                             lands.insert(cell, fid);
                         } else if !NOT_REFS.contains(&sig) {
                             let persistent = g.group_type == group_type::CELL_PERSISTENT_CHILDREN;
-                            ix.refs.insert(fid, RefEntry { cell, sig: *sig, persistent });
+                            ix.refs.insert(
+                                fid,
+                                RefEntry {
+                                    cell,
+                                    sig: *sig,
+                                    persistent,
+                                },
+                            );
                         }
                     }
                 }
@@ -158,14 +197,15 @@ impl WorldIndex {
         for c in ix.cells.values_mut() {
             c.refs.sort_unstable();
         }
-        // In FormID order so that a grid square claimed by two cells resolves the same way
-        // every run; such conflicts are reported.
+        // In FormID order so that a grid square claimed by two cells resolves
+        // the same way every run; such conflicts are reported.
         let mut ids: Vec<u32> = ix.cells.keys().copied().collect();
         ids.sort_unstable();
         for id in ids {
             let c = &ix.cells[&id];
             if let (Some(w), Some(g)) = (c.world, c.grid) {
-                let is_persistent = ix.worldspaces.get(&w).and_then(|w| w.persistent_cell) == Some(c.form_id);
+                let is_persistent =
+                    ix.worldspaces.get(&w).and_then(|w| w.persistent_cell) == Some(c.form_id);
                 if !is_persistent {
                     if let Some(ws) = ix.worldspaces.get_mut(&w) {
                         if let Some(prev) = ws.grid.insert(g, c.form_id) {
@@ -178,7 +218,15 @@ impl WorldIndex {
         ix
     }
 
-    fn add_world(&mut self, lo: &LoadOrder, schema: &Schema, pi: usize, r: &fnv_esm::Record, fid: u32) {
+    /// Add a worldspace.
+    fn add_world(
+        &mut self,
+        lo: &LoadOrder,
+        schema: &Schema,
+        pi: usize,
+        r: &Record,
+        fid: u32,
+    ) {
         let f = match Fields::new(r, pi, schema) {
             Ok(f) => f,
             Err(e) => return self.errors.push((fid, e.to_string())),
@@ -190,19 +238,23 @@ impl WorldIndex {
         w.parent = f.formid(b"WNAM", lo);
         w.climate = f.formid(b"CNAM", lo);
         w.water = f.formid(b"NAM2", lo);
-        w.parent_flags = f.get(b"PNAM").and_then(|v| num(&v, "value")).map_or(0, |v| v as u16);
+        w.parent_flags = f
+            .get(b"PNAM")
+            .and_then(|v| num(&v, "value"))
+            .map_or(0, |v| v as u16);
         if let Some(d) = f.get(b"DNAM") {
             w.default_land_height = num(&d, "default_land_height").map(|v| v as f32);
             w.default_water_height = num(&d, "default_water_height").map(|v| v as f32);
         }
     }
 
+    /// Add a cell.
     fn add_cell(
         &mut self,
         lo: &LoadOrder,
         schema: &Schema,
         pi: usize,
-        r: &fnv_esm::Record,
+        r: &Record,
         fid: u32,
         stack: &[&GroupHeader],
     ) {
@@ -210,47 +262,71 @@ impl WorldIndex {
             Ok(f) => f,
             Err(e) => return self.errors.push((fid, e.to_string())),
         };
-        let world_group = stack.iter().rev().find(|g| g.group_type == group_type::WORLD_CHILDREN);
-        let world = world_group.and_then(|g| lo.to_global(pi, g.label_u32()));
+        let world_group = stack
+            .iter()
+            .rev()
+            .find(|g| g.group_type == group_type::WORLD_CHILDREN);
+        let world = world_group.and_then(|g| lo.to_global(pi, label_u32(&g.label)));
         let c = self.cells.entry(fid).or_default();
         c.form_id = fid;
         c.edid = f.string(b"EDID");
         c.name = f.string(b"FULL");
         c.world = world;
         c.plugin = pi;
-        c.data_flags = f.get(b"DATA").and_then(|v| num(&v, "value")).map_or(0, |v| v as u8);
-        c.grid = f.get(b"XCLC").and_then(|v| Some((num(&v, "x")? as i32, num(&v, "y")? as i32)));
+        c.data_flags = f
+            .get(b"DATA")
+            .and_then(|v| num(&v, "value"))
+            .map_or(0, |v| v as u8);
+        c.grid = f.get(b"XCLC").and_then(|v| {
+            Some((num(&v, "x")? as i32, num(&v, "y")? as i32))
+        });
         c.water_height = f.get(b"XCLW").and_then(|v| v.as_f64()).map(|v| v as f32);
         c.water_type = f.formid(b"XCWT", lo);
-        // A cell directly inside the world-children group (no block group after it) is the
-        // worldspace's persistent cell [observed: one per worldspace, see world.md].
+        // A cell directly inside the world-children group (no block group
+        // after it) is the worldspace's persistent cell [observed: one per
+        // worldspace, see world.md].
         if let (Some(w), Some(last)) = (world, stack.last()) {
             if last.group_type == group_type::WORLD_CHILDREN {
-                self.worldspaces.entry(w).or_default().persistent_cell = Some(fid);
+                self.worldspaces
+                    .entry(w)
+                    .or_default()
+                    .persistent_cell = Some(fid);
             }
         }
     }
 
+    /// The worldspace with the given name, by FormID or by editor ID.
     pub fn world_by_name(&self, name: &str) -> Option<&Worldspace> {
         if let Some(fid) = formid_of(&serde_json::Value::String(name.to_string())) {
             if let Some(w) = self.worldspaces.get(&fid) {
                 return Some(w);
             }
         }
-        self.worldspaces.values().find(|w| w.edid.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(name)))
+        self.worldspaces
+            .values()
+            .find(|w| w.edid.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(name)))
     }
 
+    /// The cell with the given name, by FormID or by editor ID.
     pub fn cell_by_name(&self, name: &str) -> Option<&Cell> {
         if let Some(fid) = formid_of(&serde_json::Value::String(name.to_string())) {
             if let Some(c) = self.cells.get(&fid) {
                 return Some(c);
             }
         }
-        self.cells.values().find(|c| c.edid.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(name)))
+        self.cells
+            .values()
+            .find(|c| c.edid.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(name)))
     }
 }
 
-/// Convenience for callers that hold a plugin-local FormID value from a decoded field.
+/// A group's label, as the FormID it names.
+fn label_u32(label: &[u8; 4]) -> u32 {
+    u32::from_le_bytes(*label)
+}
+
+/// Convenience for callers that hold a plugin-local FormID value from a
+/// decoded field.
 pub fn global_of(lo: &LoadOrder, plugin: usize, v: &serde_json::Value) -> Option<u32> {
     global(lo, plugin, formid_of(v)?)
 }

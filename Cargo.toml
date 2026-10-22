@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/nvre-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world", "crates/nvf-assets"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/nvre-world", "crates/fnv-esm", "crates/nvre-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world", "crates/nvf-assets"]
 
 [workspace.package]
 version = "0.1.0"
@@ -22,7 +22,7 @@ nvre-dds = { path = "crates/nvre-dds" }
 # moves with `cargo update`. Crates NVRE modifies are patched to a local
 # fork below.
 #
-# `crates/fnv-world` and `crates/fnv-esm` are those forks. `fnv.schema/1`
+# `crates/nvre-world` and `crates/fnv-esm` are those forks. `fnv.schema/1`
 # cannot express count-prefixed arrays, length-prefixed strings or decided
 # unions, so the layouts in `schemas/` could not reach 100% coverage through
 # the upstream schema language; `fnv-esm` is where those constructs now live.
@@ -32,7 +32,7 @@ nvre-dds = { path = "crates/nvre-dds" }
 # reader, so the Special Edition's version 105 archives could be read — and
 # is now NVRE's own crate.
 fnv-esm = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
-fnv-world = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+nvre-world = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 # NVForever's NIF reader lives in its own engine workspace, so its
 # workspace-inherited deps have to be declared here too.
 fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
@@ -54,7 +54,7 @@ clap = { version = "4", features = ["derive", "env"] }
 # NVRE's forks of upstream crates. Cargo substitutes these for every consumer
 # in the graph, including transitive ones, so nothing else needs to change.
 [patch."https://github.com/LootJunkieAzza/NVForever.git"]
-fnv-world = { path = "crates/fnv-world" }
+nvre-world = { path = "crates/nvre-world" }
 fnv-esm = { path = "crates/fnv-esm" }
 fnv-nif = { path = "crates/fnv-nif" }
 

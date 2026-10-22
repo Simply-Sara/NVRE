@@ -8,8 +8,8 @@
 //! the load order before it means anything, and that is what [`Fields`]
 //! remembers the plugin for.
 
-use nvre_esm::decode::{decode_sub, DecodeCtx, SubStatus};
-use nvre_esm::{EsmError, LoadOrder, Record, Schema, Subrecord};
+use fnv_esm::decode::{decode_sub, DecodeCtx, SubStatus};
+use fnv_esm::{EsmError, LoadOrder, Record, Schema, Subrecord};
 use serde_json::Value;
 
 /// One record's subrecords, and the plugin that holds it.
@@ -32,7 +32,7 @@ impl<'a> Fields<'a> {
             sig: r.header.sig,
             plugin,
             flags: r.header.flags,
-            subs: r.subrecords.clone(),
+            subs: r.subrecords().unwrap_or_default(),
             schema,
         })
     }
@@ -83,7 +83,7 @@ pub fn global(lo: &LoadOrder, plugin: usize, local: u32) -> Option<u32> {
     if local == 0 {
         return None;
     }
-    lo.global_form_id(plugin as u8, local)
+    lo.to_global(plugin, local)
 }
 
 /// A number a decoded value holds.
@@ -102,9 +102,13 @@ pub fn vec3(v: &Value) -> Option<[f32; 3]> {
 
 /// The winning definition of a global FormID, and the plugin that holds it.
 pub fn winner<'a>(lo: &LoadOrder<'a>, global: u32) -> Option<(usize, &'a Record)> {
-    let d = lo.winner(global)?;
-    let pi = d.plugin as usize;
-    Some((pi, lo.records[pi][d.ordinal as usize]))
+    let (plugin, record) = lo.winner(global)?;
+    let pi = lo
+        .plugins
+        .iter()
+        .position(|p| std::ptr::eq(p, plugin))
+        .unwrap_or(0);
+    Some((pi, record))
 }
 
 #[cfg(test)]

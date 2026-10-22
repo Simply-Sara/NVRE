@@ -1,4 +1,4 @@
-use fnv_world::land::{load_land, LandParts};
+use nvre_world::land::{load_land, LandParts};
 use nvf_assets::data::GameData;
 use nvre_editor::session::Session;
 use std::path::Path;

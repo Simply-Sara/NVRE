@@ -7,6 +7,8 @@
 //! The pieces:
 //!
 //! - [`lib`] — the cell grid: how a position maps to a cell.
+//! - [`index`] — which cells belong to which worldspace, and which
+//!   references to which cell, across a load order.
 //! - [`fields`] — reading a record's fields, and resolving a FormID to the
 //!   record that wins.
 //! - [`placed`] — where a reference stands, and what it is.
@@ -14,6 +16,9 @@
 //! - [`land`] — the landscape's terrain.
 
 pub mod fields;
+pub mod index;
+
+pub use index::{Cell, RefEntry, WorldIndex, Worldspace};
 pub mod land;
 pub mod placed;
 pub mod transform;

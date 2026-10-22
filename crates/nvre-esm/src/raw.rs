@@ -615,20 +615,23 @@ pub fn write_record(r: &Record, out: &mut Vec<u8>) {
 /// Visit every record in a tree, with the groups it is in.
 ///
 /// The groups are the ones between the file's top and the record, nearest
-/// first.
-pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a Group])>(groups: &'a [Group], f: &mut F) {
-    let mut path: Vec<&Group> = Vec::new();
+/// first, and what is given is each group's header.
+pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
+    groups: &'a [Group],
+    f: &mut F,
+) {
+    let mut path: Vec<&GroupHeader> = Vec::new();
     for g in groups {
         visit_in_group(g, &mut path, f);
     }
 }
 
-fn visit_in_group<'a, F: FnMut(&'a Record, &[&'a Group])>(
+fn visit_in_group<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
     g: &'a Group,
-    path: &mut Vec<&'a Group>,
+    path: &mut Vec<&'a GroupHeader>,
     f: &mut F,
 ) {
-    path.push(g);
+    path.push(&g.header);
     for r in &g.records {
         f(r, path.as_slice());
     }

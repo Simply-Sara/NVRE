@@ -19,10 +19,10 @@ use bevy::input::mouse::MouseWheel;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
-use fnv_world::land::{
+use nvre_world::land::{
     land_texture, load_land, Land, LandParts, DEFAULT_DIFFUSE, QUAD_SIDE, SIDE, SPACING,
 };
-use fnv_world::transform::ref_rotation;
+use nvre_world::transform::ref_rotation;
 use nvf_assets::model::ModelCtx;
 use std::collections::{HashMap, HashSet};
 
@@ -902,8 +902,8 @@ fn spawn_single_cell_terrain(
     };
 
     let cell_origin = Vec2::new(
-        grid.0 as f32 * fnv_world::CELL_SIZE,
-        grid.1 as f32 * fnv_world::CELL_SIZE,
+        grid.0 as f32 * nvre_world::CELL_SIZE,
+        grid.1 as f32 * nvre_world::CELL_SIZE,
     );
 
     for q in 0..4u8 {

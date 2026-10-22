@@ -294,7 +294,7 @@ pub fn write_plugin_with_load_order(
             }
 
             if let Some(lo) = lo {
-                if let Some((pi, orig)) = fnv_world::fields::winner(lo, fid) {
+                if let Some((pi, orig)) = nvre_world::fields::winner(lo, fid) {
                     let orig_name = &lo.plugins[pi].name;
                     if let Some(m_idx) = masters
                         .names
@@ -786,7 +786,7 @@ fn cell_of_record_lo(
     form_id: u32,
 ) -> Option<u32> {
     if let Some(lo) = lo {
-        let ix = fnv_world::WorldIndex::build(lo, schema);
+        let ix = nvre_world::WorldIndex::build(lo, schema);
         if let Some(e) = ix.refs.get(&form_id) {
             return Some(e.cell);
         }
@@ -796,7 +796,7 @@ fn cell_of_record_lo(
 
 /// The cell a record lives in, from the load order's own index.
 ///
-/// `fnv_world::WorldIndex` already maps every FormID to its cell
+/// `nvre_world::WorldIndex` already maps every FormID to its cell
 /// (`ix.refs[fid].cell`), and it is the same index the renderer and the
 /// simulation use to decide which references exist and where. Guessing the cell
 /// from the FormID's low bits would be wrong: a REFR FormID has no relation to
@@ -805,7 +805,7 @@ fn cell_of_record(doc: &crate::Document, form_id: u32) -> Option<u32> {
     // The index is built over the plugin being edited on its own, which is
     // enough to say where the record sits inside it.
     let lo = fnv_esm::LoadOrder::new(std::slice::from_ref(doc.plugin())).ok()?;
-    let ix = fnv_world::WorldIndex::build(&lo, &Schema::default());
+    let ix = nvre_world::WorldIndex::build(&lo, &Schema::default());
     ix.refs.get(&form_id).map(|e| e.cell)
 }
 
@@ -824,7 +824,7 @@ fn ensure_record_present(
         return;
     }
     if let Some(lo) = lo {
-        if let Some((_, orig)) = fnv_world::fields::winner(lo, form_id) {
+        if let Some((_, orig)) = nvre_world::fields::winner(lo, form_id) {
             let mut rec = orig.clone();
             let mut problems = Vec::new();
             let mut report = SaveReport::default();
@@ -880,7 +880,7 @@ fn ensure_cell_hierarchy_and_insert(
     rec: Record,
 ) {
     let (world_id, grid, is_interior, is_persistent) = if let Some(lo) = lo {
-        let ix = fnv_world::WorldIndex::build(lo, schema);
+        let ix = nvre_world::WorldIndex::build(lo, schema);
         let cell_entry = ix.cells.get(&cell_id);
         let world = cell_entry.and_then(|c| c.world);
         let grid = cell_entry.and_then(|c| c.grid);

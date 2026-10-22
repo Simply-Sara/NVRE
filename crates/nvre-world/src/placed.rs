@@ -5,7 +5,7 @@
 //! record that says what it is.
 
 use crate::fields::{formid_of, global, num, vec3, winner, Fields};
-use nvre_esm::{LoadOrder, Schema};
+use fnv_esm::{LoadOrder, Schema};
 
 /// The record header flags a reference carries.
 pub mod ref_flags {
@@ -129,6 +129,50 @@ pub struct BaseObject {
     /// it shows on the ground; a weapon's `MODL` is the one in the hand and
     /// `MOD4` the one on the ground.
     pub world_model: Option<String>,
+}
+
+impl BaseObject {
+    /// Archive path of MODL ([`archive_path`]).
+    pub fn model_path(&self) -> Option<String> {
+        archive_path(self.model.as_deref()?)
+    }
+
+    /// Archive path of the model the object shows (and collides with) in the
+    /// world, placed or dropped: an item's world model when its record names
+    /// one ([`world_model_sub`]), else MODL.
+    pub fn world_model_path(&self) -> Option<String> {
+        self.world_model
+            .as_deref()
+            .and_then(archive_path)
+            .or_else(|| self.model_path())
+    }
+
+    /// Whether the model is a SpeedTree model.
+    pub fn is_speedtree(&self) -> bool {
+        self.model_path().is_some_and(|m| m.ends_with(".spt"))
+    }
+}
+
+/// Archive path of a model stored relative to `meshes\`, lower case:
+/// `meshes\...`, except SpeedTree models (`.spt`, used by TREE), which live
+/// under `trees\` [observed: all ten `.spt` files in the archives are in
+/// `trees\`, and TREE MODL values name them without a folder].
+fn archive_path(stored: &str) -> Option<String> {
+    let m = stored.trim();
+    if m.is_empty() {
+        return None;
+    }
+    // TREE models are stored with a leading separator, e.g.
+    // "\WastelandShrub01.spt" [observed]; the file is
+    // trees\wastelandshrub01.spt.
+    let m = m.replace('/', "\\").to_ascii_lowercase();
+    let m = m.trim_start_matches('\\');
+    let root = if m.ends_with(".spt") { "trees\\" } else { "meshes\\" };
+    Some(if m.starts_with(root) {
+        m.to_string()
+    } else {
+        format!("{root}{m}")
+    })
 }
 
 /// The subrecord naming the model an item shows lying in the world, for the

@@ -49,7 +49,7 @@ pub struct Session {
     /// The ESM record schema.
     pub schema: Schema,
     /// The world index: which reference is in which cell.
-    pub index: fnv_world::WorldIndex,
+    pub index: nvre_world::WorldIndex,
     /// The masters the saved plugin will depend on.
     pub masters: Vec<String>,
     /// The cell currently open, by FormID.
@@ -125,15 +125,15 @@ impl Session {
         }
         let leaked_plugins: &'static [fnv_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
-        let index = fnv_world::WorldIndex::build(&lo, &schema);
+        let index = nvre_world::WorldIndex::build(&lo, &schema);
 
         let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
         for (&w_fid, ws) in &index.worldspaces {
             if let Some(pc_id) = ws.persistent_cell {
                 if let Some(pc) = index.cells.get(&pc_id) {
                     for &r in &pc.refs {
-                        if let Some(p) = fnv_world::placed::placement(&lo, &schema, r) {
-                            let g = fnv_world::cell_of(p.position[0], p.position[1]);
+                        if let Some(p) = nvre_world::placed::placement(&lo, &schema, r) {
+                            let g = nvre_world::cell_of(p.position[0], p.position[1]);
                             persistent_by_grid.entry((w_fid, g)).or_default().push(r);
                         }
                     }
@@ -193,15 +193,15 @@ impl Session {
         }
         let leaked_plugins: &'static [fnv_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
-        let index = fnv_world::WorldIndex::build(&lo, &schema);
+        let index = nvre_world::WorldIndex::build(&lo, &schema);
 
         let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
         for (&w_fid, ws) in &index.worldspaces {
             if let Some(pc_id) = ws.persistent_cell {
                 if let Some(pc) = index.cells.get(&pc_id) {
                     for &r in &pc.refs {
-                        if let Some(p) = fnv_world::placed::placement(&lo, &schema, r) {
-                            let g = fnv_world::cell_of(p.position[0], p.position[1]);
+                        if let Some(p) = nvre_world::placed::placement(&lo, &schema, r) {
+                            let g = nvre_world::cell_of(p.position[0], p.position[1]);
                             persistent_by_grid.entry((w_fid, g)).or_default().push(r);
                         }
                     }
@@ -288,7 +288,7 @@ impl Session {
                     missing
                         .iter()
                         .map(|&b| {
-                            fnv_world::placed::base_object(lo, &self.schema, b)
+                            nvre_world::placed::base_object(lo, &self.schema, b)
                                 .and_then(|o| o.world_model_path().or_else(|| o.model_path()))
                         })
                         .collect::<Vec<_>>(),
@@ -315,7 +315,7 @@ impl Session {
     /// A base object's model path, with no caching.
     fn resolve_model_path(&mut self, base: u32) -> Option<String> {
         let lo = self.load_order().ok()?;
-        let b = fnv_world::placed::base_object(lo, &self.schema, base)?;
+        let b = nvre_world::placed::base_object(lo, &self.schema, base)?;
         b.world_model_path().or_else(|| b.model_path())
     }
 
@@ -663,7 +663,7 @@ impl Session {
         for r in &rows {
             if let Some(owner) = r.owner {
                 owners.entry(owner).or_insert_with(|| {
-                    fnv_world::fields::winner(lo, owner)
+                    nvre_world::fields::winner(lo, owner)
                         .and_then(|(_, rec)| nvre_edit::document::edid_of(rec))
                         .unwrap_or_else(|| format!("{owner:08X}"))
                 });
@@ -680,7 +680,7 @@ impl Session {
                 .as_deref()
                 .and_then(|b| u32::from_str_radix(b.strip_prefix("0x")?, 16).ok())
             {
-                if let Some((_, rec)) = fnv_world::fields::winner(lo, base) {
+                if let Some((_, rec)) = nvre_world::fields::winner(lo, base) {
                     types.entry(base).or_insert_with(|| {
                         self.schema
                             .records
@@ -723,7 +723,7 @@ impl Session {
                 let rec = if let Some(r) = self.doc.record(fid) {
                     r
                 } else if let Ok(lo) = self.load_order() {
-                    let (_, r) = fnv_world::fields::winner(lo, fid)?;
+                    let (_, r) = nvre_world::fields::winner(lo, fid)?;
                     r
                 } else {
                     return None;
@@ -985,7 +985,7 @@ impl Session {
             return Some(StagedRecord::Saved(r));
         }
         let lo = self.load_order().ok()?;
-        let (_, r) = fnv_world::fields::winner(lo, fid)?;
+        let (_, r) = nvre_world::fields::winner(lo, fid)?;
         Some(StagedRecord::Saved(r))
     }
 
@@ -995,7 +995,7 @@ impl Session {
             return Some(r.header.sig);
         }
         let lo = self.load_order().ok()?;
-        let (_, r) = fnv_world::fields::winner(lo, form_id)?;
+        let (_, r) = nvre_world::fields::winner(lo, form_id)?;
         Some(r.header.sig)
     }
 

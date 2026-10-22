@@ -4632,7 +4632,7 @@ impl ObjectEditorState {
         let (raw_subs, flags, found) = if let Some(rec) = session.doc.record(form_id) {
             (rec.subrecords().unwrap_or_default(), rec.header.flags, true)
         } else if let Ok(lo) = session.load_order() {
-            if let Some((_, orig)) = fnv_world::fields::winner(lo, form_id) {
+            if let Some((_, orig)) = nvre_world::fields::winner(lo, form_id) {
                 (
                     orig.subrecords().unwrap_or_default(),
                     orig.header.flags,

@@ -17,8 +17,9 @@ path = "src/main.rs"
 nvre-edit = { path = "../nvre-edit" }
 nvre-util.workspace = true
 fnv-esm.workspace = true
+nvre-esm = { path = "../nvre-esm" }
 nvre-vfs.workspace = true
-fnv-world.workspace = true
+nvre-world.workspace = true
 # NVForever's Bevy asset layer, reused so the viewport renders the game's own
 # meshes with its own material and texture handling. Its workspace deps are
 # spelled out because it belongs to NVForever's own engine workspace.
@@ -28,7 +29,6 @@ nvre-nif = { path = "../nvre-nif" }
 # The NIF probes use the fork's reader, which has the round-trip encoder
 # the new crate does not have yet.
 fnv-nif = { path = "../fnv-nif" }
-nvre-esm = { path = "../nvre-esm" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

@@ -9,7 +9,7 @@
 
 use crate::fields::{global, winner, Fields};
 use crate::CELL_SIZE;
-use nvre_esm::{LoadOrder, Schema};
+use fnv_esm::{LoadOrder, Schema};
 
 /// Vertices per cell edge.
 pub const SIDE: usize = 33;
@@ -118,7 +118,7 @@ impl LandParts {
 /// Read an exterior cell's ground.
 pub fn load_land(lo: &LoadOrder, _schema: &Schema, fid: u32, parts: LandParts) -> Option<Land> {
     let (pi, r) = winner(lo, fid)?;
-    let subs = r.subrecords.clone();
+    let subs = r.subrecords().unwrap_or_default();
 
     let flags = subs
         .iter()
