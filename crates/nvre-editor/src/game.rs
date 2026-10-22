@@ -226,7 +226,7 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     notes: &[
         "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimse",
         "archives are BSA v105/LZ4, which the editor's VFS reads through NVRE's own bsa105 crate, so the models load",
-        "its NIF blocks all decode and its shapes are measured, but the packed vertex format its shapes use is read as raw bytes, so its geometry is not yet exact",
+        "its NIF blocks all decode and its shapes are measured, and the packed vertex format its shapes use (BSVertexDataSSE) is now unpacked into real geometry",
     ],
 };
 
@@ -548,10 +548,7 @@ impl GameProfile {
     /// container is not readable yet opens with loose files only and logs why:
     /// the editor can still edit that game's plugins, it just cannot render
     /// archived meshes.
-    pub fn open_asset_data(
-        &self,
-        data_dir: &Path,
-    ) -> Result<nvre_assets::GameData, String> {
+    pub fn open_asset_data(&self, data_dir: &Path) -> Result<nvre_assets::GameData, String> {
         let order = match self.archive_format {
             ArchiveFormat::Bsa104 => {
                 // The plugins in the folder, so each one's own archives

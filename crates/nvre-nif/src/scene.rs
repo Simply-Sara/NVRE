@@ -71,9 +71,7 @@ impl Transform {
     /// The transform that changes nothing.
     pub const IDENTITY: Transform = Transform {
         translation: [0.0; 3],
-        rotation: [
-            1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0,
-        ],
+        rotation: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
         scale: 1.0,
     };
 
@@ -393,6 +391,15 @@ fn uv_set(set: &Value) -> Vec<[f32; 2]> {
 
 /// The vertex streams of a geometry-data block.
 pub fn mesh_data(s: &Struct) -> MeshData {
+    // The Special Edition's BSTriShape carries its geometry in a packed
+    // format: a vertex description (flags) followed by the packed bytes.
+    // Its layout is a function of the description, so it is unpacked here.
+    if let (Some(desc), Some(data)) = (
+        s.int("vertex_desc"),
+        s.get("vertex_data").and_then(|v| v.as_bytes()),
+    ) {
+        return unpack_sse(desc as u64, data, s);
+    }
     let uv_sets = s
         .list("uv_sets")
         .map(|sets| sets.iter().map(|set| uv_set(set)).collect())
@@ -403,10 +410,172 @@ pub fn mesh_data(s: &Struct) -> MeshData {
         tangents: vec3s(s, "tangents"),
         bitangents: vec3s(s, "bitangents"),
         colors: floats(s, "vertex_colors")
-            .map(|f| f.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect())
+            .map(|f| {
+                f.chunks_exact(4)
+                    .map(|c| [c[0], c[1], c[2], c[3]])
+                    .collect()
+            })
             .unwrap_or_default(),
         uv_sets,
         triangles: triangle_indices(s),
+    }
+}
+
+/// Unpack a Skyrim Special Edition `BSTriShape`'s packed vertices.
+///
+/// The description (nifgen's `BSVertexDesc`) is a bitfield of word offsets
+/// and flags: its low forty-four bits are word offsets (bit 0-3 the vertex's
+/// size in four-byte words, then the UV, normal, tangent, colour, skinning,
+/// land and eye offsets), and bits 44 and up are `vertex_attributes` — the
+/// `VertexAttribute` flags that say which of the fields are present at all.
+/// Those flags are what nifgen's `BSVertexDataSSE._get_filtered_attribute_list`
+/// reads, and they are the ones that gate the layout: the offsets say where a
+/// field sits, the flags say whether it is there.
+///
+/// The bytes are laid out field by field per vertex, in the order nifgen
+/// names, with the bitangent packed as two Normbytes (y, z) beside the
+/// normal/tangent. A Normbyte maps 0-255 to -1..1 as `b / 127.5 - 1.0`.
+fn unpack_sse(desc: u64, data: &[u8], s: &Struct) -> MeshData {
+    let stride = (desc & 0x0F) as usize * 4;
+    if stride == 0 {
+        return MeshData::default();
+    }
+    let n = s
+        .int("num_vertices")
+        .map(|n| n as usize)
+        .unwrap_or_else(|| data.len() / stride);
+    let mut md = MeshData::default();
+    // One UV set for the Special Edition.
+    md.uv_sets.push(Vec::with_capacity(n));
+    // The attribute flags live in the description's high bits, not its low
+    // ones: the low bits are the word offsets the flags describe.
+    let attrs = desc >> 44;
+    let has_pos = attrs & 1 != 0;
+    let has_bitangent_x = attrs & 17 == 17;
+    let has_unused_w = attrs & 17 == 1;
+    let has_uv = attrs & 2 != 0;
+    let has_normal = attrs & 8 != 0;
+    let has_tangent = attrs & 24 == 24;
+    let has_colors = attrs & 32 != 0;
+    let has_bones = attrs & 64 != 0;
+    let has_eye = attrs & 256 != 0;
+    let mut off = 0usize;
+    // Word offsets: position is always word 0; the rest follow the description.
+    // nifgen's layout is fixed-order within the stride, so walk fields in order.
+    for _ in 0..n {
+        if off + stride > data.len() {
+            break;
+        }
+        let v = &data[off..off + stride];
+        let mut cursor = 0usize;
+        // position: Vector3 (3 floats)
+        if has_pos {
+            if cursor + 12 <= v.len() {
+                let x = f32::from_le_bytes(v[cursor..cursor + 4].try_into().unwrap());
+                let y = f32::from_le_bytes(v[cursor + 4..cursor + 8].try_into().unwrap());
+                let z = f32::from_le_bytes(v[cursor + 8..cursor + 12].try_into().unwrap());
+                md.positions.push([x, y, z]);
+            }
+            cursor += 12;
+        } else {
+            md.positions.push([0.0, 0.0, 0.0]);
+        }
+        // bitangent_x or unused_w: one float / uint
+        if has_bitangent_x || has_unused_w {
+            cursor += 4;
+        }
+        // uv: HalfTexCoord (2 half floats) -> 4 bytes
+        if has_uv {
+            let u = half_to_f32(u16::from_le_bytes(
+                v[cursor..cursor + 2].try_into().unwrap(),
+            ));
+            let w = half_to_f32(u16::from_le_bytes(
+                v[cursor + 2..cursor + 4].try_into().unwrap(),
+            ));
+            md.uv_sets[0].push([u, w]);
+            cursor += 4;
+        } else {
+            md.uv_sets[0].push([0.0, 0.0]);
+        }
+        // normal: ByteVector3 (3 Normbytes) + bitangent_y Normbyte.
+        // A Normbyte is an unsigned byte mapped to -1..1 as b / 127.5 - 1,
+        // so 0 is -1, 127 is (almost) 0, and 255 is 1.
+        if has_normal {
+            let nx = normbyte(v[cursor]);
+            let ny = normbyte(v[cursor + 1]);
+            let nz = normbyte(v[cursor + 2]);
+            md.normals.push([nx, ny, nz]);
+            cursor += 3;
+            cursor += 1; // bitangent_y
+        } else {
+            md.normals.push([0.0, 0.0, 1.0]);
+        }
+        // tangent + bitangent_z, both Normbytes as well.
+        if has_tangent {
+            let tx = normbyte(v[cursor]);
+            let ty = normbyte(v[cursor + 1]);
+            let tz = normbyte(v[cursor + 2]);
+            md.tangents.push([tx, ty, tz]);
+            cursor += 3;
+            cursor += 1; // bitangent_z
+        }
+        // vertex colors: ByteColor4
+        if has_colors {
+            let r = v[cursor] as f32 / 255.0;
+            let g = v[cursor + 1] as f32 / 255.0;
+            let b = v[cursor + 2] as f32 / 255.0;
+            let a = v[cursor + 3] as f32 / 255.0;
+            md.colors.push([r, g, b, a]);
+            cursor += 4;
+        }
+        // Bone weights (four half floats) and bone indices (four bytes) are
+        // read by the skinning code, not here; they only have to be stepped
+        // over so the eye data after them lands in the right place.
+        if has_bones {
+            cursor += 4 * 2;
+        }
+        if has_eye {
+            cursor += 4;
+        }
+        let _ = cursor;
+        off += stride;
+    }
+    md.triangles = triangle_indices(s);
+    md
+}
+
+/// A Normbyte: an unsigned byte standing for a signed normal, as nifgen's
+/// `Normbyte.from_function` reads it. The Special Edition packs its normals
+/// and tangents in these.
+fn normbyte(b: u8) -> f32 {
+    b as f32 / 127.5 - 1.0
+}
+
+fn half_to_f32(h: u16) -> f32 {
+    // IEEE 754 half
+    let sign = (h >> 15) & 1;
+    let exp = (h >> 10) & 0x1F;
+    let mant = h & 0x3FF;
+    if exp == 0 {
+        let f = mant as f32 / 1024.0 * (1.0 / 16384.0);
+        if sign == 1 {
+            -f
+        } else {
+            f
+        }
+    } else if exp == 31 {
+        if mant != 0 {
+            f32::NAN
+        } else if sign == 1 {
+            f32::NEG_INFINITY
+        } else {
+            f32::INFINITY
+        }
+    } else {
+        let f = f32::from_bits(
+            ((sign as u32) << 31) | (((exp as i32 + 112) as u32) << 23) | ((mant as u32) << 13),
+        );
+        f
     }
 }
 
@@ -474,5 +643,108 @@ mod tests {
         assert_eq!(segment_triangles(&shape(&[(0, 2), (3, 3)]), 5), None);
         assert_eq!(segment_triangles(&shape(&[(0, 2), (6, 2)]), 5), None);
         assert_eq!(segment_triangles(&shape(&[]), 0), None);
+    }
+
+    /// A packed vertex in the Special Edition's layout, as `desc` describes.
+    ///
+    /// Built the way the game writes them: position (3 floats), then the
+    /// fields the description's `vertex_attributes` flags name, in order,
+    /// with the normals and tangents as Normbytes.
+    fn packed(desc: u64, vertex: [f32; 3], normal: [u8; 3], tangent: [u8; 3]) -> Vec<u8> {
+        let mut v = Vec::new();
+        for c in vertex {
+            v.extend_from_slice(&c.to_le_bytes());
+        }
+        // The description's flags say which fields follow; the test's
+        // description names UV, NORMALS, TANGENTS and COLORS, so the UV
+        // comes before the normal.
+        v.extend_from_slice(&[0, 0, 0, 0]); // uv, half floats
+        v.extend_from_slice(&normal);
+        v.push(127); // bitangent_y
+        v.extend_from_slice(&tangent);
+        v.push(127); // bitangent_z
+        v.extend_from_slice(&[255, 255, 255, 255]); // vertex_colors
+                                                    // The stride is the vertex's size in words, so pad to it.
+        let stride = (desc & 0xF) as usize * 4;
+        while v.len() < stride {
+            v.push(0);
+        }
+        v
+    }
+
+    fn shape_with_packed_vertices(desc: u64, verts: &[Vec<u8>], n: usize) -> Struct {
+        Struct {
+            fields: vec![
+                ("num_vertices".into(), Value::Num(n as f64)),
+                ("vertex_desc".into(), Value::Num(desc as f64)),
+                (
+                    "vertex_data".into(),
+                    Value::Bytes(verts.iter().flatten().copied().collect()),
+                ),
+            ],
+        }
+    }
+
+    #[test]
+    fn packed_vertices_read_the_attribute_flags_from_the_high_bits() {
+        // The layout the common static architecture uses: VERTEX, UV,
+        // NORMALS, TANGENTS, COLORS, stride eight words. Its low bits are the
+        // word offsets (uv at 4, normal at 5, tangent at 6, colour at 7);
+        // its high bits are the attribute flags. Reading the flags out of the
+        // low bits instead reads the offsets, and every field comes out
+        // missing: the shape is drawn at the origin, or not at all.
+        let desc = 0x3b00007650408;
+        let s = shape_with_packed_vertices(
+            desc,
+            &[packed(
+                desc,
+                [1.0, 2.0, 3.0],
+                [127, 127, 255], // +x, +y, +z, roughly
+                [127, 127, 255],
+            )],
+            1,
+        );
+        let md = mesh_data(&s);
+        assert_eq!(md.positions, vec![[1.0, 2.0, 3.0]]);
+        assert_eq!(md.normals.len(), 1);
+        // Normbytes map an unsigned byte to -1..1: 127 is (almost) 0 and 255
+        // is 1, so this is a normal pointing up and to the right.
+        let n = md.normals[0];
+        assert!((n[0] - 0.0).abs() < 0.01, "{n:?}");
+        assert!((n[1] - 0.0).abs() < 0.01, "{n:?}");
+        assert!((n[2] - 1.0).abs() < 0.01, "{n:?}");
+    }
+
+    #[test]
+    fn a_normbyte_is_an_unsigned_byte_scaled_to_signed() {
+        // 0 is -1 and 255 is 1: the mapping is unsigned, so a normal of
+        // exactly -1 is a byte of 0, not 0x80.
+        assert_eq!(normbyte(0), -1.0);
+        assert!((normbyte(127) - 0.0).abs() < 0.01);
+        assert_eq!(normbyte(255), 1.0);
+    }
+
+    #[test]
+    fn packed_vertices_honour_the_stride_and_count() {
+        // A shape of two vertices: the stride decides where each begins, so
+        // a vertex that is not a whole number of strides from the start is
+        // never read.
+        let desc = 0x3b00007650408;
+        let verts = vec![
+            packed(desc, [10.0, 0.0, 0.0], [127, 127, 255], [127, 127, 255]),
+            packed(desc, [20.0, 0.0, 0.0], [127, 127, 255], [127, 127, 255]),
+        ];
+        let s = shape_with_packed_vertices(desc, &verts, 2);
+        let md = mesh_data(&s);
+        assert_eq!(md.positions, vec![[10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]);
+        assert_eq!(md.uv_sets[0].len(), 2);
+    }
+
+    #[test]
+    fn a_description_with_no_size_yields_no_geometry() {
+        // A stride of zero says the vertices have no words at all, so there
+        // is nothing to unpack rather than a zero-length vertex.
+        let s = shape_with_packed_vertices(0, &[vec![0u8; 4]], 1);
+        assert!(mesh_data(&s).positions.is_empty());
     }
 }

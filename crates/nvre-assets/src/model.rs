@@ -177,12 +177,14 @@ impl ModelCtx<'_> {
             let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
                 continue;
             };
-            let Some(data_ref) = shape.ref_at("data") else {
-                continue;
+            let data = if let Some(data_ref) = shape.ref_at("data") {
+                dec.get(data_ref)
+            } else if o.type_name == "BSTriShape" {
+                Some(shape)
+            } else {
+                None
             };
-            let Some(data) = dec.get(data_ref) else {
-                continue;
-            };
+            let Some(data) = data else { continue; };
             let props = shape_props(&dec, o, &by_block);
             let Some((mut mesh, tris)) = build_mesh(data) else {
                 continue;
