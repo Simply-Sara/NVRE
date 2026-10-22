@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/nvre-world", "crates/fnv-esm", "crates/nvre-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world", "crates/nvf-assets"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/nvre-world", "crates/nvre-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world", "crates/nvf-assets"]
 
 [workspace.package]
 version = "0.1.0"
@@ -17,22 +17,7 @@ nvre-inflate = { path = "crates/nvre-inflate" }
 nvre-vfs = { path = "crates/nvre-vfs" }
 nvre-dds = { path = "crates/nvre-dds" }
 
-# The remaining NVForever format crates, by git. The editor is read-write
-# where those are read-only; upstream stays the reference implementation and
-# moves with `cargo update`. Crates NVRE modifies are patched to a local
-# fork below.
-#
-# `crates/nvre-world` and `crates/fnv-esm` are those forks. `fnv.schema/1`
-# cannot express count-prefixed arrays, length-prefixed strings or decided
-# unions, so the layouts in `schemas/` could not reach 100% coverage through
-# the upstream schema language; `fnv-esm` is where those constructs now live.
-# Keep each fork's diff against upstream small and documented.
-#
-# `crates/nvre-vfs` was upstream's `fnv-vfs` with one change — the archive
-# reader, so the Special Edition's version 105 archives could be read — and
-# is now NVRE's own crate.
-fnv-esm = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
-nvre-world = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+nvre-world = { path = "crates/nvre-world" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -40,19 +25,12 @@ thiserror = "2"
 bytes = "1.9"
 tracing = "0.1"
 
-# Editor GUI. bevy_egui 0.42 is the newest release that still takes Bevy 0.19
-# (0.43+ requires Bevy 0.20); verified to build against bevy =0.19.1.
-# pbr_specular_textures is what NVForever's own engine workspace enables, and
-# its nvf-assets layer needs it (normal-map alpha as the specular mask).
+# Editor GUI. bevy_egui 0.43 is the release that takes Bevy 0.20.
+# pbr_specular_textures is what the asset layer needs (normal-map alpha as the
+# specular mask).
 bevy = { version = "=0.20.0", features = ["pbr_specular_textures"] }
 bevy_egui = "=0.43.0"
 clap = { version = "4", features = ["derive", "env"] }
-
-# NVRE's forks of upstream crates. Cargo substitutes these for every consumer
-# in the graph, including transitive ones, so nothing else needs to change.
-[patch."https://github.com/LootJunkieAzza/NVForever.git"]
-nvre-world = { path = "crates/nvre-world" }
-fnv-esm = { path = "crates/fnv-esm" }
 
 # Enable high optimization for external dependencies in dev/debug builds.
 # Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.

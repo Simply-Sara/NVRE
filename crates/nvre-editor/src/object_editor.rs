@@ -2086,7 +2086,7 @@ pub struct DestructionStage {
 /// a run of `DSTD`, `DMDL`, `DMDT` and `DSTF`. The stages are walked in file
 /// order, because `raw_subs` holds one value per signature and would collapse
 /// every stage onto the last one.
-fn load_destruction(subs: &[fnv_esm::Subrecord]) -> Vec<DestructionStage> {
+fn load_destruction(subs: &[nvre_esm::Subrecord]) -> Vec<DestructionStage> {
     let mut stages: Vec<DestructionStage> = Vec::new();
     let mut cur: Option<DestructionStage> = None;
     for s in subs {
@@ -2272,7 +2272,7 @@ pub struct Condition {
 /// `CTDA` is a *repeated* subrecord, so the conditions are walked in file
 /// order rather than read out of `raw_subs`, which holds one value per
 /// signature and would collapse every condition onto the last one.
-fn load_conditions(subs: &[fnv_esm::Subrecord]) -> Vec<Condition> {
+fn load_conditions(subs: &[nvre_esm::Subrecord]) -> Vec<Condition> {
     let mut conditions = Vec::new();
     for s in subs {
         if s.sig != *b"CTDA" || s.data.len() < 20 {
@@ -5163,7 +5163,7 @@ impl ObjectEditorState {
         self.weap_repair_list = self.get_fid(b"REPL");
     }
 
-    fn load_armo(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_armo(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         if let Some(b) = self.raw_subs.get(b"DATA").filter(|b| b.len() >= 12) {
             self.armo_val = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
             self.armo_hp = i32::from_le_bytes([b[4], b[5], b[6], b[7]]);
@@ -5358,7 +5358,7 @@ impl ObjectEditorState {
     ///
     /// The destruction collection is a `DEST` header followed by one or more
     /// stages, each a run of `DSTD`, `DMDL`, `DMDT` and `DSTF`.
-    fn load_actor_destruction(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_actor_destruction(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.actor_destruction = load_destruction(raw_subs);
         self.actor_dest_flags = raw_subs
             .iter()
@@ -5505,7 +5505,7 @@ impl ObjectEditorState {
     /// holds one value per signature: it would collapse every relation onto the
     /// last one and every rank title onto the last rank's. The subrecords are
     /// walked in file order instead.
-    fn load_fact(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_fact(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         // DATA: flags 1, flags 2, then the spec's two "Unused" bytes. 34 of the
         // 682 FACT records in FalloutNV.esm have a one-byte DATA — the game
         // wrote only flags 1 — and those carry no flags 2 at all.
@@ -5617,7 +5617,7 @@ impl ObjectEditorState {
     /// The record carries two kinds of `DATA`: the perk's own, which is five
     /// bytes long, and one per rank, which is three. The perk's own comes
     /// first, so it is the first `DATA` of the five-byte kind.
-    fn load_perk_record(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_perk_record(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.load_perk();
         let mut seen_own = false;
         for sub in raw_subs {
@@ -5911,7 +5911,7 @@ impl ObjectEditorState {
     /// one colour per time of day. The game's records carry six times of
     /// day, but eight of the sixty-three records carry four, so the
     /// number of times is measured from the subrecord's length.
-    fn load_wthr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_wthr(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.wthr_cloud_layers = std::array::from_fn(|_| String::new());
         self.wthr_max_cloud_layers = 0;
         self.wthr_cloud_speeds = [0; 4];
@@ -6112,7 +6112,7 @@ impl ObjectEditorState {
         }
     }
 
-    fn load_clmt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_clmt(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.clmt_moons_phase_length = 0;
         self.clmt_weather_list.clear();
         if let Some(b) = self.raw_subs.get(b"TNAM").filter(|b| b.len() >= 5) {
@@ -6156,7 +6156,7 @@ impl ObjectEditorState {
     /// subrecords are read from the record's own subrecord list rather than
     /// from `raw_subs`, because the collection can appear more than once in a
     /// record and `raw_subs` holds one value per signature.
-    fn load_hair(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_hair(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.hair_icon = self.get_string(b"ICON");
         self.hair_flags = self.get_u8(b"DATA").unwrap_or(0);
         self.hair_model = ModelData::default();
@@ -6184,7 +6184,7 @@ impl ObjectEditorState {
     /// collection's subrecords and the extra parts are read from the record's
     /// own subrecord list rather than from `raw_subs`, which holds one value
     /// per signature.
-    fn load_hdpt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_hdpt(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.hdpt_flags = self.get_u8(b"DATA").unwrap_or(0);
         self.hdpt_model = ModelData::default();
         self.hdpt_extra_parts.clear();
@@ -6279,7 +6279,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `FURN` (Furniture) record.
-    fn load_furn(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_furn(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.furn_marker_flags.clear();
         self.furn_model = ModelData::default();
         self.furn_destruction.clear();
@@ -6311,7 +6311,7 @@ impl ObjectEditorState {
     ///
     /// `DATA` is thirty-two bytes. The spec marks several fields unused; they
     /// are carried through unchanged rather than being zeroed.
-    fn load_gras(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_gras(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.gras_density = 0;
         self.gras_min_slope = 0;
         self.gras_max_slope = 0;
@@ -6361,7 +6361,7 @@ impl ObjectEditorState {
     /// animation count), `IDLT` (the idle timer) and `IDLA` (the list of
     /// `IDLE` records). `IDLA` is a *repeated* subrecord, so the animations
     /// are read in file order and kept as a list.
-    fn load_idlm(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_idlm(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.idlm_flags = 0;
         self.idlm_animation_count = 0;
         self.idlm_idlc_unused = [0; 3];
@@ -6458,7 +6458,7 @@ impl ObjectEditorState {
     ///
     /// The record's `LNAM` locations are *repeated* subrecords, so they are
     /// read in file order and kept as a list.
-    fn load_lscr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_lscr(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.lscr_icon.clear();
         self.lscr_mico.clear();
         self.lscr_desc.clear();
@@ -6672,7 +6672,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `TREE` (Tree) record.
-    fn load_tree(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_tree(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.tree_seeds.clear();
         self.tree_leaf_curvature = 0.0;
         self.tree_min_leaf_angle = 0.0;
@@ -6742,7 +6742,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `TXST` (Texture) record.
-    fn load_txst(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_txst(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.txst_textures = vec![String::new(); 6];
         self.txst_flags = 0;
         self.txst_dodt_min_width = 0.0;
@@ -6798,7 +6798,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `TACT` (Talking Activator) record.
-    fn load_tact(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_tact(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.tact_looping_sound = None;
         self.tact_voice_type = None;
         self.tact_radio_template = None;
@@ -6860,7 +6860,7 @@ impl ObjectEditorState {
     /// The collection is a run of `ONAM` (the static) and `DATA` (the
     /// placements). Both repeat, so the parts are walked in file order: a
     /// `DATA` belongs to the `ONAM` before it.
-    fn load_scol(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_scol(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.scol_parts.clear();
         self.scol_model = ModelData::default();
         for sub in raw_subs {
@@ -6918,7 +6918,7 @@ impl ObjectEditorState {
     }
 
     /// Load an `IDLE` (Idle Animation) record.
-    fn load_idle(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_idle(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.idle_parent = None;
         self.idle_previous_sibling = None;
         self.idle_group_section = 0;
@@ -6971,7 +6971,7 @@ impl ObjectEditorState {
     /// The `JNAM` boundaries repeat, so they are walked in file order and
     /// kept as a list. The six track names and the six track levels each
     /// have their own signature, so they are read one by one.
-    fn load_mset(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_mset(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.mset_type = -1;
         self.mset_tracks = vec![String::new(); 6];
         self.mset_levels = vec![0.0; 6];
@@ -7077,7 +7077,7 @@ impl ObjectEditorState {
     }
 
     /// Load an `MSTT` (Movable Static) record.
-    fn load_mstt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_mstt(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.mstt_data = 0;
         self.mstt_sound = None;
         self.mstt_model = ModelData::default();
@@ -7124,7 +7124,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `PWAT` (Water) record.
-    fn load_pwat(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_pwat(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.pwat_flags = 0;
         self.pwat_water = None;
         self.pwat_model = ModelData::default();
@@ -7156,7 +7156,7 @@ impl ObjectEditorState {
     /// Load a `FLST` (Form List) record.
     ///
     /// The `LNAM` subrecords repeat, so the list is walked in file order.
-    fn load_flst(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_flst(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.flst_entries.clear();
         for s in raw_subs {
             if s.sig == *b"LNAM" && s.data.len() >= 4 {
@@ -7177,7 +7177,7 @@ impl ObjectEditorState {
     ///
     /// The menu buttons are a run of `ITXT` and repeated `CTDA`, so they are
     /// walked in file order: the conditions belong to the button before them.
-    fn load_mesg(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_mesg(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.mesg_desc = self.get_string(b"DESC");
         self.mesg_icon = self.get_fid(b"INAM");
         self.mesg_flags = 0;
@@ -7246,7 +7246,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `MISC` (Miscellaneous) record.
-    fn load_misc(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_misc(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.misc_value = 0;
         self.misc_weight = 0.0;
         self.misc_icon = self.get_string(b"ICON");
@@ -7299,7 +7299,7 @@ impl ObjectEditorState {
     ///
     /// The effects are a run of `EFID` and `EFIT`, so they are walked in file
     /// order: the parameters belong to the effect before them.
-    fn load_spel(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_spel(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.spel_type = 0;
         self.spel_cost = 0;
         self.spel_level = 0;
@@ -7372,7 +7372,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `STAT` (Static) record.
-    fn load_stat(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_stat(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.stat_passthrough = -1;
         self.stat_looping_sound = None;
         self.stat_model = ModelData::default();
@@ -7403,7 +7403,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `KEYM` (Key) record.
-    fn load_keym(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_keym(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.keym_value = 0;
         self.keym_weight = 0.0;
         self.keym_icon = self.get_string(b"ICON");
@@ -7447,7 +7447,7 @@ impl ObjectEditorState {
     }
 
     /// Load an `INGR` (Ingredient) record.
-    fn load_ingr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_ingr(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.ingr_equipment_type = -1;
         self.ingr_weight = 0.0;
         self.ingr_effect_value = 0;
@@ -7529,7 +7529,7 @@ impl ObjectEditorState {
     }
 
     /// Load an `IPCT` (Impact) record.
-    fn load_ipct(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_ipct(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.ipct_duration = 0.0;
         self.ipct_orientation = 0;
         self.ipct_angle_threshold = 0.0;
@@ -7626,7 +7626,7 @@ impl ObjectEditorState {
     /// The ingredients and the outputs are both runs of `RCIL` and `RCQY`.
     /// The spec does not say which is which, so the first half of the pairs
     /// is read as the ingredients and the second as the outputs.
-    fn load_rcpe(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_rcpe(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.rcpe_skill = 0;
         self.rcpe_level = 0;
         self.rcpe_category = None;
@@ -7693,7 +7693,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `SCPT` (Script) record.
-    fn load_scpt(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_scpt(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.scpt_header = ScriptHeader::default();
         self.scpt_compiled.clear();
         self.scpt_source.clear();
@@ -7737,7 +7737,7 @@ impl ObjectEditorState {
     /// Load a `PMIS` (Placed Missile) record.
     ///
     /// The record's format is the same as a placed grenade's.
-    fn load_pmis(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_pmis(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.pmis_base = None;
         self.pmis_encounter_zone = None;
         self.pmis_idle_time = 0.0;
@@ -7940,7 +7940,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `COBJ` (Constructible Object) record.
-    fn load_cobj(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_cobj(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.cobj_value = 0;
         self.cobj_weight = 0.0;
         self.cobj_model = ModelData::default();
@@ -8005,7 +8005,7 @@ impl ObjectEditorState {
     }
 
     /// Load an `IMAD` (Image Space Adapter) record.
-    fn load_imad(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_imad(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.imad_header = ImadHeader::default();
         self.imad_curves.clear();
 
@@ -8027,7 +8027,7 @@ impl ObjectEditorState {
     }
 
     /// Load an `EFSH` (Effect Shader) record.
-    fn load_efsh(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_efsh(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.efsh_data = EfshData::default();
         self.efsh_icon = String::new();
         self.efsh_ico2 = String::new();
@@ -8049,7 +8049,7 @@ impl ObjectEditorState {
     /// entry's own subrecords. The entries are walked in file order, because
     /// `raw_subs` holds one value per signature and would collapse the
     /// entries onto the last one.
-    fn load_regn(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_regn(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.regn_map_color = [0; 4];
         self.regn_worldspace = None;
         self.regn_areas.clear();
@@ -8214,7 +8214,7 @@ impl ObjectEditorState {
     /// and a topic. The scripts are walked in file order, because `raw_subs`
     /// holds one value per signature and would collapse the three onto the
     /// last one.
-    fn load_pack(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_pack(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.pack_general_flags = 0;
         self.pack_type = 0;
         self.pack_unused = 0;
@@ -8459,7 +8459,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `TES4` (Plugin Header) record.
-    fn load_tes4(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_tes4(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.tes4_version = 0.0;
         self.tes4_num_records = 0;
         self.tes4_next_object_id = 0;
@@ -8541,7 +8541,7 @@ impl ObjectEditorState {
     /// The record's `CTDA` conditions and its `SNAM` camera shots are both
     /// *repeated* subrecords, so they are read in file order and kept as
     /// lists.
-    fn load_cpth(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_cpth(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.cpth_camera_zoom = 0;
         self.cpth_parent = None;
         self.cpth_previous = None;
@@ -8579,7 +8579,7 @@ impl ObjectEditorState {
     /// `MOD3` and `MOD4`), its slot reel textures (`ICON` repeated) and its
     /// blackjack deck textures (`ICO2` repeated) are all *repeated*
     /// subrecords, so each is read in file order and kept as a list.
-    fn load_csno(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_csno(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.csno_decks_shuffle = 0.0;
         self.csno_payout_ratio = 0.0;
         self.csno_reel_stops.clear();
@@ -8640,7 +8640,7 @@ impl ObjectEditorState {
     /// The record's collection is a run of `DATA` and `MODT` per debris
     /// model, so the entries are walked in file order rather than read out of
     /// `raw_subs`, which holds one value per signature.
-    fn load_debr(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_debr(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.debr_models.clear();
         let mut cur: Option<DebrisModel> = None;
         for s in raw_subs {
@@ -8691,7 +8691,7 @@ impl ObjectEditorState {
     /// `DATA` is forty bytes on 272 of the game's 276 records and thirty-six
     /// on the rest, so the length is kept and the fields the short form does
     /// not have are left at their defaults.
-    fn load_cams(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_cams(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.cams_action = 0;
         self.cams_location = 0;
         self.cams_target = 0;
@@ -8766,7 +8766,7 @@ impl ObjectEditorState {
     /// The two `INTV` values — the card suit and the card value — are a
     /// *repeated* subrecord, so they are read in file order and kept as a
     /// list. A per-signature read would collapse the pair onto the last one.
-    fn load_ccrd(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_ccrd(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.ccrd_intv.clear();
         self.ccrd_value = 0;
         self.ccrd_icon.clear();
@@ -8818,7 +8818,7 @@ impl ObjectEditorState {
     ///
     /// The deck's `CARD` subrecords are *repeated*, so they are read in file
     /// order and kept as a list.
-    fn load_cdck(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_cdck(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.cdck_cards.clear();
         self.cdck_data = 0;
         for s in raw_subs {
@@ -8841,7 +8841,7 @@ impl ObjectEditorState {
     ///
     /// The record carries the model data collection, the two icons, the two
     /// sounds and the shared Destruction Data collection.
-    fn load_chip(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_chip(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.chip_icon.clear();
         self.chip_mico.clear();
         self.chip_pickup_sound = None;
@@ -8883,7 +8883,7 @@ impl ObjectEditorState {
     }
 
     /// Load a `CMNY` (Money) record.
-    fn load_cmny(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_cmny(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.cmny_value = 0;
         self.cmny_icon.clear();
         self.cmny_mico.clear();
@@ -8933,7 +8933,7 @@ impl ObjectEditorState {
     /// bytes and the rest twelve. The length is kept, so a save that changes
     /// nothing is byte-identical and a short record is not grown fields it
     /// never had.
-    fn load_arma(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_arma(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.arma_val = 0;
         self.arma_hp = 0;
         self.arma_weight = 0.0;
@@ -9027,7 +9027,7 @@ impl ObjectEditorState {
     /// are *repeated* subrecords, so they cannot be read out of `raw_subs`,
     /// which holds one value per signature and would collapse them onto the
     /// last one. The subrecords are walked in file order instead.
-    fn load_aspc(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_aspc(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.aspc_sounds.clear();
         self.aspc_walla_trigger_count = 0;
         self.aspc_region = None;
@@ -9085,7 +9085,7 @@ impl ObjectEditorState {
     /// The record is `EDID`, the model data collection (`MODL` and, where the
     /// game writes it, `MODT`), and a `DATA` naming the `IDLE` record the
     /// animation plays.
-    fn load_anio(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_anio(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.anio_animation = self.get_fid(b"DATA");
         self.anio_model = ModelData::default();
         for s in raw_subs {
@@ -9113,7 +9113,7 @@ impl ObjectEditorState {
     ///
     /// `NAM1`, `NAM2`, `NAM3` and `FNAM` are four bytes each that the spec
     /// does not name. They are kept whole and carried through unchanged.
-    fn load_aloc(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_aloc(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.aloc_nam1 = [0; 4];
         self.aloc_nam2 = [0; 4];
         self.aloc_nam3 = [0; 4];
@@ -9192,7 +9192,7 @@ impl ObjectEditorState {
     /// The model collection's subrecords are read from the record's own
     /// subrecord list rather than from `raw_subs`, which holds one value per
     /// signature.
-    fn load_addn(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_addn(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.addn_node_index = 0;
         self.addn_master_cap = 0;
         self.addn_dnam_unknown = [0, 0];
@@ -9234,7 +9234,7 @@ impl ObjectEditorState {
     /// single-value-per-signature map and would collapse every part's BPNN onto
     /// the last one. The subrecords are walked in order instead, and the whole
     /// list is written back with one sequence edit.
-    fn load_bptd(&mut self, raw_subs: &[fnv_esm::Subrecord]) {
+    fn load_bptd(&mut self, raw_subs: &[nvre_esm::Subrecord]) {
         self.bptd_parts.clear();
         self.bptd_ragdoll = None;
         let mut part: Option<BptdPart> = None;

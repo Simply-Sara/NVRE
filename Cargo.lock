@@ -3046,22 +3046,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
-name = "fnv-esm"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "memmap2",
- "nvre-inflate",
- "nvre-util",
- "proptest",
- "rayon",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tracing",
-]
-
-[[package]]
 name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4405,7 +4389,7 @@ name = "nvre-edit"
 version = "0.1.0"
 dependencies = [
  "bytes",
- "fnv-esm",
+ "nvre-esm",
  "nvre-inflate",
  "nvre-util",
  "nvre-world",
@@ -4426,7 +4410,6 @@ dependencies = [
  "bytes",
  "clap",
  "egui_tiles",
- "fnv-esm",
  "nvf-assets",
  "nvre-edit",
  "nvre-esm",
@@ -4499,7 +4482,7 @@ dependencies = [
 name = "nvre-world"
 version = "0.1.0"
 dependencies = [
- "fnv-esm",
+ "nvre-esm",
  "nvre-world",
  "serde_json",
  "tracing",

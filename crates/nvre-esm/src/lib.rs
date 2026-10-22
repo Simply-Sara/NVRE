@@ -20,13 +20,17 @@
 //! games' layouts sit side by side.
 
 pub mod decode;
+pub mod inventory;
 pub mod loadorder;
 pub mod plugin;
 pub mod raw;
 pub mod schema;
+pub mod typedef;
 
 pub use loadorder::LoadOrder;
 pub use plugin::Plugin;
+pub use raw::MasterRef;
 pub use raw::PluginHeader;
 pub use raw::{EsmError, Group, GroupHeader, Node, Record, RecordHeader, Subrecord};
 pub use schema::Schema;
+pub use typedef::{FieldDef, TypeDef};

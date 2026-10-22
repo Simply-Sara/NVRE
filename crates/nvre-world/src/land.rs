@@ -9,7 +9,7 @@
 
 use crate::fields::{global, winner, Fields};
 use crate::CELL_SIZE;
-use fnv_esm::{LoadOrder, Schema};
+use nvre_esm::{LoadOrder, Schema};
 
 /// Vertices per cell edge.
 pub const SIDE: usize = 33;

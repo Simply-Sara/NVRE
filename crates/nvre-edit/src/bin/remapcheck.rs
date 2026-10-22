@@ -1,14 +1,14 @@
 //! Verify FormID remapping inside the new array constructs: decode a NAVI.NVCI
 //! / ARMA.MODS / navmesh NVGD payload, remap every FormID, re-encode, and
 //! confirm the bytes differ only where a FormID was rewritten.
-use fnv_esm::raw::visit_records;
-use fnv_esm::{Plugin, Schema};
+use nvre_esm::raw::visit_nodes;
+use nvre_esm::{Plugin, Schema};
 fn main() {
     let schema = Schema::load_dir("schemas/fnv").unwrap();
     let p = Plugin::open(std::env::args().nth(1).unwrap()).unwrap();
     let want = std::env::args().nth(2).unwrap();
     let mut done = false;
-    visit_records(&p.nodes[1..], &mut |r, _| {
+    visit_nodes(&p.nodes, &mut |r, _| {
         if done {
             return;
         }

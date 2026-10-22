@@ -16,7 +16,6 @@ path = "src/main.rs"
 [dependencies]
 nvre-edit = { path = "../nvre-edit" }
 nvre-util.workspace = true
-fnv-esm.workspace = true
 nvre-esm = { path = "../nvre-esm" }
 nvre-vfs.workspace = true
 nvre-world.workspace = true

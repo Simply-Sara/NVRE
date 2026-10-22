@@ -8,8 +8,8 @@
 //! the load order before it means anything, and that is what [`Fields`]
 //! remembers the plugin for.
 
-use fnv_esm::decode::{decode_sub, DecodeCtx, SubStatus};
-use fnv_esm::{EsmError, LoadOrder, Record, Schema, Subrecord};
+use nvre_esm::decode::{decode_sub, DecodeCtx, SubStatus};
+use nvre_esm::{EsmError, LoadOrder, Record, Schema, Subrecord};
 use serde_json::Value;
 
 /// One record's subrecords, and the plugin that holds it.
@@ -102,7 +102,7 @@ pub fn vec3(v: &Value) -> Option<[f32; 3]> {
 
 /// The winning definition of a global FormID, and the plugin that holds it.
 pub fn winner<'a>(lo: &LoadOrder<'a>, global: u32) -> Option<(usize, &'a Record)> {
-    let (plugin, record) = lo.winner(global)?;
+    let (plugin, record) = lo.winner_record(global)?;
     let pi = lo
         .plugins
         .iter()

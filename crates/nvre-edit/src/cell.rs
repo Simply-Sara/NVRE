@@ -35,7 +35,7 @@
 //! A new cell also needs a `LAND` record for its terrain, and a `CELL` record
 //! whose own subrecords follow fopdoc's `CELL` page.
 
-use fnv_esm::raw::{group_type, Group, GroupHeader, Node, Record, RecordHeader, Subrecord};
+use nvre_esm::raw::{group_type, Group, GroupHeader, Node, Record, RecordHeader, Subrecord};
 
 /// The vertices along one edge of a cell's height map: 33 x 33.
 pub const LAND_SIDE: usize = 33;
@@ -315,7 +315,7 @@ pub fn make_worldspace(world: &NewWorldspace) -> Record {
 
 /// Build a record from its subrecords.
 fn make_record(sig: [u8; 4], subs: Vec<Subrecord>) -> Record {
-    let payload = fnv_esm::raw::write_subrecords(&subs);
+    let payload = nvre_esm::raw::write_subrecords(&subs);
     Record {
         header: RecordHeader {
             sig,
@@ -327,7 +327,8 @@ fn make_record(sig: [u8; 4], subs: Vec<Subrecord>) -> Record {
             form_version: 15,
             vc_info2: 0,
         },
-        raw: payload.into(),
+        raw: payload,
+        subrecords: subs,
         offset: 0,
     }
 }

@@ -77,28 +77,41 @@ impl<'a> LoadOrder<'a> {
         if plugins.len() > 255 {
             return Err(LoadOrderError::TooManyPlugins(plugins.len()));
         }
-        // Each plugin's master list: the FormIDs of the masters it names.
+        // Each plugin's master list: the plugins it names, in the order it
+        // names them. A master is identified by its file name.
+        let lower: Vec<String> = plugins
+            .iter()
+            .map(|p| p.name.to_ascii_lowercase())
+            .collect();
+        for (i, n) in lower.iter().enumerate() {
+            if lower[..i].contains(n) {
+                return Err(LoadOrderError::Duplicate(plugins[i].name.clone()));
+            }
+        }
         let mut master_map = Vec::with_capacity(plugins.len());
         for (i, p) in plugins.iter().enumerate() {
-            let mut map = Vec::new();
-            for (j, m) in p.masters().iter().enumerate() {
-                // A master is identified by its FormID, and the FormID's
-                // local index is the master list's own index.
-                let found = plugins
-                    .iter()
-                    .position(|q| q.header_form_id() == *m && !std::ptr::eq(q, p));
-                match found {
-                    Some(k) => map.push(k as u8),
+            let mut map = Vec::with_capacity(p.masters().len());
+            for m in p.masters() {
+                let ml = m.to_ascii_lowercase();
+                match lower.iter().position(|n| *n == ml) {
+                    Some(k) if k < i => map.push(k as u8),
+                    Some(_) => {
+                        // A master that loads after the plugin that needs
+                        // it: the plugin cannot be loaded.
+                        return Err(LoadOrderError::MasterAfterDependent {
+                            plugin: p.name.clone(),
+                            master: m,
+                        });
+                    }
                     None => {
                         // A master that is not in the load order: the plugin
                         // cannot be loaded without it.
                         return Err(LoadOrderError::MissingMaster {
-                            plugin: p.path.display().to_string(),
-                            master: format!("{m:08X}"),
+                            plugin: p.name.clone(),
+                            master: m,
                         });
                     }
                 }
-                let _ = (i, j);
             }
             master_map.push(map);
         }
@@ -140,6 +153,14 @@ impl<'a> LoadOrder<'a> {
         map_form_id(plugin, form_id, &self.master_map[plugin as usize])
     }
 
+    /// The global FormID of a record in a plugin.
+    ///
+    /// The same as [`LoadOrder::global_form_id`], under the name the rest
+    /// of the editor uses.
+    pub fn to_global(&self, pi: usize, local: u32) -> Option<u32> {
+        self.global_form_id(pi as u8, local)
+    }
+
     /// The definition of a global FormID that wins: the last one in load
     /// order.
     pub fn winner(&self, global: u32) -> Option<DefRef> {
@@ -149,6 +170,44 @@ impl<'a> LoadOrder<'a> {
     /// Every definition of a global FormID, in load order.
     pub fn definitions(&self, global: u32) -> &[DefRef] {
         self.index.get(&global).map(|v| v.as_slice()).unwrap_or(&[])
+    }
+
+    /// The FormID of a record in a plugin, in that plugin's own numbering.
+    ///
+    /// `None` when the plugin cannot refer to the record.
+    pub fn to_local(&self, pi: usize, global: u32) -> Option<u32> {
+        let target = (global >> 24) as u8;
+        let low = global & 0x00FF_FFFF;
+        if target as usize == pi {
+            return Some(((self.master_map[pi].len() as u32) << 24) | low);
+        }
+        self.master_map[pi]
+            .iter()
+            .position(|&m| m == target)
+            .map(|i| ((i as u32) << 24) | low)
+    }
+
+    /// The plugin and the record that define a global FormID.
+    ///
+    /// The last definition in load order wins: the one that is in effect.
+    pub fn winner_record(&self, global: u32) -> Option<(&'a Plugin, &'a Record)> {
+        let d = self.winner(global)?;
+        let plugin = self.plugins.get(d.plugin as usize)?;
+        let record = self
+            .records
+            .get(d.plugin as usize)?
+            .get(d.ordinal as usize)?;
+        Some((plugin, record))
+    }
+
+    /// Whether any plugin defines a global FormID.
+    pub fn exists(&self, global: u32) -> bool {
+        self.index.contains_key(&global)
+    }
+
+    /// A plugin's master list, mapped to the load order.
+    pub fn master_map(&self, pi: usize) -> &[u8] {
+        self.master_map.get(pi).map(|v| v.as_slice()).unwrap_or(&[])
     }
 }
 

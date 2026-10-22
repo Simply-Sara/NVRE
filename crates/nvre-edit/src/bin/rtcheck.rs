@@ -2,8 +2,8 @@
 //! `Ok` must re-encode to the same bytes. Reports the signatures that cannot,
 //! which must be only the known representation limits.
 
-use fnv_esm::raw::visit_records;
-use fnv_esm::{Plugin, Schema};
+use nvre_esm::raw::visit_nodes;
+use nvre_esm::{Plugin, Schema};
 use nvre_edit::encode::roundtrips;
 
 fn main() {
@@ -33,10 +33,10 @@ fn main() {
     let mut gaps: std::collections::BTreeMap<String, usize> = Default::default();
     for path in &plugins {
         let p = Plugin::open(path).expect("plugin");
-        visit_records(&p.nodes[1..], &mut |r, _| {
+        visit_nodes(&p.nodes, &mut |r, _| {
             for s in r.subrecords().expect("subs") {
-                let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, r.header.sig);
-                let d = fnv_esm::decode::decode_sub(&r.header.sig, &s, &mut ctx);
+                let mut ctx = nvre_esm::decode::DecodeCtx::new(&schema, r.header.sig);
+                let d = nvre_esm::decode::decode_sub(&r.header.sig, &s, &mut ctx);
                 // Only subrecords the decoder actually read can round-trip; an
                 // unknown one has no layout to invert, and an errored one has no
                 // value at all.

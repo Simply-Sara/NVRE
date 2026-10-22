@@ -1,5 +1,5 @@
 //! Schema-driven encoding of JSON values back into subrecord payloads: the
-//! inverse of `fnv_esm::decode::decode_type`.
+//! inverse of `nvre_esm::decode::decode_type`.
 //!
 //! The decoder is total over everything the game ships (70 of 107 record types
 //! have layouts, and nothing is left undecoded at the end of a record in the ten
@@ -18,7 +18,8 @@
 //! - **Fixed sizes respected**: `schema.fixed_size` is checked before encoding so
 //!   a struct that grew a field cannot silently resize a record.
 
-use fnv_esm::schema::{Prim, Schema, TypeDef};
+use nvre_esm::schema::{Prim, Schema};
+use nvre_esm::typedef::{FieldDef, TypeDef};
 use serde_json::Value;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -80,7 +81,7 @@ fn kind_err(path: &str, want: &'static str, v: &Value) -> EncodeError {
 }
 
 /// The first field name that appears more than once in `fields`, if any.
-fn repeated_name(fields: &[fnv_esm::schema::Field]) -> Option<String> {
+fn repeated_name(fields: &[FieldDef]) -> Option<String> {
     for (i, f) in fields.iter().enumerate() {
         if fields[..i].iter().any(|g| g.name == f.name) {
             return Some(f.name.clone());
@@ -99,7 +100,7 @@ pub fn encode_type(
     out: &mut Vec<u8>,
     path: &str,
 ) -> Result<(), EncodeError> {
-    match schema.resolve(t) {
+    match t {
         TypeDef::Prim(p) => encode_prim(*p, value, out, path),
         TypeDef::Named(_) => Err(EncodeError::Value {
             path: path.to_string(),
@@ -160,7 +161,7 @@ pub fn encode_type(
                         if let TypeDef::Array {
                             count_field: Some(name),
                             ..
-                        } = schema.resolve(&f.ty)
+                        } = &f.ty
                         {
                             let want = obj.get(name).and_then(Value::as_u64);
                             match (want, v.as_array()) {
@@ -417,6 +418,13 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
         Prim::I32 => out.extend_from_slice(&fit_i32(path, as_i64(path, value)?)?.to_le_bytes()),
         Prim::I64 => out.extend_from_slice(&fit_i64(path, as_i64(path, value)?)?.to_le_bytes()),
         Prim::F32 => out.extend_from_slice(&(as_f64(path, value)? as f32).to_le_bytes()),
+        Prim::Bool => {
+            // A boolean is a byte: 0 or 1.
+            let b = value
+                .as_bool()
+                .ok_or_else(|| kind_err(path, "boolean", value))?;
+            out.push(if b { 1 } else { 0 });
+        }
         Prim::PeekU32 => {
             // The peeked word is read, not written: it belongs to the
             // shape the field takes, and the shape's own layout writes it.
@@ -653,8 +661,8 @@ pub fn encode_sub_len(
         })?;
     if let Some(want) = schema.fixed_size(&def.ty) {
         // A union is not fixed-size; the variant decides.
-        if !matches!(schema.resolve(&def.ty), TypeDef::Union(_)) {
-            let probe = encode_probe(schema, &def.ty, value)?;
+        if !matches!(schema.resolve_def(&def.ty), TypeDef::Union(_)) {
+            let probe = encode_probe(schema, &schema.resolve_def(&def.ty), value)?;
             if probe.len() != want {
                 return Err(EncodeError::Value {
                     path: def.name.clone(),
@@ -667,7 +675,7 @@ pub fn encode_sub_len(
             return Ok(probe);
         }
     }
-    if let (TypeDef::ValueUnion { variants, .. }, Some(len)) = (schema.resolve(&def.ty), orig_len) {
+    if let (TypeDef::ValueUnion { variants, .. }, Some(len)) = (schema.resolve_def(&def.ty), orig_len) {
         // The variant that writes as many bytes as the data took is the one
         // the data used. Each is tried and the one whose length matches
         // wins; a variant that encodes to a different length is not the
@@ -680,7 +688,7 @@ pub fn encode_sub_len(
             }
         }
     }
-    if let (TypeDef::Union(variants), Some(len)) = (schema.resolve(&def.ty), orig_len) {
+    if let (TypeDef::Union(variants), Some(len)) = (schema.resolve_def(&def.ty), orig_len) {
         // The variant that writes as many bytes as the data took is the one
         // the data used. Only the variants with a known size can be told
         // apart this way.
@@ -700,7 +708,7 @@ pub fn encode_sub_len(
             }
         }
     }
-    encode_probe(schema, &def.ty, value)
+    encode_probe(schema, &schema.resolve_def(&def.ty), value)
 }
 
 fn encode_probe(schema: &Schema, t: &TypeDef, value: &Value) -> Result<Vec<u8>, EncodeError> {
@@ -710,22 +718,22 @@ fn encode_probe(schema: &Schema, t: &TypeDef, value: &Value) -> Result<Vec<u8>, 
 }
 
 /// The decoded form of a subrecord, ready to hand back to [`encode_sub`].
-pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> Option<Value> {
-    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
+pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &nvre_esm::Subrecord) -> Option<Value> {
+    let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, *rec_sig);
     // A subrecord whose element count comes from a sibling — Skyrim's KWDA
     // taking the keyword count from KSIZ — needs that count before it can be
     // decoded on its own. The count is the subrecord's own size divided by
     // the element size, so it can be recovered without the sibling.
     if let Some(def) = schema.lookup(rec_sig, &sub.sig) {
-        if let Some(from) = def.count_from {
-            if let Some(n) = sibling_count(schema, rec_sig, from, &sub.sig, sub) {
-                ctx.counts.insert(from, n);
+        if let Some(from) = def.count_from.clone() {
+            if let Some(n) = sibling_count(schema, rec_sig, &from, &sub.sig, sub) {
+                ctx.counts.insert(from.to_string(), n);
             }
         }
     }
-    let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
+    let d = nvre_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     match d.status {
-        fnv_esm::decode::SubStatus::Ok => d.value,
+        nvre_esm::decode::SubStatus::Ok => d.value,
         _ => None,
     }
 }
@@ -740,14 +748,14 @@ pub fn decoded(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> 
 fn sibling_count(
     schema: &Schema,
     rec_sig: &[u8; 4],
-    from: [u8; 4],
+    from: &str,
     sub_sig: &[u8; 4],
-    sub: &fnv_esm::Subrecord,
+    sub: &nvre_esm::Subrecord,
 ) -> Option<u64> {
     // The element type comes from the counted subrecord's own layout.
     let def = schema.lookup(rec_sig, sub_sig)?;
-    let elem_size = match schema.resolve(&def.ty) {
-        TypeDef::Array { elem, .. } => schema.fixed_size(elem)?,
+    let elem_size = match schema.resolve_def(&def.ty) {
+        TypeDef::Array { elem, .. } => schema.fixed_size_def(elem.as_ref())?,
         _ => return None,
     };
     if elem_size == 0 || !sub.data.len().is_multiple_of(elem_size) {
@@ -761,7 +769,7 @@ fn sibling_count(
 ///
 /// The check that makes the whole editor trustworthy: if this returns `false`,
 /// the encoder does not understand the field and the editor must refuse to save.
-pub fn roundtrips(schema: &Schema, rec_sig: &[u8; 4], sub: &fnv_esm::Subrecord) -> bool {
+pub fn roundtrips(schema: &Schema, rec_sig: &[u8; 4], sub: &nvre_esm::Subrecord) -> bool {
     let Some(value) = decoded(schema, rec_sig, sub) else {
         return false;
     };
@@ -787,7 +795,7 @@ pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec
         return Vec::new();
     };
     fn walk(schema: &Schema, t: &TypeDef, prefix: &str, out: &mut Vec<String>) {
-        match schema.resolve(t) {
+        match t {
             TypeDef::Struct(fields) => {
                 for f in fields {
                     let path = if prefix.is_empty() {
@@ -814,7 +822,7 @@ pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec
         }
     }
     let mut out = Vec::new();
-    walk(schema, &def.ty, "", &mut out);
+    walk(schema, &schema.resolve_def(&def.ty), "", &mut out);
     out.sort();
     out.dedup();
     // A bare scalar (or an opaque `bytes`) has no inner fields, so the whole
@@ -840,21 +848,21 @@ pub struct SubView {
 }
 
 /// Decode every subrecord of a record for the property grid.
-pub fn sub_views(schema: &Schema, rec: &fnv_esm::Record) -> Result<Vec<SubView>, String> {
+pub fn sub_views(schema: &Schema, rec: &nvre_esm::Record) -> Result<Vec<SubView>, String> {
     let subs = rec.subrecords().map_err(|e| e.to_string())?;
     let mut out = Vec::with_capacity(subs.len());
     for s in &subs {
-        let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, rec.header.sig);
-        let d = fnv_esm::decode::decode_sub(&rec.header.sig, s, &mut ctx);
+        let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, rec.header.sig);
+        let d = nvre_esm::decode::decode_sub(&rec.header.sig, s, &mut ctx);
         let name = d.name.clone().unwrap_or_else(|| s.sig_str());
         out.push(SubView {
             sig: s.sig_str(),
             name,
             value: d.value.unwrap_or(Value::Null),
-            writable: d.status == fnv_esm::decode::SubStatus::Ok
+            writable: d.status == nvre_esm::decode::SubStatus::Ok
                 && roundtrips(schema, &rec.header.sig, s),
             problem: match d.status {
-                fnv_esm::decode::SubStatus::Ok => None,
+                nvre_esm::decode::SubStatus::Ok => None,
                 other => Some(d.error.unwrap_or_else(|| other.as_str().to_string())),
             },
         });
@@ -864,7 +872,7 @@ pub fn sub_views(schema: &Schema, rec: &fnv_esm::Record) -> Result<Vec<SubView>,
 
 #[doc(hidden)]
 pub mod test_schema {
-    use fnv_esm::schema::Schema;
+    use nvre_esm::schema::Schema;
     /// The schema used by the encoder's own unit tests.
     pub fn schema() -> Schema {
         let text = r#"{
@@ -897,7 +905,7 @@ pub mod test_schema {
           }
         }"#;
         let mut s = Schema::default();
-        s.merge_str(text, "test").unwrap();
+        s.merge_str(text).unwrap();
         s.validate().unwrap();
         s
     }
@@ -939,7 +947,7 @@ mod tests {
           }
         }"#;
         let mut s = Schema::default();
-        s.merge_str(text, "test").unwrap();
+        s.merge_str(text).unwrap();
         s.validate().unwrap();
         s
     }
@@ -1082,7 +1090,7 @@ mod tests {
         s.merge_str(text, "t").unwrap();
         s.validate().unwrap();
         let data = vec![1u8, 9, 9, 2, 3, 3, 3];
-        let subs = fnv_esm::raw::parse_subrecords(&{
+        let subs = nvre_esm::raw::parse_subrecords(&{
             let mut v = Vec::new();
             v.extend_from_slice(b"XABC");
             v.extend_from_slice(&(data.len() as u16).to_le_bytes());
@@ -1090,9 +1098,9 @@ mod tests {
             v
         })
         .unwrap();
-        let mut ctx = fnv_esm::decode::DecodeCtx::new(&s, *b"TEST");
-        let d = fnv_esm::decode::decode_sub(b"TEST", &subs[0], &mut ctx);
-        assert_eq!(d.status, fnv_esm::decode::SubStatus::Ok);
+        let mut ctx = nvre_esm::decode::DecodeCtx::new(&s, *b"TEST");
+        let d = nvre_esm::decode::decode_sub(b"TEST", &subs[0], &mut ctx);
+        assert_eq!(d.status, nvre_esm::decode::SubStatus::Ok);
         let value = d.value.unwrap();
         // Every declared field survives into the JSON, under a distinct key.
         let obj = value.as_object().unwrap();

@@ -885,8 +885,8 @@ fn spawn_worldspace_terrain(
 /// Spawn the 4 terrain quadrant meshes for a single exterior cell using a shared material cache.
 #[allow(clippy::too_many_arguments)]
 fn spawn_single_cell_terrain(
-    lo: &fnv_esm::LoadOrder,
-    schema: &fnv_esm::schema::Schema,
+    lo: &nvre_esm::LoadOrder,
+    schema: &nvre_esm::schema::Schema,
     commands: &mut Commands,
     models: &mut ModelCtx,
     spawned: &mut Spawned,

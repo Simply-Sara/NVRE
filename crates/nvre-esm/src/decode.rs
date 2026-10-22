@@ -60,6 +60,12 @@ pub struct DecodeCtx<'a> {
     pub rec_sig: [u8; 4],
     /// The values read so far, by the subrecord they came from.
     pub values: HashMap<String, Json>,
+    /// The element counts of the subrecords of this record, by the
+    /// subrecord's name.
+    ///
+    /// A subrecord may take its element count from a sibling: Skyrim's
+    /// `KWDA` takes the keyword count from `KSIZ`.
+    pub counts: HashMap<String, u64>,
     /// The switch values of the subrecords of this record, by the record's
     /// type and the subrecord's name.
     ///
@@ -90,6 +96,7 @@ impl<'a> DecodeCtx<'a> {
             rec_sig,
             block_variant: None,
             values: HashMap::new(),
+            counts: HashMap::new(),
             exposed: HashMap::new(),
             switch_on: None,
         }
@@ -104,6 +111,8 @@ pub fn formid_str(v: u32) -> String {
 /// A decoded subrecord.
 #[derive(Debug, Clone)]
 pub struct DecodedSub {
+    /// The subrecord's own error, when it could not be read.
+    pub error: Option<String>,
     /// The subrecord's four-byte type.
     pub sig: [u8; 4],
     /// The value the subrecord decoded to, when it decoded.
@@ -140,6 +149,7 @@ fn decode_sub_in(
     let Some(def) = &def else {
         return DecodedSub {
             sig: s.sig,
+            error: None,
             value: None,
             status: SubStatus::Unknown,
             name: None,
@@ -158,6 +168,7 @@ fn decode_sub_in(
             ctx.values.insert(sig.to_string(), v.clone());
             DecodedSub {
                 sig: s.sig,
+                error: None,
                 value: Some(v),
                 status,
                 name: Some(def.name.clone()),
@@ -166,8 +177,9 @@ fn decode_sub_in(
         Err(e) => DecodedSub {
             sig: s.sig,
             value: None,
-            status: SubStatus::Error(e),
+            status: SubStatus::Error(e.clone()),
             name: Some(def.name.clone()),
+            error: Some(e),
         },
     }
 }
@@ -197,6 +209,7 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> 
     let Some(def) = def else {
         return DecodedSub {
             sig: s.sig,
+            error: None,
             value: None,
             status: SubStatus::Unknown,
             name: None,
@@ -215,6 +228,7 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> 
             ctx.values.insert(sig.clone(), v.clone());
             DecodedSub {
                 sig: s.sig,
+                error: None,
                 value: Some(v),
                 status,
                 name: Some(def.name.clone()),
@@ -223,8 +237,9 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> 
         Err(e) => DecodedSub {
             sig: s.sig,
             value: None,
-            status: SubStatus::Error(e),
+            status: SubStatus::Error(e.clone()),
             name: Some(def.name.clone()),
+            error: Some(e),
         },
     }
 }
@@ -239,9 +254,10 @@ fn decode_subdef(
     // another subrecord's value.
     if let Some(count_from) = &def.count_from {
         let n = ctx
-            .values
+            .counts
             .get(count_from)
-            .and_then(Json::as_u64)
+            .copied()
+            .or_else(|| ctx.values.get(count_from).and_then(Json::as_u64))
             .ok_or_else(|| format!("the count of {count_from:?} is not known yet"))?
             as usize;
         return decode_counted(&def.ty, n, c, ctx, &Map::new());
@@ -459,6 +475,7 @@ fn decode_struct(
                 .get(count_from)
                 .and_then(Json::as_u64)
                 .or_else(|| outer.get(count_from).and_then(Json::as_u64))
+                .or_else(|| ctx.counts.get(count_from).copied())
                 .ok_or_else(|| format!("the count of {count_from:?} is not known yet"))?
                 as usize;
             decode_counted(&f.ty, n, c, ctx, &m)?
@@ -559,6 +576,13 @@ fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
         Prim::U64 => Json::from(c.u64().map_err(e)?),
         Prim::I64 => Json::from(c.i64().map_err(e)?),
         Prim::F32 => Json::from(c.f32().map_err(e)?),
+        Prim::F64 => Json::from(c.f64().map_err(e)?),
+        // The peek reads the number without consuming it: it belongs to
+        // the field either way.
+        Prim::PeekU32 => Json::from(
+            c.peek_u32()
+                .map_err(|oob: nvre_util::OutOfBounds| oob.to_string())?,
+        ),
         Prim::Bool => Json::from(c.u8().map_err(e)? != 0),
         Prim::FormId => Json::from(c.u32().map_err(e)?),
         Prim::ZString => {
@@ -669,7 +693,7 @@ pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
         None => {
             for s in &subs {
                 let d = decode_sub(&r.header.sig, s, &mut ctx);
-                count(&mut cov, &d);
+                count(&mut cov, &d, s.data.len());
                 if let Some(v) = d.value.clone() {
                     m.insert(d.sig_str(), v.clone());
                     // The value is exposed to the subrecords that come
@@ -696,7 +720,7 @@ pub fn decode_record(r: &Record, schema: &Schema) -> (Json, RecordCoverage) {
 }
 
 /// Add a decoded subrecord to the coverage.
-fn count(cov: &mut RecordCoverage, d: &DecodedSub) {
+fn count(cov: &mut RecordCoverage, d: &DecodedSub, size: usize) {
     match d.status {
         SubStatus::Ok => cov.ok_count += 1,
         SubStatus::Unknown => cov.unknown_count += 1,
@@ -706,6 +730,7 @@ fn count(cov: &mut RecordCoverage, d: &DecodedSub) {
     cov.subrecords.push(SubCoverage {
         sig: d.sig,
         status: d.status.clone(),
+        size,
     });
 }
 
@@ -827,7 +852,7 @@ fn decode_sequence(
             ctx.block_variant = None;
             // The opener itself is a subrecord of the block.
             let d = decode_sub_in(b, &sig, s, ctx, &m);
-            count(cov, &d);
+            count(cov, &d, s.data.len());
             if let Some(v) = d.value.clone() {
                 block_subs.push((sig, v.clone()));
                 // A block that switches on its opener's value keeps that
@@ -853,7 +878,7 @@ fn decode_sequence(
             (Some(b), true) => decode_sub_in(b, &sig, s, ctx, &m),
             _ => decode_sub(&rec_sig, s, ctx),
         };
-        count(cov, &d);
+        count(cov, &d, s.data.len());
         match d.value.clone() {
             Some(v) => {
                 if open.is_some() {
@@ -881,6 +906,60 @@ fn variant_name(v: &Json) -> Option<String> {
     }
 }
 
+/// Walk a record's subrecords, giving each one to the caller.
+///
+/// A record that is a sequence is walked a block at a time: the context
+/// says which block is open, so a subrecord's meaning is known before it
+/// is read.
+pub fn walk_sequence(
+    rec_sig: &[u8; 4],
+    subs: &[Subrecord],
+    schema: &Schema,
+    ctx: &mut DecodeCtx<'_>,
+    mut f: impl FnMut(&Subrecord, &mut DecodeCtx<'_>),
+) {
+    let seq = schema
+        .records
+        .get(String::from_utf8_lossy(rec_sig).as_ref())
+        .and_then(|rd| rd.sequence.as_ref());
+    let Some(seq) = seq else {
+        for s in subs {
+            f(s, ctx);
+        }
+        return;
+    };
+    // The block that is open, and the variant its opener chose.
+    let mut open: Option<&BlockDef> = None;
+    for s in subs {
+        let sig = String::from_utf8_lossy(&s.sig).into_owned();
+        // A signature that opens a block starts one, unless the block that
+        // is open expects it.
+        let expected_here = open.map(|b| b.order.contains(&sig)).unwrap_or(false);
+        if !expected_here {
+            if let Some(b) = seq.blocks.values().find(|b| b.opener == sig) {
+                if let Some(prev) = open {
+                    ctx.block_variant = None;
+                    let _ = prev;
+                }
+                open = Some(b);
+                ctx.block_variant = None;
+            }
+        }
+        f(s, ctx);
+        // The opener's value picks the block's variant.
+        if let Some(b) = open {
+            if b.opener == sig && !b.variants.is_empty() {
+                let value = ctx.values.get(&sig).and_then(variant_name);
+                if let Some(name) = value {
+                    if let Some(var) = b.variants.get(&name) {
+                        ctx.block_variant = Some(var.subrecords.clone());
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Store a block's subrecords under the block's name.
 fn store_block(m: &mut Map<String, Json>, b: &BlockDef, subs: &mut Vec<(String, Json)>) {
     if subs.is_empty() {
@@ -901,6 +980,8 @@ pub struct SubCoverage {
     pub sig: [u8; 4],
     /// How well it was explained.
     pub status: SubStatus,
+    /// How many bytes the subrecord holds.
+    pub size: usize,
 }
 
 /// How well one record was explained.
@@ -961,13 +1042,117 @@ pub struct Coverage {
     pub total: u64,
 }
 
+/// How well one subrecord signature was explained.
+#[derive(Debug, Clone, Default)]
+pub struct SignatureCoverage {
+    /// How many there were.
+    pub total: u64,
+    /// How many were fully explained.
+    pub ok: u64,
+    /// How many the schema does not know.
+    pub unknown: u64,
+    /// How many had bytes left over.
+    pub trailing: u64,
+    /// How many could not be read.
+    pub error: u64,
+    /// The sizes the subrecords were, by how many of each.
+    pub sizes: BTreeMap<usize, u64>,
+    /// The first error, for reporting.
+    pub first_error: Option<String>,
+}
+
 impl Coverage {
+    /// The coverage of each subrecord signature, by the record that holds
+    /// it and the subrecord's own signature.
+    pub fn by_sub(&self) -> BTreeMap<(String, String), SignatureCoverage> {
+        let mut out: BTreeMap<(String, String), SignatureCoverage> = BTreeMap::new();
+        for (rec, rc) in &self.by_type {
+            for sc in &rc.subrecords {
+                let sig = String::from_utf8_lossy(&sc.sig).into_owned();
+                let e = out.entry((rec.clone(), sig)).or_default();
+                e.total += 1;
+                *e.sizes.entry(sc.size).or_insert(0) += 1;
+                match &sc.status {
+                    SubStatus::Ok => e.ok += 1,
+                    SubStatus::Unknown => e.unknown += 1,
+                    SubStatus::Trailing { used, total } => {
+                        e.trailing += 1;
+                        if e.first_error.is_none() {
+                            e.first_error = Some(format!(
+                                "{total} bytes, {used} read: {} bytes left over",
+                                total - used
+                            ));
+                        }
+                    }
+                    SubStatus::Error(m) => {
+                        e.error += 1;
+                        if e.first_error.is_none() {
+                            e.first_error = Some(m.clone());
+                        }
+                    }
+                }
+            }
+        }
+        out
+    }
+
     /// The totals: total, ok, unknown, trailing, error.
     pub fn totals(&self) -> (u64, u64, u64, u64, u64) {
         (self.total, self.ok, self.unknown, self.trailing, self.error)
     }
 
     /// Measure a record, and add it to the totals.
+    /// Measure a list of records and fold them into the totals.
+    pub fn add_records(&mut self, recs: &[&Record], schema: &Schema) {
+        for r in recs {
+            let (_value, rc) = decode_record(r, schema);
+            self.add(rc);
+        }
+    }
+
+    /// The totals, as a JSON document.
+    pub fn to_json(&self, max_rows: usize) -> Json {
+        let (total, ok, unknown, trailing, error) = self.totals();
+        let pct = |n: u64| {
+            if total == 0 {
+                0.0
+            } else {
+                (n as f64) * 100.0 / total as f64
+            }
+        };
+        let mut summary = Map::new();
+        summary.insert("subrecords".into(), Json::from(total));
+        summary.insert("ok".into(), Json::from(ok));
+        summary.insert("unknown".into(), Json::from(unknown));
+        summary.insert("trailing".into(), Json::from(trailing));
+        summary.insert("error".into(), Json::from(error));
+        summary.insert("percent".into(), Json::from(pct(ok)));
+        let mut by_sub = Map::new();
+        let subs = self.by_sub();
+        let mut rows: Vec<_> = subs.iter().collect();
+        rows.sort_by(|a, b| {
+            b.1.total
+                .saturating_sub(b.1.ok)
+                .cmp(&a.1.total.saturating_sub(a.1.ok))
+                .then(a.0.cmp(b.0))
+        });
+        for ((rec, sig), c) in rows.into_iter().take(max_rows) {
+            let mut o = Map::new();
+            o.insert("record".into(), Json::String(rec.clone()));
+            o.insert("subrecord".into(), Json::String(sig.clone()));
+            o.insert("total".into(), Json::from(c.total));
+            o.insert("ok".into(), Json::from(c.ok));
+            o.insert("unknown".into(), Json::from(c.unknown));
+            o.insert("trailing".into(), Json::from(c.trailing));
+            o.insert("error".into(), Json::from(c.error));
+            by_sub.insert(format!("{rec}.{sig}"), Json::Object(o));
+        }
+        let mut out = Map::new();
+        out.insert("summary".into(), Json::Object(summary));
+        out.insert("by_subrecord".into(), Json::Object(by_sub));
+        Json::Object(out)
+    }
+
     pub fn add(&mut self, rc: RecordCoverage) {
         self.ok += rc.ok();
         self.unknown += rc.unknown();

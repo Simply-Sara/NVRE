@@ -11,8 +11,9 @@
 //! JSON in parallel. Anything that does not round-trip is left untouched and
 //! reported, never guessed at.
 
-use fnv_esm::raw::Subrecord;
-use fnv_esm::schema::{Prim, Schema, TypeDef};
+use nvre_esm::raw::Subrecord;
+use nvre_esm::schema::{Prim, Schema};
+use nvre_esm::typedef::TypeDef;
 use serde_json::{Map, Value};
 
 /// Maps a plugin-local FormID in the source file to one in the target file.
@@ -33,17 +34,17 @@ pub fn remap_sub(
 ) -> Option<Vec<u8>> {
     let def = schema.lookup(rec_sig, &sub.sig)?;
     // Opaque `bytes` definitions carry no FormIDs worth rewriting.
-    if matches!(schema.resolve(&def.ty), TypeDef::Prim(Prim::Bytes)) {
+    if matches!(schema.resolve_def(&def.ty), TypeDef::Prim(Prim::Bytes)) {
         return Some(sub.data.clone());
     }
-    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
-    let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
-    if d.status != fnv_esm::decode::SubStatus::Ok {
+    let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    let d = nvre_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
+    if d.status != nvre_esm::decode::SubStatus::Ok {
         return None;
     }
     let mut value = d.value?;
     let mut changed = false;
-    remap_value(schema, &def.ty, &mut value, map, &mut changed)?;
+    remap_value(schema, &schema.resolve_def(&def.ty), &mut value, map, &mut changed)?;
     if !changed {
         return Some(sub.data.clone());
     }
@@ -81,7 +82,7 @@ fn remap_value(
     map: &FormIdMap,
     changed: &mut bool,
 ) -> Option<()> {
-    match schema.resolve(t) {
+    match t {
         TypeDef::Prim(Prim::FormId) => {
             let local = parse_formid(value)?;
             if local == 0 {
@@ -113,7 +114,7 @@ fn remap_value(
         TypeDef::Array { elem, .. } => {
             let arr = value.as_array_mut()?;
             for v in arr.iter_mut() {
-                remap_value(schema, elem, v, map, changed)?;
+                remap_value(schema, elem.as_ref(), v, map, changed)?;
             }
             Some(())
         }
@@ -141,13 +142,13 @@ pub fn count_formids(schema: &Schema, rec_sig: &[u8; 4], sub: &Subrecord) -> usi
     let Some(def) = schema.lookup(rec_sig, &sub.sig) else {
         return 0;
     };
-    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, *rec_sig);
     let Ok(subs) = parse_one(sub) else { return 0 };
     let _ = subs;
-    let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
+    let d = nvre_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     let Some(v) = d.value else { return 0 };
     let mut n = 0;
-    count_in(schema, &def.ty, &v, &mut n);
+    count_in(schema, &schema.resolve_def(&def.ty), &v, &mut n);
     n
 }
 
@@ -156,7 +157,7 @@ fn parse_one(sub: &Subrecord) -> Result<Vec<Subrecord>, ()> {
 }
 
 fn count_in(schema: &Schema, t: &TypeDef, value: &Value, n: &mut usize) {
-    match schema.resolve(t) {
+    match t {
         TypeDef::Prim(Prim::FormId) => {
             if parse_formid(value).is_some_and(|f| f != 0) {
                 *n += 1;
@@ -199,7 +200,7 @@ pub fn formid_fields(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> V
     };
     let mut out = Vec::new();
     fn walk(schema: &Schema, t: &TypeDef, out: &mut Vec<String>) {
-        match schema.resolve(t) {
+        match t {
             TypeDef::Prim(Prim::FormId) => out.push("<formid>".to_string()),
             TypeDef::Struct(fields) => {
                 for f in fields {
@@ -220,7 +221,7 @@ pub fn formid_fields(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> V
             _ => {}
         }
     }
-    walk(schema, &def.ty, &mut out);
+    walk(schema, &schema.resolve_def(&def.ty), &mut out);
     out.sort();
     out.dedup();
     out
@@ -232,7 +233,7 @@ pub fn decoded_map(
     rec_sig: &[u8; 4],
     sub: &Subrecord,
 ) -> Option<Map<String, Value>> {
-    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, *rec_sig);
-    let d = fnv_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
+    let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, *rec_sig);
+    let d = nvre_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     d.value?.as_object().cloned()
 }

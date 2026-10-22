@@ -6,7 +6,7 @@ edition = "2021"
 license = "GPL-3.0-or-later"
 
 [dependencies]
-fnv-esm.workspace = true
+nvre-esm = { path = "../nvre-esm" }
 serde_json = "1"
 tracing = "0.1"
 

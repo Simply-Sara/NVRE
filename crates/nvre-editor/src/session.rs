@@ -6,7 +6,7 @@
 //! viewport reads it to decide what to draw; the panels read and write it.
 
 use bevy::prelude::*;
-use fnv_esm::{LoadOrder, Schema};
+use nvre_esm::{LoadOrder, Schema};
 use nvre_edit::Document;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -43,7 +43,7 @@ pub struct Session {
     /// The plugin being edited.
     pub doc: Document,
     /// The load order the plugin was opened in (masters first).
-    pub plugins: &'static [fnv_esm::Plugin],
+    pub plugins: &'static [nvre_esm::Plugin],
     /// The load order index, built once at startup.
     pub lo: LoadOrder<'static>,
     /// The ESM record schema.
@@ -111,19 +111,19 @@ impl Session {
         let schema = load_schema(schema_dir, game)?;
         // Masters are named as file names and resolved beside the plugin being
         // edited, so `--masters FalloutNV.esm` works whatever the working folder.
-        let mut plugins: Vec<fnv_esm::Plugin> = Vec::new();
+        let mut plugins: Vec<nvre_esm::Plugin> = Vec::new();
         for m in &masters {
             let p = dir.join(m);
-            plugins.push(fnv_esm::Plugin::open(&p).map_err(|e| format!("{m}: {e}"))?);
+            plugins.push(nvre_esm::Plugin::open(&p).map_err(|e| format!("{m}: {e}"))?);
         }
         let doc = Document::open(path).map_err(|e| e.to_string())?;
         let own = doc.name().to_string();
         // The plugin being edited goes after its masters, unless it is one of
         // them (editing a master directly), in which case it is already loaded.
         if !plugins.iter().any(|p| p.name.eq_ignore_ascii_case(&own)) {
-            plugins.push(fnv_esm::Plugin::open(path).map_err(|e| format!("{own}: {e}"))?);
+            plugins.push(nvre_esm::Plugin::open(path).map_err(|e| format!("{own}: {e}"))?);
         }
-        let leaked_plugins: &'static [fnv_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
+        let leaked_plugins: &'static [nvre_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
         let index = nvre_world::WorldIndex::build(&lo, &schema);
 
@@ -186,12 +186,12 @@ impl Session {
     ) -> Result<Session, String> {
         let game = crate::game::GameProfile::detect(data_dir);
         let schema = load_schema(schema_dir, game)?;
-        let mut plugins: Vec<fnv_esm::Plugin> = Vec::new();
+        let mut plugins: Vec<nvre_esm::Plugin> = Vec::new();
         for m in &masters {
             let p = data_dir.join(m);
-            plugins.push(fnv_esm::Plugin::open(&p).map_err(|e| format!("{m}: {e}"))?);
+            plugins.push(nvre_esm::Plugin::open(&p).map_err(|e| format!("{m}: {e}"))?);
         }
-        let leaked_plugins: &'static [fnv_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
+        let leaked_plugins: &'static [nvre_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
         let index = nvre_world::WorldIndex::build(&lo, &schema);
 
@@ -244,7 +244,7 @@ impl Session {
     }
 
     /// The plugin being edited.
-    pub fn plugin(&self) -> &fnv_esm::Plugin {
+    pub fn plugin(&self) -> &nvre_esm::Plugin {
         self.doc.plugin()
     }
 
@@ -349,7 +349,7 @@ impl Session {
                         let category = self
                             .schema
                             .records
-                            .get(sig)
+                            .get(String::from_utf8_lossy(sig).as_ref())
                             .map(|d| d.name.clone())
                             .unwrap_or_else(|| String::from_utf8_lossy(sig).to_string());
                         (group, category)
@@ -407,7 +407,7 @@ impl Session {
                 if r.header.sig == sig {
                     if let Some(global) = self.lo.to_global(pi, r.header.form_id) {
                         if seen.insert(global) {
-                            let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
+                            let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
                             let name = edid.or(full).unwrap_or_else(|| format!("{:08X}", global));
                             out.push((global, name));
                         }
@@ -684,7 +684,7 @@ impl Session {
                     types.entry(base).or_insert_with(|| {
                         self.schema
                             .records
-                            .get(&rec.header.sig)
+                            .get(rec.sig_str().as_str())
                             .map(|d| d.name.clone())
                             .unwrap_or_else(|| rec.sig_str())
                     });
@@ -1486,12 +1486,12 @@ fn set_path(
 /// radians. The rotation is what makes a door swing the right way and a road run
 /// the right direction, so it is read alongside the position rather than left
 /// for the caller to find.
-pub fn placement_of(rec: &fnv_esm::Record) -> Option<([f32; 3], [f32; 3])> {
+pub fn placement_of(rec: &nvre_esm::Record) -> Option<([f32; 3], [f32; 3])> {
     placement_in(&rec.subrecords().ok()?)
 }
 
 /// [`placement_of`] over subrecords that are already parsed.
-fn placement_in(subs: &[fnv_esm::Subrecord]) -> Option<([f32; 3], [f32; 3])> {
+fn placement_in(subs: &[nvre_esm::Subrecord]) -> Option<([f32; 3], [f32; 3])> {
     let data = subs.iter().find(|s| &s.sig == b"DATA")?;
     if data.data.len() < 24 {
         return None;
@@ -1505,7 +1505,7 @@ fn placement_in(subs: &[fnv_esm::Subrecord]) -> Option<([f32; 3], [f32; 3])> {
 }
 
 /// A reference's position from its DATA subrecord, in game units.
-pub fn position_of(rec: &fnv_esm::Record) -> Option<[f32; 3]> {
+pub fn position_of(rec: &nvre_esm::Record) -> Option<[f32; 3]> {
     placement_of(rec).map(|(p, _)| p)
 }
 
@@ -1517,7 +1517,7 @@ pub fn position_of(rec: &fnv_esm::Record) -> Option<[f32; 3]> {
 ///
 /// 0 is the null reference and no owner at all, so it reads as `None` rather
 /// than as the master's own range.
-fn formid_in(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Option<u32> {
+fn formid_in(subs: &[nvre_esm::Subrecord], sig: &[u8; 4]) -> Option<u32> {
     let s = subs.iter().find(|s| &s.sig == sig)?;
     let local = <[u8; 4]>::try_from(s.data.get(..4)?)
         .ok()
@@ -1528,7 +1528,7 @@ fn formid_in(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Option<u32> {
 /// A reference's scale, from its XSCL subrecord.
 ///
 /// Defaults to 1.0 when XSCL is absent. When present, XSCL is a 4-byte little-endian float.
-fn scale_in(subs: &[fnv_esm::Subrecord]) -> Option<f32> {
+fn scale_in(subs: &[nvre_esm::Subrecord]) -> Option<f32> {
     let s = subs.iter().find(|s| &s.sig == b"XSCL")?;
     let bytes: [u8; 4] = s.data.get(..4)?.try_into().ok()?;
     Some(f32::from_le_bytes(bytes))
@@ -1540,7 +1540,7 @@ fn scale_in(subs: &[fnv_esm::Subrecord]) -> Option<f32> {
 /// unused bytes, key FormID, flags u8, three unused bytes. The six 12-byte ones
 /// carry no key [observed: same survey] — the key is read as far as the data
 /// goes, so both lengths decode.
-fn lock_in(subs: &[fnv_esm::Subrecord]) -> Option<LockRow> {
+fn lock_in(subs: &[nvre_esm::Subrecord]) -> Option<LockRow> {
     let d = &subs.iter().find(|s| &s.sig == b"XLOC")?.data;
     let level = *d.first()?;
     let key = d
@@ -1668,7 +1668,7 @@ pub fn load_order_objects(lo: &LoadOrder, filter: &str) -> Vec<(u32, [u8; 4], St
             let Some(global) = lo.to_global(pi, r.header.form_id) else {
                 continue;
             };
-            let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
+            let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
             let label = full.or(edid).unwrap_or_else(|| format!("{global:08X}"));
             if !filter.is_empty() && !label.to_lowercase().contains(&filter) {
                 continue;
@@ -1706,7 +1706,7 @@ pub fn placeable_base_objects(
             let Some(global) = lo.to_global(pi, r.header.form_id) else {
                 continue;
             };
-            let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
+            let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
             let label = full.or(edid).unwrap_or_else(|| format!("{global:08X}"));
             if !filter.is_empty() && !label.to_lowercase().contains(&filter) {
                 continue;
@@ -1739,14 +1739,14 @@ pub const PLACEABLE: [&[u8; 4]; 27] = [
 #[derive(Debug, Clone, Copy)]
 pub enum StagedRecord<'a> {
     /// In the plugin being edited.
-    Saved(&'a fnv_esm::Record),
+    Saved(&'a nvre_esm::Record),
     /// Queued for insertion, with a placeholder FormID.
-    Pending(&'a fnv_esm::Record),
+    Pending(&'a nvre_esm::Record),
 }
 
 impl StagedRecord<'_> {
     /// The record itself, either way.
-    pub fn record(&self) -> &fnv_esm::Record {
+    pub fn record(&self) -> &nvre_esm::Record {
         match self {
             StagedRecord::Saved(r) | StagedRecord::Pending(r) => r,
         }

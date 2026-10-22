@@ -20,9 +20,9 @@
 //! A record whose FormIDs cannot be remapped safely is reported, not silently
 //! mangled.
 
-use fnv_esm::raw::{record_flags, Node, Record, Subrecord};
-use fnv_esm::schema::Schema;
-use fnv_esm::PluginHeader;
+use nvre_esm::raw::{record_flags, Node, Record, Subrecord};
+use nvre_esm::schema::Schema;
+use nvre_esm::PluginHeader;
 use std::collections::HashMap;
 
 /// What a save produced, for reporting to the user.
@@ -178,7 +178,7 @@ pub fn write_plugin_with_load_order(
     doc: &crate::Document,
     masters: &MasterList,
     schema: &Schema,
-    lo: Option<&fnv_esm::LoadOrder<'_>>,
+    lo: Option<&nvre_esm::LoadOrder<'_>>,
     out_path: &std::path::Path,
     scope: Scope,
 ) -> Result<SaveReport, String> {
@@ -368,7 +368,7 @@ pub fn write_plugin_with_load_order(
     report.unremapped = problems;
 
     let mut bytes = Vec::new();
-    fnv_esm::raw::write_nodes(&nodes, &mut bytes);
+    nvre_esm::raw::write_nodes(&nodes, &mut bytes);
     report.bytes = bytes.len();
     std::fs::write(out_path, &bytes).map_err(|e| e.to_string())?;
     Ok(report)
@@ -447,11 +447,11 @@ fn write_new_worlds_and_cells(
                 // already defines it.
                 if !has_world_children(nodes, new_world) {
                     // No group yet: create one under the top-level WRLD group.
-                    let mut wc = fnv_esm::raw::Group {
-                        header: fnv_esm::raw::GroupHeader {
+                    let mut wc = nvre_esm::raw::Group {
+                        header: nvre_esm::raw::GroupHeader {
                             size: 0,
                             label: new_world.to_le_bytes(),
-                            group_type: fnv_esm::raw::group_type::WORLD_CHILDREN,
+                            group_type: nvre_esm::raw::group_type::WORLD_CHILDREN,
                             stamp: 0,
                             unknown1: 0,
                             version: 0,
@@ -505,18 +505,18 @@ fn remap_form_id(form_id: u32, map: &HashMap<u32, u32>) -> u32 {
 fn append_to_top_group(nodes: &mut Vec<Node>, children: Vec<Node>, label: [u8; 4]) {
     if let Some(Node::Group(top)) = nodes.iter_mut().find(|n| match n {
         Node::Group(g) => {
-            g.header.group_type == fnv_esm::raw::group_type::TOP && g.header.label == label
+            g.header.group_type == nvre_esm::raw::group_type::TOP && g.header.label == label
         }
         _ => false,
     }) {
         top.children.extend(children);
         return;
     }
-    nodes.push(Node::Group(fnv_esm::raw::Group {
-        header: fnv_esm::raw::GroupHeader {
+    nodes.push(Node::Group(nvre_esm::raw::Group {
+        header: nvre_esm::raw::GroupHeader {
             size: 0,
             label,
-            group_type: fnv_esm::raw::group_type::TOP,
+            group_type: nvre_esm::raw::group_type::TOP,
             stamp: 0,
             unknown1: 0,
             version: 0,
@@ -531,11 +531,11 @@ fn append_to_top_group(nodes: &mut Vec<Node>, children: Vec<Node>, label: [u8; 4
 fn has_world_children(nodes: &[Node], world_form_id: u32) -> bool {
     nodes.iter().any(|n| match n {
         Node::Group(top) => {
-            top.header.group_type == fnv_esm::raw::group_type::TOP
+            top.header.group_type == nvre_esm::raw::group_type::TOP
                 && &top.header.label == b"WRLD"
                 && top.children.iter().any(|c| match c {
                     Node::Group(wc) => {
-                        wc.header.group_type == fnv_esm::raw::group_type::WORLD_CHILDREN
+                        wc.header.group_type == nvre_esm::raw::group_type::WORLD_CHILDREN
                             && wc.header.label_u32() == world_form_id
                     }
                     _ => false,
@@ -553,16 +553,16 @@ fn has_world_children(nodes: &[Node], world_form_id: u32) -> bool {
 fn put_in_world_children(
     nodes: &mut [Node],
     world_form_id: u32,
-    block: fnv_esm::raw::Group,
+    block: nvre_esm::raw::Group,
 ) -> bool {
     for n in nodes.iter_mut() {
         let Node::Group(top) = n else { continue };
-        if top.header.group_type != fnv_esm::raw::group_type::TOP || &top.header.label != b"WRLD" {
+        if top.header.group_type != nvre_esm::raw::group_type::TOP || &top.header.label != b"WRLD" {
             continue;
         }
         for c in &mut top.children {
             let Node::Group(wc) = c else { continue };
-            if wc.header.group_type == fnv_esm::raw::group_type::WORLD_CHILDREN
+            if wc.header.group_type == nvre_esm::raw::group_type::WORLD_CHILDREN
                 && wc.header.label_u32() == world_form_id
             {
                 wc.children.push(Node::Group(block));
@@ -578,7 +578,7 @@ fn find_temporary_children_mut(nodes: &mut [Node], cell_form_id: u32) -> Option<
     fn go(nodes: &mut [Node], cell_form_id: u32) -> Option<&mut Vec<Node>> {
         for n in nodes.iter_mut() {
             let Node::Group(g) = n else { continue };
-            if g.header.group_type == fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
+            if g.header.group_type == nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
                 && g.header.label_u32() == cell_form_id
             {
                 return Some(&mut g.children);
@@ -650,8 +650,8 @@ fn rewrite_header(nodes: &mut [Node], masters: &MasterList, new_self: u32) -> Re
     }
     // The plugin is not a master file.
     tes4.header.flags &= !record_flags::MASTER;
-    tes4.header.data_size = fnv_esm::raw::write_subrecords(&out).len() as u32;
-    tes4.raw = fnv_esm::raw::write_subrecords(&out).into();
+    tes4.header.data_size = nvre_esm::raw::write_subrecords(&out).len() as u32;
+    tes4.raw = nvre_esm::raw::write_subrecords(&out).into();
     Ok(())
 }
 
@@ -726,7 +726,7 @@ fn remap_record(
         }
     }
     if changed_any {
-        let payload = fnv_esm::raw::write_subrecords(&new_subs);
+        let payload = nvre_esm::raw::write_subrecords(&new_subs);
         // A compressed record stores `u32 decompressed size` + zlib stream. The
         // subrecords were decoded from the decompressed form, so writing them
         // back uncompressed would leave the COMPRESSED flag set on plain bytes
@@ -781,7 +781,7 @@ fn find_record(nodes: &[Node], form_id: u32) -> Option<&Record> {
 
 fn cell_of_record_lo(
     doc: &crate::Document,
-    lo: Option<&fnv_esm::LoadOrder<'_>>,
+    lo: Option<&nvre_esm::LoadOrder<'_>>,
     schema: &Schema,
     form_id: u32,
 ) -> Option<u32> {
@@ -804,14 +804,14 @@ fn cell_of_record_lo(
 fn cell_of_record(doc: &crate::Document, form_id: u32) -> Option<u32> {
     // The index is built over the plugin being edited on its own, which is
     // enough to say where the record sits inside it.
-    let lo = fnv_esm::LoadOrder::new(std::slice::from_ref(doc.plugin())).ok()?;
+    let lo = nvre_esm::LoadOrder::new(std::slice::from_ref(doc.plugin())).ok()?;
     let ix = nvre_world::WorldIndex::build(&lo, &Schema::default());
     ix.refs.get(&form_id).map(|e| e.cell)
 }
 
 fn ensure_record_present(
     children: &mut Vec<Node>,
-    lo: Option<&fnv_esm::LoadOrder<'_>>,
+    lo: Option<&nvre_esm::LoadOrder<'_>>,
     schema: &Schema,
     map: &HashMap<u32, u32>,
     form_id: u32,
@@ -842,15 +842,15 @@ fn find_or_create_child_group(
     children: &mut Vec<Node>,
     group_type: i32,
     label: [u8; 4],
-) -> &mut fnv_esm::raw::Group {
+) -> &mut nvre_esm::raw::Group {
     let pos = match children.iter().position(|n| match n {
         Node::Group(g) => g.header.group_type == group_type && g.header.label == label,
         _ => false,
     }) {
         Some(idx) => idx,
         None => {
-            children.push(Node::Group(fnv_esm::raw::Group {
-                header: fnv_esm::raw::GroupHeader {
+            children.push(Node::Group(nvre_esm::raw::Group {
+                header: nvre_esm::raw::GroupHeader {
                     size: 0,
                     label,
                     group_type,
@@ -873,7 +873,7 @@ fn find_or_create_child_group(
 
 fn ensure_cell_hierarchy_and_insert(
     nodes: &mut Vec<Node>,
-    lo: Option<&fnv_esm::LoadOrder<'_>>,
+    lo: Option<&nvre_esm::LoadOrder<'_>>,
     schema: &Schema,
     map: &HashMap<u32, u32>,
     cell_id: u32,
@@ -898,20 +898,20 @@ fn ensure_cell_hierarchy_and_insert(
     };
 
     let target_child_type = if is_persistent {
-        fnv_esm::raw::group_type::CELL_PERSISTENT_CHILDREN
+        nvre_esm::raw::group_type::CELL_PERSISTENT_CHILDREN
     } else {
-        fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
+        nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
     };
 
     if let (false, Some(world_fid)) = (is_interior, world_id) {
         // 1. TOP: WRLD
-        let top_wrld = find_or_create_child_group(nodes, fnv_esm::raw::group_type::TOP, *b"WRLD");
+        let top_wrld = find_or_create_child_group(nodes, nvre_esm::raw::group_type::TOP, *b"WRLD");
         // Ensure WRLD record is present
         ensure_record_present(&mut top_wrld.children, lo, schema, map, world_fid, *b"WRLD");
         // 2. WORLD_CHILDREN (type 1, label: world_fid)
         let world_children = find_or_create_child_group(
             &mut top_wrld.children,
-            fnv_esm::raw::group_type::WORLD_CHILDREN,
+            nvre_esm::raw::group_type::WORLD_CHILDREN,
             world_fid.to_le_bytes(),
         );
 
@@ -925,7 +925,7 @@ fn ensure_cell_hierarchy_and_insert(
             block_label[2..4].copy_from_slice(&bx.to_le_bytes());
             let block_g = find_or_create_child_group(
                 &mut world_children.children,
-                fnv_esm::raw::group_type::EXTERIOR_CELL_BLOCK,
+                nvre_esm::raw::group_type::EXTERIOR_CELL_BLOCK,
                 block_label,
             );
 
@@ -937,7 +937,7 @@ fn ensure_cell_hierarchy_and_insert(
             sub_label[2..4].copy_from_slice(&sx.to_le_bytes());
             let sub_g = find_or_create_child_group(
                 &mut block_g.children,
-                fnv_esm::raw::group_type::EXTERIOR_CELL_SUBBLOCK,
+                nvre_esm::raw::group_type::EXTERIOR_CELL_SUBBLOCK,
                 sub_label,
             );
 
@@ -947,7 +947,7 @@ fn ensure_cell_hierarchy_and_insert(
             // 5. CELL_CHILDREN (type 6, label: cell_id)
             let cell_children = find_or_create_child_group(
                 &mut sub_g.children,
-                fnv_esm::raw::group_type::CELL_CHILDREN,
+                nvre_esm::raw::group_type::CELL_CHILDREN,
                 cell_id.to_le_bytes(),
             );
 
@@ -970,7 +970,7 @@ fn ensure_cell_hierarchy_and_insert(
             );
             let cell_children = find_or_create_child_group(
                 &mut world_children.children,
-                fnv_esm::raw::group_type::CELL_CHILDREN,
+                nvre_esm::raw::group_type::CELL_CHILDREN,
                 cell_id.to_le_bytes(),
             );
             let leaf_g = find_or_create_child_group(
@@ -983,19 +983,19 @@ fn ensure_cell_hierarchy_and_insert(
     } else {
         // Interior cell
         // 1. TOP: CELL
-        let top_cell = find_or_create_child_group(nodes, fnv_esm::raw::group_type::TOP, *b"CELL");
+        let top_cell = find_or_create_child_group(nodes, nvre_esm::raw::group_type::TOP, *b"CELL");
         // 2. INTERIOR_CELL_BLOCK (type 2, label: cell_id % 10)
         let bnum = (cell_id % 10) as i32;
         let block_g = find_or_create_child_group(
             &mut top_cell.children,
-            fnv_esm::raw::group_type::INTERIOR_CELL_BLOCK,
+            nvre_esm::raw::group_type::INTERIOR_CELL_BLOCK,
             bnum.to_le_bytes(),
         );
         // 3. INTERIOR_CELL_SUBBLOCK (type 3, label: (cell_id / 10) % 10)
         let sbnum = ((cell_id / 10) % 10) as i32;
         let sub_g = find_or_create_child_group(
             &mut block_g.children,
-            fnv_esm::raw::group_type::INTERIOR_CELL_SUBBLOCK,
+            nvre_esm::raw::group_type::INTERIOR_CELL_SUBBLOCK,
             sbnum.to_le_bytes(),
         );
         // Ensure CELL record is present
@@ -1003,7 +1003,7 @@ fn ensure_cell_hierarchy_and_insert(
         // 4. CELL_CHILDREN (type 6, label: cell_id)
         let cell_children = find_or_create_child_group(
             &mut sub_g.children,
-            fnv_esm::raw::group_type::CELL_CHILDREN,
+            nvre_esm::raw::group_type::CELL_CHILDREN,
             cell_id.to_le_bytes(),
         );
         // 5. CELL_TEMPORARY_CHILDREN (type 9) or PERSISTENT (type 8)
@@ -1023,7 +1023,7 @@ fn ensure_cell_hierarchy_and_insert(
 /// [`cell_of_record`], and the group is found by that cell's FormID.
 fn override_record(
     nodes: &mut Vec<Node>,
-    lo: Option<&fnv_esm::LoadOrder<'_>>,
+    lo: Option<&nvre_esm::LoadOrder<'_>>,
     schema: &Schema,
     map: &HashMap<u32, u32>,
     cell: Option<u32>,
@@ -1035,9 +1035,9 @@ fn override_record(
         if let Some(g) = find_cell_children_mut(nodes, cell) {
             let is_persistent = rec.header.flags & 0x400 != 0;
             let target_type = if is_persistent {
-                fnv_esm::raw::group_type::CELL_PERSISTENT_CHILDREN
+                nvre_esm::raw::group_type::CELL_PERSISTENT_CHILDREN
             } else {
-                fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
+                nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
             };
             let leaf = find_or_create_child_group(&mut g.children, target_type, cell.to_le_bytes());
             leaf.children.push(Node::Record(rec.clone()));
@@ -1050,7 +1050,7 @@ fn override_record(
     // signature.
     if let Some(Node::Group(g)) = nodes.iter_mut().find(|n| match n {
         Node::Group(g) => {
-            g.header.group_type == fnv_esm::raw::group_type::TOP && g.header.label == sig
+            g.header.group_type == nvre_esm::raw::group_type::TOP && g.header.label == sig
         }
         _ => false,
     }) {
@@ -1065,11 +1065,11 @@ fn override_record(
         ?cell,
         "no group for the overridden record; a new top-level group is created"
     );
-    nodes.push(Node::Group(fnv_esm::raw::Group {
-        header: fnv_esm::raw::GroupHeader {
+    nodes.push(Node::Group(nvre_esm::raw::Group {
+        header: nvre_esm::raw::GroupHeader {
             size: 0,
             label: sig,
-            group_type: fnv_esm::raw::group_type::TOP,
+            group_type: nvre_esm::raw::group_type::TOP,
             stamp: 0,
             unknown1: 0,
             version: 0,
@@ -1108,8 +1108,8 @@ fn add_onam(nodes: &mut [Node], overrides: &[u32]) -> Result<(), String> {
         data,
         extended: false,
     });
-    tes4.header.data_size = fnv_esm::raw::write_subrecords(&subs).len() as u32;
-    tes4.raw = fnv_esm::raw::write_subrecords(&subs).into();
+    tes4.header.data_size = nvre_esm::raw::write_subrecords(&subs).len() as u32;
+    tes4.raw = nvre_esm::raw::write_subrecords(&subs).into();
     Ok(())
 }
 
@@ -1132,7 +1132,7 @@ fn count_changed(before: &Subrecord, after: &[u8]) -> usize {
 /// when the master has none for that cell.
 fn insert_into_cell(
     nodes: &mut Vec<Node>,
-    lo: Option<&fnv_esm::LoadOrder<'_>>,
+    lo: Option<&nvre_esm::LoadOrder<'_>>,
     schema: &Schema,
     map: &HashMap<u32, u32>,
     cell: u32,
@@ -1141,9 +1141,9 @@ fn insert_into_cell(
     if let Some(g) = find_cell_children_mut(nodes, cell) {
         let is_persistent = rec.header.flags & 0x400 != 0;
         let target_type = if is_persistent {
-            fnv_esm::raw::group_type::CELL_PERSISTENT_CHILDREN
+            nvre_esm::raw::group_type::CELL_PERSISTENT_CHILDREN
         } else {
-            fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
+            nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN
         };
         let leaf = find_or_create_child_group(&mut g.children, target_type, cell.to_le_bytes());
         leaf.children.push(Node::Record(rec));
@@ -1152,10 +1152,10 @@ fn insert_into_cell(
     ensure_cell_hierarchy_and_insert(nodes, lo, schema, map, cell, rec);
 }
 
-fn find_cell_children_mut(nodes: &mut [Node], cell: u32) -> Option<&mut fnv_esm::raw::Group> {
+fn find_cell_children_mut(nodes: &mut [Node], cell: u32) -> Option<&mut nvre_esm::raw::Group> {
     for n in nodes {
         if let Node::Group(g) = n {
-            if g.header.group_type == fnv_esm::raw::group_type::CELL_CHILDREN
+            if g.header.group_type == nvre_esm::raw::group_type::CELL_CHILDREN
                 && g.header.label_u32() == cell
             {
                 return Some(g);
@@ -1180,6 +1180,8 @@ fn walk_node<F: FnMut(&mut Node)>(node: &mut Node, f: &mut F) {
 /// A header suitable for a fresh plugin, for building a new mod from scratch.
 pub fn empty_header(masters: &MasterList) -> PluginHeader {
     PluginHeader {
+        fields: Vec::new(),
+        form_id: 0,
         flags: 0,
         form_version: 0,
         version: 1.34,
@@ -1190,7 +1192,7 @@ pub fn empty_header(masters: &MasterList) -> PluginHeader {
         masters: masters
             .names
             .iter()
-            .map(|n| fnv_esm::plugin::MasterRef {
+            .map(|n| nvre_esm::plugin::MasterRef {
                 name: n.clone(),
                 data: Some(0),
             })

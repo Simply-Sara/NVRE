@@ -1,15 +1,21 @@
 //! One plugin file: its header, its groups, and the masters it declares.
 
-use crate::raw::{self, EsmError, Group, PluginHeader, Record};
+pub use crate::raw::MasterRef;
+use crate::raw::{self, EsmError, Group, Node, PluginHeader, Record};
 use std::path::Path;
 
 /// A plugin file, read.
 #[derive(Debug, Clone)]
 pub struct Plugin {
+    /// The file's name.
+    pub name: String,
     /// The file's `TES4` header.
     pub header: PluginHeader,
     /// The file's top-level groups.
     pub groups: Vec<Group>,
+    /// The file's contents, as one list: the groups and the records at the
+    /// top level, in the order they are in the file.
+    pub nodes: Vec<Node>,
     /// The path it was read from.
     pub path: std::path::PathBuf,
 }
@@ -18,17 +24,35 @@ impl Plugin {
     /// Read a plugin from memory.
     pub fn from_bytes(path: &Path, data: &[u8]) -> Result<Plugin, EsmError> {
         let (header, groups) = raw::parse(data)?;
+        // The top level's contents, as one list.
+        let mut nodes = Vec::new();
+        for g in &groups {
+            for c in &g.children {
+                nodes.push(c.clone());
+            }
+        }
         Ok(Plugin {
+            name: path
+                .file_name()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default(),
             header,
             groups,
+            nodes,
             path: path.to_path_buf(),
         })
     }
 
     /// Read a plugin from a file.
-    pub fn open(path: &Path) -> Result<Plugin, EsmError> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Plugin, EsmError> {
+        let path = path.as_ref();
         let data = std::fs::read(path)?;
         Plugin::from_bytes(path, &data)
+    }
+
+    /// Read a plugin from a copy of its bytes.
+    pub fn parse(data: &[u8], name: String) -> Result<Plugin, EsmError> {
+        Plugin::from_bytes(Path::new(&name), data)
     }
 
     /// Every record in the file, in order.
@@ -40,15 +64,14 @@ impl Plugin {
         out
     }
 
-    /// The file's masters: the FormIDs the header lists, in the order it
-    /// lists them.
-    pub fn masters(&self) -> Vec<u32> {
-        let Some(data) = self.header.get("MAST") else {
-            return Vec::new();
-        };
-        data.chunks(8)
-            .filter(|c| c.len() == 8)
-            .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+    /// The file's masters: their names, in the order the header lists them.
+    ///
+    /// A `MAST` subrecord holds the master's file name.
+    pub fn masters(&self) -> Vec<String> {
+        self.header
+            .masters
+            .iter()
+            .map(|m| m.name.clone())
             .collect()
     }
 
@@ -60,6 +83,14 @@ impl Plugin {
         self.header.form_id
     }
 
+    /// The file's own index in its master list.
+    ///
+    /// A plugin's own records use the master index one past the last
+    /// master it names, so the index is the number of masters.
+    pub fn self_index(&self) -> u8 {
+        self.header.masters.len().min(255) as u8
+    }
+
     /// Whether the file is a master, rather than a plugin.
     pub fn is_master(&self) -> bool {
         self.header.flags & crate::raw::record_flags::MASTER != 0
@@ -68,8 +99,8 @@ impl Plugin {
 
 /// Collect a group's records, and its groups' records.
 fn collect_records<'a>(g: &'a Group, out: &mut Vec<&'a Record>) {
-    out.extend(g.records.iter());
-    for sub in &g.groups {
+    out.extend(g.records());
+    for sub in g.groups() {
         collect_records(sub, out);
     }
 }

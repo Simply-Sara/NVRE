@@ -88,6 +88,8 @@ pub enum Prim {
     I64,
     /// A 32-bit float.
     F32,
+    /// A double-precision float.
+    F64,
     /// A byte holding a flag.
     Bool,
     /// A FormID: a 32-bit reference to a record.
@@ -104,6 +106,11 @@ pub enum Prim {
     LenString,
     /// An array of NUL-terminated strings, each with a one-byte length.
     ZStringArray,
+    /// A four-byte number, read without consuming it.
+    ///
+    /// It is how a union that is chosen by its field's first word sees
+    /// that word.
+    PeekU32,
 }
 
 impl Prim {
@@ -119,6 +126,7 @@ impl Prim {
             "u64" => Prim::U64,
             "i64" => Prim::I64,
             "f32" => Prim::F32,
+            "f64" => Prim::F64,
             "bool" => Prim::Bool,
             "formid" => Prim::FormId,
             "zstring" => Prim::ZString,
@@ -127,6 +135,7 @@ impl Prim {
             "cstring" => Prim::CString,
             "len_string" => Prim::LenString,
             "zstring_array" => Prim::ZStringArray,
+            "peek_u32" => Prim::PeekU32,
             _ => return None,
         })
     }
@@ -143,6 +152,7 @@ impl Prim {
             Prim::U64 => "u64",
             Prim::I64 => "i64",
             Prim::F32 => "f32",
+            Prim::F64 => "f64",
             Prim::Bool => "bool",
             Prim::FormId => "formid",
             Prim::ZString => "zstring",
@@ -151,6 +161,7 @@ impl Prim {
             Prim::CString => "cstring",
             Prim::LenString => "len_string",
             Prim::ZStringArray => "zstring_array",
+            Prim::PeekU32 => "peek_u32",
         }
     }
 
@@ -159,7 +170,8 @@ impl Prim {
         Some(match self {
             Prim::U8 | Prim::I8 | Prim::Bool => 1,
             Prim::U16 | Prim::I16 => 2,
-            Prim::U32 | Prim::I32 | Prim::F32 | Prim::FormId => 4,
+            Prim::U32 | Prim::I32 | Prim::F32 | Prim::FormId | Prim::PeekU32 => 4,
+            Prim::F64 => 8,
             Prim::U64 | Prim::I64 => 8,
             Prim::ZString
             | Prim::String
@@ -428,7 +440,8 @@ impl Schema {
     /// A directory that holds a `base` entry which resolves outside itself —
     /// the symlink a game directory carries — is a game directory: the base
     /// is read first, and the directory's own files are laid over it.
-    pub fn load_dir(dir: &Path) -> Result<Schema, SchemaError> {
+    pub fn load_dir(dir: impl AsRef<Path>) -> Result<Schema, SchemaError> {
+        let dir = dir.as_ref();
         let linked_base = dir.join("base");
         let base = if linked_base.is_dir()
             && linked_base
@@ -450,7 +463,8 @@ impl Schema {
     }
 
     /// Read a schema from a base directory and any number of layers over it.
-    pub fn load_game(base: &Path, layers: &[String]) -> Result<Schema, SchemaError> {
+    pub fn load_game(base: impl AsRef<Path>, layers: &[String]) -> Result<Schema, SchemaError> {
+        let base = base.as_ref();
         let mut s = Schema::load_dir(base)?;
         for l in layers {
             s.load_layer(Path::new(l))?;
@@ -1090,6 +1104,31 @@ impl Schema {
     /// A named type's definition, if it has one.
     pub fn type_def(&self, name: &str) -> Option<&TypeDef> {
         self.types.get(name).or_else(|| self.common.get(name))
+    }
+
+    /// The definition of a subrecord, by the record that holds it and the
+    /// subrecord's own signature.
+    ///
+    /// A signature the record does not define falls back to the common
+    /// subrecords, the ones any record may carry.
+    pub fn lookup(&self, rec: &[u8; 4], sub: &[u8; 4]) -> Option<&SubDef> {
+        let rec = String::from_utf8_lossy(rec).into_owned();
+        let sub = String::from_utf8_lossy(sub).into_owned();
+        self.records
+            .get(&rec)
+            .and_then(|r| r.subrecords.get(&sub))
+            .or_else(|| self.common_subrecords.get(&sub))
+    }
+
+    /// Read a schema from a JSON document.
+    pub fn merge_str(&mut self, text: &str) -> Result<(), String> {
+        let j: Json = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        self.merge(&j)
+    }
+
+    /// Check the schema: every type it names must be one it knows.
+    pub fn validate(&self) -> Result<(), String> {
+        self.check().map_err(|e| e.0)
     }
 
     /// The type an enum's values are stored as.

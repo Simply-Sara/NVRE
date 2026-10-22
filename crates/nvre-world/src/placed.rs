@@ -5,7 +5,7 @@
 //! record that says what it is.
 
 use crate::fields::{formid_of, global, num, vec3, winner, Fields};
-use fnv_esm::{LoadOrder, Schema};
+use nvre_esm::{LoadOrder, Schema};
 
 /// The record header flags a reference carries.
 pub mod ref_flags {

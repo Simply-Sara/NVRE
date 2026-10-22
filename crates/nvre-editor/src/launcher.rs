@@ -571,7 +571,7 @@ pub fn ui(
 
 /// The masters a plugin's own header names.
 pub fn read_masters_for(path: &std::path::Path) -> Vec<String> {
-    fnv_esm::Plugin::open(path)
+    nvre_esm::Plugin::open(path)
         .map(|p| p.header.masters.iter().map(|m| m.name.clone()).collect())
         .unwrap_or_default()
 }

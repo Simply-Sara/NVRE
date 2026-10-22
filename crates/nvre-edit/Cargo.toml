@@ -8,7 +8,7 @@ license.workspace = true
 [dependencies]
 nvre-util.workspace = true
 nvre-inflate.workspace = true
-fnv-esm.workspace = true
+nvre-esm = { path = "../nvre-esm" }
 nvre-world.workspace = true
 serde.workspace = true
 serde_json.workspace = true

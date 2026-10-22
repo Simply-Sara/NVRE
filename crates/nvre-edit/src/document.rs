@@ -7,13 +7,13 @@
 //!
 //! # Why a copy-on-write payload
 //!
-//! `fnv_esm::Record::raw` is a zero-copy slice of the memory-mapped file, so a
+//! `nvre_esm::Record::raw` is a zero-copy slice of the memory-mapped file, so a
 //! record cannot be edited in place. Every edit therefore replaces `raw` with an
 //! owned `Bytes`; untouched records keep sharing the mapping and cost nothing.
 
-use fnv_esm::raw::{record_flags, Node, Record, RecordHeader, Subrecord};
-use fnv_esm::schema::Schema;
-use fnv_esm::{EsmError, Plugin};
+use nvre_esm::raw::{record_flags, Node, Record, RecordHeader, Subrecord};
+use nvre_esm::schema::Schema;
+use nvre_esm::{EsmError, Plugin};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -144,14 +144,14 @@ impl Document {
         hedr.extend_from_slice(&1.34f32.to_le_bytes());
         hedr.extend_from_slice(&0i32.to_le_bytes());
         hedr.extend_from_slice(&0x800u32.to_le_bytes());
-        subs.push(fnv_esm::raw::Subrecord {
+        subs.push(nvre_esm::raw::Subrecord {
             sig: *b"HEDR",
             data: hedr,
             extended: false,
         });
 
         // CNAM author
-        subs.push(fnv_esm::raw::Subrecord {
+        subs.push(nvre_esm::raw::Subrecord {
             sig: *b"CNAM",
             data: b"NVRE\0".to_vec(),
             extended: false,
@@ -162,22 +162,22 @@ impl Document {
             if !n.ends_with(&[0]) {
                 n.push(0);
             }
-            subs.push(fnv_esm::raw::Subrecord {
+            subs.push(nvre_esm::raw::Subrecord {
                 sig: *b"MAST",
                 data: n,
                 extended: false,
             });
-            subs.push(fnv_esm::raw::Subrecord {
+            subs.push(nvre_esm::raw::Subrecord {
                 sig: *b"DATA",
                 data: vec![0u8; 8],
                 extended: false,
             });
         }
 
-        let payload = fnv_esm::raw::write_subrecords(&subs);
+        let payload = nvre_esm::raw::write_subrecords(&subs);
 
         let flags = if is_master {
-            fnv_esm::raw::record_flags::MASTER
+            nvre_esm::raw::record_flags::MASTER
         } else {
             0
         };
@@ -201,7 +201,7 @@ impl Document {
     }
 
     /// The plugin's node tree, for reading records out of it.
-    pub fn nodes(&self) -> &[fnv_esm::raw::Node] {
+    pub fn nodes(&self) -> &[nvre_esm::raw::Node] {
         &self.plugin.nodes
     }
 
@@ -216,7 +216,7 @@ impl Document {
     /// Every record in file order, with its FormID.
     pub fn records(&self) -> Vec<(u32, &Record)> {
         let mut out = Vec::new();
-        fnv_esm::raw::visit_records(&self.plugin.nodes, &mut |r, _| {
+        nvre_esm::raw::visit_nodes(&self.plugin.nodes, &mut |r, _| {
             out.push((r.header.form_id, r))
         });
         out
@@ -417,7 +417,7 @@ impl Document {
             "document encoded"
         );
         let mut out = Vec::new();
-        fnv_esm::raw::write_nodes(&nodes, &mut out);
+        nvre_esm::raw::write_nodes(&nodes, &mut out);
         Ok(out)
     }
 
@@ -504,7 +504,7 @@ fn apply_edits(r: &mut Record, edits: &[Edit]) {
                         _ => {}
                     }
                 }
-                let payload = fnv_esm::raw::write_subrecords(&subs);
+                let payload = nvre_esm::raw::write_subrecords(&subs);
                 // A compressed record stores `u32 decompressed size` + a zlib
                 // stream. The subrecords were decoded from the decompressed
                 // form, so writing them back uncompressed would leave the
@@ -559,7 +559,7 @@ fn insert_pending(nodes: &mut [Node], pending: &[PendingRecord]) {
         // The temporary-children group (type 9) is where new placements go.
         let temp = group.children.iter_mut().find_map(|c| match c {
             Node::Group(g)
-                if g.header.group_type == fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN =>
+                if g.header.group_type == nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN =>
             {
                 Some(g)
             }
@@ -568,11 +568,11 @@ fn insert_pending(nodes: &mut [Node], pending: &[PendingRecord]) {
         let temp = match temp {
             Some(g) => g,
             None => {
-                group.children.push(Node::Group(fnv_esm::raw::Group {
-                    header: fnv_esm::raw::GroupHeader {
+                group.children.push(Node::Group(nvre_esm::raw::Group {
+                    header: nvre_esm::raw::GroupHeader {
                         size: 0,
                         label: [0; 4],
-                        group_type: fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN,
+                        group_type: nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN,
                         stamp: 0,
                         unknown1: 0,
                         version: 0,
@@ -594,10 +594,10 @@ fn insert_pending(nodes: &mut [Node], pending: &[PendingRecord]) {
 }
 
 /// Find the cell-children group (type 6) of `cell` anywhere in the tree.
-fn find_cell_children_mut(nodes: &mut [Node], cell: u32) -> Option<&mut fnv_esm::raw::Group> {
+fn find_cell_children_mut(nodes: &mut [Node], cell: u32) -> Option<&mut nvre_esm::raw::Group> {
     for n in nodes {
         if let Node::Group(g) = n {
-            if g.header.group_type == fnv_esm::raw::group_type::CELL_CHILDREN
+            if g.header.group_type == nvre_esm::raw::group_type::CELL_CHILDREN
                 && g.header.label_u32() == cell
             {
                 return Some(g);
@@ -690,7 +690,7 @@ pub fn make_placed_record(
         data,
         extended: false,
     });
-    let payload = fnv_esm::raw::write_subrecords(&subs);
+    let payload = nvre_esm::raw::write_subrecords(&subs);
     Record {
         header: RecordHeader {
             sig,
@@ -703,6 +703,7 @@ pub fn make_placed_record(
             vc_info2: 0,
         },
         raw: payload.into(),
+        subrecords: Vec::new(),
         offset: 0,
     }
 }
@@ -732,7 +733,7 @@ pub fn edid_of(r: &Record) -> Option<String> {
 /// use [`Document::record`] for that.
 pub fn record_of(plugin: &Plugin, form_id: u32) -> Option<&Record> {
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes, &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.form_id == form_id && found.is_none() {
             found = Some(r);
         }
@@ -754,8 +755,8 @@ pub struct RecordRow {
 /// Every record, as browser rows (EDID and FULL read straight from the payloads).
 pub fn rows(plugin: &Plugin) -> Vec<RecordRow> {
     let mut out = Vec::new();
-    fnv_esm::raw::visit_records(&plugin.nodes, &mut |r, _| {
-        let (edid, full) = fnv_esm::inventory::names(r).unwrap_or((None, None));
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
+        let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
         out.push(RecordRow {
             form_id: r.header.form_id,
             sig: r.sig_str(),
@@ -771,10 +772,10 @@ pub fn rows(plugin: &Plugin) -> Vec<RecordRow> {
 /// The decoded value of one subrecord, for the property grid.
 pub fn value_of(schema: &Schema, rec: &Record, sig: &[u8; 4]) -> Option<Value> {
     let sub = rec.subrecords().ok()?.into_iter().find(|s| &s.sig == sig)?;
-    let mut ctx = fnv_esm::decode::DecodeCtx::new(schema, rec.header.sig);
-    let d = fnv_esm::decode::decode_sub(&rec.header.sig, &sub, &mut ctx);
+    let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, rec.header.sig);
+    let d = nvre_esm::decode::decode_sub(&rec.header.sig, &sub, &mut ctx);
     match d.status {
-        fnv_esm::decode::SubStatus::Ok => d.value,
+        nvre_esm::decode::SubStatus::Ok => d.value,
         _ => None,
     }
 }

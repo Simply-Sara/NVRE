@@ -786,7 +786,7 @@ pub fn properties(
                     Some(bytes) => nvre_edit::encode::decoded(
                         &session.schema,
                         &rec_sig,
-                        &fnv_esm::Subrecord {
+                        &nvre_esm::Subrecord {
                             sig,
                             data: bytes.clone(),
                             extended: false,
@@ -997,12 +997,12 @@ fn field_editor(
 /// makes a checkbox write the right bit: guessing a bit from a name's position
 /// would silently corrupt every flags field whose bits are not declared in
 /// ascending order from zero.
-fn flag_bits(schema: &fnv_esm::Schema, rec_sig: &[u8; 4], sub_sig: &str) -> Vec<(u32, String)> {
+fn flag_bits(schema: &nvre_esm::Schema, rec_sig: &[u8; 4], sub_sig: &str) -> Vec<(u32, String)> {
     let Some(def) = schema.lookup(rec_sig, &sig4(sub_sig)) else {
         return Vec::new();
     };
-    match schema.resolve(&def.ty) {
-        fnv_esm::schema::TypeDef::Flags { bits, .. } => bits.clone(),
+    match schema.resolve_def(&def.ty) {
+        nvre_esm::typedef::TypeDef::Flags { bits, .. } => bits.clone(),
         _ => Vec::new(),
     }
 }

@@ -131,6 +131,12 @@ pub struct GroupHeader {
 }
 
 impl GroupHeader {
+    /// The group's label, as a number: the four bytes of the label read as
+    /// a little-endian integer.
+    pub fn label_u32(&self) -> u32 {
+        u32::from_le_bytes(self.label)
+    }
+
     /// The group's type as text: the four bytes of the type, in the order
     /// they are in the file.
     pub fn sig_str(&self) -> String {
@@ -150,7 +156,7 @@ pub struct Subrecord {
     /// The subrecord's four-byte type.
     pub sig: [u8; 4],
     /// The payload, as it was in the file.
-    pub data: Bytes,
+    pub data: Vec<u8>,
     /// The size came from a preceding `XXXX` subrecord, so the payload is
     /// longer than 65535 bytes.
     pub extended: bool,
@@ -170,8 +176,8 @@ pub struct Record {
     pub header: RecordHeader,
     /// The record's subrecords.
     pub subrecords: Vec<Subrecord>,
-    /// The record's payload, as it was in the file.
-    pub payload: Bytes,
+    /// The record's raw bytes, as they were in the file.
+    pub raw: Vec<u8>,
     /// Where the record is in the file.
     pub offset: u64,
 }
@@ -198,26 +204,32 @@ impl Record {
 pub struct Group {
     /// The group's header.
     pub header: GroupHeader,
-    /// The group's records.
-    pub records: Vec<Record>,
-    /// The groups inside this one, if any.
-    pub groups: Vec<Group>,
+    /// The group's contents: the records and the groups inside it, in the
+    /// order they are in the file.
+    pub children: Vec<Node>,
     /// Where the group is in the file.
     pub offset: u64,
 }
 
+
+
 impl Group {
     /// The group's contents, as one list: the records and the groups in the
     /// order they are in the file.
-    pub fn children(&self) -> Vec<Node> {
-        let mut out: Vec<Node> = Vec::with_capacity(self.records.len() + self.groups.len());
-        for r in &self.records {
-            out.push(Node::Record(r.clone()));
-        }
-        for g in &self.groups {
-            out.push(Node::Group(g.clone()));
-        }
-        out
+    /// The group's records.
+    pub fn records(&self) -> impl Iterator<Item = &Record> {
+        self.children.iter().filter_map(|n| match n {
+            Node::Record(r) => Some(r),
+            Node::Group(_) => None,
+        })
+    }
+
+    /// The groups inside this one.
+    pub fn groups(&self) -> impl Iterator<Item = &Group> {
+        self.children.iter().filter_map(|n| match n {
+            Node::Group(g) => Some(g),
+            Node::Record(_) => None,
+        })
     }
 }
 
@@ -231,7 +243,7 @@ pub enum Node {
 }
 
 /// The file's own header, the `TES4` record.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PluginHeader {
     /// The header's fields, in the order the format has them.
     pub fields: Vec<(String, Vec<u8>)>,
@@ -239,9 +251,44 @@ pub struct PluginHeader {
     pub form_id: u32,
     /// The header record's flags.
     pub flags: u32,
+    /// The header record's format version.
+    pub form_version: u16,
+    /// `HEDR`: the format version, as a float.
+    pub version: f32,
+    /// `HEDR`: the number of records and groups, less the header record.
+    pub num_records: i32,
+    /// `CNST`: the next object ID the plugin will use.
+    pub next_object_id: u32,
+    /// `CNST`: the plugin's author.
+    pub author: Option<String>,
+    /// `CNST`: the plugin's description.
+    pub description: Option<String>,
+    /// `MAST`: the masters the plugin depends on.
+    pub masters: Vec<MasterRef>,
+    /// `ONAM`: the FormIDs of the master records this plugin overrides.
+    pub overridden_forms: Vec<u32>,
+    /// The header's subrecords that are not one of the ones above.
+    pub other: Vec<String>,
+}
+
+/// A master the plugin depends on.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MasterRef {
+    /// The master's file name.
+    pub name: String,
+    /// The number that follows the master's name in the `MAST` subrecord.
+    ///
+    /// It is zero in every shipped master; the community's documentation
+    /// describes it as the master's file size.
+    pub data: Option<u64>,
 }
 
 impl PluginHeader {
+    /// Whether the file is a master, rather than a plugin.
+    pub fn is_master(&self) -> bool {
+        self.flags & record_flags::MASTER != 0
+    }
+
     /// The value of a field, if it is there.
     pub fn get(&self, name: &str) -> Option<&[u8]> {
         self.fields
@@ -281,7 +328,7 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
     let flags = c.u32().map_err(oob)?;
     let form_id = c.u32().map_err(oob)?;
     let _vc_info = c.u32().map_err(oob)?;
-    let _form_version = c.u16().map_err(oob)?;
+    let form_version = c.u16().map_err(oob)?;
     let _vc_info2 = c.u16().map_err(oob)?;
     // The header is 24 bytes in total, the signature included, so the
     // payload starts 20 bytes after the signature.
@@ -310,10 +357,77 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
         at = value_end;
     }
     c.pos = end;
+    // The fields the editor and the writer need, read out of the header's
+    // own subrecords.
+    let field = |name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v);
+    let zstring = |name: &str| {
+        field(name)
+            .map(|v| nvre_util::cp1252::decode_z(v))
+            .filter(|s| !s.is_empty())
+    };
+    let version = field("HEDR")
+        .and_then(|v| v.get(..4))
+        .map(|v| f32::from_le_bytes([v[0], v[1], v[2], v[3]]))
+        .unwrap_or(0.0);
+    let num_records = field("HEDR")
+        .and_then(|v| v.get(4..8))
+        .map(|v| i32::from_le_bytes([v[0], v[1], v[2], v[3]]))
+        .unwrap_or(0);
+    let next_object_id = field("CNST")
+        .and_then(|v| v.get(..4))
+        .map(|v| u32::from_le_bytes([v[0], v[1], v[2], v[3]]))
+        .unwrap_or(0);
+    let author = zstring("CNST").and_then(|a| {
+        // The author is the text up to the first NUL.
+        field("CNST").map(|v| {
+            let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
+            nvre_util::cp1252::decode(&v[..end])
+        })
+    });
+    let description = field("DESC").map(|v| {
+        let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
+        nvre_util::cp1252::decode(&v[..end])
+    });
+    // The masters: each `MAST` holds the master's name and a number.
+    let mut masters = Vec::new();
+    let mast_bytes: Vec<Vec<u8>> = fields
+        .iter()
+        .filter(|(n, _)| n == "MAST")
+        .map(|(_, v)| v.clone())
+        .collect();
+    for m in &mast_bytes {
+        let end = m.iter().position(|&b| b == 0).unwrap_or(m.len());
+        let name = nvre_util::cp1252::decode(&m[..end]);
+        let rest = &m[(end + 1).min(m.len())..];
+        let data = if rest.len() >= 8 {
+            Some(u64::from_le_bytes([
+                rest[0], rest[1], rest[2], rest[3], rest[4], rest[5], rest[6], rest[7],
+            ]))
+        } else {
+            None
+        };
+        masters.push(MasterRef { name, data });
+    }
+    let overridden_forms = field("ONAM")
+        .map(|v| {
+            v.chunks_exact(4)
+                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect()
+        })
+        .unwrap_or_default();
     Ok(PluginHeader {
         fields,
         form_id,
         flags,
+        form_version,
+        version,
+        num_records,
+        next_object_id,
+        author,
+        description,
+        masters,
+        overridden_forms,
+        other: Vec::new(),
     })
 }
 
@@ -347,9 +461,8 @@ fn parse_contents(
     c: &mut Cursor<'_>,
     data: &[u8],
     end: usize,
-) -> Result<(Vec<Record>, Vec<Group>), EsmError> {
-    let mut records = Vec::new();
-    let mut groups = Vec::new();
+) -> Result<Vec<Node>, EsmError> {
+    let mut children = Vec::new();
     loop {
         let start = c.pos;
         if start + GROUP_HEADER_SIZE > end {
@@ -358,7 +471,7 @@ fn parse_contents(
         let sig = c.tag()?;
         c.pos = start;
         if sig == GRUP {
-            groups.push(parse_group(c, data, start)?);
+            children.push(Node::Group(parse_group(c, data, start)?));
             continue;
         }
         if sig == XXXX {
@@ -368,9 +481,9 @@ fn parse_contents(
         let Some(record) = parse_record(c, data, end, start)? else {
             break;
         };
-        records.push(record);
+        children.push(Node::Record(record));
     }
-    Ok((records, groups))
+    Ok(children)
 }
 
 /// Read one group.
@@ -397,7 +510,7 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
         })?;
     // A group holds records, and may hold groups of its own: a worldspace
     // holds cells, and a cell holds its own records.
-    let (records, groups) = parse_contents(c, data, gend)?;
+    let children = parse_contents(c, data, gend)?;
     c.pos = gend;
     Ok(Group {
         header: GroupHeader {
@@ -409,8 +522,7 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
             version,
             unknown2: 0,
         },
-        records,
-        groups,
+        children,
         offset: start as u64,
     })
 }
@@ -488,7 +600,7 @@ fn parse_record(
     Ok(Some(Record {
         header,
         subrecords: Vec::new(),
-        payload: Bytes::copy_from_slice(body),
+        raw: body.to_vec(),
         offset: start as u64,
     }))
 }
@@ -530,7 +642,7 @@ fn parse_subrecords(body: &[u8]) -> Result<Vec<Subrecord>, (usize, String)> {
         }
         out.push(Subrecord {
             sig: [sig[0], sig[1], sig[2], sig[3]],
-            data: Bytes::copy_from_slice(&body[data_at..data_end]),
+            data: body[data_at..data_end].to_vec(),
             extended,
         });
         at = data_end;
@@ -560,13 +672,13 @@ pub fn payload_checked(
 ) -> Result<(Cow<'_, [u8]>, nvre_inflate::Trailer), EsmError> {
     if !record.is_compressed() {
         return Ok((
-            Cow::Borrowed(&record.payload),
+            Cow::Borrowed(&record.raw),
             nvre_inflate::Trailer::Verified,
         ));
     }
     // A compressed record's payload is a u32 decompressed size and then a
     // zlib stream.
-    let raw = &record.payload;
+    let raw = &record.raw;
     if raw.len() < 4 {
         return Err(EsmError::Decompress {
             offset: record.offset,
@@ -610,6 +722,43 @@ impl Record {
             out.extend_from_slice(&s.data);
         }
         out
+    }
+}
+
+/// Write a file's records and groups back out.
+///
+/// The bytes are the same ones the file was read from, so a file that is
+/// read and written again is byte for byte the file it came from.
+pub fn write_nodes(nodes: &[Node], out: &mut Vec<u8>) {
+    for n in nodes {
+        match n {
+            Node::Record(r) => {
+                let h = &r.header;
+                out.extend_from_slice(&h.sig);
+                out.extend_from_slice(&(r.raw.len() as u32).to_le_bytes());
+                out.extend_from_slice(&h.flags.to_le_bytes());
+                out.extend_from_slice(&h.form_id.to_le_bytes());
+                out.extend_from_slice(&h.vc_info.to_le_bytes());
+                out.extend_from_slice(&h.form_version.to_le_bytes());
+                out.extend_from_slice(&h.vc_info2.to_le_bytes());
+                out.extend_from_slice(&r.raw);
+            }
+            Node::Group(g) => {
+                let start = out.len();
+                let h = &g.header;
+                out.extend_from_slice(&GRUP);
+                out.extend_from_slice(&0u32.to_le_bytes()); // patched below
+                out.extend_from_slice(&h.label);
+                out.extend_from_slice(&h.group_type.to_le_bytes());
+                out.extend_from_slice(&h.stamp.to_le_bytes());
+                out.extend_from_slice(&h.unknown1.to_le_bytes());
+                out.extend_from_slice(&h.version.to_le_bytes());
+                out.extend_from_slice(&h.unknown2.to_le_bytes());
+                write_nodes(&g.children, out);
+                let size = (out.len() - start) as u32;
+                out[start + 4..start + 8].copy_from_slice(&size.to_le_bytes());
+            }
+        }
     }
 }
 
@@ -682,10 +831,10 @@ pub fn write_group(g: &Group, out: &mut Vec<u8>) {
     out.extend_from_slice(&h.stamp.to_le_bytes());
     out.extend_from_slice(&h.version.to_le_bytes());
     out.extend_from_slice(&[0u8; 4]);
-    for r in &g.records {
+    for r in g.records() {
         write_record(r, out);
     }
-    for sub in &g.groups {
+    for sub in g.groups() {
         write_group(sub, out);
     }
     let size = (out.len() - start) as u32;
@@ -696,13 +845,13 @@ pub fn write_group(g: &Group, out: &mut Vec<u8>) {
 pub fn write_record(r: &Record, out: &mut Vec<u8>) {
     let h = &r.header;
     out.extend_from_slice(&h.sig);
-    out.extend_from_slice(&(r.payload.len() as u32).to_le_bytes());
+    out.extend_from_slice(&(r.raw.len() as u32).to_le_bytes());
     out.extend_from_slice(&h.flags.to_le_bytes());
     out.extend_from_slice(&h.form_id.to_le_bytes());
     out.extend_from_slice(&h.vc_info.to_le_bytes());
     out.extend_from_slice(&h.form_version.to_le_bytes());
     out.extend_from_slice(&h.vc_info2.to_le_bytes());
-    out.extend_from_slice(&r.payload);
+    out.extend_from_slice(&r.raw);
 }
 
 /// Visit every record in a tree, with the groups it is in.
@@ -719,16 +868,31 @@ pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
     }
 }
 
+/// Depth-first visit of every record in a list of nodes, with the chain of
+/// enclosing group headers.
+pub fn visit_nodes<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
+    nodes: &'a [Node],
+    f: &mut F,
+) {
+    let mut path: Vec<&GroupHeader> = Vec::new();
+    for n in nodes {
+        match n {
+            Node::Record(r) => f(r, path.as_slice()),
+            Node::Group(g) => visit_in_group(g, &mut path, f),
+        }
+    }
+}
+
 fn visit_in_group<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
     g: &'a Group,
     path: &mut Vec<&'a GroupHeader>,
     f: &mut F,
 ) {
     path.push(&g.header);
-    for r in &g.records {
+    for r in g.records() {
         f(r, path.as_slice());
     }
-    for sub in &g.groups {
+    for sub in g.groups() {
         visit_in_group(sub, path, f);
     }
     path.pop();
@@ -743,7 +907,7 @@ pub fn visit_groups<'a, F: FnMut(&'a Group, usize)>(groups: &'a [Group], f: &mut
 
 fn visit_group<'a, F: FnMut(&'a Group, usize)>(g: &'a Group, depth: usize, f: &mut F) {
     f(g, depth);
-    for sub in &g.groups {
+    for sub in g.groups() {
         visit_group(sub, depth + 1, f);
     }
 }

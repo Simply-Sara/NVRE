@@ -4,9 +4,9 @@
 //! NVForever submodule and links upstream's `fnv-esm` by path, so it cannot see
 //! NVRE's `[patch]`.
 
-use fnv_esm::decode::Coverage;
-use fnv_esm::raw::visit_records;
-use fnv_esm::{Plugin, Schema};
+use nvre_esm::decode::Coverage;
+use nvre_esm::raw::visit_nodes;
+use nvre_esm::{Plugin, Schema};
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -31,9 +31,19 @@ fn main() {
         }
     };
     let plugins: Vec<String> = args.collect();
-    let schema = match &overlays {
-        _ if !overlays.is_empty() => Schema::load_game(&schema_dir, &overlays),
-        _ => Schema::load_dir(&schema_dir),
+    let schema = if overlays.is_empty() {
+        Schema::load_dir(std::path::Path::new(&schema_dir))
+    } else {
+        // The base comes first, then the layers in the order they were
+        // given.
+        let mut dirs = overlays.clone();
+        let base = dirs.remove(0);
+        let mut all = vec![base];
+        all.extend(dirs);
+        Schema::load_game(
+            std::path::Path::new(&all[0]),
+            &all[1..].to_vec(),
+        )
     };
     let schema = match schema {
         Ok(s) => s,
@@ -58,8 +68,8 @@ fn main() {
         };
         let mut cov = Coverage::default();
         let mut recs = Vec::new();
-        visit_records(&p.nodes[1..], &mut |r, _| recs.push(r));
-        cov.add_records_par(&recs, &schema);
+        visit_nodes(&p.nodes, &mut |r, _| recs.push(r));
+        cov.add_records(&recs, &schema);
         // Which signatures are still unknown, and on which record types. The
         // per-signature totals say what is left to describe; the record
         // breakdown says how much of it the editor ever shows a user.
@@ -68,13 +78,13 @@ fn main() {
         // false PERK errors).
         for rec in &recs {
             let rsig = rec.sig_str();
-            let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, rec.header.sig);
+            let mut ctx = nvre_esm::decode::DecodeCtx::new(&schema, rec.header.sig);
             let subs = rec.subrecords().expect("subs");
             // The sequence walk, so a record whose subrecords are an ordered
             // list of blocks is measured against the block each subrecord is
             // in — the same walk the decoder and `Coverage::measure` use.
-            fnv_esm::decode::walk_sequence(&rec.header.sig, &subs, &schema, &mut ctx, |s, ctx| {
-                let d = fnv_esm::decode::decode_sub(&rec.header.sig, s, ctx);
+            nvre_esm::decode::walk_sequence(&rec.header.sig, &subs, &schema, &mut ctx, |s, ctx| {
+                let d = nvre_esm::decode::decode_sub(&rec.header.sig, s, ctx);
                 if d.status.as_str() == "unknown" {
                     let ssig = s.sig_str();
                     *by_sig.entry(ssig.clone()).or_insert(0) += 1;
@@ -95,8 +105,8 @@ fn main() {
         let v = cov.to_json(40);
         // The trailing subrecords are a separate list: they decoded, but left
         // bytes over, which means the layout is incomplete rather than wrong.
-        let mut trailing: Vec<((String, String), u64, Option<String>)> = cov
-            .by_sub
+        let by_sub = cov.by_sub();
+        let mut trailing: Vec<((String, String), u64, Option<String>)> = by_sub
             .iter()
             .filter(|(_, c)| c.trailing > 0)
             .map(|((rt, st), c)| ((rt.clone(), st.clone()), c.trailing, c.first_error.clone()))

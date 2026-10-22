@@ -12,8 +12,8 @@
 //! which cell a reference is in.
 
 use crate::fields::{formid_of, global, num, Fields};
-use fnv_esm::raw::{group_type, visit_records};
-use fnv_esm::{GroupHeader, LoadOrder, Record, Schema};
+use nvre_esm::raw::{group_type, visit_records};
+use nvre_esm::{GroupHeader, LoadOrder, Record, Schema};
 use std::collections::{BTreeMap, HashMap};
 
 /// A worldspace: the cells and the references that stand in it.
@@ -140,7 +140,7 @@ impl WorldIndex {
         let mut ix = WorldIndex::default();
         let mut lands: HashMap<u32, u32> = HashMap::new();
         for (pi, p) in lo.plugins.iter().enumerate() {
-            visit_records(&p.nodes[1..], &mut |r, stack: &[&GroupHeader]| {
+            visit_records(&p.groups, &mut |r, stack: &[&GroupHeader]| {
                 let Some(fid) = lo.to_global(pi, r.header.form_id) else {
                     return;
                 };

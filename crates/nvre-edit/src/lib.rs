@@ -4,7 +4,7 @@
 //! for byte, but it has no way to *change* one. This crate adds that:
 //!
 //! - [`encode`]: JSON values back into subrecord payloads, the exact inverse of
-//!   `fnv_esm::decode`. Anything that does not round-trip is refused.
+//!   `nvre_esm::decode`. Anything that does not round-trip is refused.
 //! - [`document`]: a mutable plugin — edit fields, insert and delete references,
 //!   and save. Untouched records keep their original bytes.
 //! - [`formid`]: rewriting the FormIDs a record carries when it moves into a

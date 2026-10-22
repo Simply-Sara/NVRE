@@ -373,7 +373,7 @@ impl GameProfile {
         // checks report that rather than this ordering guessing at it.
         let mut needs: Vec<(usize, Vec<usize>)> = Vec::with_capacity(present.len());
         for (i, name) in present.iter().enumerate() {
-            let deps = match fnv_esm::Plugin::open(data_dir.join(name)) {
+            let deps = match nvre_esm::Plugin::open(data_dir.join(name)) {
                 Ok(p) => p
                     .header
                     .masters
@@ -461,7 +461,7 @@ impl GameProfile {
     /// A directory carries a `base -> ../base` symlink, so it is also
     /// readable on its own; `load_game` skips the files reached through that
     /// symlink, which is what keeps the base from merging twice.
-    pub fn load_schema(&self) -> Result<fnv_esm::Schema, String> {
+    pub fn load_schema(&self) -> Result<nvre_esm::Schema, String> {
         let (base, _) = self.schema_dirs();
         let mut chain: Vec<std::path::PathBuf> = Vec::new();
         if let Some(family) = self.schema_family() {
@@ -470,7 +470,14 @@ impl GameProfile {
         if let Some(version) = self.schema_version() {
             chain.push(version);
         }
-        fnv_esm::Schema::load_game(&base, chain).map_err(|e| e.to_string())
+        nvre_esm::Schema::load_game(
+            &base,
+            &chain
+                .iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect::<Vec<String>>(),
+        )
+        .map_err(|e| e.to_string())
     }
 
     /// Load this game's NIF schema.
