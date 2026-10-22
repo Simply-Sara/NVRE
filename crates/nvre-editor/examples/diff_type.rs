@@ -5,7 +5,7 @@
 use nvre_editor::object_editor::ObjectEditorState;
 use nvre_editor::session::Session;
 
-fn shape(subs: &[fnv_esm::Subrecord]) -> Vec<([u8; 4], Vec<u8>)> {
+fn shape(subs: &[nvre_esm::Subrecord]) -> Vec<([u8; 4], Vec<u8>)> {
     subs.iter().map(|s| (s.sig, s.data.clone())).collect()
 }
 

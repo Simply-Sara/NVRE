@@ -22,7 +22,7 @@
 //! What a profile does **not** carry, because it is not implemented yet:
 //!
 //! - the NIF schema, which is still the FNV corpus's
-//!   (`NVForever/schemas/nif`, versions 20.0.0.4–20.2.0.7, `bs_version` 11–34),
+//!   (`schemas/nif`, versions 20.0.0.4–20.2.0.7, `bs_version` 11–34),
 //!   so a non-FNV game's meshes are decoded with the wrong version's
 //!   conditions until a per-game overlay exists;
 //! - the record schemas for the games other than FNV and Fallout 3: those two
@@ -32,7 +32,7 @@
 //!   ([`super::session::geck_group_for_sig`]) until each game has its own;
 //! - archive containers other than BSA v104 (Fallout 4 ships BA2). Skyrim SE's
 //!   BSA v105/LZ4 is readable through NVRE's own [`bsa105`] crate, but the
-//!   editor's VFS is still NVForever's, which reads v104 only — so Skyrim SE
+//!   editor's VFS reads v104 only — so Skyrim SE
 //!   opens with loose files only and says so through [`GameProfile::notes`]
 //!   until the VFS takes the crate.
 //!
@@ -187,8 +187,8 @@ pub const SKYRIM: GameProfile = GameProfile {
 
 /// Skyrim Special Edition. Its archives are BSA v105 with LZ4-compressed
 /// blocks. NVRE's own `bsa105` crate reads them (all 23 of the shipped ones,
-/// 172,961 files, verified), but the editor's VFS is still NVForever's, which
-/// reads v104 only — hence the archive list is empty and the note says so.
+/// 172,961 files, verified), but the editor's VFS reads v104 only — hence the
+/// archive list is empty and the note says so.
 pub const SKYRIM_SE: GameProfile = GameProfile {
     id: "skyrimse",
     nif_schema_family_dir: "skyrim",

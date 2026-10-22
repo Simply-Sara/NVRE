@@ -4,7 +4,7 @@
 //! Run with:
 //!   NVRE_DATA=<Data> cargo run -p nvre-editor --example make_override -- <out.esp>
 
-use fnv_esm::Schema;
+use nvre_esm::Schema;
 use nvre_edit::save::{write_plugin, MasterList};
 use nvre_edit::Document;
 

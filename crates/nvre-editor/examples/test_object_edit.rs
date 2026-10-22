@@ -11,7 +11,7 @@ fn main() {
         });
     let schema_dir = Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../NVForever/schemas/fnv"
+        "/../../schemas/fnv"
     ));
 
     println!("Loading session...");

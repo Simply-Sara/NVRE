@@ -41,20 +41,20 @@ fn open_master() -> Option<Session> {
 }
 
 /// The record's subrecords, in file order.
-fn subs(s: &Session, fid: u32) -> Vec<fnv_esm::Subrecord> {
+fn subs(s: &Session, fid: u32) -> Vec<nvre_esm::Subrecord> {
     let rec = s.doc.record(fid).expect("the record");
     rec.subrecords().expect("subrecords parse")
 }
 
 /// The same, read from the file the editor actually wrote.
-fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<fnv_esm::Subrecord> {
+fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<nvre_esm::Subrecord> {
     let path = std::env::temp_dir().join(format!("nvre_aloc_{name}.esp"));
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
         .expect("parse");
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.form_id == fid {
             found = Some(r.clone());
         }
@@ -67,7 +67,7 @@ fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<fnv_esm::Subrecord> {
 }
 
 /// A subrecord's payload by signature.
-fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
+fn payload(subs: &[nvre_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
     subs.iter()
         .find(|s| &s.sig == sig)
         .map(|s| s.data.clone())
@@ -75,7 +75,7 @@ fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
 }
 
 /// Every payload with this signature, in file order.
-fn payloads(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
+fn payloads(subs: &[nvre_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
     subs.iter()
         .filter(|s| &s.sig == sig)
         .map(|s| s.data.clone())
@@ -83,7 +83,7 @@ fn payloads(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
 }
 
 /// The signature sequence of a record, in file order.
-fn sig_order(subs: &[fnv_esm::Subrecord]) -> Vec<String> {
+fn sig_order(subs: &[nvre_esm::Subrecord]) -> Vec<String> {
     subs.iter()
         .map(|s| nvre_util::tag_str(&s.sig).to_string())
         .collect()
@@ -390,12 +390,12 @@ fn every_media_location_in_the_master_saves_back_byte_identical() {
     let path = std::env::temp_dir().join("nvre_aloc_all.esp");
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
         .expect("parse");
     let _ = std::fs::remove_file(&path);
 
     let mut after = std::collections::BTreeMap::new();
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.sig == *b"ALOC" {
             after.insert(
                 r.header.form_id,

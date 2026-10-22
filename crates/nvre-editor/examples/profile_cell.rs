@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut dur_terrain_records = std::time::Duration::ZERO;
     let mut terrain_cells_count = 0;
 
-    let nif_schema = Path::new("NVForever/schemas/nif");
+    let nif_schema = Path::new("schemas/nif");
     let game_data = GameData::open(Path::new(&data), nif_schema)?;
 
     if is_exterior {

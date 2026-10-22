@@ -36,20 +36,20 @@ fn open_master() -> Option<Session> {
 }
 
 /// The record's subrecords as they are in the master, before any edit.
-fn master_subs(s: &Session, fid: u32) -> Vec<fnv_esm::Subrecord> {
+fn master_subs(s: &Session, fid: u32) -> Vec<nvre_esm::Subrecord> {
     let rec = s.doc.record(fid).expect("the record is in the master");
     rec.subrecords().expect("subrecords parse")
 }
 
 /// The subrecords of the record, read from the file the editor actually wrote.
-fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<fnv_esm::Subrecord> {
+fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<nvre_esm::Subrecord> {
     let path = std::env::temp_dir().join(format!("nvre_ammo_{name}.esp"));
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
         .expect("parse");
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.form_id == fid {
             found = Some(r.clone());
         }
@@ -61,7 +61,7 @@ fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<fnv_esm::Subrecord> {
         .expect("subrecords parse")
 }
 
-fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Option<Vec<u8>> {
+fn payload(subs: &[nvre_esm::Subrecord], sig: &[u8; 4]) -> Option<Vec<u8>> {
     subs.iter().find(|s| &s.sig == sig).map(|s| s.data.clone())
 }
 

@@ -19,7 +19,7 @@ use bevy_egui::EguiPrimaryContextPass;
 use clap::Parser;
 use std::path::PathBuf;
 
-/// NVForever's Fallout: New Vegas editor.
+/// NVRE's Fallout: New Vegas editor.
 #[derive(Parser, Clone, Resource)]
 #[command(name = "nvre-editor", version)]
 struct Args {

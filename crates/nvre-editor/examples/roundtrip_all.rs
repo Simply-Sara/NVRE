@@ -121,7 +121,7 @@ const TYPES: &[(&str, &[u8; 4], usize)] = &[
 type Sub = ([u8; 4], Vec<u8>);
 
 /// The subrecords of a record, in file order, as signature and payload.
-fn shape(subs: &[fnv_esm::Subrecord]) -> Vec<Sub> {
+fn shape(subs: &[nvre_esm::Subrecord]) -> Vec<Sub> {
     subs.iter().map(|s| (s.sig, s.data.clone())).collect()
 }
 

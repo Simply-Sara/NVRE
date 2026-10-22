@@ -1,5 +1,5 @@
 //! Drive the GUI's session without a window: open a cell, place, move, delete,
-//! and save — then hand the result to NVForever's `fnvtool`.
+//! and save — then hand the result to NVRE's own `fnvtool`.
 //!
 //! Run with:
 //!   NVRE_DATA=<Data> cargo run -p nvre-editor --example roundtrip_gui -- <out.esp>

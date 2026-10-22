@@ -8,8 +8,8 @@
 //! Game data is read from `$NVRE_DATA` (the game's `Data` folder) and the
 //! tests skip when it is not set, so CI never needs the game.
 
-use fnv_esm::raw::visit_records;
-use fnv_esm::{Plugin, Schema};
+use nvre_esm::raw::visit_nodes;
+use nvre_esm::{Plugin, Schema};
 use nvre_edit::encode::{encode_sub, roundtrips, sub_views};
 
 /// The game's Data folder, when the environment names one.
@@ -20,7 +20,7 @@ fn data_dir() -> Option<std::path::PathBuf> {
 }
 
 fn schema_dir() -> std::path::PathBuf {
-    // NVRE's own schema directory: a copy of NVForever's layouts plus the
+    // NVRE's own schema directory: the layouts plus the
     // records and subrecords it does not define. See `schemas/README.md`.
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv")
 }
@@ -67,7 +67,7 @@ fn every_decoded_subrecord_roundtrips() {
         }
         let plugin = Plugin::open(&path).expect(name);
         let mut recs = Vec::new();
-        visit_records(&plugin.nodes[1..], &mut |r, _| recs.push(r));
+        visit_nodes(&plugin.nodes, &mut |r, _| recs.push(r));
         for r in &recs {
             let Ok(subs) = r.subrecords() else { continue };
             for s in &subs {
@@ -247,15 +247,15 @@ fn inserted_reference_lands_in_the_cell() {
     assert_eq!(found, "NVFEditorTest");
     // And it must sit inside the cell's temporary-children group.
     let mut in_temp = false;
-    fnv_esm::raw::visit_groups(&reparsed.nodes, &mut |g, _| {
-        if g.header.group_type == fnv_esm::raw::group_type::CELL_CHILDREN
+    nvre_esm::raw::visit_groups_in(&reparsed.nodes, &mut |g, _| {
+        if g.header.group_type == nvre_esm::raw::group_type::CELL_CHILDREN
             && g.header.label_u32() == cell
         {
             for c in &g.children {
-                if let fnv_esm::raw::Node::Group(t) = c {
-                    if t.header.group_type == fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN {
+                if let nvre_esm::raw::Node::Group(t) = c {
+                    if t.header.group_type == nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN {
                         for n in &t.children {
-                            if let fnv_esm::raw::Node::Record(r) = n {
+                            if let nvre_esm::raw::Node::Record(r) = n {
                                 if r.header.form_id == 0x00FF0001 {
                                     in_temp = true;
                                 }
@@ -293,7 +293,7 @@ fn delete_sets_the_deleted_flag() {
     let after = nvre_edit::document::record_of(&reparsed, target).unwrap();
     assert_eq!(
         after.header.flags,
-        before_flags | fnv_esm::raw::record_flags::DELETED
+        before_flags | nvre_esm::raw::record_flags::DELETED
     );
 }
 
@@ -311,7 +311,7 @@ fn sub_views_report_writability() {
     let schema = Schema::load_dir(schema_dir()).unwrap();
     let plugin = Plugin::open(&path).unwrap();
     let mut recs = Vec::new();
-    visit_records(&plugin.nodes[1..], &mut |r, _| recs.push(r));
+    visit_nodes(&plugin.nodes, &mut |r, _| recs.push(r));
     let mut total = 0usize;
     let mut writable = 0usize;
     for r in recs.iter().take(500) {

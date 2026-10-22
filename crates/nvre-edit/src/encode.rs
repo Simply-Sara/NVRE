@@ -1087,7 +1087,7 @@ mod tests {
           "records": {"TEST": {"name":"T","subrecords": {"XABC": {"name":"x","type":"Dup"}}}}
         }"#;
         let mut s = Schema::default();
-        s.merge_str(text, "t").unwrap();
+        s.merge_str(text).unwrap();
         s.validate().unwrap();
         let data = vec![1u8, 9, 9, 2, 3, 3, 3];
         let subs = nvre_esm::raw::parse_subrecords(&{

@@ -26,13 +26,13 @@ fn open_master() -> Option<Session> {
 }
 
 /// The record's subrecords, in file order.
-fn subs(s: &Session, fid: u32) -> Vec<fnv_esm::Subrecord> {
+fn subs(s: &Session, fid: u32) -> Vec<nvre_esm::Subrecord> {
     let rec = s.doc.record(fid).expect("the record");
     rec.subrecords().expect("subrecords parse")
 }
 
 /// The record's subrecords from the saved file, in file order.
-fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<fnv_esm::Subrecord> {
+fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<nvre_esm::Subrecord> {
     saved(s, fid, name).subrecords().expect("subrecords parse")
 }
 
@@ -60,14 +60,14 @@ fn out(name: &str) -> std::path::PathBuf {
 }
 
 /// Write the session out and read the record back through a fresh parse.
-fn saved(s: &Session, fid: u32, name: &str) -> fnv_esm::Record {
+fn saved(s: &Session, fid: u32, name: &str) -> nvre_esm::Record {
     let path = out(name);
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
         .expect("parse");
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.form_id == fid {
             found = Some(r.clone());
         }

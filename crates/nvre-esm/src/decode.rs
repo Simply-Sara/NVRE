@@ -1211,10 +1211,11 @@ mod tests {
                 .into_iter()
                 .map(|(sig, data)| Subrecord {
                     sig: *sig,
-                    data: bytes::Bytes::from(data),
+                    data: data.to_vec(),
+                    extended: false,
                 })
                 .collect(),
-            payload: bytes::Bytes::new(),
+            raw: Vec::new(),
             offset: 0,
         }
     }

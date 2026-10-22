@@ -141,12 +141,12 @@ fn the_placed_missile_writes_every_named_field() {
     let out = std::env::temp_dir().join("nvre_pmis_write_out.esp");
     s.save(&out).expect("save");
     let bytes = std::fs::read(&out).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "out.esp".to_string())
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "out.esp".to_string())
         .expect("parse");
     let _ = std::fs::remove_file(&out);
 
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.form_id == form_id {
             found = Some(r.clone());
         }

@@ -78,7 +78,7 @@ fn the_palette_is_grouped_into_gecks_categories() {
     let lo = s.load_order().expect("a load order");
     for g in &groups {
         for (fid, _) in &g.objects {
-            let sig = fnv_world::fields::winner(lo, *fid)
+            let sig = nvre_world::fields::winner(lo, *fid)
                 .map(|(_, rec)| rec.header.sig)
                 .expect("the base object");
             let name = s

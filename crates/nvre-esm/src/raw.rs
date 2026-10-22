@@ -137,6 +137,22 @@ impl GroupHeader {
         u32::from_le_bytes(self.label)
     }
 
+    /// The group's label, as a signed number: the four bytes of the label
+    /// read as a little-endian integer.
+    pub fn label_i32(&self) -> i32 {
+        i32::from_le_bytes(self.label)
+    }
+
+    /// The cell's grid position, when the group is a cell.
+    ///
+    /// The label holds the position: two little-endian words, the y first
+    /// and the x second.
+    pub fn label_grid(&self) -> (i16, i16) {
+        let y = i16::from_le_bytes([self.label[0], self.label[1]]);
+        let x = i16::from_le_bytes([self.label[2], self.label[3]]);
+        (x, y)
+    }
+
     /// The group's type as text: the four bytes of the type, in the order
     /// they are in the file.
     pub fn sig_str(&self) -> String {
@@ -610,7 +626,7 @@ fn parse_record(
 /// The `XXXX` form is resolved here: it is a subrecord whose size field is
 /// zero and whose payload is the size of the subrecord that follows, which
 /// is how a subrecord larger than 65535 bytes is written.
-fn parse_subrecords(body: &[u8]) -> Result<Vec<Subrecord>, (usize, String)> {
+pub fn parse_subrecords(body: &[u8]) -> Result<Vec<Subrecord>, (usize, String)> {
     let mut out = Vec::new();
     let mut at = 0usize;
     // The size the `XXXX` before a subrecord says it has.
@@ -896,6 +912,15 @@ fn visit_in_group<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
         visit_in_group(sub, path, f);
     }
     path.pop();
+}
+
+/// Visit every group in a list of nodes, with the group it is in.
+pub fn visit_groups_in<'a, F: FnMut(&'a Group, usize)>(nodes: &'a [Node], f: &mut F) {
+    for n in nodes {
+        if let Node::Group(g) = n {
+            visit_group(g, 0, f);
+        }
+    }
 }
 
 /// Visit every group in a tree, with the group it is in.

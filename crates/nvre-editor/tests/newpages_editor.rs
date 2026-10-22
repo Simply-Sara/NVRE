@@ -65,7 +65,7 @@ fn perk_edits_its_own_data_and_leaves_the_rank_data_alone() {
 }
 
 /// The rank data of the record, for comparison.
-fn before_data_after(before: &[fnv_esm::Subrecord]) -> Vec<Vec<u8>> {
+fn before_data_after(before: &[nvre_esm::Subrecord]) -> Vec<Vec<u8>> {
     payloads(before, b"DATA")[1..].to_vec()
 }
 

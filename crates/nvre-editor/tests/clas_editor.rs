@@ -25,20 +25,20 @@ fn open_master() -> Option<Session> {
 }
 
 /// The record's subrecords, in file order.
-fn subs(s: &Session, fid: u32) -> Vec<fnv_esm::Subrecord> {
+fn subs(s: &Session, fid: u32) -> Vec<nvre_esm::Subrecord> {
     let rec = s.doc.record(fid).expect("the record");
     rec.subrecords().expect("subrecords parse")
 }
 
 /// The same, read from the file the editor actually wrote.
-fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<fnv_esm::Subrecord> {
+fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<nvre_esm::Subrecord> {
     let path = std::env::temp_dir().join(format!("nvre_clas_{name}.esp"));
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
         .expect("parse");
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.form_id == fid {
             found = Some(r.clone());
         }
@@ -51,7 +51,7 @@ fn saved_subs(s: &Session, fid: u32, name: &str) -> Vec<fnv_esm::Subrecord> {
 }
 
 /// The `DATA` payload of a record, from the document or from a saved file.
-fn data_bytes(subs: &[fnv_esm::Subrecord]) -> Vec<u8> {
+fn data_bytes(subs: &[nvre_esm::Subrecord]) -> Vec<u8> {
     subs.iter()
         .find(|s| s.sig == *b"DATA")
         .map(|s| s.data.clone())
@@ -59,7 +59,7 @@ fn data_bytes(subs: &[fnv_esm::Subrecord]) -> Vec<u8> {
 }
 
 /// The `ATTR` payload of a record.
-fn attr_bytes(subs: &[fnv_esm::Subrecord]) -> Vec<u8> {
+fn attr_bytes(subs: &[nvre_esm::Subrecord]) -> Vec<u8> {
     subs.iter()
         .find(|s| s.sig == *b"ATTR")
         .map(|s| s.data.clone())

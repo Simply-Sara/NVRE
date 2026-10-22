@@ -1,6 +1,6 @@
-//! `nvre-edit` — the write path for NVForever's TES4 plugins.
+//! `nvre-edit` — the write path for TES4 plugins.
 //!
-//! NVForever's own `fnv-esm` reads plugins losslessly and writes them back byte
+//! NVRE's own `nvre-esm` reads plugins losslessly and writes them back byte
 //! for byte, but it has no way to *change* one. This crate adds that:
 //!
 //! - [`encode`]: JSON values back into subrecord payloads, the exact inverse of

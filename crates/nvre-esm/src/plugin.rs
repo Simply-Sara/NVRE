@@ -55,6 +55,11 @@ impl Plugin {
         Plugin::from_bytes(Path::new(&name), data)
     }
 
+    /// Read a plugin from bytes that are already shared.
+    pub fn parse_bytes(data: bytes::Bytes, name: String) -> Result<Plugin, EsmError> {
+        Plugin::from_bytes(Path::new(&name), &data)
+    }
+
     /// Every record in the file, in order.
     pub fn records(&self) -> Vec<&Record> {
         let mut out = Vec::new();

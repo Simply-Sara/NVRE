@@ -8,7 +8,7 @@
 //! Run with:
 //!   NVRE_DATA=<Data> cargo run -p nvre-editor --example dump_record -- <SIG> [count]
 
-use fnv_esm::Schema;
+use nvre_esm::Schema;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data = std::env::var("NVRE_DATA")?;
@@ -22,10 +22,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let schema = Schema::load_dir(&schema_dir)?;
 
     let bytes = std::fs::read(format!("{data}/FalloutNV.esm"))?;
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "FalloutNV.esm".into())?;
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "FalloutNV.esm".into())?;
 
     let mut shown = 0;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if shown >= limit {
             return;
         }
@@ -49,8 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         for s in &subs {
             let hex: String = s.data.iter().map(|b| format!("{b:02X}")).collect();
-            let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, r.header.sig);
-            let d = fnv_esm::decode::decode_sub(&r.header.sig, s, &mut ctx);
+            let mut ctx = nvre_esm::decode::DecodeCtx::new(&schema, r.header.sig);
+            let d = nvre_esm::decode::decode_sub(&r.header.sig, s, &mut ctx);
             let rt = nvre_edit::encode::roundtrips(&schema, &r.header.sig, s);
             println!(
                 "    {} len={:4} rt={} hex={hex}",

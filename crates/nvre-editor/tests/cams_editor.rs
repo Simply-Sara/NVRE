@@ -159,14 +159,14 @@ fn a_thirty_six_byte_data_is_not_grown_to_forty() {
     let path = std::env::temp_dir().join("nvre_cams_datalen.esp");
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
         .expect("parse");
     let _ = std::fs::remove_file(&path);
 
     let mut short = 0;
     let mut long = 0;
     let mut checked = 0;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.sig != *b"CAMS" {
             return;
         }

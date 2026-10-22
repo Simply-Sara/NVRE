@@ -5,8 +5,8 @@
 //! labels are the part that is easy to get wrong, so the rules are checked
 //! against the shipped masters as well as against what this crate writes.
 
-use fnv_esm::raw::{group_type, Node};
-use fnv_esm::{Plugin, Schema};
+use nvre_esm::raw::{group_type, Node};
+use nvre_esm::{Plugin, Schema};
 use nvre_edit::cell;
 use nvre_edit::save::{write_plugin, MasterList};
 use nvre_edit::Document;
@@ -186,8 +186,8 @@ fn the_interior_block_rule_holds_for_the_shipped_masters() {
 /// The group is a **sibling** of the `CELL` record, not a child of it: the
 /// sub-block group holds `REC CELL` and then `GRP 6` side by side, and the
 /// group is labelled with the cell's FormID.
-fn cell_children_of(nodes: &[Node], form_id: u32) -> Option<&fnv_esm::raw::Group> {
-    fn go(nodes: &[Node], form_id: u32) -> Option<&fnv_esm::raw::Group> {
+fn cell_children_of(nodes: &[Node], form_id: u32) -> Option<&nvre_esm::raw::Group> {
+    fn go(nodes: &[Node], form_id: u32) -> Option<&nvre_esm::raw::Group> {
         for n in nodes {
             let Node::Group(g) = n else { continue };
             if g.header.group_type == group_type::CELL_CHILDREN && g.header.label_u32() == form_id {
@@ -208,9 +208,9 @@ fn cell_children_of(nodes: &[Node], form_id: u32) -> Option<&fnv_esm::raw::Group
 /// plugin's numbering — so the record's FormID in the output is not the one
 /// that was handed out. The tests look records up by their Editor ID instead,
 /// which is stable.
-fn find_by_edid(plugin: &Plugin, edid: &str) -> Option<(u32, fnv_esm::raw::Record)> {
+fn find_by_edid(plugin: &Plugin, edid: &str) -> Option<(u32, nvre_esm::raw::Record)> {
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes, &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if found.is_none() {
             if let Ok(subs) = r.subrecords() {
                 if let Some(s) = subs.iter().find(|s| &s.sig == b"EDID") {

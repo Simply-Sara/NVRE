@@ -356,12 +356,12 @@ fn the_image_space_keeps_its_version_dependent_length() {
     let path = std::env::temp_dir().join("nvre_imgs_len.esp");
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
         .expect("parse");
     let _ = std::fs::remove_file(&path);
 
     let mut checked = 0;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.sig != *b"IMGS" {
             return;
         }
@@ -407,12 +407,12 @@ fn the_load_screen_locations_survive_a_save() {
     let path = std::env::temp_dir().join("nvre_lscr_lnam.esp");
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
         .expect("parse");
     let _ = std::fs::remove_file(&path);
 
     let mut checked = 0;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.sig != *b"LSCR" {
             return;
         }

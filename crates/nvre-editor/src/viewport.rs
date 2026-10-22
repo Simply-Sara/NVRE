@@ -2,7 +2,7 @@
 //! camera and click-to-select.
 //!
 //! The editor's own state lives in [`crate::session`]; this module only turns it
-//! into entities and reads clicks back. Meshes are spawned through NVForever's
+//! into entities and reads clicks back. Meshes are spawned through NVRE's
 //! `nvf-assets` layer, so a reference looks the way it does in the game rather
 //! than as a placeholder box.
 //!

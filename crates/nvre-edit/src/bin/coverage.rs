@@ -1,7 +1,7 @@
 //! NVRE's own schema-coverage probe: the same numbers `fnvtool esm coverage`
 //! prints, built against NVRE's patched `fnv-esm` so the `len_string` and
 //! `count_prefix` schema constructs are exercised. `fnvtool` lives inside the
-//! NVForever submodule and links upstream's `fnv-esm` by path, so it cannot see
+//! NVRE's own schema directory, so it cannot see
 //! NVRE's `[patch]`.
 
 use nvre_esm::decode::Coverage;

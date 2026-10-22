@@ -31,7 +31,7 @@ pub fn open_master() -> Option<nvre_editor::session::Session> {
 }
 
 /// The record's subrecords, in file order.
-pub fn subs(s: &nvre_editor::session::Session, fid: u32) -> Vec<fnv_esm::Subrecord> {
+pub fn subs(s: &nvre_editor::session::Session, fid: u32) -> Vec<nvre_esm::Subrecord> {
     let rec = s.doc.record(fid).expect("the record");
     rec.subrecords().expect("subrecords parse")
 }
@@ -41,14 +41,14 @@ pub fn saved_subs(
     s: &nvre_editor::session::Session,
     fid: u32,
     name: &str,
-) -> Vec<fnv_esm::Subrecord> {
+) -> Vec<nvre_esm::Subrecord> {
     let path = std::env::temp_dir().join(format!("nvre_{name}.esp"));
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), format!("{name}.esp"))
         .expect("parse");
     let mut found = None;
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if r.header.form_id == fid {
             found = Some(r.clone());
         }
@@ -61,7 +61,7 @@ pub fn saved_subs(
 }
 
 /// A subrecord's payload by signature.
-pub fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
+pub fn payload(subs: &[nvre_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
     subs.iter()
         .find(|s| &s.sig == sig)
         .map(|s| s.data.clone())
@@ -69,7 +69,7 @@ pub fn payload(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<u8> {
 }
 
 /// Every payload with this signature, in file order.
-pub fn payloads(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
+pub fn payloads(subs: &[nvre_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
     subs.iter()
         .filter(|s| &s.sig == sig)
         .map(|s| s.data.clone())
@@ -77,7 +77,7 @@ pub fn payloads(subs: &[fnv_esm::Subrecord], sig: &[u8; 4]) -> Vec<Vec<u8>> {
 }
 
 /// The signature sequence of a record, in file order.
-pub fn sig_order(subs: &[fnv_esm::Subrecord]) -> Vec<String> {
+pub fn sig_order(subs: &[nvre_esm::Subrecord]) -> Vec<String> {
     subs.iter()
         .map(|s| nvre_util::tag_str(&s.sig).to_string())
         .collect()
@@ -94,8 +94,8 @@ pub fn fids_of(s: &nvre_editor::session::Session, sig: &[u8; 4]) -> Vec<u32> {
 }
 
 /// A subrecord with a cstring payload.
-pub fn zsub(sig: &[u8; 4], text: &str) -> fnv_esm::Subrecord {
-    fnv_esm::Subrecord {
+pub fn zsub(sig: &[u8; 4], text: &str) -> nvre_esm::Subrecord {
+    nvre_esm::Subrecord {
         sig: *sig,
         data: nvre_edit::document::encode_zstring(text),
         extended: false,
@@ -103,8 +103,8 @@ pub fn zsub(sig: &[u8; 4], text: &str) -> fnv_esm::Subrecord {
 }
 
 /// A subrecord with a raw payload.
-pub fn rawsub(sig: &[u8; 4], data: Vec<u8>) -> fnv_esm::Subrecord {
-    fnv_esm::Subrecord {
+pub fn rawsub(sig: &[u8; 4], data: Vec<u8>) -> nvre_esm::Subrecord {
+    nvre_esm::Subrecord {
         sig: *sig,
         data,
         extended: false,
@@ -120,7 +120,7 @@ pub fn write_synthetic_plugin(
     path: &std::path::Path,
     sig: [u8; 4],
     form_id: u32,
-    subs: Vec<fnv_esm::Subrecord>,
+    subs: Vec<nvre_esm::Subrecord>,
 ) {
     use bytes::BufMut;
 
@@ -222,12 +222,12 @@ pub fn assert_all_save_back_byte_identical(
     let path = std::env::temp_dir().join(format!("nvre_all_{}.esp", nvre_util::tag_str(sig)));
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = fnv_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
+    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "all.esp".to_string())
         .expect("parse");
     let _ = std::fs::remove_file(&path);
 
     let mut after = std::collections::BTreeMap::new();
-    fnv_esm::raw::visit_records(&plugin.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
         if &r.header.sig == sig {
             after.insert(
                 r.header.form_id,

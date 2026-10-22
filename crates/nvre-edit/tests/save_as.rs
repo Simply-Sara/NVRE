@@ -2,10 +2,10 @@
 //!
 //! These tests answer one question — **is the output loadable as a mod?** A copy
 //! of a master is not: a FormID is file-local, so the copied references point at
-//! nothing. The checks here use NVForever's own `fnvtool` on a file this crate
+//! nothing. The checks here use NVRE's own `fnvtool` on a file this crate
 //! actually produced, so the verdict comes from an independent reader.
 
-use fnv_esm::{LoadOrder, Plugin, Schema};
+use nvre_esm::{LoadOrder, Plugin, Schema};
 use nvre_edit::save::{formid_map_for, write_plugin, write_plugin_scoped, MasterList, Scope};
 use nvre_edit::Document;
 
@@ -155,7 +155,7 @@ fn inserted_records_get_fresh_formids() {
 
     let saved = Plugin::open(&out).unwrap();
     let mut found = Vec::new();
-    fnv_esm::raw::visit_records(&saved.nodes[1..], &mut |r, _| {
+    nvre_esm::raw::visit_nodes(&saved.nodes, &mut |r, _| {
         if r.header.sig == *b"REFR"
             && nvre_edit::document::edid_of(r).as_deref() == Some("NVFSaveTest")
         {
@@ -171,15 +171,15 @@ fn inserted_records_get_fresh_formids() {
 
     // And each must sit inside the cell's temporary-children group.
     let mut in_temp = 0;
-    fnv_esm::raw::visit_groups(&saved.nodes, &mut |g, _| {
-        if g.header.group_type == fnv_esm::raw::group_type::CELL_CHILDREN
+    nvre_esm::raw::visit_groups_in(&saved.nodes, &mut |g, _| {
+        if g.header.group_type == nvre_esm::raw::group_type::CELL_CHILDREN
             && g.header.label_u32() == 0x0031e2a
         {
             for c in &g.children {
-                if let fnv_esm::raw::Node::Group(t) = c {
-                    if t.header.group_type == fnv_esm::raw::group_type::CELL_TEMPORARY_CHILDREN {
+                if let nvre_esm::raw::Node::Group(t) = c {
+                    if t.header.group_type == nvre_esm::raw::group_type::CELL_TEMPORARY_CHILDREN {
                         for n in &t.children {
-                            if let fnv_esm::raw::Node::Record(r) = n {
+                            if let nvre_esm::raw::Node::Record(r) = n {
                                 if r.header.sig == *b"REFR"
                                     && nvre_edit::document::edid_of(r).as_deref()
                                         == Some("NVFSaveTest")
@@ -379,7 +379,7 @@ fn deleting_a_master_reference_overrides_it() {
     let rec = nvre_edit::document::record_of(&saved, target).unwrap();
     assert_eq!(
         rec.header.flags,
-        original_flags | fnv_esm::raw::record_flags::DELETED,
+        original_flags | nvre_esm::raw::record_flags::DELETED,
         "the override must carry the Deleted flag"
     );
     assert!(
@@ -415,7 +415,7 @@ fn override_without_the_master_is_an_error() {
 
 /// The override must land in the cell the record actually belongs to.
 ///
-/// `fnv_world::WorldIndex` is the authority on which cell a reference is in; the
+/// `nvre_world::WorldIndex` is the authority on which cell a reference is in; the
 /// saved override has to sit in that cell's children group or the load order will
 /// not associate it with the record it replaces, and the edit silently does
 /// nothing in-game while every structural check still passes.
@@ -443,7 +443,7 @@ fn override_lands_in_the_records_own_cell() {
     // Which cell the load order says the record is in.
     let expected_cell = {
         let lo = LoadOrder::new(std::slice::from_ref(doc.plugin())).unwrap();
-        let ix = fnv_world::WorldIndex::build(&lo, &Schema::default());
+        let ix = nvre_world::WorldIndex::build(&lo, &Schema::default());
         ix.refs
             .get(&target)
             .map(|e| e.cell)
@@ -463,15 +463,15 @@ fn override_lands_in_the_records_own_cell() {
     let saved = Plugin::open(&out).unwrap();
     // Find the cell-children group holding the override, and check its label.
     let mut found_cell = None;
-    fnv_esm::raw::visit_groups(&saved.nodes, &mut |g, _| {
-        if g.header.group_type != fnv_esm::raw::group_type::CELL_CHILDREN {
+    nvre_esm::raw::visit_groups_in(&saved.nodes, &mut |g, _| {
+        if g.header.group_type != nvre_esm::raw::group_type::CELL_CHILDREN {
             return;
         }
         let holds = g.children.iter().any(|c| match c {
-            fnv_esm::raw::Node::Record(r) => r.header.form_id == target,
+            nvre_esm::raw::Node::Record(r) => r.header.form_id == target,
             // A record may also sit in the cell's persistent/temporary groups.
-            fnv_esm::raw::Node::Group(inner) => inner.children.iter().any(|n| match n {
-                fnv_esm::raw::Node::Record(r) => r.header.form_id == target,
+            nvre_esm::raw::Node::Group(inner) => inner.children.iter().any(|n| match n {
+                nvre_esm::raw::Node::Record(r) => r.header.form_id == target,
                 _ => false,
             }),
         });

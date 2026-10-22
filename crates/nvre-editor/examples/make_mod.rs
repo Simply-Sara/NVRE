@@ -1,9 +1,9 @@
-//! Produce a real mod with the save path, so NVForever's `fnvtool` can check it.
+//! Produce a real mod with the save path, so NVRE's own `fnvtool` can check it.
 //!
 //! Run with:
 //!   NVRE_DATA=<Data> cargo run -p nvre-editor --example make_mod -- <out.esp>
 
-use fnv_esm::Schema;
+use nvre_esm::Schema;
 use nvre_edit::document::PendingRecord;
 use nvre_edit::save::{write_plugin, MasterList};
 use nvre_edit::Document;
