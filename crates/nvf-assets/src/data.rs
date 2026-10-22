@@ -5,7 +5,7 @@
 //! that says how a block is laid out.
 
 use bevy::prelude::*;
-use fnv_vfs::Vfs;
+use nvre_vfs::Vfs;
 use nvre_nif::Schema;
 use std::path::Path;
 use std::sync::Arc;

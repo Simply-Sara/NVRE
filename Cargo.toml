@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/fnv-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world", "crates/nvf-assets"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/nvre-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world", "crates/nvf-assets"]
 
 [workspace.package]
 version = "0.1.0"
@@ -11,9 +11,11 @@ license = "GPL-3.0-or-later"
 # NVRE's own crates, by path. These are NVRE's code, not a copy of anyone
 # else's: `nvre-util` is the byte cursor, the Windows-1252 text and the
 # SHA-256 that every format crate speaks, `nvre-inflate` is the zlib
-# reader, and `crates/fnv-dds` is the texture reader.
+# reader, and `crates/nvre-dds` is the texture reader.
 nvre-util = { path = "crates/nvre-util" }
 nvre-inflate = { path = "crates/nvre-inflate" }
+nvre-vfs = { path = "crates/nvre-vfs" }
+nvre-dds = { path = "crates/nvre-dds" }
 
 # The remaining NVForever format crates, by git. The editor is read-write
 # where those are read-only; upstream stays the reference implementation and
@@ -25,13 +27,15 @@ nvre-inflate = { path = "crates/nvre-inflate" }
 # unions, so the layouts in `schemas/` could not reach 100% coverage through
 # the upstream schema language; `fnv-esm` is where those constructs now live.
 # Keep each fork's diff against upstream small and documented.
+#
+# `crates/nvre-vfs` was upstream's `fnv-vfs` with one change — the archive
+# reader, so the Special Edition's version 105 archives could be read — and
+# is now NVRE's own crate.
 fnv-esm = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
-fnv-vfs = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 fnv-world = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
-# NVForever's Bevy asset layer lives in its own engine workspace, so its
+# NVForever's NIF reader lives in its own engine workspace, so its
 # workspace-inherited deps have to be declared here too.
 fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
-fnv-dds = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -53,8 +57,6 @@ clap = { version = "4", features = ["derive", "env"] }
 fnv-world = { path = "crates/fnv-world" }
 fnv-esm = { path = "crates/fnv-esm" }
 fnv-nif = { path = "crates/fnv-nif" }
-fnv-vfs = { path = "crates/fnv-vfs" }
-fnv-dds = { path = "crates/fnv-dds" }
 
 # Enable high optimization for external dependencies in dev/debug builds.
 # Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.

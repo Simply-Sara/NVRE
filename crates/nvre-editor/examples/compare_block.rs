@@ -23,7 +23,7 @@ fn main() {
         fnv_nif::Schema::load_game(std::path::Path::new(base), &layers).expect("the old schema")
     };
 
-    let vfs = fnv_vfs::Vfs::open_default(std::path::PathBuf::from(&data_dir).as_path())
+    let vfs = nvre_vfs::Vfs::open_default(std::path::PathBuf::from(&data_dir).as_path())
         .expect("the archives");
 
     for p in vfs.paths(|p| p.to_lowercase().ends_with(".nif")) {

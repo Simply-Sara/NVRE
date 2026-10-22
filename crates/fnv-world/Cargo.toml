@@ -24,4 +24,4 @@ tracing = "0.1"
 
 [dev-dependencies]
 fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
-fnv-vfs = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
+nvre-vfs = { path = "../nvre-vfs" }

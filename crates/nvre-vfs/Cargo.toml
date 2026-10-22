@@ -1,5 +1,5 @@
 [package]
-name = "fnv-vfs"
+name = "nvre-vfs"
 description = "Read-only virtual file system over BSA archives and loose files"
 version.workspace = true
 edition.workspace = true

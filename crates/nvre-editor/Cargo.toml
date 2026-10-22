@@ -17,7 +17,7 @@ path = "src/main.rs"
 nvre-edit = { path = "../nvre-edit" }
 nvre-util.workspace = true
 fnv-esm.workspace = true
-fnv-vfs.workspace = true
+nvre-vfs.workspace = true
 fnv-world.workspace = true
 # NVForever's Bevy asset layer, reused so the viewport renders the game's own
 # meshes with its own material and texture handling. Its workspace deps are

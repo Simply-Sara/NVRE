@@ -13,7 +13,7 @@ use bevy::image::{
 };
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use fnv_dds::{to_rgba8, Dds, Format};
+use nvre_dds::{to_rgba8, Dds, Format};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU16, Ordering};
 
@@ -185,7 +185,7 @@ impl TextureCache {
     ) -> Option<Handle<Image>> {
         // The game's textures live under `textures\`, and the path may or
         // may not say so.
-        let rel = fnv_vfs::texture_path(path);
+        let rel = nvre_vfs::texture_path(path);
         let Some(bytes) = data.read(&rel) else {
             self.failures.push(format!("{path}: not in any archive"));
             return None;

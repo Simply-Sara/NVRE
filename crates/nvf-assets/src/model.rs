@@ -119,7 +119,7 @@ impl ModelCtx<'_> {
     /// The model is held for as long as anything holds it, so a model
     /// referenced by many places is read once.
     pub fn model(&mut self, path: &str) -> Option<Arc<PreparedModel>> {
-        let key = fnv_vfs::normalize(path);
+        let key = nvre_vfs::normalize(path);
         if let Some(m) = self.cache.map.get(&key) {
             return m.clone();
         }

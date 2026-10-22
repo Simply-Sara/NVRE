@@ -25,9 +25,9 @@ fn main() {
     // for a game whose archives are not FNV's.
     let archives: Vec<String> = std::env::args().skip(3).collect();
     let vfs = if archives.is_empty() {
-        fnv_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).unwrap()
+        nvre_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).unwrap()
     } else {
-        fnv_vfs::Vfs::open(PathBuf::from(&data_dir).as_path(), &archives).unwrap()
+        nvre_vfs::Vfs::open(PathBuf::from(&data_dir).as_path(), &archives).unwrap()
     };
     let paths = vfs.paths(|p| p.to_lowercase().ends_with(".nif"));
     println!("the archive holds {} nif files", paths.len());

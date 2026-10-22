@@ -372,7 +372,7 @@ pub fn draw_cell(
                 .model_paths
                 .values()
                 .flatten()
-                .filter(|p| !spawned.loaded_models.contains(&fnv_vfs::normalize(p)))
+                .filter(|p| !spawned.loaded_models.contains(&nvre_vfs::normalize(p)))
                 .cloned()
                 .collect();
             if !to_prefetch.is_empty() {
@@ -399,7 +399,7 @@ pub fn draw_cell(
     let mut missing_models: Vec<String> = Vec::new();
     let mut seen_models: HashSet<&str> = HashSet::new();
     for path in spawned.model_paths.values().flatten() {
-        let key = fnv_vfs::normalize(path);
+        let key = nvre_vfs::normalize(path);
         if !spawned.loaded_models.contains(&key) && seen_models.insert(path.as_str()) {
             missing_models.push(path.clone());
         }
@@ -412,7 +412,7 @@ pub fn draw_cell(
         if loaded_any && t_models.elapsed() >= frame_budget {
             break;
         }
-        let key = fnv_vfs::normalize(&path);
+        let key = nvre_vfs::normalize(&path);
         let t_model = std::time::Instant::now();
         if models.model(&path).is_some() {
             spawned.loaded_models.insert(key);
@@ -460,7 +460,7 @@ pub fn draw_cell(
             continue;
         };
 
-        let key = fnv_vfs::normalize(&model_path);
+        let key = nvre_vfs::normalize(&model_path);
         // Only spawn if the model has already been loaded into ModelCache.
         if !spawned.loaded_models.contains(&key) {
             continue;

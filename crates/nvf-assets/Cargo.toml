@@ -8,8 +8,8 @@ license = "GPL-3.0-or-later"
 [dependencies]
 bevy = { version = "=0.20.0", features = ["pbr_specular_textures"] }
 nvre-nif = { path = "../nvre-nif" }
-fnv-dds = { path = "../fnv-dds" }
-fnv-vfs = { path = "../fnv-vfs" }
+nvre-dds = { path = "../nvre-dds" }
+nvre-vfs = { path = "../nvre-vfs" }
 tracing = "0.1"
 
 [dev-dependencies]

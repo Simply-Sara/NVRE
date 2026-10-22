@@ -1,15 +1,15 @@
 [package]
-name = "fnv-dds"
+name = "nvre-dds"
 description = "NVRE's DDS texture reader: the header, the mip layout, and RGBA8 conversion"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
 
-# The library keeps the name `fnv_dds` so that the Bevy asset layer, which
-# imports it as `fnv_dds`, links against this crate through the workspace's
+# The library keeps the name `nvre_dds` so that the Bevy asset layer, which
+# imports it as `nvre_dds`, links against this crate through the workspace's
 # patch table without a change to its source.
 [lib]
-name = "fnv_dds"
+name = "nvre_dds"
 path = "src/lib.rs"
 
 [dependencies]

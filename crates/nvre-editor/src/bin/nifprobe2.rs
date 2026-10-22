@@ -28,9 +28,9 @@ fn main() {
     // game whose archives are not Fallout's.
     let archives: Vec<String> = std::env::args().skip(3).collect();
     let vfs = if archives.is_empty() {
-        fnv_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).expect("the archives")
+        nvre_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).expect("the archives")
     } else {
-        fnv_vfs::Vfs::open(PathBuf::from(&data_dir).as_path(), &archives).expect("the archives")
+        nvre_vfs::Vfs::open(PathBuf::from(&data_dir).as_path(), &archives).expect("the archives")
     };
 
     let paths = vfs.paths(|p| p.to_lowercase().ends_with(".nif"));

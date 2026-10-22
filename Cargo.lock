@@ -3046,14 +3046,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
-name = "fnv-dds"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "thiserror 2.0.21",
-]
-
-[[package]]
 name = "fnv-esm"
 version = "0.1.0"
 dependencies = [
@@ -3081,20 +3073,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "fnv-vfs"
-version = "0.1.0"
-dependencies = [
- "bsa105",
- "thiserror 2.0.21",
-]
-
-[[package]]
 name = "fnv-world"
 version = "0.1.0"
 dependencies = [
  "fnv-esm",
  "fnv-nif",
- "fnv-vfs",
+ "nvre-vfs",
  "serde_json",
  "tracing",
 ]
@@ -4423,11 +4407,19 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "crossbeam-channel",
- "fnv-dds",
- "fnv-vfs",
  "image",
+ "nvre-dds",
  "nvre-nif",
+ "nvre-vfs",
  "tracing",
+]
+
+[[package]]
+name = "nvre-dds"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -4458,13 +4450,13 @@ dependencies = [
  "egui_tiles",
  "fnv-esm",
  "fnv-nif",
- "fnv-vfs",
  "fnv-world",
  "nvf-assets",
  "nvre-edit",
  "nvre-esm",
  "nvre-nif",
  "nvre-util",
+ "nvre-vfs",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -4515,6 +4507,14 @@ dependencies = [
  "hex",
  "proptest",
  "sha2",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "nvre-vfs"
+version = "0.1.0"
+dependencies = [
+ "bsa105",
  "thiserror 2.0.21",
 ]
 

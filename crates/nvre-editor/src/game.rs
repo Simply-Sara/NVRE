@@ -45,7 +45,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArchiveFormat {
     /// BSA v104, zlib: Fallout 3, Fallout: New Vegas, Skyrim (Legendary).
-    /// [`fnv_vfs::Vfs`] reads this, so the profile's archive list is used.
+    /// [`nvre_vfs::Vfs`] reads this, so the profile's archive list is used.
     Bsa104,
     /// A container no reader here handles yet: Fallout 4's BA2.
     Unreadable,
@@ -553,7 +553,7 @@ impl GameProfile {
                 // same reason `masters_in` reads it.
                 let plugins = self.masters_in(data_dir);
                 let names: Vec<&str> = plugins.iter().map(String::as_str).collect();
-                fnv_vfs::Vfs::archive_order(data_dir, self.archives, &names)
+                nvre_vfs::Vfs::archive_order(data_dir, self.archives, &names)
             }
             ArchiveFormat::Bsa105 => {
                 // The same order as the v104 case: the game's own list, then
@@ -562,7 +562,7 @@ impl GameProfile {
                 // which handles both container versions.
                 let plugins = self.masters_in(data_dir);
                 let names: Vec<&str> = plugins.iter().map(String::as_str).collect();
-                fnv_vfs::Vfs::archive_order(data_dir, self.archives, &names)
+                nvre_vfs::Vfs::archive_order(data_dir, self.archives, &names)
             }
             ArchiveFormat::Unreadable => {
                 tracing::warn!(
@@ -572,7 +572,7 @@ impl GameProfile {
                 Vec::new()
             }
         };
-        let vfs = fnv_vfs::Vfs::open(data_dir, &order).map_err(|e| e.to_string())?;
+        let vfs = nvre_vfs::Vfs::open(data_dir, &order).map_err(|e| e.to_string())?;
         // Each game's own NIF schema, layered over the shared base.
         let schema = self.load_nif_schema()?;
         Ok(nvf_assets::GameData {

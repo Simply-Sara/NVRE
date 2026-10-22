@@ -15,7 +15,7 @@ fn main() {
     } else {
         Schema::load_game(&PathBuf::from(base), &layers).expect("the schema")
     };
-    let vfs = fnv_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).expect("the archives");
+    let vfs = nvre_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).expect("the archives");
 
     for p in vfs.paths(|p| p.to_lowercase().ends_with(".nif")) {
         let Some(r) = vfs.read(p.as_str()) else {
