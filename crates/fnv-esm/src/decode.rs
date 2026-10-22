@@ -79,6 +79,11 @@ pub struct DecodeCtx<'a> {
     /// The subrecord definitions of the current block's chosen variant, when
     /// the block has variants keyed by the opener's value.
     pub block_variant: Option<HashMap<[u8; 4], crate::schema::SubDef>>,
+    /// The name of the current block's chosen variant, when the block has
+    /// variants keyed by the opener's value.
+    ///
+    /// The writer needs it to pick the same variant the reader picked.
+    pub block_variant_name: Option<String>,
     /// The value each counted subrecord's element count came from.
     ///
     /// A subrecord can take its element count from a sibling: Skyrim's `KSIZ`
@@ -117,6 +122,7 @@ impl<'a> DecodeCtx<'a> {
             block: None,
             block_value: None,
             block_variant: None,
+            block_variant_name: None,
             counts: HashMap::new(),
             count_from: None,
             localized: false,
@@ -329,13 +335,15 @@ fn switch_value(schema: &Schema, ty: &TypeDef, v: &Value) -> Option<SwitchValue>
     }
     let name = v.as_str()?;
     match schema.resolve(ty) {
-        TypeDef::Enum { values, .. } => values
-            .iter()
-            .find(|(_, n)| n == name)
-            .map(|(k, _)| SwitchValue {
-                text: k.to_string(),
-                number: Some(*k as i64),
-            }),
+        TypeDef::Enum { values, .. } => {
+            values
+                .iter()
+                .find(|(_, n)| n == name)
+                .map(|(k, _)| SwitchValue {
+                    text: k.to_string(),
+                    number: Some(*k as i64),
+                })
+        }
         _ => Some(SwitchValue::text_only(name.to_string())),
     }
 }
@@ -522,7 +530,10 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 } = &schema.resolve(&f.ty)
                 {
                     let v = obj.get(name).and_then(switch_int).ok_or_else(|| {
-                        format!("{}: count_pow {name:?} has no earlier integer value", f.name)
+                        format!(
+                            "{}: count_pow {name:?} has no earlier integer value",
+                            f.name
+                        )
                     })?;
                     let n = (v * v) as usize;
                     let TypeDef::Array { elem, .. } = schema.resolve(&f.ty) else {
@@ -552,9 +563,9 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                 } = &schema.resolve(&f.ty)
                 {
                     let get = |n: &str| -> Result<u64, String> {
-                        obj.get(n)
-                            .and_then(switch_int)
-                            .ok_or_else(|| format!("{}: count_sum {n:?} has no earlier value", f.name))
+                        obj.get(n).and_then(switch_int).ok_or_else(|| {
+                            format!("{}: count_sum {n:?} has no earlier value", f.name)
+                        })
                     };
                     let n = (get(a)? + get(b)?) as usize;
                     let TypeDef::Array { elem, .. } = schema.resolve(&f.ty) else {
@@ -590,9 +601,7 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                             f.name
                         )
                     })?;
-                    let n = (0..*bits)
-                        .filter(|b| v & (1u64 << *b) != 0)
-                        .count();
+                    let n = (0..*bits).filter(|b| v & (1u64 << *b) != 0).count();
                     let TypeDef::Array { elem, .. } = schema.resolve(&f.ty) else {
                         unreachable!()
                     };
@@ -621,11 +630,7 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                         // under the subrecord's name and the field's, so
                         // that a later subrecord can switch on it.
                         if let Some(sig) = ctx.sub_sig {
-                            let key = format!(
-                                "{}.{}",
-                                String::from_utf8_lossy(&sig),
-                                f.name
-                            );
+                            let key = format!("{}.{}", String::from_utf8_lossy(&sig), f.name);
                             ctx.exposed.insert((ctx.rec_sig, key), n);
                         }
                     }
@@ -856,6 +861,12 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx) -> Deco
 ///
 /// The two callers differ only in what they do with each decoded subrecord, so
 /// the walk lives here and both use it.
+/// Walks a record's subrecords in the order its schema gives them, and
+/// calls `f` for each with the context that says which block it is in.
+///
+/// A signature may mean one thing in the record's own map and another
+/// inside a block, so a subrecord is only read rightly when the walk has
+/// said which block it falls in.
 pub fn walk_sequence(
     rec_sig: &[u8; 4],
     subs: &[crate::raw::Subrecord],
@@ -888,11 +899,7 @@ pub fn walk_sequence(
                 .map(|bd| bd.order.contains(&s.sig))
                 .unwrap_or(false);
             if !expected_here {
-                if let Some(i) = seq
-                    .blocks
-                    .iter()
-                    .position(|b| b.openers.contains(&s.sig))
-                {
+                if let Some(i) = seq.blocks.iter().position(|b| b.openers.contains(&s.sig)) {
                     // Whether the record's own meaning for this signature
                     // fits the data at hand.
                     let flat_fits = schema
@@ -918,6 +925,7 @@ pub fn walk_sequence(
                         // A new block starts with no variant chosen; the
                         // opener's value picks one below.
                         ctx.block_variant = None;
+                        ctx.block_variant_name = None;
                     }
                 }
             }
@@ -940,8 +948,9 @@ pub fn walk_sequence(
                 block.and_then(|b| seq.and_then(|q| q.blocks.get(b))),
                 opener_value,
             ) {
-                if let Some((_, vars)) = bd.variants.iter().find(|(v, _)| *v == ov) {
+                if let Some((name, vars)) = bd.variants.iter().find(|(v, _)| *v == ov) {
                     ctx.block_variant = Some(vars.clone());
+                    ctx.block_variant_name = Some(name.clone());
                 }
             }
         }

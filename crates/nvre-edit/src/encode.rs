@@ -98,18 +98,83 @@ fn repeated_name(fields: &[fnv_esm::schema::Field]) -> Option<String> {
 thread_local! {
     static SWITCH_VALUES: std::cell::RefCell<Vec<std::collections::HashMap<String, String>>> =
         const { std::cell::RefCell::new(Vec::new()) };
+    /// The values a later subrecord's union may switch on, keyed by the
+    /// subrecord that holds them.
+    ///
+    /// A union may switch on a *sibling subrecord's* value — a perk's
+    /// parameter data switches on the parameter type that sits beside it —
+    /// so the writer must know the value the reader saw.
+    static EXPOSED_VALUES: std::cell::RefCell<std::collections::HashMap<String, String>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Remembers a subrecord's value for a later subrecord's union to switch
+/// on.
+///
+/// A subrecord marked `expose` in the schema is one a later union reads:
+/// a perk's parameter type sits beside its parameter data, and the data's
+/// shape is the type's to say.
+pub fn expose_subrecord(
+    schema: &Schema,
+    def: &fnv_esm::schema::SubDef,
+    sig: &[u8; 4],
+    value: &Value,
+) {
+    if !def.expose {
+        return;
+    }
+    let text = match value {
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => {
+            // An enum's value is its name in the JSON, but a switch on it
+            // reads the number the name stands for.
+            match schema.resolve(&def.ty) {
+                TypeDef::Enum { values, .. } => match values.iter().find(|(_, n)| n == s) {
+                    Some((k, _)) => k.to_string(),
+                    None => s.clone(),
+                },
+                _ => s.clone(),
+            }
+        }
+        _ => return,
+    };
+    EXPOSED_VALUES.with(|c| {
+        c.borrow_mut()
+            .insert(fnv_util::tag_str(sig).to_string(), text);
+    });
+}
+
+/// Clears the remembered exposed values, for a new record.
+pub fn clear_exposed() {
+    EXPOSED_VALUES.with(|c| c.borrow_mut().clear());
 }
 
 /// The variant a union's switch picks, if the switch has a value.
+///
+/// The switch may name a value or test a bit of one: a book's record
+/// teaches a perk when the "add perk" bit is set, and the bit that is set
+/// is what says the form ID is there.
 fn switch_variant(
     name: &str,
     cases: &[(String, usize)],
+    bits: &[(u64, usize)],
     default: usize,
 ) -> Option<usize> {
-    let key = SWITCH_VALUES.with(|c| {
-        let stack = c.borrow();
-        stack.last().and_then(|m| m.get(name).cloned())
-    })?;
+    let key = SWITCH_VALUES
+        .with(|c| {
+            let stack = c.borrow();
+            stack.last().and_then(|m| m.get(name).cloned())
+        })
+        .or_else(|| EXPOSED_VALUES.with(|c| c.borrow().get(name).cloned()))?;
+    if !bits.is_empty() {
+        let n = key.parse::<u64>().unwrap_or(0);
+        return Some(
+            bits.iter()
+                .find(|(mask, _)| n & mask != 0)
+                .map(|(_, i)| *i)
+                .unwrap_or(default),
+        );
+    }
     Some(
         cases
             .iter()
@@ -365,13 +430,11 @@ pub fn encode_type(
                         } = schema.resolve(&f.ty)
                         {
                             let want = obj.get(name).and_then(|x| {
-                                x.as_u64().or_else(|| x.get("value").and_then(Value::as_u64))
+                                x.as_u64()
+                                    .or_else(|| x.get("value").and_then(Value::as_u64))
                             });
-                            let n = want.map(|w| {
-                                (0..*bits)
-                                    .filter(|b| w & (1u64 << *b) != 0)
-                                    .count()
-                            });
+                            let n =
+                                want.map(|w| (0..*bits).filter(|b| w & (1u64 << *b) != 0).count());
                             match (n, v.as_array()) {
                                 (Some(n), Some(arr)) if arr.len() == n => {}
                                 _ => {
@@ -564,6 +627,7 @@ pub fn encode_type(
             variants,
             min_version,
             cases,
+            bits,
             default,
             ..
         } => {
@@ -571,7 +635,7 @@ pub fn encode_type(
             // property's value is a string, a number or an object according
             // to the property's type — and the writer must pick the same
             // variant the reader did, or it writes a different shape.
-            if let Some(idx) = switch_variant(name, cases, *default) {
+            if let Some(idx) = switch_variant(name, cases, bits, *default) {
                 return encode_type(schema, &variants[idx], value, out, path);
             }
             // A union the record's own format version decides: the later
@@ -579,7 +643,11 @@ pub fn encode_type(
             // `wbDeciderFormVersion99`).
             if let Some(min) = min_version {
                 let v = FORM_VERSION.with(|c| c.get());
-                let idx = if v >= *min { 1.min(variants.len() - 1) } else { 0 };
+                let idx = if v >= *min {
+                    1.min(variants.len() - 1)
+                } else {
+                    0
+                };
                 return encode_type(schema, &variants[idx], value, out, path);
             }
             // A value-decided union carries no switch in the bytes, so the variant
@@ -913,16 +981,139 @@ pub fn encode_sub_len(
     value: &Value,
     orig_len: Option<usize>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let def = schema
-        .lookup(rec_sig, sub_sig)
-        .ok_or_else(|| EncodeError::Value {
+    encode_sub_len_in_block(schema, rec_sig, sub_sig, value, orig_len, None)
+}
+
+/// Writes a subrecord that is known to be inside a block of its record's
+/// sequence.
+///
+/// A signature may mean one thing in the record's own map and another
+/// inside a block, so the block says which meaning is meant.
+pub fn encode_sub_len_in_block(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    value: &Value,
+    orig_len: Option<usize>,
+    block: Option<usize>,
+) -> Result<Vec<u8>, EncodeError> {
+    encode_sub_len_in_block_variant(schema, rec_sig, sub_sig, value, orig_len, block, None)
+}
+
+/// Writes a subrecord that is known to be inside a block of its record's
+/// sequence, and in the block's chosen *variant*.
+///
+/// A block may choose its layout by the value of its opener — a package's
+/// `ANAM` names the activity's type, and the fields that follow differ
+/// from one type to the next — so the writer must pick the same variant the
+/// reader did.
+pub fn encode_sub_len_in_block_variant(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    value: &Value,
+    orig_len: Option<usize>,
+    block: Option<usize>,
+    variant: Option<&str>,
+) -> Result<Vec<u8>, EncodeError> {
+    // A signature may mean one thing in the record's own map and another
+    // inside a block — a lens flare's `DNAM` is a number before the flares
+    // and the flare's name after them — so the definitions that could be
+    // meant are gathered, the record's own first.
+    let mut defs: Vec<&fnv_esm::schema::SubDef> = Vec::new();
+    // The block's own meaning, when the block is known, is the meaning
+    // meant; the record's own map comes next, and the other blocks after
+    // that, so that a signature which means one thing in the record and
+    // another in a block is read the way the record read it.
+    if let Some(seq) = schema
+        .records
+        .get(rec_sig)
+        .and_then(|r| r.sequence.as_ref())
+    {
+        if let Some(bd) = block.and_then(|b| seq.blocks.get(b)) {
+            // The block's chosen variant says what the block holds, and it
+            // comes before the block's own map.
+            if let Some(v) = variant {
+                if let Some((_, vars)) = bd.variants.iter().find(|(name, _)| name == v) {
+                    if let Some(d) = vars.get(sub_sig) {
+                        defs.push(d);
+                    }
+                }
+            }
+            if let Some(d) = bd.subrecords.get(sub_sig) {
+                if !defs.iter().any(|e| std::ptr::eq(*e, d)) {
+                    defs.push(d);
+                }
+            }
+        }
+    }
+    if let Some(d) = schema.lookup(rec_sig, sub_sig) {
+        if !defs.iter().any(|e| std::ptr::eq(*e, d)) {
+            defs.push(d);
+        }
+    }
+    if let Some(seq) = schema
+        .records
+        .get(rec_sig)
+        .and_then(|r| r.sequence.as_ref())
+    {
+        for bd in &seq.blocks {
+            if let Some(d) = bd.subrecords.get(sub_sig) {
+                if !defs.iter().any(|e| std::ptr::eq(*e, d)) {
+                    defs.push(d);
+                }
+            }
+        }
+    }
+    if defs.is_empty() {
+        return Err(EncodeError::Value {
             path: fnv_util::tag_str(sub_sig),
             msg: format!(
                 "no layout for {}.{}",
                 fnv_util::tag_str(rec_sig),
                 fnv_util::tag_str(sub_sig)
             ),
-        })?;
+        });
+    }
+    // The definition that writes the value as it was read is the one meant:
+    // the one whose bytes are as many as the data took.
+    let mut last_err = None;
+    let mut first_ok = None;
+    for def in defs {
+        match encode_sub_with(schema, rec_sig, sub_sig, def, value, orig_len) {
+            Ok(bytes) => {
+                if orig_len == Some(bytes.len()) {
+                    return Ok(bytes);
+                }
+                if first_ok.is_none() {
+                    first_ok = Some(bytes);
+                }
+            }
+            Err(e) => last_err = Some(e),
+        }
+    }
+    if let Some(bytes) = first_ok {
+        return Ok(bytes);
+    }
+    Err(last_err.unwrap_or_else(|| EncodeError::Value {
+        path: fnv_util::tag_str(sub_sig),
+        msg: format!(
+            "no layout for {}.{}",
+            fnv_util::tag_str(rec_sig),
+            fnv_util::tag_str(sub_sig)
+        ),
+    }))
+}
+
+/// Writes a subrecord against one definition.
+fn encode_sub_with(
+    schema: &Schema,
+    _rec_sig: &[u8; 4],
+    _sub_sig: &[u8; 4],
+    def: &fnv_esm::schema::SubDef,
+    value: &Value,
+    orig_len: Option<usize>,
+) -> Result<Vec<u8>, EncodeError> {
     if let Some(want) = schema.fixed_size(&def.ty) {
         // A union is not fixed-size; the variant decides.
         if !matches!(schema.resolve(&def.ty), TypeDef::Union(_)) {
@@ -939,7 +1130,26 @@ pub fn encode_sub_len(
             return Ok(probe);
         }
     }
-    if let (TypeDef::ValueUnion { variants, .. }, Some(len)) = (schema.resolve(&def.ty), orig_len) {
+    if let (
+        TypeDef::ValueUnion {
+            variants,
+            name,
+            cases,
+            bits,
+            default,
+            ..
+        },
+        Some(len),
+    ) = (schema.resolve(&def.ty), orig_len)
+    {
+        // The switch says which variant the data used, and that is the one
+        // to write.
+        if let Some(idx) = switch_variant(name, cases, bits, *default) {
+            let bytes = encode_probe(schema, &variants[idx], value)?;
+            if bytes.len() == len {
+                return Ok(bytes);
+            }
+        }
         // The variant that writes as many bytes as the data took is the one
         // the data used. Each is tried and the one whose length matches
         // wins; a variant that encodes to a different length is not the

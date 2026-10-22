@@ -582,10 +582,10 @@
         "type": "i32"
        },
        "NNAM": {
-        "confidence": "documented",
+        "confidence": "measured",
         "name": "Node Name",
-        "note": "The text of the individual quest objective.",
-        "type": "zstring"
+        "note": "The text of the individual quest objective. In a localized file this is a 4-byte string ID, not text: measured, all 1,452 NNAM fields in Skyrim.esm are 4 bytes, as are all 1,452 in the Legendary Edition's Skyrim.esm.",
+        "type": "localized"
        },
        "QOBJ": {
         "confidence": "documented",

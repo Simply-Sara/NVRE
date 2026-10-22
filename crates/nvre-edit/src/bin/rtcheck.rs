@@ -36,23 +36,48 @@ fn main() {
         // rather than as text, so the decoder has to be told which it is.
         let localized = p.header.is_localized();
         visit_records(&p.nodes[1..], &mut |r, _| {
-            for s in r.subrecords().expect("subs") {
-                let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, r.header.sig);
-                ctx.localized = localized;
-                let d = fnv_esm::decode::decode_sub(&r.header.sig, &s, &mut ctx);
+            let subs = r.subrecords().expect("subs");
+            // The walk says which block each subrecord falls in, and a
+            // signature may mean one thing in the record's own map and
+            // another inside a block, so the subrecords are read in that
+            // walk rather than one by one.
+            let mut ctx = fnv_esm::decode::DecodeCtx::new(&schema, r.header.sig);
+            ctx.localized = localized;
+            nvre_edit::encode::clear_exposed();
+            fnv_esm::decode::walk_sequence(&r.header.sig, &subs, &schema, &mut ctx, |s, ctx| {
+                let d = fnv_esm::decode::decode_sub(&r.header.sig, s, ctx);
+                // A subrecord a later one switches on is remembered, as the
+                // reader remembers it.
+                if let (Some(v), Some(def)) = (
+                    &d.value,
+                    schema.lookup_in_block(&r.header.sig, &s.sig, ctx.block),
+                ) {
+                    nvre_edit::encode::expose_subrecord(&schema, def, &s.sig, v);
+                }
                 // Only subrecords the decoder actually read can round-trip; an
                 // unknown one has no layout to invert, and an errored one has no
                 // value at all.
-                if d.value.is_none() {
-                    continue;
-                }
+                let Some(value) = d.value else {
+                    return;
+                };
                 checked += 1;
-                if !nvre_edit::encode::roundtrips_localized(&schema, &r.header.sig, &s, localized) {
+                // The write says which block the subrecord is in, so the
+                // value is written back the way it was read.
+                let written = nvre_edit::encode::encode_sub_len_in_block_variant(
+                    &schema,
+                    &r.header.sig,
+                    &s.sig,
+                    &value,
+                    Some(s.data.len()),
+                    ctx.block,
+                    ctx.block_variant_name.as_deref(),
+                );
+                if !matches!(written, Ok(ref b) if *b == s.data) {
                     *gaps
                         .entry(format!("{}.{}", r.sig_str(), s.sig_str()))
                         .or_insert(0) += 1;
                 }
-            }
+            });
         });
         println!("{path}: {checked} decoded so far");
     }
