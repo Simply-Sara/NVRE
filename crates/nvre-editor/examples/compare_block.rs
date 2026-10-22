@@ -47,7 +47,7 @@ fn main() {
                 of.blocks
                     .iter()
                     .position(|ob| ob.type_name == want)
-                    .and_then(|j| of.decode_block(&old_schema, &data, j).ok())
+                    .and_then(|j| of.decode_block(j, &old_schema, &data).ok())
             });
 
             println!("{want}: new status {ns:?}");

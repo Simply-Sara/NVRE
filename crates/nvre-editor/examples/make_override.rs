@@ -1,4 +1,4 @@
-//! Produce a mod that overrides an existing record, so NVForever's `fnvtool`
+//! Produce a mod that overrides an existing record, so NVRE's own reader
 //! can check the override semantics.
 //!
 //! Run with:
@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "MyOverride.esp".into());
-    let schema_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../schemas/fnv");
+    let schema_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv");
     let schema = Schema::load_dir(&schema_dir)?;
 
     // The mod depends on the master whose records it overrides.

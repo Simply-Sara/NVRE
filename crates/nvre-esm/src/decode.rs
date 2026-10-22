@@ -584,7 +584,9 @@ fn decode_prim(p: Prim, c: &mut Cursor<'_>) -> Result<Json, String> {
                 .map_err(|oob: nvre_util::OutOfBounds| oob.to_string())?,
         ),
         Prim::Bool => Json::from(c.u8().map_err(e)? != 0),
-        Prim::FormId => Json::from(c.u32().map_err(e)?),
+        // A FormID is text, not a number: the editor shows it, the writer
+        // rewrites it, and both want it in one shape.
+        Prim::FormId => Json::String(format!("0x{:08X}", c.u32().map_err(e)?)),
         Prim::ZString => {
             let bytes = c.bytes(c.remaining()).map_err(e)?;
             Json::String(cp1252::decode_z(bytes))
@@ -740,6 +742,8 @@ fn switch_value(v: &Json) -> Option<i64> {
     match v {
         Json::Number(n) => n.as_i64(),
         Json::Object(m) => m.get("value").and_then(|v| v.as_i64()),
+        // A FormID is text, so its number is read back out of the text.
+        Json::String(s) => u32::from_str_radix(s.strip_prefix("0x")?, 16).ok().map(|v| v as i64),
         _ => None,
     }
 }
