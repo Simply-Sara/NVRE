@@ -429,6 +429,17 @@ pub fn encode_type(
                 }),
             }
         }
+        TypeDef::Repeat(elem) => {
+            // A run of the same shape: each element in turn.
+            let arr = value.as_array().ok_or_else(|| EncodeError::Value {
+                path: path.to_string(),
+                msg: "expected an array of repeated values".into(),
+            })?;
+            for v in arr {
+                encode_type(schema, elem, v, out, path)?;
+            }
+            Ok(())
+        }
         TypeDef::PeekUnion { variants, .. } => {
             // The switch word is part of the field, so the variant has to be
             // picked from the value alone. Each variant is tried in order and

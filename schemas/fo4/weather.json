@@ -12,8 +12,246 @@
      "name": "Cloud Texture Layer",
      "note": "The cloud texture's path. The signature names the layer: layer 0 is 00TX and layer n uses the character chr(ord('0')+n) followed by 0TX. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), the _00_0TX family; measured: of the cloud texture layers in Fallout4.esm, the first bytes run from 0x30 to 0x50 with 0x40, 0x48, 0x4F and 0x4B unused, so the layers xEdit does not name are read by the same rule.]",
      "type": "zstring"
+    },
+    "NAM0": {
+     "confidence": "documented",
+     "name": "Weather Colors",
+     "note": "The weather's colours, and sometimes a list of forms instead. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbStruct(NAM0, 'Weather Colors', [wbWeatherColors(...) x 19]). measured: of the 71 NAM0 subrecords in Fallout4.esm, 65 are 608 bytes, which is nineteen sets of eight colours, two are 544 bytes, which is seventeen sets, and four are 272 bytes, which is a list of sixty-eight form IDs.]",
+     "type": {
+      "union": [
+       {
+        "note": "A list of forms rather than colours.",
+        "size": 272,
+        "type": {
+         "array": "formid",
+         "count": 68
+        }
+       },
+       {
+        "note": "The colour sets, as many as the field holds.",
+        "type": {
+         "repeat": "FO4_WEATHER_COLORS"
+        }
+       }
+      ]
+     }
     }
    }
+  }
+ },
+ "types": {
+  "FO4_WEATHER_COLORS": {
+   "note": "One set of eight byte colours, the colours at eight times of the day.",
+   "struct": [
+    {
+     "name": "Sunrise",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Day",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Sunset",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "Night",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "EarlySunrise",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "LateSunrise",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "EarlySunset",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "LateSunset",
+     "type": {
+      "struct": [
+       {
+        "name": "Red",
+        "type": "u8"
+       },
+       {
+        "name": "Green",
+        "type": "u8"
+       },
+       {
+        "name": "Blue",
+        "type": "u8"
+       },
+       {
+        "name": "Unused",
+        "type": {
+         "array": "u8",
+         "count": 1
+        }
+       }
+      ]
+     }
+    }
+   ]
   }
  }
 }

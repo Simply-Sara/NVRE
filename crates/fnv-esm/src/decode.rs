@@ -429,6 +429,21 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
             };
             decode_type(&variants[idx], c, ctx)
         }
+        TypeDef::Repeat(elem) => {
+            // A run of the same shape, as many as the bytes allow.
+            let mut out = Vec::new();
+            loop {
+                if c.remaining() == 0 {
+                    break;
+                }
+                let before = c.pos;
+                out.push(decode_type(elem, c, ctx)?);
+                if c.pos == before {
+                    break;
+                }
+            }
+            Ok(Value::Array(out))
+        }
         TypeDef::Struct(fields) => {
             let mut obj = Map::new();
             // A struct's own field values are kept so a union inside it can

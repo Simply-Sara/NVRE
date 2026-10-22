@@ -284,6 +284,12 @@ pub enum TypeDef {
         /// multiplier rather than four unknown bytes.
         min_version: Option<u32>,
     },
+    /// A field read as many times as the bytes allow.
+    ///
+    /// Some subrecords hold a run of the same struct with no count: a
+    /// Fallout 4 miscellaneous object's components are one form ID and a
+    /// count each, as many of them as fit.
+    Repeat(Box<TypeDef>),
     /// A union whose variant is chosen by the field's first word, read
     /// without consuming it.
     ///
@@ -751,6 +757,8 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                     }
                 }
                 Ok(TypeDef::Flags { base, bits })
+            } else if let Some(r) = v.get("repeat") {
+                Ok(TypeDef::Repeat(Box::new(parse_type(r, ctx)?)))
             } else if let Some(vs) = v.get("union") {
                 let arr = vs
                     .as_array()
@@ -1560,6 +1568,7 @@ impl Schema {
             }
             match t {
                 TypeDef::Prim(_) | TypeDef::Enum { .. } | TypeDef::Flags { .. } => Ok(()),
+                TypeDef::Repeat(inner) => check(s, inner, depth + 1, ctx),
                 TypeDef::PeekUnion { variants, .. } => {
                     for v in variants {
                         check(s, v, depth + 1, ctx)?;
@@ -1687,6 +1696,8 @@ impl Schema {
         match self.resolve(t) {
             TypeDef::Prim(p) => p.size(),
             TypeDef::Enum { base, .. } | TypeDef::Flags { base, .. } => base.size(),
+            // A run of the same shape has no size of its own.
+            TypeDef::Repeat(_) => None,
             TypeDef::PeekUnion { variants, .. } => {
                 // The variants have different shapes, so the union has no
                 // fixed size unless they all agree.

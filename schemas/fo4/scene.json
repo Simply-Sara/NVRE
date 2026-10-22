@@ -6,26 +6,435 @@
    "merge": true,
    "name": "Scene",
    "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(SCEN)",
-   "subrecords": {
-    "CRIS": {
-     "confidence": "documented",
-     "name": "Camera",
-     "note": "The scene's camera: the field of view on the player's camera, and how fast that changes. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbStruct(CRIS, 'Camera', [...]). measured: of the nine CRIS subrecords in Fallout4.esm, seven are four bytes and hold only the field of view, and two are eight bytes and hold both.]",
-     "type": {
-      "struct": [
-       {
-        "name": "FOV On Player Camera",
+   "sequence": {
+    "blocks": {
+     "ANAM": {
+      "opener": "ANAM",
+      "order": [
+       "ANAM",
+       "NAM0",
+       "ALID",
+       "INAM",
+       "FNAM",
+       "SNAM",
+       "ENAM",
+       "SCQS",
+       "TNAM",
+       "STSC",
+       "LCEP",
+       "INTT",
+       "SSPN",
+       "CITC",
+       "PTOP",
+       "NTOP",
+       "NETO",
+       "QTOP",
+       "VENC",
+       "PLVD",
+       "JOUT",
+       "DALC",
+       "DTID",
+       "NPOT",
+       "NNGT",
+       "NNUT",
+       "NQUT",
+       "NPOS",
+       "NNGS",
+       "NNUS",
+       "NQUS",
+       "DTGT",
+       "PNAM",
+       "DATA",
+       "HTID",
+       "DMAX",
+       "DMIN",
+       "CRIS",
+       "DEMO",
+       "DEVA",
+       "ONAM"
+      ],
+      "subrecords": {
+       "ALID": {
+        "confidence": "documented",
+        "name": "Alias ID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ALID",
+        "type": "i32"
+       },
+       "ANAM": {
+        "confidence": "documented",
+        "name": "Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ANAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+        "type": {
+         "union": [
+          {
+           "size": 2,
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "Dialogue",
+             "1": "Package",
+             "2": "Timer",
+             "3": "Player Dialogue",
+             "4": "Start Scene",
+             "5": "NPC Response Dialogue",
+             "6": "Radio"
+            }
+           }
+          },
+          {
+           "size": 0,
+           "type": {
+            "struct": []
+           }
+          }
+         ]
+        }
+       },
+       "CITC": {
+        "confidence": "documented",
+        "name": "CITC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CITC",
+        "type": "u32"
+       },
+       "CRIS": {
+        "confidence": "documented",
+        "name": "Camera",
+        "note": "The scene's camera: the field of view on the player's camera, and how fast that changes. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbStruct(CRIS, 'Camera', [...]). measured: of the nine CRIS subrecords in Fallout4.esm, seven are four bytes and hold only the field of view, and two are eight bytes and hold both.]",
+        "type": {
+         "struct": [
+          {
+           "name": "FOV On Player Camera",
+           "type": "f32"
+          },
+          {
+           "name": "Rate Of Camera Change",
+           "note": "Absent when the subrecord is only four bytes long.",
+           "optional": true,
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       "DALC": {
+        "confidence": "documented",
+        "name": "Player Question Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.DALC",
+        "type": "formid"
+       },
+       "DATA": {
+        "confidence": "documented",
+        "name": "Topic",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.DATA",
+        "type": "formid"
+       },
+       "DEMO": {
+        "confidence": "documented",
+        "name": "Emotion Type",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DEMO",
+        "type": {
+         "enum": "u32",
+         "values": {
+          "0": "Neutral",
+          "1": "Anger",
+          "2": "Disgust",
+          "3": "Fear",
+          "4": "Sad",
+          "5": "Happy",
+          "6": "Surprise",
+          "7": "Puzzled"
+         }
+        }
+       },
+       "DEVA": {
+        "confidence": "documented",
+        "name": "Emotion Value",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DEVA",
+        "type": "u32"
+       },
+       "DMAX": {
+        "confidence": "documented",
+        "name": "Looping - Max",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.DMAX",
         "type": "f32"
        },
-       {
-        "name": "Rate Of Camera Change",
-        "note": "Absent when the subrecord is only four bytes long.",
-        "optional": true,
+       "DMIN": {
+        "confidence": "documented",
+        "name": "Looping - Min",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.DMIN",
         "type": "f32"
+       },
+       "DTGT": {
+        "confidence": "documented",
+        "name": "Dialogue Target Actor",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DTGT",
+        "type": "i32"
+       },
+       "DTID": {
+        "confidence": "documented",
+        "name": "NPC Headtracking",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.DTID",
+        "type": "bytes"
+       },
+       "ENAM": {
+        "confidence": "documented",
+        "name": "End Phase",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ENAM",
+        "type": "u32"
+       },
+       "FNAM": {
+        "confidence": "documented",
+        "name": "Flags",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FNAM",
+        "type": {
+         "bits": {
+          "0": "Unknown 0",
+          "1": "Unknown 1",
+          "10": "Use Dialogue Subtype",
+          "11": "Player Question Use Dialogue Subtype",
+          "12": "Keep/Clear Target on Action End",
+          "13": "Unknown 13",
+          "14": "Unknown 14",
+          "15": "Face Target",
+          "16": "Looping",
+          "17": "Headtrack Player",
+          "18": "Unknown 18",
+          "19": "Ignore For Completion",
+          "2": "Unknown 2",
+          "20": "Unknown 20",
+          "21": "Camera Speaker Target",
+          "22": "Complete Face Target",
+          "23": "Unknown 23",
+          "24": "Unknown 24",
+          "25": "Unknown 25",
+          "26": "Unknown 26",
+          "27": "NPC Positive Use Dialogue Subtype",
+          "28": "NPC Negative Use Dialogue Subtype",
+          "29": "NPC Neutral Use Dialogue Subtype",
+          "3": "Unknown 3",
+          "30": "NPC Question Use Dialogue Subtype",
+          "4": "Unknown 4",
+          "5": "Unknown 5",
+          "6": "Unknown 6",
+          "7": "Player Positive Use Dialogue Subtype / Hold Into Next Scene",
+          "8": "Player Negative Use Dialogue Subtype",
+          "9": "Player Neutral Use Dialogue Subtype"
+         },
+         "flags": "u32"
+        }
+       },
+       "HTID": {
+        "confidence": "documented",
+        "name": "HTID",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.HTID The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+        "type": {
+         "union": [
+          {
+           "size": 4,
+           "type": {
+            "union": [
+             {
+              "size": 0,
+              "type": {
+               "struct": []
+              }
+             },
+             {
+              "size": 4,
+              "type": "formid"
+             }
+            ]
+           }
+          },
+          {
+           "type": "bytes"
+          }
+         ]
+        }
+       },
+       "INAM": {
+        "confidence": "documented",
+        "name": "Index",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INAM",
+        "type": "u32"
+       },
+       "INTT": {
+        "confidence": "documented",
+        "name": "Phase Index",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INTT",
+        "type": "u16"
+       },
+       "JOUT": {
+        "confidence": "documented",
+        "name": "Player Neutral Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.JOUT",
+        "type": "formid"
+       },
+       "LCEP": {
+        "confidence": "documented",
+        "name": "Scene",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.LCEP",
+        "type": "formid"
+       },
+       "NAM0": {
+        "confidence": "documented",
+        "name": "Name",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NAM0",
+        "type": "zstring"
+       },
+       "NETO": {
+        "confidence": "documented",
+        "name": "Player Neutral Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NETO",
+        "type": "formid"
+       },
+       "NNGS": {
+        "confidence": "documented",
+        "name": "NPC Negative Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNGS",
+        "type": "formid"
+       },
+       "NNGT": {
+        "confidence": "documented",
+        "name": "NPC Negative Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNGT",
+        "type": "formid"
+       },
+       "NNUS": {
+        "confidence": "documented",
+        "name": "NPC Neutral Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNUS",
+        "type": "formid"
+       },
+       "NNUT": {
+        "confidence": "documented",
+        "name": "NPC Neutral Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNUT",
+        "type": "formid"
+       },
+       "NPOS": {
+        "confidence": "documented",
+        "name": "NPC Positive Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NPOS",
+        "type": "formid"
+       },
+       "NPOT": {
+        "confidence": "documented",
+        "name": "NPC Positive Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NPOT",
+        "type": "formid"
+       },
+       "NQUS": {
+        "confidence": "documented",
+        "name": "NPC Question Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NQUS",
+        "type": "formid"
+       },
+       "NQUT": {
+        "confidence": "documented",
+        "name": "NPC Question Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NQUT",
+        "type": "formid"
+       },
+       "NTOP": {
+        "confidence": "documented",
+        "name": "Player Negative Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NTOP",
+        "type": "formid"
+       },
+       "ONAM": {
+        "confidence": "documented",
+        "name": "Audio Output Override",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.ONAM",
+        "type": "formid"
+       },
+       "PLVD": {
+        "confidence": "documented",
+        "name": "Player Negative Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.PLVD",
+        "type": "formid"
+       },
+       "PNAM": {
+        "confidence": "documented",
+        "name": "Package",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.Packages.PNAM. The group 'Packages' repeats this subrecord.",
+        "type": "formid"
+       },
+       "PTOP": {
+        "confidence": "documented",
+        "name": "Player Positive Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.PTOP",
+        "type": "formid"
+       },
+       "QTOP": {
+        "confidence": "documented",
+        "name": "Player Question Response",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.QTOP",
+        "type": "formid"
+       },
+       "SCQS": {
+        "confidence": "documented",
+        "name": "Set Parent Quest Stage",
+        "note": "The quest stage the phase sets, and the one it clears. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbInteger(SCQS, 'Set Parent Quest Stage', itS16) in the phase group. measured: the phase's own SCQS is two bytes, and the scene's own is four, so the second word is read only when the field holds it.]",
+        "type": {
+         "struct": [
+          {
+           "name": "Set Parent Quest Stage",
+           "type": "i16"
+          },
+          {
+           "name": "On Completion",
+           "optional": true,
+           "type": "i16"
+          }
+         ]
+        }
+       },
+       "SNAM": {
+        "confidence": "documented",
+        "name": "Start Phase",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNAM The same signature appears twice in this group with different layouts, so the two are alternatives and the bytes left decide which is read.",
+        "type": {
+         "union": [
+          {
+           "size": 4,
+           "type": "u32"
+          },
+          {
+           "size": 4,
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       "SSPN": {
+        "confidence": "documented",
+        "name": "Start Phase for Scene",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SSPN",
+        "type": "zstring"
+       },
+       "STSC": {
+        "confidence": "documented",
+        "name": "STSC",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.STSC",
+        "type": "bytes"
+       },
+       "TNAM": {
+        "confidence": "documented",
+        "name": "Timer - Min Seconds",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.TNAM",
+        "type": "f32"
+       },
+       "VENC": {
+        "confidence": "documented",
+        "name": "Player Positive Dialogue Subtype",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.VENC",
+        "type": "formid"
        }
-      ]
+      }
      }
-    }
+    },
+    "end": [],
+    "start": []
    }
   }
  }

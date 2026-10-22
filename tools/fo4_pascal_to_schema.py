@@ -1430,10 +1430,13 @@ class Converter:
             return self._convert_struct(parts, ctx)
         if kind in ("wbStructs", "wbStructsSK"):
             # `wbStructs(SIG, name, kind, [members])` is one subrecord of
-            # that signature holding a struct of that kind, and
-            # `wbStructs(name, kind, [members])` is the same without a
-            # signature. Either way the layout is a struct.
-            return self._convert_struct(parts, ctx)
+            # that signature holding a *run* of structs of that kind, with no
+            # count of its own, and `wbStructs(name, kind, [members])` is the
+            # same without a signature.
+            ty, note = self._convert_struct(parts, ctx)
+            if not isinstance(ty, dict) or "struct" not in ty:
+                return ty, note
+            return {"repeat": ty}, note
         if kind in ("wbArray", "wbArrayS"):
             return self._convert_array(parts, ctx)
         if kind == "wbUnion":
