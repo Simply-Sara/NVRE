@@ -63,8 +63,7 @@ pub fn shape_props(
     for p in prop_refs {
         let Some(prop) = dec.get(p) else { continue };
         // The lighting property is the one with a glossiness; the shader
-        // property is the one with a texture set. In Skyrim, BSLightingShaderProperty
-        // holds both in the same block.
+        // property is the one with a texture set.
         if prop.get("glossiness").is_some() {
             props.glossiness = prop.num("glossiness").map(|g| g as f32);
             props.emissive = prop
@@ -77,9 +76,7 @@ pub fn shape_props(
                         c[2].as_number().unwrap_or(0.0) as f32,
                     ]
                 });
-            if let Some(a) = prop.num("alpha") {
-                props.alpha = Some(a as f32);
-            }
+            props.alpha = prop.num("alpha").map(|a| a as f32);
         }
         if prop.get("texture_set").is_some() {
             if let Some(set) = prop.ref_at("texture_set") {
@@ -93,21 +90,6 @@ pub fn shape_props(
                 if glow.is_some() {
                     props.glow = glow;
                 }
-            }
-        }
-        if let Some(flags) = prop.int("flags") {
-            let blend_enable = (flags & 0x0001) != 0;
-            let test_enable = (flags & 0x0200) != 0;
-            let threshold = prop.int("threshold").unwrap_or(0) as f32 / 255.0;
-            if test_enable && threshold > 0.0 {
-                props.alpha_mode = AlphaMode::Mask(threshold);
-            } else if blend_enable {
-                props.alpha_mode = AlphaMode::Blend;
-            }
-        }
-        if let Some(f2) = prop.int("shader_flags_2") {
-            if (f2 & 0x0010) != 0 {
-                props.double_sided = true;
             }
         }
     }

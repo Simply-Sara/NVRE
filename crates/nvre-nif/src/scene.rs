@@ -275,6 +275,9 @@ pub fn shape_summary(block: usize, type_name: &str, s: &Struct) -> ShapeSummary 
 /// including degenerate joins).
 pub fn triangle_count(s: &Struct) -> usize {
     if let Some(t) = s.list("triangles") {
+        if t.iter().any(|v| v.as_list().is_some()) {
+            return t.len();
+        }
         return t.len() / 3;
     }
     if let Some(rows) = s.list("points") {
