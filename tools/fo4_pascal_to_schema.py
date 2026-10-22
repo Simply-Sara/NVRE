@@ -411,6 +411,20 @@ class Converter:
 
     def _read_decider(self, body):
         """The switch field and the cases of one decider body."""
+        # A comparison against an empty string: `if Container.ElementEdit
+        # Values['ScriptName'] = '' then Result := 1` — the later variant
+        # when the field is empty.
+        em = re.search(
+            r"ElementEditValues\['([^']+)'\]\s*=\s*''\s*then\s*Result\s*:=\s*(\d+)",
+            body,
+        )
+        if em:
+            return {
+                "switch": em.group(1),
+                "cases": {"": int(em.group(2))},
+                "bits": [],
+                "direct": False,
+            }
         # The record's own format version decides: xEdit's
         # `wbDeciderFormVersion99` reads the record header's form version
         # and picks the later shape when it is 99 or more. It reads no
@@ -619,8 +633,12 @@ class Converter:
                 return any(has_counted_array(v, depth + 1) for v in node)
             return False
 
+        # The fragments are the types xEdit names for them, and the ones
+        # whose array is counted by the set bits of a sibling's flags.
         fragment_types = {
-            name for name, ty in self.types.items() if has_counted_array(ty)
+            name
+            for name, ty in self.types.items()
+            if "ScriptFragments" in name or has_counted_array(ty)
         }
         if not fragment_types:
             return
@@ -630,14 +648,19 @@ class Converter:
             fields = ty["struct"]
             if not fields:
                 continue
-            last = fields[-1]
-            fty = last.get("type")
-            if isinstance(fty, str) and fty in fragment_types:
-                last["optional_if_empty"] = True
-                last["note"] = (
-                    f"{last.get('note', '')} This is absent when nothing is left "
-                    f"for it."
-                ).strip()
+            for i, f in enumerate(fields):
+                fty = f.get("type")
+                if not (isinstance(fty, str) and fty in fragment_types):
+                    continue
+                # The fragments are absent when nothing is left for them, and
+                # so is everything that follows them — a quest's aliases
+                # come after its fragments and are absent with them.
+                for g in fields[i:]:
+                    g["optional_if_empty"] = True
+                    g["note"] = (
+                        f"{g.get('note', '')} This is absent when nothing is "
+                        f"left for it."
+                    ).strip()
 
     def expose_outer_switch_fields(self):
         """Mark the fields a union in one type switches on in another.

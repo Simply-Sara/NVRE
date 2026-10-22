@@ -303,7 +303,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -1387,7 +1389,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -3766,7 +3770,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -4704,7 +4710,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -7062,7 +7070,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -8275,7 +8285,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -10972,7 +10984,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -12121,7 +12135,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -14436,7 +14452,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -14868,7 +14886,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -15660,7 +15680,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -17486,7 +17508,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -18851,7 +18875,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -19234,7 +19260,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -19794,7 +19822,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -20949,7 +20979,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -22452,7 +22484,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -23925,7 +23959,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -24091,7 +24127,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -24481,7 +24519,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -24871,7 +24911,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -25261,7 +25303,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -26068,7 +26112,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -26086,7 +26132,9 @@
        },
        {
         "name": "wbScriptFragments",
+        "note": "This is absent when nothing is left for it.",
         "optional": true,
+        "optional_if_empty": true,
         "type": "wbScriptFragments"
        }
       ]
@@ -26226,7 +26274,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -26616,7 +26666,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -27006,7 +27058,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -27479,7 +27533,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -28961,7 +29017,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -28979,12 +29037,16 @@
        },
        {
         "name": "wbScriptFragmentsQuest",
+        "note": "This is absent when nothing is left for it.",
         "optional": true,
+        "optional_if_empty": true,
         "type": "wbScriptFragmentsQuest"
        },
        {
         "name": "Aliases",
+        "note": "This is absent when nothing is left for it.",
         "optional": true,
+        "optional_if_empty": true,
         "type": {
          "array": {
           "struct": [
@@ -29006,7 +29068,9 @@
              "array": {
               "struct": [
                {
+                "expose": true,
                 "name": "ScriptName",
+                "note": "The value of this field decides which variant a union takes.",
                 "type": "len_string_u16"
                },
                {
@@ -31399,7 +31463,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -33729,7 +33795,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -35800,7 +35868,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -36135,7 +36205,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -36519,7 +36591,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -36537,7 +36611,9 @@
        },
        {
         "name": "wbScriptFragments",
+        "note": "This is absent when nothing is left for it.",
         "optional": true,
+        "optional_if_empty": true,
         "type": "wbScriptFragments"
        }
       ]
@@ -36923,7 +36999,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -38734,7 +38812,9 @@
          "array": {
           "struct": [
            {
+            "expose": true,
             "name": "ScriptName",
+            "note": "The value of this field decides which variant a union takes.",
             "type": "len_string_u16"
            },
            {
@@ -47403,7 +47483,9 @@
   "wbScriptEntry": {
    "struct": [
     {
+     "expose": true,
      "name": "ScriptName",
+     "note": "The value of this field decides which variant a union takes.",
      "type": "len_string_u16"
     },
     {
@@ -47577,12 +47659,18 @@
      "type": "u16"
     },
     {
+     "expose": true,
      "name": "ScriptName",
      "type": "len_string_u16"
     },
     {
      "name": "Script",
      "type": {
+      "cases": {
+       "": 1
+      },
+      "default": 0,
+      "switch_on": "ScriptName",
       "union": [
        {
         "type": {
@@ -49190,7 +49278,9 @@
       "array": {
        "struct": [
         {
+         "expose": true,
          "name": "ScriptName",
+         "note": "The value of this field decides which variant a union takes.",
          "type": "len_string_u16"
         },
         {
@@ -49229,7 +49319,9 @@
       "array": {
        "struct": [
         {
+         "expose": true,
          "name": "ScriptName",
+         "note": "The value of this field decides which variant a union takes.",
          "type": "len_string_u16"
         },
         {
@@ -49275,7 +49367,9 @@
       "array": {
        "struct": [
         {
+         "expose": true,
          "name": "ScriptName",
+         "note": "The value of this field decides which variant a union takes.",
          "type": "len_string_u16"
         },
         {
@@ -49321,7 +49415,9 @@
       "array": {
        "struct": [
         {
+         "expose": true,
          "name": "ScriptName",
+         "note": "The value of this field decides which variant a union takes.",
          "type": "len_string_u16"
         },
         {
@@ -49339,7 +49435,9 @@
     },
     {
      "name": "wbScriptFragments",
+     "note": "This is absent when nothing is left for it.",
      "optional": true,
+     "optional_if_empty": true,
      "type": "wbScriptFragments"
     }
    ]
@@ -49365,7 +49463,9 @@
       "array": {
        "struct": [
         {
+         "expose": true,
          "name": "ScriptName",
+         "note": "The value of this field decides which variant a union takes.",
          "type": "len_string_u16"
         },
         {
@@ -49383,12 +49483,16 @@
     },
     {
      "name": "wbScriptFragmentsQuest",
+     "note": "This is absent when nothing is left for it.",
      "optional": true,
+     "optional_if_empty": true,
      "type": "wbScriptFragmentsQuest"
     },
     {
      "name": "Aliases",
+     "note": "This is absent when nothing is left for it.",
      "optional": true,
+     "optional_if_empty": true,
      "type": {
       "array": {
        "struct": [
@@ -49410,7 +49514,9 @@
           "array": {
            "struct": [
             {
+             "expose": true,
              "name": "ScriptName",
+             "note": "The value of this field decides which variant a union takes.",
              "type": "len_string_u16"
             },
             {
@@ -49454,7 +49560,9 @@
       "array": {
        "struct": [
         {
+         "expose": true,
          "name": "ScriptName",
+         "note": "The value of this field decides which variant a union takes.",
          "type": "len_string_u16"
         },
         {
