@@ -45,19 +45,24 @@ measure of that:
 | game | subrecords | coverage |
 |---|---|---|
 | Fallout: New Vegas | 2,321,456 | 100.00% |
-| Fallout 3 | 2,634,084 | 36.99% |
+| Fallout 3 | 3,484,461 | 100.00% |
 | Skyrim | 4,130,941 | 100.00% |
 | Skyrim Special Edition | 4,131,332 | 100.00% |
 
-Fallout 3's is a gap in the *schema*, not in the reader: the FO3 layer
-does not describe every record the shipped masters carry. The reader and
-the fork it replaced report the same number to the last subrecord.
+Fallout 3 is read as the base, the Fallout family and then the Fallout 3
+version — the chain, not one layer. Loaded as a single layer it explains
+36.99% of its subrecords, which is a reminder that a layer is a layer and
+not a game.
 
 Measure it with:
 
 ```bash
 cargo build -p nvre-editor --bin esmcoverage
 ./target/debug/esmcoverage schemas/fnv "<fnv-data>/FalloutNV.esm"
+
+# A game that needs its family and its version:
+./target/debug/esmcoverage --overlay schemas/base --overlay schemas/fnv \
+    --overlay schemas/fo3 x "<fo3-data>/Fallout3.esm"
 ```
 
 The NIF reader is measured the same way, and the measure is stronger: a
@@ -89,8 +94,6 @@ NVRE_DATA="<game-data>" ./target/debug/nvre-editor --check --plugin "<game-data>
 
 ## What is left
 
-- **Fallout 3's schema is incomplete.** 36.99% of its subrecords are
-  described. The reader is not the problem; the FO3 layer is.
 - **Skyrim Special Edition's archives are not read by the editor.** NVRE's
   own `bsa105` crate reads them — all 23 of the shipped ones, 172,961
   files — but the editor's VFS reads v104 only, so Skyrim SE opens with
