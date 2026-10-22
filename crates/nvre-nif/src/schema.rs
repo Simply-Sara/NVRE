@@ -130,8 +130,16 @@ pub enum Prim {
 
 impl Prim {
     /// The primitive a name names, if it names one.
+    ///
+    /// A name may be written with underscores or without them: the schemas
+    /// write `byte_color4` and `half_vec2`, and the names are the same
+    /// either way.
     pub fn parse(s: &str) -> Option<Prim> {
-        Some(match s {
+        // A name may be written with underscores or without them: the
+        // schemas write `byte_color4` and `half_vec2`, and the names are
+        // the same either way.
+        let name = s.replace('_', "");
+        Some(match name.as_str() {
             "u8" => Prim::U8,
             "i8" => Prim::I8,
             "u16" => Prim::U16,

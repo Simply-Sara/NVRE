@@ -34,7 +34,7 @@ pub mod scene;
 pub mod schema;
 pub mod value;
 
-pub use file::{NifFile, RawBlock};
+pub use file::{BlockStatus, NifFile, RawBlock};
 pub use header::{Header, NifError};
 pub use schema::Schema;
 pub use value::{Struct, Value};

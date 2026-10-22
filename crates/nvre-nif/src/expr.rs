@@ -77,6 +77,8 @@ enum Node {
     Neg(Box<Node>),
     /// A "not".
     Not(Box<Node>),
+    /// A bitwise "not".
+    BitNot(Box<Node>),
 }
 
 /// A binary operator.
@@ -92,6 +94,9 @@ enum BinOp {
     Ge,
     BitOr,
     BitAnd,
+    BitXor,
+    Shl,
+    Shr,
     Add,
     Sub,
     Mul,
@@ -108,6 +113,8 @@ impl BinOp {
             BinOp::Eq | BinOp::Ne => 3,
             BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge => 4,
             BinOp::BitOr | BinOp::BitAnd => 5,
+            BinOp::BitXor => 4,
+            BinOp::Shl | BinOp::Shr => 6,
             BinOp::Add | BinOp::Sub => 6,
             BinOp::Mul | BinOp::Div | BinOp::Rem => 7,
         }
@@ -175,6 +182,10 @@ impl Node {
                 None => Value::Bool(false),
             },
             Node::Not(x) => Value::Bool(!x.eval(e).truthy()),
+            Node::BitNot(x) => match x.eval(e) {
+                Value::Num(n) => Value::Num(!(n as i64) as f64),
+                other => Value::Bool(!other.truthy()),
+            },
             Node::Binary(op, a, b) => {
                 let (op, a, b) = (*op, a.eval(e), b.eval(e));
                 match op {
@@ -220,13 +231,17 @@ impl BinOp {
         match self {
             Eq => Value::Bool(a == b),
             Ne => Value::Bool(a != b),
-            BitOr | BitAnd | Add | Sub | Mul | Div | Rem | Lt | Le | Gt | Ge => {
+            BitOr | BitAnd | BitXor | Shl | Shr | Add | Sub | Mul | Div | Rem | Lt | Le
+            | Gt | Ge => {
                 let (Some(x), Some(y)) = (a.as_number(), b.as_number()) else {
                     return Value::Bool(false);
                 };
                 match self {
                     BitOr => Value::Num((x as i64 | y as i64) as f64),
                     BitAnd => Value::Num((x as i64 & y as i64) as f64),
+                    BitXor => Value::Num((x as i64 ^ y as i64) as f64),
+                    Shl => Value::Num((x as i64).wrapping_shl(y as u32) as f64),
+                    Shr => Value::Num((x as i64).wrapping_shr(y as u32) as f64),
                     Add => Value::Num(x + y),
                     Sub => Value::Num(x - y),
                     Mul => Value::Num(x * y),
@@ -472,12 +487,42 @@ impl Parser<'_> {
         Ok(left)
     }
 
+    /// The shift level.
+    ///
+    /// A shift binds tighter than the bitwise operators, so `a & b << 1` is
+    /// `a & (b << 1)`.
+    fn parse_shift(&mut self) -> Result<Node, String> {
+        let mut left = self.parse_additive()?;
+        loop {
+            let op = if self.eat("<<") {
+                BinOp::Shl
+            } else if self.eat(">>") {
+                BinOp::Shr
+            } else {
+                break;
+            };
+            let right = self.parse_additive()?;
+            left = Node::Binary(op, Box::new(left), Box::new(right));
+        }
+        Ok(left)
+    }
+
+    /// The exclusive-or level.
+    fn parse_xor(&mut self) -> Result<Node, String> {
+        let mut left = self.parse_shift()?;
+        while self.eat_single("^") {
+            let right = self.parse_shift()?;
+            left = Node::Binary(BinOp::BitXor, Box::new(left), Box::new(right));
+        }
+        Ok(left)
+    }
+
     /// The bitwise level.
     ///
     /// A single `|` or `&` is only a bitwise operator when it is not the
     /// start of `||` or `&&`.
     fn parse_bitwise(&mut self) -> Result<Node, String> {
-        let mut left = self.parse_additive()?;
+        let mut left = self.parse_xor()?;
         loop {
             let op = if self.eat_single("|") {
                 BinOp::BitOr
@@ -486,7 +531,7 @@ impl Parser<'_> {
             } else {
                 break;
             };
-            let right = self.parse_additive()?;
+            let right = self.parse_xor()?;
             left = Node::Binary(op, Box::new(left), Box::new(right));
         }
         Ok(left)
@@ -536,6 +581,9 @@ impl Parser<'_> {
         }
         if self.eat("-") {
             return Ok(Node::Neg(Box::new(self.parse_unary()?)));
+        }
+        if self.eat("~") {
+            return Ok(Node::BitNot(Box::new(self.parse_unary()?)));
         }
         self.parse_primary()
     }

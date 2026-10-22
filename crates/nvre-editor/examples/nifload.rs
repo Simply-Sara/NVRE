@@ -3,7 +3,7 @@
 //! The probe measures the schema against raw files. This asks the question
 //! the editor actually asks: given a game, can its own VFS and NIF schema
 //! read a mesh and give back a scene?
-use fnv_nif::scene;
+use nvre_nif::scene;
 use nvre_editor::game::ALL;
 
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
     for p in data.vfs.paths(|p| p.to_lowercase().ends_with(".nif")) {
         let Some(bytes) = data.read(&p) else { continue };
         nifs += 1;
-        let Ok(f) = fnv_nif::NifFile::parse(&bytes, Some(&data.schema)) else {
+        let Ok(f) = nvre_nif::NifFile::parse(&bytes, Some(&data.schema)) else {
             continue;
         };
         parsed += 1;

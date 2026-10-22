@@ -483,29 +483,31 @@ impl GameProfile {
     /// layouts its versions share, and a version holds its own differences.
     /// A layer *replaces* the blocks it names, so a version's file carries a
     /// complete block rather than a patch to one.
-    pub fn load_nif_schema(&self) -> Result<fnv_nif::Schema, String> {
+    pub fn load_nif_schema(&self) -> Result<nvre_nif::Schema, String> {
         let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/nif/base");
-        let mut chain: Vec<PathBuf> = Vec::new();
+        let mut chain: Vec<String> = Vec::new();
         if let Some(family) = self.nif_schema_dir(self.nif_schema_family_dir) {
-            chain.push(family);
+            chain.push(family.to_string_lossy().into_owned());
         }
         if let Some(version) = self.nif_schema_dir(self.nif_schema_version_dir) {
-            chain.push(version);
+            chain.push(version.to_string_lossy().into_owned());
         }
-        fnv_nif::Schema::load_game(&base, chain).map_err(|e| e.to_string())
+        nvre_nif::Schema::load_game(&base, &chain).map_err(|e| e.to_string())
     }
 
     /// One of the repo's NIF schema directories, by its name.
+    ///
+    /// A layer that is not there is not a layer: the base holds what every
+    /// game shares, and a game with no layer of its own reads the base
+    /// alone.
     fn nif_schema_dir(&self, name: &str) -> Option<PathBuf> {
         if name.is_empty() {
-            None
-        } else {
-            Some(
-                Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join("../../schemas/nif")
-                    .join(name),
-            )
+            return None;
         }
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../schemas/nif")
+            .join(name);
+        dir.is_dir().then_some(dir)
     }
 
     /// The directory holding the layouts this game's family shares.
