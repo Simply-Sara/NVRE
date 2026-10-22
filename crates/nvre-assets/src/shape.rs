@@ -49,10 +49,22 @@ pub fn shape_props(
     let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
         return props;
     };
-    for p in shape.refs("properties").unwrap_or_default() {
+    let mut prop_refs: Vec<i32> = shape.refs("properties").unwrap_or_default();
+    if let Some(sp) = shape.ref_at("shader_property") {
+        if sp >= 0 {
+            prop_refs.push(sp);
+        }
+    }
+    if let Some(ap) = shape.ref_at("alpha_property") {
+        if ap >= 0 {
+            prop_refs.push(ap);
+        }
+    }
+    for p in prop_refs {
         let Some(prop) = dec.get(p) else { continue };
         // The lighting property is the one with a glossiness; the shader
-        // property is the one with a texture set.
+        // property is the one with a texture set. In Skyrim, BSLightingShaderProperty
+        // holds both in the same block.
         if prop.get("glossiness").is_some() {
             props.glossiness = prop.num("glossiness").map(|g| g as f32);
             props.emissive = prop
@@ -65,13 +77,37 @@ pub fn shape_props(
                         c[2].as_number().unwrap_or(0.0) as f32,
                     ]
                 });
-            props.alpha = prop.num("alpha").map(|a| a as f32);
-        } else if prop.get("texture_set").is_some() {
+            if let Some(a) = prop.num("alpha") {
+                props.alpha = Some(a as f32);
+            }
+        }
+        if prop.get("texture_set").is_some() {
             if let Some(set) = prop.ref_at("texture_set") {
                 let (diffuse, normal, glow) = texture_set(dec, set);
-                props.texture = diffuse;
-                props.normal_texture = normal;
-                props.glow = glow;
+                if diffuse.is_some() {
+                    props.texture = diffuse;
+                }
+                if normal.is_some() {
+                    props.normal_texture = normal;
+                }
+                if glow.is_some() {
+                    props.glow = glow;
+                }
+            }
+        }
+        if let Some(flags) = prop.int("flags") {
+            let blend_enable = (flags & 0x0001) != 0;
+            let test_enable = (flags & 0x0200) != 0;
+            let threshold = prop.int("threshold").unwrap_or(0) as f32 / 255.0;
+            if test_enable && threshold > 0.0 {
+                props.alpha_mode = AlphaMode::Mask(threshold);
+            } else if blend_enable {
+                props.alpha_mode = AlphaMode::Blend;
+            }
+        }
+        if let Some(f2) = prop.int("shader_flags_2") {
+            if (f2 & 0x0010) != 0 {
+                props.double_sided = true;
             }
         }
     }

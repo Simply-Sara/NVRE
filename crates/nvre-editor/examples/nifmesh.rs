@@ -22,10 +22,15 @@ fn main() {
             meshes += 1;
             verts += md.positions.len() as u64;
             tris += md.triangles.len() as u64;
+            if meshes >= limit as u64 {
+                break;
+            }
+        }
+        if meshes >= limit as u64 {
+            break;
         }
     }
     println!(
         "{game_id}: {meshes} meshes with geometry, {verts} vertices, {tris} triangles"
     );
-    let _ = limit;
 }

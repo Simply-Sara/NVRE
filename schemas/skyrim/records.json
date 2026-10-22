@@ -215,7 +215,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The ground model.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "OBND": {
      "confidence": "documented",

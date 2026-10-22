@@ -162,9 +162,9 @@
     },
     "MODL": {
      "confidence": "documented",
-     "name": "Model",
-     "note": "The armour's model, with the MODB, MODT, MODS and MODD fields.",
-     "type": "bytes"
+     "name": "Armature",
+     "note": "ARMA record FormID.",
+     "type": "formid"
     },
     "OBND": {
      "confidence": "documented",
@@ -1285,7 +1285,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The static's model, with the MODB, MODT, MODS and MODD fields.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "MODS": {
      "confidence": "documented",
@@ -1374,7 +1374,7 @@
      "confidence": "documented",
      "name": "Cloud Model",
      "note": "The cloud model, with an optional MODT.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "NAM0": {
      "confidence": "observed",

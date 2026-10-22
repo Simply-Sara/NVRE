@@ -270,7 +270,27 @@
      "confidence": "documented",
      "name": "Action Type",
      "note": "The action's type: 0 = Dialogue, 1 = Package, 2 = Timer. It opens an action block.",
-     "type": "u16"
+     "type": {
+      "union": [
+       {
+        "name": "Type",
+        "size": 2,
+        "type": {
+         "enum": "u16",
+         "values": {
+          "0": "Dialogue",
+          "1": "Package",
+          "2": "Timer"
+         }
+        }
+       },
+       {
+        "name": "Empty",
+        "size": 0,
+        "type": "bytes"
+       }
+      ]
+     }
     },
     "CTDA": {
      "confidence": "documented",

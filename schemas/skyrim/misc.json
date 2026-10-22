@@ -61,7 +61,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODB, MODT, MODS and MODD fields.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "MODS": {
      "confidence": "documented",

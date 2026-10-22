@@ -29,7 +29,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODT and MODS fields.",
-     "type": "bytes"
+     "type": "zstring"
     }
    }
   },
@@ -67,7 +67,7 @@
      "confidence": "documented",
      "name": "Model",
      "note": "The model, with the MODT and MODS fields.",
-     "type": "bytes"
+     "type": "zstring"
     },
     "OBND": {
      "confidence": "documented",

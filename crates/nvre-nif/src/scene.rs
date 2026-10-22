@@ -109,10 +109,11 @@ pub struct SceneObject {
 }
 
 /// The blocks that are a shape.
-pub const SHAPE_TYPES: [&str; 4] = [
+pub const SHAPE_TYPES: [&str; 5] = [
     "NiTriShape",
     "NiTriStrips",
     "BSSegmentedTriShape",
+    "BSLODTriShape",
     // The Special Edition's shape block: it holds its vertices in the shape
     // itself, in a packed format, where the original edition keeps them in
     // a separate block.
@@ -290,6 +291,22 @@ pub fn triangle_count(s: &Struct) -> usize {
 /// triangles are dropped.
 pub fn triangle_indices(s: &Struct) -> Vec<[u32; 3]> {
     if let Some(t) = s.list("triangles") {
+        if t.iter().any(|v| v.as_list().is_some()) {
+            return t
+                .iter()
+                .filter_map(|v| {
+                    let inner = v.as_list()?;
+                    if inner.len() < 3 {
+                        return None;
+                    }
+                    Some([
+                        inner[0].as_int().unwrap_or(0) as u32,
+                        inner[1].as_int().unwrap_or(0) as u32,
+                        inner[2].as_int().unwrap_or(0) as u32,
+                    ])
+                })
+                .collect();
+        }
         return t
             .chunks_exact(3)
             .map(|c| {
