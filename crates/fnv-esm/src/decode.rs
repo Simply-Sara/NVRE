@@ -844,6 +844,10 @@ pub fn walk_sequence(
         .get(rec_sig)
         .and_then(|rd| rd.sequence.as_ref());
     let mut block: Option<usize> = None;
+    // The signatures the record's own map has already answered for, where a
+    // block opens on the same signature: a lens flare's `DNAM` is a number
+    // before the flares and the flare's name after them.
+    let mut flat_first: std::collections::HashSet<[u8; 4]> = Default::default();
     for s in subs {
         // Whether the current block expects this signature, which is what
         // tells a block's own field from a new block's opener.
@@ -860,11 +864,37 @@ pub fn walk_sequence(
                 .map(|bd| bd.order.contains(&s.sig))
                 .unwrap_or(false);
             if !expected_here {
-                if let Some(i) = seq.blocks.iter().position(|b| b.opener == s.sig) {
-                    block = Some(i);
-                    // A new block starts with no variant chosen; the opener's
-                    // value picks one below.
-                    ctx.block_variant = None;
+                if let Some(i) = seq
+                    .blocks
+                    .iter()
+                    .position(|b| b.openers.contains(&s.sig))
+                {
+                    // Whether the record's own meaning for this signature
+                    // fits the data at hand.
+                    let flat_fits = schema
+                        .records
+                        .get(rec_sig)
+                        .and_then(|rd| rd.subrecords.get(&s.sig))
+                        .and_then(|d| schema.fixed_size(&d.ty))
+                        .map(|n| n == s.data.len())
+                        .unwrap_or(false);
+                    // A signature may mean one thing in the record's own map
+                    // and another in a block: a lens flare's `DNAM` is a
+                    // number before the flares and the flare's name after
+                    // them. The record's own meaning comes first, so the
+                    // block opens on the *next* one.
+                    // A signature may mean one thing in the record's own map
+                    // and another in a block: a lens flare's `DNAM` is a
+                    // number before the flares and the flare's name after
+                    // them. The record's own meaning is used when the data
+                    // fits it, and the block opens on the flare's name.
+                    let own_first = seq.blocks[i].own_first && flat_fits;
+                    if !own_first {
+                        block = Some(i);
+                        // A new block starts with no variant chosen; the
+                        // opener's value picks one below.
+                        ctx.block_variant = None;
+                    }
                 }
             }
         }
@@ -874,7 +904,7 @@ pub fn walk_sequence(
         // against that type's definition.
         let opens_a_block = block
             .and_then(|b| seq.and_then(|q| q.blocks.get(b)))
-            .map(|bd| bd.opener == s.sig)
+            .map(|bd| bd.openers.contains(&s.sig))
             .unwrap_or(false)
             && !expected_here;
         if opens_a_block {
@@ -892,6 +922,15 @@ pub fn walk_sequence(
             }
         }
         ctx.block = block;
+        // A signature the record's own map answered for, and that a block
+        // also opens, is remembered: the block opens on the next one.
+        if block.is_none() {
+            if let Some(rd) = schema.records.get(rec_sig) {
+                if rd.subrecords.contains_key(&s.sig) {
+                    flat_first.insert(s.sig);
+                }
+            }
+        }
         f(s, ctx);
     }
 }

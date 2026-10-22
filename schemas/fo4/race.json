@@ -1,0 +1,92 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "RACE": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Race",
+   "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(RACE)",
+   "sequence": {
+    "blocks": {
+     "SGNM": {
+      "opener": "SGNM",
+      "openers": [
+       "STKD",
+       "SAKD",
+       "SGNM"
+      ],
+      "order": [
+       "SGNM",
+       "SAPT",
+       "SRAF",
+       "SAKD",
+       "STKD"
+      ],
+      "subrecords": {
+       "SAKD": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.Actor Keywords.SAKD. The group 'Actor Keywords' repeats this subrecord.",
+        "type": "formid"
+       },
+       "SAPT": {
+        "confidence": "documented",
+        "name": "Path",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SAPT. The group 'Animation Paths' repeats this subrecord.",
+        "type": "zstring"
+       },
+       "SGNM": {
+        "confidence": "documented",
+        "name": "Behaviour Graph",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SGNM",
+        "type": "zstring"
+       },
+       "SRAF": {
+        "confidence": "documented",
+        "name": "Flags",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.SRAF",
+        "type": {
+         "struct": [
+          {
+           "name": "Role",
+           "optional": true,
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "MT",
+             "1": "Weapon",
+             "2": "Furniture",
+             "3": "Idle",
+             "4": "Pipboy"
+            }
+           }
+          },
+          {
+           "name": "Perspective",
+           "optional": true,
+           "type": {
+            "enum": "u16",
+            "values": {
+             "0": "3rd",
+             "1": "1st"
+            }
+           }
+          }
+         ]
+        }
+       },
+       "STKD": {
+        "confidence": "documented",
+        "name": "Keyword",
+        "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.Target Keywords.STKD. The group 'Target Keywords' repeats this subrecord.",
+        "type": "formid"
+       }
+      }
+     }
+    },
+    "end": [],
+    "start": []
+   }
+  }
+ }
+}

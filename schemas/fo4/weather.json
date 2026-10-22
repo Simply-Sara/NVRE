@@ -1,0 +1,19 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "WTHR": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Weather",
+   "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(WTHR)",
+   "subrecords": {
+    "*0TX": {
+     "confidence": "documented",
+     "name": "Cloud Texture Layer",
+     "note": "The cloud texture's path. The signature names the layer: layer 0 is 00TX and layer n uses the character chr(ord('0')+n) followed by 0TX. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), the _00_0TX family; measured: of the cloud texture layers in Fallout4.esm, the first bytes run from 0x30 to 0x50 with 0x40, 0x48, 0x4F and 0x4B unused, so the layers xEdit does not name are read by the same rule.]",
+     "type": "zstring"
+    }
+   }
+  }
+ }
+}

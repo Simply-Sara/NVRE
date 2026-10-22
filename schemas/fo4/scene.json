@@ -1,0 +1,32 @@
+{
+ "format": "fnv.schema/1",
+ "records": {
+  "SCEN": {
+   "confidence": "documented",
+   "merge": true,
+   "name": "Scene",
+   "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbRecord(SCEN)",
+   "subrecords": {
+    "CRIS": {
+     "confidence": "documented",
+     "name": "Camera",
+     "note": "The scene's camera: the field of view on the player's camera, and how fast that changes. [documented: xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), wbStruct(CRIS, 'Camera', [...]). measured: of the nine CRIS subrecords in Fallout4.esm, seven are four bytes and hold only the field of view, and two are eight bytes and hold both.]",
+     "type": {
+      "struct": [
+       {
+        "name": "FOV On Player Camera",
+        "type": "f32"
+       },
+       {
+        "name": "Rate Of Camera Change",
+        "note": "Absent when the subrecord is only four bytes long.",
+        "optional": true,
+        "type": "f32"
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}

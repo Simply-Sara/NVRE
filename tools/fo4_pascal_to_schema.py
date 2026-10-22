@@ -2188,6 +2188,21 @@ class Converter:
             rec["header_flags"] = header_flags
         rec["subrecords"] = flat
         if blocks:
+            # A signature that a block opens and that the record also has of
+            # its own comes first: a lens flare's `DNAM` is the record's own
+            # number before the flares and the flare's name after them.
+            openers = set()
+            for b in blocks.values():
+                opener = b.get("opener")
+                if opener:
+                    openers.add(opener)
+            for opener in openers:
+                if opener in flat:
+                    # The record's own meaning for the signature comes
+                    # first, and the block opens on the next one.
+                    for b in blocks.values():
+                        if b.get("opener") == opener:
+                            b["own_first"] = True
             rec["sequence"] = {"start": [], "blocks": blocks, "end": []}
         self._expose_switch_fields(rec)
         return rec

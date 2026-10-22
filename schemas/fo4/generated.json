@@ -16415,6 +16415,7 @@
        "FNAM",
        "LFSD"
       ],
+      "own_first": true,
       "subrecords": {
        "DNAM": {
         "confidence": "documented",
@@ -29284,6 +29285,7 @@
        "MODS",
        "MODF"
       ],
+      "own_first": true,
       "subrecords": {
        "FNAM": {
         "confidence": "documented",
@@ -29357,6 +29359,7 @@
        "MODS",
        "MODF"
       ],
+      "own_first": true,
       "subrecords": {
        "MNAM": {
         "confidence": "documented",

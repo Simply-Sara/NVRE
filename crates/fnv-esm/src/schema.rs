@@ -378,6 +378,19 @@ pub struct BlockDef {
     pub name: String,
     /// The signature that opens a block of this kind.
     pub opener: [u8; 4],
+    /// The other signatures that open a block of this kind.
+    ///
+    /// A group's first element is not always the same: a race's subgraph
+    /// data may start with its target keywords or with its behaviour
+    /// graph, and either opens the group.
+    pub openers: Vec<[u8; 4]>,
+    /// The record's own meaning for the opening signature comes first, and
+    /// the block opens on the *next* one.
+    ///
+    /// A lens flare's `DNAM` is a number before the flares and the flare's
+    /// name after them, so the block that holds the flares opens at the
+    /// second `DNAM`.
+    pub own_first: bool,
     /// The subrecords this block contains, and their layouts. A signature may
     /// appear in several blocks with a different layout in each.
     pub subrecords: HashMap<[u8; 4], SubDef>,
@@ -1058,9 +1071,27 @@ fn parse_sequence(v: Option<&Value>, ctx: &str) -> Result<Option<SequenceDef>, S
                     variants.push((v.clone(), vsubs));
                 }
             }
+            let opener_sig = sig4(opener, &bctx)?;
+            let mut openers = vec![opener_sig];
+            if let Some(Value::Array(os)) = b.get("openers") {
+                for o in os {
+                    let o = o
+                        .as_str()
+                        .ok_or_else(|| SchemaError(format!("{bctx}: opener must be a string")))?;
+                    let o = sig4(o, &bctx)?;
+                    if !openers.contains(&o) {
+                        openers.push(o);
+                    }
+                }
+            }
             blocks.push(BlockDef {
                 name: name.clone(),
-                opener: sig4(opener, &bctx)?,
+                opener: opener_sig,
+                openers,
+                own_first: b
+                    .get("own_first")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
                 subrecords: subs,
                 order: sigs_of(b, "order", &bctx)?,
                 variants,
@@ -1453,7 +1484,22 @@ impl Schema {
                     // own fields replace their counterparts.
                     match self.records.get_mut(&k) {
                         Some(prev) => {
-                            prev.subrecords.extend(rd.subrecords);
+                            prev.subrecords.extend(rd.subrecords.clone());
+                            // A signature may mean one thing in the record's
+                            // own map and another in a block of its sequence,
+                            // so an overlay's definition replaces the one in
+                            // the blocks as well.
+                            if !rd.subrecords.is_empty() {
+                                if let Some(seq) = prev.sequence.as_mut() {
+                                    for block in &mut seq.blocks {
+                                        for (sig, sub) in &rd.subrecords {
+                                            if let Some(old) = block.subrecords.get_mut(sig) {
+                                                *old = sub.clone();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             prev.wildcards.extend(rd.wildcards);
                             if rd.header_flags.is_empty() {
                                 // keep the shadowed record's header flags
@@ -1461,8 +1507,28 @@ impl Schema {
                                 prev.header_flags = rd.header_flags;
                                 prev.header_flags_confidence = rd.header_flags_confidence;
                             }
-                            if rd.sequence.is_some() {
-                                prev.sequence = rd.sequence;
+                            if let Some(seq) = rd.sequence.as_ref() {
+                                // A block of the shadowed record's sequence
+                                // may be replaced by one of the same name, so
+                                // an overlay can correct one group without
+                                // restating the whole sequence.
+                                if let Some(prev_seq) = prev.sequence.as_mut() {
+                                    for block in &mut prev_seq.blocks {
+                                        if let Some(new) =
+                                            seq.blocks.iter().find(|b| b.name == block.name)
+                                        {
+                                            *block = new.clone();
+                                        }
+                                    }
+                                    for block in seq.blocks.iter() {
+                                        if !prev_seq.blocks.iter().any(|b| b.name == block.name)
+                                        {
+                                            prev_seq.blocks.push(block.clone());
+                                        }
+                                    }
+                                } else {
+                                    prev.sequence = rd.sequence.clone();
+                                }
                             }
                             if !rd.name.is_empty() {
                                 prev.name = rd.name;
