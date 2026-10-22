@@ -3,7 +3,7 @@
 //!
 //! The editor's own state lives in [`crate::session`]; this module only turns it
 //! into entities and reads clicks back. Meshes are spawned through NVRE's
-//! `nvf-assets` layer, so a reference looks the way it does in the game rather
+//! `nvre-assets` layer, so a reference looks the way it does in the game rather
 //! than as a placeholder box.
 //!
 //! Game space is Z-up with one unit ≈ 4.19 cm; Bevy space is Y-up. The conversion
@@ -23,7 +23,7 @@ use nvre_world::land::{
     land_texture, load_land, Land, LandParts, DEFAULT_DIFFUSE, QUAD_SIDE, SIDE, SPACING,
 };
 use nvre_world::transform::ref_rotation;
-use nvf_assets::model::ModelCtx;
+use nvre_assets::model::ModelCtx;
 use std::collections::{HashMap, HashSet};
 
 /// Marks the viewport's orbit camera.
@@ -573,7 +573,7 @@ impl SkipCounts {
 pub fn flat_material_diagnostic(
     mut commands: Commands,
     mut materials: ResMut<Assets<bevy::pbr::StandardMaterial>>,
-    nif_materials: Query<Entity, With<MeshMaterial3d<nvf_assets::NifMaterial>>>,
+    nif_materials: Query<Entity, With<MeshMaterial3d<nvre_assets::NifMaterial>>>,
     mut done: Local<bool>,
 ) {
     if *done || std::env::var("NVRE_FLAT_MATERIAL").is_err() {
@@ -591,7 +591,7 @@ pub fn flat_material_diagnostic(
     for e in &nif_materials {
         commands
             .entity(e)
-            .remove::<MeshMaterial3d<nvf_assets::NifMaterial>>()
+            .remove::<MeshMaterial3d<nvre_assets::NifMaterial>>()
             .insert(MeshMaterial3d(flat.clone()));
         swapped += 1;
     }
@@ -838,7 +838,7 @@ fn spawn_worldspace_terrain(
         return;
     };
 
-    let mut mat_cache: HashMap<String, Handle<nvf_assets::nif_material::NifMaterial>> =
+    let mut mat_cache: HashMap<String, Handle<nvre_assets::nif_material::NifMaterial>> =
         HashMap::new();
 
     let cells_to_load: Vec<((i32, i32), u32)> = if full_terrain || local_radius < 0 {
@@ -890,7 +890,7 @@ fn spawn_single_cell_terrain(
     commands: &mut Commands,
     models: &mut ModelCtx,
     spawned: &mut Spawned,
-    mat_cache: &mut HashMap<String, Handle<nvf_assets::nif_material::NifMaterial>>,
+    mat_cache: &mut HashMap<String, Handle<nvre_assets::nif_material::NifMaterial>>,
     land_id: u32,
     grid: (i32, i32),
 ) {
@@ -943,7 +943,7 @@ fn spawn_single_cell_terrain(
                     cull_mode: None,
                     ..default()
                 };
-                let h = models.materials.add(nvf_assets::nif_material(mat));
+                let h = models.materials.add(nvre_assets::nif_material(mat));
                 mat_cache.insert(tex_file, h.clone());
                 h
             }

@@ -96,7 +96,7 @@ to 0.20 means going to `bevy_egui` 0.43 as well.
    order is wrong. The mesh builder and the model cache after.
 2. **The editor on Bevy 0.20.** The prelude changes, the egui version, the
    camera's transmission component, and whatever the compile turns up.
-3. **The swap.** The editor's `nvf_assets` dependency moves from upstream's
+3. **The swap.** The editor's `nvre_assets` dependency moves from upstream's
    to the new crate, and the new crate is measured against the old one on
    the same meshes: the FNV control (67,172 meshes, 38.5 million vertices)
    and the Skyrim LE control (80,623 meshes, 35.6 million vertices).

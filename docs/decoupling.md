@@ -13,7 +13,7 @@ tree has no reference to it outside the history of a comment.
 | `fnv-world` (a fork) | `crates/nvre-world` |
 | `fnv-vfs` (a fork) | `crates/nvre-vfs` |
 | `fnv-dds` (a fork) | `crates/nvre-dds` |
-| `nvf-assets` (upstream, by git) | `crates/nvf-assets` |
+| `nvf-assets` (upstream, by git) | `crates/nvre-assets` |
 | the `NVForever` submodule | nothing — it is gone |
 
 The two crates that are forks of an upstream crate rather than new

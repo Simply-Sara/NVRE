@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn loose_files_and_order() {
-        let dir = std::env::temp_dir().join(format!("nvf-vfs-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nvre-vfs-test-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("Meshes/Sub")).unwrap();
         std::fs::write(dir.join("Meshes/Sub/A.nif"), b"loose").unwrap();
         for n in ["Fallout - Meshes.bsa", "Update.bsa", "DeadMoney - Main.bsa", "DeadMoney - Sounds.bsa", "Other.bsa"] {
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn mod_archives_follow_their_plugins() {
-        let dir = std::env::temp_dir().join(format!("nvf-vfs-mods-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("nvre-vfs-mods-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         for n in ["Fallout - Meshes.bsa", "Update.bsa", "DeadMoney - Main.bsa", "MyMod.bsa", "MyMod - Textures.bsa", "Unused.bsa"] {
             std::fs::write(dir.join(n), b"").unwrap();

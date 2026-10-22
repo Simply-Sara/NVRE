@@ -135,11 +135,11 @@ impl From<&NifSurface> for NifSurfaceKey {
 
 impl MaterialExtension for NifSurface {
     fn fragment_shader() -> ShaderRef {
-        "embedded://nvf_assets/nif_material.wesl".into()
+        "embedded://nvre_assets/nif_material.wesl".into()
     }
 
     fn deferred_fragment_shader() -> ShaderRef {
-        "embedded://nvf_assets/nif_material.wesl".into()
+        "embedded://nvre_assets/nif_material.wesl".into()
     }
 
     fn prepass_fragment_shader() -> ShaderRef {

@@ -15,8 +15,8 @@ use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
 use bevy::render::view::window::screenshot::{save_to_disk, Screenshot};
 use bevy::window::ExitCondition;
-use nvf_assets::model::ModelCtx;
-use nvf_assets::GameData;
+use nvre_assets::model::ModelCtx;
+use nvre_assets::GameData;
 use std::path::PathBuf;
 
 /// The Data folder of each game, found on this machine.
@@ -71,9 +71,9 @@ fn main() {
                 ..default()
             }),
         )
-        .add_plugins(nvf_assets::nif_material::NifMaterialPlugin)
-        .init_resource::<nvf_assets::model::ModelCache>()
-        .init_resource::<nvf_assets::texture::TextureCache>()
+        .add_plugins(nvre_assets::nif_material::NifMaterialPlugin)
+        .init_resource::<nvre_assets::model::ModelCache>()
+        .init_resource::<nvre_assets::texture::TextureCache>()
         .add_systems(Startup, setup)
         .add_systems(Update, (load_model, take_screenshot))
         .run();
@@ -199,7 +199,7 @@ fn take_screenshot(
     mut commands: Commands,
     mut test: ResMut<RenderTest>,
     keys: Res<ButtonInput<KeyCode>>,
-    textures: Res<nvf_assets::texture::TextureCache>,
+    textures: Res<nvre_assets::texture::TextureCache>,
 ) {
     if test.saved {
         // The window stays open until it is closed.

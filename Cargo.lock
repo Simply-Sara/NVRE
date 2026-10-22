@@ -4364,7 +4364,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nvf-assets"
+name = "nvre-assets"
 version = "0.1.0"
 dependencies = [
  "bevy",
@@ -4410,7 +4410,7 @@ dependencies = [
  "bytes",
  "clap",
  "egui_tiles",
- "nvf-assets",
+ "nvre-assets",
  "nvre-edit",
  "nvre-esm",
  "nvre-nif",

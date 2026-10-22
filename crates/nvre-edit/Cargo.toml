@@ -1,6 +1,6 @@
 [package]
 name = "nvre-edit"
-description = "New Vegas Rust Editor write path for NVForever's TES4 plugins: schema-driven field encoding, record insertion and removal, byte-exact rewrite"
+description = "New Vegas Rust Editor write path for TES4 plugins: schema-driven field encoding, record insertion and removal, byte-exact rewrite"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "nvf-assets"
+name = "nvre-assets"
 description = "NVRE's Bevy asset layer: the game's archives, NIF scene graphs, models and DDS textures"
 version = "0.1.0"
 edition = "2021"

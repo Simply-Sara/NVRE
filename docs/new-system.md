@@ -28,7 +28,7 @@ That is what "in pieces, so nothing gets worse" means here:
 | `crates/nvre-nif` | `fnv-nif` | ~3,600 | to do |
 | `crates/nvre-esm` | `fnv-esm` | ~3,600 | to do |
 | `crates/nvre-world` | `fnv-world` | ~4,800 | to do |
-| `crates/nvf-assets` | `nvf-assets` | ~2,800 | to do |
+| `crates/nvre-assets` | `nvf-assets` | ~2,800 | to do |
 
 The first three are done and the graph no longer reaches upstream for them.
 
@@ -65,7 +65,7 @@ This is the one that is furthest from being NVRE's own — 4,462 of its 4,810
 lines are still upstream's, because the world formats (land, sky, water,
 grass, placed objects) have not needed changing for Skyrim yet.
 
-### 4. `nvf-assets` — the Bevy layer
+### 4. `nvre-assets` — the Bevy layer
 
 The measure is the FNV control and the Skyrim LE control: the meshes that
 build, their vertices and their triangles.
@@ -91,6 +91,6 @@ the definition of "good enough":
 
 ## What stays until the end
 
-`fnv-esm`, `fnv-nif`, `fnv-vfs`, `fnv-world` and `nvf-assets` all stay in the
+`fnv-esm`, `fnv-nif`, `fnv-vfs`, `fnv-world` and `nvre-assets` all stay in the
 graph, doing their jobs, until their replacement is in place and measured.
 The editor keeps working the whole time.

@@ -65,13 +65,13 @@ entry has to follow.
 
 ### `nvre-editor` — the GUI
 
-A Bevy window with bevy_egui panels, built on NVForever's `nvf-assets` layer so
+A Bevy window with bevy_egui panels, built on NVRE's `nvre-assets` layer so
 the viewport renders the game's own meshes.
 
 | Module | What it does |
 |---|---|
 | `session.rs` | The open editing session: which cell is open, what is selected, and the queued edits. Plain data, no Bevy, so it can be driven from a test. |
-| `viewport.rs` | Orbit camera, cell rendering through `nvf-assets`, click-to-select. |
+| `viewport.rs` | Orbit camera, cell rendering through `nvre-assets`, click-to-select. |
 | `panels.rs` | Cell browser, reference table, property grid, object palette, status bar. |
 
 ```

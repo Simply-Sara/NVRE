@@ -551,7 +551,7 @@ impl GameProfile {
     pub fn open_asset_data(
         &self,
         data_dir: &Path,
-    ) -> Result<nvf_assets::GameData, String> {
+    ) -> Result<nvre_assets::GameData, String> {
         let order = match self.archive_format {
             ArchiveFormat::Bsa104 => {
                 // The plugins in the folder, so each one's own archives
@@ -582,7 +582,7 @@ impl GameProfile {
         let vfs = nvre_vfs::Vfs::open(data_dir, &order).map_err(|e| e.to_string())?;
         // Each game's own NIF schema, layered over the shared base.
         let schema = self.load_nif_schema()?;
-        Ok(nvf_assets::GameData {
+        Ok(nvre_assets::GameData {
             vfs: std::sync::Arc::new(vfs),
             schema: std::sync::Arc::new(schema),
         })

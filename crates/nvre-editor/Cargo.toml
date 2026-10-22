@@ -1,6 +1,6 @@
 [package]
 name = "nvre-editor"
-description = "New Vegas Rust Editor: a GECK-like editor for Fallout: New Vegas, in Rust, on NVForever's format crates"
+description = "New Vegas Rust Editor: a GECK-like editor for Fallout: New Vegas, in Rust"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -19,10 +19,7 @@ nvre-util.workspace = true
 nvre-esm = { path = "../nvre-esm" }
 nvre-vfs.workspace = true
 nvre-world.workspace = true
-# NVForever's Bevy asset layer, reused so the viewport renders the game's own
-# meshes with its own material and texture handling. Its workspace deps are
-# spelled out because it belongs to NVForever's own engine workspace.
-nvf-assets = { path = "../nvf-assets" }
+nvre-assets = { path = "../nvre-assets" }
 bsa105 = { path = "../bsa105" }
 nvre-nif = { path = "../nvre-nif" }
 serde.workspace = true

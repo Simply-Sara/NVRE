@@ -262,7 +262,7 @@ fn main() {
         // picked. The game's own half of `ArchivePlugin` — its archives, its
         // NIF schema, and the caches over them — is added by `AddAssets` once
         // the launcher has been through.
-        .add_plugins(nvf_assets::nif_material::NifMaterialPlugin)
+        .add_plugins(nvre_assets::nif_material::NifMaterialPlugin)
         .insert_resource(args.clone())
         .insert_resource(nvre_editor::Game(profile))
         // The `Game` resource is refreshed from the launcher's pick whenever it
@@ -392,15 +392,15 @@ enum EditorState {
 /// is added to the `App` while a system only has `Commands`. It is queued from
 /// `open_selected`, once the launcher has picked a game, and lands before the
 /// next frame's systems run.
-struct AddAssets(nvf_assets::GameData);
+struct AddAssets(nvre_assets::GameData);
 
 impl Command for AddAssets {
     type Out = ();
 
     fn apply(self, world: &mut World) {
         world.insert_resource(self.0);
-        world.init_resource::<nvf_assets::texture::TextureCache>();
-        world.init_resource::<nvf_assets::model::ModelCache>();
+        world.init_resource::<nvre_assets::texture::TextureCache>();
+        world.init_resource::<nvre_assets::model::ModelCache>();
     }
 }
 
