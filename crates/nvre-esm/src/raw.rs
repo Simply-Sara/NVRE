@@ -122,8 +122,12 @@ pub struct GroupHeader {
     pub group_type: i32,
     /// The group's stamp: the time it was made.
     pub stamp: u16,
+    /// A word the format holds and nothing reads.
+    pub unknown1: u16,
     /// The group's version.
     pub version: u16,
+    /// A word the format holds and nothing reads.
+    pub unknown2: u16,
 }
 
 impl GroupHeader {
@@ -147,6 +151,9 @@ pub struct Subrecord {
     pub sig: [u8; 4],
     /// The payload, as it was in the file.
     pub data: Bytes,
+    /// The size came from a preceding `XXXX` subrecord, so the payload is
+    /// longer than 65535 bytes.
+    pub extended: bool,
 }
 
 impl Subrecord {
@@ -197,6 +204,21 @@ pub struct Group {
     pub groups: Vec<Group>,
     /// Where the group is in the file.
     pub offset: u64,
+}
+
+impl Group {
+    /// The group's contents, as one list: the records and the groups in the
+    /// order they are in the file.
+    pub fn children(&self) -> Vec<Node> {
+        let mut out: Vec<Node> = Vec::with_capacity(self.records.len() + self.groups.len());
+        for r in &self.records {
+            out.push(Node::Record(r.clone()));
+        }
+        for g in &self.groups {
+            out.push(Node::Group(g.clone()));
+        }
+        out
+    }
 }
 
 /// A node of the file: a group or a record.
@@ -346,7 +368,9 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
             label,
             group_type,
             stamp,
+            unknown1: 0,
             version,
+            unknown2: 0,
         },
         records,
         groups: Vec::new(),
@@ -423,6 +447,7 @@ fn parse_subrecords(body: &[u8]) -> Result<Vec<Subrecord>, EsmError> {
         out.push(Subrecord {
             sig: [sig[0], sig[1], sig[2], sig[3]],
             data: Bytes::copy_from_slice(&body[data_at..data_end]),
+            extended: false,
         });
         at = data_end;
     }
@@ -492,5 +517,137 @@ impl Record {
             out.extend_from_slice(&s.data);
         }
         out
+    }
+}
+
+/// The kinds of group a file holds.
+pub mod group_type {
+    /// The file's own top-level group.
+    pub const TOP: i32 = 0;
+    /// The groups a world space holds.
+    pub const WORLD_CHILDREN: i32 = 1;
+    /// A cell's interior block.
+    pub const INTERIOR_CELL_BLOCK: i32 = 2;
+    /// A cell's interior sub-block.
+    pub const INTERIOR_CELL_SUBBLOCK: i32 = 3;
+    /// A cell's exterior block.
+    pub const EXTERIOR_CELL_BLOCK: i32 = 4;
+    /// A cell's exterior sub-block.
+    pub const EXTERIOR_CELL_SUBBLOCK: i32 = 5;
+    /// A cell's persistent children.
+    pub const CELL_CHILDREN: i32 = 6;
+    /// A topic's children.
+    pub const TOPIC_CHILDREN: i32 = 7;
+    /// A cell's persistent children.
+    pub const CELL_PERSISTENT_CHILDREN: i32 = 8;
+    /// A cell's temporary children.
+    pub const CELL_TEMPORARY_CHILDREN: i32 = 9;
+    /// A cell's visible distant children.
+    pub const CELL_VISIBLE_DISTANT_CHILDREN: i32 = 10;
+
+    /// The name of a group type.
+    pub fn name(t: i32) -> &'static str {
+        match t {
+            TOP => "top",
+            WORLD_CHILDREN => "world_children",
+            INTERIOR_CELL_BLOCK => "interior_cell_block",
+            INTERIOR_CELL_SUBBLOCK => "interior_cell_subblock",
+            EXTERIOR_CELL_BLOCK => "exterior_cell_block",
+            EXTERIOR_CELL_SUBBLOCK => "exterior_cell_subblock",
+            CELL_CHILDREN => "cell_children",
+            TOPIC_CHILDREN => "topic_children",
+            CELL_PERSISTENT_CHILDREN => "cell_persistent_children",
+            CELL_TEMPORARY_CHILDREN => "cell_temporary_children",
+            CELL_VISIBLE_DISTANT_CHILDREN => "cell_visible_distant_children",
+            _ => "unknown",
+        }
+    }
+}
+
+/// Write a record's subrecords: each one's type, its size, and its payload.
+pub fn write_subrecords(subs: &[Subrecord]) -> Vec<u8> {
+    let mut out = Vec::new();
+    for s in subs {
+        out.extend_from_slice(&s.sig);
+        out.extend_from_slice(&(s.data.len() as u16).to_le_bytes());
+        out.extend_from_slice(&s.data);
+    }
+    out
+}
+
+/// Write a group and everything in it.
+///
+/// A group's size is not known until its contents are written, so it is
+/// written as zero and patched afterwards.
+pub fn write_group(g: &Group, out: &mut Vec<u8>) {
+    let start = out.len();
+    let h = &g.header;
+    out.extend_from_slice(&GRUP);
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&h.label);
+    out.extend_from_slice(&h.group_type.to_le_bytes());
+    out.extend_from_slice(&h.stamp.to_le_bytes());
+    out.extend_from_slice(&h.version.to_le_bytes());
+    out.extend_from_slice(&[0u8; 4]);
+    for r in &g.records {
+        write_record(r, out);
+    }
+    for sub in &g.groups {
+        write_group(sub, out);
+    }
+    let size = (out.len() - start) as u32;
+    out[start + 4..start + 8].copy_from_slice(&size.to_le_bytes());
+}
+
+/// Write a record: its header and its payload.
+pub fn write_record(r: &Record, out: &mut Vec<u8>) {
+    let h = &r.header;
+    out.extend_from_slice(&h.sig);
+    out.extend_from_slice(&(r.payload.len() as u32).to_le_bytes());
+    out.extend_from_slice(&h.flags.to_le_bytes());
+    out.extend_from_slice(&h.form_id.to_le_bytes());
+    out.extend_from_slice(&h.vc_info.to_le_bytes());
+    out.extend_from_slice(&h.form_version.to_le_bytes());
+    out.extend_from_slice(&h.vc_info2.to_le_bytes());
+    out.extend_from_slice(&r.payload);
+}
+
+/// Visit every record in a tree, with the groups it is in.
+///
+/// The groups are the ones between the file's top and the record, nearest
+/// first.
+pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a Group])>(groups: &'a [Group], f: &mut F) {
+    let mut path: Vec<&Group> = Vec::new();
+    for g in groups {
+        visit_in_group(g, &mut path, f);
+    }
+}
+
+fn visit_in_group<'a, F: FnMut(&'a Record, &[&'a Group])>(
+    g: &'a Group,
+    path: &mut Vec<&'a Group>,
+    f: &mut F,
+) {
+    path.push(g);
+    for r in &g.records {
+        f(r, path.as_slice());
+    }
+    for sub in &g.groups {
+        visit_in_group(sub, path, f);
+    }
+    path.pop();
+}
+
+/// Visit every group in a tree, with the group it is in.
+pub fn visit_groups<'a, F: FnMut(&'a Group, usize)>(groups: &'a [Group], f: &mut F) {
+    for g in groups {
+        visit_group(g, 0, f);
+    }
+}
+
+fn visit_group<'a, F: FnMut(&'a Group, usize)>(g: &'a Group, depth: usize, f: &mut F) {
+    f(g, depth);
+    for sub in &g.groups {
+        visit_group(sub, depth + 1, f);
     }
 }
