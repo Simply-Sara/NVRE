@@ -84,7 +84,7 @@ fn the_palette_is_grouped_into_gecks_categories() {
             let name = s
                 .schema
                 .records
-                .get(&sig)
+                .get(String::from_utf8_lossy(&sig).as_ref())
                 .map(|d| d.name.clone())
                 .expect("the record type has a name");
             assert_eq!(

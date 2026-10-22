@@ -177,10 +177,14 @@ fn load_model(
     // not drawn, so the camera is pulled in a little.
     let (lo, hi) = model.bounds.unwrap_or((Vec3::ZERO, Vec3::ONE));
     let centre = (lo + hi) / 2.0;
+    // The camera is far enough back that the whole model fits, with room
+    // to spare: the diagonal is the largest distance the model reaches.
     let radius = (hi - lo).length() / 2.0;
-    let distance = radius * 1.2 + 1.0;
-    // The model's long axis is z, so the camera is in front of it.
-    let eye = centre + Vec3::new(0.0, radius * 0.25, distance);
+    let distance = radius * 3.5 + 1.0;
+    // The model stands along z, so the camera is to the side of it, a
+    // little above its middle: looking down the length of a model shows
+    // it end-on.
+    let eye = centre + Vec3::new(distance * 0.6, radius * 0.3, 0.0);
     for mut camera in &mut cameras {
         *camera = Transform::from_translation(eye).looking_at(centre, Vec3::Y);
     }
