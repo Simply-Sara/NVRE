@@ -9,6 +9,10 @@ header record, then groups of records, each with a 24-byte header and a
 payload of subrecords. `Fallout4.esm` holds 1,549,277 records in 138 record
 types, and the existing reader opens it unchanged.
 
+[observed] With `schemas/base` and `schemas/fo4` over it, all 6,742,917
+subrecords of `Fallout4.esm` decode: 100.00%, with nothing unknown, nothing
+left over and no errors. Every one of them re-encodes to the same bytes.
+
 Everything below that differs from the other games is listed here with the
 evidence for it.
 
@@ -107,6 +111,50 @@ handles the constructs xEdit uses for Fallout 4:
 The eight record types whose groups the generator cannot express are written
 by hand: `SCEN`, `PACK`, `QUST`, `DIAL`, `INFO`, `RACE`, `NPC_`, `PERK` and
 `MGEF`.
+
+## Compressed payloads
+
+Some record types hold a payload that is compressed in place, and the
+compression is not announced by the record's type.
+
+[observed] `LAND`, `CELL`, `NAVM` and `NPC_` are the candidates, but the
+compression is decided by the bytes: a plain `CELL` begins with the ASCII
+`DATA`, and only 8,471 of the 40,165 `CELL` records in `Fallout4.esm` are
+compressed. So the reader looks at the bytes rather than at the type.
+
+[observed] The framing is a little-endian `u32` giving the uncompressed
+length, then a zlib stream that begins at offset 4 of the payload. A zlib
+header is recognised by its compression method (8), its check bits
+(`(CMF * 256 + FLG) % 31 == 0`) and its preset-dictionary flag being clear.
+
+## The navmesh
+
+[observed] All 7,894 `NAVM` records in `Fallout4.esm` carry an `NVNM` of
+version 15, and all of them use 21-byte triangles and 11-byte edge links,
+whatever their form version. The grid's size is the pathing cell's size
+squared, which the schema says with `count_pow`.
+
+## The weather's colours
+
+[observed] A `WTHR`'s `NAM0` is 272 bytes in 4 records, 544 in 2 and 608 in
+65. The 272-byte form is 68 FormIDs; the other two are 17 and 19 sets of
+32-byte weather colours, each set being 8 colours of 4 bytes.
+
+## The cell's combined references
+
+[observed] All 4,600 `CELL` records carry an `XCRI`. Its size is 8 bytes plus
+4 bytes for each mesh and 4 bytes for each reference, and a reference is the
+FormID alone — the combined mesh xEdit shows is computed, not stored beside
+it.
+
+## A quest's description is a string ID
+
+[documented] xEdit declares `QUST`'s `NNAM` a plain `wbString`.
+
+[observed] The game holds it as a string ID: all 1,198 `NNAM` fields in
+`Fallout4.esm` are 4 bytes. The schema therefore says `localized` for it.
+Skyrim's quest objective text is the same shape — all 1,452 `NNAM` fields
+in each of its two `Skyrim.esm` are 4 bytes — and its schema says so too.
 
 ## What is not modelled yet
 

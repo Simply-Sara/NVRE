@@ -2639,8 +2639,12 @@ def main():
     out_dir = Path(sys.argv[2])
     c = Converter(src_path.read_text(encoding="utf-8", errors="replace")).run()
 
-    skipped = {s for s in HAND_WRITTEN if s in c.records}
-    records = {k: v for k, v in c.records.items() if k not in HAND_WRITTEN}
+    # Every record is written, including the ones a hand-written file
+    # overrides: the overlay wins at load time, and keeping the generated
+    # one in the file makes the generated file a faithful record of what
+    # the generator produced.
+    skipped = set()
+    records = dict(c.records)
     # The overridden names are the hand-written files' own; the generator
     # only refers to them.
     types = {

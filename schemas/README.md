@@ -52,7 +52,9 @@ Measured over every game installed on this machine, base master only:
 |---|---|---|---|---|
 | Fallout: New Vegas | `FalloutNV.esm` | 107 | 100.00% (2,321,456) | 100.00% (2,321,456) |
 | Fallout 3 | `Fallout3.esm` | 90 | 100.00% (2,634,084) | 100.00% (2,634,084) |
+| Fallout 4 | `Fallout4.esm` | 147 | 60.14% | 100.00% (6,742,917) |
 | Skyrim SE | `Skyrim.esm` | 118 | 67.65% | 100.00% (4,131,332) |
+| Skyrim LE | `Skyrim.esm` | 118 | 67.65% | 100.00% (4,130,941) |
 
 The last column is what the game's own directory achieves over the base. The
 Fallout games are at 100% either way, because Fallout 3's records are Fallout
@@ -65,9 +67,11 @@ the fields Skyrim added or changed (the 32-byte `CTDA`, the face tint fields,
 Every Skyrim SE master is at 100.00% with nothing but the base and Skyrim's own
 files — Fallout's directory is not in the chain at all:
 
-Fallout 4 is not measured yet: it needs a BA2 archive reader and a record
-overlay, and its strings are UTF-16 rather than the other games' Windows-1252.
-Its coverage against FNV's schema alone is 60.14%.
+Fallout 4 is measured now, and it is at 100.00% with its own directory over the
+base: 6,742,917 subrecords, none unknown, none left over, no errors. Its strings
+are Windows-1252, like the other games' — not UTF-16, as was long assumed.
+Fallout 4's own directory is `schemas/fo4`; see `docs/spec-notes/fo4.md` for
+what was measured and how.
 
 The intersection of all five is 77 types. Of those, 63 decode with zero
 unknowns and zero errors in every game and moved to `base`:
