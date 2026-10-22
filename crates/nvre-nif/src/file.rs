@@ -311,11 +311,21 @@ fn read_field(
             let v = crate::codec::read_prim(e.storage, r, header.version)?;
             return Ok(Some(v));
         }
-        // A sized string: a length and that many bytes.
+        // A sized string: a length and that many bytes. A field with a
+        // length is an array of them — the texture set of a shape names
+        // several files.
         if n == "sized_string" {
-            let len = r.int(4, false)? as usize;
-            let b = r.bytes(len)?;
-            return Ok(Some(Value::Str(nvre_util::cp1252::decode(b))));
+            let mut strings = Vec::new();
+            for _ in 0..length.unwrap_or(1) {
+                let len = r.int(4, false)? as usize;
+                let b = r.bytes(len)?;
+                strings.push(Value::Str(nvre_util::cp1252::decode(b)));
+            }
+            return Ok(Some(if strings.len() == 1 {
+                strings.into_iter().next().unwrap_or(Value::Str(String::new()))
+            } else {
+                Value::List(strings)
+            }));
         }
         let fields = schema
             .struct_fields(n)

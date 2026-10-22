@@ -1,0 +1,17 @@
+[package]
+name = "nvf-assets"
+description = "NVRE's Bevy asset layer: the game's archives, NIF scene graphs, models and DDS textures"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+bevy = { version = "=0.20.0", features = ["pbr_specular_textures"] }
+nvre-nif = { path = "../nvre-nif" }
+fnv-dds = { path = "../fnv-dds" }
+fnv-vfs = { path = "../fnv-vfs" }
+tracing = "0.1"
+
+[dev-dependencies]
+crossbeam-channel = "0.5"
+image = { version = "0.25", default-features = false, features = ["png"] }

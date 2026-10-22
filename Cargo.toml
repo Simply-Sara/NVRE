@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/fnv-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/fnv-world", "crates/fnv-esm", "crates/fnv-vfs", "crates/bsa105", "crates/nvre-util", "crates/nvre-inflate", "crates/fnv-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-world", "crates/nvf-assets"]
 
 [workspace.package]
 version = "0.1.0"
@@ -43,8 +43,8 @@ tracing = "0.1"
 # (0.43+ requires Bevy 0.20); verified to build against bevy =0.19.1.
 # pbr_specular_textures is what NVForever's own engine workspace enables, and
 # its nvf-assets layer needs it (normal-map alpha as the specular mask).
-bevy = { version = "=0.19.1", features = ["pbr_specular_textures"] }
-bevy_egui = "=0.42.0"
+bevy = { version = "=0.20.0", features = ["pbr_specular_textures"] }
+bevy_egui = "=0.43.0"
 clap = { version = "4", features = ["derive", "env"] }
 
 # NVRE's forks of upstream crates. Cargo substitutes these for every consumer
@@ -58,6 +58,9 @@ fnv-dds = { path = "crates/fnv-dds" }
 
 # Enable high optimization for external dependencies in dev/debug builds.
 # Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.
+[profile.dev]
+debug = 1
+
 [profile.dev.package."*"]
 opt-level = 3
 
