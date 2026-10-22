@@ -187,7 +187,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(bytes) = bytes_opt {
             total_nif_bytes += bytes.len();
             let t_parse = Instant::now();
-            let _ = fnv_nif::NifFile::parse(&bytes, Some(&schema));
+            let _ = nvre_nif::NifFile::parse(&bytes, Some(&schema));
             let parse_time = t_parse.elapsed();
             nif_parse_total += parse_time;
 

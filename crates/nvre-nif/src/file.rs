@@ -151,6 +151,47 @@ impl NifFile {
             Err(e) => (BlockStatus::Error(e), None),
         }
     }
+
+    /// Whether a block re-encodes to the bytes it was read from.
+    ///
+    /// The block is decoded and written out again, and the two are
+    /// compared. A block that decodes but does not re-encode is a block the
+    /// schema read with the wrong layout — which is what a `bs_version`
+    /// condition written for another game does.
+    pub fn reencode_block(
+        &self,
+        schema: &Schema,
+        data: &[u8],
+        index: usize,
+    ) -> Result<bool, CodecError> {
+        let b = &self.blocks[index];
+        let Some(fields) = schema.block_fields(&b.type_name) else {
+            return Err(CodecError::Layout(format!(
+                "the unknown block type {:?}",
+                b.type_name
+            )));
+        };
+        let st = self.decode_block(index, schema, data)?;
+        // The lineage is the block's own type and the types it is based on.
+        let mut lineage: Vec<String> = vec![b.type_name.clone()];
+        lineage.extend(
+            schema
+                .block_chain(&b.type_name)
+                .into_iter()
+                .map(str::to_string),
+        );
+        let mut out = Vec::with_capacity(b.range.len());
+        crate::encode::encode_fields(
+            schema,
+            &self.header,
+            &lineage,
+            &fields,
+            &st,
+            None,
+            &mut out,
+        )?;
+        Ok(out == data[b.range.clone()])
+    }
 }
 
 /// Decode a block's fields, and return how many bytes it used.
@@ -203,7 +244,10 @@ impl BlockCtx {
 }
 
 /// The scope every block starts with: the file's own state.
-fn file_scope(header: &Header) -> HashMap<String, Value> {
+///
+/// The version, the user version and the Bethesda version, which the
+/// schema's conditions are written against.
+pub fn file_scope(header: &Header) -> HashMap<String, Value> {
     let mut scope = HashMap::new();
     scope.insert("version".into(), Value::Num(header.version as f64));
     scope.insert(

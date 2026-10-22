@@ -26,9 +26,6 @@ nvre-world.workspace = true
 nvf-assets = { path = "../nvf-assets" }
 bsa105 = { path = "../bsa105" }
 nvre-nif = { path = "../nvre-nif" }
-# The NIF probes use the fork's reader, which has the round-trip encoder
-# the new crate does not have yet.
-fnv-nif = { path = "../fnv-nif" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

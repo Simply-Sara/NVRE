@@ -1,6 +1,6 @@
 //! How well does the schema explain the Special Edition's meshes?
 use bsa105::Archive;
-use fnv_nif::Schema;
+use nvre_nif::Schema;
 use std::path::PathBuf;
 fn main() {
     let data_dir = std::env::args().nth(1).unwrap();
@@ -12,7 +12,7 @@ fn main() {
     let mut dirs = schema_dir.split(':');
     let base = dirs.next().unwrap();
     let layers: Vec<String> = dirs.map(str::to_string).collect();
-    let schema = Schema::load_game(base, &layers).unwrap();
+    let schema = Schema::load_game(&PathBuf::from(base), &layers).unwrap();
     let (mut files, mut parse_fail, mut blocks) = (0u64, 0u64, 0u64);
     let (mut unknown, mut short, mut err) = (0u64, 0u64, 0u64);
     let mut mismatch = 0u64;
@@ -44,7 +44,7 @@ fn main() {
             let Ok(data) = a.extract_by_path(&p) else {
                 continue;
             };
-            let Ok(f) = fnv_nif::NifFile::parse(&data, Some(&schema)) else {
+            let Ok(f) = nvre_nif::NifFile::parse(&data, Some(&schema)) else {
                 parse_fail += 1;
                 continue;
             };
@@ -52,27 +52,27 @@ fn main() {
             *bs.entry(f.header.bs_version()).or_insert(0) += 1;
             for (i, _b) in f.blocks.iter().enumerate() {
                 blocks += 1;
-                match f.decode_block(&schema, &data, i) {
-                    Err(fnv_nif::BlockStatus::Unknown) => {
+                let (status, _) = f.decode_block_status(i, &schema, &data);
+                match status {
+                    nvre_nif::BlockStatus::Unknown => {
                         unknown += 1;
                         *fails
                             .entry(format!("{} unknown", f.blocks[i].type_name))
                             .or_insert(0) += 1;
                     }
-                    Err(fnv_nif::BlockStatus::Short { .. }) => {
+                    nvre_nif::BlockStatus::Short { .. } => {
                         short += 1;
                         *fails
                             .entry(format!("{} short", f.blocks[i].type_name))
                             .or_insert(0) += 1;
                     }
-                    Err(fnv_nif::BlockStatus::Error(e)) => {
+                    nvre_nif::BlockStatus::Error(e) => {
                         err += 1;
                         *fails
                             .entry(format!("{} error: {e}", f.blocks[i].type_name))
                             .or_insert(0) += 1;
                     }
-                    Err(_) => {}
-                    Ok(_) => {}
+                    _ => {}
                 }
                 if f.reencode_block(&schema, &data, i) == Ok(false) {
                     mismatch += 1;

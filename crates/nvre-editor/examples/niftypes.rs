@@ -21,7 +21,7 @@ fn main() {
     let mut files = 0u64;
     for p in data.vfs.paths(|p| p.to_lowercase().ends_with(".nif")) {
         let Some(bytes) = data.read(&p) else { continue };
-        let Ok(f) = fnv_nif::NifFile::parse(&bytes, Some(&data.schema)) else {
+        let Ok(f) = nvre_nif::NifFile::parse(&bytes, Some(&data.schema)) else {
             continue;
         };
         files += 1;

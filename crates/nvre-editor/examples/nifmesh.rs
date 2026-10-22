@@ -12,12 +12,12 @@ fn main() {
     let (mut meshes, mut verts, mut tris) = (0u64, 0u64, 0u64);
     for p in data.vfs.paths(|p| p.to_lowercase().ends_with(".nif")) {
         let Some(bytes) = data.read(&p) else { continue };
-        let Ok(f) = fnv_nif::NifFile::parse(&bytes, Some(&data.schema)) else { continue };
-        let dec = fnv_nif::scene::Decoded::new(&f, &bytes, &data.schema);
+        let Ok(f) = nvre_nif::NifFile::parse(&bytes, Some(&data.schema)) else { continue };
+        let dec = nvre_nif::scene::Decoded::new(&f, &bytes, &data.schema);
         for (i, b) in f.blocks.iter().enumerate() {
-            if !fnv_nif::scene::SHAPE_DATA_TYPES.contains(&b.type_name.as_str()) { continue; }
+            if !nvre_nif::scene::SHAPE_DATA_TYPES.contains(&b.type_name.as_str()) { continue; }
             let Some(s) = dec.get(i as i32) else { continue };
-            let md = fnv_nif::scene::mesh_data(s);
+            let md = nvre_nif::scene::mesh_data(s);
             if md.positions.is_empty() || md.triangles.is_empty() { continue; }
             meshes += 1;
             verts += md.positions.len() as u64;

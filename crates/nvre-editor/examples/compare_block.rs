@@ -18,9 +18,9 @@ fn main() {
         nvre_nif::Schema::load_game(std::path::Path::new(base), &layers).expect("the new schema")
     };
     let old_schema = if layers.is_empty() {
-        fnv_nif::Schema::load_dir(std::path::Path::new(base)).expect("the old schema")
+        nvre_nif::Schema::load_dir(std::path::Path::new(base)).expect("the old schema")
     } else {
-        fnv_nif::Schema::load_game(std::path::Path::new(base), &layers).expect("the old schema")
+        nvre_nif::Schema::load_game(std::path::Path::new(base), &layers).expect("the old schema")
     };
 
     let vfs = nvre_vfs::Vfs::open_default(std::path::PathBuf::from(&data_dir).as_path())
@@ -42,7 +42,7 @@ fn main() {
             let new = f.decode_block(i, &new_schema, &data).ok();
 
             // The old reader, on the same block.
-            let old_file = fnv_nif::NifFile::parse(&data, Some(&old_schema)).ok();
+            let old_file = nvre_nif::NifFile::parse(&data, Some(&old_schema)).ok();
             let old = old_file.as_ref().and_then(|of| {
                 of.blocks
                     .iter()

@@ -27,6 +27,7 @@
 
 pub mod anim;
 pub mod codec;
+pub mod encode;
 pub mod expr;
 pub mod file;
 pub mod header;

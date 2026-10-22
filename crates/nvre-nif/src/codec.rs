@@ -236,7 +236,17 @@ pub fn read_prim(
         Prim::I32 => Value::Num(r.int(4, true)? as f64),
         Prim::U64 => Value::Num(r.int(8, false)? as f64),
         Prim::F32 => Value::Num(r.f32()? as f64),
-        Prim::Bool => Value::Bool(r.int(1, false)? != 0),
+        Prim::Bool => {
+            // A flag is a byte, and a byte above one is not a flag: the
+            // Special Edition's `NiBoolInterpolator` stores 2 for "invalid",
+            // and the value is kept as the number it is.
+            let b = r.int(1, false)?;
+            if b <= 1 {
+                Value::Bool(b != 0)
+            } else {
+                Value::Num(b as f64)
+            }
+        }
         Prim::Ref => Value::Ref(r.reference()?),
         Prim::Ptr => Value::Ref(r.reference()?),
         Prim::HFloat => Value::Num(r.f16()? as f64),

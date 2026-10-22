@@ -33,9 +33,6 @@ nvre-dds = { path = "crates/nvre-dds" }
 # is now NVRE's own crate.
 fnv-esm = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 nvre-world = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
-# NVForever's NIF reader lives in its own engine workspace, so its
-# workspace-inherited deps have to be declared here too.
-fnv-nif = { git = "https://github.com/LootJunkieAzza/NVForever.git" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -56,7 +53,6 @@ clap = { version = "4", features = ["derive", "env"] }
 [patch."https://github.com/LootJunkieAzza/NVForever.git"]
 nvre-world = { path = "crates/nvre-world" }
 fnv-esm = { path = "crates/fnv-esm" }
-fnv-nif = { path = "crates/fnv-nif" }
 
 # Enable high optimization for external dependencies in dev/debug builds.
 # Makes BSA archive decompression, image decoding, and math run 8x faster in debug mode.

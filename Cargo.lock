@@ -3062,17 +3062,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fnv-nif"
-version = "0.1.0"
-dependencies = [
- "nvre-util",
- "proptest",
- "serde_json",
- "thiserror 2.0.21",
- "tracing",
-]
-
-[[package]]
 name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4438,7 +4427,6 @@ dependencies = [
  "clap",
  "egui_tiles",
  "fnv-esm",
- "fnv-nif",
  "nvf-assets",
  "nvre-edit",
  "nvre-esm",

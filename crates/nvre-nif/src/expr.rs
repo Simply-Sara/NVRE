@@ -229,8 +229,21 @@ impl BinOp {
     fn apply(self, a: Value, b: Value) -> Value {
         use BinOp::*;
         match self {
-            Eq => Value::Bool(a == b),
-            Ne => Value::Bool(a != b),
+            // The comparison is between numbers, so a flag and the number
+            // it stands for are the same value: `compressed == 0` holds for
+            // a flag that is not set.
+            Eq | Ne => {
+                let (Some(x), Some(y)) = (a.as_number(), b.as_number()) else {
+                    // Two things that are not numbers are equal when they
+                    // are the same thing.
+                    return Value::Bool(if matches!(self, Eq) { a == b } else { a != b });
+                };
+                if matches!(self, Eq) {
+                    Value::Bool(x == y)
+                } else {
+                    Value::Bool(x != y)
+                }
+            }
             BitOr | BitAnd | BitXor | Shl | Shr | Add | Sub | Mul | Div | Rem | Lt | Le
             | Gt | Ge => {
                 let (Some(x), Some(y)) = (a.as_number(), b.as_number()) else {
