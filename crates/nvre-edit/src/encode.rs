@@ -18,7 +18,7 @@
 //! - **Fixed sizes respected**: `schema.fixed_size` is checked before encoding so
 //!   a struct that grew a field cannot silently resize a record.
 
-use fnv_esm::schema::{Prim, Schema, TypeDef};
+use fnv_esm::schema::{Field, Prim, Schema, TypeDef};
 use serde_json::Value;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -85,6 +85,86 @@ fn repeated_name(fields: &[fnv_esm::schema::Field]) -> Option<String> {
         if fields[..i].iter().any(|g| g.name == f.name) {
             return Some(f.name.clone());
         }
+    }
+    None
+}
+
+// The values a union may switch on, kept while a struct is written.
+//
+// A union's variant is often decided by a sibling field's value — a
+// script property's value is a string, a number or an object according to
+// the property's type — and the writer needs the same value the reader
+// used, or it writes the wrong shape.
+thread_local! {
+    static SWITCH_VALUES: std::cell::RefCell<Vec<std::collections::HashMap<String, String>>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// The variant a union's switch picks, if the switch has a value.
+fn switch_variant(
+    name: &str,
+    cases: &[(String, usize)],
+    default: usize,
+) -> Option<usize> {
+    let key = SWITCH_VALUES.with(|c| {
+        let stack = c.borrow();
+        stack.last().and_then(|m| m.get(name).cloned())
+    })?;
+    Some(
+        cases
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, i)| *i)
+            .unwrap_or(default),
+    )
+}
+
+/// Keeps the switch values for the length of a struct's writing.
+struct SwitchValuesGuard;
+
+impl SwitchValuesGuard {
+    fn push(values: std::collections::HashMap<String, String>) -> Self {
+        SWITCH_VALUES.with(|c| c.borrow_mut().push(values));
+        SwitchValuesGuard
+    }
+}
+
+impl Drop for SwitchValuesGuard {
+    fn drop(&mut self) {
+        SWITCH_VALUES.with(|c| {
+            c.borrow_mut().pop();
+        });
+    }
+}
+
+/// The value of a named field, as the switch would read it.
+///
+/// An enum's value is its name in the JSON, but a switch on it reads the
+/// number the name stands for, so the name is looked up in the field's
+/// own values.
+fn switch_value_of(
+    schema: &Schema,
+    obj: &serde_json::Map<String, Value>,
+    field: &Field,
+) -> Option<String> {
+    let v = obj.get(&field.name)?;
+    if let Some(s) = v.as_str() {
+        if let TypeDef::Enum { values, .. } = schema.resolve(&field.ty) {
+            if let Some((k, _)) = values.iter().find(|(_, n)| n == s) {
+                return Some(k.to_string());
+            }
+        }
+        return Some(s.to_string());
+    }
+    if let Some(n) = v.as_i64() {
+        return Some(n.to_string());
+    }
+    if let Some(n) = v.as_u64() {
+        return Some(n.to_string());
+    }
+    // A flags value is an object with the number under "value".
+    if let Some(n) = v.get("value").and_then(Value::as_i64) {
+        return Some(n.to_string());
     }
     None
 }
@@ -170,11 +250,24 @@ pub fn encode_type(
                     msg: format!("field {extra:?} is not part of this layout"),
                 });
             }
+            // A union inside the struct may switch on one of the struct's
+            // own fields, so the fields' values are kept while the struct is
+            // written.
+            let mut switch_values = std::collections::HashMap::new();
+            for f in fields {
+                if let Some(v) = switch_value_of(schema, obj, f) {
+                    switch_values.insert(f.name.clone(), v);
+                }
+            }
+            let _switch_guard = SwitchValuesGuard::push(switch_values);
             for f in fields {
                 match obj.get(&f.name) {
                     // A missing optional field simply contributes no bytes, which
                     // is how the decoder reads a struct that ends early.
                     None if f.optional => {}
+                    // A field the decoder found absent is written back as
+                    // absent.
+                    Some(Value::Null) if f.optional => {}
                     // A field that is absent because nothing was left for it
                     // contributes no bytes either.
                     Some(Value::Null) if f.optional_if_empty => {}
@@ -467,8 +560,20 @@ pub fn encode_type(
             }
         }
         TypeDef::ValueUnion {
-            variants, min_version, ..
+            name,
+            variants,
+            min_version,
+            cases,
+            default,
+            ..
         } => {
+            // The variant may be decided by a sibling's value — a script
+            // property's value is a string, a number or an object according
+            // to the property's type — and the writer must pick the same
+            // variant the reader did, or it writes a different shape.
+            if let Some(idx) = switch_variant(name, cases, *default) {
+                return encode_type(schema, &variants[idx], value, out, path);
+            }
             // A union the record's own format version decides: the later
             // variant when the version is at least the minimum (xEdit's
             // `wbDeciderFormVersion99`).
