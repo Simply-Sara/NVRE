@@ -230,6 +230,12 @@ pub enum TypeDef {
         /// Fallout 4's model textures are as many as the header's count of
         /// textures and its count of materials together.
         count_sum: Option<(String, String)>,
+        /// The count is a sibling field's value squared.
+        ///
+        /// Fallout 4's navigation mesh has a grid of cells, and the grid is
+        /// as wide as it is tall, so the number of cells is the square of
+        /// the grid's size.
+        count_pow: Option<String>,
     },
     Enum {
         base: Prim,
@@ -665,6 +671,25 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                         "{ctx}: count_sum cannot be combined with another count"
                     )));
                 }
+                // The count is a sibling field's value squared:
+                // `{"array": T, "count_pow": "size"}`.
+                let count_pow = match v.get("count_pow") {
+                    None => None,
+                    Some(c) => Some(c.as_str().map(str::to_string).ok_or_else(|| {
+                        SchemaError(format!("{ctx}: count_pow must be a field name string"))
+                    })?),
+                };
+                if count_pow.is_some()
+                    && (count.is_some()
+                        || count_prefix.is_some()
+                        || count_field.is_some()
+                        || count_bits.is_some()
+                        || count_sum.is_some())
+                {
+                    return Err(SchemaError(format!(
+                        "{ctx}: count_pow cannot be combined with another count"
+                    )));
+                }
                 Ok(TypeDef::Array {
                     elem: Box::new(parse_type(elem, ctx)?),
                     count,
@@ -672,6 +697,7 @@ fn parse_type(v: &Value, ctx: &str) -> Result<TypeDef, SchemaError> {
                     count_field,
                     count_bits,
                     count_sum,
+                    count_pow,
                 })
             } else if let Some(base) = v.get("enum") {
                 let base = base
@@ -1640,6 +1666,7 @@ impl Schema {
                 count_field: None,
                 count_bits: None,
                 count_sum: None,
+                count_pow: None,
             } => Some(self.fixed_size(elem)? * c),
             // A fill-the-rest array, a count-prefixed array, a count-field array and a
             // malformed array carrying both `count` and `count_prefix` (rejected at

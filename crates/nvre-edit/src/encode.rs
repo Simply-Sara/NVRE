@@ -211,6 +211,30 @@ pub fn encode_type(
                                 }
                             }
                         }
+                        // A count-pow array's length is a sibling field's
+                        // value squared, so the two must agree.
+                        if let TypeDef::Array {
+                            count_pow: Some(name),
+                            ..
+                        } = schema.resolve(&f.ty)
+                        {
+                            let want = obj.get(name).and_then(|x| {
+                                x.as_u64()
+                                    .or_else(|| x.get("value").and_then(Value::as_u64))
+                            });
+                            let n = want.map(|w| (w * w) as usize);
+                            match (n, v.as_array()) {
+                                (Some(n), Some(arr)) if arr.len() == n => {}
+                                _ => {
+                                    return Err(EncodeError::Value {
+                                        path: sub.clone(),
+                                        msg: format!(
+                                            "count_pow {name:?} does not match this array's length"
+                                        ),
+                                    })
+                                }
+                            }
+                        }
                         // A count-sum array's length is the sum of two
                         // sibling fields' values, so the two must agree.
                         if let TypeDef::Array {

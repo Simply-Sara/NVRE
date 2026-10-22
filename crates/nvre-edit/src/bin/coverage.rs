@@ -149,7 +149,7 @@ fn main() {
         println!("\n--- decode errors (all masters) ---");
         let mut errs: Vec<_> = by_err.into_iter().collect();
         errs.sort_by_key(|a| std::cmp::Reverse(a.1));
-        for ((r, s, m), n) in errs.iter().take(25) {
+        for ((r, s, m), n) in errs.iter().take(2000) {
             println!("{s:<6} {n:>6}  on {r}: {m}");
         }
     }

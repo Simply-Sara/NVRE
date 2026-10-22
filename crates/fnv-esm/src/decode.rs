@@ -498,6 +498,35 @@ pub fn decode_type(t: &TypeDef, c: &mut Cursor, ctx: &mut DecodeCtx) -> Result<V
                     obj.insert(f.name.clone(), Value::Array(out));
                     continue;
                 }
+                // A count-pow array reads its element count from a sibling
+                // field's value squared: Fallout 4's navigation mesh has a
+                // grid of cells, and the grid is as wide as it is tall.
+                if let TypeDef::Array {
+                    count_pow: Some(name),
+                    ..
+                } = &schema.resolve(&f.ty)
+                {
+                    let v = obj.get(name).and_then(switch_int).ok_or_else(|| {
+                        format!("{}: count_pow {name:?} has no earlier integer value", f.name)
+                    })?;
+                    let n = (v * v) as usize;
+                    let TypeDef::Array { elem, .. } = schema.resolve(&f.ty) else {
+                        unreachable!()
+                    };
+                    let mut out = Vec::new();
+                    for i in 0..n {
+                        let before = c.pos;
+                        out.push(
+                            decode_type(elem, c, ctx)
+                                .map_err(|e| format!("{}: [{i}]: {e}", f.name))?,
+                        );
+                        if c.pos == before {
+                            return Err(format!("{}: array element consumed no bytes", f.name));
+                        }
+                    }
+                    obj.insert(f.name.clone(), Value::Array(out));
+                    continue;
+                }
                 // A count-sum array reads its element count from the sum
                 // of two sibling fields: Fallout 4's model textures are as
                 // many as the header's count of textures and its count of
