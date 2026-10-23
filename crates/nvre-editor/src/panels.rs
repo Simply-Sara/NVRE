@@ -255,6 +255,7 @@ pub fn cells(
         // row opens that cell, as the list did.
         egui_extras::TableBuilder::new(ui)
             .striped(true)
+            .sense(egui::Sense::click())
             .column(egui_extras::Column::auto().at_least(140.0).clip(true))
             .column(egui_extras::Column::auto().at_least(80.0))
             .column(egui_extras::Column::remainder().clip(true))
@@ -277,12 +278,16 @@ pub fn cells(
                 for c in &rows {
                     let open = session.cell == Some(c.form_id);
                     body.row(18.0, |mut row_ui| {
-                        // The Editor ID cell is the clickable one, so a row is
-                        // opened the way the old list was: click the name.
-                        let resp = cell_response(&mut row_ui, |ui| {
-                            ui.selectable_label(open, c.editor_id())
-                                .on_hover_text(format!("open {} ({} refs)", c.editor_id(), c.refs))
+                        // The whole row is the widget: it highlights whole when
+                        // it is the open cell, and a click anywhere on it opens
+                        // the cell — the way the old list's one clickable name
+                        // did, over the full row instead.
+                        row_ui.set_selected(open);
+                        row_ui.col(|ui| {
+                            ui.label(c.editor_id())
+                                .on_hover_text(format!("open {} ({} refs)", c.editor_id(), c.refs));
                         });
+                        let resp = row_ui.response();
                         if resp.clicked() {
                             session.open_cell(c.form_id);
                         }
@@ -599,9 +604,11 @@ pub fn references(
         ui.separator();
         // A table with a width policy per column — the Editor ID absorbs the
         // slack and clips, so a long base name cannot push the lock column
-        // out of the pane.
+        // out of the pane. The row is the widget: it highlights whole when
+        // selected, and a click anywhere on it selects.
         egui_extras::TableBuilder::new(ui)
             .striped(true)
+            .sense(egui::Sense::click())
             .column(egui_extras::Column::remainder().at_least(160.0).clip(true))
             .column(egui_extras::Column::auto().at_least(80.0))
             .column(egui_extras::Column::auto().at_least(80.0))
@@ -628,9 +635,6 @@ pub fn references(
                 for r in &rows {
                     let open = session.selected == Some(r.form_id);
                     let base = r.base.as_deref().and_then(parse_formid);
-                    // The Editor ID cell is the clickable one, so a row is
-                    // selected the way the old list was: click the name.
-                    //
                     // A placed object is named after what it places. Only
                     // 5,011 of FalloutNV's 307,710 REFRs carry an EDID of
                     // their own [observed: fnvtool esm survey], so a row
@@ -654,9 +658,11 @@ pub fn references(
                         text = format!("{text}  [deleting]");
                     }
                     body.row(18.0, |mut row_ui| {
-                        let resp = cell_response(&mut row_ui, |ui| {
-                            ui.selectable_label(open, text)
+                        row_ui.set_selected(open);
+                        row_ui.col(|ui| {
+                            ui.label(text);
                         });
+                        let resp = row_ui.response();
                         if resp.clicked() {
                             session.select(r.form_id);
                             // A double-click on a row frames it in the viewport,
@@ -1075,23 +1081,6 @@ const CATEGORY_WIDTH: f32 = 180.0;
 /// The gap between the palette's two columns, wide enough for a separator.
 const SEPARATOR_GAP: f32 = 8.0;
 
-/// Add a cell whose widget's own response is what the panel acts on.
-///
-/// `TableRow::col` hands back the cell's response — which a table does not
-/// make clickable by default (`Sense::hover`) — and its closure must return
-/// nothing, so a widget's response has to be carried out in a binding. Over
-/// a cell that holds one selectable label, it is the label's response that
-/// sees the click.
-fn cell_response(
-    row: &mut egui_extras::TableRow<'_, '_>,
-    add: impl FnOnce(&mut egui::Ui) -> egui::Response,
-) -> egui::Response {
-    let mut out = None;
-    let _ = row.col(|ui| {
-        out = Some(add(ui));
-    });
-    out.expect("the cell was added")
-}
 
 /// The object palette: a category list down the left side, that category's
 /// objects on the right.
@@ -1209,12 +1198,16 @@ pub fn place(
         // scan each field on its own column instead of one merged label.
         // Each column has a width policy, so one long name clips instead
         // of stretching the table, and the Name column takes whatever
-        // room is left. Every cell of a row carries the same selection,
-        // so a click anywhere selects and a double-click anywhere opens.
-        // The table scrolls its own body, so there is no ScrollArea
-        // around it.
+        // room is left.
+        //
+        // The row is the widget, not the labels in it — the egui demo's
+        // own pattern: `Sense::click` on the table makes the whole row's
+        // area clickable, `set_selected` paints the whole row, and the
+        // row's response is the one the panel acts on. The table scrolls
+        // its own body, so there is no ScrollArea around it.
         egui_extras::TableBuilder::new(&mut ui)
             .striped(true)
+            .sense(egui::Sense::click())
             .column(egui_extras::Column::auto().at_least(140.0).clip(true))
             .column(egui_extras::Column::auto().at_least(80.0))
             .column(egui_extras::Column::remainder().clip(true))
@@ -1231,23 +1224,26 @@ pub fn place(
             })
             .body(|mut body| {
                 for row in &groups[*chosen].objects {
-                    let selected = selected_fid == Some(row.fid);
                     body.row(18.0, |mut row_ui| {
-                        let edid = cell_response(&mut row_ui, |ui| {
-                            ui.selectable_label(selected, &row.edid)
+                        // The whole row highlights when it is the selected
+                        // one — background and text — not one label in it.
+                        row_ui.set_selected(selected_fid == Some(row.fid));
+                        row_ui.col(|ui| {
+                            ui.label(&row.edid);
                         });
-                        let formid = cell_response(&mut row_ui, |ui| {
-                            ui.selectable_label(selected, format!("{:08X}", row.fid))
+                        row_ui.col(|ui| {
+                            ui.label(
+                                egui::RichText::new(format!("{:08X}", row.fid)).monospace(),
+                            );
                         });
-                        let name = cell_response(&mut row_ui, |ui| {
-                            ui.selectable_label(selected, &row.name)
+                        row_ui.col(|ui| {
+                            ui.label(&row.name);
                         });
-                        for resp in [edid, formid, name] {
-                            if resp.double_clicked() {
-                                open_obj = Some((row.fid, cur_group.sig));
-                            } else if resp.clicked() {
-                                select_fid = Some(row.fid);
-                            }
+                        let resp = row_ui.response();
+                        if resp.double_clicked() {
+                            open_obj = Some((row.fid, cur_group.sig));
+                        } else if resp.clicked() {
+                            select_fid = Some(row.fid);
                         }
                     });
                 }
