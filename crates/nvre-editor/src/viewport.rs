@@ -39,6 +39,25 @@ use nvre_world::land::{
 use nvre_world::transform::ref_rotation;
 use std::collections::{HashMap, HashSet};
 
+use crate::trace_log;
+
+// The camera pose the previous `sync_focus` saw, for change detection.
+//
+// A thread-local rather than a `Resource`: the camera's pose is not the
+// editor's state, and a field on `ViewportFocus` would be one more thing that
+// has to be reset when a cell opens.
+thread_local! {
+    static LAST_CAMERA: std::cell::RefCell<(Vec3, f32)> =
+        const { std::cell::RefCell::new((Vec3::ZERO, 0.0)) };
+}
+
+// Whether the draw-list summary has been printed, so it is one line per cell
+// rather than one per frame. Reset when the cell changes, which is where a
+// dropped reference would newly appear.
+thread_local! {
+    static DRAW_LIST_LOGGED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// Marks the viewport's orbit camera.
 #[derive(Component)]
 pub struct ViewportCamera;
@@ -198,6 +217,21 @@ pub fn sync_focus(
         return;
     }
     let (target, distance) = camera_focus(&transform, &controller);
+    // Only a moved camera is worth a line; a stationary one is not a state
+    // change. Compared with a tolerance, because the camera's own smoothing
+    // leaves it drifting by fractions of a unit every frame.
+    let moved = LAST_CAMERA.with(|c| {
+        let (t, d) = *c.borrow();
+        let moved = (t - target).length() > 1.0 || (d - distance).abs() > 1.0;
+        *c.borrow_mut() = (target, distance);
+        moved
+    });
+    if crate::object_drag::trace() && moved {
+        trace_log!(
+            "sync_focus: camera target {target:?} distance {distance:.1} (pending={})",
+            focus.pending.is_some()
+        );
+    }
     focus.target = target;
     focus.distance = distance;
 }
@@ -595,6 +629,7 @@ pub fn draw_cell(
         for (_, e) in spawned.refs.drain() {
             commands.entity(e).despawn();
         }
+        DRAW_LIST_LOGGED.with(|c| c.set(false));
         spawned.failed.clear();
         spawned.model_paths.clear();
         spawned.bases_resolved = false;
@@ -680,6 +715,34 @@ pub fn draw_cell(
     } else {
         session.cell_refs().to_vec()
     };
+    // The draw list, and whether the staged (unsaved) references are in it. A
+    // dropped object is staged with FormID 0 and only reaches the viewport
+    // through `build_cell_refs`, which appends the document's pending inserts —
+    // so a drop that never shows up is either absent from this list or present
+    // and skipped below. This line says which.
+    if crate::object_drag::trace() && !DRAW_LIST_LOGGED.with(|c| c.replace(true)) {
+        let staged: Vec<u32> = session
+            .doc
+            .inserted()
+            .iter()
+            .map(|p| p.record.header.form_id)
+            .collect();
+        trace_log!(
+            "draw_cell: cell={cell:08X} radius={radius} {} refs in the draw list \
+             ({} staged with FormID 0, {} already spawned)",
+            refs.len(),
+            staged.len(),
+            spawned.refs.len()
+        );
+        for r in refs.iter().filter(|r| r.form_id == 0) {
+            trace_log!(
+                "draw_cell: STAGED ref in the draw list: sig={} base={:?} position={:?}",
+                r.sig,
+                r.base,
+                r.position
+            );
+        }
+    }
     // Resolve missing base objects' model paths in one batch.
     // Cached in `spawned.model_paths` so subsequent frames don't re-resolve them.
     if !spawned.bases_resolved {
@@ -778,37 +841,89 @@ pub fn draw_cell(
         if spawned.failed.contains(&r.form_id) {
             continue;
         }
+        // A dropped reference is staged with FormID 0 until the save, so it is
+        // logged by its base object rather than by a FormID that means nothing
+        // yet. A per-ref line for every reference in a cell is noise (102 in a
+        // typical interior, every frame); only a *staged* one is unusual, and
+        // only a spawn is a change.
+        if crate::object_drag::trace() && r.form_id == 0 {
+            trace_log!(
+                "draw_cell: STAGED ref sig={} base={:?} position={:?}",
+                r.sig,
+                r.base,
+                r.position
+            );
+        }
         let Some(position) = r.position else {
             counts.no_position += 1;
             spawned.failed.insert(r.form_id);
+            // A staged ref with no position is the drop landing nowhere, which is
+            // exactly the "placed but not rendered" symptom. `counts` is only
+            // reported when the cell spawned *nothing*, so a drop into a cell
+            // that already has models would otherwise vanish silently.
+            if crate::object_drag::trace() && r.form_id == 0 {
+                trace_log!(
+                    "draw_cell: STAGED ref SKIPPED, no position (subrecord DATA missing or \
+                     shorter than 24 bytes)"
+                );
+            }
             continue;
         };
         // The base object decides the model.
         let Some(base) = r.base.as_deref() else {
             counts.no_base += 1;
             spawned.failed.insert(r.form_id);
+            if crate::object_drag::trace() && r.form_id == 0 {
+                trace_log!("draw_cell: STAGED ref SKIPPED, no base object (subrecord NAME)");
+            }
             continue;
         };
         let Some(base_fid) = parse_formid(base) else {
             counts.bad_fid += 1;
             spawned.failed.insert(r.form_id);
+            if crate::object_drag::trace() && r.form_id == 0 {
+                trace_log!("draw_cell: STAGED ref SKIPPED, base {base:?} is not a FormID");
+            }
             continue;
         };
         let Some(Some(model_path)) = spawned.model_paths.get(&base_fid).cloned() else {
             counts.no_model += 1;
             spawned.failed.insert(r.form_id);
+            if crate::object_drag::trace() && r.form_id == 0 {
+                trace_log!(
+                    "draw_cell: STAGED ref SKIPPED, base {base_fid:08X} resolves to no model \
+                     path (either it has no model, or the load order refused it)"
+                );
+            }
             continue;
         };
 
         let key = nvre_vfs::normalize(&model_path);
         // Only spawn if the model has already been loaded into ModelCache.
         if !spawned.loaded_models.contains(&key) {
+            // Not a failure: the model is still being loaded, and this frame's
+            // budget went elsewhere. Worth saying once, because it is the one
+            // skip that is *expected* and still looks like "nothing happened".
+            if crate::object_drag::trace() && r.form_id == 0 {
+                trace_log!(
+                    "draw_cell: STAGED ref waiting on its model: {model_path:?} is not in \
+                     the cache yet ({} paths resolved, {} loaded)",
+                    spawned.model_paths.len(),
+                    spawned.loaded_models.len()
+                );
+            }
             continue;
         }
 
         let Some(model) = models.model(&model_path) else {
             counts.no_model += 1;
             spawned.failed.insert(r.form_id);
+            if crate::object_drag::trace() && r.form_id == 0 {
+                trace_log!(
+                    "draw_cell: STAGED ref SKIPPED, {model_path:?} is in the cache but has \
+                     no built model (the asset layer refused it)"
+                );
+            }
             continue;
         };
 
@@ -821,6 +936,16 @@ pub fn draw_cell(
         let rotation = r.rotation.unwrap_or([0.0, 0.0, 0.0]);
         let scale = r.scale.unwrap_or(1.0);
         let tr = game_to_bevy() * ref_transform(position, rotation, scale);
+        // The line that says the dropped object became an entity, and where it
+        // was put. A transform at the origin when the cursor was elsewhere is
+        // "invisible in the viewport" with the cause already printed.
+        trace_log!(
+            "draw_cell: SPAWNED ref fid={:08X} at game {position:?} -> bevy translation {:?} \
+             ({} shapes)",
+            r.form_id,
+            tr.translation,
+            model.shapes.len()
+        );
         let root = commands
             .spawn((
                 Name::new(

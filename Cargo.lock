@@ -4502,6 +4502,7 @@ dependencies = [
  "clap",
  "egui_extras",
  "egui_tiles",
+ "log",
  "nvre-assets",
  "nvre-edit",
  "nvre-esm",

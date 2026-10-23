@@ -16,7 +16,9 @@
 //! the filter strings and the worldspace dropdown, which are the only things a
 //! user types into or picks.
 
+use crate::object_drag::DraggedObject;
 use crate::session::CellScope;
+use crate::trace_log;
 use bevy::prelude::*;
 use bevy_egui::egui;
 use nvre_edit::encode::sub_views;
@@ -1102,6 +1104,8 @@ pub fn place(
     mut session: ResMut<crate::session::Session>,
     mut filters: ResMut<Filters>,
     mut chosen: Local<usize>,
+    mut drag: MessageWriter<crate::object_drag::DragStarted>,
+    ghost: Res<crate::object_drag::DragGhost>,
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "place"), |ui| {
         ui.horizontal(|ui| {
@@ -1137,6 +1141,9 @@ pub fn place(
         let cur_group = &groups[*chosen];
         let mut open_obj: Option<(u32, [u8; 4])> = None;
         let mut select_fid: Option<u32> = None;
+        // The object a row started dragging this frame, if one did. Carried to
+        // the message after the table, which is the only place that can name it.
+        let mut drag_started: Option<crate::object_drag::DraggedObject> = None;
 
         // The two halves of GECK's Object Window: a category list down the LEFT
         // side, the chosen category's objects on the right.
@@ -1210,6 +1217,11 @@ pub fn place(
         // row's response is the one the panel acts on. The table scrolls
         // its own body, so there is no ScrollArea around it.
         //
+        // The sense carries drags too, because the row is also the drag
+        // source for placing an object in the viewport (see
+        // `object_drag`): a press that turns into a movement starts the
+        // drag, and one that does not stays a click.
+        //
         // Columns start at a preset width and can be dragged — never
         // `auto()`, whose sizing pass renders the whole table invisibly
         // to measure content, which with unvirtualized rows meant every
@@ -1218,7 +1230,11 @@ pub fn place(
         // are dragged.
         egui_extras::TableBuilder::new(&mut ui)
             .striped(true)
-            .sense(egui::Sense::click())
+            // The row is a drag source: it senses clicks (selection, opening the
+            // editor) *and* drags, which is what lets a press become either. A
+            // table that senses only clicks cannot start a drag at all, and one
+            // that senses only drags could not be clicked.
+            .sense(egui::Sense::click_and_drag())
             .resizable(true)
             .id_salt("objects_table")
             .column(egui_extras::Column::initial(240.0).at_least(120.0).clip(true))
@@ -1260,6 +1276,40 @@ pub fn place(
                     } else if resp.clicked() {
                         select_fid = Some(row.fid);
                     }
+                    // The row is the drag source for placing the object in the
+                    // viewport. `dnd_set_drag_payload` only stores the payload on
+                    // the frame the drag *begins*, and the message carries it
+                    // across: egui clears its own payload the moment the pointer
+                    // is released, which is the frame the drop has to be read on.
+                    // Logged only when something changed: one line per row per
+                    // frame is hundreds of lines a second and buries the lines
+                    // that matter. A drag starting, or a drag in flight on this
+                    // row, is the change worth a line.
+                    let started_here = resp.drag_started();
+                    let being_dragged = resp.dragged();
+                    if crate::object_drag::trace() && (started_here || being_dragged) {
+                        trace_log!(
+                            "panel row {:08X}: drag_started={started_here} dragged={being_dragged}",
+                            row.fid,
+                        );
+                    }
+                    resp.dnd_set_drag_payload(DraggedObject {
+                        form_id: row.fid,
+                        sig: cur_group.sig,
+                    });
+                    if started_here {
+                        drag_started = Some(DraggedObject {
+                            form_id: row.fid,
+                            sig: cur_group.sig,
+                        });
+                    }
+                    // The cursor is the affordance that says a row can be
+                    // dragged at all. It is set from the ghost's own state, so
+                    // the row shows `Grab` while the drag is being set up and the
+                    // viewport takes over with `Grabbing` once the pointer is
+                    // over the world.
+                    let icon = crate::object_drag::drag_cursor(&ghost, ghost.in_viewport);
+                    resp.ctx.set_cursor_icon(icon);
                 });
             });
         ui.separator();
@@ -1290,6 +1340,12 @@ pub fn place(
             }
         });
         // The actions, after every piece of UI that can choose one.
+        if let Some(object) = drag_started {
+            // A row began a drag: the viewport reads this to start drawing the
+            // ghost. It arrives as a message because the two live in different
+            // windows' schedules and neither can call the other.
+            drag.write(crate::object_drag::DragStarted(object));
+        }
         if let Some((fid, sig)) = open_obj {
             session.open_object(fid, sig);
         } else if let Some(fid) = select_fid {

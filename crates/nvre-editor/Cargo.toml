@@ -32,3 +32,9 @@ bevy_egui.workspace = true
 egui_extras.workspace = true
 clap.workspace = true
 egui_tiles = "0.17.1"
+
+[dev-dependencies]
+# The `log` crate is in the tree through bevy, but the trait has to be named to
+# implement a subscriber, and a transitive dependency cannot be named. `std` is
+# what provides `set_global_default`.
+log = { version = "0.4", features = ["std"] }

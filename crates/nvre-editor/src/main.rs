@@ -12,7 +12,9 @@
 //! viewport, and one window per panel. See [`nvre_editor::windows`] for why the
 //! main window is the primary one and the viewport names its own render target.
 
-use nvre_editor::{game, gizmo, launcher, object_editor, panels, session, viewport, windows};
+use nvre_editor::{
+    game, gizmo, launcher, object_drag, object_editor, panels, session, viewport, windows,
+};
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
@@ -292,6 +294,10 @@ fn main() {
         .init_resource::<viewport::Spawned>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
+        // The drag state the Objects-window drag reads and writes. `#[derive(Resource)]`
+        // alone does not register anything: without this, every system that takes
+        // `ResMut<DragGhost>` fails validation on the first frame.
+        .init_resource::<object_drag::DragGhost>()
         // The camera controller: the plugin group that owns the pose, and the
         // input plugin that says which button starts which motion. Both are added
         // at startup because they only register systems; the camera that uses them
@@ -301,6 +307,7 @@ fn main() {
         .init_state::<EditorState>()
         .add_message::<nvre_editor::OpenRequested>()
         .add_message::<nvre_editor::FrameRequested>()
+        .add_message::<nvre_editor::object_drag::DragStarted>()
         // The launcher draws into the primary context, which has to exist before
         // anything is opened.
         .add_systems(Startup, windows::setup_primary)
@@ -377,6 +384,16 @@ fn main() {
                 viewport::flat_material_diagnostic,
                 object_editor::manage_window,
                 handle_window_close,
+                // The drag out of the Objects window, in the order it happens:
+                // the source's message starts the ghost, the ghost follows the
+                // cursor, and the release is read last so a drop sees the point
+                // the ghost was drawn at. Before `sync_focus` for the same reason
+                // a frame request is: the camera has to be where the drop reads
+                // it this frame.
+                object_drag::begin_ghost,
+                object_drag::update_ghost,
+                object_drag::place_dropped_object,
+                object_drag::draw_ghost,
                 // Last, because everything above can ask for a view — a cell
                 // opening, a frame request, `F`, a double-click in `pick` — and
                 // this is what puts the camera there.
