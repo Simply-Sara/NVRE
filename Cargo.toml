@@ -27,8 +27,9 @@ tracing = "0.1"
 
 # Editor GUI. bevy_egui 0.43 is the release that takes Bevy 0.20.
 # pbr_specular_textures is what the asset layer needs (normal-map alpha as the
-# specular mask).
-bevy = { version = "=0.20.0", features = ["pbr_specular_textures"] }
+# specular mask). pan_orbit_camera is Bevy's own camera controller, which the
+# viewport uses instead of hand-rolling an orbit camera.
+bevy = { version = "=0.20.0", features = ["pbr_specular_textures", "pan_orbit_camera"] }
 bevy_egui = "=0.43.0"
 clap = { version = "4", features = ["derive", "env"] }
 

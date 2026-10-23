@@ -1243,22 +1243,34 @@ pub fn status(
 
 /// The debug window: the camera's state, read and written.
 ///
-/// The orbit camera is the one thing in the editor whose state is worth watching
-/// while it moves: a viewport that shows nothing is usually the camera looking
-/// somewhere else, and the numbers say where. Editing them here moves the camera
-/// the same way dragging does, which makes a framing problem something you can
-/// dial in rather than hunt for.
+/// The camera is the one thing in the editor whose state is worth watching while
+/// it moves: a viewport that shows nothing is usually the camera looking somewhere
+/// else, and the numbers say where. Editing them here moves the camera the same
+/// way framing does, which makes a framing problem something you can dial in
+/// rather than hunt for.
+///
+/// What is shown is read off the camera itself, not from a copy of what the
+/// editor last asked for, so the readout describes the view rather than the
+/// request.
 pub fn debug(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<5>>>,
-    mut orbit: ResMut<crate::viewport::Orbit>,
+    mut focus: ResMut<crate::viewport::ViewportFocus>,
+    camera: Query<&Transform, With<crate::viewport::ViewportCamera>>,
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "debug"), |ui| {
         ui.heading("Camera");
+
+        // Where the camera is and what it is looking along, as it actually is.
+        let (eye, forward) = match camera.single() {
+            Ok(t) => (t.translation, *t.forward()),
+            Err(_) => (Vec3::ZERO, Vec3::NEG_Z),
+        };
+
         egui::Grid::new("orbit").num_columns(2).show(ui, |ui| {
             // The target is where the camera looks, in Bevy space. A cell sits
             // tens of thousands of units from the origin, so the values are
             // shown to a unit rather than the default two decimals.
-            let mut target = [orbit.target.x, orbit.target.y, orbit.target.z];
+            let mut target = [focus.target.x, focus.target.y, focus.target.z];
             ui.label("target");
             ui.horizontal(|ui| {
                 for (i, axis) in ["x", "y", "z"].iter().enumerate() {
@@ -1267,57 +1279,65 @@ pub fn debug(
                 }
             });
             ui.end_row();
-            if target != [orbit.target.x, orbit.target.y, orbit.target.z] {
-                orbit.target = Vec3::new(target[0], target[1], target[2]);
+            if target != [focus.target.x, focus.target.y, focus.target.z] {
+                // A dialled-in target is a request like any other: it goes through
+                // the same path a frame request does, so the camera and the
+                // controller's anchor stay in step.
+                let distance = focus.distance;
+                crate::viewport::request_view(
+                    &mut focus,
+                    crate::viewport::ViewPose {
+                        target: Vec3::new(target[0], target[1], target[2]),
+                        distance,
+                        pitch: None,
+                        yaw: None,
+                    },
+                );
             }
 
+            let mut distance = focus.distance;
             ui.label("distance");
             ui.add(
-                egui::DragValue::new(&mut orbit.distance)
+                egui::DragValue::new(&mut distance)
                     .speed(10.0)
                     .range(20.0..=200_000.0),
             );
             ui.end_row();
-
-            // Angles in degrees, which is what a person reads; stored in radians.
-            let mut yaw = orbit.yaw.to_degrees();
-            let mut pitch = orbit.pitch.to_degrees();
-            ui.label("yaw");
-            ui.add(egui::DragValue::new(&mut yaw).speed(1.0).suffix("°"));
-            ui.end_row();
-            ui.label("pitch");
-            ui.add(
-                egui::DragValue::new(&mut pitch)
-                    .speed(1.0)
-                    .range(-88.0..=88.0)
-                    .suffix("°"),
-            );
-            ui.end_row();
-            orbit.yaw = yaw.to_radians();
-            orbit.pitch = pitch.to_radians();
+            if (distance - focus.distance).abs() > f32::EPSILON {
+                let target = focus.target;
+                crate::viewport::request_view(
+                    &mut focus,
+                    crate::viewport::ViewPose {
+                        target,
+                        distance,
+                        pitch: None,
+                        yaw: None,
+                    },
+                );
+            }
         });
 
         ui.separator();
-        // Where the camera ends up, which is what the target and angles imply.
-        // Dragging the target above moves this; reading it says whether the
-        // camera is where you think it is.
-        let dir = Vec3::new(
-            orbit.yaw.cos() * orbit.pitch.cos(),
-            orbit.pitch.sin(),
-            orbit.yaw.sin() * orbit.pitch.cos(),
-        );
-        let eye = orbit.target - dir * orbit.distance;
+        // Where the camera is, which is what the target and distance imply.
+        // Reading it says whether the camera is where you think it is.
         ui.label(format!("eye  {:.0}, {:.0}, {:.0}", eye.x, eye.y, eye.z));
-        ui.label(format!(
-            "yaw {:.1}°  pitch {:.1}°",
-            orbit.yaw.to_degrees(),
-            orbit.pitch.to_degrees()
-        ));
-        ui.label(format!("distance {:.0}", orbit.distance));
+        let yaw = forward.x.atan2(forward.z).to_degrees();
+        let pitch = forward.y.asin().to_degrees();
+        ui.label(format!("yaw {yaw:.1}°  pitch {pitch:.1}°"));
+        ui.label(format!("distance {:.0}", focus.distance));
 
         ui.separator();
         if ui.button("Reset").clicked() {
-            *orbit = crate::viewport::Orbit::default();
+            let default = crate::viewport::ViewportFocus::default();
+            crate::viewport::request_view(
+                &mut focus,
+                crate::viewport::ViewPose {
+                    target: default.target,
+                    distance: default.distance,
+                    pitch: Some(0.0),
+                    yaw: Some(0.0),
+                },
+            );
         }
     });
 }

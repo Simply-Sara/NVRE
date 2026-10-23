@@ -75,7 +75,7 @@ pub fn gizmo_mode_hotkeys(
     buttons: Res<ButtonInput<MouseButton>>,
 ) {
     if buttons.pressed(MouseButton::Right) {
-        return; // Flying or orbiting; do not switch modes
+        return; // Orbiting; do not switch modes mid-drag
     }
     if keys.just_pressed(KeyCode::KeyW) {
         gizmo.mode = GizmoMode::Translate;

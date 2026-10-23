@@ -12,18 +12,31 @@
 //! A reference's model is placed by the asset layer's own root, which already
 //! carries the NIF's Z-up-to-Bevin-Y-up rotation; the reference's transform is
 //! composed onto that rather than replacing it.
+//!
+//! ## The camera
+//!
+//! The viewport's camera is Bevy's own `PanOrbitCamera`. It owns the pose: a drag
+//! is a motion it is told to start and then fed screen-space deltas, and it moves
+//! the `Transform` itself. That is why nothing here keeps a yaw/pitch/distance
+//! alongside the camera — the editor asks the camera where it is
+//! ([`sync_focus`]) and, when something has to be looked at, writes a pose
+//! ([`place_camera`]). [`ViewportFocus`] is the one piece of intent the editor
+//! keeps: what is worth looking at, and from how far.
 
 use bevy::asset::RenderAssetUsages;
+use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
+use bevy::camera_controller::pan_orbit_camera::controller::motion::CurrentMotion;
 use bevy::ecs::message::MessageReader;
-use bevy::input::mouse::MouseWheel;
+use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::mesh::{Indices, PrimitiveTopology};
+use bevy::picking::mesh_picking::ray_cast::{MeshRayCast, MeshRayCastSettings, RayCastVisibility};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
+use nvre_assets::model::ModelCtx;
 use nvre_world::land::{
     land_texture, load_land, Land, LandParts, DEFAULT_DIFFUSE, QUAD_SIDE, SIDE, SPACING,
 };
 use nvre_world::transform::ref_rotation;
-use nvre_assets::model::ModelCtx;
 use std::collections::{HashMap, HashSet};
 
 /// Marks the viewport's orbit camera.
@@ -61,17 +74,28 @@ pub fn ref_transform(position: [f32; 3], rotation: [f32; 3], scale: f32) -> Tran
     }
 }
 
-/// Orbit state for the viewport camera.
+/// What the viewport is looking at, as the editor thinks of it.
+///
+/// The camera itself owns its pose; this is the intent behind it. `target` is
+/// where a cell opening or a frame request wants the view, and `distance` is how
+/// far away it wants to be. It is written by [`crate::panels::debug`] and read
+/// back by [`sync_focus`] once the user has moved the camera, so the debug window
+/// shows where the camera actually is rather than where it was last told to go.
 #[derive(Resource)]
-pub struct Orbit {
+pub struct ViewportFocus {
     /// What the camera looks at, in Bevy space.
     pub target: Vec3,
+    /// How far from the target the camera sits.
     pub distance: f32,
-    pub yaw: f32,
-    pub pitch: f32,
+    /// A view waiting to be applied, if anything asked for one.
+    ///
+    /// Cleared by [`sync_focus`] once the camera is there. Without it the camera
+    /// would be yanked back to `target`/`distance` every frame the user moved it,
+    /// which is what makes a camera fight the hand on the mouse.
+    pending: Option<ViewPose>,
 }
 
-impl Orbit {
+impl ViewportFocus {
     /// How far from the target the camera opens, and how far it frames a
     /// reference at.
     ///
@@ -80,18 +104,33 @@ impl Orbit {
     pub const DEFAULT_DISTANCE: f32 = 250.0;
 }
 
-impl Default for Orbit {
+impl Default for ViewportFocus {
     fn default() -> Self {
-        Orbit {
+        ViewportFocus {
             target: Vec3::ZERO,
             distance: Self::DEFAULT_DISTANCE,
-            // Zero on both: the camera looks straight down the target's +X, level
-            // with it. Any other default is a surprise the first time a cell
-            // opens.
-            yaw: 0.0,
-            pitch: 0.0,
+            pending: None,
         }
     }
+}
+
+/// A view the editor has asked for: what to look at, from how far, and optionally
+/// from which angle.
+///
+/// The angles are optional because the two callers want different things. Framing
+/// a reference keeps the view's heading and levels it off — the camera swings
+/// round to the object rather than snapping to a fixed angle. Opening a cell sets
+/// both, because a cell is entered from a known angle: level in an interior, and
+/// looking down at an exterior from above.
+#[derive(Clone, Copy)]
+pub struct ViewPose {
+    pub target: Vec3,
+    pub distance: f32,
+    /// Elevation of the camera above the target, in radians. Negative looks down
+    /// at the target from above.
+    pub pitch: Option<f32>,
+    /// Heading around the target, in radians.
+    pub yaw: Option<f32>,
 }
 
 /// Which models and terrain have been spawned, so a frame does not respawn them.
@@ -114,9 +153,9 @@ pub struct Spawned {
     failed: HashSet<u32>,
 }
 
-/// Spawn the viewport's light, ambient light and orbit state.
+/// Spawn the viewport's light and ambient light.
 ///
-/// The camera itself is spawned by [`crate::windows::spawn_windows`], which is
+/// The camera itself is spawned by [`crate::windows::spawn_viewport`], which is
 /// what ties it to the viewport window. Spawning a second camera here would
 /// leave one with no window to render to, and its egui context's output would
 /// never be consumed.
@@ -136,91 +175,388 @@ pub fn setup(mut commands: Commands) {
     });
 }
 
-/// Keep the camera where the orbit state says it is.
-pub fn orbit_camera(mut cameras: Query<&mut Transform, With<ViewportCamera>>, orbit: Res<Orbit>) {
-    let Ok(mut t) = cameras.single_mut() else {
+/// Keep the camera where the focus says it is.
+///
+/// The camera controller owns the pose between moves, so this only acts when the
+/// editor has actually asked for a view: [`ViewportFocus`] holds a pending
+/// [`ViewPose`], and it is cleared here once the camera has been put there.
+/// Reading the pose back afterwards is what keeps the debug window honest — it
+/// describes where the camera is, not the last thing that was requested.
+pub fn sync_focus(
+    mut cameras: Query<(&mut Transform, &mut PanOrbitCamera), With<ViewportCamera>>,
+    mut focus: ResMut<ViewportFocus>,
+) {
+    let Ok((mut transform, mut controller)) = cameras.single_mut() else {
         return;
     };
-    let dir = Vec3::new(
-        orbit.yaw.cos() * orbit.pitch.cos(),
-        orbit.pitch.sin(),
-        orbit.yaw.sin() * orbit.pitch.cos(),
-    );
-    t.translation = orbit.target - dir * orbit.distance;
-    t.look_at(orbit.target, Vec3::Y);
+    if let Some(pose) = focus.pending.take() {
+        place_camera(&mut transform, &mut controller, pose);
+    }
+    // A camera in the middle of a move is where the user put it a frame ago; the
+    // pose it is heading for is the next frame's business.
+    if controller.current_motion.is_moving() {
+        return;
+    }
+    let (target, distance) = camera_focus(&transform, &controller);
+    focus.target = target;
+    focus.distance = distance;
 }
 
-/// Mouse drag orbits, MMB or Shift+RMB pans, WASD flies, and wheel zooms.
-#[allow(clippy::too_many_arguments)]
-pub fn orbit_input(
-    mut orbit: ResMut<Orbit>,
+/// Put the camera at a pose.
+///
+/// The heading is kept unless the pose names one — only the distance and the aim
+/// change — so a view that is already turned towards an object swings round to it
+/// rather than snapping to a fixed angle. The controller's anchor depth is reset
+/// with it, because a controller that remembers the depth of its last hit would
+/// otherwise orbit about a point that is no longer there.
+pub fn place_camera(transform: &mut Transform, controller: &mut PanOrbitCamera, pose: ViewPose) {
+    // The camera sits opposite the direction it looks along, so the pose's
+    // direction of view is the negation of where the camera goes.
+    let direction = match (pose.yaw, pose.pitch) {
+        (yaw, pitch) if yaw.is_some() || pitch.is_some() => {
+            let yaw = yaw.unwrap_or(0.0);
+            let pitch = pitch.unwrap_or(0.0);
+            Vec3::new(
+                yaw.cos() * pitch.cos(),
+                pitch.sin(),
+                yaw.sin() * pitch.cos(),
+            )
+        }
+        _ => *transform.forward(),
+    };
+    transform.translation = pose.target - direction * pose.distance;
+    transform.look_at(pose.target, Vec3::Y);
+    controller.current_motion = CurrentMotion::Stationary;
+    controller.last_anchor_depth = -(pose.distance.abs() as f64);
+}
+
+/// Where a camera is looking and from how far, read off its own pose.
+///
+/// The distance is the controller's own anchor depth, which is what it orbits and
+/// zooms about: after a wheel-zoom or a pan that is the only record of how far the
+/// view is from what it is looking at.
+pub fn camera_focus(transform: &Transform, controller: &PanOrbitCamera) -> (Vec3, f32) {
+    let distance = controller.last_anchor_depth().abs() as f32;
+    let distance = if distance.is_finite() && distance > 0.0 {
+        distance
+    } else {
+        ViewportFocus::DEFAULT_DISTANCE
+    };
+    let forward = transform.forward();
+    (transform.translation + *forward * distance, distance)
+}
+
+/// Ask for a view.
+///
+/// The one way anything moves the camera: a cell opening, a frame request and the
+/// debug window all go through this, so there is a single place where "look at
+/// this from here" is expressed.
+pub fn request_view(focus: &mut ViewportFocus, pose: ViewPose) {
+    focus.target = pose.target;
+    focus.distance = pose.distance;
+    focus.pending = Some(pose);
+}
+
+/// The viewport's camera input: which button starts which motion, and the
+/// screen-space deltas that drive it.
+///
+/// The controller itself has no opinion about buttons — it is told to start an
+/// orbit, a pan or a zoom, fed deltas while the motion lasts, and told when it
+/// ends. This is that telling, and it is the whole of the editor's camera
+/// handling: the pose, the smoothing, the momentum, the clamping and the orbit
+/// constraint are Bevy's.
+///
+/// The anchor for an orbit or a zoom is the point under the cursor, taken from
+/// real mesh hits — orbiting about a wall you clicked on keeps that wall under the
+/// pointer instead of swinging the view about the screen centre. When the cursor
+/// is over empty space the controller falls back to the depth of its last hit, so
+/// dragging from the sky still orbits about something sensible.
+pub struct ViewportCameraPlugin;
+
+impl Plugin for ViewportCameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<CameraDrag>()
+            .init_resource::<ViewportFocus>()
+            .add_systems(
+                PreUpdate,
+                (
+                    start_camera_motions,
+                    feed_camera_input,
+                    end_camera_motions,
+                    end_zoom_motion,
+                )
+                    .chain()
+                    // After picking has produced its hits for this frame, and
+                    // before the controller consumes them. The controller's own
+                    // system runs in `SyncCameraPosition`, which is already
+                    // ordered after picking, so this is the window between.
+                    .after(bevy::picking::PickingSystems::Last)
+                    .before(PanOrbitCamera::update_camera_positions),
+            );
+        // `frame_selected` and `sync_focus` are registered by the binary, in the
+        // `Editing` state: the first reads the session, which does not exist
+        // before a plugin is open, and a system whose parameters fail validation
+        // fails the schedule.
+    }
+}
+
+/// Which camera motion a button starts.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Motion {
+    Orbit,
+    Pan,
+}
+
+/// The button that starts each motion.
+///
+/// Right-drag orbits, middle-drag pans, and the wheel zooms. This is the mapping
+/// Bevy's own CAD example uses, and the reason for it: an orbit is the motion a
+/// hand reaches for constantly and the right button is the one under it, while a
+/// pan is deliberate and gets the middle button, which nothing else wants.
+///
+/// Public because it is the whole of the editor's own camera policy; everything
+/// else about the camera is the controller's. It is a pure function of the input
+/// state so the mapping can be pinned without a window.
+pub fn motion_for(buttons: &ButtonInput<MouseButton>) -> Option<Motion> {
+    if buttons.just_pressed(MouseButton::Right) {
+        return Some(Motion::Orbit);
+    }
+    if buttons.just_pressed(MouseButton::Middle) {
+        return Some(Motion::Pan);
+    }
+    None
+}
+
+/// Whether the motion a button started is still held.
+///
+/// One button each, so a motion ends when its own button comes up and nothing
+/// else can end it early.
+pub fn motion_held(motion: Motion, buttons: &ButtonInput<MouseButton>) -> bool {
+    match motion {
+        Motion::Orbit => buttons.pressed(MouseButton::Right),
+        Motion::Pan => buttons.pressed(MouseButton::Middle),
+    }
+}
+
+/// How much a wheel notch of each unit is worth to the controller.
+///
+/// The controller treats zoom input as a number it multiplies by the size of a
+/// pixel at the anchor, so the scale here is what decides how fast the wheel
+/// feels. 150 is Bevy's own CAD example's figure for a line-based wheel, and it is
+/// the one that makes a notch a visible step rather than a crawl: NVRE's anchor
+/// depths are in game units (thousands of them), where a multiplier of 1 moves the
+/// camera by a fraction of a unit and the view looks stuck.
+fn scroll_scale(unit: MouseScrollUnit) -> f32 {
+    match unit {
+        MouseScrollUnit::Line => 150.0,
+        MouseScrollUnit::Pixel => 1.0,
+    }
+}
+
+/// Which motion is in progress.
+///
+/// A resource rather than a `Local`, because the input, motion and end systems are
+/// separate and all need it.
+#[derive(Resource, Default)]
+pub struct CameraDrag {
+    motion: Option<Motion>,
+}
+
+/// Start a motion on a button press, anchored at the mesh under the cursor.
+fn start_camera_motions(
+    mut drag: ResMut<CameraDrag>,
     buttons: Res<ButtonInput<MouseButton>>,
-    keys: Res<ButtonInput<KeyCode>>,
-    mut motion: MessageReader<bevy::input::mouse::MouseMotion>,
+    mut ray_cast: MeshRayCast,
+    windows: Query<&Window, With<crate::windows::ViewportWindow>>,
+    mut controllers: Query<(&mut PanOrbitCamera, &Camera, &GlobalTransform), With<ViewportCamera>>,
+) {
+    let Some(motion) = motion_for(&buttons) else {
+        return;
+    };
+    let Ok((mut controller, camera, camera_transform)) = controllers.single_mut() else {
+        return;
+    };
+    // A motion already in flight is not restarted: the controller debounces that
+    // itself, and starting one would drop the anchor it is orbiting about.
+    if controller.is_actively_controlled() {
+        return;
+    }
+    let anchor = cursor_anchor(&mut ray_cast, &windows, camera, camera_transform);
+    match motion {
+        Motion::Orbit => controller.start_orbit(anchor),
+        Motion::Pan => controller.start_pan(anchor),
+    }
+    drag.motion = Some(motion);
+}
+
+/// The point under the cursor, in the camera's view space.
+///
+/// A ray is cast from the viewport camera through the viewport window's cursor and
+/// the nearest mesh it meets is the anchor. That is what makes a drag orbit about
+/// the thing under the pointer rather than the screen centre.
+///
+/// This casts the ray itself rather than reading `bevy_picking`'s
+/// `PointerInteraction`. In a multi-window editor that component is per *pointer*,
+/// not per camera, and what it holds for the mouse is dominated by the window
+/// entity the pointer is over — its `position` is the cursor in screen
+/// coordinates, not a world point. Filtering that out leaves nothing unless the
+/// mesh backend happened to contribute a hit for *this* camera, and when it does
+/// not, the controller silently falls back to its last depth and orbits the centre
+/// of the screen. A ray cast from this camera has neither problem: it is scoped to
+/// the viewport, it cannot see another window's geometry, and a miss is a miss.
+fn cursor_anchor(
+    ray_cast: &mut MeshRayCast,
+    windows: &Query<&Window, With<crate::windows::ViewportWindow>>,
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+) -> Option<bevy::math::DVec3> {
+    let window = windows.single().ok()?;
+    let cursor = window.cursor_position()?;
+    let ray = camera.viewport_to_world(camera_transform, cursor).ok()?;
+    // `Visible`, not `VisibleInView`. `ViewVisibility` is set by the render
+    // plugin for entities a camera is actually drawing, which makes it the more
+    // precise filter — but it is per-view state that is only correct after a
+    // render pass has run, and an anchor is read while the input is handled. When
+    // it is stale or unset the cast culls every mesh and the orbit silently
+    // anchors on the screen centre instead of the cursor. `Visible` asks the
+    // hierarchy, which is what the editor means by "the thing under the pointer".
+    let settings = MeshRayCastSettings {
+        visibility: RayCastVisibility::Visible,
+        ..default()
+    };
+    let (_, hit) = ray_cast.cast_ray(ray, &settings).first()?;
+    Some(
+        camera_transform
+            .affine()
+            .inverse()
+            .transform_point3(hit.point)
+            .as_dvec3(),
+    )
+}
+
+/// Feed the frame's movement and wheel to the controller.
+///
+/// The wheel is handled whether or not a drag is in progress, because zooming is
+/// the one motion that does not need a button held: the controller is told to
+/// start a zoom-only motion, given the wheel, and the motion is left to lapse.
+fn feed_camera_input(
+    drag: Res<CameraDrag>,
+    mut ray_cast: MeshRayCast,
+    windows: Query<&Window, With<crate::windows::ViewportWindow>>,
+    mut controllers: Query<(&mut PanOrbitCamera, &Camera, &GlobalTransform), With<ViewportCamera>>,
+    mut motion: MessageReader<MouseMotion>,
     mut wheel: MessageReader<MouseWheel>,
-    time: Res<Time>,
+) {
+    let Ok((mut controller, camera, camera_transform)) = controllers.single_mut() else {
+        return;
+    };
+
+    // The wheel, and then the zoom input *every* frame — including a zero when
+    // there was no wheel this frame. The controller's zoom is a smoothed input
+    // queue: `send_zoom_input` is what pushes a new sample, and the smoothed
+    // velocity it applies is the average over the queue's window. Sending only on
+    // wheel events leaves the last sample as the newest entry, so the queue keeps
+    // returning the same non-zero velocity and the camera zooms for ever — the
+    // "it keeps scrolling" bug. A zero every frame is what lets the average fall
+    // back to nothing.
+    let mut zoomed = 0.0;
+    for w in wheel.read() {
+        zoomed += w.y * scroll_scale(w.unit);
+    }
+
+    if zoomed != 0.0 && drag.motion.is_none() {
+        // A wheel notch with no drag in progress starts a zoom-only motion,
+        // anchored at the cursor: zooming towards the thing under the pointer is
+        // the whole point of a wheel in an editor, and `None` would zoom towards
+        // the centre of the screen instead.
+        let anchor = cursor_anchor(&mut ray_cast, &windows, camera, camera_transform);
+        controller.start_zoom(anchor);
+    }
+    // Every motion that can zoom gets a sample every frame, zero included.
+    //
+    // An orbit drag is `OrbitZoom` and a pan is `PanZoom`, so neither
+    // `is_zooming_only` nor a "no drag" test alone covers it: a wheel turned
+    // during an orbit feeds the *orbit's* zoom queue, and that queue decays by the
+    // same mechanism. `send_zoom_input` is a no-op unless the camera is under
+    // user control, so sending unconditionally is safe and is what Bevy's own
+    // input plugin does.
+    controller.send_zoom_input(zoomed);
+
+    if drag.motion.is_none() {
+        // Read and drop, so a drag from before this motion does not arrive as one
+        // huge delta the next time a button is pressed.
+        motion.clear();
+        return;
+    }
+    // `MouseMotion`'s delta is cumulative since the last read, so the frame's
+    // movement is the sum of the messages read this frame.
+    let screenspace: Vec2 = motion.read().map(|m| m.delta).sum();
+    controller.send_screenspace_input(screenspace);
+}
+
+/// Let a zoom-only motion lapse once the wheel has stopped.
+///
+/// A zoom started by the wheel has no button to release, so it is ended when its
+/// own input has been consumed. Without this the controller would stay in a
+/// zooming motion for ever and the next orbit would be interpreted as a zoom.
+fn end_zoom_motion(
+    drag: Res<CameraDrag>,
+    mut controllers: Query<&mut PanOrbitCamera, With<ViewportCamera>>,
+) {
+    if drag.motion.is_some() {
+        return;
+    }
+    let Ok(mut controller) = controllers.single_mut() else {
+        return;
+    };
+    if !controller.current_motion.is_zooming_only() {
+        return;
+    }
+    // The queue still holds samples for the smoothing window; once the smoothed
+    // velocity has decayed to nothing the zoom is over.
+    let still_zooming = controller
+        .current_motion
+        .inputs()
+        .map(|inputs| inputs.zoom_velocity_abs(controller.smoothing.zoom.mul_f32(2.0)))
+        .unwrap_or(0.0)
+        > 0.0;
+    if !still_zooming {
+        controller.end_move();
+    }
+}
+
+/// End the motion when the button that started it comes up.
+fn end_camera_motions(
+    mut drag: ResMut<CameraDrag>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    mut controllers: Query<&mut PanOrbitCamera, With<ViewportCamera>>,
+) {
+    let Some(motion) = drag.motion else {
+        return;
+    };
+    if motion_held(motion, &buttons) {
+        return;
+    }
+    if let Ok(mut controller) = controllers.single_mut() {
+        controller.end_move();
+    }
+    drag.motion = None;
+}
+
+/// `F` frames the selection, the way GECK's `T` does.
+pub fn frame_selected(
+    keys: Res<ButtonInput<KeyCode>>,
     session: Res<crate::session::Session>,
     refs: Query<(&RefEntity, &GlobalTransform)>,
+    mut focus: ResMut<ViewportFocus>,
 ) {
-    let move_by: Vec2 = motion.read().map(|m| m.delta).sum();
-
-    // 1. Pan with Middle Mouse Button OR Shift + Right Mouse Button
-    let is_pan = buttons.pressed(MouseButton::Middle)
-        || (buttons.pressed(MouseButton::Right)
-            && (keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight)));
-
-    if is_pan {
-        let right = Vec3::new(-orbit.yaw.sin(), 0.0, orbit.yaw.cos());
-        let up = Vec3::Y;
-        let pan_speed = orbit.distance * 0.0015;
-        orbit.target += (-right * move_by.x + up * move_by.y) * pan_speed;
-    } else if buttons.pressed(MouseButton::Right) {
-        // 2. Orbit with Right Mouse Button
-        orbit.yaw -= move_by.x * 0.005;
-        orbit.pitch = (orbit.pitch - move_by.y * 0.005).clamp(-1.55, 1.55);
-
-        // 3. Fly with WASD / QE when RMB is held down
-        let forward = Vec3::new(
-            orbit.yaw.cos() * orbit.pitch.cos(),
-            orbit.pitch.sin(),
-            orbit.yaw.sin() * orbit.pitch.cos(),
-        );
-        let right = Vec3::new(-orbit.yaw.sin(), 0.0, orbit.yaw.cos());
-        let up = Vec3::Y;
-        let mut fly_speed = (orbit.distance * 1.5 * time.delta_secs()).clamp(5.0, 50_000.0);
-        if keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight) {
-            fly_speed *= 3.0;
-        }
-        if keys.pressed(KeyCode::KeyW) {
-            orbit.target += forward * fly_speed;
-        }
-        if keys.pressed(KeyCode::KeyS) {
-            orbit.target -= forward * fly_speed;
-        }
-        if keys.pressed(KeyCode::KeyA) {
-            orbit.target -= right * fly_speed;
-        }
-        if keys.pressed(KeyCode::KeyD) {
-            orbit.target += right * fly_speed;
-        }
-        if keys.pressed(KeyCode::KeyQ) {
-            orbit.target -= up * fly_speed;
-        }
-        if keys.pressed(KeyCode::KeyE) {
-            orbit.target += up * fly_speed;
-        }
+    if !keys.just_pressed(KeyCode::KeyF) {
+        return;
     }
-
-    for w in wheel.read() {
-        orbit.distance = (orbit.distance * (1.0 - w.y * 0.1)).clamp(20.0, 1_500_000.0);
-    }
-
-    // Hotkey F: Frame selected reference
-    if !buttons.pressed(MouseButton::Right) && keys.just_pressed(KeyCode::KeyF) {
-        if let Some(fid) = session.selected {
-            frame_reference(&mut orbit, &refs, fid);
-        }
-    }
+    let Some(fid) = session.selected else {
+        return;
+    };
+    frame_reference(&mut focus, &refs, fid);
 }
 
 /// Draw the open cell's references, spawning models as they are first seen.
@@ -233,6 +569,7 @@ pub fn draw_cell(
     mut spawned: ResMut<Spawned>,
     mut models: ModelCtx,
     filters: Res<crate::panels::Filters>,
+    mut focus: ResMut<ViewportFocus>,
 ) {
     let Some(cell) = session.cell else { return };
     let (is_exterior, world_opt, grid_opt) = {
@@ -268,7 +605,7 @@ pub fn draw_cell(
         // screen.
         let refs = session.cell_refs().to_vec();
         if let Some(centre) = cell_centre(&refs) {
-            let (dist, pitch) = if is_exterior {
+            let (distance, pitch) = if is_exterior {
                 let d = match radius {
                     0 => 2000.0,
                     1 => 3500.0,
@@ -279,14 +616,17 @@ pub fn draw_cell(
                 };
                 (d, -0.5)
             } else {
-                (Orbit::DEFAULT_DISTANCE, 0.0)
+                (ViewportFocus::DEFAULT_DISTANCE, 0.0)
             };
-            commands.insert_resource(Orbit {
-                target: centre,
-                distance: dist,
-                pitch,
-                yaw: 0.0,
-            });
+            request_view(
+                &mut focus,
+                ViewPose {
+                    target: centre,
+                    distance,
+                    pitch: Some(pitch),
+                    yaw: Some(0.0),
+                },
+            );
         }
     }
 
@@ -604,7 +944,7 @@ pub fn pick(
     mut session: ResMut<crate::session::Session>,
     gizmo: Res<crate::gizmo::GizmoState>,
     buttons: Res<ButtonInput<MouseButton>>,
-    mut orbit: ResMut<Orbit>,
+    mut focus: ResMut<ViewportFocus>,
     cameras: Query<(&Camera, &GlobalTransform), With<ViewportCamera>>,
     windows: Query<&Window, With<crate::windows::ViewportWindow>>,
     refs: Query<(&RefEntity, &GlobalTransform)>,
@@ -665,7 +1005,7 @@ pub fn pick(
         // look at it. The click has to be on the same reference both times and close
         // enough in time, so an accidental second click does not move the view.
         if clicks.register(fid) {
-            frame_reference(&mut orbit, &refs, fid);
+            frame_reference(&mut focus, &refs, fid);
         }
     } else {
         session.selected = None;
@@ -732,20 +1072,31 @@ fn ray_local_box_intersection(
 
 /// Point the camera at a reference.
 ///
-/// Shared by the viewport's own double-click and the references panel's, so
-/// framing an object is the same however it was asked for.
-fn frame_reference(orbit: &mut Orbit, refs: &Query<(&RefEntity, &GlobalTransform)>, form_id: u32) {
+/// Shared by the viewport's own double-click, the `F` hotkey and the references
+/// panel's, so framing an object is the same however it was asked for.
+fn frame_reference(
+    focus: &mut ViewportFocus,
+    refs: &Query<(&RefEntity, &GlobalTransform)>,
+    form_id: u32,
+) {
     // Look at the model itself, not the cursor's ray hit, so the framing is exact
     // even when the ray only passed near the reference.
     let Some((_, t)) = refs.iter().find(|(r, _)| r.form_id == form_id) else {
         return;
     };
-    orbit.target = t.translation();
     // The same distance the editor opens a cell at, so framing one reference and
-    // framing the cell it is in agree. The yaw is left alone: the view swings
-    // round to the object rather than snapping to a fixed angle.
-    orbit.distance = Orbit::DEFAULT_DISTANCE;
-    orbit.pitch = 0.0;
+    // framing the cell it is in agree. The heading is left alone and the view is
+    // levelled off: the camera swings round to the object rather than snapping to
+    // a fixed angle.
+    request_view(
+        focus,
+        ViewPose {
+            target: t.translation(),
+            distance: ViewportFocus::DEFAULT_DISTANCE,
+            pitch: Some(0.0),
+            yaw: None,
+        },
+    );
 }
 
 /// Frame whatever the references panel asked for.
@@ -753,12 +1104,12 @@ fn frame_reference(orbit: &mut Orbit, refs: &Query<(&RefEntity, &GlobalTransform
 /// The panel draws in its own window's schedule and the camera lives here, so the
 /// intent arrives as a message rather than a call.
 pub fn apply_frame_requests(
-    mut orbit: ResMut<Orbit>,
+    mut focus: ResMut<ViewportFocus>,
     refs: Query<(&RefEntity, &GlobalTransform)>,
     mut requests: MessageReader<crate::FrameRequested>,
 ) {
     for r in requests.read() {
-        frame_reference(&mut orbit, &refs, r.form_id);
+        frame_reference(&mut focus, &refs, r.form_id);
     }
 }
 

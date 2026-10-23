@@ -63,8 +63,10 @@ struct Args {
 /// empty for the user to fill — the editor is a front door, and having nothing
 /// to open yet is not a reason to refuse to open.
 fn launcher_game() -> Result<&'static game::GameProfile, String> {
-    let found: Vec<&'static game::GameProfile> =
-        game::ALL.iter().filter(|g| g.data_dir().is_some()).collect();
+    let found: Vec<&'static game::GameProfile> = game::ALL
+        .iter()
+        .filter(|g| g.data_dir().is_some())
+        .collect();
     match found.as_slice() {
         [] => Ok(&game::FNV),
         many => Ok(many[0]),
@@ -83,8 +85,10 @@ fn check_target(args: &Args) -> Result<(std::path::PathBuf, &'static game::GameP
             // No plugin named: use the master of whichever game has an
             // install. A machine with several installed is ambiguous, and
             // saying so is better than opening the wrong one.
-            let found: Vec<&'static game::GameProfile> =
-                game::ALL.iter().filter(|g| g.data_dir().is_some()).collect();
+            let found: Vec<&'static game::GameProfile> = game::ALL
+                .iter()
+                .filter(|g| g.data_dir().is_some())
+                .collect();
             match found.as_slice() {
                 [one] => one.data_dir().unwrap_or_default().join(one.master),
                 [] => return Err("no game install found; name a plugin to check".to_string()),
@@ -98,7 +102,10 @@ fn check_target(args: &Args) -> Result<(std::path::PathBuf, &'static game::GameP
             }
         }
     };
-    let dir = path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf();
+    let dir = path
+        .parent()
+        .unwrap_or(std::path::Path::new("."))
+        .to_path_buf();
     let detected = game::GameProfile::detect(&dir);
     Ok((path, detected))
 }
@@ -190,7 +197,11 @@ fn main() {
             }
         };
         let schema_dir = resolve_schema_dir(&args, profile);
-        let masters = resolve_masters(&args, profile, path.parent().unwrap_or(std::path::Path::new(".")));
+        let masters = resolve_masters(
+            &args,
+            profile,
+            path.parent().unwrap_or(std::path::Path::new(".")),
+        );
         let mut session = match session::Session::open(&path, &schema_dir, masters) {
             Ok(s) => s,
             Err(e) => {
@@ -268,7 +279,10 @@ fn main() {
         // The `Game` resource is refreshed from the launcher's pick whenever it
         // changes, so every panel that names the game names the one being
         // edited rather than the one present at startup.
-        .add_systems(Update, sync_game_resource.run_if(in_state(EditorState::Launching)))
+        .add_systems(
+            Update,
+            sync_game_resource.run_if(in_state(EditorState::Launching)),
+        )
         .insert_resource(launcher::GameChoice::new(profile))
         .insert_resource(launcher::Launcher::for_game(profile))
         .insert_resource(panels::Filters {
@@ -278,10 +292,12 @@ fn main() {
         .init_resource::<viewport::Spawned>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
-        // Inserted at startup, not in `viewport::setup`: the debug panel draws
-        // into its own schedule, which can run before that system has inserted
-        // it, and a missing resource fails the schedule and drops the pass.
-        .init_resource::<viewport::Orbit>()
+        // The camera controller: the plugin group that owns the pose, and the
+        // input plugin that says which button starts which motion. Both are added
+        // at startup because they only register systems; the camera that uses them
+        // appears with the viewport window.
+        .add_plugins(bevy::camera_controller::pan_orbit_camera::DefaultPanOrbitCameraPlugins)
+        .add_plugins(viewport::ViewportCameraPlugin)
         .init_state::<EditorState>()
         .add_message::<nvre_editor::OpenRequested>()
         .add_message::<nvre_editor::FrameRequested>()
@@ -354,14 +370,17 @@ fn main() {
                 // Before the camera is placed: a frame request has to be applied
                 // in the same frame it arrives, or the view snaps a frame late.
                 viewport::apply_frame_requests,
-                viewport::orbit_input,
-                viewport::orbit_camera,
+                viewport::frame_selected,
                 gizmo::gizmo_mode_hotkeys,
                 gizmo::gizmo_system,
                 viewport::pick,
                 viewport::flat_material_diagnostic,
                 object_editor::manage_window,
                 handle_window_close,
+                // Last, because everything above can ask for a view — a cell
+                // opening, a frame request, `F`, a double-click in `pick` — and
+                // this is what puts the camera there.
+                viewport::sync_focus,
             )
                 .chain()
                 .run_if(in_state(EditorState::Editing)),
