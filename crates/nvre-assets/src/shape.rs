@@ -5,9 +5,27 @@
 //! triangles; in the Special Edition the shape holds its own geometry, in a
 //! packed format where each vertex's parts sit at word offsets the vertex
 //! description gives.
+//!
+//! The material is not one block either. Fallout spreads it across the
+//! shape's property list, and each block answers a different question:
+//!
+//! | block | carries |
+//! | --- | --- |
+//! | `BSShaderPPLightingProperty` | a lit shape's `texture_set` |
+//! | `BSShaderNoLightingProperty` | unlit, the texture's `file_name`, the view-angle falloff |
+//! | `NiTexturingProperty` | the diffuse texture, again, as `base_texture` |
+//! | `NiAlphaProperty` | blend mode and alpha test |
+//! | `NiStencilProperty` | double-sidedness |
+//! | `NiMaterialProperty` | emissive colour, glossiness, alpha |
+//! | `NiVertexColorProperty` | the vertex colours tint the shape |
+//!
+//! So the blocks are read by their **type name**, not by which fields they
+//! happen to have: an effect mesh, an unlit mesh and a `NiTexturingProperty`
+//! mesh have none of the lit path's fields, and reading by field name leaves
+//! every one of them untextured and opaque.
 
-use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::material::AlphaMode;
+use bevy::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
 use nvre_nif::scene::{mesh_data, Decoded, SceneObject};
 use nvre_nif::value::Struct;
@@ -34,18 +52,63 @@ pub struct ShapeProps {
     pub double_sided: bool,
     /// How the shape is blended.
     pub alpha_mode: AlphaMode,
+    /// The view-angle falloff: the start and stop angles, and the opacities
+    /// at them.
+    pub falloff: Option<Vec4>,
+    /// Fragments whose alpha is below this are dropped, on a blended shape
+    /// that also asks for an alpha test.
+    pub alpha_cut: f32,
+    /// An additive shape whose colour is added whole, whatever its alpha.
+    pub add_whole: bool,
+    /// The shape lies on another surface, and is drawn with a depth offset.
+    pub decal: bool,
+    /// The shader takes the vertex colours' alpha.
+    pub vertex_alpha: bool,
+    /// The vertex colours tint the shape.
+    pub vertex_colors: bool,
+}
+
+/// `BSShaderFlags` bit 3: the shader takes the vertex colours' alpha.
+const SHADER_VERTEX_ALPHA: i64 = 1 << 3;
+/// `BSShaderFlags` bit 6: the no-lighting property's view-angle falloff is on.
+/// nif.xml names it "Empty" in this game's flag set; the effects set it.
+const SHADER_FALLOFF: i64 = 1 << 6;
+/// `BSShaderFlags` bit 19: "Dynamic_Alpha", which the unlit effect shaders use
+/// in place of bit 3.
+const SHADER_DYNAMIC_ALPHA: i64 = 1 << 19;
+/// `BSShaderFlags` bits 26 and 27: the shape is a decal.
+const SHADER_DECAL: i64 = (1 << 26) | (1 << 27);
+
+/// A blend-and-test shape whose threshold is at least this draws alpha-tested;
+/// below it the test only trims nearly transparent texels, so the shape
+/// blends. `NiAlphaProperty` thresholds are bytes.
+const BLEND_TEST_CUT: i64 = 64;
+
+/// The type name of the block at `i`.
+fn type_name(dec: &Decoded, i: i32) -> &str {
+    usize::try_from(i)
+        .ok()
+        .and_then(|i| dec.lineage.get(i))
+        .and_then(|l| l.first())
+        .map(String::as_str)
+        .unwrap_or("")
 }
 
 /// Read a shape's properties.
 ///
-/// The lighting property holds the glossiness and the emissive light; the
-/// shader property holds the texture set, which names the files.
+/// The property blocks are read in the order they are listed. The diffuse
+/// texture is the exception: a shader property's own texture is the one the
+/// game draws, and `NiTexturingProperty` repeats it for the editor's sake, so
+/// the texturing property's is used only when no shader property named one.
 pub fn shape_props(
     dec: &Decoded,
     o: &SceneObject,
     _by_block: &HashMap<usize, &SceneObject>,
 ) -> ShapeProps {
-    let mut props = ShapeProps::default();
+    let mut props = ShapeProps {
+        alpha_mode: AlphaMode::Opaque,
+        ..default()
+    };
     let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
         return props;
     };
@@ -60,40 +123,218 @@ pub fn shape_props(
             prop_refs.push(ap);
         }
     }
+
+    // The texturing property's diffuse texture, kept aside in case no shader
+    // property names one.
+    let mut texturing: Option<String> = None;
+    // The shader flags, which several fields are read against.
+    let mut shader_flags: Option<i64> = None;
+    // The falloff fields, applied only when the flags switch the falloff on.
+    let mut falloff_fields: Option<[f32; 4]> = None;
+
     for p in prop_refs {
         let Some(prop) = dec.get(p) else { continue };
-        // The lighting property is the one with a glossiness; the shader
-        // property is the one with a texture set.
-        if prop.get("glossiness").is_some() {
-            props.glossiness = prop.num("glossiness").map(|g| g as f32);
-            props.emissive = prop
-                .list("emissive_color")
-                .filter(|c| c.len() >= 3)
-                .map(|c| {
-                    [
-                        c[0].as_number().unwrap_or(0.0) as f32,
-                        c[1].as_number().unwrap_or(0.0) as f32,
-                        c[2].as_number().unwrap_or(0.0) as f32,
-                    ]
-                });
-            props.alpha = prop.num("alpha").map(|a| a as f32);
+        let ty = type_name(dec, p);
+        let shader = dec.is_a(p as usize, "BSShaderProperty");
+
+        if shader {
+            shader_flags = Some(prop.int("shader_flags").unwrap_or(0));
         }
-        if prop.get("texture_set").is_some() {
-            if let Some(set) = prop.ref_at("texture_set") {
-                let (diffuse, normal, glow) = texture_set(dec, set);
-                if diffuse.is_some() {
-                    props.texture = diffuse;
+        // The lighting property: glossiness, emissive, alpha.
+        if let Some(g) = prop.num("glossiness") {
+            props.glossiness = Some(g as f32);
+        }
+        if let Some(e) = color3(prop, "emissive_color") {
+            props.emissive = Some(e);
+        }
+        if let Some(a) = prop.num("alpha") {
+            props.alpha = Some(a as f32);
+        }
+
+        // The shader property's texture set: slot 0 diffuse, 1 normal, 2 glow.
+        if let Some(set) = prop.ref_at("texture_set") {
+            let (diffuse, normal, glow) = texture_set(dec, set);
+            if diffuse.is_some() {
+                props.texture = diffuse;
+            }
+            if normal.is_some() {
+                props.normal_texture = normal;
+            }
+            if glow.is_some() {
+                props.glow = glow;
+            }
+        }
+
+        match ty {
+            // An unlit shape: its own texture, and the view-angle falloff.
+            "BSShaderNoLightingProperty" => {
+                props.unlit = true;
+                if let Some(f) = prop.text("file_name").filter(|s| !s.is_empty()) {
+                    props.texture = Some(f.to_string());
                 }
-                if normal.is_some() {
-                    props.normal_texture = normal;
+                falloff_fields = Some([
+                    prop.num("falloff_start_angle").unwrap_or(1.0) as f32,
+                    prop.num("falloff_stop_angle").unwrap_or(0.0) as f32,
+                    prop.num("falloff_start_opacity").unwrap_or(1.0) as f32,
+                    prop.num("falloff_stop_opacity").unwrap_or(0.0) as f32,
+                ]);
+            }
+            // Skyrim's effect shader: unlit, its own texture, its own falloff.
+            "BSEffectShaderProperty" => {
+                props.unlit = true;
+                if let Some(f) = prop.text("source_texture").filter(|s| !s.is_empty()) {
+                    props.texture = Some(f.to_string());
                 }
-                if glow.is_some() {
-                    props.glow = glow;
+                falloff_fields = Some([
+                    prop.num("falloff_start_angle").unwrap_or(1.0) as f32,
+                    prop.num("falloff_stop_angle").unwrap_or(0.0) as f32,
+                    prop.num("falloff_start_opacity").unwrap_or(1.0) as f32,
+                    prop.num("falloff_stop_opacity").unwrap_or(0.0) as f32,
+                ]);
+            }
+            // The diffuse texture again: the editor's copy, and the block an
+            // effect mesh's texture transform hangs on.
+            "NiTexturingProperty" => {
+                if let Some(f) = tex_desc(dec, prop, "base_texture") {
+                    texturing = Some(f);
                 }
+                if let Some(f) = tex_desc(dec, prop, "glow_texture") {
+                    props.glow = Some(f);
+                }
+                if let Some(f) = tex_desc(dec, prop, "normal_texture") {
+                    props.normal_texture = Some(f);
+                }
+            }
+            "NiAlphaProperty" => {
+                let flags = prop.int("flags").unwrap_or(0);
+                let threshold = prop.int("threshold").unwrap_or(128);
+                props.alpha_mode = alpha_mode(flags, threshold);
+                props.alpha_cut = blend_cut(flags, threshold);
+            }
+            "NiStencilProperty" => {
+                // 20.1.0.3+ packs the draw mode into the flags; before that
+                // it is a field of its own.
+                let mode = prop
+                    .int("draw_mode")
+                    .or_else(|| prop.int("flags").map(|f| (f >> 10) & 3))
+                    .unwrap_or(0);
+                props.double_sided = mode == 3;
+            }
+            "NiVertexColorProperty" => props.vertex_colors = true,
+            _ => {}
+        }
+    }
+
+    if props.texture.is_none() {
+        props.texture = texturing;
+    }
+    // An unlit shape takes the vertex colours' alpha through "Dynamic_Alpha"
+    // where the lit path uses "Vertex_Alpha".
+    let flags = shader_flags.unwrap_or(0);
+    props.vertex_alpha =
+        flags & SHADER_VERTEX_ALPHA != 0 || (props.unlit && flags & SHADER_DYNAMIC_ALPHA != 0);
+    // The falloff scales the alpha, so it only shows on a shape that blends,
+    // and only where the flags switch it on.
+    if flags & SHADER_FALLOFF != 0 && is_blended(props.alpha_mode) {
+        if let Some([a, b, c, d]) = falloff_fields {
+            props.falloff = crate::nif_material::Falloff::from_fields(a, b, c, d).map(|f| f.params);
+        }
+    }
+    props.decal = flags & SHADER_DECAL != 0;
+    props.add_whole = props.alpha_mode == AlphaMode::Add && adds_whole(dec, o);
+    props
+}
+
+/// Whether a blend mode draws see-through.
+pub fn is_blended(mode: AlphaMode) -> bool {
+    matches!(
+        mode,
+        AlphaMode::Blend | AlphaMode::Add | AlphaMode::Multiply | AlphaMode::Premultiplied
+    )
+}
+
+/// The blend mode `NiAlphaProperty` flags ask for.
+///
+/// bit 0 blend, bits 1-4 source factor, bits 5-8 destination factor (0 ONE,
+/// 1 ZERO, 2 SRC_COLOR, 4 DEST_COLOR, 6 SRC_ALPHA, 7 INV_SRC_ALPHA), bit 9
+/// alpha test, bits 10-12 test function (4 = GREATER).
+///
+/// Bevy offers fixed modes, so the factors map to the nearest: destination
+/// ONE is additive, a source of ZERO or DEST_COLOR multiplies. When both test
+/// and blend are set, a threshold of [`BLEND_TEST_CUT`] or more draws
+/// alpha-tested, and a lower one blended — the test then only trims nearly
+/// transparent texels.
+pub fn alpha_mode(flags: i64, threshold: i64) -> AlphaMode {
+    let (src, dst) = ((flags >> 1) & 0xF, (flags >> 5) & 0xF);
+    let (blend, test) = (flags & 1 != 0, flags & 0x200 != 0);
+    let strict = (flags >> 10) & 7 == 4;
+    let cutoff = (threshold as f32 + if strict { 0.5 } else { 0.0 }) / 255.0;
+    match (blend, test, src, dst) {
+        (true, _, _, 0) => AlphaMode::Add,
+        (false, true, _, _) => AlphaMode::Mask(cutoff),
+        (true, true, _, _) if threshold >= BLEND_TEST_CUT => AlphaMode::Mask(cutoff),
+        (true, _, 1 | 4, _) => AlphaMode::Multiply,
+        (true, ..) => AlphaMode::Blend,
+        _ => AlphaMode::Opaque,
+    }
+}
+
+/// The alpha below which a blended shape drops its fragments, when its alpha
+/// test would otherwise have made it an alpha-tested one: a blend-and-test
+/// shape whose threshold is below [`BLEND_TEST_CUT`] blends, and the test
+/// only trims. Zero for every other shape.
+fn blend_cut(flags: i64, threshold: i64) -> f32 {
+    let (blend, test) = (flags & 1 != 0, flags & 0x200 != 0);
+    if !blend || !test || threshold >= BLEND_TEST_CUT {
+        return 0.0;
+    }
+    threshold as f32 / 255.0
+}
+
+/// Whether a shape adds its colour whole: blend on, source and destination
+/// factors both ONE.
+fn adds_whole(dec: &Decoded, o: &SceneObject) -> bool {
+    let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
+        return false;
+    };
+    for p in shape.refs("properties").unwrap_or_default() {
+        if type_name(dec, p) != "NiAlphaProperty" {
+            continue;
+        }
+        if let Some(flags) = dec.get(p).and_then(|s| s.int("flags")) {
+            if flags & 1 != 0 && (flags >> 1) & 0xF == 0 && (flags >> 5) & 0xF == 0 {
+                return true;
             }
         }
     }
-    props
+    false
+}
+
+/// A three-number colour field.
+fn color3(s: &Struct, name: &str) -> Option<[f32; 3]> {
+    let c = s.list(name)?;
+    if c.len() < 3 {
+        return None;
+    }
+    Some([
+        c[0].as_number().unwrap_or(0.0) as f32,
+        c[1].as_number().unwrap_or(0.0) as f32,
+        c[2].as_number().unwrap_or(0.0) as f32,
+    ])
+}
+
+/// The file a `NiSourceTexture` names.
+fn source_file(dec: &Decoded, source: i32) -> Option<String> {
+    let t = dec.get(source)?;
+    t.text("file_name")
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+/// The file a texture description's `source` names.
+fn tex_desc(dec: &Decoded, s: &Struct, name: &str) -> Option<String> {
+    let source = s.get(name)?.as_struct()?.get("source")?.as_ref()?;
+    source_file(dec, source)
 }
 
 /// The textures a texture set names.
@@ -129,7 +370,10 @@ pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize)> {
     }
     let n = md.positions.len();
     let tris = md.triangles.len();
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, bevy::asset::RenderAssetUsages::RENDER_WORLD);
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        bevy::asset::RenderAssetUsages::RENDER_WORLD,
+    );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, md.positions);
     let has_normals = md.normals.len() == n;
     if has_normals {
@@ -156,4 +400,110 @@ pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize)> {
         mesh.compute_normals();
     }
     Some((mesh, tris))
+}
+
+/// Clean a shape's vertex colours for the material it is drawn with.
+///
+/// A shape whose shader does not take the vertex alpha has its alpha forced
+/// to one: a stored zero would otherwise make the shape invisible. The
+/// colours are clamped, and a non-finite one becomes white — a mesh can carry
+/// NaN, and a NaN in a colour draws black.
+///
+/// An unlit shape's colour is texture × vertex colour, which the game forms in
+/// display values; this renderer multiplies in linear ones, so the colour is
+/// converted and the alpha kept.
+pub fn fix_vertex_colors(mesh: &mut Mesh, vertex_alpha: bool, unlit: bool) {
+    let Some(VertexAttributeValues::Float32x4(colors)) =
+        mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR)
+    else {
+        return;
+    };
+    let clean = |v: f32| if v.is_finite() { v.clamp(0.0, 1.0) } else { 1.0 };
+    for c in colors.iter_mut() {
+        let rgb = [clean(c[0]), clean(c[1]), clean(c[2])];
+        let rgb = if unlit {
+            let l = LinearRgba::from(Srgba::new(rgb[0], rgb[1], rgb[2], 1.0));
+            [l.red, l.green, l.blue]
+        } else {
+            rgb
+        };
+        *c = [
+            rgb[0],
+            rgb[1],
+            rgb[2],
+            if vertex_alpha { clean(c[3]) } else { 1.0 },
+        ];
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// FNV's near-universal "transparent": blend, SRC_ALPHA / INV_SRC_ALPHA.
+    #[test]
+    fn the_transparent_flags_blend() {
+        assert_eq!(alpha_mode(0x10ED, 0), AlphaMode::Blend);
+    }
+
+    #[test]
+    fn a_test_without_blend_masks() {
+        // bit 9 set, bit 0 clear: the test cuts the shape.
+        assert_eq!(alpha_mode(0x0200, 128), AlphaMode::Mask(128.0 / 255.0));
+        // GREATER moves the cutoff half a step up.
+        assert_eq!(
+            alpha_mode(0x0200 | (4 << 10), 128),
+            AlphaMode::Mask(128.5 / 255.0)
+        );
+    }
+
+    #[test]
+    fn a_blend_and_test_shape_above_the_cut_is_masked() {
+        // Blend, test, threshold 200: the test cuts the shape, as weapon
+        // parts want. 0x10ED already sets GREATER, so the cutoff is half a
+        // step above the threshold.
+        assert_eq!(
+            alpha_mode(0x10ED | 0x0200, 200),
+            AlphaMode::Mask(200.5 / 255.0)
+        );
+        // The same shape with a GREATER_EQUAL test keeps the threshold.
+        let greater_equal = (0x10ED | 0x0200) & !(7 << 10);
+        assert_eq!(
+            alpha_mode(greater_equal, 200),
+            AlphaMode::Mask(200.0 / 255.0)
+        );
+        // Below the cut it only trims, so the shape blends.
+        assert_eq!(alpha_mode(0x10ED | 0x0200, 0), AlphaMode::Blend);
+        assert_eq!(blend_cut(0x10ED | 0x0200, 0), 0.0);
+    }
+
+    #[test]
+    fn the_blend_cut_only_applies_to_a_blend_and_test_shape() {
+        // Blend alone: no cut.
+        assert_eq!(blend_cut(0x10ED, 0), 0.0);
+        // Test alone: the mask is the cut.
+        assert_eq!(blend_cut(0x0200, 0), 0.0);
+        // Blend and test, low threshold: the cut trims the transparent texels.
+        assert!((blend_cut(0x10ED | 0x0200, 32) - 32.0 / 255.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_destination_of_one_is_additive() {
+        // blend, source ZERO, destination ONE.
+        assert_eq!(alpha_mode(1, 0), AlphaMode::Add);
+    }
+
+    #[test]
+    fn a_source_of_zero_multiplies() {
+        // blend (bit 0), source ZERO (1) in bits 1-4, destination
+        // INV_SRC_ALPHA (7) in bits 5-8.
+        let flags = 1 | (1 << 1) | (7 << 5);
+        assert_eq!(alpha_mode(flags, 0), AlphaMode::Multiply);
+    }
+
+    #[test]
+    fn no_flags_is_opaque() {
+        assert_eq!(alpha_mode(0, 0), AlphaMode::Opaque);
+    }
+
 }

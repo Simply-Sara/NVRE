@@ -32,7 +32,8 @@ impl Decoded {
         for (i, b) in file.blocks.iter().enumerate() {
             let (status, decoded) = file.decode_block_status(i, schema, data);
             blocks.push(decoded.ok_or(status).map(|mut s| {
-                resolve_strings(&mut s, file);
+                let names = string_fields(schema, &b.type_name);
+                resolve_strings(&mut s, file, schema, &names);
                 s
             }));
             // The lineage is the type itself, then the types it derives
@@ -67,6 +68,47 @@ impl Decoded {
     }
 }
 
+/// The names of the fields a block type declares as `string`.
+///
+/// The string table is indexed by fields the schema says are strings, and by
+/// nothing else: a `f32` that happens to hold 1 is a scale of one, not the
+/// first string in the table. The names are collected over the whole type
+/// chain, and over the structs the block holds, so a texture set's file names
+/// are found too.
+fn string_fields(schema: &Schema, type_name: &str) -> Vec<String> {
+    fn walk(schema: &Schema, ty: &str, out: &mut Vec<String>, seen: &mut Vec<String>) {
+        if seen.iter().any(|s| s == ty) {
+            return;
+        }
+        seen.push(ty.to_string());
+        // A block's own fields, and the fields it inherits.
+        let fields = schema
+            .block_fields(ty)
+            .or_else(|| schema.struct_fields(ty))
+            .unwrap_or_default();
+        for f in &fields {
+            if matches!(f.ty, crate::schema::TypeRef::Prim(crate::schema::Prim::String)) {
+                out.push(f.name.clone());
+            }
+            // A field whose type is a struct: the names inside it are
+            // strings of this block too.
+            if let crate::schema::TypeRef::Named(n) = &f.ty {
+                if schema.structs.contains_key(n) {
+                    walk(schema, n, out, seen);
+                }
+            }
+        }
+        for parent in schema.block_chain(ty) {
+            if parent != ty {
+                walk(schema, parent, out, seen);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(schema, type_name, &mut out, &mut Vec::new());
+    out
+}
+
 /// Resolve a block's string fields from the file's string table.
 ///
 /// A `string` field that the file version writes as an index arrives as a
@@ -74,21 +116,28 @@ impl Decoded {
 /// is already text (an older file, or a type the schema reads inline) is
 /// left alone, and an index past the end of the table is left as it was
 /// rather than guessed at.
-fn resolve_strings(s: &mut Struct, file: &NifFile) {
+///
+/// Only a field the schema declares as a `string` is resolved. Any numeric
+/// field can hold a number that is a valid index into the table — a scale of
+/// one, a glossiness of one, a count of nine — and resolving those replaced
+/// them with unrelated text.
+fn resolve_strings(s: &mut Struct, file: &NifFile, schema: &Schema, names: &[String]) {
     let Some(table) = file.header.strings.as_ref() else {
         return;
     };
-    for v in s.fields.iter_mut().map(|(_, v)| v) {
-        if let Value::Num(n) = v {
-            let i = *n as usize;
-            if let Some(text) = table.get(i) {
-                *v = Value::Str(text.text());
+    for (name, v) in s.fields.iter_mut() {
+        if names.iter().any(|n| n == name) {
+            if let Value::Num(n) = v {
+                let i = *n as usize;
+                if let Some(text) = table.get(i) {
+                    *v = Value::Str(text.text());
+                }
             }
         }
-        // A struct that holds strings of its own: the bounding sphere, a
-        // texture set, and the like.
+        // A struct that holds strings of its own: a texture set's file names,
+        // a material's shader name, and the like.
         if let Value::Struct(inner) = v {
-            resolve_strings(inner, file);
+            resolve_strings(inner, file, schema, names);
         }
     }
 }

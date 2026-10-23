@@ -6,8 +6,8 @@
 //! prepared, so a model referenced by many places is read once.
 
 use crate::data::GameData;
-use crate::nif_material::NifMaterial;
-use crate::shape::{build_mesh, shape_props, ShapeProps};
+use crate::nif_material::{nif_material, NifMaterial, NifSurface};
+use crate::shape::{build_mesh, fix_vertex_colors, shape_props, ShapeProps};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::system::SystemParam;
 use bevy::math::{Affine3A, Mat3, Vec3};
@@ -157,6 +157,13 @@ impl ModelCtx<'_> {
         }
 
         for o in objects.iter().filter(|o| !o.is_node) {
+            // GECK-only helper geometry: a node named `EditorMarker...` holds
+            // the boxes the editor draws to place effects, and the game never
+            // draws them. Drawn, they are an untextured box in the middle of
+            // the mesh.
+            if is_editor_marker(o.name.as_deref()) {
+                continue;
+            }
             // Where the shape sits: the product of its ancestors' transforms.
             let mut t = if o.parent.is_some() {
                 affine(&o.transform)
@@ -189,13 +196,19 @@ impl ModelCtx<'_> {
             let Some((mut mesh, tris)) = build_mesh(data, file.header.bs_version()) else {
                 continue;
             };
+            // The vertex colours are part of the material: a shape whose
+            // shader does not take the vertex alpha must not keep it, and an
+            // unlit shape's colour is a display value.
+            fix_vertex_colors(&mut mesh, props.vertex_alpha, props.unlit);
             // The shape's own report: what it is, and what it is drawn
             // with.
             info!(
-                "shape {}: {} triangles, texture {:?}",
+                "shape {}: {} triangles, texture {:?}, {:?}{}",
                 o.type_name,
                 tris,
-                props.texture
+                props.texture,
+                props.alpha_mode,
+                if props.unlit { ", unlit" } else { "" }
             );
             let material = self.material_for(&props, &mut mesh);
             // The model's bounds, from the mesh's own positions.
@@ -271,8 +284,35 @@ impl ModelCtx<'_> {
             unlit: props.unlit,
             ..default()
         };
-        crate::nif_material::nif_material(standard)
+        let mut m = nif_material(standard);
+        // What the fragment shader needs to know about the shape. Left at its
+        // default it draws the shape as if it had no falloff, no alpha cut
+        // and no decal, whatever the file says.
+        m.extension = NifSurface {
+            falloff: props
+                .falloff
+                .unwrap_or(crate::nif_material::Falloff::NONE.params),
+            alpha_cut: props.alpha_cut,
+            add_whole: if props.add_whole { 1.0 } else { 0.0 },
+            decal: props.decal,
+            hard_edges: false,
+            shade_light: false,
+        };
+        m
     }
+}
+
+/// Whether a node's name marks it as editor-only geometry.
+///
+/// A node named `EditorMarker`, `EditorMarker01`, `EditorMarker:0` and the
+/// like holds the helper boxes the GECK draws to place an effect; the game
+/// never draws them. The name is matched case-insensitively on its prefix, so
+/// a mesh that names its own node `C_EditorMarker01` is not one.
+pub fn is_editor_marker(name: Option<&str>) -> bool {
+    const PREFIX: &str = "editormarker";
+    name.is_some_and(|n| {
+        n.len() >= PREFIX.len() && n[..PREFIX.len()].eq_ignore_ascii_case(PREFIX)
+    })
 }
 
 /// The affine transform a NIF's transform is.
@@ -335,4 +375,20 @@ pub fn empty_mesh() -> Mesh {
     );
     mesh.insert_indices(Indices::U32(Vec::new()));
     mesh
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_editor_marker;
+
+    #[test]
+    fn an_editor_marker_is_recognised_by_its_prefix() {
+        assert!(is_editor_marker(Some("EditorMarker")));
+        assert!(is_editor_marker(Some("EditorMarker:0")));
+        assert!(is_editor_marker(Some("editormarker01")));
+        // A mesh that names its own node after one is not one.
+        assert!(!is_editor_marker(Some("C_EditorMarker01")));
+        assert!(!is_editor_marker(Some("Marker")));
+        assert!(!is_editor_marker(None));
+    }
 }
