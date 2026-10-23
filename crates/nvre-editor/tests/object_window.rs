@@ -73,6 +73,19 @@ fn the_palette_is_grouped_into_gecks_categories() {
         assert_ne!(g.category, "WEAP");
     }
 
+    // What the schema marks hidden is not listed: the palette holds no
+    // placed references, cells, worldspaces or dialogues — hiding them is
+    // the table's answer now, not a list in the code beside it.
+    for g in &groups {
+        let cat = s
+            .schema
+            .object_window
+            .categories
+            .get(&nvre_util::tag_str(&g.sig))
+            .expect("a listed category is in the table");
+        assert!(!cat.hidden, "{} is listed but marked hidden", g.category);
+    }
+
     // Each object is in exactly one category, and its own base object's record
     // type is the one it is filed under.
     let lo = s.load_order().expect("a load order");
@@ -205,4 +218,47 @@ fn placing_objects_and_actors_creates_correct_record_types() {
     s.select(quest_fid);
     let selected_quest = s.selected_record().expect("selected quest");
     assert_eq!(selected_quest.record().header.sig, *b"QUST");
+}
+
+/// The FNV schema accounts for every record type it defines: each one is
+/// either filed under a group or named as hidden, and each shown one names
+/// an editor block this build registers.
+///
+/// This is the "explicit only" half of the object window, and it needs no
+/// installed game — the schema chain loads from the repository alone. A
+/// record type with no entry would be invisible in the window with nothing
+/// saying why; a block name with no registered page would open an editor
+/// that silently shows nothing.
+#[test]
+fn fnv_schema_lists_every_record_type_and_names_a_registered_block() {
+    let game = nvre_editor::game::GameProfile::by_id("fnv").expect("fnv profile");
+    let schema = game.load_schema().expect("the FNV schema loads");
+
+    let mut missing: Vec<&str> = schema
+        .records
+        .keys()
+        .filter(|s| !schema.object_window.categories.contains_key(*s))
+        .map(String::as_str)
+        .collect();
+    missing.sort_unstable();
+    assert!(
+        missing.is_empty(),
+        "record types with no object-window entry: {missing:?}"
+    );
+
+    let mut wrong: Vec<String> = schema
+        .object_window
+        .categories
+        .iter()
+        .filter(|(_, c)| !c.hidden)
+        .filter_map(|(sig, c)| match c.editor.as_deref() {
+            None => Some(format!("{sig} is shown but names no editor block")),
+            Some(name) if nvre_editor::object_editor::editor_block(name).is_none() => Some(
+                format!("{sig} names editor block {name:?}, which is not registered"),
+            ),
+            Some(_) => None,
+        })
+        .collect();
+    wrong.sort();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }

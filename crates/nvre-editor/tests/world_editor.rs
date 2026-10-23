@@ -604,7 +604,7 @@ fn the_window_title_names_the_record_type() {
     };
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, TACT_RADPACK, *b"TACT");
-    let title = nvre_editor::object_editor::window_title(&state.sig, &state.edid, &state.full_name);
+    let title = nvre_editor::object_editor::window_title(&s.schema, &state.sig, &state.edid, &state.full_name);
     // The title carries the record's name as well as its editor id.
     assert_eq!(title, "Talking Activator - TopsRadPackRadio (rad pack)");
 }

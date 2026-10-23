@@ -485,6 +485,10 @@ pub struct ObjectWindow {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CategoryDef {
     /// The top-level group it is filed under.
+    ///
+    /// A category that is shown must name one: there is no catch-all group,
+    /// so a table that files nothing has an empty window rather than a
+    /// misleading "Miscellaneous" of every type it forgot.
     pub group: Option<String>,
     /// The name the game's editor gives it.
     ///
@@ -495,6 +499,23 @@ pub struct CategoryDef {
     /// editor — so a table that cares says so here rather than editing the
     /// layout's name.
     pub name: Option<String>,
+    /// The editor block that opens this record type, by its registered name.
+    ///
+    /// The blocks themselves are predefined in the editor (`"weapon"`,
+    /// `"container"`, `"static"` …); the table says which one a signature
+    /// gets. A signature with no block opens the editor's header with no page
+    /// under it, and a name no block is registered under is a table typo —
+    /// the editor reports it rather than guessing.
+    pub editor: Option<String>,
+    /// The record type is not listed in the object window.
+    ///
+    /// Every non-object record type is named here rather than left out: a
+    /// placed reference, a cell, a navmesh and the plugin header are all
+    /// records a modder opens elsewhere, and the table says so instead of the
+    /// editor hiding a hardcoded list beside it. A hidden category may still
+    /// carry an `editor` block, so a type can be reachable without being
+    /// listed.
+    pub hidden: bool,
 }
 
 /// A bit mask for a union's bit test, from the schema's key.
@@ -758,6 +779,25 @@ impl Schema {
                         None if n.is_null() => cat.name = None,
                         None => return Err(format!("object_window.categories.{sig}.name is not a string")),
                     }
+                }
+                if let Some(e) = o.get("editor") {
+                    match e.as_str() {
+                        Some(name) => cat.editor = Some(name.to_string()),
+                        None if e.is_null() => cat.editor = None,
+                        None => {
+                            return Err(format!(
+                                "object_window.categories.{sig}.editor is not a string"
+                            ))
+                        }
+                    }
+                }
+                if let Some(h) = o.get("hidden") {
+                    let Some(flag) = h.as_bool() else {
+                        return Err(format!(
+                            "object_window.categories.{sig}.hidden is not a boolean"
+                        ));
+                    };
+                    cat.hidden = flag;
                 }
                 self.object_window.categories.insert(sig.clone(), cat);
             }
@@ -1516,6 +1556,28 @@ impl Schema {
         for (name, t) in self.types.iter().chain(self.common.iter()) {
             for f in &t.fields {
                 self.check_type(&format!("{name}.{}", f.name), &f.ty, &mut errs);
+            }
+        }
+        // The object window has no fallback group, so a category it shows must
+        // name a group the table itself lists. A hidden category needs none —
+        // it is never filed anywhere — and a game with no table at all is left
+        // alone rather than told it needs one.
+        if !self.object_window.groups.is_empty() {
+            for (sig, cat) in &self.object_window.categories {
+                if cat.hidden {
+                    continue;
+                }
+                let Some(group) = &cat.group else {
+                    errs.push(format!(
+                        "object_window.categories.{sig} is shown but names no group"
+                    ));
+                    continue;
+                };
+                if !self.object_window.groups.contains(group) {
+                    errs.push(format!(
+                        "object_window.categories.{sig} is filed under {group:?}, which is not one of this game's groups"
+                    ));
+                }
             }
         }
         if errs.is_empty() {

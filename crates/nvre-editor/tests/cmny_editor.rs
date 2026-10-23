@@ -166,8 +166,8 @@ fn the_window_title_names_the_record_type() {
     };
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, CMNY_NCR100, *b"CMNY");
-    let title = nvre_editor::object_editor::window_title(&state.sig, &state.edid, &state.full_name);
-    assert_eq!(title, "Money - MoneyNCR100 ($100 NCR)");
+    let title = nvre_editor::object_editor::window_title(&s.schema, &state.sig, &state.edid, &state.full_name);
+    assert_eq!(title, "Caravan Money - MoneyNCR100 ($100 NCR)");
 }
 
 #[test]

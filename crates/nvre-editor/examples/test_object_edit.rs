@@ -266,6 +266,7 @@ fn main() {
     );
 
     let title = nvre_editor::object_editor::window_title(
+        &session.schema,
         &crea_state.sig,
         &crea_state.edid,
         &crea_state.full_name,
@@ -447,6 +448,7 @@ fn main() {
     assert_eq!(lvln_state.lvl_entries[1].count, 1);
 
     let lvln_title = nvre_editor::object_editor::window_title(
+        &session.schema,
         &lvln_state.sig,
         &lvln_state.edid,
         &lvln_state.full_name,
@@ -532,11 +534,12 @@ fn main() {
     );
 
     let avif_title = nvre_editor::object_editor::window_title(
+        &session.schema,
         &avif_state.sig,
         &avif_state.edid,
         &avif_state.full_name,
     );
-    assert_eq!(avif_title, "Actor Value - AVEndurance (Endurance)");
+    assert_eq!(avif_title, "ActorValue Information - AVEndurance (Endurance)");
 
     // Modify and save AVIF
     avif_state.avif_short_name = "END_MOD".to_string();

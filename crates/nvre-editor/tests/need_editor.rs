@@ -163,8 +163,8 @@ fn the_window_title_names_the_record_type() {
     };
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, DEHY_WATER5, *b"DEHY");
-    let title = nvre_editor::object_editor::window_title(&state.sig, &state.edid, &state.full_name);
-    assert_eq!(title, "Dehydration - Water5");
+    let title = nvre_editor::object_editor::window_title(&s.schema, &state.sig, &state.edid, &state.full_name);
+    assert_eq!(title, "Dehydration Stage - Water5");
 }
 
 #[test]

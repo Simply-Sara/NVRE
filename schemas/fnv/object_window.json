@@ -12,290 +12,421 @@
    "Miscellaneous"
   ],
   "categories": {
+   "ACHR": {
+    "hidden": true
+   },
+   "ACRE": {
+    "hidden": true
+   },
    "ACTI": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "acti"
    },
    "ADDN": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "addn"
    },
    "ALCH": {
-    "group": "Magic"
+    "group": "Magic",
+    "editor": "alch"
    },
    "ALOC": {
-    "group": "Audio"
+    "group": "Audio",
+    "editor": "aloc"
    },
    "AMEF": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "amef"
    },
    "AMMO": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "ammo"
    },
    "ANIO": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "anio"
    },
    "ARMA": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "arma"
    },
    "ARMO": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "armo"
    },
    "ASPC": {
-    "group": "Audio"
+    "group": "Audio",
+    "editor": "aspc"
    },
    "AVIF": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "avif"
    },
    "BOOK": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "book"
    },
    "BPTD": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "bptd"
    },
    "CAMS": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "cams"
    },
    "CCRD": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "ccrd"
    },
    "CDCK": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "cdck"
+   },
+   "CELL": {
+    "hidden": true
    },
    "CHAL": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "chal"
    },
    "CHIP": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "chip"
    },
    "CLAS": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "clas"
    },
    "CLMT": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "clmt"
    },
    "CMNY": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "cmny"
    },
    "CONT": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "cont"
    },
    "CPTH": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "cpth"
    },
    "CREA": {
-    "group": "Actors"
+    "group": "Actors",
+    "editor": "crea"
    },
    "CSNO": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "csno"
    },
    "CSTY": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "csty"
    },
    "DEBR": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "debr"
    },
    "DEHY": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "dehy"
+   },
+   "DIAL": {
+    "hidden": true
    },
    "DOBJ": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "dobj"
    },
    "DOOR": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "door"
    },
    "ECZN": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "eczn"
    },
    "EFSH": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "efsh"
    },
    "ENCH": {
-    "group": "Magic"
+    "group": "Magic",
+    "editor": "spell"
    },
    "EXPL": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "expl"
    },
    "EYES": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "eyes"
    },
    "FACT": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "fact"
    },
    "FLST": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "flst"
    },
    "FURN": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "furn"
    },
    "GLOB": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "glob"
    },
    "GMST": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "gmst"
    },
    "GRAS": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "gras"
    },
    "HAIR": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "hair"
    },
    "HDPT": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "hdpt"
    },
    "HUNG": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "hung"
    },
    "IDLE": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "idle"
    },
    "IDLM": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "idlm"
    },
    "IMAD": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "imad"
    },
    "IMGS": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "imgs"
    },
    "IMOD": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "imod"
+   },
+   "INFO": {
+    "hidden": true
    },
    "INGR": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "ingr"
    },
    "IPCT": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "ipct"
    },
    "IPDS": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "ipds"
    },
    "KEYM": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "keym"
+   },
+   "LAND": {
+    "hidden": true
    },
    "LGTM": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "lgtm"
    },
    "LIGH": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "ligh"
    },
    "LSCR": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "lscr"
    },
    "LSCT": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "lsct"
+   },
+   "LTEX": {
+    "hidden": true
    },
    "LVLC": {
-    "group": "Actors"
+    "group": "Actors",
+    "editor": "lvlc"
    },
    "LVLI": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "lvli"
    },
    "LVLN": {
-    "group": "Actors"
+    "group": "Actors",
+    "editor": "lvln"
    },
    "MESG": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "mesg"
    },
    "MGEF": {
-    "group": "Magic"
+    "group": "Magic",
+    "editor": "mgef"
    },
    "MICN": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "micn"
    },
    "MISC": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "misc"
    },
    "MSET": {
-    "group": "Audio"
+    "group": "Audio",
+    "editor": "mset"
    },
    "MSTT": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "mstt"
    },
    "MUSC": {
-    "group": "Audio"
+    "group": "Audio",
+    "editor": "musc"
+   },
+   "NAVI": {
+    "hidden": true
+   },
+   "NAVM": {
+    "hidden": true
    },
    "NOTE": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "note"
    },
    "NPC_": {
-    "group": "Actors"
+    "group": "Actors",
+    "editor": "npc"
    },
    "PACK": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "pack"
    },
    "PERK": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "perk"
+   },
+   "PGRE": {
+    "hidden": true
    },
    "PROJ": {
-    "group": "Special Effects"
+    "group": "Special Effects",
+    "editor": "proj"
    },
    "PWAT": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "pwat"
    },
    "QUST": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "qust"
    },
    "RACE": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "race"
    },
    "RADS": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "rads"
    },
    "RCCT": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "rcct"
    },
    "RCPE": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "rcpe"
+   },
+   "REFR": {
+    "hidden": true
    },
    "REGN": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "regn"
    },
    "REPU": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "repu"
    },
    "RGDL": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "rgdl"
    },
    "SCOL": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "scol"
    },
    "SCPT": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "scpt"
    },
    "SLPD": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "slpd"
    },
    "SOUN": {
-    "group": "Audio"
+    "group": "Audio",
+    "editor": "soun"
    },
    "SPEL": {
-    "group": "Magic"
+    "group": "Magic",
+    "editor": "spel"
    },
    "STAT": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "stat"
    },
    "TACT": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "tact"
    },
    "TERM": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "term"
    },
    "TREE": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "tree"
    },
    "TXST": {
-    "group": "Miscellaneous"
+    "group": "Miscellaneous",
+    "editor": "txst"
    },
    "VTYP": {
-    "group": "Actor Data"
+    "group": "Actor Data",
+    "editor": "vtyp"
    },
    "WATR": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "watr"
    },
    "WEAP": {
-    "group": "Items"
+    "group": "Items",
+    "editor": "weap"
+   },
+   "WRLD": {
+    "hidden": true
    },
    "WTHR": {
-    "group": "WorldObjects"
+    "group": "WorldObjects",
+    "editor": "wthr"
    }
   }
  }

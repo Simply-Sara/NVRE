@@ -8,7 +8,7 @@
 use bevy::prelude::*;
 use nvre_esm::{LoadOrder, Schema};
 use nvre_edit::Document;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
 /// The schema a session reads records with: `schema_dir`, overlaid with `game`'s
@@ -319,52 +319,63 @@ impl Session {
         b.world_model_path().or_else(|| b.model_path())
     }
 
-    /// The object palette, grouped into GECK's categories.
+    /// The object palette, grouped into the schema's categories.
     ///
     /// GECK's Object Window is a category list on the left and that category's
     /// objects on the right, so the palette is built the same way: one group per
-    /// placeable record type, named the way GECK names it ("Static",
+    /// record type, named the way the game's editor names it ("Static",
     /// "Container"), each holding its objects sorted by name.
+    ///
+    /// What is listed is the schema's answer with no fallback: a signature the
+    /// object-window table does not name, or names as hidden, is not shown —
+    /// placed references, cells and the plugin header are all records, and the
+    /// table says which records are objects.
     ///
     /// The query walks the load order, so it is worth hundreds of milliseconds;
     /// the panel asks for it every frame otherwise, and the result is cached
-    /// until the filter changes. The filter is applied before the cap, so it
-    /// selects from the whole load order rather than only the first N
-    /// alphabetically.
+    /// until the filter changes.
     pub fn object_groups(&mut self, filter: &str) -> &[ObjectGroup] {
         if self.palette_filter != filter || self.palette_groups.is_empty() {
             let found = (|| {
                 let lo = self.load_order().ok()?;
-                let objects = load_order_objects(lo, filter);
+                // Only signatures the table names and does not hide are
+                // objects; everything else is skipped before its names are
+                // read, which keeps the walk off the placed references and
+                // cells that make up most of a master.
+                let visible: HashSet<[u8; 4]> = self
+                    .schema
+                    .object_window
+                    .categories
+                    .iter()
+                    .filter(|(_, c)| !c.hidden)
+                    .filter_map(|(sig, _)| sig.as_bytes().try_into().ok())
+                    .collect();
+                let objects = load_order_objects(lo, filter, &visible);
                 // Grouped by the record type, which is the category. One
                 // load-order lookup per distinct type rather than per object.
                 //
                 // Where the category is filed and what it is called come from
                 // the schema's object-window table, which is per game: the
                 // same signature is a different category in a different game.
-                // A signature the table does not name falls back to the
-                // catch-all, so an object is never unreachable just because a
-                // game's table has not been written yet.
+                // `Schema::check` has already said a shown category names a
+                // group of this game's own; the label falls back through the
+                // schema's two answers — the table's name for the category,
+                // then the record definition's — before the signature itself.
                 let mut types: HashMap<[u8; 4], (String, String)> = HashMap::new();
                 for (_, sig, _) in &objects {
                     types.entry(*sig).or_insert_with(|| {
-                        let cat = self
-                            .schema
-                            .object_window
-                            .categories
-                            .get(String::from_utf8_lossy(sig).as_ref());
-                        let group = cat
-                            .and_then(|c| c.group.clone())
-                            .unwrap_or_else(|| "Miscellaneous".to_string());
+                        let key = String::from_utf8_lossy(sig);
+                        let cat = self.schema.object_window.categories.get(key.as_ref());
+                        let group = cat.and_then(|c| c.group.clone()).unwrap_or_default();
                         let category = cat
                             .and_then(|c| c.name.clone())
                             .or_else(|| {
                                 self.schema
                                     .records
-                                    .get(String::from_utf8_lossy(sig).as_ref())
+                                    .get(key.as_ref())
                                     .map(|d| d.name.clone())
                             })
-                            .unwrap_or_else(|| String::from_utf8_lossy(sig).to_string());
+                            .unwrap_or_else(|| key.to_string());
                         (group, category)
                     });
                 }
@@ -1647,21 +1658,24 @@ pub fn is_placeable_sig(sig: &[u8; 4]) -> bool {
     )
 }
 
-/// Record types that are not individual objects in GECK's Object Window
-/// (cells, worldspaces, landscapes, navmeshes, dialogue responses, and placed instances).
-pub const NON_OBJECT_SIGS: [&[u8; 4]; 12] = [
-    b"REFR", b"ACHR", b"ACRE", b"PGRE", b"CELL", b"LAND", b"NAVM", b"NAVI", b"WRLD", b"LTEX",
-    b"INFO", b"DIAL",
-];
-
-/// Collect all objects across the load order, filtered by label.
-pub fn load_order_objects(lo: &LoadOrder, filter: &str) -> Vec<(u32, [u8; 4], String)> {
+/// Collect the load order's records of the listed signatures, filtered by
+/// label.
+///
+/// `visible` is the object window's own list: the signatures its schema names
+/// and does not hide. A record whose signature is not in it is skipped before
+/// its name is read, which is what keeps the walk off the placed references
+/// and cells that make up most of a master.
+pub fn load_order_objects(
+    lo: &LoadOrder,
+    filter: &str,
+    visible: &HashSet<[u8; 4]>,
+) -> Vec<(u32, [u8; 4], String)> {
     let filter = filter.to_lowercase();
     let mut out: Vec<(u32, [u8; 4], String)> = Vec::new();
     let mut seen: HashMap<u32, usize> = HashMap::new();
     for (pi, _plugin) in lo.plugins.iter().enumerate() {
         for r in &lo.records[pi] {
-            if NON_OBJECT_SIGS.contains(&&r.header.sig) {
+            if !visible.contains(&r.header.sig) {
                 continue;
             }
             let Some(global) = lo.to_global(pi, r.header.form_id) else {

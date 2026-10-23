@@ -1036,8 +1036,9 @@ const SEPARATOR_GAP: f32 = 8.0;
 /// GECK's Object Window is laid out this way, and it is what makes all game
 /// objects navigable: a modder picks "Static" and sees statics rather than
 /// scrolling past containers and lights to find them. The categories are grouped
-/// under GECK's top-level sections ("Actors", "Items", "WorldObjects", ...), and
-/// clicking an object selects it or places it if placeable.
+/// under GECK's top-level sections ("Actors", "Items", "WorldObjects", ...).
+/// Clicking an object selects it; double-clicking opens it in the object
+/// editor, which the schema says starts on which page.
 pub fn place(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<3>>>,
     mut session: ResMut<crate::session::Session>,
@@ -1057,7 +1058,6 @@ pub fn place(
         // Cached in the session and rebuilt only when the filter changes: the
         // query walks the load order, which costs hundreds of milliseconds, and
         // the panel draws every frame. Borrowed rather than cloned.
-        let cell_open = session.cell.is_some();
         let selected_fid = session.selected;
         if session.object_groups(&filters.place).is_empty() {
             ui.label("no objects match");
@@ -1070,15 +1070,13 @@ pub fn place(
         // removes categories shifts the indices, so a selection past the new end
         // lands on the last category rather than indexing out of bounds.
         *chosen = (*chosen).min(groups.len().saturating_sub(1));
-        // Every count the footer needs is read out before the action is placed,
-        // which needs `&mut Session` while `groups` still borrows it.
+        // Every count the footer needs is read out before the action is
+        // placed, which needs `&mut Session` while `groups` still borrows it.
         let total: usize = groups.iter().map(|g| g.objects.len()).sum();
         let empty = groups.iter().filter(|g| g.objects.is_empty()).count();
         let shown = groups.len() - empty;
 
         let cur_group = &groups[*chosen];
-        let is_placeable = crate::session::is_placeable_sig(&cur_group.sig);
-        let mut place_fid: Option<u32> = None;
         let mut open_obj: Option<(u32, [u8; 4])> = None;
         let mut select_fid: Option<u32> = None;
 
@@ -1144,9 +1142,6 @@ pub fn place(
                     if ui.small_button("Edit").clicked() {
                         open_obj = Some((*fid, cur_group.sig));
                     }
-                    if is_placeable && cell_open && ui.small_button("Place").clicked() {
-                        place_fid = Some(*fid);
-                    }
                     let selected = selected_fid == Some(*fid);
                     let resp = ui.selectable_label(selected, label);
                     if resp.double_clicked() {
@@ -1162,10 +1157,6 @@ pub fn place(
         });
         if let Some((fid, sig)) = open_obj {
             session.open_object(fid, sig);
-        } else if let Some(fid) = place_fid {
-            // Placed at the cell's origin: the camera's target is the better
-            // default once the viewport can report it.
-            session.place(fid, [0.0, 0.0, 0.0]);
         } else if let Some(fid) = select_fid {
             session.select(fid);
             session.status = format!("selected {fid:08X}");

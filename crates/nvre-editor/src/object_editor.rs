@@ -14597,103 +14597,24 @@ fn encode_zstring(s: &str) -> Vec<u8> {
 }
 
 /// Generate a clean, human-readable window title for any record.
-pub fn window_title(sig: &[u8; 4], edid: &str, full_name: &str) -> String {
-    let fallback = nvre_util::tag_str(sig);
-    let type_name = match sig {
-        b"CREA" => "Creature",
-        b"NPC_" => "NPC",
-        b"WEAP" => "Weapon",
-        b"ARMO" => "Armor",
-        b"AMMO" => "Ammo",
-        b"ALCH" => "Ingestible",
-        b"BOOK" => "Book",
-        b"NOTE" => "Note",
-        b"CONT" => "Container",
-        b"DOOR" => "Door",
-        b"ACTI" => "Activator",
-        b"TERM" => "Terminal",
-        b"LIGH" => "Light",
-        b"FACT" => "Faction",
-        b"QUST" => "Quest",
-        b"PERK" => "Perk",
-        b"CLAS" => "Class",
-        b"CSTY" => "Combat Style",
-        b"MGEF" => "Magic Effect",
-        b"WTHR" => "Weather",
-        b"WATR" => "Water",
-        b"GLOB" => "Global",
-        b"GMST" => "Game Setting",
-        b"RACE" => "Race",
-        b"LVLI" => "Leveled Item",
-        b"LVLN" => "Leveled NPC",
-        b"LVLC" => "Leveled Creature",
-        b"ADDN" => "Addon Node",
-        b"ALOC" => "Media Location Controller",
-        b"AMEF" => "Ammo Effect",
-        b"ARMA" => "Armor Addon",
-        b"CAMS" => "Camera Shot",
-        b"CHAL" => "Challenge",
-        b"KEYM" => "Key",
-        b"INGR" => "Ingredient",
-        b"IPCT" => "Impact",
-        b"IPDS" => "Impact Data Set",
-        b"RCPE" => "Recipe",
-        b"SCPT" => "Script",
-        b"PACK" => "Package",
-        b"EFSH" => "Effect Shader",
-        b"REGN" => "Region",
-        b"IMAD" => "Image Space Adapter",
-        b"COBJ" => "Constructible Object",
-        b"PMIS" => "Placed Missile",
-        b"TES4" => "Plugin Header",
-        b"FLST" => "Form List",
-        b"MESG" => "Message",
-        b"MISC" => "Miscellaneous",
-        b"SPEL" => "Spell",
-        b"STAT" => "Static",
-        b"IDLE" => "Idle Animation",
-        b"MSET" => "Media Set",
-        b"MSTT" => "Movable Static",
-        b"PWAT" => "Water",
-        b"RCCT" => "Recipe Category",
-        b"REPU" => "Reputation",
-        b"RGDL" => "Ragdoll",
-        b"TREE" => "Tree",
-        b"TXST" => "Texture",
-        b"VTYP" => "Voice Type",
-        b"TACT" => "Talking Activator",
-        b"SCOL" => "Static Collision",
-        b"IDLM" => "Idle Animation",
-        b"IMGS" => "Image Space",
-        b"LGTM" => "Lighting",
-        b"LSCR" => "Load Screen",
-        b"LSCT" => "Load Screen Type",
-        b"MICN" => "Mission Icon",
-        b"MUSC" => "Music",
-        b"DEHY" => "Dehydration",
-        b"DOBJ" => "Default Object Manager",
-        b"ECZN" => "Encounter Zone",
-        b"FURN" => "Furniture",
-        b"GRAS" => "Grass",
-        b"HUNG" => "Hunger",
-        b"RADS" => "Radiation",
-        b"SLPD" => "Sleep Deprivation",
-        b"CPTH" => "Camera Path",
-        b"CSNO" => "Casino",
-        b"DEBR" => "Debris",
-        b"CCRD" => "Card",
-        b"CDCK" => "Caravan Deck",
-        b"CHIP" => "Casino Chip",
-        b"CMNY" => "Money",
-        b"ASPC" => "Ambient Sound",
-        b"ANIO" => "Animation Object",
-        b"AVIF" => "Actor Value",
-        b"EYES" => "Eyes",
-        b"HAIR" => "Hair",
-        b"HDPT" => "Head Part",
-        b"BPTD" => "Body Part Data",
-        _ => fallback.as_str(),
-    };
+///
+/// The type's name is the schema's answer, the same one the Objects window
+/// labels the category with: the object-window table's own name for the
+/// category where it has one, otherwise the record definition's name.
+pub fn window_title(
+    schema: &nvre_esm::Schema,
+    sig: &[u8; 4],
+    edid: &str,
+    full_name: &str,
+) -> String {
+    let key = String::from_utf8_lossy(sig);
+    let type_name = schema
+        .object_window
+        .categories
+        .get(key.as_ref())
+        .and_then(|c| c.name.clone())
+        .or_else(|| schema.records.get(key.as_ref()).map(|d| d.name.clone()))
+        .unwrap_or_else(|| nvre_util::tag_str(sig));
     if !full_name.trim().is_empty() {
         format!("{type_name} - {edid} ({full_name})")
     } else if !edid.trim().is_empty() {
@@ -14715,7 +14636,7 @@ pub fn manage_window(
     let cam_opt = cam_query.iter().next();
 
     if let Some((_fid, sig)) = session.editing_object {
-        let current_title = window_title(&sig, &state.edid, &state.full_name);
+        let current_title = window_title(&session.schema, &sig, &state.edid, &state.full_name);
 
         if let Some((_, mut win)) = win_opt {
             if win.title != current_title {
@@ -15384,6 +15305,125 @@ const MODD_FLAGS: [(u8, &str); 4] = [
     (0x08, "Left Hand"),
 ];
 
+/// The editor blocks the schema can name: one page per predefined record
+/// editor, drawn under the object editor's header.
+///
+/// Which block a record type gets is the schema's answer
+/// (`object_window.categories.<sig>.editor`); the blocks themselves live
+/// here, in code, because they are behaviour rather than data. Every block
+/// takes the same arguments whether or not its page uses the session, so the
+/// table can name any of them.
+pub type EditorBlock = fn(&mut egui::Ui, &crate::session::Session, &mut ObjectEditorState);
+
+/// The editor block registered under `name`, or `None` when the schema names
+/// one this build does not have.
+pub fn editor_block(name: &str) -> Option<EditorBlock> {
+    // Annotated so the bare functions and the wrapped closures both coerce
+    // to the one fn-pointer type the table hands out.
+    let block: EditorBlock = match name {
+        "aloc" => draw_aloc_ui,
+        "anio" => draw_anio_ui,
+        "armo" => draw_armo_ui,
+        "aspc" => draw_aspc_ui,
+        "bptd" => draw_bptd_ui,
+        "cams" => draw_cams_ui,
+        "ccrd" => draw_ccrd_ui,
+        "cdck" => draw_cdck_ui,
+        "chip" => draw_chip_ui,
+        "clmt" => draw_clmt_ui,
+        "cmny" => draw_cmny_ui,
+        "cpth" => draw_cpth_ui,
+        "crea" => draw_crea_ui,
+        "csno" => draw_csno_ui,
+        "dehy" => draw_dehy_ui,
+        "eczn" => draw_eczn_ui,
+        "fact" => draw_fact_ui,
+        "hair" => draw_hair_ui,
+        "hdpt" => draw_hdpt_ui,
+        "hung" => draw_hung_ui,
+        "idle" => draw_idle_ui,
+        "idlm" => draw_idlm_ui,
+        "ingr" => draw_ingr_ui,
+        "ipct" => draw_ipct_ui,
+        "ipds" => draw_ipds_ui,
+        "keym" => draw_keym_ui,
+        "lscr" => draw_lscr_ui,
+        "lvlc" => draw_lvlc_ui,
+        "lvli" => draw_lvli_ui,
+        "lvln" => draw_lvln_ui,
+        "mesg" => draw_mesg_ui,
+        "misc" => draw_misc_ui,
+        "mset" => draw_mset_ui,
+        "mstt" => draw_mstt_ui,
+        "npc" => draw_npc_ui,
+        "pack" => draw_pack_ui,
+        "pmis" => draw_pmis_ui,
+        "pwat" => draw_pwat_ui,
+        "race" => draw_race_ui,
+        "rads" => draw_rads_ui,
+        "rcpe" => draw_rcpe_ui,
+        "regn" => draw_regn_ui,
+        "rgdl" => draw_rgdl_ui,
+        "slpd" => draw_slpd_ui,
+        "stat" => draw_stat_ui,
+        "tact" => draw_tact_ui,
+        "watr" => draw_watr_ui,
+        "weap" => draw_weap_ui,
+        "wthr" => draw_wthr_ui,
+        "acti" => |ui, _s, st| draw_acti_ui(ui, st),
+        "addn" => |ui, _s, st| draw_addn_ui(ui, st),
+        "alch" => |ui, _s, st| draw_alch_ui(ui, st),
+        "amef" => |ui, _s, st| draw_amef_ui(ui, st),
+        "ammo" => |ui, _s, st| draw_ammo_ui(ui, st),
+        "arma" => |ui, _s, st| draw_arma_ui(ui, st),
+        "avif" => |ui, _s, st| draw_avif_ui(ui, st),
+        "book" => |ui, _s, st| draw_book_ui(ui, st),
+        "chal" => |ui, _s, st| draw_chal_ui(ui, st),
+        "clas" => |ui, _s, st| draw_clas_ui(ui, st),
+        "cobj" => |ui, _s, st| draw_cobj_ui(ui, st),
+        "cont" => |ui, _s, st| draw_cont_ui(ui, st),
+        "csty" => |ui, _s, st| draw_csty_ui(ui, st),
+        "debr" => |ui, _s, st| draw_debr_ui(ui, st),
+        "dobj" => |ui, _s, st| draw_dobj_ui(ui, st),
+        "door" => |ui, _s, st| draw_door_ui(ui, st),
+        "efsh" => |ui, _s, st| draw_efsh_ui(ui, st),
+        "expl" => |ui, _s, st| draw_expl_ui(ui, st),
+        "eyes" => |ui, _s, st| draw_eyes_ui(ui, st),
+        "flst" => |ui, _s, st| draw_flst_ui(ui, st),
+        "furn" => |ui, _s, st| draw_furn_ui(ui, st),
+        "glob" => |ui, _s, st| draw_glob_ui(ui, st),
+        "gmst" => |ui, _s, st| draw_gmst_ui(ui, st),
+        "gras" => |ui, _s, st| draw_gras_ui(ui, st),
+        "imad" => |ui, _s, st| draw_imad_ui(ui, st),
+        "imgs" => |ui, _s, st| draw_imgs_ui(ui, st),
+        "imod" => |ui, _s, st| draw_imod_ui(ui, st),
+        "lgtm" => |ui, _s, st| draw_lgtm_ui(ui, st),
+        "ligh" => |ui, _s, st| draw_ligh_ui(ui, st),
+        "lsct" => |ui, _s, st| draw_lsct_ui(ui, st),
+        "mgef" => |ui, _s, st| draw_mgef_ui(ui, st),
+        "micn" => |ui, _s, st| draw_micn_ui(ui, st),
+        "musc" => |ui, _s, st| draw_musc_ui(ui, st),
+        "note" => |ui, _s, st| draw_note_ui(ui, st),
+        "perk" => |ui, _s, st| draw_perk_ui(ui, st),
+        "proj" => |ui, _s, st| draw_proj_ui(ui, st),
+        "qust" => |ui, _s, st| draw_qust_ui(ui, st),
+        "rcct" => |ui, _s, st| draw_rcct_ui(ui, st),
+        "repu" => |ui, _s, st| draw_repu_ui(ui, st),
+        "scol" => |ui, _s, st| draw_scol_ui(ui, st),
+        "scpt" => |ui, _s, st| draw_scpt_ui(ui, st),
+        "soun" => |ui, _s, st| draw_soun_ui(ui, st),
+        "spel" => |ui, _s, st| draw_spel_ui(ui, st),
+        "spell" => |ui, _s, st| draw_spell_ui(ui, st),
+        "term" => |ui, _s, st| draw_term_ui(ui, st),
+        "tes4" => |ui, _s, st| draw_tes4_ui(ui, st),
+        "tree" => |ui, _s, st| draw_tree_ui(ui, st),
+        "txst" => |ui, _s, st| draw_txst_ui(ui, st),
+        "vtyp" => |ui, _s, st| draw_vtyp_ui(ui, st),
+        _ => return None,
+    };
+    Some(block)
+}
+
 /// Draw the Object Editor UI.
 pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
@@ -15435,113 +15475,35 @@ pub fn ui(
 
         ui.add_space(6.0);
 
-        // Body based on record type
+        // The body is the schema's answer, not the editor's own map: the
+        // object-window table names the editor block for this record type,
+        // and the registry maps that name to a page. A signature the table
+        // names no block for — or names one this build does not register —
+        // shows the header alone.
         let avail_h = (ui.available_height() - 48.0).max(200.0);
+        let entry = session
+            .schema
+            .object_window
+            .categories
+            .get(String::from_utf8_lossy(&state.sig).as_ref());
+        let block_name = entry.and_then(|c| c.editor.as_deref());
+        let block = block_name.and_then(editor_block);
         egui::ScrollArea::vertical()
             .id_salt("obj_scroll")
             .max_height(avail_h)
-            .show(ui, |ui| match &state.sig {
-                b"WEAP" => draw_weap_ui(ui, &session, &mut state),
-                b"ARMO" => draw_armo_ui(ui, &session, &mut state),
-                b"CREA" => draw_crea_ui(ui, &session, &mut state),
-                b"NPC_" => draw_npc_ui(ui, &session, &mut state),
-                b"ALCH" => draw_alch_ui(ui, &mut state),
-                b"AMMO" => draw_ammo_ui(ui, &mut state),
-                b"CONT" => draw_cont_ui(ui, &mut state),
-                b"DOOR" => draw_door_ui(ui, &mut state),
-                b"ACTI" => draw_acti_ui(ui, &mut state),
-                b"TERM" => draw_term_ui(ui, &mut state),
-                b"LIGH" => draw_ligh_ui(ui, &mut state),
-                b"BOOK" => draw_book_ui(ui, &mut state),
-                b"FACT" => draw_fact_ui(ui, &session, &mut state),
-                b"QUST" => draw_qust_ui(ui, &mut state),
-                b"PERK" => draw_perk_ui(ui, &mut state),
-                b"ENCH" => draw_spell_ui(ui, &mut state),
-                b"EXPL" => draw_expl_ui(ui, &mut state),
-                b"PROJ" => draw_proj_ui(ui, &mut state),
-                b"SOUN" => draw_soun_ui(ui, &mut state),
-                b"NOTE" => draw_note_ui(ui, &mut state),
-                b"LVLC" => draw_lvlc_ui(ui, &session, &mut state),
-                b"LVLN" => draw_lvln_ui(ui, &session, &mut state),
-                b"LVLI" => draw_lvli_ui(ui, &session, &mut state),
-                b"IMOD" => draw_imod_ui(ui, &mut state),
-                b"CLAS" => draw_clas_ui(ui, &mut state),
-                b"CSTY" => draw_csty_ui(ui, &mut state),
-                b"MGEF" => draw_mgef_ui(ui, &mut state),
-                b"WTHR" => draw_wthr_ui(ui, &session, &mut state),
-                b"WATR" => draw_watr_ui(ui, &session, &mut state),
-                b"GLOB" => draw_glob_ui(ui, &mut state),
-                b"GMST" => draw_gmst_ui(ui, &mut state),
-                b"RACE" => draw_race_ui(ui, &session, &mut state),
-                b"CLMT" => draw_clmt_ui(ui, &session, &mut state),
-                b"ADDN" => draw_addn_ui(ui, &mut state),
-                b"ALOC" => draw_aloc_ui(ui, &session, &mut state),
-                b"AMEF" => draw_amef_ui(ui, &mut state),
-                b"ARMA" => draw_arma_ui(ui, &mut state),
-                b"CAMS" => draw_cams_ui(ui, &session, &mut state),
-                b"CHAL" => draw_chal_ui(ui, &mut state),
-                b"KEYM" => draw_keym_ui(ui, &session, &mut state),
-                b"INGR" => draw_ingr_ui(ui, &session, &mut state),
-                b"IPCT" => draw_ipct_ui(ui, &session, &mut state),
-                b"IPDS" => draw_ipds_ui(ui, &session, &mut state),
-                b"RCPE" => draw_rcpe_ui(ui, &session, &mut state),
-                b"SCPT" => draw_scpt_ui(ui, &mut state),
-                b"PACK" => draw_pack_ui(ui, &session, &mut state),
-                b"EFSH" => draw_efsh_ui(ui, &mut state),
-                b"REGN" => draw_regn_ui(ui, &session, &mut state),
-                b"IMAD" => draw_imad_ui(ui, &mut state),
-                b"COBJ" => draw_cobj_ui(ui, &mut state),
-                b"PMIS" => draw_pmis_ui(ui, &session, &mut state),
-                b"TES4" => draw_tes4_ui(ui, &mut state),
-                b"FLST" => draw_flst_ui(ui, &mut state),
-                b"MESG" => draw_mesg_ui(ui, &session, &mut state),
-                b"SPEL" => draw_spel_ui(ui, &mut state),
-                b"STAT" => draw_stat_ui(ui, &session, &mut state),
-                b"IDLE" => draw_idle_ui(ui, &session, &mut state),
-                b"MSET" => draw_mset_ui(ui, &session, &mut state),
-                b"MSTT" => draw_mstt_ui(ui, &session, &mut state),
-                b"PWAT" => draw_pwat_ui(ui, &session, &mut state),
-                b"RCCT" => draw_rcct_ui(ui, &mut state),
-                b"REPU" => draw_repu_ui(ui, &mut state),
-                b"RGDL" => draw_rgdl_ui(ui, &session, &mut state),
-                b"TREE" => draw_tree_ui(ui, &mut state),
-                b"TXST" => draw_txst_ui(ui, &mut state),
-                b"VTYP" => draw_vtyp_ui(ui, &mut state),
-                b"TACT" => draw_tact_ui(ui, &session, &mut state),
-                b"SCOL" => draw_scol_ui(ui, &mut state),
-                b"IDLM" => draw_idlm_ui(ui, &session, &mut state),
-                b"IMGS" => draw_imgs_ui(ui, &mut state),
-                b"LGTM" => draw_lgtm_ui(ui, &mut state),
-                b"LSCR" => draw_lscr_ui(ui, &session, &mut state),
-                b"LSCT" => draw_lsct_ui(ui, &mut state),
-                b"MICN" => draw_micn_ui(ui, &mut state),
-                b"MUSC" => draw_musc_ui(ui, &mut state),
-                b"DEHY" => draw_dehy_ui(ui, &session, &mut state),
-                b"DOBJ" => draw_dobj_ui(ui, &mut state),
-                b"ECZN" => draw_eczn_ui(ui, &session, &mut state),
-                b"FURN" => draw_furn_ui(ui, &mut state),
-                b"GRAS" => draw_gras_ui(ui, &mut state),
-                b"HUNG" => draw_hung_ui(ui, &session, &mut state),
-                b"RADS" => draw_rads_ui(ui, &session, &mut state),
-                b"SLPD" => draw_slpd_ui(ui, &session, &mut state),
-                b"CPTH" => draw_cpth_ui(ui, &session, &mut state),
-                b"CSNO" => draw_csno_ui(ui, &session, &mut state),
-                b"DEBR" => draw_debr_ui(ui, &mut state),
-                b"CCRD" => draw_ccrd_ui(ui, &session, &mut state),
-                b"CDCK" => draw_cdck_ui(ui, &session, &mut state),
-                b"CHIP" => draw_chip_ui(ui, &session, &mut state),
-                b"CMNY" => draw_cmny_ui(ui, &session, &mut state),
-                b"ASPC" => draw_aspc_ui(ui, &session, &mut state),
-                b"ANIO" => draw_anio_ui(ui, &session, &mut state),
-                b"AVIF" => draw_avif_ui(ui, &mut state),
-                b"EYES" => draw_eyes_ui(ui, &mut state),
-                b"HAIR" => draw_hair_ui(ui, &session, &mut state),
-                b"HDPT" => draw_hdpt_ui(ui, &session, &mut state),
-                b"BPTD" => draw_bptd_ui(ui, &session, &mut state),
-                b"MISC" => draw_misc_ui(ui, &session, &mut state),
-                // A type with no page of its own shows nothing below the
+            .show(ui, |ui| match (block, block_name) {
+                (Some(block), _) => block(ui, &session, &mut state),
+                // A block name the registry does not know is a table typo;
+                // say so rather than silently showing nothing.
+                (None, Some(name)) => {
+                    ui.colored_label(
+                        ui.visuals().error_fg_color,
+                        format!("the schema names editor block {name:?}, which is not registered"),
+                    );
+                }
+                // A type with no block of its own shows nothing below the
                 // header panel.
-                _ => {}
+                (None, None) => {}
             });
 
         // The object bounds are a shared subrecord: every type that

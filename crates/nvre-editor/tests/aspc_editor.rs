@@ -188,8 +188,8 @@ fn the_window_title_names_the_record_type() {
     };
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, ASPC_DESERT, *b"ASPC");
-    let title = nvre_editor::object_editor::window_title(&state.sig, &state.edid, &state.full_name);
-    assert_eq!(title, "Ambient Sound - ExtDesertNorthVegas");
+    let title = nvre_editor::object_editor::window_title(&s.schema, &state.sig, &state.edid, &state.full_name);
+    assert_eq!(title, "Acoustic Space - ExtDesertNorthVegas");
 }
 
 #[test]

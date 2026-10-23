@@ -28,8 +28,6 @@
 //! - the record schemas for the games other than FNV and Fallout 3: those two
 //!   are measured, so opening another game's master fails with
 //!   `no schema files in ...` rather than silently misreading it;
-//! - the GECK/CK object-window group table, which is FNV's
-//!   ([`super::session::geck_group_for_sig`]) until each game has its own;
 //! - archive containers other than BSA v104 (Fallout 4 ships BA2). Skyrim SE's
 //!   BSA v105/LZ4 is readable through NVRE's own [`bsa105`] crate, but the
 //!   editor's VFS reads v104 only — so Skyrim SE
@@ -621,18 +619,6 @@ impl GameProfile {
         })
     }
 
-    /// The top-level object-window group for a record signature.
-    ///
-    /// The table is the schema's, because it is a per-game fact: GECK's eight
-    /// groups and the Creation Kit's nine are different partitions of the same
-    /// signatures, and `MSTT` is "Moveable Static" in one game and "Movement
-    /// Type" in another. `None` means this game's table has no entry, and the
-    /// panel files the category under its catch-all rather than under a
-    /// heading the game does not use.
-    pub fn group_for_sig(&self, sig: &[u8; 4]) -> Option<&'static str> {
-        let _ = sig;
-        None
-    }
 }
 
 /// Remember a game's Data folder so the user does not type it again.

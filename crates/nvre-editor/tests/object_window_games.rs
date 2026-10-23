@@ -206,24 +206,28 @@ fn every_game_files_its_objects_into_named_groups() {
 }
 
 #[test]
-fn a_game_with_no_grouping_table_says_so_in_one_place() {
-    // The panel files an ungrouped category under one catch-all, which is the
-    // honest fallback: the object is still reachable. What must not happen is
-    // a game inheriting another game's heading, which would file Skyrim's
-    // keywords under GECK's "Actor Data".
+fn every_games_schema_validates_and_files_its_own_groups() {
+    // The schema is the only table the panel reads now, and `Schema::check`
+    // rejects a shown category filed under a heading its own group list does
+    // not hold — which is what stops a game from inheriting another game's
+    // heading. This needs no installed game: the schema chain loads from the
+    // repository alone.
     for want in EXPECTED {
         let Some(game) = GameProfile::by_id(want.id) else {
-            continue;
+            panic!("{} is not a game profile", want.id);
         };
-        for sig in [*b"STAT", *b"MSTT", *b"KYWD", *b"SCEN"] {
-            if let Some(group) = game.group_for_sig(&sig) {
-                assert!(
-                    !group.is_empty(),
-                    "{}: {} has an empty group",
-                    game.id,
-                    nvre_util::tag_str(&sig)
-                );
-            }
-        }
+        let schema = game
+            .load_schema()
+            .unwrap_or_else(|e| panic!("{}: schema does not load: {e}", game.id));
+        assert!(
+            !schema.object_window.groups.is_empty(),
+            "{}: the object-window table names no groups",
+            game.id
+        );
+        assert!(
+            !schema.object_window.categories.is_empty(),
+            "{}: the object-window table names no categories",
+            game.id
+        );
     }
 }
