@@ -5,7 +5,7 @@
    "Actors",
    "Actor Data",
    "Items",
-   "Magic",
+   "Game Effects",
    "Special Effects",
    "WorldObjects",
    "Audio",
@@ -27,7 +27,7 @@
     "editor": "addn"
    },
    "ALCH": {
-    "group": "Magic",
+    "group": "Game Effects",
     "editor": "alch"
    },
    "ALOC": {
@@ -153,7 +153,7 @@
     "editor": "efsh"
    },
    "ENCH": {
-    "group": "Magic",
+    "group": "Game Effects",
     "editor": "spell"
    },
    "EXPL": {
@@ -278,7 +278,7 @@
     "editor": "mesg"
    },
    "MGEF": {
-    "group": "Magic",
+    "group": "Game Effects",
     "editor": "mgef"
    },
    "MICN": {
@@ -386,7 +386,7 @@
     "editor": "soun"
    },
    "SPEL": {
-    "group": "Magic",
+    "group": "Game Effects",
     "editor": "spel"
    },
    "STAT": {
@@ -394,7 +394,7 @@
     "editor": "stat"
    },
    "TACT": {
-    "group": "WorldObjects",
+    "group": "Actors",
     "editor": "tact"
    },
    "TERM": {
