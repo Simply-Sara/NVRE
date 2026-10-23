@@ -178,17 +178,12 @@ pub const SKYRIM: GameProfile = GameProfile {
     schema_subdir: "skyrimle",
     schema_family_dir: "skyrim",
     schema_version_dir: "skyrimle",
-    notes: &[
-        "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimle",
-        "NIF schema is complete for the geometry: over its whole mesh archive, 631,970 blocks, no unknown block, every block that decoded re-encoding byte-identically, and the 60,362 shapes and 62,524 shape data blocks failing nothing",
-        "its archives are BSA v104, which the editor's VFS reads, so the models load",
-    ],
+    notes: &[],
 };
 
 /// Skyrim Special Edition. Its archives are BSA v105 with LZ4-compressed
-/// blocks. NVRE's own `bsa105` crate reads them (all 23 of the shipped ones,
-/// 172,961 files, verified), but the editor's VFS reads v104 only — hence the
-/// archive list is empty and the note says so.
+/// blocks, read by NVRE's own `bsa105` crate (all 23 of the shipped ones,
+/// 172,961 files, verified).
 pub const SKYRIM_SE: GameProfile = GameProfile {
     id: "skyrimse",
     nif_schema_family_dir: "skyrim",
@@ -223,11 +218,7 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     schema_subdir: "skyrimse",
     schema_family_dir: "skyrim",
     schema_version_dir: "skyrimse",
-    notes: &[
-        "record schemas are complete: all five masters decode at 100.00% over schemas/base + schemas/skyrim + schemas/skyrimse",
-        "archives are BSA v105/LZ4, which the editor's VFS reads through NVRE's own bsa105 crate, so the models load",
-        "its NIF blocks all decode and its shapes are measured, and the packed vertex format its shapes use (BSVertexDataSSE) is now unpacked into real geometry",
-    ],
+    notes: &[],
 };
 
 /// Fallout 4. BA2 archives, ESL plugins, and a record set the least shared with
@@ -268,13 +259,7 @@ pub const FALLOUT_4: GameProfile = GameProfile {
     schema_subdir: "fo4",
     schema_version_dir: "fo4",
     schema_family_dir: "",
-    notes: &[
-        "record schemas are written but not yet measured against Fallout4.esm",
-        "archives are BA2, read by NVRE's own ba2 crate: GNRL files and DX10 textures both decode",
-        "its NIF layouts are measured against the meshes in Fallout4 - Meshes.ba2: NiAVObject drops the property list and the velocity vector, NiNode drops the effects list, and BSTriShape's num_triangles is a u32 with no trailing word",
-        "its shapes use BSVertexData (bs_version 130), whose position is a half-precision vector unless the description's FULL_PRECISION flag is set",
-        "ESL plugins (header flag 0x200) and the 0xFE000800 FormID range are not modelled yet",
-    ],
+    notes: &[],
 };
 
 /// Every profile the editor knows, in the order [`detect`] tries them.
@@ -618,7 +603,6 @@ impl GameProfile {
             schema: std::sync::Arc::new(schema),
         })
     }
-
 }
 
 /// Remember a game's Data folder so the user does not type it again.
