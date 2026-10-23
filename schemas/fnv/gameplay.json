@@ -428,7 +428,7 @@
   },
   "DEHY": {
    "confidence": "documented",
-   "name": "DEHY",
+   "name": "Dehydration Stage",
    "note": "xEdit wbDefinitionsFNV.pas DEHY record; no header flags declared",
    "subrecords": {
     "DATA": {
@@ -584,7 +584,7 @@
   },
   "HUNG": {
    "confidence": "documented",
-   "name": "HUNG",
+   "name": "Hunger Stage",
    "note": "xEdit wbDefinitionsFNV.pas HUNG record; no header flags declared",
    "subrecords": {
     "DATA": {
@@ -863,7 +863,7 @@
   },
   "LSCT": {
    "confidence": "documented",
-   "name": "LSCT",
+   "name": "Load Screen Type",
    "note": "xEdit wbDefinitionsFNV.pas LSCT record; no header flags declared",
    "subrecords": {
     "DATA": {
@@ -1820,7 +1820,7 @@
   },
   "RADS": {
    "confidence": "documented",
-   "name": "RADS",
+   "name": "Radiation Stage",
    "note": "xEdit wbDefinitionsFNV.pas RADS record; no header flags declared",
    "subrecords": {
     "DATA": {
@@ -1843,7 +1843,7 @@
   },
   "RCCT": {
    "confidence": "documented",
-   "name": "RCCT",
+   "name": "Recipe Category",
    "note": "xEdit wbDefinitionsFNV.pas RCCT record; no header flags declared",
    "subrecords": {
     "DATA": {
@@ -1878,7 +1878,7 @@
   },
   "SLPD": {
    "confidence": "documented",
-   "name": "SLPD",
+   "name": "Sleep Deprivation Stage",
    "note": "xEdit wbDefinitionsFNV.pas SLPD record; no header flags declared",
    "subrecords": {
     "DATA": {

@@ -1989,7 +1989,7 @@
   },
   "DOBJ": {
    "confidence": "documented",
-   "name": "DOBJ",
+   "name": "Default Object Manager",
    "note": "xEdit wbDefinitionsFNV.pas DOBJ record; no header flags declared",
    "subrecords": {
     "DATA": {
@@ -3441,7 +3441,7 @@
   },
   "INGR": {
    "confidence": "documented",
-   "name": "INGR",
+   "name": "Ingredient",
    "note": "xEdit wbDefinitionsFNV.pas INGR record; no header flags declared",
    "subrecords": {
     "DATA": {

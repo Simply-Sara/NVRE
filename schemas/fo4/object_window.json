@@ -1,0 +1,396 @@
+{
+ "format": "fnv.schema/1",
+ "object_window": {
+  "groups": [
+   "Actors",
+   "Audio",
+   "Character",
+   "Items",
+   "Magic",
+   "Miscellaneous",
+   "Special Effect",
+   "World Data",
+   "World Objects"
+  ],
+  "categories": {
+   "AACT": {
+    "group": "Character"
+   },
+   "ACTI": {
+    "group": "World Objects"
+   },
+   "ADDN": {
+    "group": "Special Effect"
+   },
+   "AECH": {
+    "group": "Audio"
+   },
+   "ALCH": {
+    "group": "Magic"
+   },
+   "AMDL": {
+    "group": "Items"
+   },
+   "AMMO": {
+    "group": "Items"
+   },
+   "ANIO": {
+    "group": "Miscellaneous"
+   },
+   "AORU": {
+    "group": "Character"
+   },
+   "ARMA": {
+    "group": "Items"
+   },
+   "ARMO": {
+    "group": "Items"
+   },
+   "ARTO": {
+    "group": "World Objects"
+   },
+   "ASPC": {
+    "group": "Audio"
+   },
+   "ASTP": {
+    "group": "Character"
+   },
+   "AVIF": {
+    "group": "Character"
+   },
+   "BNDS": {
+    "group": "Character"
+   },
+   "BOOK": {
+    "group": "Items"
+   },
+   "BPTD": {
+    "group": "Character"
+   },
+   "CAMS": {
+    "group": "Miscellaneous"
+   },
+   "CLAS": {
+    "group": "Character"
+   },
+   "CLFM": {
+    "group": "Character"
+   },
+   "CLMT": {
+    "group": "World Objects"
+   },
+   "CMPO": {
+    "group": "Miscellaneous"
+   },
+   "COBJ": {
+    "group": "Items"
+   },
+   "COLL": {
+    "group": "Miscellaneous"
+   },
+   "CONT": {
+    "group": "World Objects"
+   },
+   "CPTH": {
+    "group": "Miscellaneous"
+   },
+   "CSTY": {
+    "group": "Character"
+   },
+   "DEBR": {
+    "group": "Special Effect"
+   },
+   "DFOB": {
+    "group": "Miscellaneous"
+   },
+   "DLBR": {
+    "group": "Character"
+   },
+   "DLVW": {
+    "group": "Character"
+   },
+   "DMGT": {
+    "group": "Character"
+   },
+   "DOBJ": {
+    "group": "Miscellaneous"
+   },
+   "DOOR": {
+    "group": "World Objects"
+   },
+   "ECZN": {
+    "group": "Miscellaneous"
+   },
+   "EFSH": {
+    "group": "Special Effect"
+   },
+   "ENCH": {
+    "group": "Magic"
+   },
+   "EQUP": {
+    "group": "Character"
+   },
+   "EXPL": {
+    "group": "Special Effect"
+   },
+   "FACT": {
+    "group": "Character"
+   },
+   "FLOR": {
+    "group": "World Objects"
+   },
+   "FLST": {
+    "group": "Miscellaneous"
+   },
+   "FSTP": {
+    "group": "Items"
+   },
+   "FSTS": {
+    "group": "Items"
+   },
+   "FURN": {
+    "group": "World Objects"
+   },
+   "GDRY": {
+    "group": "Miscellaneous"
+   },
+   "GLOB": {
+    "group": "Miscellaneous"
+   },
+   "GMST": {
+    "group": "Miscellaneous"
+   },
+   "GRAS": {
+    "group": "World Objects"
+   },
+   "HAZD": {
+    "group": "Special Effect"
+   },
+   "HDPT": {
+    "group": "Character"
+   },
+   "IDLE": {
+    "group": "Miscellaneous"
+   },
+   "IDLM": {
+    "group": "Miscellaneous"
+   },
+   "IMAD": {
+    "group": "Special Effect"
+   },
+   "IMGS": {
+    "group": "Special Effect"
+   },
+   "INGR": {
+    "group": "Items"
+   },
+   "INNR": {
+    "group": "Items"
+   },
+   "IPCT": {
+    "group": "Special Effect"
+   },
+   "IPDS": {
+    "group": "Special Effect"
+   },
+   "KEYM": {
+    "group": "Items"
+   },
+   "KSSM": {
+    "group": "Audio"
+   },
+   "KYWD": {
+    "group": "Character"
+   },
+   "LAYR": {
+    "group": "Miscellaneous"
+   },
+   "LCRT": {
+    "group": "Character"
+   },
+   "LCTN": {
+    "group": "Character"
+   },
+   "LENS": {
+    "group": "Miscellaneous"
+   },
+   "LGTM": {
+    "group": "Miscellaneous"
+   },
+   "LIGH": {
+    "group": "World Objects"
+   },
+   "LSCR": {
+    "group": "Miscellaneous"
+   },
+   "LVLI": {
+    "group": "Items"
+   },
+   "LVLN": {
+    "group": "Actors"
+   },
+   "MATO": {
+    "group": "Special Effect"
+   },
+   "MATT": {
+    "group": "Miscellaneous"
+   },
+   "MESG": {
+    "group": "Miscellaneous"
+   },
+   "MGEF": {
+    "group": "Magic"
+   },
+   "MISC": {
+    "group": "Items"
+   },
+   "MOVT": {
+    "group": "Miscellaneous"
+   },
+   "MSTT": {
+    "group": "World Objects"
+   },
+   "MSWP": {
+    "group": "Items"
+   },
+   "MUSC": {
+    "group": "Audio"
+   },
+   "MUST": {
+    "group": "Audio"
+   },
+   "NOCM": {
+    "group": "Character"
+   },
+   "NOTE": {
+    "group": "Items"
+   },
+   "NPC_": {
+    "group": "Actors"
+   },
+   "OMOD": {
+    "group": "Items"
+   },
+   "OTFT": {
+    "group": "Character"
+   },
+   "OVIS": {
+    "group": "Character"
+   },
+   "PACK": {
+    "group": "Character"
+   },
+   "PERK": {
+    "group": "Character"
+   },
+   "PHZD": {
+    "group": "Special Effect"
+   },
+   "PKIN": {
+    "group": "Character"
+   },
+   "PMIS": {
+    "group": "World Objects"
+   },
+   "PROJ": {
+    "group": "Special Effect"
+   },
+   "QUST": {
+    "group": "Character"
+   },
+   "RACE": {
+    "group": "Character"
+   },
+   "REGN": {
+    "group": "World Objects"
+   },
+   "RELA": {
+    "group": "Character"
+   },
+   "REVB": {
+    "group": "Audio"
+   },
+   "RFCT": {
+    "group": "Special Effect"
+   },
+   "RFGP": {
+    "group": "Miscellaneous"
+   },
+   "SCCO": {
+    "group": "Character"
+   },
+   "SCEN": {
+    "group": "Character"
+   },
+   "SCOL": {
+    "group": "World Objects"
+   },
+   "SCSN": {
+    "group": "Audio"
+   },
+   "SMBN": {
+    "group": "Character"
+   },
+   "SMEN": {
+    "group": "Character"
+   },
+   "SMQN": {
+    "group": "Character"
+   },
+   "SNCT": {
+    "group": "Audio"
+   },
+   "SNDR": {
+    "group": "Audio"
+   },
+   "SOPM": {
+    "group": "Audio"
+   },
+   "SOUN": {
+    "group": "Audio"
+   },
+   "SPEL": {
+    "group": "Magic"
+   },
+   "SPGD": {
+    "group": "Special Effect"
+   },
+   "STAG": {
+    "group": "Audio"
+   },
+   "STAT": {
+    "group": "World Objects"
+   },
+   "TACT": {
+    "group": "World Objects"
+   },
+   "TERM": {
+    "group": "World Objects"
+   },
+   "TREE": {
+    "group": "World Objects"
+   },
+   "TRNS": {
+    "group": "Character"
+   },
+   "TXST": {
+    "group": "Miscellaneous"
+   },
+   "VTYP": {
+    "group": "Character"
+   },
+   "WATR": {
+    "group": "World Objects"
+   },
+   "WEAP": {
+    "group": "Items"
+   },
+   "WTHR": {
+    "group": "World Objects"
+   },
+   "ZOOM": {
+    "group": "Items"
+   }
+  }
+ }
+}

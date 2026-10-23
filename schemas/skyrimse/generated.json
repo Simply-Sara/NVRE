@@ -3,7 +3,7 @@
  "records": {
   "AMMO": {
    "merge": true,
-   "name": "AMMO",
+   "name": "Ammunition",
    "subrecords": {
     "DATA": {
      "confidence": "hypothesis",

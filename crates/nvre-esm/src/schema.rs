@@ -457,6 +457,44 @@ pub struct Schema {
     /// The common subrecords: the ones any record may carry, such as the
     /// editor ID.
     pub common_subrecords: BTreeMap<String, SubDef>,
+    /// How this game's own editor files its records into the object window.
+    pub object_window: ObjectWindow,
+}
+
+/// How a game's object window is laid out: the groups down the side, and the
+/// category each record type is filed under.
+///
+/// This is per game and cannot live in `base`, for the same reason a record's
+/// layout cannot: the same signature is a different category in a different
+/// game. `MSTT` is "Moveable Static" under "WorldObjects" in Fallout and
+/// "Movement Type" under "Miscellaneous" in Skyrim, and `NPC_` is
+/// "Non-Player Character" in Fallout: New Vegas and "Actor" in Skyrim.
+///
+/// A game with no table of its own reads an empty one, and its palette is a
+/// single flat list. That is the honest answer rather than inheriting another
+/// game's headings.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ObjectWindow {
+    /// The groups, in the order the game's editor lists them.
+    pub groups: Vec<String>,
+    /// The categories, by record signature.
+    pub categories: BTreeMap<String, CategoryDef>,
+}
+
+/// Where one category sits in the object window, and what it is called.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CategoryDef {
+    /// The top-level group it is filed under.
+    pub group: Option<String>,
+    /// The name the game's editor gives it.
+    ///
+    /// A category with no name of its own is labelled with its record's name,
+    /// which is the schema's own description of the type. The two differ where
+    /// a game's editor and its format disagree — Fallout 4's `NPC_` is a
+    /// "Non-Player Character (Actor)" in the schema and a "Character" in the
+    /// editor — so a table that cares says so here rather than editing the
+    /// layout's name.
+    pub name: Option<String>,
 }
 
 /// A bit mask for a union's bit test, from the schema's key.
@@ -659,6 +697,69 @@ impl Schema {
                     self.parse_type(name, def)?
                 };
                 self.common.insert(name.clone(), td);
+            }
+        }
+        if let Some(ow) = obj.get("object_window").and_then(|v| v.as_object()) {
+            self.merge_object_window(ow)?;
+        }
+        Ok(())
+    }
+
+    /// Merge an `object_window` block: the groups, and the categories.
+    ///
+    /// The groups replace as a whole, because their *order* is part of the
+    /// meaning and appending to another game's list would interleave two
+    /// editors' headings. A category is replaced whole unless it says
+    /// `"merge": true`, which adds its fields to the category it shadows —
+    /// the same rule a record follows, for the same reason: a layer that only
+    /// renames a category should not have to restate its group.
+    fn merge_object_window(
+        &mut self,
+        ow: &serde_json::Map<String, Json>,
+    ) -> Result<(), String> {
+        if let Some(groups) = ow.get("groups").and_then(|v| v.as_array()) {
+            let mut out = Vec::with_capacity(groups.len());
+            for g in groups {
+                let Some(name) = g.as_str() else {
+                    return Err("object_window.groups holds a name that is not a string".into());
+                };
+                out.push(name.to_string());
+            }
+            self.object_window.groups = out;
+        }
+        if let Some(cats) = ow.get("categories").and_then(|v| v.as_object()) {
+            for (sig, def) in cats {
+                if sig.len() != 4 {
+                    return Err(format!(
+                        "object_window.categories names {sig:?}, which is not a four-byte signature"
+                    ));
+                }
+                let Some(o) = def.as_object() else {
+                    return Err(format!("object_window.categories.{sig} is not an object"));
+                };
+                let merges = o.get("merge").and_then(|v| v.as_bool()).unwrap_or(false);
+                let mut cat = if merges {
+                    self.object_window.categories.get(sig).cloned().unwrap_or_default()
+                } else {
+                    CategoryDef::default()
+                };
+                if let Some(g) = o.get("group") {
+                    match g.as_str() {
+                        Some(name) => cat.group = Some(name.to_string()),
+                        // `null` means "no group of its own", which is how a
+                        // layer undoes a heading a family layer set.
+                        None if g.is_null() => cat.group = None,
+                        None => return Err(format!("object_window.categories.{sig}.group is not a string")),
+                    }
+                }
+                if let Some(n) = o.get("name") {
+                    match n.as_str() {
+                        Some(name) => cat.name = Some(name.to_string()),
+                        None if n.is_null() => cat.name = None,
+                        None => return Err(format!("object_window.categories.{sig}.name is not a string")),
+                    }
+                }
+                self.object_window.categories.insert(sig.clone(), cat);
             }
         }
         Ok(())

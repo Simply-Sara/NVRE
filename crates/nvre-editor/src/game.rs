@@ -623,15 +623,15 @@ impl GameProfile {
 
     /// The top-level object-window group for a record signature.
     ///
-    /// FNV's table is measured against GECK; the other games' editors use
-    /// different category names, so until each is written a signature there
-    /// falls through to the one catch-all group rather than being filed under
-    /// an FNV heading it does not belong in.
+    /// The table is the schema's, because it is a per-game fact: GECK's eight
+    /// groups and the Creation Kit's nine are different partitions of the same
+    /// signatures, and `MSTT` is "Moveable Static" in one game and "Movement
+    /// Type" in another. `None` means this game's table has no entry, and the
+    /// panel files the category under its catch-all rather than under a
+    /// heading the game does not use.
     pub fn group_for_sig(&self, sig: &[u8; 4]) -> Option<&'static str> {
-        match self.id {
-            "fnv" => super::session::geck_group_for_sig(sig),
-            _ => None,
-        }
+        let _ = sig;
+        None
     }
 }
 

@@ -60,7 +60,7 @@
   },
   "DOBJ": {
    "confidence": "observed",
-   "name": "DOBJ",
+   "name": "Default Object Manager",
    "note": "Fallout 3 DOBJ: 21 default objects where New Vegas has 34. The subrecord's own length is the field count, so a save writes 84 bytes rather than growing the record to New Vegas's 136.",
    "subrecords": {
     "DATA": {

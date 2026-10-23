@@ -4,7 +4,7 @@
   "ALCH": {
    "confidence": "hypothesis",
    "merge": true,
-   "name": "ALCH",
+   "name": "Ingestible",
    "note": "Generated from the UESP field table for ALCH; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -93,7 +93,7 @@
   "AMMO": {
    "confidence": "hypothesis",
    "merge": true,
-   "name": "AMMO",
+   "name": "Ammunition",
    "note": "Generated from the UESP field table for AMMO; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -169,7 +169,7 @@
   },
   "ARMA": {
    "confidence": "hypothesis",
-   "name": "ARMA",
+   "name": "Armor Addon",
    "note": "Generated from the UESP field table for ARMA; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DNAM": {
@@ -303,7 +303,7 @@
   "AVIF": {
    "confidence": "hypothesis",
    "merge": true,
-   "name": "AVIF",
+   "name": "Actor Value Information",
    "note": "Generated from the UESP field table for AVIF; every entry still needs checking against the shipped data.",
    "subrecords": {
     "ANAM": {
@@ -397,7 +397,7 @@
   },
   "BOOK": {
    "confidence": "hypothesis",
-   "name": "BOOK",
+   "name": "Book",
    "note": "Generated from the UESP field table for BOOK; every entry still needs checking against the shipped data.",
    "subrecords": {
     "CNAM": {
@@ -485,7 +485,7 @@
   },
   "COBJ": {
    "confidence": "hypothesis",
-   "name": "COBJ",
+   "name": "Constructible Object",
    "note": "Generated from the UESP field table for COBJ; every entry still needs checking against the shipped data.",
    "subrecords": {
     "BNAM": {
@@ -534,7 +534,7 @@
   },
   "ENCH": {
    "confidence": "hypothesis",
-   "name": "ENCH",
+   "name": "Enchantment",
    "note": "Generated from the UESP field table for ENCH; every entry still needs checking against the shipped data.",
    "subrecords": {
     "EDID": {
@@ -572,7 +572,7 @@
   "FLOR": {
    "confidence": "hypothesis",
    "merge": true,
-   "name": "FLOR",
+   "name": "Flora",
    "note": "Generated from the UESP field table for FLOR; every entry still needs checking against the shipped data.",
    "subrecords": {
     "EDID": {
@@ -654,7 +654,7 @@
   },
   "FURN": {
    "confidence": "hypothesis",
-   "name": "FURN",
+   "name": "Furniture",
    "note": "Generated from the UESP field table for FURN; every entry still needs checking against the shipped data.",
    "subrecords": {
     "EDID": {
@@ -766,7 +766,7 @@
   },
   "HDPT": {
    "confidence": "hypothesis",
-   "name": "HDPT",
+   "name": "Head Part",
    "note": "Generated from the UESP field table for HDPT; every entry still needs checking against the shipped data.",
    "subrecords": {
     "CNAM": {
@@ -834,7 +834,7 @@
   "KEYM": {
    "confidence": "hypothesis",
    "merge": true,
-   "name": "KEYM",
+   "name": "Key",
    "note": "Generated from the UESP field table for KEYM; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -898,7 +898,7 @@
   },
   "LCTN": {
    "confidence": "hypothesis",
-   "name": "LCTN",
+   "name": "Location",
    "note": "Generated from the UESP field table for LCTN; every entry still needs checking against the shipped data.",
    "subrecords": {
     "CNAM": {
@@ -982,7 +982,7 @@
   },
   "LIGH": {
    "confidence": "hypothesis",
-   "name": "LIGH",
+   "name": "Light",
    "note": "Generated from the UESP field table for LIGH; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -1031,7 +1031,7 @@
   },
   "MGEF": {
    "confidence": "hypothesis",
-   "name": "MGEF",
+   "name": "Magic Effect",
    "note": "Generated from the UESP field table for MGEF; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -1096,7 +1096,7 @@
   "MISC": {
    "confidence": "hypothesis",
    "merge": true,
-   "name": "MISC",
+   "name": "Misc. Item",
    "note": "Generated from the UESP field table for MISC; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -1160,7 +1160,7 @@
   },
   "SCRL": {
    "confidence": "hypothesis",
-   "name": "SCRL",
+   "name": "Scroll",
    "note": "Generated from the UESP field table for SCRL; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -1248,7 +1248,7 @@
   },
   "SLGM": {
    "confidence": "hypothesis",
-   "name": "SLGM",
+   "name": "Soul Gem",
    "note": "Generated from the UESP field table for SLGM; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DATA": {
@@ -1312,7 +1312,7 @@
   },
   "SOUN": {
    "confidence": "hypothesis",
-   "name": "SOUN",
+   "name": "Sound Marker",
    "note": "Generated from the UESP field table for SOUN; every entry still needs checking against the shipped data.",
    "subrecords": {
     "EDID": {
@@ -1343,7 +1343,7 @@
   },
   "SPEL": {
    "confidence": "hypothesis",
-   "name": "SPEL",
+   "name": "Spell",
    "note": "Generated from the UESP field table for SPEL; every entry still needs checking against the shipped data.",
    "subrecords": {
     "DESC": {
@@ -1399,7 +1399,7 @@
   "TREE": {
    "confidence": "hypothesis",
    "merge": true,
-   "name": "TREE",
+   "name": "Tree",
    "note": "Generated from the UESP field table for TREE; every entry still needs checking against the shipped data.",
    "subrecords": {
     "CNAM": {

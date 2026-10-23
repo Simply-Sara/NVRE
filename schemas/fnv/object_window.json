@@ -1,0 +1,302 @@
+{
+ "format": "fnv.schema/1",
+ "object_window": {
+  "groups": [
+   "Actors",
+   "Actor Data",
+   "Items",
+   "Magic",
+   "Special Effects",
+   "WorldObjects",
+   "Audio",
+   "Miscellaneous"
+  ],
+  "categories": {
+   "ACTI": {
+    "group": "WorldObjects"
+   },
+   "ADDN": {
+    "group": "Special Effects"
+   },
+   "ALCH": {
+    "group": "Magic"
+   },
+   "ALOC": {
+    "group": "Audio"
+   },
+   "AMEF": {
+    "group": "Items"
+   },
+   "AMMO": {
+    "group": "Items"
+   },
+   "ANIO": {
+    "group": "Miscellaneous"
+   },
+   "ARMA": {
+    "group": "Items"
+   },
+   "ARMO": {
+    "group": "Items"
+   },
+   "ASPC": {
+    "group": "Audio"
+   },
+   "AVIF": {
+    "group": "Actor Data"
+   },
+   "BOOK": {
+    "group": "Items"
+   },
+   "BPTD": {
+    "group": "Actor Data"
+   },
+   "CAMS": {
+    "group": "Miscellaneous"
+   },
+   "CCRD": {
+    "group": "Items"
+   },
+   "CDCK": {
+    "group": "Items"
+   },
+   "CHAL": {
+    "group": "Miscellaneous"
+   },
+   "CHIP": {
+    "group": "Items"
+   },
+   "CLAS": {
+    "group": "Actor Data"
+   },
+   "CLMT": {
+    "group": "WorldObjects"
+   },
+   "CMNY": {
+    "group": "Items"
+   },
+   "CONT": {
+    "group": "WorldObjects"
+   },
+   "CPTH": {
+    "group": "Miscellaneous"
+   },
+   "CREA": {
+    "group": "Actors"
+   },
+   "CSNO": {
+    "group": "Miscellaneous"
+   },
+   "CSTY": {
+    "group": "Actor Data"
+   },
+   "DEBR": {
+    "group": "Special Effects"
+   },
+   "DEHY": {
+    "group": "Miscellaneous"
+   },
+   "DOBJ": {
+    "group": "Miscellaneous"
+   },
+   "DOOR": {
+    "group": "WorldObjects"
+   },
+   "ECZN": {
+    "group": "Miscellaneous"
+   },
+   "EFSH": {
+    "group": "Special Effects"
+   },
+   "ENCH": {
+    "group": "Magic"
+   },
+   "EXPL": {
+    "group": "Special Effects"
+   },
+   "EYES": {
+    "group": "Actor Data"
+   },
+   "FACT": {
+    "group": "Actor Data"
+   },
+   "FLST": {
+    "group": "Miscellaneous"
+   },
+   "FURN": {
+    "group": "WorldObjects"
+   },
+   "GLOB": {
+    "group": "Miscellaneous"
+   },
+   "GMST": {
+    "group": "Miscellaneous"
+   },
+   "GRAS": {
+    "group": "WorldObjects"
+   },
+   "HAIR": {
+    "group": "Actor Data"
+   },
+   "HDPT": {
+    "group": "Actor Data"
+   },
+   "HUNG": {
+    "group": "Miscellaneous"
+   },
+   "IDLE": {
+    "group": "Miscellaneous"
+   },
+   "IDLM": {
+    "group": "Miscellaneous"
+   },
+   "IMAD": {
+    "group": "Special Effects"
+   },
+   "IMGS": {
+    "group": "Special Effects"
+   },
+   "IMOD": {
+    "group": "Items"
+   },
+   "INGR": {
+    "group": "Items"
+   },
+   "IPCT": {
+    "group": "Special Effects"
+   },
+   "IPDS": {
+    "group": "Special Effects"
+   },
+   "KEYM": {
+    "group": "Items"
+   },
+   "LGTM": {
+    "group": "Miscellaneous"
+   },
+   "LIGH": {
+    "group": "WorldObjects"
+   },
+   "LSCR": {
+    "group": "Miscellaneous"
+   },
+   "LSCT": {
+    "group": "Miscellaneous"
+   },
+   "LVLC": {
+    "group": "Actors"
+   },
+   "LVLI": {
+    "group": "Items"
+   },
+   "LVLN": {
+    "group": "Actors"
+   },
+   "MESG": {
+    "group": "Miscellaneous"
+   },
+   "MGEF": {
+    "group": "Magic"
+   },
+   "MICN": {
+    "group": "Miscellaneous"
+   },
+   "MISC": {
+    "group": "Items"
+   },
+   "MSET": {
+    "group": "Audio"
+   },
+   "MSTT": {
+    "group": "WorldObjects"
+   },
+   "MUSC": {
+    "group": "Audio"
+   },
+   "NOTE": {
+    "group": "Items"
+   },
+   "NPC_": {
+    "group": "Actors"
+   },
+   "PACK": {
+    "group": "Actor Data"
+   },
+   "PERK": {
+    "group": "Actor Data"
+   },
+   "PROJ": {
+    "group": "Special Effects"
+   },
+   "PWAT": {
+    "group": "WorldObjects"
+   },
+   "QUST": {
+    "group": "Actor Data"
+   },
+   "RACE": {
+    "group": "Actor Data"
+   },
+   "RADS": {
+    "group": "Miscellaneous"
+   },
+   "RCCT": {
+    "group": "Miscellaneous"
+   },
+   "RCPE": {
+    "group": "Miscellaneous"
+   },
+   "REGN": {
+    "group": "WorldObjects"
+   },
+   "REPU": {
+    "group": "Miscellaneous"
+   },
+   "RGDL": {
+    "group": "Actor Data"
+   },
+   "SCOL": {
+    "group": "WorldObjects"
+   },
+   "SCPT": {
+    "group": "Miscellaneous"
+   },
+   "SLPD": {
+    "group": "Miscellaneous"
+   },
+   "SOUN": {
+    "group": "Audio"
+   },
+   "SPEL": {
+    "group": "Magic"
+   },
+   "STAT": {
+    "group": "WorldObjects"
+   },
+   "TACT": {
+    "group": "WorldObjects"
+   },
+   "TERM": {
+    "group": "WorldObjects"
+   },
+   "TREE": {
+    "group": "WorldObjects"
+   },
+   "TXST": {
+    "group": "Miscellaneous"
+   },
+   "VTYP": {
+    "group": "Actor Data"
+   },
+   "WATR": {
+    "group": "WorldObjects"
+   },
+   "WEAP": {
+    "group": "Items"
+   },
+   "WTHR": {
+    "group": "WorldObjects"
+   }
+  }
+ }
+}

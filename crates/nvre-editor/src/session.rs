@@ -338,19 +338,32 @@ impl Session {
                 let objects = load_order_objects(lo, filter);
                 // Grouped by the record type, which is the category. One
                 // load-order lookup per distinct type rather than per object.
+                //
+                // Where the category is filed and what it is called come from
+                // the schema's object-window table, which is per game: the
+                // same signature is a different category in a different game.
+                // A signature the table does not name falls back to the
+                // catch-all, so an object is never unreachable just because a
+                // game's table has not been written yet.
                 let mut types: HashMap<[u8; 4], (String, String)> = HashMap::new();
                 for (_, sig, _) in &objects {
                     types.entry(*sig).or_insert_with(|| {
-                        let group = self
-                            .game
-                            .group_for_sig(sig)
-                            .unwrap_or("Miscellaneous")
-                            .to_string();
-                        let category = self
+                        let cat = self
                             .schema
-                            .records
-                            .get(String::from_utf8_lossy(sig).as_ref())
-                            .map(|d| d.name.clone())
+                            .object_window
+                            .categories
+                            .get(String::from_utf8_lossy(sig).as_ref());
+                        let group = cat
+                            .and_then(|c| c.group.clone())
+                            .unwrap_or_else(|| "Miscellaneous".to_string());
+                        let category = cat
+                            .and_then(|c| c.name.clone())
+                            .or_else(|| {
+                                self.schema
+                                    .records
+                                    .get(String::from_utf8_lossy(sig).as_ref())
+                                    .map(|d| d.name.clone())
+                            })
                             .unwrap_or_else(|| String::from_utf8_lossy(sig).to_string());
                         (group, category)
                     });
@@ -375,9 +388,10 @@ impl Session {
                     groups[at].objects.push((fid, label));
                 }
                 // Categories ordered by GECK top-level group, then alphabetically by category.
+                let order = &self.schema.object_window.groups;
                 groups.sort_by(|a, b| {
-                    group_rank(&a.group)
-                        .cmp(&group_rank(&b.group))
+                    group_rank(order, &a.group)
+                        .cmp(&group_rank(order, &b.group))
                         .then_with(|| a.category.cmp(&b.category))
                 });
                 for g in &mut groups {
@@ -1585,42 +1599,16 @@ pub struct ObjectGroup {
 }
 
 /// Where a top-level group sits in GECK's Object Window.
-pub fn group_rank(group: &str) -> usize {
-    const ORDER: [&str; 8] = [
-        "Actors",
-        "Actor Data",
-        "Items",
-        "Magic",
-        "Special Effects",
-        "WorldObjects",
-        "Audio",
-        "Miscellaneous",
-    ];
-    ORDER
+///
+/// The order is the schema's, because it is a per-game fact: GECK's eight and
+/// the Creation Kit's nine are not the same list. A group the schema does not
+/// name sorts last, which is where a game's own additions belong rather than
+/// interleaved with a heading it inherited.
+pub fn group_rank(groups: &[String], group: &str) -> usize {
+    groups
         .iter()
-        .position(|g| *g == group)
-        .unwrap_or(ORDER.len())
-}
-
-/// The top-level GECK group for a record signature.
-pub fn geck_group_for_sig(sig: &[u8; 4]) -> Option<&'static str> {
-    match sig {
-        b"CREA" | b"LVLC" | b"NPC_" | b"LVLN" => Some("Actors"),
-        b"BPTD" | b"CLAS" | b"CSTY" | b"EYES" | b"FACT" | b"HAIR" | b"HDPT" | b"PACK" | b"PERK"
-        | b"QUST" | b"RACE" | b"RGDL" | b"VTYP" | b"AVIF" => Some("Actor Data"),
-        b"AMMO" | b"AMEF" | b"ARMO" | b"ARMA" | b"BOOK" | b"CCRD" | b"CMNY" | b"CHIP" | b"CDCK"
-        | b"INGR" | b"KEYM" | b"LVLI" | b"MISC" | b"NOTE" | b"WEAP" | b"IMOD" => Some("Items"),
-        b"ALCH" | b"MGEF" | b"ENCH" | b"SPEL" => Some("Magic"),
-        b"ADDN" | b"DEBR" | b"EFSH" | b"EXPL" | b"IMGS" | b"IMAD" | b"IPDS" | b"IPCT" | b"PROJ" => {
-            Some("Special Effects")
-        }
-        b"ACTI" | b"CLMT" | b"CONT" | b"DOOR" | b"FURN" | b"GRAS" | b"LIGH" | b"MSTT" | b"PWAT"
-        | b"REGN" | b"STAT" | b"SCOL" | b"TACT" | b"TERM" | b"TREE" | b"WATR" | b"WTHR" => {
-            Some("WorldObjects")
-        }
-        b"ASPC" | b"ALOC" | b"MSET" | b"MUSC" | b"SOUN" => Some("Audio"),
-        _ => Some("Miscellaneous"),
-    }
+        .position(|g| g == group)
+        .unwrap_or(groups.len())
 }
 
 /// Whether a record type can be placed as a reference or placed actor in a cell.
