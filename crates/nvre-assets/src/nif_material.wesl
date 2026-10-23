@@ -66,7 +66,7 @@ fn falloff_opacity(cos_angle: f32, p: vec4<f32>) -> f32 {
     if abs(start - stop) < 1e-6 {
         return start_opacity;
     }
-    let t = clamp((cos_angle - stop) / (start - stop), 0.0, 1.0);
+    let t = clamp((cos_angle - start) / (stop - start), 0.0, 1.0);
     return mix(start_opacity, stop_opacity, t);
 }
 

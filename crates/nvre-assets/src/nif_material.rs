@@ -58,7 +58,13 @@ pub fn soft_edges(descriptor: &mut RenderPipelineDescriptor, mesh_key: MeshPipel
 }
 
 /// What the shader needs to know about the shape it is drawing.
-#[derive(Asset, AsBindGroup, Clone, Copy, Debug, Default, Reflect)]
+///
+/// The default is the shape with no falloff, no alpha cut, no decal and no
+/// additive trick: the fragment shader multiplies the alpha by
+/// `falloff`, so a `Vec4::ZERO` here would hide every shape drawn with a
+/// default extension. `Falloff::NONE` is (1, 0, 1, 1) — opaque at every
+/// angle — and is the only sane default.
+#[derive(Asset, AsBindGroup, Clone, Copy, Debug, Reflect)]
 #[bind_group_data(NifSurfaceKey)]
 #[uniform(100, NifSurfaceUniform)]
 pub struct NifSurface {
@@ -81,6 +87,19 @@ pub struct NifSurface {
     pub hard_edges: bool,
     /// The shape takes its sun shadows from another light's shadow map.
     pub shade_light: bool,
+}
+
+impl Default for NifSurface {
+    fn default() -> NifSurface {
+        NifSurface {
+            falloff: Falloff::NONE.params,
+            alpha_cut: 0.0,
+            add_whole: 0.0,
+            decal: false,
+            hard_edges: false,
+            shade_light: false,
+        }
+    }
 }
 
 /// The uniform the shader reads: what it needs to know about the shape it is
@@ -280,7 +299,9 @@ impl Falloff {
         if (stop - start).abs() < 1e-6 {
             return s_op;
         }
-        let t = ((cos_angle - stop) / (start - stop)).clamp(0.0, 1.0);
+        // The start angle's opacity at the start angle, the stop angle's at
+        // the stop angle: `t` is the share of the way from start to stop.
+        let t = ((cos_angle - start) / (stop - start)).clamp(0.0, 1.0);
         s_op + (e_op - s_op) * t
     }
 }
@@ -412,7 +433,14 @@ mod tests {
     #[test]
     fn a_multiply_blend_can_only_darken() {
         assert_eq!(multiply_factor(Vec3::ONE, Vec3::ZERO), Vec3::ONE);
-        assert_eq!(multiply_factor(Vec3::splat(0.5), Vec3::ZERO), Vec3::splat(0.5));
+        // A half-lit surface stays a factor of a half. The comparison is
+        // approximate because the factor goes through a pow round trip
+        // (display value, then back), which is not exact in f32.
+        let half = multiply_factor(Vec3::splat(0.5), Vec3::ZERO);
+        assert!(
+            (half - Vec3::splat(0.5)).abs().max_element() < 1e-5,
+            "a half-lit multiply is a factor of a half, not {half:?}"
+        );
         // Even a bright emissive cannot take it above one.
         let lit = multiply_factor(Vec3::splat(0.25), Vec3::splat(4.0));
         assert!(lit.max_element() <= 1.0);

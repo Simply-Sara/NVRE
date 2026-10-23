@@ -36,6 +36,13 @@ pub struct PreparedShape {
     pub triangles: usize,
     /// The shape's diffuse texture, if it has one.
     pub texture: Option<String>,
+    /// The shape is editor-only helper geometry: it hangs under a node named
+    /// `EditorMarker*`, which the GECK draws to place an effect and the game
+    /// never draws.
+    ///
+    /// It is kept in the model, because the editor is what wants to see it.
+    /// A game renderer skips it.
+    pub editor_marker: bool,
     /// The ancestors of the shape, from the root down.
     pub ancestors: Vec<Affine3A>,
 }
@@ -157,13 +164,6 @@ impl ModelCtx<'_> {
         }
 
         for o in objects.iter().filter(|o| !o.is_node) {
-            // GECK-only helper geometry: a node named `EditorMarker...` holds
-            // the boxes the editor draws to place effects, and the game never
-            // draws them. Drawn, they are an untextured box in the middle of
-            // the mesh.
-            if is_editor_marker(o.name.as_deref()) {
-                continue;
-            }
             // Where the shape sits: the product of its ancestors' transforms.
             let mut t = if o.parent.is_some() {
                 affine(&o.transform)
@@ -199,18 +199,20 @@ impl ModelCtx<'_> {
             // The vertex colours are part of the material: a shape whose
             // shader does not take the vertex alpha must not keep it, and an
             // unlit shape's colour is a display value.
+            let editor_marker = is_editor_marker(o.name.as_deref());
             fix_vertex_colors(&mut mesh, props.vertex_alpha, props.unlit);
             // The shape's own report: what it is, and what it is drawn
             // with.
             info!(
-                "shape {}: {} triangles, texture {:?}, {:?}{}",
+                "shape {}: {} triangles, texture {:?}, {:?}{}{}",
                 o.type_name,
                 tris,
                 props.texture,
                 props.alpha_mode,
-                if props.unlit { ", unlit" } else { "" }
+                if props.unlit { ", unlit" } else { "" },
+                if editor_marker { ", editor marker" } else { "" }
             );
-            let material = self.material_for(&props, &mut mesh);
+            let material = self.material_for(&props, &mut mesh, editor_marker);
             // The model's bounds, from the mesh's own positions.
             if let Some(VertexAttributeValues::Float32x3(p)) =
                 mesh.attribute(Mesh::ATTRIBUTE_POSITION)
@@ -226,6 +228,7 @@ impl ModelCtx<'_> {
             out.shapes.push(PreparedShape {
                 triangles: tris,
                 texture: props.texture.clone(),
+                editor_marker: is_editor_marker(o.name.as_deref()),
                 mesh: self.meshes.add(mesh),
                 material: self.materials.add(material),
                 transform: t,
@@ -239,7 +242,22 @@ impl ModelCtx<'_> {
     }
 
     /// The material a shape is drawn with.
-    fn material_for(&mut self, props: &ShapeProps, mesh: &mut Mesh) -> NifMaterial {
+    ///
+    /// An editor marker is drawn the way the GECK draws it — a translucent
+    /// grey shell — rather than as the file describes it. The file gives it no
+    /// texture and an emissive grey, which as a lit surface is a white blob;
+    /// the marker is a placement aid, and it has to read as one.
+    fn material_for(&mut self, props: &ShapeProps, mesh: &mut Mesh, editor_marker: bool) -> NifMaterial {
+        if editor_marker {
+            return nif_material(StandardMaterial {
+                base_color: Color::srgba(0.55, 0.58, 0.62, 0.25),
+                alpha_mode: bevy::material::AlphaMode::Blend,
+                unlit: true,
+                double_sided: true,
+                cull_mode: None,
+                ..default()
+            });
+        }
         let base = props.texture.as_ref().and_then(|t| {
             self.textures.get(
                 t,

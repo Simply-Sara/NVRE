@@ -158,8 +158,10 @@ fn load_model(
     }
     for s in &model.shapes {
         // The base a prop stands on has no texture of its own; it is drawn
-        // as a plain surface, which is not what this test is about.
-        if s.texture.is_none() {
+        // as a plain surface, which is not what this test is about. An editor
+        // marker has no texture either, and it is exactly what this test is
+        // about when a mesh's marker is the thing being looked at.
+        if s.texture.is_none() && !s.editor_marker {
             println!(
                 "  shape {}: {} triangles, no texture — not drawn",
                 s.triangles, s.triangles
