@@ -1,0 +1,30 @@
+[package]
+name = "ba2"
+description = "Reader for Bethesda BA2 archives (Fallout 4, Fallout 76): the GNRL general-file table and the DX10 texture table"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+# NVRE's own crate, not a fork. Nothing in the workspace reads BA2 yet, so
+# this stands beside bsa105 rather than replacing it: the editor picks a
+# reader by the archive's magic, and a game whose archives are BA2 uses this
+# one.
+#
+# The layout is documented on the unofficial Fallout 4 documentation site
+# (fo4docs.org, "BA2 Archives") and every field below was checked against the
+# user's own Fallout4 - Meshes.ba2 before any code was written. Two
+# corrections to that page are recorded in the source:
+#   * the GNRL payload is zlib (RFC 1950, `78 9c`), not raw DEFLATE as the
+#     page says — measured on all 42,426 entries of that archive;
+#   * the header is 24 bytes, not 32: the "two unknown u32s only present if
+#     version >= 2" are in fact the first file record's name_hash and
+#     extension, so reading them as header fields desyncs everything.
+
+[dependencies]
+nvre-util = { path = "../nvre-util" }
+nvre-inflate = { path = "../nvre-inflate" }
+thiserror = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+proptest = "1"

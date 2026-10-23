@@ -18,12 +18,23 @@ pub struct Decoded {
 
 impl Decoded {
     /// Decode every block of `file`.
+    ///
+    /// From 20.1.0.3 on a NIF's strings are not written inline: each one is
+    /// a `u32` index into the file's string table, so the decoder has to
+    /// resolve them to their text. That is done here, once, so that every
+    /// reader downstream sees the text rather than the index — Fallout 4
+    /// and the later Skyrim editions all use the table, and a block's
+    /// `name` is what tells the scene graph and the shape list what a
+    /// node is.
     pub fn new(file: &NifFile, data: &[u8], schema: &Schema) -> Decoded {
         let mut blocks = Vec::with_capacity(file.blocks.len());
         let mut lineage = Vec::with_capacity(file.blocks.len());
         for (i, b) in file.blocks.iter().enumerate() {
             let (status, decoded) = file.decode_block_status(i, schema, data);
-            blocks.push(decoded.ok_or(status));
+            blocks.push(decoded.ok_or(status).map(|mut s| {
+                resolve_strings(&mut s, file);
+                s
+            }));
             // The lineage is the type itself, then the types it derives
             // from, nearest first.
             lineage.push(
@@ -53,6 +64,32 @@ impl Decoded {
             .ok()
             .and_then(|i| self.blocks.get(i))
             .and_then(|b| b.as_ref().ok())
+    }
+}
+
+/// Resolve a block's string fields from the file's string table.
+///
+/// A `string` field that the file version writes as an index arrives as a
+/// `Value::Num`; the table's text at that index replaces it. A field that
+/// is already text (an older file, or a type the schema reads inline) is
+/// left alone, and an index past the end of the table is left as it was
+/// rather than guessed at.
+fn resolve_strings(s: &mut Struct, file: &NifFile) {
+    let Some(table) = file.header.strings.as_ref() else {
+        return;
+    };
+    for v in s.fields.iter_mut().map(|(_, v)| v) {
+        if let Value::Num(n) = v {
+            let i = *n as usize;
+            if let Some(text) = table.get(i) {
+                *v = Value::Str(text.text());
+            }
+        }
+        // A struct that holds strings of its own: the bounding sphere, a
+        // texture set, and the like.
+        if let Value::Struct(inner) = v {
+            resolve_strings(inner, file);
+        }
     }
 }
 
@@ -390,15 +427,21 @@ fn uv_set(set: &Value) -> Vec<[f32; 2]> {
 }
 
 /// The vertex streams of a geometry-data block.
-pub fn mesh_data(s: &Struct) -> MeshData {
-    // The Special Edition's BSTriShape carries its geometry in a packed
-    // format: a vertex description (flags) followed by the packed bytes.
-    // Its layout is a function of the description, so it is unpacked here.
+///
+/// `bs_version` decides which packed vertex format the shape uses: the
+/// Special Edition (bs_version 100) writes `BSVertexDataSSE`, and Fallout 4
+/// (bs_version 130 and up) writes `BSVertexData` — the same fields, but the
+/// position is a half-precision vector unless the description's
+/// `FULL_PRECISION` flag says otherwise.
+pub fn mesh_data(s: &Struct, bs_version: u32) -> MeshData {
+    // A shape may carry its geometry in a packed format: a vertex
+    // description (flags) followed by the packed bytes. Its layout is a
+    // function of the description, so it is unpacked here.
     if let (Some(desc), Some(data)) = (
         s.int("vertex_desc"),
         s.get("vertex_data").and_then(|v| v.as_bytes()),
     ) {
-        return unpack_sse(desc as u64, data, s);
+        return unpack_sse(desc as u64, data, s, bs_version);
     }
     let uv_sets = s
         .list("uv_sets")
@@ -421,21 +464,32 @@ pub fn mesh_data(s: &Struct) -> MeshData {
     }
 }
 
-/// Unpack a Skyrim Special Edition `BSTriShape`'s packed vertices.
+/// Unpack a `BSTriShape`'s packed vertices.
 ///
 /// The description (nifgen's `BSVertexDesc`) is a bitfield of word offsets
-/// and flags: its low forty-four bits are word offsets (bit 0-3 the vertex's
-/// size in four-byte words, then the UV, normal, tangent, colour, skinning,
-/// land and eye offsets), and bits 44 and up are `vertex_attributes` — the
-/// `VertexAttribute` flags that say which of the fields are present at all.
-/// Those flags are what nifgen's `BSVertexDataSSE._get_filtered_attribute_list`
-/// reads, and they are the ones that gate the layout: the offsets say where a
-/// field sits, the flags say whether it is there.
+/// and flags: its low forty-four bits are word offsets (bits 0-3 the
+/// vertex's size in four-byte words, then the UV, normal, tangent, colour,
+/// skinning, land and eye offsets), and bits 44 and up are
+/// `vertex_attributes` — the `VertexAttribute` flags that say which of
+/// those fields are present at all.
 ///
-/// The bytes are laid out field by field per vertex, in the order nifgen
-/// names, with the bitangent packed as two Normbytes (y, z) beside the
-/// normal/tangent. A Normbyte maps 0-255 to -1..1 as `b / 127.5 - 1.0`.
-fn unpack_sse(desc: u64, data: &[u8], s: &Struct) -> MeshData {
+/// So the offsets say where a field sits, and the flags say whether it is
+/// there; a field whose flag is off is not in the vertex at all, whatever
+/// its offset says. Both halves are read here: the flags decide what to
+/// unpack, and the offsets decide where each one starts, because they do
+/// not always agree with a fixed field order. Skyrim SE's static
+/// architecture packs them in nifgen's order (position, uv, normal,
+/// tangent, colour), which is also the order the offsets describe, but
+/// Fallout 4 and other meshes use a compact layout — a vertex with UV,
+/// normals and tangents but no colours and no position word of its own
+/// packs them at words 2, 3 and 4, with the vertex's three floats ending
+/// at word 2, so the total is five words rather than the six a fixed
+/// order would need.
+///
+/// The bitangent travels packed as two Normbytes (y, z) beside the normal
+/// and the tangent; a Normbyte maps an unsigned byte to -1..1 as
+/// `b / 127.5 - 1`.
+fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
     let stride = (desc & 0x0F) as usize * 4;
     if stride == 0 {
         return MeshData::default();
@@ -445,7 +499,7 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct) -> MeshData {
         .map(|n| n as usize)
         .unwrap_or_else(|| data.len() / stride);
     let mut md = MeshData::default();
-    // One UV set for the Special Edition.
+    // One UV set for the Special Edition and for Fallout 4.
     md.uv_sets.push(Vec::with_capacity(n));
     // The attribute flags live in the description's high bits, not its low
     // ones: the low bits are the word offsets the flags describe.
@@ -459,90 +513,111 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct) -> MeshData {
     let has_colors = attrs & 32 != 0;
     let has_bones = attrs & 64 != 0;
     let has_eye = attrs & 256 != 0;
-    let mut off = 0usize;
-    // Word offsets: position is always word 0; the rest follow the description.
-    // nifgen's layout is fixed-order within the stride, so walk fields in order.
-    for _ in 0..n {
-        if off + stride > data.len() {
+    // Where each field sits, in four-byte words from the vertex's start.
+    let word = |shift: u32| ((desc >> shift) & 0xF) as usize;
+    let (uv, normal, tangent, color, skin, eye) = (
+        word(8),
+        word(16),
+        word(20),
+        word(24),
+        word(28),
+        word(36),
+    );
+    for i in 0..n {
+        let base = i * stride;
+        if base + stride > data.len() {
             break;
         }
-        let v = &data[off..off + stride];
-        let mut cursor = 0usize;
-        // position: Vector3 (3 floats)
+        let v = &data[base..base + stride];
+        // A field is read only when its flag is on and it fits inside the
+        // vertex, so a description that disagrees with itself cannot read
+        // past the end.
+        let bytes = |at: usize, len: usize| v.get(at..at + len);
+        // position: a Vector3 (3 floats) at word 0, or — in Fallout 4's
+        // `BSVertexData` — a HalfVector3 of three half floats unless the
+        // description's FULL_PRECISION flag asks for the wide form.
+        //
+        // The version is what decides which of the two structures is in
+        // play: Skyrim SE (bs_version 100) writes `BSVertexDataSSE`, whose
+        // position is always a Vector3, and Fallout 4 (bs_version 130 and
+        // up) writes `BSVertexData`, whose position is a HalfVector3 unless
+        // FULL_PRECISION is set. Measured: every desc in Skyrim SE's archives
+        // has FULL_PRECISION clear, and its positions are still four-byte
+        // floats — so the flag alone cannot be the test.
+        let half_position = bs_version >= 130 && attrs & 1024 == 0;
         if has_pos {
-            if cursor + 12 <= v.len() {
-                let x = f32::from_le_bytes(v[cursor..cursor + 4].try_into().unwrap());
-                let y = f32::from_le_bytes(v[cursor + 4..cursor + 8].try_into().unwrap());
-                let z = f32::from_le_bytes(v[cursor + 8..cursor + 12].try_into().unwrap());
+            if half_position {
+                if let Some(b) = bytes(0, 6) {
+                    let x = half_to_f32(u16::from_le_bytes([b[0], b[1]]));
+                    let y = half_to_f32(u16::from_le_bytes([b[2], b[3]]));
+                    let z = half_to_f32(u16::from_le_bytes([b[4], b[5]]));
+                    md.positions.push([x, y, z]);
+                } else {
+                    md.positions.push([0.0, 0.0, 0.0]);
+                }
+            } else if let Some(b) = bytes(0, 12) {
+                let x = f32::from_le_bytes(b[0..4].try_into().unwrap());
+                let y = f32::from_le_bytes(b[4..8].try_into().unwrap());
+                let z = f32::from_le_bytes(b[8..12].try_into().unwrap());
                 md.positions.push([x, y, z]);
+            } else {
+                md.positions.push([0.0, 0.0, 0.0]);
             }
-            cursor += 12;
         } else {
             md.positions.push([0.0, 0.0, 0.0]);
         }
-        // bitangent_x or unused_w: one float / uint
-        if has_bitangent_x || has_unused_w {
-            cursor += 4;
-        }
-        // uv: HalfTexCoord (2 half floats) -> 4 bytes
+        // uv: HalfTexCoord (2 half floats).
         if has_uv {
-            let u = half_to_f32(u16::from_le_bytes(
-                v[cursor..cursor + 2].try_into().unwrap(),
-            ));
-            let w = half_to_f32(u16::from_le_bytes(
-                v[cursor + 2..cursor + 4].try_into().unwrap(),
-            ));
-            md.uv_sets[0].push([u, w]);
-            cursor += 4;
+            let at = uv * 4;
+            if let Some(b) = bytes(at, 4) {
+                let u = half_to_f32(u16::from_le_bytes([b[0], b[1]]));
+                let w = half_to_f32(u16::from_le_bytes([b[2], b[3]]));
+                md.uv_sets[0].push([u, w]);
+            } else {
+                md.uv_sets[0].push([0.0, 0.0]);
+            }
         } else {
             md.uv_sets[0].push([0.0, 0.0]);
         }
         // normal: ByteVector3 (3 Normbytes) + bitangent_y Normbyte.
-        // A Normbyte is an unsigned byte mapped to -1..1 as b / 127.5 - 1,
-        // so 0 is -1, 127 is (almost) 0, and 255 is 1.
         if has_normal {
-            let nx = normbyte(v[cursor]);
-            let ny = normbyte(v[cursor + 1]);
-            let nz = normbyte(v[cursor + 2]);
-            md.normals.push([nx, ny, nz]);
-            cursor += 3;
-            cursor += 1; // bitangent_y
+            let at = normal * 4;
+            if let Some(b) = bytes(at, 4) {
+                md.normals.push([normbyte(b[0]), normbyte(b[1]), normbyte(b[2])]);
+            } else {
+                md.normals.push([0.0, 0.0, 1.0]);
+            }
         } else {
             md.normals.push([0.0, 0.0, 1.0]);
         }
-        // tangent + bitangent_z, both Normbytes as well.
+        // tangent: ByteVector3 (3 Normbytes) + bitangent_z Normbyte.
         if has_tangent {
-            let tx = normbyte(v[cursor]);
-            let ty = normbyte(v[cursor + 1]);
-            let tz = normbyte(v[cursor + 2]);
-            md.tangents.push([tx, ty, tz]);
-            cursor += 3;
-            cursor += 1; // bitangent_z
+            let at = tangent * 4;
+            if let Some(b) = bytes(at, 4) {
+                md.tangents.push([normbyte(b[0]), normbyte(b[1]), normbyte(b[2])]);
+            }
         }
-        // vertex colors: ByteColor4
+        // vertex colours: ByteColor4.
         if has_colors {
-            let r = v[cursor] as f32 / 255.0;
-            let g = v[cursor + 1] as f32 / 255.0;
-            let b = v[cursor + 2] as f32 / 255.0;
-            let a = v[cursor + 3] as f32 / 255.0;
-            md.colors.push([r, g, b, a]);
-            cursor += 4;
+            let at = color * 4;
+            if let Some(b) = bytes(at, 4) {
+                md.colors.push([
+                    b[0] as f32 / 255.0,
+                    b[1] as f32 / 255.0,
+                    b[2] as f32 / 255.0,
+                    b[3] as f32 / 255.0,
+                ]);
+            }
         }
-        // Bone weights (four half floats) and bone indices (four bytes) are
-        // read by the skinning code, not here; they only have to be stepped
-        // over so the eye data after them lands in the right place.
-        if has_bones {
-            cursor += 4 * 2;
-        }
-        if has_eye {
-            cursor += 4;
-        }
-        let _ = cursor;
-        off += stride;
+        // The skinning and eye data are read by the skinning code, not
+        // here; the offsets are named only so the reader that needs them
+        // has a place to start from.
+        let _ = (skin, eye, has_bones, has_bitangent_x, has_unused_w);
     }
     md.triangles = triangle_indices(s);
     md
 }
+
 
 /// A Normbyte: an unsigned byte standing for a signed normal, as nifgen's
 /// `Normbyte.from_function` reads it. The Special Edition packs its normals
@@ -704,7 +779,7 @@ mod tests {
             )],
             1,
         );
-        let md = mesh_data(&s);
+        let md = mesh_data(&s, 100);
         assert_eq!(md.positions, vec![[1.0, 2.0, 3.0]]);
         assert_eq!(md.normals.len(), 1);
         // Normbytes map an unsigned byte to -1..1: 127 is (almost) 0 and 255
@@ -735,7 +810,7 @@ mod tests {
             packed(desc, [20.0, 0.0, 0.0], [127, 127, 255], [127, 127, 255]),
         ];
         let s = shape_with_packed_vertices(desc, &verts, 2);
-        let md = mesh_data(&s);
+        let md = mesh_data(&s, 100);
         assert_eq!(md.positions, vec![[10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]);
         assert_eq!(md.uv_sets[0].len(), 2);
     }
@@ -745,6 +820,6 @@ mod tests {
         // A stride of zero says the vertices have no words at all, so there
         // is nothing to unpack rather than a zero-length vertex.
         let s = shape_with_packed_vertices(0, &[vec![0u8; 4]], 1);
-        assert!(mesh_data(&s).positions.is_empty());
+        assert!(mesh_data(&s, 100).positions.is_empty());
     }
 }

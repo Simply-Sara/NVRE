@@ -17,7 +17,7 @@ fn main() {
         for (i, b) in f.blocks.iter().enumerate() {
             if !nvre_nif::scene::SHAPE_DATA_TYPES.contains(&b.type_name.as_str()) { continue; }
             let Some(s) = dec.get(i as i32) else { continue };
-            let md = nvre_nif::scene::mesh_data(s);
+            let md = nvre_nif::scene::mesh_data(s, f.header.bs_version());
             if md.positions.is_empty() || md.triangles.is_empty() { continue; }
             meshes += 1;
             verts += md.positions.len() as u64;

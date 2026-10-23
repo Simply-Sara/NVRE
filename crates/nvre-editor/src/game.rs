@@ -47,7 +47,9 @@ pub enum ArchiveFormat {
     /// BSA v104, zlib: Fallout 3, Fallout: New Vegas, Skyrim (Legendary).
     /// [`nvre_vfs::Vfs`] reads this, so the profile's archive list is used.
     Bsa104,
-    /// A container no reader here handles yet: Fallout 4's BA2.
+    /// Fallout 4's and Fallout 76's BA2 containers.
+    Ba2,
+    /// A container no reader here handles yet.
     Unreadable,
     /// BSA v105 with LZ4 blocks: Skyrim SE. NVRE's `bsa105` crate reads these;
     /// the editor's VFS does not yet, so this is distinct from `Bsa104` to keep
@@ -239,17 +241,41 @@ pub const FALLOUT_4: GameProfile = GameProfile {
     name: "Fallout 4",
     editor_name: "Fallout 4 Rust Editor",
     master: "Fallout4.esm",
-    archives: &[],
-    archive_format: ArchiveFormat::Unreadable,
+    // The base game's own archives, in load order. Each plugin's `- Main.ba2`
+    // and `- Textures.ba2` are found from the plugin list the same way the
+    // BSA games' are.
+    archives: &[
+        "Fallout4 - Animations.ba2",
+        "Fallout4 - Interface.ba2",
+        "Fallout4 - Materials.ba2",
+        "Fallout4 - Meshes.ba2",
+        "Fallout4 - MeshesExtra.ba2",
+        "Fallout4 - Misc.ba2",
+        "Fallout4 - Nvflex.ba2",
+        "Fallout4 - Shaders.ba2",
+        "Fallout4 - Sounds.ba2",
+        "Fallout4 - Startup.ba2",
+        "Fallout4 - Textures1.ba2",
+        "Fallout4 - Textures2.ba2",
+        "Fallout4 - Textures3.ba2",
+        "Fallout4 - Textures4.ba2",
+        "Fallout4 - Textures5.ba2",
+        "Fallout4 - Textures6.ba2",
+        "Fallout4 - Textures7.ba2",
+        "Fallout4 - Textures8.ba2",
+        "Fallout4 - Textures9.ba2",
+    ],
+    archive_format: ArchiveFormat::Ba2,
     steam_folder: Some("Fallout 4"),
     schema_subdir: "fo4",
     schema_version_dir: "fo4",
     schema_family_dir: "",
     notes: &[
-        "no record schemas yet: schemas/fo4 has not been measured against Fallout4.esm",
-        "archives are BA2, which is not readable yet: loose files only",
+        "record schemas are written but not yet measured against Fallout4.esm",
+        "archives are BA2, read by NVRE's own ba2 crate: GNRL files and DX10 textures both decode",
+        "its NIF layouts are measured against the meshes in Fallout4 - Meshes.ba2: NiAVObject drops the property list and the velocity vector, NiNode drops the effects list, and BSTriShape's num_triangles is a u32 with no trailing word",
+        "its shapes use BSVertexData (bs_version 130), whose position is a half-precision vector unless the description's FULL_PRECISION flag is set",
         "ESL plugins (header flag 0x200) and the 0xFE000800 FormID range are not modelled yet",
-        "NIF schema is the FNV corpus's; Fallout 4's NIFs are bs_version 130+ and are rejected by the header",
     ],
 };
 
@@ -568,9 +594,19 @@ impl GameProfile {
                 let names: Vec<&str> = plugins.iter().map(String::as_str).collect();
                 nvre_vfs::Vfs::archive_order(data_dir, self.archives, &names)
             }
+            ArchiveFormat::Ba2 => {
+                // The same order as the BSA games: the game's own list, then
+                // each loaded plugin's own archives. The archives themselves
+                // are read by NVRE's own `ba2` crate; the VFS picks that
+                // reader from each file's magic, so nothing here has to name
+                // the format.
+                let plugins = self.masters_in(data_dir);
+                let names: Vec<&str> = plugins.iter().map(String::as_str).collect();
+                nvre_vfs::Vfs::archive_order(data_dir, self.archives, &names)
+            }
             ArchiveFormat::Unreadable => {
                 tracing::warn!(
-                    "{}: BA2 archives are not readable yet; opening with loose files only",
+                    "{}: this game's archives are not readable yet; opening with loose files only",
                     self.name
                 );
                 Vec::new()

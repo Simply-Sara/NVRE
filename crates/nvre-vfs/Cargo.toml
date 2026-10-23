@@ -9,4 +9,8 @@ license.workspace = true
 # NVRE's own archive reader, which handles both version 104 (Fallout, Skyrim's
 # original edition) and version 105 (Skyrim's Special Edition) in one crate.
 bsa105 = { path = "../bsa105" }
+# Fallout 4's and 76's archives are a different format entirely; the reader is
+# chosen by the file's magic, so a game whose archives are BA2 needs nothing
+# from the caller.
+ba2 = { path = "../ba2" }
 thiserror.workspace = true

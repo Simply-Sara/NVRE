@@ -72,7 +72,7 @@ fn main() {
                 };
                 *descs.entry(desc).or_insert(0) += 1;
                 *attr_variants.entry(desc >> 44).or_insert(0) += 1;
-                let md = nvre_nif::scene::mesh_data(s);
+                let md = nvre_nif::scene::mesh_data(s, f.header.bs_version());
                 // Sanity: positions must lie inside the shape's own bounding
                 // sphere, and normals must be roughly unit length.
                 let sphere = s.struct_at("bounding_sphere");

@@ -120,9 +120,10 @@ fn texture_set(dec: &Decoded, set: i32) -> (Option<String>, Option<String>, Opti
 
 /// Build a mesh from a shape's data block.
 ///
-/// `None` when the data holds no geometry.
-pub fn build_mesh(data: &Struct) -> Option<(Mesh, usize)> {
-    let md = mesh_data(data);
+/// `bs_version` decides which packed vertex format the shape uses; see
+/// `nvre_nif::scene::mesh_data`. `None` when the data holds no geometry.
+pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize)> {
+    let md = mesh_data(data, bs_version);
     if md.positions.is_empty() || md.triangles.is_empty() {
         return None;
     }

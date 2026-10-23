@@ -58,19 +58,22 @@
         {"name": "translation", "type": "vec3"},
         {"name": "rotation", "type": "mat33"},
         {"name": "scale", "type": "f32"},
-        {"name": "num_properties", "type": "u32"},
-        {"name": "properties", "type": "ref", "length": "num_properties"},
+        {"name": "velocity", "type": "vec3", "cond": "version <= 67240448"},
+        {"name": "num_properties", "type": "u32", "cond": "bs_version <= 34"},
+        {"name": "properties", "type": "ref", "length": "num_properties", "cond": "bs_version <= 34"},
         {"name": "collision_object", "type": "ref"}
-      ]
+      ],
+      "note": "The property list is a pre-Fallout-4 field: nifgen's NiAVObject yields num_properties and properties only when bs_version <= 34, and Fallout 4 (bs_version 130) drops them entirely. The velocity vector survives only in the oldest versions (version <= 67240448, i.e. before 20.2), so no shipped Bethesda file has one."
     },
     "NiNode": {
       "inherit": "NiAVObject",
       "fields": [
         {"name": "num_children", "type": "u32"},
         {"name": "children", "type": "ref", "length": "num_children"},
-        {"name": "num_effects", "type": "u32"},
-        {"name": "effects", "type": "ref", "length": "num_effects"}
-      ]
+        {"name": "num_effects", "type": "u32", "cond": "bs_version < 130"},
+        {"name": "effects", "type": "ref", "length": "num_effects", "cond": "bs_version < 130"}
+      ],
+      "note": "The node effects list is a pre-Fallout-4 field: nifgen's NiNode yields num_effects and effects only when bs_version < 130, so Fallout 4 and Skyrim SE (bs_version 100) drop it entirely. Skyrim LE and the older games keep it, and there it follows the children."
     },
     "BSFadeNode": {"inherit": "NiNode", "note": "No fields of its own; a NiNode the engine fades with distance."},
     "NiExtraData": {

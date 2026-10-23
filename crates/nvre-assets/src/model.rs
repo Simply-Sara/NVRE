@@ -186,7 +186,7 @@ impl ModelCtx<'_> {
             };
             let Some(data) = data else { continue; };
             let props = shape_props(&dec, o, &by_block);
-            let Some((mut mesh, tris)) = build_mesh(data) else {
+            let Some((mut mesh, tris)) = build_mesh(data, file.header.bs_version()) else {
                 continue;
             };
             // The shape's own report: what it is, and what it is drawn

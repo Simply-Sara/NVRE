@@ -54,6 +54,8 @@ pub enum VfsError {
     Io(PathBuf, std::io::Error),
     #[error("{0}: {1}")]
     Bsa(String, bsa105::Bsa105Error),
+    #[error("{0}: {1}")]
+    Ba2(String, ba2::Ba2Error),
 }
 
 /// Environment variable that replaces the archive order of [`Vfs::open_default`]
@@ -64,6 +66,21 @@ pub const ARCHIVE_ORDER_ENV: &str = "NVF_ARCHIVE_ORDER";
 /// dropped.
 pub fn parse_archive_list(list: &str) -> Vec<String> {
     list.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect()
+}
+
+/// Whether the file at `path` is a BA2 rather than a BSA, by its magic.
+///
+/// The two formats have distinct magics — `BTDX` for BA2, `BSA\0` for BSA —
+/// so the reader is chosen from the file itself and not from what the game
+/// profile claims. A file that cannot be opened is treated as a BSA, which
+/// is where the older games' archives are, so its error is the one reported.
+fn is_ba2(path: &Path) -> bool {
+    use std::io::Read;
+    let Ok(mut f) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut magic = [0u8; 4];
+    f.read_exact(&mut magic).is_ok() && magic == ba2::MAGIC
 }
 
 /// Normalised form of a game path: lower case, backslashes, no leading separator.
@@ -108,12 +125,21 @@ pub fn normal_map_beside(texture: &str) -> Option<String> {
 #[derive(Debug, Clone, Copy)]
 enum Location {
     Archive { archive: usize, folder: usize, file: usize },
+    /// A file in a BA2 archive, by its index in that archive's record list.
+    Ba2 { archive: usize, index: usize },
+    /// A texture in a BA2 DX10 archive, by its index there.
+    Ba2Texture { archive: usize, index: usize },
     Loose,
 }
 
 pub struct Vfs {
     data_dir: PathBuf,
     archives: Vec<(String, Mutex<Archive>)>,
+    /// BA2 archives, in precedence order. A game ships one kind or the
+    /// other — Skyrim and the Fallouts before 4 use BSA, Fallout 4 and 76
+    /// use BA2 — so the two lists are never both populated in practice, but
+    /// keeping them apart means each reader keeps its own error type.
+    ba2_archives: Vec<(String, Mutex<ba2::Archive>)>,
     index: HashMap<String, Location>,
     /// Lower-cased loose path → real relative path (for case-sensitive file systems).
     loose: HashMap<String, PathBuf>,
@@ -126,7 +152,10 @@ impl Vfs {
             .map(|rd| {
                 rd.filter_map(|e| e.ok())
                     .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .filter(|n| n.to_ascii_lowercase().ends_with(".bsa"))
+                    .filter(|n| {
+                        let l = n.to_ascii_lowercase();
+                        l.ends_with(".bsa") || l.ends_with(".ba2")
+                    })
                     .collect()
             })
             .unwrap_or_default();
@@ -149,7 +178,13 @@ impl Vfs {
                 .iter()
                 .filter(|n| {
                     let l = n.to_ascii_lowercase();
-                    l == format!("{stem}.bsa") || l.starts_with(&format!("{stem} - "))
+                    // A plugin's own archives, in either container: the BSA
+                    // games ship `<plugin>.bsa` and `<plugin> - *.bsa`, and
+                    // Fallout 4 ships `<plugin> - Main.ba2` and
+                    // `<plugin> - Textures.ba2`.
+                    l == format!("{stem}.bsa")
+                        || l == format!("{stem}.ba2")
+                        || l.starts_with(&format!("{stem} - "))
                 })
                 .cloned()
                 .collect();
@@ -162,17 +197,50 @@ impl Vfs {
     }
 
     /// Open the archives (lowest precedence first) and index loose files under `data_dir`.
+    ///
+    /// Each archive is opened by whichever reader its magic calls for: a BSA
+    /// goes to `bsa105`, a BA2 to `ba2`. That way a game whose archives are
+    /// BA2 — Fallout 4 and 76 — is read without the caller having to say
+    /// which kind it has.
     pub fn open(data_dir: &Path, archives: &[String]) -> Result<Vfs, VfsError> {
-        let mut vfs = Vfs { data_dir: data_dir.to_path_buf(), archives: Vec::new(), index: HashMap::new(), loose: HashMap::new() };
-        for (ai, name) in archives.iter().enumerate() {
-            let a = Archive::open(data_dir.join(name)).map_err(|e| VfsError::Bsa(name.clone(), e))?;
-            for e in a.entries() {
-                vfs.index.insert(
-                    normalize(&e.path()),
-                    Location::Archive { archive: ai, folder: e.folder_index, file: e.file_index },
-                );
+        let mut vfs = Vfs {
+            data_dir: data_dir.to_path_buf(),
+            archives: Vec::new(),
+            ba2_archives: Vec::new(),
+            index: HashMap::new(),
+            loose: HashMap::new(),
+        };
+        for name in archives {
+            let path = data_dir.join(name);
+            if is_ba2(&path) {
+                let a = ba2::Archive::open(&path).map_err(|e| VfsError::Ba2(name.clone(), e))?;
+                let ai = vfs.ba2_archives.len();
+                for f in &a.files {
+                    vfs.index.insert(
+                        normalize(&f.path),
+                        Location::Ba2 { archive: ai, index: f.index },
+                    );
+                }
+                // A texture archive's entries are textures rather than files,
+                // so they are indexed the same way and served as DDS.
+                for t in &a.textures {
+                    vfs.index.insert(
+                        normalize(&t.path),
+                        Location::Ba2Texture { archive: ai, index: t.index },
+                    );
+                }
+                vfs.ba2_archives.push((name.clone(), Mutex::new(a)));
+            } else {
+                let a = Archive::open(&path).map_err(|e| VfsError::Bsa(name.clone(), e))?;
+                let ai = vfs.archives.len();
+                for e in a.entries() {
+                    vfs.index.insert(
+                        normalize(&e.path()),
+                        Location::Archive { archive: ai, folder: e.folder_index, file: e.file_index },
+                    );
+                }
+                vfs.archives.push((name.clone(), Mutex::new(a)));
             }
-            vfs.archives.push((name.clone(), Mutex::new(a)));
         }
         let mut files = Vec::new();
         walk(data_dir, data_dir, &mut files).map_err(|e| VfsError::Io(data_dir.to_path_buf(), e))?;
@@ -214,7 +282,10 @@ impl Vfs {
     }
 
     pub fn archives(&self) -> impl Iterator<Item = &str> {
-        self.archives.iter().map(|(n, _)| n.as_str())
+        self.archives
+            .iter()
+            .map(|(n, _)| n.as_str())
+            .chain(self.ba2_archives.iter().map(|(n, _)| n.as_str()))
     }
 
     pub fn exists(&self, path: &str) -> bool {
@@ -225,6 +296,9 @@ impl Vfs {
     pub fn source_of(&self, path: &str) -> Option<&str> {
         match self.index.get(&normalize(path))? {
             Location::Archive { archive, .. } => Some(&self.archives[*archive].0),
+            Location::Ba2 { archive, .. } | Location::Ba2Texture { archive, .. } => {
+                Some(&self.ba2_archives[*archive].0)
+            }
             Location::Loose => Some("loose"),
         }
     }
@@ -235,7 +309,7 @@ impl Vfs {
         let key = normalize(path);
         match self.index.get(&key)? {
             Location::Loose => Some(self.data_dir.join(&self.loose[&key])),
-            Location::Archive { .. } => None,
+            Location::Archive { .. } | Location::Ba2 { .. } | Location::Ba2Texture { .. } => None,
         }
     }
 
@@ -248,6 +322,20 @@ impl Vfs {
                 let mut a = self.archives[archive].1.lock().unwrap_or_else(|p| p.into_inner());
                 let r = a.folders[folder].files[file].clone();
                 a.extract(&r).map_err(std::io::Error::other)
+            }
+            Location::Ba2 { archive, index } => {
+                let mut a = self.ba2_archives[archive].1.lock().unwrap_or_else(|p| p.into_inner());
+                let f = a.files[index].clone();
+                a.extract(&f).map_err(std::io::Error::other)
+            }
+            Location::Ba2Texture { archive, index } => {
+                let mut a = self.ba2_archives[archive].1.lock().unwrap_or_else(|p| p.into_inner());
+                let t = a.textures[index].clone();
+                // A DX10 record holds raw mip chunks; a DDS reader wants a
+                // header in front of them, so one is written.
+                a.extract_texture(&t)
+                    .map(|mips| ba2::dds_from_texture(&t, &mips))
+                    .map_err(std::io::Error::other)
             }
         })
     }
