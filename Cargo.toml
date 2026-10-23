@@ -31,6 +31,10 @@ tracing = "0.1"
 # viewport uses instead of hand-rolling an orbit camera.
 bevy = { version = "=0.20.0", features = ["pbr_specular_textures", "pan_orbit_camera"] }
 bevy_egui = "=0.43.0"
+# egui's table widget. Since egui 0.32 `TableBuilder`/`Column` live here
+# rather than in egui core, and this is the same version line as the egui
+# bevy_egui pins, so the two share one egui.
+egui_extras = "0.36"
 clap = { version = "4", features = ["derive", "env"] }
 
 # Enable high optimization for external dependencies in dev/debug builds.
