@@ -213,6 +213,15 @@ impl Document {
         self.plugin.header.is_master()
     }
 
+    /// Whether the plugin's strings are string IDs rather than text.
+    ///
+    /// A localized plugin's `FULL` is a 4-byte string ID into its string
+    /// tables, so a record's name is resolved through them rather than read
+    /// from the payload.
+    pub fn is_localized(&self) -> bool {
+        self.plugin.header.is_localized()
+    }
+
     /// Every record in file order, with its FormID.
     pub fn records(&self) -> Vec<(u32, &Record)> {
         let mut out = Vec::new();
@@ -753,10 +762,15 @@ pub struct RecordRow {
 }
 
 /// Every record, as browser rows (EDID and FULL read straight from the payloads).
-pub fn rows(plugin: &Plugin) -> Vec<RecordRow> {
+///
+/// `strings` is this plugin's string table when it is localized — see
+/// [`nvre_esm::strings`]. A localized `FULL` is a string ID rather than
+/// text, so without the table its `full` is `None` rather than four bytes
+/// of decoded noise.
+pub fn rows(plugin: &Plugin, strings: Option<&nvre_esm::strings::StringTable>) -> Vec<RecordRow> {
     let mut out = Vec::new();
     nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
-        let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
+        let (edid, full) = nvre_esm::inventory::names(r, strings).unwrap_or((None, None));
         out.push(RecordRow {
             form_id: r.header.form_id,
             sig: r.sig_str(),

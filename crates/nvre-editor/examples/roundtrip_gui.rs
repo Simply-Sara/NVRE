@@ -36,11 +36,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lo = s.load_order()?;
     // The palette is sorted by label and truncated; take the whole set so the
     // search does not depend on where a name sorts.
-    let base = nvre_editor::session::placeable_base_objects(lo, "NVGuardTower", usize::MAX)
-        .into_iter()
-        .find(|(_, label, _)| label.contains("NVGuardTower"))
-        .map(|(f, _, _)| f)
-        .expect("a STAT base object");
+    let base =
+        nvre_editor::session::placeable_base_objects(lo, &s.strings, "NVGuardTower", usize::MAX)
+            .into_iter()
+            .find(|(_, label, _)| label.contains("NVGuardTower"))
+            .map(|(f, _, _)| f)
+            .expect("a STAT base object");
     s.place(base, [1000.0, 2000.0, 300.0]);
     println!("placed base {base:08X}");
 

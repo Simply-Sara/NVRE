@@ -48,6 +48,10 @@ pub struct Session {
     pub lo: LoadOrder<'static>,
     /// The ESM record schema.
     pub schema: Schema,
+    /// The string tables of the load order's localized plugins, so a
+    /// `FULL` that holds a 4-byte string ID resolves to the name the
+    /// player sees rather than to decoded ID bytes.
+    pub strings: nvre_esm::strings::StringTables,
     /// The world index: which reference is in which cell.
     pub index: nvre_world::WorldIndex,
     /// The masters the saved plugin will depend on.
@@ -125,6 +129,7 @@ impl Session {
         }
         let leaked_plugins: &'static [nvre_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
+        let strings = crate::strings::load(game, dir, leaked_plugins);
         let index = nvre_world::WorldIndex::build(&lo, &schema);
 
         let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
@@ -147,6 +152,7 @@ impl Session {
             plugins: leaked_plugins,
             lo,
             schema,
+            strings,
             index,
             masters,
             cell: None,
@@ -193,6 +199,7 @@ impl Session {
         }
         let leaked_plugins: &'static [nvre_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
+        let strings = crate::strings::load(game, data_dir, leaked_plugins);
         let index = nvre_world::WorldIndex::build(&lo, &schema);
 
         let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
@@ -217,6 +224,7 @@ impl Session {
             plugins: leaked_plugins,
             lo,
             schema,
+            strings,
             index,
             masters,
             cell: None,
@@ -350,7 +358,7 @@ impl Session {
                     .filter(|(_, c)| !c.hidden)
                     .filter_map(|(sig, _)| sig.as_bytes().try_into().ok())
                     .collect();
-                let objects = load_order_objects(lo, filter, &visible);
+                let objects = load_order_objects(lo, &self.strings, filter, &visible);
                 // Grouped by the record type, which is the category. One
                 // load-order lookup per distinct type rather than per object.
                 //
@@ -432,12 +440,16 @@ impl Session {
 
         let mut out: Vec<(u32, String)> = Vec::new();
         let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
-        for (pi, _plugin) in self.lo.plugins.iter().enumerate() {
+        for (pi, plugin) in self.lo.plugins.iter().enumerate() {
+            let strings = self
+                .strings
+                .for_plugin(&plugin.name, plugin.header.is_localized());
             for r in &self.lo.records[pi] {
                 if r.header.sig == sig {
                     if let Some(global) = self.lo.to_global(pi, r.header.form_id) {
                         if seen.insert(global) {
-                            let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
+                            let (edid, full) =
+                                nvre_esm::inventory::names(r, strings).unwrap_or((None, None));
                             let name = edid.or(full).unwrap_or_else(|| format!("{:08X}", global));
                             out.push((global, name));
                         }
@@ -1701,13 +1713,15 @@ pub fn is_placeable_sig(sig: &[u8; 4]) -> bool {
 /// the table's three columns can be typed into.
 pub fn load_order_objects(
     lo: &LoadOrder,
+    strings: &nvre_esm::strings::StringTables,
     filter: &str,
     visible: &HashSet<[u8; 4]>,
 ) -> Vec<(u32, [u8; 4], ObjectRow)> {
     let filter = filter.to_lowercase();
     let mut out: Vec<(u32, [u8; 4], ObjectRow)> = Vec::new();
     let mut seen: HashMap<u32, usize> = HashMap::new();
-    for (pi, _plugin) in lo.plugins.iter().enumerate() {
+    for (pi, plugin) in lo.plugins.iter().enumerate() {
+        let plugin_strings = strings.for_plugin(&plugin.name, plugin.header.is_localized());
         for r in &lo.records[pi] {
             if !visible.contains(&r.header.sig) {
                 continue;
@@ -1715,7 +1729,8 @@ pub fn load_order_objects(
             let Some(global) = lo.to_global(pi, r.header.form_id) else {
                 continue;
             };
-            let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
+            let (edid, full) =
+                nvre_esm::inventory::names(r, plugin_strings).unwrap_or((None, None));
             let row = ObjectRow {
                 fid: global,
                 edid: edid.unwrap_or_default(),
@@ -1747,13 +1762,15 @@ pub fn load_order_objects(
 /// everything past `N` unfindable no matter what was typed.
 pub fn placeable_base_objects(
     lo: &LoadOrder,
+    strings: &nvre_esm::strings::StringTables,
     filter: &str,
     limit: usize,
 ) -> Vec<(u32, String, Option<String>)> {
     let filter = filter.to_lowercase();
     let mut out: Vec<(u32, String, Option<String>)> = Vec::new();
     let mut seen: HashMap<u32, usize> = HashMap::new();
-    for (pi, _plugin) in lo.plugins.iter().enumerate() {
+    for (pi, plugin) in lo.plugins.iter().enumerate() {
+        let plugin_strings = strings.for_plugin(&plugin.name, plugin.header.is_localized());
         for r in &lo.records[pi] {
             if !is_placeable_sig(&r.header.sig) {
                 continue;
@@ -1761,7 +1778,8 @@ pub fn placeable_base_objects(
             let Some(global) = lo.to_global(pi, r.header.form_id) else {
                 continue;
             };
-            let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
+            let (edid, full) =
+                nvre_esm::inventory::names(r, plugin_strings).unwrap_or((None, None));
             let label = full.or(edid).unwrap_or_else(|| format!("{global:08X}"));
             if !filter.is_empty() && !label.to_lowercase().contains(&filter) {
                 continue;
