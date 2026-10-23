@@ -191,12 +191,18 @@ pub fn write_plugin_with_load_order(
     // Start from the source's structure so cells and groups keep their shape,
     // then decide which records survive.
     let mut nodes = doc.plugin().nodes.clone();
-    rewrite_header(&mut nodes, masters, new_self)?;
 
     let is_master_override = masters
         .names
         .iter()
         .any(|n| n.eq_ignore_ascii_case(&doc.plugin().name));
+
+    // What the output file is: a master only when the plugin being edited was
+    // one *and* the output is that master rather than a mod that overrides it.
+    // The game reads the header's flag, not the extension, so an `.esm` saved
+    // without the flag is a plugin wearing the wrong name.
+    let is_master = doc.is_master() && !is_master_override;
+    rewrite_header(&mut nodes, masters, is_master)?;
 
     if scope == Scope::WholePlugin {
         let mut walk = |node: &mut Node| {
@@ -365,6 +371,13 @@ pub fn write_plugin_with_load_order(
         insert_into_cell(&mut nodes, lo, schema, &map, p.cell, rec);
         report.records += 1;
     }
+    // The header advertises where the next record goes, so it must name the ID
+    // after every record this session wrote — not the one before them. It is
+    // derived from the file itself, so a whole-plugin copy reports the same
+    // thing the source did.
+    let own_index = masters.names.len() as u32;
+    let offset = next_object_offset(&nodes, own_index);
+    set_next_object_id(&mut nodes, offset)?;
     report.unremapped = problems;
 
     let mut bytes = Vec::new();
@@ -593,7 +606,12 @@ fn find_temporary_children_mut(nodes: &mut [Node], cell_form_id: u32) -> Option<
 }
 
 /// Replace the TES4 header record with one naming the new master list.
-fn rewrite_header(nodes: &mut [Node], masters: &MasterList, new_self: u32) -> Result<(), String> {
+///
+/// `is_master` says what the output file is: a master (`.esm`) or a plugin
+/// (`.esp`). The game decides master-ness by the header's flag, not by the
+/// file's extension, so an `.esm` saved without the flag is a plugin wearing
+/// the wrong name.
+fn rewrite_header(nodes: &mut [Node], masters: &MasterList, is_master: bool) -> Result<(), String> {
     let Some(Node::Record(tes4)) = nodes.first_mut() else {
         return Err("plugin does not start with a TES4 record".into());
     };
@@ -606,18 +624,9 @@ fn rewrite_header(nodes: &mut [Node], masters: &MasterList, new_self: u32) -> Re
     for s in subs.drain(..) {
         match &s.sig {
             b"MAST" | b"DATA" | b"ONAM" => {}
-            b"HEDR" => {
-                // next_object_id starts above the masters' FormID range.
-                let mut data = s.data.clone();
-                if data.len() >= 12 {
-                    data[8..12].copy_from_slice(&first_free_id(new_self).to_le_bytes());
-                }
-                out.push(Subrecord {
-                    sig: s.sig,
-                    data,
-                    extended: s.extended,
-                });
-            }
+            // HEDR is kept as it was: its next-object-ID is corrected once the
+            // records are written, and its top byte is the source's own
+            // convention, which the save must not overwrite.
             _ => out.push(s),
         }
     }
@@ -648,12 +657,88 @@ fn rewrite_header(nodes: &mut [Node], masters: &MasterList, new_self: u32) -> Re
             extended: false,
         });
     }
-    // The plugin is not a master file.
-    tes4.header.flags &= !record_flags::MASTER;
+    // The plugin is a master file only when it was created as one. The game
+    // reads this flag, not the extension, so clearing it makes an `.esm` a
+    // plugin with the wrong name.
+    if is_master {
+        tes4.header.flags |= record_flags::MASTER;
+    } else {
+        tes4.header.flags &= !record_flags::MASTER;
+    }
     tes4.header.data_size = nvre_esm::raw::write_subrecords(&out).len() as u32;
     tes4.raw = nvre_esm::raw::write_subrecords(&out).into();
     Ok(())
 }
+
+/// Set the header's next-object-ID offset.
+///
+/// The value is an offset into the plugin's own FormID space: the shipped
+/// masters put a marker in the top byte (`0xFF`) and the local counter in the
+/// low 24 bits, and a fresh file GECK writes leaves the top byte zero. Only
+/// the low 24 bits carry the counter, so the top byte is left as it was.
+fn set_next_object_id(nodes: &mut [Node], next_offset: u32) -> Result<(), String> {
+    let Some(Node::Record(tes4)) = nodes.first_mut() else {
+        return Err("plugin does not start with a TES4 record".into());
+    };
+    let mut subs = tes4
+        .subrecords()
+        .map_err(|e| format!("TES4 header will not parse: {e}"))?;
+    let mut found = false;
+    for s in subs.iter_mut() {
+        if &s.sig == b"HEDR" && s.data.len() >= 12 {
+            // Only the low 24 bits are the counter; the top byte is the
+            // file's own convention (`0xFF` in the shipped masters, `0x00`
+            // in a file GECK creates) and is left alone.
+            let mut v = u32::from_le_bytes([s.data[8], s.data[9], s.data[10], s.data[11]]);
+            v = (v & 0xFF00_0000) | (next_offset & 0x00FF_FFFF);
+            s.data[8..12].copy_from_slice(&v.to_le_bytes());
+            found = true;
+        }
+    }
+    if !found {
+        return Err("the TES4 header has no HEDR subrecord".into());
+    }
+    tes4.header.data_size = nvre_esm::raw::write_subrecords(&subs).len() as u32;
+    tes4.raw = nvre_esm::raw::write_subrecords(&subs);
+    Ok(())
+}
+
+/// The offset at which the plugin's next record goes.
+///
+/// The header says where in the plugin's *own* numbering the next record
+/// belongs, so it must be one past the highest offset the file already uses.
+/// A file with no records of its own starts at [`FIRST_OBJECT_ID`], which is
+/// what GECK writes for a fresh plugin.
+fn next_object_offset(nodes: &[Node], own_index: u32) -> u32 {
+    let mut highest: Option<u32> = None;
+    fn walk(nodes: &[Node], own_index: u32, highest: &mut Option<u32>) {
+        for n in nodes {
+            match n {
+                Node::Record(r) => {
+                    if r.header.sig == *b"TES4" {
+                        continue;
+                    }
+                    if (r.header.form_id >> 24) == own_index {
+                        let local = r.header.form_id & 0x00FF_FFFF;
+                        *highest = Some(highest.map_or(local, |h: u32| h.max(local)));
+                    }
+                }
+                Node::Group(g) => walk(&g.children, own_index, highest),
+            }
+        }
+    }
+    walk(nodes, own_index, &mut highest);
+    highest.map_or(FIRST_OBJECT_ID, |h| h.wrapping_add(1))
+}
+
+/// The offset the first record of a fresh plugin takes.
+///
+/// It is an offset into the plugin's own FormID space, not a FormID: the top
+/// byte (the plugin's own master index) is added when the ID is used. GECK
+/// starts a new plugin at `0x00000ADD` [measured: the header GECK writes for
+/// an empty plugin], and the game only reads the value as "where the next
+/// record goes", so any small offset is equally correct.
+const FIRST_OBJECT_ID: u32 = 0x0000_0ADD;
 
 /// The first FormID index the new plugin's own records may use.
 fn first_free_id(new_self: u32) -> u32 {
@@ -666,8 +751,12 @@ fn first_free_id(new_self: u32) -> u32 {
 /// assigns the real FormID here. Counting the placeholder would push every insert
 /// one past where it belongs (a record staged as `0x01000000` would be saved as
 /// `0x01000001`), so only IDs that are already in the plugin's own range count.
+///
+/// The base is the plugin's own index plus the header's own next-object-ID
+/// offset, so the IDs handed out and the ID the header advertises are the same
+/// numbering.
 fn allocate_base(doc: &crate::Document, new_self: u32) -> u32 {
-    let base = first_free_id(new_self);
+    let base = first_free_id(new_self) | FIRST_OBJECT_ID;
     let mut next = base;
     for p in doc.inserted() {
         // A staged placeholder is 0; anything else was handed out by a caller
@@ -1186,7 +1275,8 @@ pub fn empty_header(masters: &MasterList) -> PluginHeader {
         form_version: 0,
         version: 1.34,
         num_records: 0,
-        next_object_id: first_free_id(masters.names.len() as u32),
+        // An offset into the plugin's own FormID space, not a FormID.
+        next_object_id: FIRST_OBJECT_ID,
         author: masters.author.clone(),
         description: masters.description.clone(),
         masters: masters

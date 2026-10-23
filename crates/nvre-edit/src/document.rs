@@ -139,21 +139,24 @@ impl Document {
         masters: &[String],
     ) -> Result<Document, EsmError> {
         let mut subs = Vec::new();
-        // HEDR subrecord: version (1.34), num_records (0), next_object_id (0x00000800)
+        // HEDR subrecord: version (1.34), num_records (0), next_object_id.
+        // The next object ID is an offset into the plugin's own FormID space, so
+        // it is the same value GECK writes for a fresh plugin.
         let mut hedr = Vec::new();
         hedr.extend_from_slice(&1.34f32.to_le_bytes());
         hedr.extend_from_slice(&0i32.to_le_bytes());
-        hedr.extend_from_slice(&0x800u32.to_le_bytes());
+        hedr.extend_from_slice(&0x0000_0ADDu32.to_le_bytes());
         subs.push(nvre_esm::raw::Subrecord {
             sig: *b"HEDR",
             data: hedr,
             extended: false,
         });
 
-        // CNAM author
+        // CNAM: the author. GECK writes `DEFAULT` for a plugin nobody has
+        // claimed, and the game shows the string in its file listings.
         subs.push(nvre_esm::raw::Subrecord {
             sig: *b"CNAM",
-            data: b"NVRE\0".to_vec(),
+            data: b"DEFAULT\0".to_vec(),
             extended: false,
         });
 

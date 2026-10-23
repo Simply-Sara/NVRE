@@ -13,8 +13,15 @@ pub struct Plugin {
     pub header: PluginHeader,
     /// The file's top-level groups.
     pub groups: Vec<Group>,
-    /// The file's contents, as one list: the groups and the records at the
-    /// top level, in the order they are in the file.
+    /// The file's top level, as one list: the `TES4` header record and then the
+    /// groups, in the order they are in the file.
+    ///
+    /// This is the writer's view. A plugin's top level is *not* flat — a
+    /// top-level group holds records and sub-groups, and `raw::parse` reports
+    /// that nesting as a flat list of every record and sub-group, which is what
+    /// reading a record needs and what writing a file must not be handed. The
+    /// groups themselves are therefore re-wrapped here, so `nodes[0]` is the
+    /// header and `nodes[1..]` is the file's top level exactly as it was.
     pub nodes: Vec<Node>,
     /// The path it was read from.
     pub path: std::path::PathBuf,
@@ -23,14 +30,14 @@ pub struct Plugin {
 impl Plugin {
     /// Read a plugin from memory.
     pub fn from_bytes(path: &Path, data: &[u8]) -> Result<Plugin, EsmError> {
-        let (header, groups) = raw::parse(data)?;
-        // The top level's contents, as one list.
-        let mut nodes = Vec::new();
-        for g in &groups {
-            for c in &g.children {
-                nodes.push(c.clone());
-            }
-        }
+        let (header, groups, header_record) = raw::parse(data)?;
+        // The top level's contents, as one list: the header record first, then
+        // the groups, each whole. `nodes` is what the writer walks, and a plugin
+        // whose first node is not its own `TES4` is not a plugin — the game
+        // reads the header before anything else.
+        let mut nodes = Vec::with_capacity(groups.len() + 1);
+        nodes.push(Node::Record(header_record));
+        nodes.extend(groups.iter().cloned().map(Node::Group));
         Ok(Plugin {
             name: path
                 .file_name()

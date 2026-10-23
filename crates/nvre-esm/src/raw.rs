@@ -291,11 +291,11 @@ pub struct PluginHeader {
     pub version: f32,
     /// `HEDR`: the number of records and groups, less the header record.
     pub num_records: i32,
-    /// `CNST`: the next object ID the plugin will use.
+    /// `HEDR`: the next object ID the plugin will use.
     pub next_object_id: u32,
-    /// `CNST`: the plugin's author.
+    /// `CNAM`: the plugin's author.
     pub author: Option<String>,
-    /// `CNST`: the plugin's description.
+    /// `SNAM`: the plugin's description.
     pub description: Option<String>,
     /// `MAST`: the masters the plugin depends on.
     pub masters: Vec<MasterRef>,
@@ -339,18 +339,23 @@ impl PluginHeader {
 
 /// Read a plugin file's structure.
 ///
-/// The result is the header and the top-level groups. Every payload is kept
-/// as it was, so the file can be written back unchanged.
-pub fn parse(data: &[u8]) -> Result<(PluginHeader, Vec<Group>), EsmError> {
+/// The result is the header, the top-level groups, and the header **record** —
+/// the `TES4` as a node, which is what the writer walks as the file's first
+/// entry. Every payload is kept as it was, so the file can be written back
+/// unchanged.
+pub fn parse(data: &[u8]) -> Result<(PluginHeader, Vec<Group>, Record), EsmError> {
     let mut c = Cursor::new(data);
     // The header: a TES4 record.
-    let header = parse_header(&mut c, data)?;
+    let (header, header_record) = parse_header(&mut c, data)?;
     let groups = parse_groups(&mut c, data, 0)?;
-    Ok((header, groups))
+    Ok((header, groups, header_record))
 }
 
 /// Read the `TES4` record.
-fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmError> {
+///
+/// Returns the parsed header and the header as a record, which is what
+/// [`Plugin::nodes`] holds first.
+fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<(PluginHeader, Record), EsmError> {
     let start = c.pos;
     let oob = |e: nvre_util::OutOfBounds| EsmError::Structure {
         offset: start as u64,
@@ -366,9 +371,9 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
     let data_size = c.u32().map_err(oob)?;
     let flags = c.u32().map_err(oob)?;
     let form_id = c.u32().map_err(oob)?;
-    let _vc_info = c.u32().map_err(oob)?;
+    let vc_info = c.u32().map_err(oob)?;
     let form_version = c.u16().map_err(oob)?;
-    let _vc_info2 = c.u16().map_err(oob)?;
+    let vc_info2 = c.u16().map_err(oob)?;
     // The header is 24 bytes in total, the signature included, so the
     // payload starts 20 bytes after the signature.
     let end = start + RECORD_HEADER_SIZE + data_size as usize;
@@ -378,6 +383,23 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
             offset: start as u64,
             msg: "the TES4 record's payload is out of range".into(),
         })?;
+    // The record itself, as the node list's first entry: `Plugin::nodes` is what
+    // the writer walks, and a plugin whose first node is not its own `TES4` is
+    // not a plugin.
+    let header_record = Record {
+        header: RecordHeader {
+            sig: *b"TES4",
+            data_size,
+            flags,
+            form_id,
+            vc_info,
+            form_version,
+            vc_info2,
+        },
+        subrecords: Vec::new(),
+        raw: body.to_vec(),
+        offset: start as u64,
+    };
     // The header's fields: a four-byte type, a 16-bit size, and the bytes.
     let mut fields = Vec::new();
     let mut at = 0usize;
@@ -407,18 +429,20 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
         .and_then(|v| v.get(4..8))
         .map(|v| i32::from_le_bytes([v[0], v[1], v[2], v[3]]))
         .unwrap_or(0);
-    let next_object_id = field("CNST")
-        .and_then(|v| v.get(..4))
+    // `HEDR` is version, record count and next object ID together, and `CNAM` /
+    // `SNAM` are the author and description [documented: fopdoc's FalloutNV TES4
+    // page]. No shipped master carries a `CNST` or `DESC`, so reading those names
+    // left every field at its default.
+    let next_object_id = field("HEDR")
+        .and_then(|v| v.get(8..12))
         .map(|v| u32::from_le_bytes([v[0], v[1], v[2], v[3]]))
         .unwrap_or(0);
-    let author = field("CNST").map(|v| {
+    let zstring = |v: &Vec<u8>| {
         let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
         nvre_util::cp1252::decode(&v[..end])
-    });
-    let description = field("DESC").map(|v| {
-        let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
-        nvre_util::cp1252::decode(&v[..end])
-    });
+    };
+    let author = field("CNAM").map(zstring);
+    let description = field("SNAM").map(zstring);
     // The masters: each `MAST` holds the master's name and a number.
     let mut masters = Vec::new();
     let mast_bytes: Vec<Vec<u8>> = fields
@@ -446,20 +470,23 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
                 .collect()
         })
         .unwrap_or_default();
-    Ok(PluginHeader {
-        fields,
-        form_id,
-        flags,
-        form_version,
-        version,
-        num_records,
-        next_object_id,
-        author,
-        description,
-        masters,
-        overridden_forms,
-        other: Vec::new(),
-    })
+    Ok((
+        PluginHeader {
+            fields,
+            form_id,
+            flags,
+            form_version,
+            version,
+            num_records,
+            next_object_id,
+            author,
+            description,
+            masters,
+            overridden_forms,
+            other: Vec::new(),
+        },
+        header_record,
+    ))
 }
 
 /// Read groups until the file ends.
@@ -528,9 +555,9 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
     let label = c.tag().map_err(oob)?;
     let group_type = c.i32().map_err(oob)?;
     let stamp = c.u16().map_err(oob)?;
-    let _unknown1 = c.u16().map_err(oob)?;
+    let unknown1 = c.u16().map_err(oob)?;
     let version = c.u16().map_err(oob)?;
-    let _unknown2 = c.u16().map_err(oob)?;
+    let unknown2 = c.u16().map_err(oob)?;
     // The group holds records, and the header says how long it is.
     let gend = start
         .checked_add(size as usize)
@@ -549,9 +576,9 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
             label,
             group_type,
             stamp,
-            unknown1: 0,
+            unknown1,
             version,
-            unknown2: 0,
+            unknown2,
         },
         children,
         offset: start as u64,
@@ -903,8 +930,9 @@ pub fn write_group(g: &Group, out: &mut Vec<u8>) {
     out.extend_from_slice(&h.label);
     out.extend_from_slice(&h.group_type.to_le_bytes());
     out.extend_from_slice(&h.stamp.to_le_bytes());
+    out.extend_from_slice(&h.unknown1.to_le_bytes());
     out.extend_from_slice(&h.version.to_le_bytes());
-    out.extend_from_slice(&[0u8; 4]);
+    out.extend_from_slice(&h.unknown2.to_le_bytes());
     for r in g.records() {
         write_record(r, out);
     }
