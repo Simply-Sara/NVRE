@@ -256,10 +256,12 @@ pub fn cells(
         egui_extras::TableBuilder::new(ui)
             .striped(true)
             .sense(egui::Sense::click())
-            .column(egui_extras::Column::auto().at_least(140.0).clip(true))
-            .column(egui_extras::Column::auto().at_least(80.0))
-            .column(egui_extras::Column::remainder().clip(true))
-            .column(egui_extras::Column::auto().at_least(90.0))
+            .resizable(true)
+            .id_salt("cells_table")
+            .column(egui_extras::Column::initial(260.0).at_least(140.0).clip(true))
+            .column(egui_extras::Column::initial(90.0).at_least(80.0))
+            .column(egui_extras::Column::remainder().resizable(false).clip(true))
+            .column(egui_extras::Column::initial(110.0).at_least(90.0))
             .header(18.0, |mut header| {
                 header.col(|ui| {
                     ui.strong("Editor ID");
@@ -274,36 +276,35 @@ pub fn cells(
                     ui.strong("Location");
                 });
             })
-            .body(|mut body| {
-                for c in &rows {
+            .body(|body| {
+                body.rows(18.0, rows.len(), |mut row_ui| {
+                    let c = &rows[row_ui.index()];
                     let open = session.cell == Some(c.form_id);
-                    body.row(18.0, |mut row_ui| {
-                        // The whole row is the widget: it highlights whole when
-                        // it is the open cell, and a click anywhere on it opens
-                        // the cell — the way the old list's one clickable name
-                        // did, over the full row instead.
-                        row_ui.set_selected(open);
-                        row_ui.col(|ui| {
-                            ui.label(c.editor_id())
-                                .on_hover_text(format!("open {} ({} refs)", c.editor_id(), c.refs));
-                        });
-                        let resp = row_ui.response();
-                        if resp.clicked() {
-                            session.open_cell(c.form_id);
-                        }
-                        // The fixed-width columns are monospace, so the Form IDs
-                        // and the grid coordinates line up down the column.
-                        row_ui.col(|ui| {
-                            ui.label(egui::RichText::new(format!("{:08X}", c.form_id)).monospace());
-                        });
-                        row_ui.col(|ui| {
-                            ui.label(c.name.as_deref().unwrap_or(""));
-                        });
-                        row_ui.col(|ui| {
-                            ui.label(egui::RichText::new(c.location()).monospace());
-                        });
+                    // The whole row is the widget: it highlights whole when
+                    // it is the open cell, and a click anywhere on it opens
+                    // the cell — the way the old list's one clickable name
+                    // did, over the full row instead.
+                    row_ui.set_selected(open);
+                    row_ui.col(|ui| {
+                        ui.label(c.editor_id())
+                            .on_hover_text(format!("open {} ({} refs)", c.editor_id(), c.refs));
                     });
-                }
+                    let resp = row_ui.response();
+                    if resp.clicked() {
+                        session.open_cell(c.form_id);
+                    }
+                    // The fixed-width columns are monospace, so the Form IDs
+                    // and the grid coordinates line up down the column.
+                    row_ui.col(|ui| {
+                        ui.label(egui::RichText::new(format!("{:08X}", c.form_id)).monospace());
+                    });
+                    row_ui.col(|ui| {
+                        ui.label(c.name.as_deref().unwrap_or(""));
+                    });
+                    row_ui.col(|ui| {
+                        ui.label(egui::RichText::new(c.location()).monospace());
+                    });
+                });
             });
         ui.separator();
         ui.label(format!(
@@ -602,18 +603,22 @@ pub fn references(
                 });
         });
         ui.separator();
-        // A table with a width policy per column — the Editor ID absorbs the
-        // slack and clips, so a long base name cannot push the lock column
-        // out of the pane. The row is the widget: it highlights whole when
-        // selected, and a click anywhere on it selects.
+        // A table with a width policy per column — the Editor ID is the
+        // remainder and absorbs the slack, so a long base name cannot push
+        // the lock column out of the pane; the other four start at a
+        // preset width and can be dragged. The row is the widget: it
+        // highlights whole when selected, and a click anywhere on it
+        // selects.
         egui_extras::TableBuilder::new(ui)
             .striped(true)
             .sense(egui::Sense::click())
-            .column(egui_extras::Column::remainder().at_least(160.0).clip(true))
-            .column(egui_extras::Column::auto().at_least(80.0))
-            .column(egui_extras::Column::auto().at_least(80.0))
-            .column(egui_extras::Column::auto().at_least(100.0).clip(true))
-            .column(egui_extras::Column::auto().at_least(50.0))
+            .resizable(true)
+            .id_salt("references_table")
+            .column(egui_extras::Column::remainder().resizable(false).at_least(160.0).clip(true))
+            .column(egui_extras::Column::initial(90.0).at_least(80.0))
+            .column(egui_extras::Column::initial(110.0).at_least(80.0))
+            .column(egui_extras::Column::initial(130.0).at_least(90.0).clip(true))
+            .column(egui_extras::Column::initial(70.0).at_least(50.0))
             .header(18.0, |mut header| {
                 header.col(|ui| {
                     ui.strong("Editor ID");
@@ -631,8 +636,9 @@ pub fn references(
                     ui.strong("Lock");
                 });
             })
-            .body(|mut body| {
-                for r in &rows {
+            .body(|body| {
+                body.rows(18.0, rows.len(), |mut row_ui| {
+                    let r = &rows[row_ui.index()];
                     let open = session.selected == Some(r.form_id);
                     let base = r.base.as_deref().and_then(parse_formid);
                     // A placed object is named after what it places. Only
@@ -657,55 +663,53 @@ pub fn references(
                     if queued.contains(&r.form_id) {
                         text = format!("{text}  [deleting]");
                     }
-                    body.row(18.0, |mut row_ui| {
-                        row_ui.set_selected(open);
-                        row_ui.col(|ui| {
-                            ui.label(text);
-                        });
-                        let resp = row_ui.response();
-                        if resp.clicked() {
-                            session.select(r.form_id);
-                            // A double-click on a row frames it in the viewport,
-                            // the same as double-clicking the model itself. The
-                            // click state is this panel's own, so a double-click
-                            // in the viewport and one here do not interfere.
-                            if clicks.register(r.form_id) {
-                                frame.write(crate::FrameRequested { form_id: r.form_id });
-                            }
-                        }
-                        // The fixed-width columns are monospace, so the Form IDs
-                        // and the lock levels line up down the column.
-                        row_ui.col(|ui| {
-                            ui.label(egui::RichText::new(format!("{:08X}", r.form_id)).monospace());
-                        });
-                        // The type is what the base object is, as GECK names
-                        // it — "Static", "Activator". A reference whose base is
-                        // missing has nothing to say, so the column stays empty
-                        // rather than showing the reference's own signature for
-                        // some rows and not others.
-                        let type_cell = base
-                            .and_then(|b| details.base_type(b))
-                            .unwrap_or("")
-                            .to_string();
-                        row_ui.col(|ui| {
-                            ui.label(type_cell);
-                        });
-                        // The owner's name, or the FormID when the record has no
-                        // Editor ID to show.
-                        let owner_cell = r
-                            .owner
-                            .and_then(|o| details.owner(o))
-                            .unwrap_or("")
-                            .to_string();
-                        row_ui.col(|ui| {
-                            ui.label(owner_cell);
-                        });
-                        let lock_cell = r.lock.map(|l| l.label()).unwrap_or_default();
-                        row_ui.col(|ui| {
-                            ui.label(egui::RichText::new(lock_cell).monospace());
-                        });
+                    row_ui.set_selected(open);
+                    row_ui.col(|ui| {
+                        ui.label(text);
                     });
-                }
+                    let resp = row_ui.response();
+                    if resp.clicked() {
+                        session.select(r.form_id);
+                        // A double-click on a row frames it in the viewport,
+                        // the same as double-clicking the model itself. The
+                        // click state is this panel's own, so a double-click
+                        // in the viewport and one here do not interfere.
+                        if clicks.register(r.form_id) {
+                            frame.write(crate::FrameRequested { form_id: r.form_id });
+                        }
+                    }
+                    // The fixed-width columns are monospace, so the Form IDs
+                    // and the lock levels line up down the column.
+                    row_ui.col(|ui| {
+                        ui.label(egui::RichText::new(format!("{:08X}", r.form_id)).monospace());
+                    });
+                    // The type is what the base object is, as GECK names
+                    // it — "Static", "Activator". A reference whose base is
+                    // missing has nothing to say, so the column stays empty
+                    // rather than showing the reference's own signature for
+                    // some rows and not others.
+                    let type_cell = base
+                        .and_then(|b| details.base_type(b))
+                        .unwrap_or("")
+                        .to_string();
+                    row_ui.col(|ui| {
+                        ui.label(type_cell);
+                    });
+                    // The owner's name, or the FormID when the record has no
+                    // Editor ID to show.
+                    let owner_cell = r
+                        .owner
+                        .and_then(|o| details.owner(o))
+                        .unwrap_or("")
+                        .to_string();
+                    row_ui.col(|ui| {
+                        ui.label(owner_cell);
+                    });
+                    let lock_cell = r.lock.map(|l| l.label()).unwrap_or_default();
+                    row_ui.col(|ui| {
+                        ui.label(egui::RichText::new(lock_cell).monospace());
+                    });
+                });
             });
         ui.separator();
         ui.label(format!(
@@ -1205,12 +1209,21 @@ pub fn place(
         // area clickable, `set_selected` paints the whole row, and the
         // row's response is the one the panel acts on. The table scrolls
         // its own body, so there is no ScrollArea around it.
+        //
+        // Columns start at a preset width and can be dragged — never
+        // `auto()`, whose sizing pass renders the whole table invisibly
+        // to measure content, which with unvirtualized rows meant every
+        // object in the category twice. The Name column is the one
+        // remainder: it absorbs the slack and re-flows as the others
+        // are dragged.
         egui_extras::TableBuilder::new(&mut ui)
             .striped(true)
             .sense(egui::Sense::click())
-            .column(egui_extras::Column::auto().at_least(140.0).clip(true))
-            .column(egui_extras::Column::auto().at_least(80.0))
-            .column(egui_extras::Column::remainder().clip(true))
+            .resizable(true)
+            .id_salt("objects_table")
+            .column(egui_extras::Column::initial(240.0).at_least(120.0).clip(true))
+            .column(egui_extras::Column::initial(90.0).at_least(80.0))
+            .column(egui_extras::Column::remainder().resizable(false).clip(true))
             .header(18.0, |mut header| {
                 header.col(|ui| {
                     ui.strong("Editor ID");
@@ -1222,31 +1235,32 @@ pub fn place(
                     ui.strong("Name");
                 });
             })
-            .body(|mut body| {
-                for row in &groups[*chosen].objects {
-                    body.row(18.0, |mut row_ui| {
-                        // The whole row highlights when it is the selected
-                        // one — background and text — not one label in it.
-                        row_ui.set_selected(selected_fid == Some(row.fid));
-                        row_ui.col(|ui| {
-                            ui.label(&row.edid);
-                        });
-                        row_ui.col(|ui| {
-                            ui.label(
-                                egui::RichText::new(format!("{:08X}", row.fid)).monospace(),
-                            );
-                        });
-                        row_ui.col(|ui| {
-                            ui.label(&row.name);
-                        });
-                        let resp = row_ui.response();
-                        if resp.double_clicked() {
-                            open_obj = Some((row.fid, cur_group.sig));
-                        } else if resp.clicked() {
-                            select_fid = Some(row.fid);
-                        }
+            .body(|body| {
+                // `rows` virtualizes: only the rows in the viewport are
+                // visited, so the 6,785 statics cost what any small
+                // category costs. The index is the row's own.
+                let objects = &groups[*chosen].objects;
+                body.rows(18.0, objects.len(), |mut row_ui| {
+                    let row = &objects[row_ui.index()];
+                    // The whole row highlights when it is the selected
+                    // one — background and text — not one label in it.
+                    row_ui.set_selected(selected_fid == Some(row.fid));
+                    row_ui.col(|ui| {
+                        ui.label(&row.edid);
                     });
-                }
+                    row_ui.col(|ui| {
+                        ui.label(egui::RichText::new(format!("{:08X}", row.fid)).monospace());
+                    });
+                    row_ui.col(|ui| {
+                        ui.label(&row.name);
+                    });
+                    let resp = row_ui.response();
+                    if resp.double_clicked() {
+                        open_obj = Some((row.fid, cur_group.sig));
+                    } else if resp.clicked() {
+                        select_fid = Some(row.fid);
+                    }
+                });
             });
         ui.separator();
         ui.horizontal(|ui| {
