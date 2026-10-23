@@ -380,7 +380,7 @@ impl Session {
                     });
                 }
                 let mut groups: Vec<ObjectGroup> = Vec::new();
-                for (fid, sig, label) in objects {
+                for (_fid, sig, row) in objects {
                     let Some((group, category)) = types.get(&sig).cloned() else {
                         continue;
                     };
@@ -396,7 +396,7 @@ impl Session {
                             groups.len() - 1
                         }
                     };
-                    groups[at].objects.push((fid, label));
+                    groups[at].objects.push(row);
                 }
                 // Categories ordered by GECK top-level group, then alphabetically by category.
                 let order = &self.schema.object_window.groups;
@@ -406,7 +406,12 @@ impl Session {
                         .then_with(|| a.category.cmp(&b.category))
                 });
                 for g in &mut groups {
-                    g.objects.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
+                    g.objects.sort_by(|a, b| {
+                        a.label()
+                            .cmp(b.label())
+                            .then_with(|| a.edid.cmp(&b.edid))
+                            .then(a.fid.cmp(&b.fid))
+                    });
                 }
                 Some(groups)
             })()
@@ -1605,8 +1610,33 @@ pub struct ObjectGroup {
     pub category: String,
     /// The record signature: `*b"STAT"`, etc.
     pub sig: [u8; 4],
-    /// The category's objects, by base FormID and name, sorted by name.
-    pub objects: Vec<(u32, String)>,
+    /// The category's objects, sorted by name.
+    pub objects: Vec<ObjectRow>,
+}
+
+/// One object in the window's list: its FormID and the fields the list's
+/// table shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectRow {
+    /// The base object's global FormID.
+    pub fid: u32,
+    /// The Editor ID, empty when the record has none.
+    pub edid: String,
+    /// The full name, empty when the record has none.
+    pub name: String,
+}
+
+impl ObjectRow {
+    /// What the list sorts and filters by, and what a single-label list
+    /// would have shown: the name where there is one, the Editor ID
+    /// otherwise.
+    pub fn label(&self) -> &str {
+        if self.name.is_empty() {
+            &self.edid
+        } else {
+            &self.name
+        }
+    }
 }
 
 /// Where a top-level group sits in GECK's Object Window.
@@ -1658,20 +1688,24 @@ pub fn is_placeable_sig(sig: &[u8; 4]) -> bool {
     )
 }
 
-/// Collect the load order's records of the listed signatures, filtered by
-/// label.
+/// Collect the load order's records of the listed signatures, each with its
+/// Editor ID and full name, filtered by the window's own rule.
 ///
 /// `visible` is the object window's own list: the signatures its schema names
 /// and does not hide. A record whose signature is not in it is skipped before
-/// its name is read, which is what keeps the walk off the placed references
+/// its names are read, which is what keeps the walk off the placed references
 /// and cells that make up most of a master.
+///
+/// The filter matches the name or the Editor ID — the window's own rule, the
+/// one its hint promises — and the FormID as the list shows it, so any of
+/// the table's three columns can be typed into.
 pub fn load_order_objects(
     lo: &LoadOrder,
     filter: &str,
     visible: &HashSet<[u8; 4]>,
-) -> Vec<(u32, [u8; 4], String)> {
+) -> Vec<(u32, [u8; 4], ObjectRow)> {
     let filter = filter.to_lowercase();
-    let mut out: Vec<(u32, [u8; 4], String)> = Vec::new();
+    let mut out: Vec<(u32, [u8; 4], ObjectRow)> = Vec::new();
     let mut seen: HashMap<u32, usize> = HashMap::new();
     for (pi, _plugin) in lo.plugins.iter().enumerate() {
         for r in &lo.records[pi] {
@@ -1682,15 +1716,23 @@ pub fn load_order_objects(
                 continue;
             };
             let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
-            let label = full.or(edid).unwrap_or_else(|| format!("{global:08X}"));
-            if !filter.is_empty() && !label.to_lowercase().contains(&filter) {
+            let row = ObjectRow {
+                fid: global,
+                edid: edid.unwrap_or_default(),
+                name: full.unwrap_or_default(),
+            };
+            if !filter.is_empty()
+                && !row.label().to_lowercase().contains(&filter)
+                && !format!("{global:08X}").to_lowercase().contains(&filter)
+            {
                 continue;
             }
             match seen.get(&global) {
-                Some(&i) => out[i] = (global, r.header.sig, label),
+                // The last definition wins, as the game reads it.
+                Some(&i) => out[i] = (global, r.header.sig, row),
                 None => {
                     seen.insert(global, out.len());
-                    out.push((global, r.header.sig, label));
+                    out.push((global, r.header.sig, row));
                 }
             }
         }

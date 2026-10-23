@@ -90,8 +90,8 @@ fn the_palette_is_grouped_into_gecks_categories() {
     // type is the one it is filed under.
     let lo = s.load_order().expect("a load order");
     for g in &groups {
-        for (fid, _) in &g.objects {
-            let sig = nvre_world::fields::winner(lo, *fid)
+        for row in &g.objects {
+            let sig = nvre_world::fields::winner(lo, row.fid)
                 .map(|(_, rec)| rec.header.sig)
                 .expect("the base object");
             let name = s
@@ -102,7 +102,8 @@ fn the_palette_is_grouped_into_gecks_categories() {
                 .expect("the record type has a name");
             assert_eq!(
                 name, g.category,
-                "{fid:08X} is filed under {name}, not {}",
+                "{:08X} is filed under {name}, not {}",
+                row.fid,
                 g.category
             );
         }
@@ -111,7 +112,7 @@ fn the_palette_is_grouped_into_gecks_categories() {
     // Objects are sorted by name inside a category, which is what makes a
     // 6,785-strong category navigable.
     for g in &groups {
-        let sorted = g.objects.windows(2).all(|w| w[0].1 <= w[1].1);
+        let sorted = g.objects.windows(2).all(|w| w[0].label() <= w[1].label());
         assert!(sorted, "{}'s objects are sorted by name", g.category);
     }
 }
@@ -129,10 +130,10 @@ fn a_filter_narrows_both_halves_of_the_window() {
     // the filter narrows the list, it does not merge the categories.
     let kept: usize = filtered.iter().map(|g| g.objects.len()).sum();
     assert!(kept > 0, "the filter matches something");
-    let wanted: Vec<&(u32, String)> = all
+    let wanted: Vec<&nvre_editor::session::ObjectRow> = all
         .iter()
         .flat_map(|g| g.objects.iter())
-        .filter(|(_, label)| label.to_lowercase().contains("dumpster"))
+        .filter(|row| row.label().to_lowercase().contains("dumpster"))
         .collect();
     assert_eq!(
         kept,
@@ -140,10 +141,12 @@ fn a_filter_narrows_both_halves_of_the_window() {
         "the filter keeps exactly the objects whose name matches"
     );
     for g in &filtered {
-        for (fid, label) in &g.objects {
+        for row in &g.objects {
             assert!(
-                label.to_lowercase().contains("dumpster"),
-                "{fid:08X} ({label}) does not match the filter"
+                row.label().to_lowercase().contains("dumpster"),
+                "{:08X} ({}) does not match the filter",
+                row.fid,
+                row.label()
             );
         }
     }
@@ -194,7 +197,7 @@ fn placing_objects_and_actors_creates_correct_record_types() {
         .iter()
         .find(|g| g.category == "Weapon")
         .expect("Weapon category");
-    let (weap_fid, _) = weapons.objects[0];
+    let weap_fid = weapons.objects[0].fid;
     s.place(weap_fid, [100.0, 200.0, 300.0]);
     let placed_weap = s.selected_record().expect("placed weapon");
     assert_eq!(placed_weap.record().header.sig, *b"REFR");
@@ -204,7 +207,7 @@ fn placing_objects_and_actors_creates_correct_record_types() {
         .iter()
         .find(|g| g.category == "Non-Player Character")
         .expect("NPC category");
-    let (npc_fid, _) = npcs.objects[0];
+    let npc_fid = npcs.objects[0].fid;
     s.place(npc_fid, [10.0, 20.0, 30.0]);
     let placed_npc = s.selected_record().expect("placed npc");
     assert_eq!(placed_npc.record().header.sig, *b"ACHR");
@@ -214,7 +217,7 @@ fn placing_objects_and_actors_creates_correct_record_types() {
         .iter()
         .find(|g| g.category == "Quest")
         .expect("Quest category");
-    let (quest_fid, _) = quests.objects[0];
+    let quest_fid = quests.objects[0].fid;
     s.select(quest_fid);
     let selected_quest = s.selected_record().expect("selected quest");
     assert_eq!(selected_quest.record().header.sig, *b"QUST");

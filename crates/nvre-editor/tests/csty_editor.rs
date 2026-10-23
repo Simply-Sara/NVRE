@@ -275,7 +275,7 @@ fn a_melee_only_style_reports_its_weapon_restriction() {
         .object_groups("")
         .iter()
         .filter(|g| g.sig == *b"CSTY")
-        .flat_map(|g| g.objects.iter().map(|(f, _)| *f))
+        .flat_map(|g| g.objects.iter().map(|r| r.fid))
         .collect();
     let mut found = None;
     for fid in fids {
@@ -321,7 +321,7 @@ fn the_unused_bytes_the_game_fills_are_preserved() {
         .object_groups("")
         .iter()
         .filter(|g| g.sig == *b"CSTY")
-        .flat_map(|g| g.objects.iter().map(|(f, _)| *f))
+        .flat_map(|g| g.objects.iter().map(|r| r.fid))
         .collect();
     let mut target = None;
     for fid in fids {
@@ -461,7 +461,7 @@ fn an_unnamed_csty_flag_bit_survives_an_edit() {
         .object_groups("")
         .iter()
         .filter(|g| g.sig == *b"CSTY")
-        .flat_map(|g| g.objects.iter().map(|(f, _)| *f))
+        .flat_map(|g| g.objects.iter().map(|r| r.fid))
         .collect();
     let mut target = None;
     for fid in fids {

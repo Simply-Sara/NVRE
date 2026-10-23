@@ -118,6 +118,22 @@ fn main() {
                 }
             );
         }
-        let _ = &mut session;
+        // The window's own view of the master: what `object_groups` — and
+        // so the Objects window's table — actually lists, with each row's
+        // Editor ID, FormID and name as the table shows them.
+        let groups = session.object_groups("").to_vec();
+        let total: usize = groups.iter().map(|g| g.objects.len()).sum();
+        println!(
+            "{id}: the palette lists {total} objects in {} categories",
+            groups.len()
+        );
+        for g in groups.iter().take(2) {
+            if let Some(row) = g.objects.first() {
+                println!(
+                    "{id}: {}'s first row: edid={:?} formid={:08X} name={:?}",
+                    g.category, row.edid, row.fid, row.name
+                );
+            }
+        }
     }
 }

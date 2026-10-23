@@ -1037,8 +1037,10 @@ const SEPARATOR_GAP: f32 = 8.0;
 /// objects navigable: a modder picks "Static" and sees statics rather than
 /// scrolling past containers and lights to find them. The categories are grouped
 /// under GECK's top-level sections ("Actors", "Items", "WorldObjects", ...).
-/// Clicking an object selects it; double-clicking opens it in the object
-/// editor, which the schema says starts on which page.
+/// That category's objects are a table — Editor ID, FormID, Name — the way
+/// the game's own window lists them. Clicking a row selects it;
+/// double-clicking opens it in the object editor, which the schema says
+/// starts on which page.
 pub fn place(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<3>>>,
     mut session: ResMut<crate::session::Session>,
@@ -1137,41 +1139,76 @@ pub fn place(
             egui::UiBuilder::new().max_rect(rest),
         );
         egui::ScrollArea::vertical().show(&mut ui, |ui| {
-            for (fid, label) in &groups[*chosen].objects {
-                ui.horizontal(|ui| {
-                    if ui.small_button("Edit").clicked() {
-                        open_obj = Some((*fid, cur_group.sig));
-                    }
-                    let selected = selected_fid == Some(*fid);
-                    let resp = ui.selectable_label(selected, label);
-                    if resp.double_clicked() {
-                        open_obj = Some((*fid, cur_group.sig));
-                    } else if resp.clicked() {
-                        select_fid = Some(*fid);
-                    }
-                });
-            }
             if groups[*chosen].objects.is_empty() {
                 ui.label("no objects in this category match the filter");
+                return;
+            }
+            // The list is a table — Editor ID, FormID, Name — the way the
+            // game's own object window lists them, so a modder can read and
+            // scan each field on its own column instead of one merged
+            // label. Every cell of a row carries the same selection, so a
+            // click anywhere selects and a double-click anywhere opens.
+            egui::Grid::new("objects_table")
+                .num_columns(3)
+                .striped(true)
+                .min_col_width(60.0)
+                .show(ui, |ui| {
+                    ui.strong("Editor ID");
+                    ui.strong("FormID");
+                    ui.strong("Name");
+                    ui.end_row();
+                    for row in &groups[*chosen].objects {
+                        let selected = selected_fid == Some(row.fid);
+                        let cells = [
+                            ui.selectable_label(selected, &row.edid),
+                            ui.selectable_label(selected, format!("{:08X}", row.fid)),
+                            ui.selectable_label(selected, &row.name),
+                        ];
+                        for resp in cells {
+                            if resp.double_clicked() {
+                                open_obj = Some((row.fid, cur_group.sig));
+                            } else if resp.clicked() {
+                                select_fid = Some(row.fid);
+                            }
+                        }
+                        ui.end_row();
+                    }
+                });
+        });
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label(format!(
+                "{} objects in {} categories{}",
+                total,
+                shown,
+                if empty == 0 {
+                    String::new()
+                } else {
+                    format!(" ({empty} empty)")
+                }
+            ));
+            // The per-row Edit button became one Edit for the selected row,
+            // now that the list is a table. It is enabled only for a row of
+            // the category on show, so a reference selected in the viewport
+            // cannot be opened as this category's record type.
+            let editable = groups[*chosen]
+                .objects
+                .iter()
+                .any(|r| Some(r.fid) == selected_fid);
+            if ui
+                .add_enabled(editable, egui::Button::new("Edit"))
+                .clicked()
+            {
+                open_obj = Some((selected_fid.unwrap_or_default(), cur_group.sig));
             }
         });
+        // The actions, after every piece of UI that can choose one.
         if let Some((fid, sig)) = open_obj {
             session.open_object(fid, sig);
         } else if let Some(fid) = select_fid {
             session.select(fid);
             session.status = format!("selected {fid:08X}");
         }
-        ui.separator();
-        ui.label(format!(
-            "{} objects in {} categories{}",
-            total,
-            shown,
-            if empty == 0 {
-                String::new()
-            } else {
-                format!(" ({empty} empty)")
-            }
-        ));
     });
 }
 
