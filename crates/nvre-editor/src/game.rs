@@ -440,6 +440,10 @@ impl GameProfile {
     /// layout the base holds. `load_game` skips a directory that does not
     /// exist, so a game whose schemas have not been written yet reads the base
     /// alone and its coverage is whatever that gives.
+    ///
+    /// This is the repository's directory, which is where the schemas live
+    /// while the editor is being worked on. A built editor reads the same
+    /// schemas out of the binary instead — see [`GameProfile::load_schema`].
     pub fn schema_dirs(&self) -> (PathBuf, Option<PathBuf>) {
         let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/base");
         if self.id == "fnv" {
@@ -467,26 +471,73 @@ impl GameProfile {
     /// share the rest, so the shared layouts live in the family's directory
     /// and each version's directory holds only its own differences.
     ///
-    /// A directory carries a `base -> ../base` symlink, so it is also
-    /// readable on its own; `load_game` skips the files reached through that
-    /// symlink, which is what keeps the base from merging twice.
+    /// The schemas are compiled into the binary rather than read off the
+    /// disk, so a built editor is one file the user can copy anywhere. The
+    /// layers are the same files the repository holds, in the same order, so
+    /// the schema this builds is the schema the directory would have given.
     pub fn load_schema(&self) -> Result<nvre_esm::Schema, String> {
-        let (base, _) = self.schema_dirs();
-        let mut chain: Vec<std::path::PathBuf> = Vec::new();
-        if let Some(family) = self.schema_family() {
-            chain.push(family);
+        self.load_schema_over(None)
+    }
+
+    /// Load this game's record schema over a directory of schema files.
+    ///
+    /// `dir` is a schema directory to read from the disk instead of from
+    /// the compiled-in schemas. It names the directory the schemas live
+    /// under — `schemas`, or `schemas/base` — and the game's own layers are
+    /// read from beside it, so the chain is the same one the compiled-in
+    /// schemas are: the base, then the game's family, then the game's own
+    /// version.
+    ///
+    /// This is how a developer points the editor at layouts they are still
+    /// writing, and how the tests read the repository's own directories.
+    pub fn load_schema_over(&self, dir: Option<&Path>) -> Result<nvre_esm::Schema, String> {
+        let Some(dir) = dir else {
+            // The compiled-in chain: the base, then the game's family, then
+            // the game's own version.
+            let mut schema = nvre_esm::Schema::new();
+            merge_layer(&mut schema, nvre_schemas::base())?;
+            for name in [self.schema_family_dir, self.schema_version_dir] {
+                if name.is_empty() {
+                    continue;
+                }
+                // A layer that is not there is not a layer: the base holds
+                // what every game shares, and a game with no layer of its own
+                // reads the base alone.
+                if let Some(layer) = nvre_schemas::layer(name) {
+                    merge_layer(&mut schema, layer)?;
+                }
+            }
+            schema.validate()?;
+            return Ok(schema);
+        };
+
+        // The directory the schemas live under: `schemas`, whether the caller
+        // named the base or a game's own directory.
+        let root = dir.parent().unwrap_or(dir);
+        let base_dir = root.join("base");
+        let mut schema = if base_dir.is_dir() {
+            nvre_esm::Schema::load_dir(&base_dir).map_err(|e| e.to_string())?
+        } else {
+            // No base on the disk: the compiled-in one stands in for it.
+            let mut s = nvre_esm::Schema::new();
+            merge_layer(&mut s, nvre_schemas::base())?;
+            s
+        };
+        for name in [self.schema_family_dir, self.schema_version_dir] {
+            if name.is_empty() {
+                continue;
+            }
+            // A layer on the disk is read from there; a layer that is only
+            // compiled in is read from the binary.
+            let layer_dir = root.join(name);
+            if layer_dir.is_dir() {
+                merge_dir(&mut schema, &layer_dir)?;
+            } else if let Some(layer) = nvre_schemas::layer(name) {
+                merge_layer(&mut schema, layer)?;
+            }
         }
-        if let Some(version) = self.schema_version() {
-            chain.push(version);
-        }
-        nvre_esm::Schema::load_game(
-            &base,
-            &chain
-                .iter()
-                .map(|p| p.to_string_lossy().into_owned())
-                .collect::<Vec<String>>(),
-        )
-        .map_err(|e| e.to_string())
+        schema.validate()?;
+        Ok(schema)
     }
 
     /// Load this game's NIF schema.
@@ -499,54 +550,21 @@ impl GameProfile {
     /// layouts its versions share, and a version holds its own differences.
     /// A layer *replaces* the blocks it names, so a version's file carries a
     /// complete block rather than a patch to one.
-    pub fn load_nif_schema(&self) -> Result<nvre_nif::Schema, String> {
-        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/nif/base");
-        let mut chain: Vec<String> = Vec::new();
-        if let Some(family) = self.nif_schema_dir(self.nif_schema_family_dir) {
-            chain.push(family.to_string_lossy().into_owned());
-        }
-        if let Some(version) = self.nif_schema_dir(self.nif_schema_version_dir) {
-            chain.push(version.to_string_lossy().into_owned());
-        }
-        nvre_nif::Schema::load_game(&base, &chain).map_err(|e| e.to_string())
-    }
-
-    /// One of the repo's NIF schema directories, by its name.
     ///
-    /// A layer that is not there is not a layer: the base holds what every
-    /// game shares, and a game with no layer of its own reads the base
-    /// alone.
-    fn nif_schema_dir(&self, name: &str) -> Option<PathBuf> {
-        if name.is_empty() {
-            return None;
+    /// As with the record schemas, the layouts are compiled into the binary.
+    pub fn load_nif_schema(&self) -> Result<nvre_nif::Schema, String> {
+        let mut schema = nvre_nif::Schema::new();
+        merge_nif_layer(&mut schema, nvre_schemas::layer("nif/base"))?;
+        for name in [self.nif_schema_family_dir, self.nif_schema_version_dir] {
+            if name.is_empty() {
+                continue;
+            }
+            if let Some(layer) = nvre_schemas::layer(&format!("nif/{name}")) {
+                merge_nif_layer(&mut schema, Some(layer))?;
+            }
         }
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../schemas/nif")
-            .join(name);
-        dir.is_dir().then_some(dir)
-    }
-
-    /// The directory holding the layouts this game's family shares.
-    fn schema_family(&self) -> Option<std::path::PathBuf> {
-        self.schema_dir(self.schema_family_dir)
-    }
-
-    /// The directory holding this version's own differences from its family.
-    fn schema_version(&self) -> Option<std::path::PathBuf> {
-        self.schema_dir(self.schema_version_dir)
-    }
-
-    /// One of the repo's schema directories, by its name.
-    fn schema_dir(&self, name: &str) -> Option<std::path::PathBuf> {
-        if name.is_empty() {
-            None
-        } else {
-            Some(
-                Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join("../../schemas")
-                    .join(name),
-            )
-        }
+        schema.check().map_err(|e| e.to_string())?;
+        Ok(schema)
     }
 
     /// Open the game's assets: its archive set over `data_dir`, plus the NIF
@@ -647,11 +665,21 @@ fn load_data_dirs() -> std::collections::BTreeMap<String, String> {
 }
 
 /// Where the remembered folders live.
+///
+/// Each platform has its own convention: XDG on Linux and macOS, and
+/// `%APPDATA%` on Windows. The fallback when the variable is unset is the
+/// platform's own default location.
 fn config_path() -> Option<PathBuf> {
-    // XDG, with the fallback the spec names when it is unset.
-    let base = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
+    let base = if cfg!(target_os = "windows") {
+        std::env::var_os("APPDATA").map(PathBuf::from).or_else(|| {
+            std::env::var_os("USERPROFILE").map(|p| PathBuf::from(p).join("AppData/Roaming"))
+        })?
+    } else {
+        // XDG, with the fallback the spec names when it is unset.
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?
+    };
     Some(base.join("nvre").join("data-dirs.json"))
 }
 
@@ -665,23 +693,50 @@ fn config_path() -> Option<PathBuf> {
 ///
 /// The file is read as text and its `path` fields picked out with a scan: it is
 /// Valve's KeyValues format, and only this one field is needed.
+///
+/// Steam installs itself in a different place on each platform, so the root is
+/// the platform's own: `~/.local/share/Steam` on Linux,
+/// `~/Library/Application Support/Steam` on macOS, and `C:\Program Files (x86)\Steam`
+/// on Windows.
 fn steam_libraries() -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = Vec::new();
-    let Some(home) = std::env::var_os("HOME") else {
-        return out;
-    };
-    // The documented Linux location. Steam on another platform writes the same
-    // file under its own install root; this covers the common case and returns
-    // nothing rather than guessing when it is absent.
-    let root = PathBuf::from(home).join(".local/share/Steam");
-    let vdf = root.join("steamapps/libraryfolders.vdf");
-    if let Ok(text) = std::fs::read_to_string(&vdf) {
-        out.push(root.clone());
-        for path in vdf_paths(&text) {
-            if !out.contains(&path) {
-                out.push(path);
+    for root in steam_roots() {
+        let vdf = root.join("steamapps/libraryfolders.vdf");
+        if let Ok(text) = std::fs::read_to_string(&vdf) {
+            if !out.contains(&root) {
+                out.push(root);
+            }
+            for path in vdf_paths(&text) {
+                if !out.contains(&path) {
+                    out.push(path);
+                }
             }
         }
+    }
+    out
+}
+
+/// Every folder Steam might be installed in on this platform.
+///
+/// The first is the documented default. The rest are places Steam is also
+/// commonly installed, and they cost nothing to check: a folder that is not
+/// there simply has no `libraryfolders.vdf`.
+fn steam_roots() -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if cfg!(target_os = "windows") {
+        // Steam's own default install, and the 32-bit program files folder
+        // it uses on a 64-bit Windows.
+        for var in ["ProgramFiles(x86)", "ProgramFiles"] {
+            if let Some(dir) = std::env::var_os(var) {
+                out.push(PathBuf::from(dir).join("Steam"));
+            }
+        }
+    } else if cfg!(target_os = "macos") {
+        if let Some(home) = std::env::var_os("HOME") {
+            out.push(PathBuf::from(home).join("Library/Application Support/Steam"));
+        }
+    } else if let Some(home) = std::env::var_os("HOME") {
+        out.push(PathBuf::from(home).join(".local/share/Steam"));
     }
     out
 }
@@ -706,4 +761,68 @@ fn vdf_paths(text: &str) -> Vec<PathBuf> {
 fn vdf_value(line: &str) -> Option<String> {
     let mut parts = line.split('"').skip(2).step_by(2);
     parts.next().map(|s| s.to_string())
+}
+
+/// Merge one embedded layer into a record schema.
+///
+/// The files are merged in the order the layer holds them, which is the
+/// order the directory's files are read in — sorted by name — so the schema
+/// this builds is the schema the directory would have given.
+fn merge_layer(schema: &mut nvre_esm::Schema, layer: &nvre_schemas::Layer) -> Result<(), String> {
+    for (name, text) in layer.files {
+        schema
+            .merge_str(text)
+            .map_err(|e| format!("{}/{name}: {e}", layer.name))?;
+    }
+    Ok(())
+}
+
+/// Merge a directory of schema files into a record schema.
+///
+/// The directory's own files are merged, and the base it carries is *not*:
+/// the base is already in the schema, and merging it twice would merge the
+/// base's own records twice over. A game directory carries a link to the
+/// base so that it is readable on its own, and this is what reads it without
+/// that link.
+fn merge_dir(schema: &mut nvre_esm::Schema, dir: &Path) -> Result<(), String> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    let rd = std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    for entry in rd.flatten() {
+        let path = entry.path();
+        if path.extension().is_some_and(|x| x == "json") {
+            files.push(path);
+        }
+    }
+    // The same order the directory's files are read in elsewhere.
+    files.sort();
+    for file in files {
+        let text =
+            std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+        let name = file
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        schema
+            .merge_str(&text)
+            .map_err(|e| format!("{}/{name}: {e}", dir.display()))?;
+    }
+    Ok(())
+}
+
+/// Merge one embedded layer into a NIF schema.
+///
+/// As with the record schemas: the files in the order the layer holds them.
+fn merge_nif_layer(
+    schema: &mut nvre_nif::Schema,
+    layer: Option<&nvre_schemas::Layer>,
+) -> Result<(), String> {
+    let Some(layer) = layer else {
+        return Ok(());
+    };
+    for (name, text) in layer.files {
+        schema
+            .merge_str(text)
+            .map_err(|e| format!("{}/{name}: {e}", layer.name))?;
+    }
+    Ok(())
 }

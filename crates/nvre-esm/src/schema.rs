@@ -530,6 +530,41 @@ fn parse_bit_mask(k: &str) -> Result<u64, ()> {
     u64::from_str_radix(k, 16).map_err(|_| ())
 }
 
+/// The base layer a game directory carries, if it has one.
+///
+/// A game directory holds a `base` entry that points at the base beside it:
+/// `schemas/fnv/base` is the base every game shares, and a game directory
+/// carries it so the directory is also readable on its own.
+///
+/// The entry is a symlink, and a Windows checkout without symlink support
+/// writes it as a small text file holding the target's path instead — so the
+/// base is found by *name*, beside the game directory, rather than by
+/// following the entry. A directory named `base` is the base itself and has
+/// no base of its own, and a `base` entry that is a real subdirectory rather
+/// than a link is not a base at all: merging it would merge the base twice.
+fn base_dir(dir: &Path) -> Option<PathBuf> {
+    if dir.file_name().is_some_and(|n| n == "base") {
+        return None;
+    }
+    let linked = dir.join("base");
+    if linked.is_dir() {
+        // A link resolves outside the directory it is in. A real
+        // subdirectory does not, and is not a base.
+        let outside = linked
+            .canonicalize()
+            .ok()
+            .is_some_and(|c| c != dir.join("base"));
+        if outside {
+            return Some(linked);
+        }
+    }
+    // The link is not a directory — a Windows checkout without symlinks, or
+    // a checkout without them at all. The base is the directory beside the
+    // game directory.
+    let sibling = dir.parent().map(|p| p.join("base"))?;
+    sibling.is_dir().then_some(sibling)
+}
+
 impl Schema {
     /// A schema with nothing in it.
     pub fn new() -> Schema {
@@ -543,18 +578,7 @@ impl Schema {
     /// is read first, and the directory's own files are laid over it.
     pub fn load_dir(dir: impl AsRef<Path>) -> Result<Schema, SchemaError> {
         let dir = dir.as_ref();
-        let linked_base = dir.join("base");
-        let base = if linked_base.is_dir()
-            && linked_base
-                .canonicalize()
-                .map(|c| c != dir.canonicalize().unwrap_or_default().join("base"))
-                .unwrap_or(false)
-        {
-            Some(linked_base.canonicalize().unwrap_or(linked_base))
-        } else {
-            None
-        };
-        let mut s = match &base {
+        let mut s = match base_dir(dir) {
             Some(b) => Schema::load_dir(b)?,
             None => Schema::new(),
         };

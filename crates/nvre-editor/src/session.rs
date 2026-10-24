@@ -21,15 +21,23 @@ use std::sync::{Arc, RwLock};
 /// Fallout directory because a second game's records may reference a type it
 /// defines.
 ///
-/// The chain is built by [`crate::game::GameProfile::load_schema`], which owns
-/// the directory layout. Reading the base alone for a Fallout 3 session would
-/// decode 3 subrecords as unknown and error on one more — the numbers that led
-/// to the game directories existing.
+/// The chain is built by [`crate::game::GameProfile::load_schema_over`], which
+/// owns the directory layout. Reading the base alone for a Fallout 3 session
+/// would decode 3 subrecords as unknown and error on one more — the numbers
+/// that led to the game directories existing.
+///
+/// The schemas themselves are compiled into the binary, so a built editor
+/// needs no repository beside it. `schema_dir` names a directory of schema
+/// files to read *instead of* the compiled-in base, which is how a developer
+/// points the editor at a layout they are still writing. The game's own
+/// layers are laid over it either way.
 fn load_schema(
-    _schema_dir: &std::path::Path,
+    schema_dir: &std::path::Path,
     game: &crate::game::GameProfile,
 ) -> Result<Schema, String> {
-    game.load_schema()
+    // An empty path is not a directory: it means the compiled-in schemas.
+    let base = (!schema_dir.as_os_str().is_empty()).then_some(schema_dir);
+    game.load_schema_over(base)
 }
 
 type CachedRecordList = Arc<[(u32, String)]>;

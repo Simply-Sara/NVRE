@@ -23,9 +23,10 @@ use std::path::PathBuf;
 #[derive(Parser, Clone, Resource)]
 #[command(name = "nvre-editor", version)]
 struct Args {
-    /// Record schema directory. NVRE's own: upstream's layouts plus the records
-    /// and subrecords they do not define (`schemas/README.md`). Defaults to the
-    /// detected game's own `schemas/<game>`.
+    /// Record schema directory to read instead of the ones compiled into the
+    /// binary. NVRE's own: upstream's layouts plus the records and subrecords
+    /// they do not define (`schemas/README.md`). Defaults to the built-in
+    /// schemas, which are the same layouts the repository holds.
     #[arg(long)]
     esm_schema: Option<PathBuf>,
     /// The plugin to edit. Defaults to the game's own master.
@@ -110,13 +111,16 @@ fn check_target(args: &Args) -> Result<(std::path::PathBuf, &'static game::GameP
     Ok((path, detected))
 }
 
-/// The record schemas: `--esm-schema` when named, otherwise the game's own.
-fn resolve_schema_dir(args: &Args, game: &game::GameProfile) -> PathBuf {
-    args.esm_schema.clone().unwrap_or_else(|| {
-        // The base FNV directory, which is what a session loads when the game
-        // has no overlay of its own.
-        game.schema_dirs().0
-    })
+/// The record schemas: `--esm-schema` when named, otherwise the ones compiled
+/// into the binary.
+///
+/// The built editor carries its schemas, so the default is no directory at
+/// all. A directory named on the command line is read from disk instead,
+/// which is how a developer points the editor at a layout they are still
+/// writing. The game's own layers are laid over it either way, so naming the
+/// base directory is enough.
+fn resolve_schema_dir(args: &Args) -> PathBuf {
+    args.esm_schema.clone().unwrap_or_default()
 }
 
 /// The masters the session will depend on, overridden by the flag.
@@ -196,7 +200,7 @@ fn main() {
                 std::process::exit(1);
             }
         };
-        let schema_dir = resolve_schema_dir(&args, profile);
+        let schema_dir = resolve_schema_dir(&args);
         let masters = resolve_masters(
             &args,
             profile,
@@ -453,7 +457,7 @@ fn open_selected(
         )));
         return;
     };
-    let schema_dir = resolve_schema_dir(&args, game);
+    let schema_dir = resolve_schema_dir(&args);
     for _ in events.read() {
         // The game's archives and NIF schema, opened once for the session.
         let assets = match game.open_asset_data(&data_dir) {

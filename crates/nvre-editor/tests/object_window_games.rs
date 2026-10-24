@@ -58,7 +58,7 @@ const EXPECTED: &[Expect] = &[
             "Actors",
             "Actor Data",
             "Items",
-            "Magic",
+            "Game Effects",
             "Special Effects",
             "WorldObjects",
             "Audio",

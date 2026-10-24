@@ -409,6 +409,12 @@ impl Schema {
         Ok(())
     }
 
+    /// Read a schema from a JSON document.
+    pub fn merge_str(&mut self, text: &str) -> Result<(), String> {
+        let j: Json = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        self.merge(&j)
+    }
+
     /// Merge one schema document into this schema.
     pub fn merge(&mut self, j: &Json) -> Result<(), String> {
         let Some(obj) = j.as_object() else {

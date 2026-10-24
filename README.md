@@ -246,6 +246,27 @@ cargo clippy -p fnv-esm -p nvre-edit --all-targets
 Set `NVRE_DATA` to the game's `Data` folder to run the tests that check against
 real masters (they skip otherwise, so CI needs no game data).
 
+### Windows
+
+The Windows editor is **one executable**. The record and NIF schemas are
+compiled into the binary by the `nvre-schemas` crate, so there is nothing to
+copy beside it, and the editor finds the game through Steam on Windows
+(`C:\Program Files (x86)\Steam`) just as it does on Linux.
+
+GitHub Actions builds it on every push (`.github/workflows/windows.yml`) and
+uploads `nvre-editor.exe` as an artifact. To build it yourself:
+
+```
+cargo build --release -p nvre-editor        # on Windows
+```
+
+or, from Linux or macOS, cross-compiled with [`cargo-xwin`](https://github.com/rust-cross/cargo-xwin):
+
+```
+cargo install cargo-xwin
+cargo xwin build --release -p nvre-editor --target x86_64-pc-windows-msvc
+```
+
 Two headless binaries measure the schema against real plugins, and are the
 fastest way to see where coverage stands:
 

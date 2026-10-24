@@ -4506,6 +4506,7 @@ dependencies = [
  "nvre-edit",
  "nvre-esm",
  "nvre-nif",
+ "nvre-schemas",
  "nvre-util",
  "nvre-vfs",
  "nvre-world",
@@ -4550,6 +4551,10 @@ dependencies = [
  "thiserror 2.0.21",
  "tracing",
 ]
+
+[[package]]
+name = "nvre-schemas"
+version = "0.1.0"
 
 [[package]]
 name = "nvre-util"
