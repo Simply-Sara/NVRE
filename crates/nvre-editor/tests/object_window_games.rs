@@ -58,7 +58,7 @@ const EXPECTED: &[Expect] = &[
             "Actors",
             "Actor Data",
             "Items",
-            "Magic",
+            "Game Effects",
             "Special Effects",
             "WorldObjects",
             "Audio",
@@ -197,7 +197,13 @@ fn every_game_files_its_objects_into_named_groups() {
             failures.push(format!("{}: {p}", game.id));
         }
     }
-    assert!(checked > 0, "no game was installed, so nothing was checked");
+    // A machine with no games installed has nothing to check, and that is
+    // not a failure: the test needs the game's own data. It is skipped so a
+    // CI runner without the games still reports green.
+    if checked == 0 {
+        eprintln!("skipped: no game is installed, so nothing was checked");
+        return;
+    }
     assert!(
         failures.is_empty(),
         "the object window does not work for every game:\n  {}",
@@ -230,4 +236,106 @@ fn every_games_schema_validates_and_files_its_own_groups() {
             game.id
         );
     }
+}
+
+/// Localized games resolve their names from their string tables.
+///
+/// A localized master — every shipped Skyrim and Fallout 4 — holds a
+/// record's `FULL` as a 4-byte string ID rather than text. Before the
+/// string tables were read, the palette showed those four ID bytes as
+/// text: `x&\x01` where "Dremora Valkynaz" belongs. The window's own
+/// rule is what this checks: a name is either the string the ID names or
+/// no name at all, never decoded ID bytes.
+#[test]
+fn localized_games_resolve_names_from_their_string_tables() {
+    // The Editor ID of a creature whose name is known, per game, and the
+    // name its string table holds.
+    let known: &[(&str, &str, &str)] = &[
+        ("skyrim", "EncDremoraWarlock06", "Dremora Valkynaz"),
+        ("skyrimse", "EncDremoraWarlock06", "Dremora Valkynaz"),
+        ("fo4", "Wolfgang", "Wolfgang"),
+    ];
+    let mut checked = 0;
+    let mut failures: Vec<String> = Vec::new();
+    for (id, edid, want) in known {
+        let Some(game) = GameProfile::by_id(id) else {
+            panic!("{id} is not a game profile");
+        };
+        let Some(mut s) = open(game) else {
+            eprintln!("skipped {id}: its master is not installed");
+            continue;
+        };
+        checked += 1;
+        let groups = s.object_groups("").to_vec();
+        let rows: Vec<_> = groups
+            .iter()
+            .flat_map(|g| &g.objects)
+            .filter(|r| r.edid == *edid)
+            .collect();
+        if rows.is_empty() {
+            failures.push(format!("no object with Editor ID {edid}"));
+            continue;
+        }
+        for row in &rows {
+            if row.name != *want {
+                failures.push(format!("{edid} is named {:?}, expected {want:?}", row.name));
+            }
+        }
+        // No name anywhere in the palette is decoded ID bytes: an
+        // unresolvable ID is no name, and a resolved one is text.
+        let noise: Vec<String> = groups
+            .iter()
+            .flat_map(|g| &g.objects)
+            .filter(|r| r.name.chars().any(|c| c.is_control()))
+            .map(|r| format!("{:08X} {:?}", r.fid, r.name))
+            .take(5)
+            .collect();
+        if !noise.is_empty() {
+            failures.push(format!(
+                "{} names hold control bytes: {}",
+                noise.len(),
+                noise.join(", ")
+            ));
+        }
+    }
+    // A machine with no localized game installed has nothing to check, and
+    // that is not a failure: the test needs the game's own data.
+    if checked == 0 {
+        eprintln!("skipped: no localized game is installed, so nothing was checked");
+        return;
+    }
+    assert!(
+        failures.is_empty(),
+        "localized names do not resolve:\n  {}",
+        failures.join("\n  ")
+    );
+}
+
+/// An unlocalized game's names are still text in the record.
+///
+/// New Vegas stores `FULL` as text, so its names must come through
+/// unchanged by the string-table path: the tables are never consulted for
+/// a plugin whose header is not localized.
+#[test]
+fn an_unlocalized_game_still_reads_its_names_as_text() {
+    let Some(game) = GameProfile::by_id("fnv") else {
+        panic!("fnv is not a game profile");
+    };
+    let Some(mut s) = open(game) else {
+        eprintln!("skipped fnv: its master is not installed");
+        return;
+    };
+    let groups = s.object_groups("").to_vec();
+    let named = groups
+        .iter()
+        .flat_map(|g| &g.objects)
+        .filter(|r| !r.name.is_empty())
+        .count();
+    // FNV's own count, pinned by the FNV-only test next door.
+    let total: usize = groups.iter().map(|g| g.objects.len()).sum();
+    assert_eq!(total, 44_550, "every FNV object is reachable");
+    assert!(
+        named > 10_000,
+        "only {named} of {total} FNV objects have a name, so the          unlocalized path stopped reading text"
+    );
 }

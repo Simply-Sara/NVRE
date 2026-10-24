@@ -742,23 +742,21 @@ fn encode_prim(p: Prim, value: &Value, out: &mut Vec<u8>, path: &str) -> Result<
             out.push(0);
         }
         Prim::Bytes => out.extend_from_slice(&hex_bytes(value, path)?),
-        Prim::Localized => {
-            match value {
-                Value::Number(n) => {
-                    let id = n
-                        .as_u64()
-                        .ok_or_else(|| kind_err(path, "string id", value))?;
-                    write_uint(Prim::U32, id, out, path)?;
-                }
-                Value::String(s) => {
-                    out.extend_from_slice(&cp1252(s, path)?);
-                    if !s.ends_with('\0') {
-                        out.push(0);
-                    }
-                }
-                _ => return Err(kind_err(path, "string or string id", value)),
+        Prim::Localized => match value {
+            Value::Number(n) => {
+                let id = n
+                    .as_u64()
+                    .ok_or_else(|| kind_err(path, "string id", value))?;
+                write_uint(Prim::U32, id, out, path)?;
             }
-        }
+            Value::String(s) => {
+                out.extend_from_slice(&cp1252(s, path)?);
+                if !s.ends_with('\0') {
+                    out.push(0);
+                }
+            }
+            _ => return Err(kind_err(path, "string or string id", value)),
+        },
     }
     Ok(())
 }
@@ -1186,7 +1184,14 @@ pub fn roundtrips_in_block(
     let Some(value) = decoded_in_block(schema, rec_sig, sub, block) else {
         return false;
     };
-    match encode_sub_len_in_block(schema, rec_sig, &sub.sig, &value, Some(sub.data.len()), block) {
+    match encode_sub_len_in_block(
+        schema,
+        rec_sig,
+        &sub.sig,
+        &value,
+        Some(sub.data.len()),
+        block,
+    ) {
         Ok(bytes) => bytes == sub.data,
         Err(_) => false,
     }
@@ -1223,7 +1228,7 @@ pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec
     let Some(def) = schema.lookup(rec_sig, sub_sig) else {
         return Vec::new();
     };
-    fn walk(schema: &Schema, t: &TypeDef, prefix: &str, out: &mut Vec<String>) {
+    fn walk(t: &TypeDef, prefix: &str, out: &mut Vec<String>) {
         match t {
             TypeDef::Struct(fields) => {
                 for f in fields {
@@ -1233,25 +1238,25 @@ pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec
                         format!("{prefix}.{}", f.name)
                     };
                     out.push(path.clone());
-                    walk(schema, &f.ty, &path, out);
+                    walk(&f.ty, &path, out);
                 }
             }
-            TypeDef::Array { elem, .. } => walk(schema, elem, prefix, out),
+            TypeDef::Array { elem, .. } => walk(elem, prefix, out),
             TypeDef::Union(variants) => {
                 for (_, vt) in variants {
-                    walk(schema, vt, prefix, out);
+                    walk(vt, prefix, out);
                 }
             }
             TypeDef::PeekUnion { variants, .. } | TypeDef::ValueUnion { variants, .. } => {
                 for vt in variants {
-                    walk(schema, vt, prefix, out);
+                    walk(vt, prefix, out);
                 }
             }
             _ => {}
         }
     }
     let mut out = Vec::new();
-    walk(schema, &schema.resolve_def(&def.ty), "", &mut out);
+    walk(&schema.resolve_def(&def.ty), "", &mut out);
     out.sort();
     out.dedup();
     // A bare scalar (or an opaque `bytes`) has no inner fields, so the whole

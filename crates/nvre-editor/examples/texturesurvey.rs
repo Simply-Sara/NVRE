@@ -40,8 +40,11 @@ fn main() {
     let mut examples: Vec<String> = Vec::new();
 
     // NIF_FILTER narrows the survey to paths holding a substring.
-    let filter = std::env::var("NIF_FILTER").unwrap_or_default().to_lowercase();
-    for p in vfs.paths(|p| p.to_lowercase().ends_with(".nif") && p.to_lowercase().contains(&filter)) {
+    let filter = std::env::var("NIF_FILTER")
+        .unwrap_or_default()
+        .to_lowercase();
+    for p in vfs.paths(|p| p.to_lowercase().ends_with(".nif") && p.to_lowercase().contains(&filter))
+    {
         let Some(Ok(bytes)) = vfs.read(p.as_str()) else {
             continue;
         };
@@ -133,8 +136,12 @@ fn main() {
     println!("{files} meshes, {shapes} shapes");
     println!("  textured:   {textured}");
     println!("  untextured: {untextured}");
-    println!("    texture in NiTexturingProperty.base_texture (not read): {via_texturing_property}");
-    println!("    texture in shader property's file_name (not read):      {via_no_lighting_file_name}");
+    println!(
+        "    texture in NiTexturingProperty.base_texture (not read): {via_texturing_property}"
+    );
+    println!(
+        "    texture in shader property's file_name (not read):      {via_no_lighting_file_name}"
+    );
     println!("    no texture anywhere:                                   {nowhere}");
     println!("  alpha blend asked for by NiAlphaProperty: {blend_asked}, ignored: {blend_ignored}");
     for e in examples {

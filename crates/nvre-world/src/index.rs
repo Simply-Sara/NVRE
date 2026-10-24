@@ -219,14 +219,7 @@ impl WorldIndex {
     }
 
     /// Add a worldspace.
-    fn add_world(
-        &mut self,
-        lo: &LoadOrder,
-        schema: &Schema,
-        pi: usize,
-        r: &Record,
-        fid: u32,
-    ) {
+    fn add_world(&mut self, lo: &LoadOrder, schema: &Schema, pi: usize, r: &Record, fid: u32) {
         let f = match Fields::new(r, pi, schema) {
             Ok(f) => f,
             Err(e) => return self.errors.push((fid, e.to_string())),
@@ -277,9 +270,9 @@ impl WorldIndex {
             .get(b"DATA")
             .and_then(|v| num(&v, "value"))
             .map_or(0, |v| v as u8);
-        c.grid = f.get(b"XCLC").and_then(|v| {
-            Some((num(&v, "x")? as i32, num(&v, "y")? as i32))
-        });
+        c.grid = f
+            .get(b"XCLC")
+            .and_then(|v| Some((num(&v, "x")? as i32, num(&v, "y")? as i32)));
         c.water_height = f.get(b"XCLW").and_then(|v| v.as_f64()).map(|v| v as f32);
         c.water_type = f.formid(b"XCWT", lo);
         // A cell directly inside the world-children group (no block group
@@ -287,10 +280,7 @@ impl WorldIndex {
         // worldspace, see world.md].
         if let (Some(w), Some(last)) = (world, stack.last()) {
             if last.group_type == group_type::WORLD_CHILDREN {
-                self.worldspaces
-                    .entry(w)
-                    .or_default()
-                    .persistent_cell = Some(fid);
+                self.worldspaces.entry(w).or_default().persistent_cell = Some(fid);
             }
         }
     }
@@ -302,9 +292,11 @@ impl WorldIndex {
                 return Some(w);
             }
         }
-        self.worldspaces
-            .values()
-            .find(|w| w.edid.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(name)))
+        self.worldspaces.values().find(|w| {
+            w.edid
+                .as_deref()
+                .is_some_and(|e| e.eq_ignore_ascii_case(name))
+        })
     }
 
     /// The cell with the given name, by FormID or by editor ID.
@@ -314,9 +306,11 @@ impl WorldIndex {
                 return Some(c);
             }
         }
-        self.cells
-            .values()
-            .find(|c| c.edid.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(name)))
+        self.cells.values().find(|c| {
+            c.edid
+                .as_deref()
+                .is_some_and(|e| e.eq_ignore_ascii_case(name))
+        })
     }
 }
 

@@ -139,21 +139,24 @@ impl Document {
         masters: &[String],
     ) -> Result<Document, EsmError> {
         let mut subs = Vec::new();
-        // HEDR subrecord: version (1.34), num_records (0), next_object_id (0x00000800)
+        // HEDR subrecord: version (1.34), num_records (0), next_object_id.
+        // The next object ID is an offset into the plugin's own FormID space, so
+        // it is the same value GECK writes for a fresh plugin.
         let mut hedr = Vec::new();
         hedr.extend_from_slice(&1.34f32.to_le_bytes());
         hedr.extend_from_slice(&0i32.to_le_bytes());
-        hedr.extend_from_slice(&0x800u32.to_le_bytes());
+        hedr.extend_from_slice(&0x0000_0ADDu32.to_le_bytes());
         subs.push(nvre_esm::raw::Subrecord {
             sig: *b"HEDR",
             data: hedr,
             extended: false,
         });
 
-        // CNAM author
+        // CNAM: the author. GECK writes `DEFAULT` for a plugin nobody has
+        // claimed, and the game shows the string in its file listings.
         subs.push(nvre_esm::raw::Subrecord {
             sig: *b"CNAM",
-            data: b"NVRE\0".to_vec(),
+            data: b"DEFAULT\0".to_vec(),
             extended: false,
         });
 
@@ -211,6 +214,15 @@ impl Document {
 
     pub fn is_master(&self) -> bool {
         self.plugin.header.is_master()
+    }
+
+    /// Whether the plugin's strings are string IDs rather than text.
+    ///
+    /// A localized plugin's `FULL` is a 4-byte string ID into its string
+    /// tables, so a record's name is resolved through them rather than read
+    /// from the payload.
+    pub fn is_localized(&self) -> bool {
+        self.plugin.header.is_localized()
     }
 
     /// Every record in file order, with its FormID.
@@ -513,9 +525,9 @@ fn apply_edits(r: &mut Record, edits: &[Edit]) {
                 r.raw = if r.is_compressed() {
                     let mut v = (payload.len() as u32).to_le_bytes().to_vec();
                     v.extend_from_slice(&nvre_inflate::zlib_store(&payload));
-                    v.into()
+                    v
                 } else {
-                    payload.into()
+                    payload
                 };
             }
             Err(e) => {
@@ -702,7 +714,7 @@ pub fn make_placed_record(
             form_version: 15,
             vc_info2: 0,
         },
-        raw: payload.into(),
+        raw: payload,
         subrecords: Vec::new(),
         offset: 0,
     }
@@ -753,10 +765,15 @@ pub struct RecordRow {
 }
 
 /// Every record, as browser rows (EDID and FULL read straight from the payloads).
-pub fn rows(plugin: &Plugin) -> Vec<RecordRow> {
+///
+/// `strings` is this plugin's string table when it is localized — see
+/// [`nvre_esm::strings`]. A localized `FULL` is a string ID rather than
+/// text, so without the table its `full` is `None` rather than four bytes
+/// of decoded noise.
+pub fn rows(plugin: &Plugin, strings: Option<&nvre_esm::strings::StringTable>) -> Vec<RecordRow> {
     let mut out = Vec::new();
     nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
-        let (edid, full) = nvre_esm::inventory::names(r).unwrap_or((None, None));
+        let (edid, full) = nvre_esm::inventory::names(r, strings).unwrap_or((None, None));
         out.push(RecordRow {
             form_id: r.header.form_id,
             sig: r.sig_str(),

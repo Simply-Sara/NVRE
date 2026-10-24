@@ -24,7 +24,9 @@ fn main() {
     };
     let vfs =
         nvre_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).expect("the archives");
-    let filter = std::env::var("NIF_FILTER").unwrap_or_default().to_lowercase();
+    let filter = std::env::var("NIF_FILTER")
+        .unwrap_or_default()
+        .to_lowercase();
 
     // Which field names got a string, and how often.
     let mut by_field: BTreeMap<String, u64> = BTreeMap::new();

@@ -105,6 +105,10 @@
     "group": "Items",
     "editor": "cmny"
    },
+   "COBJ": {
+    "group": "Items",
+    "editor": "cobj"
+   },
    "CONT": {
     "group": "WorldObjects",
     "editor": "cont"

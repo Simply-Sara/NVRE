@@ -40,10 +40,7 @@ fn main() {
         let base = dirs.remove(0);
         let mut all = vec![base];
         all.extend(dirs);
-        Schema::load_game(
-            std::path::Path::new(&all[0]),
-            &all[1..].to_vec(),
-        )
+        Schema::load_game(std::path::Path::new(&all[0]), &all[1..])
     };
     let schema = match schema {
         Ok(s) => s,

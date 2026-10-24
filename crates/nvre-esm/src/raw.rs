@@ -245,8 +245,6 @@ pub struct Group {
     pub offset: u64,
 }
 
-
-
 impl Group {
     /// The group's contents, as one list: the records and the groups in the
     /// order they are in the file.
@@ -291,11 +289,11 @@ pub struct PluginHeader {
     pub version: f32,
     /// `HEDR`: the number of records and groups, less the header record.
     pub num_records: i32,
-    /// `CNST`: the next object ID the plugin will use.
+    /// `HEDR`: the next object ID the plugin will use.
     pub next_object_id: u32,
-    /// `CNST`: the plugin's author.
+    /// `CNAM`: the plugin's author.
     pub author: Option<String>,
-    /// `CNST`: the plugin's description.
+    /// `SNAM`: the plugin's description.
     pub description: Option<String>,
     /// `MAST`: the masters the plugin depends on.
     pub masters: Vec<MasterRef>,
@@ -339,18 +337,23 @@ impl PluginHeader {
 
 /// Read a plugin file's structure.
 ///
-/// The result is the header and the top-level groups. Every payload is kept
-/// as it was, so the file can be written back unchanged.
-pub fn parse(data: &[u8]) -> Result<(PluginHeader, Vec<Group>), EsmError> {
+/// The result is the header, the top-level groups, and the header **record** —
+/// the `TES4` as a node, which is what the writer walks as the file's first
+/// entry. Every payload is kept as it was, so the file can be written back
+/// unchanged.
+pub fn parse(data: &[u8]) -> Result<(PluginHeader, Vec<Group>, Record), EsmError> {
     let mut c = Cursor::new(data);
     // The header: a TES4 record.
-    let header = parse_header(&mut c, data)?;
+    let (header, header_record) = parse_header(&mut c, data)?;
     let groups = parse_groups(&mut c, data, 0)?;
-    Ok((header, groups))
+    Ok((header, groups, header_record))
 }
 
 /// Read the `TES4` record.
-fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmError> {
+///
+/// Returns the parsed header and the header as a record, which is what
+/// [`Plugin::nodes`] holds first.
+fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<(PluginHeader, Record), EsmError> {
     let start = c.pos;
     let oob = |e: nvre_util::OutOfBounds| EsmError::Structure {
         offset: start as u64,
@@ -366,9 +369,9 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
     let data_size = c.u32().map_err(oob)?;
     let flags = c.u32().map_err(oob)?;
     let form_id = c.u32().map_err(oob)?;
-    let _vc_info = c.u32().map_err(oob)?;
+    let vc_info = c.u32().map_err(oob)?;
     let form_version = c.u16().map_err(oob)?;
-    let _vc_info2 = c.u16().map_err(oob)?;
+    let vc_info2 = c.u16().map_err(oob)?;
     // The header is 24 bytes in total, the signature included, so the
     // payload starts 20 bytes after the signature.
     let end = start + RECORD_HEADER_SIZE + data_size as usize;
@@ -378,6 +381,23 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
             offset: start as u64,
             msg: "the TES4 record's payload is out of range".into(),
         })?;
+    // The record itself, as the node list's first entry: `Plugin::nodes` is what
+    // the writer walks, and a plugin whose first node is not its own `TES4` is
+    // not a plugin.
+    let header_record = Record {
+        header: RecordHeader {
+            sig: *b"TES4",
+            data_size,
+            flags,
+            form_id,
+            vc_info,
+            form_version,
+            vc_info2,
+        },
+        subrecords: Vec::new(),
+        raw: body.to_vec(),
+        offset: start as u64,
+    };
     // The header's fields: a four-byte type, a 16-bit size, and the bytes.
     let mut fields = Vec::new();
     let mut at = 0usize;
@@ -407,18 +427,20 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
         .and_then(|v| v.get(4..8))
         .map(|v| i32::from_le_bytes([v[0], v[1], v[2], v[3]]))
         .unwrap_or(0);
-    let next_object_id = field("CNST")
-        .and_then(|v| v.get(..4))
+    // `HEDR` is version, record count and next object ID together, and `CNAM` /
+    // `SNAM` are the author and description [documented: fopdoc's FalloutNV TES4
+    // page]. No shipped master carries a `CNST` or `DESC`, so reading those names
+    // left every field at its default.
+    let next_object_id = field("HEDR")
+        .and_then(|v| v.get(8..12))
         .map(|v| u32::from_le_bytes([v[0], v[1], v[2], v[3]]))
         .unwrap_or(0);
-    let author = field("CNST").map(|v| {
+    let zstring = |v: &Vec<u8>| {
         let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
         nvre_util::cp1252::decode(&v[..end])
-    });
-    let description = field("DESC").map(|v| {
-        let end = v.iter().position(|&b| b == 0).unwrap_or(v.len());
-        nvre_util::cp1252::decode(&v[..end])
-    });
+    };
+    let author = field("CNAM").map(zstring);
+    let description = field("SNAM").map(zstring);
     // The masters: each `MAST` holds the master's name and a number.
     let mut masters = Vec::new();
     let mast_bytes: Vec<Vec<u8>> = fields
@@ -441,25 +463,30 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<PluginHeader, EsmErro
     }
     let overridden_forms = field("ONAM")
         .map(|v| {
-            v.chunks_exact(4)
+            v.as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
                 .collect()
         })
         .unwrap_or_default();
-    Ok(PluginHeader {
-        fields,
-        form_id,
-        flags,
-        form_version,
-        version,
-        num_records,
-        next_object_id,
-        author,
-        description,
-        masters,
-        overridden_forms,
-        other: Vec::new(),
-    })
+    Ok((
+        PluginHeader {
+            fields,
+            form_id,
+            flags,
+            form_version,
+            version,
+            num_records,
+            next_object_id,
+            author,
+            description,
+            masters,
+            overridden_forms,
+            other: Vec::new(),
+        },
+        header_record,
+    ))
 }
 
 /// Read groups until the file ends.
@@ -488,11 +515,7 @@ fn parse_groups(c: &mut Cursor<'_>, data: &[u8], _depth: usize) -> Result<Vec<Gr
 ///
 /// The two kinds of thing may be interleaved, so the group is read in one
 /// walk rather than in two.
-fn parse_contents(
-    c: &mut Cursor<'_>,
-    data: &[u8],
-    end: usize,
-) -> Result<Vec<Node>, EsmError> {
+fn parse_contents(c: &mut Cursor<'_>, data: &[u8], end: usize) -> Result<Vec<Node>, EsmError> {
     let mut children = Vec::new();
     loop {
         let start = c.pos;
@@ -528,9 +551,9 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
     let label = c.tag().map_err(oob)?;
     let group_type = c.i32().map_err(oob)?;
     let stamp = c.u16().map_err(oob)?;
-    let _unknown1 = c.u16().map_err(oob)?;
+    let unknown1 = c.u16().map_err(oob)?;
     let version = c.u16().map_err(oob)?;
-    let _unknown2 = c.u16().map_err(oob)?;
+    let unknown2 = c.u16().map_err(oob)?;
     // The group holds records, and the header says how long it is.
     let gend = start
         .checked_add(size as usize)
@@ -549,9 +572,9 @@ fn parse_group(c: &mut Cursor<'_>, data: &[u8], start: usize) -> Result<Group, E
             label,
             group_type,
             stamp,
-            unknown1: 0,
+            unknown1,
             version,
-            unknown2: 0,
+            unknown2,
         },
         children,
         offset: start as u64,
@@ -604,7 +627,12 @@ fn parse_record(
     let form_version = c.u16()?;
     let vc_info2 = c.u16()?;
     let header = RecordHeader {
-        sig: [data[start], data[start + 1], data[start + 2], data[start + 3]],
+        sig: [
+            data[start],
+            data[start + 1],
+            data[start + 2],
+            data[start + 3],
+        ],
         data_size,
         flags,
         form_id,
@@ -654,7 +682,7 @@ pub fn is_zlib_header(b: &[u8]) -> bool {
     if cmf & 0x0f != 8 {
         return false;
     }
-    if ((cmf as u16) * 256 + flg as u16) % 31 != 0 {
+    if !((cmf as u16) * 256 + flg as u16).is_multiple_of(31) {
         return false;
     }
     // A preset dictionary is not used here, and the header must not say so.
@@ -745,10 +773,7 @@ pub fn payload_checked(
             });
     }
     if !record.is_compressed() {
-        return Ok((
-            Cow::Borrowed(&record.raw),
-            nvre_inflate::Trailer::Verified,
-        ));
+        return Ok((Cow::Borrowed(&record.raw), nvre_inflate::Trailer::Verified));
     }
     // A compressed record's payload is a u32 decompressed size and then a
     // zlib stream.
@@ -903,8 +928,9 @@ pub fn write_group(g: &Group, out: &mut Vec<u8>) {
     out.extend_from_slice(&h.label);
     out.extend_from_slice(&h.group_type.to_le_bytes());
     out.extend_from_slice(&h.stamp.to_le_bytes());
+    out.extend_from_slice(&h.unknown1.to_le_bytes());
     out.extend_from_slice(&h.version.to_le_bytes());
-    out.extend_from_slice(&[0u8; 4]);
+    out.extend_from_slice(&h.unknown2.to_le_bytes());
     for r in g.records() {
         write_record(r, out);
     }
@@ -932,10 +958,7 @@ pub fn write_record(r: &Record, out: &mut Vec<u8>) {
 ///
 /// The groups are the ones between the file's top and the record, nearest
 /// first, and what is given is each group's header.
-pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
-    groups: &'a [Group],
-    f: &mut F,
-) {
+pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(groups: &'a [Group], f: &mut F) {
     let mut path: Vec<&GroupHeader> = Vec::new();
     for g in groups {
         visit_in_group(g, &mut path, f);
@@ -944,10 +967,7 @@ pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
 
 /// Depth-first visit of every record in a list of nodes, with the chain of
 /// enclosing group headers.
-pub fn visit_nodes<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
-    nodes: &'a [Node],
-    f: &mut F,
-) {
+pub fn visit_nodes<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(nodes: &'a [Node], f: &mut F) {
     let mut path: Vec<&GroupHeader> = Vec::new();
     for n in nodes {
         match n {

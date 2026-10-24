@@ -260,7 +260,11 @@ pub fn cells(
             .sense(egui::Sense::click())
             .resizable(true)
             .id_salt("cells_table")
-            .column(egui_extras::Column::initial(260.0).at_least(140.0).clip(true))
+            .column(
+                egui_extras::Column::initial(260.0)
+                    .at_least(140.0)
+                    .clip(true),
+            )
             .column(egui_extras::Column::initial(90.0).at_least(80.0))
             .column(egui_extras::Column::remainder().resizable(false).clip(true))
             .column(egui_extras::Column::initial(110.0).at_least(90.0))
@@ -288,8 +292,11 @@ pub fn cells(
                     // did, over the full row instead.
                     row_ui.set_selected(open);
                     row_ui.col(|ui| {
-                        ui.label(c.editor_id())
-                            .on_hover_text(format!("open {} ({} refs)", c.editor_id(), c.refs));
+                        ui.label(c.editor_id()).on_hover_text(format!(
+                            "open {} ({} refs)",
+                            c.editor_id(),
+                            c.refs
+                        ));
                     });
                     let resp = row_ui.response();
                     if resp.clicked() {
@@ -616,10 +623,19 @@ pub fn references(
             .sense(egui::Sense::click())
             .resizable(true)
             .id_salt("references_table")
-            .column(egui_extras::Column::remainder().resizable(false).at_least(160.0).clip(true))
+            .column(
+                egui_extras::Column::remainder()
+                    .resizable(false)
+                    .at_least(160.0)
+                    .clip(true),
+            )
             .column(egui_extras::Column::initial(90.0).at_least(80.0))
             .column(egui_extras::Column::initial(110.0).at_least(80.0))
-            .column(egui_extras::Column::initial(130.0).at_least(90.0).clip(true))
+            .column(
+                egui_extras::Column::initial(130.0)
+                    .at_least(90.0)
+                    .clip(true),
+            )
             .column(egui_extras::Column::initial(70.0).at_least(50.0))
             .header(18.0, |mut header| {
                 header.col(|ui| {
@@ -1087,7 +1103,6 @@ const CATEGORY_WIDTH: f32 = 180.0;
 /// The gap between the palette's two columns, wide enough for a separator.
 const SEPARATOR_GAP: f32 = 8.0;
 
-
 /// The object palette: a category list down the left side, that category's
 /// objects on the right.
 ///
@@ -1237,7 +1252,11 @@ pub fn place(
             .sense(egui::Sense::click_and_drag())
             .resizable(true)
             .id_salt("objects_table")
-            .column(egui_extras::Column::initial(240.0).at_least(120.0).clip(true))
+            .column(
+                egui_extras::Column::initial(240.0)
+                    .at_least(120.0)
+                    .clip(true),
+            )
             .column(egui_extras::Column::initial(90.0).at_least(80.0))
             .column(egui_extras::Column::remainder().resizable(false).clip(true))
             .header(18.0, |mut header| {

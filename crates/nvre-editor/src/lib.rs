@@ -12,6 +12,7 @@ pub mod object_drag;
 pub mod object_editor;
 pub mod panels;
 pub mod session;
+pub mod strings;
 pub mod viewport;
 pub mod windows;
 

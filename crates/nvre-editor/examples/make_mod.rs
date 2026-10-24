@@ -3,10 +3,10 @@
 //! Run with:
 //!   NVRE_DATA=<Data> cargo run -p nvre-editor --example make_mod -- <out.esp>
 
-use nvre_esm::Schema;
 use nvre_edit::document::PendingRecord;
 use nvre_edit::save::{write_plugin, MasterList};
 use nvre_edit::Document;
+use nvre_esm::Schema;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data = std::env::var("NVRE_DATA")?;

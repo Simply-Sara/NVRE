@@ -43,6 +43,14 @@ pub struct ObjectEditorState {
     pub sig: [u8; 4],
     pub edid: String,
     pub full_name: String,
+    /// Whether `FULL` is a 4-byte string ID rather than text — which is what
+    /// a localized plugin holds.
+    ///
+    /// The name shown is the ID resolved through the plugin's string table,
+    /// but saving writes the record's own bytes back: a localized name is
+    /// authored in the string table, not in the record, so editing this text
+    /// field cannot change what the game shows.
+    pub full_name_localized: bool,
     pub model: String,
     pub script: Option<u32>,
     pub record_flags: u32,
@@ -4629,20 +4637,27 @@ impl ObjectEditorState {
         self.tab = EditorTab::Main;
         self.status = format!("Loaded {} {:08X}", nvre_util::tag_str(&sig), form_id);
 
-        let (raw_subs, flags, found) = if let Some(rec) = session.doc.record(form_id) {
-            (rec.subrecords().unwrap_or_default(), rec.header.flags, true)
+        let (raw_subs, flags, found, source) = if let Some(rec) = session.doc.record(form_id) {
+            (
+                rec.subrecords().unwrap_or_default(),
+                rec.header.flags,
+                true,
+                Some((session.doc.name().to_string(), session.doc.is_localized())),
+            )
         } else if let Ok(lo) = session.load_order() {
-            if let Some((_, orig)) = nvre_world::fields::winner(lo, form_id) {
+            if let Some((pi, orig)) = nvre_world::fields::winner(lo, form_id) {
+                let plugin = &lo.plugins[pi];
                 (
                     orig.subrecords().unwrap_or_default(),
                     orig.header.flags,
                     true,
+                    Some((plugin.name.clone(), plugin.header.is_localized())),
                 )
             } else {
-                (Vec::new(), 0, false)
+                (Vec::new(), 0, false, None)
             }
         } else {
-            (Vec::new(), 0, false)
+            (Vec::new(), 0, false, None)
         };
 
         if !found {
@@ -4891,7 +4906,29 @@ impl ObjectEditorState {
 
         // Common strings & FormIDs
         self.edid = self.get_string(b"EDID");
-        self.full_name = self.get_string(b"FULL");
+        // A localized plugin's `FULL` is a 4-byte string ID, so the name the
+        // modder sees is that ID resolved through the plugin's string table.
+        // The bytes stay in `raw_subs` and are what a save writes back —
+        // a localized name is authored in the string table, not in the
+        // record — so `full_name_localized` marks the field display-only.
+        let (plugin_name, localized) = source.unwrap_or_default();
+        self.full_name_localized = localized
+            && self
+                .raw_subs
+                .get(b"FULL")
+                .is_some_and(|b| nvre_esm::strings::string_id(b).is_some());
+        self.full_name = if self.full_name_localized {
+            let id = nvre_esm::strings::string_id(self.raw_subs.get(b"FULL").expect("checked"))
+                .expect("checked");
+            session
+                .strings
+                .for_plugin(&plugin_name, true)
+                .and_then(|t| t.get(id))
+                .unwrap_or_default()
+                .to_string()
+        } else {
+            self.get_string(b"FULL")
+        };
         self.model = self.get_string(b"MODL");
         self.script = self.get_fid(b"SCRI");
 
@@ -9325,14 +9362,19 @@ impl ObjectEditorState {
             session.doc.remove_sub(fid, b"EDID");
         }
         if self.raw_subs.contains_key(b"FULL") {
-            session.doc.set_sub(
-                fid,
-                b"FULL",
+            // A localized name is a string ID in the record and its text in
+            // the plugin's string table, so what is written back is the
+            // record's own bytes: the display text cannot change the ID, and
+            // encoding it would replace the ID with the resolved name.
+            let bytes = if self.full_name_localized {
+                self.raw_subs.get(b"FULL").cloned().unwrap_or_default()
+            } else {
                 encode_text_kept(
                     self.raw_subs.get(b"FULL").map(|v| v.as_slice()),
                     &self.full_name,
-                ),
-            );
+                )
+            };
+            session.doc.set_sub(fid, b"FULL", bytes);
         } else if !self.full_name.trim().is_empty() {
             session
                 .doc

@@ -264,7 +264,9 @@ impl Archive {
         let mut head = vec![0u8; HEADER_SIZE];
         file.read_exact(&mut head)?;
         let mut c = Cursor::new(&head);
-        let magic = c.tag().map_err(|_| Ba2Error::NotBa2("the file is shorter than a header".into()))?;
+        let magic = c
+            .tag()
+            .map_err(|_| Ba2Error::NotBa2("the file is shorter than a header".into()))?;
         if magic != MAGIC {
             return Err(Ba2Error::NotBa2(format!(
                 "the magic is {}, not BTDX",
@@ -326,10 +328,12 @@ impl Archive {
         };
         let payload = self.read_payload(offset, len)?;
         let data = if compressed {
-            zlib_decompress(&payload, Some(entry.unpacked_size as usize)).map_err(|_| Ba2Error::Record {
-                index: entry.index,
-                name: entry.path.clone(),
-                kind: RecordError::NotZlib,
+            zlib_decompress(&payload, Some(entry.unpacked_size as usize)).map_err(|_| {
+                Ba2Error::Record {
+                    index: entry.index,
+                    name: entry.path.clone(),
+                    kind: RecordError::NotZlib,
+                }
             })?
         } else {
             payload
@@ -355,10 +359,12 @@ impl Archive {
             let data = if chunk.packed_size == 0 {
                 payload
             } else {
-                zlib_decompress(&payload, Some(chunk.unpacked_size as usize)).map_err(|_| Ba2Error::Record {
-                    index: entry.index,
-                    name: entry.path.clone(),
-                    kind: RecordError::NotZlib,
+                zlib_decompress(&payload, Some(chunk.unpacked_size as usize)).map_err(|_| {
+                    Ba2Error::Record {
+                        index: entry.index,
+                        name: entry.path.clone(),
+                        kind: RecordError::NotZlib,
+                    }
                 })?
             };
             out.extend_from_slice(&data);
@@ -701,14 +707,14 @@ fn mip0_size(format: u8, w: u32, h: u32) -> usize {
     let block = |b: usize| w.div_ceil(4).max(1) as usize * h.div_ceil(4).max(1) as usize * b;
     let bpp = |bits: usize| (w as usize * h as usize * bits).div_ceil(8);
     match format {
-        71 => block(8),   // BC1
-        74 => block(16),  // BC2
-        77 => block(16),  // BC3
-        80 => block(8),   // BC4
-        83 => block(16),  // BC5
+        71 => block(8),       // BC1
+        74 => block(16),      // BC2
+        77 => block(16),      // BC3
+        80 => block(8),       // BC4
+        83 => block(16),      // BC5
         98 | 99 => block(16), // BC7
-        28 => bpp(32),    // R8G8B8A8
-        _ => block(16),   // the common case for an unknown format
+        28 => bpp(32),        // R8G8B8A8
+        _ => block(16),       // the common case for an unknown format
     }
 }
 

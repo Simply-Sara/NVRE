@@ -371,13 +371,6 @@ pub fn read_prim(
             }
             Value::List(v)
         }
-        Prim::Mat33 => {
-            let mut v = Vec::with_capacity(9);
-            for _ in 0..9 {
-                v.push(Value::Num(r.f32()? as f64));
-            }
-            Value::List(v)
-        }
         Prim::Mat34 => {
             let mut v = Vec::with_capacity(12);
             for _ in 0..12 {

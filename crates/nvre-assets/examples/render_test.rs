@@ -41,7 +41,10 @@ fn main() {
         .get(2)
         .cloned()
         .unwrap_or_else(|| "meshes\\clutter\\bobblehead\\vaultboy.nif".into());
-    let out = args.get(3).cloned().unwrap_or_else(|| "/tmp/nif-render.png".into());
+    let out = args
+        .get(3)
+        .cloned()
+        .unwrap_or_else(|| "/tmp/nif-render.png".into());
 
     let data_dir = data_dir(&game).expect("the game's Data folder");
     println!("the data folder: {}", data_dir.display());
@@ -58,19 +61,17 @@ fn main() {
             frames: 0,
         })
         .insert_resource(ClearColor(Color::srgb_u8(20, 22, 28)))
-        .add_plugins(
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "NVRE render test".into(),
-                    resolution: (960, 720).into(),
-                    ..default()
-                }),
-                // Do not exit for want of a window; the run ends when the
-                // window is closed.
-                exit_condition: ExitCondition::DontExit,
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "NVRE render test".into(),
+                resolution: (960, 720).into(),
                 ..default()
             }),
-        )
+            // Do not exit for want of a window; the run ends when the
+            // window is closed.
+            exit_condition: ExitCondition::DontExit,
+            ..default()
+        }))
         .add_plugins(nvre_assets::nif_material::NifMaterialPlugin)
         .init_resource::<nvre_assets::model::ModelCache>()
         .init_resource::<nvre_assets::texture::TextureCache>()
@@ -128,7 +129,6 @@ fn setup(mut commands: Commands, test: Res<RenderTest>) {
         },
         Transform::from_xyz(0.0, 2.0, 6.0),
     ));
-
 }
 
 /// Load the model, and draw it.

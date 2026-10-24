@@ -15,9 +15,6 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # No submodule checkout: NVForever is a git dependency, not a path one, so
-    # cargo fetches it itself. The forks in crates/fnv-esm and crates/fnv-world
-    # are substituted with [patch] and need nothing from the submodule.
     steps:
       - uses: actions/checkout@v4
 
@@ -40,15 +37,17 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Format
-        # Only NVRE's own crates. crates/fnv-esm and crates/fnv-world are forks
-        # kept byte-identical to upstream, so their diff against NVForever stays
-        # small and reviewable; reformatting them would destroy that.
-        run: cargo fmt -p nvre-edit -p nvre-editor -- --check
+        # The whole tree. It is rustfmt-clean, and a crate that is left
+        # unformatted is a crate the next person has to reformat.
+        run: cargo fmt --all -- --check
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      # `--workspace` includes the Bevy editor, whose link time dominates CI for
-      # no gain; the format and edit-path crates are where the logic is.
+      # The editor's own tests are the slow ones — each opens the 465k-record
+      # master — so they are run one at a time. In parallel they exhaust the
+      # runner's memory.
       - name: Tests
-        run: cargo test -p fnv-esm -p nvre-edit
+        run: |
+          cargo test --workspace --lib -- --test-threads=1
+          cargo test --workspace --tests --no-fail-fast -- --test-threads=1

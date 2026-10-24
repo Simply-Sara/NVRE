@@ -1,0 +1,86 @@
+name: Windows build
+
+# The Windows editor is built when `main` moves, so a build that only works
+# on Linux is caught here rather than by a user. The artifact is the single
+# executable, which is what a user is meant to copy and run.
+#
+# Only pushes to `main` trigger it. A pull request is not built: the work it
+# would do is the same work the push does, and doing it twice costs runner
+# minutes for nothing. Merging a branch into `main` *is* a push to `main`, so
+# that is covered too.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # The editor's release build carries a full debug-info section by default,
+  # which is tens of megabytes of symbols nobody has. A shipped build has no
+  # use for them.
+  CARGO_PROFILE_RELEASE_DEBUG: "0"
+  # Bevy's debug binaries link gigabytes with debuginfo, which exhausts the
+  # runner's memory and crashes the linker. CI does not need debuginfo, so it
+  # is turned off rather than fought with.
+  CARGO_PROFILE_DEV_DEBUG: "0"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Format
+        # Only the crate this change adds. The repository's other crates are
+        # left as they are: the tree does not currently pass `cargo fmt
+        # --check`, and a gate that is always red teaches nothing.
+        run: cargo fmt -p nvre-schemas -- --check
+
+      - name: Clippy
+        # The new crate is checked strictly. The editor is checked without
+        # `-D warnings`, because the tree already carries warnings that are
+        # not this change's to fix, and failing on them would hide a real
+        # regression in the new code.
+        run: |
+          cargo clippy -p nvre-schemas --all-targets -- -D warnings
+          cargo clippy -p nvre-editor --all-targets
+
+      - name: Build the editor
+        # One executable: the schemas are compiled into it, so there is
+        # nothing to copy beside it.
+        run: cargo build --release -p nvre-editor
+
+      - name: Check the executable
+        shell: pwsh
+        run: |
+          $exe = "target/release/nvre-editor.exe"
+          if (-not (Test-Path $exe)) { throw "no executable was built" }
+          $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
+          Write-Host "built $exe ($size MB)"
+          # The editor has to start and read its own command line, which is
+          # the cheapest proof that the schemas were compiled in and the
+          # binary is not looking for a repository beside it.
+          & $exe --help
+          if ($LASTEXITCODE -ne 0) { throw "the executable does not run" }
+
+      - name: Upload the executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvre-editor-windows
+          path: target/release/nvre-editor.exe
+          if-no-files-found: error

@@ -34,8 +34,7 @@ use bevy::shader::{ShaderDefVal, ShaderRef};
 /// vertex's alpha together. Bevy's depth-only prepass leaves the vertex alpha
 /// out, so a shape that is cut out by its vertex alpha still holds depth in
 /// the prepass, and hides what is behind it.
-const NIF_PREPASS_SHADER: Handle<Shader> =
-    uuid_handle!("b1d6a2f4-7c35-4e0a-8f29-3a5d9c0e6b17");
+const NIF_PREPASS_SHADER: Handle<Shader> = uuid_handle!("b1d6a2f4-7c35-4e0a-8f29-3a5d9c0e6b17");
 
 /// Anti-alias the cut-out edges of an alpha-tested material.
 ///
@@ -290,12 +289,8 @@ impl Falloff {
     /// The angle is the cosine of the angle between the surface and the
     /// view, so one is straight on.
     pub fn opacity(&self, cos_angle: f32) -> f32 {
-        let [start, stop, s_op, e_op] = [
-            self.params.x,
-            self.params.y,
-            self.params.z,
-            self.params.w,
-        ];
+        let [start, stop, s_op, e_op] =
+            [self.params.x, self.params.y, self.params.z, self.params.w];
         if (stop - start).abs() < 1e-6 {
             return s_op;
         }
@@ -368,19 +363,27 @@ pub fn see_through(m: &NifMaterial) -> bool {
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct SeeThroughNoShadow;
 
+/// The meshes whose material changed, and whether they are see-through.
+///
+/// A see-through mesh carries `NotShadowCaster` and this crate's own marker,
+/// so the system can find the ones that need the marker removed.
+type SeeThroughMeshes<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static MeshMaterial3d<NifMaterial>,
+        Has<bevy::light::NotShadowCaster>,
+        Has<SeeThroughNoShadow>,
+    ),
+    Changed<MeshMaterial3d<NifMaterial>>,
+>;
+
 /// Take the shadow from the meshes that are see-through.
 fn see_through_casts_no_shadow(
     mut commands: Commands,
     materials: Res<Assets<NifMaterial>>,
-    changed: Query<
-        (
-            Entity,
-            &MeshMaterial3d<NifMaterial>,
-            Has<bevy::light::NotShadowCaster>,
-            Has<SeeThroughNoShadow>,
-        ),
-        Changed<MeshMaterial3d<NifMaterial>>,
-    >,
+    changed: SeeThroughMeshes,
 ) {
     for (e, m, no_shadow, ours) in &changed {
         let Some(m) = materials.get(&m.0) else {

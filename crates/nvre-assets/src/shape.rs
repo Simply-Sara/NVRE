@@ -413,12 +413,17 @@ pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize)> {
 /// display values; this renderer multiplies in linear ones, so the colour is
 /// converted and the alpha kept.
 pub fn fix_vertex_colors(mesh: &mut Mesh, vertex_alpha: bool, unlit: bool) {
-    let Some(VertexAttributeValues::Float32x4(colors)) =
-        mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR)
+    let Some(VertexAttributeValues::Float32x4(colors)) = mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR)
     else {
         return;
     };
-    let clean = |v: f32| if v.is_finite() { v.clamp(0.0, 1.0) } else { 1.0 };
+    let clean = |v: f32| {
+        if v.is_finite() {
+            v.clamp(0.0, 1.0)
+        } else {
+            1.0
+        }
+    };
     for c in colors.iter_mut() {
         let rgb = [clean(c[0]), clean(c[1]), clean(c[2])];
         let rgb = if unlit {
@@ -505,5 +510,4 @@ mod tests {
     fn no_flags_is_opaque() {
         assert_eq!(alpha_mode(0, 0), AlphaMode::Opaque);
     }
-
 }

@@ -50,13 +50,7 @@ fn main() {
             );
             let mut out = Vec::new();
             if nvre_nif::encode::encode_fields(
-                &schema,
-                &f.header,
-                &lineage,
-                &fields,
-                &st,
-                None,
-                &mut out,
+                &schema, &f.header, &lineage, &fields, &st, None, &mut out,
             )
             .is_err()
             {

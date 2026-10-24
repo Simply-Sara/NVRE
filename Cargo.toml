@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/nvre-world", "crates/nvre-vfs", "crates/bsa105", "crates/ba2", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-assets"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/nvre-world", "crates/nvre-vfs", "crates/bsa105", "crates/ba2", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-assets", "crates/nvre-schemas"]
 
 [workspace.package]
 version = "0.1.0"
@@ -18,6 +18,10 @@ nvre-vfs = { path = "crates/nvre-vfs" }
 nvre-dds = { path = "crates/nvre-dds" }
 
 nvre-world = { path = "crates/nvre-world" }
+
+# The record and NIF schemas, compiled into the binary so a release build is
+# one file the user can copy anywhere.
+nvre-schemas = { path = "crates/nvre-schemas" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }

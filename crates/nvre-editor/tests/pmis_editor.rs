@@ -54,10 +54,27 @@ fn build_pmis(path: &std::path::Path) -> u32 {
     form_id
 }
 
+/// A folder that identifies itself as a Fallout 4 Data folder.
+///
+/// The session works out which game a plugin belongs to from the folder it
+/// sits in, so a synthetic plugin has to sit in a folder that says which
+/// game it is. `PMIS` is a Fallout 4 record, so that is Fallout 4.
+fn fo4_data_dir() -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join("nvre_fo4_data");
+    std::fs::create_dir_all(&dir).expect("the Fallout 4 folder");
+    // The master is what the detection looks for. Its contents do not
+    // matter: nothing reads it, it only says which game the folder is.
+    let master = dir.join("Fallout4.esm");
+    if !master.exists() {
+        std::fs::write(&master, b"").expect("the Fallout 4 master");
+    }
+    dir
+}
+
 fn open(path: &std::path::Path) -> nvre_editor::session::Session {
     nvre_editor::session::Session::open(
         path,
-        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")),
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fo4")),
         vec![],
     )
     .expect("open the synthetic plugin")
@@ -65,7 +82,7 @@ fn open(path: &std::path::Path) -> nvre_editor::session::Session {
 
 #[test]
 fn the_placed_missile_reads_every_named_field() {
-    let path = std::env::temp_dir().join("nvre_pmis_read.esp");
+    let path = fo4_data_dir().join("nvre_pmis_read.esp");
     let form_id = build_pmis(&path);
     let s = open(&path);
 
@@ -119,7 +136,7 @@ fn the_placed_missile_reads_every_named_field() {
 
 #[test]
 fn the_placed_missile_writes_every_named_field() {
-    let path = std::env::temp_dir().join("nvre_pmis_write.esp");
+    let path = fo4_data_dir().join("nvre_pmis_write.esp");
     let form_id = build_pmis(&path);
     let mut s = open(&path);
 
@@ -138,7 +155,7 @@ fn the_placed_missile_writes_every_named_field() {
     state.pmis_ignored_by_sandbox = false;
     state.save_to_session(&mut s);
 
-    let out = std::env::temp_dir().join("nvre_pmis_write_out.esp");
+    let out = fo4_data_dir().join("nvre_pmis_write_out.esp");
     s.save(&out).expect("save");
     let bytes = std::fs::read(&out).expect("read back");
     let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "out.esp".to_string())

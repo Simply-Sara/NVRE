@@ -9,10 +9,7 @@ fn main() {
             Path::new("/home/sara/.local/share/Steam/steamapps/common/Fallout New Vegas/Data")
                 .to_path_buf()
         });
-    let schema_dir = Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../schemas/fnv"
-    ));
+    let schema_dir = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv"));
 
     println!("Loading session...");
     let mut session = Session::open(
@@ -539,7 +536,10 @@ fn main() {
         &avif_state.edid,
         &avif_state.full_name,
     );
-    assert_eq!(avif_title, "ActorValue Information - AVEndurance (Endurance)");
+    assert_eq!(
+        avif_title,
+        "ActorValue Information - AVEndurance (Endurance)"
+    );
 
     // Modify and save AVIF
     avif_state.avif_short_name = "END_MOD".to_string();

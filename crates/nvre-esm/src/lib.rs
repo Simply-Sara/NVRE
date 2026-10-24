@@ -25,6 +25,7 @@ pub mod loadorder;
 pub mod plugin;
 pub mod raw;
 pub mod schema;
+pub mod strings;
 pub mod typedef;
 
 pub use loadorder::LoadOrder;

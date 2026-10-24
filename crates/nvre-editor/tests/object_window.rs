@@ -103,8 +103,7 @@ fn the_palette_is_grouped_into_gecks_categories() {
             assert_eq!(
                 name, g.category,
                 "{:08X} is filed under {name}, not {}",
-                row.fid,
-                g.category
+                row.fid, g.category
             );
         }
     }

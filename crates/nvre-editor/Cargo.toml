@@ -20,6 +20,7 @@ nvre-esm = { path = "../nvre-esm" }
 nvre-vfs.workspace = true
 nvre-world.workspace = true
 nvre-assets = { path = "../nvre-assets" }
+nvre-schemas = { path = "../nvre-schemas" }
 bsa105 = { path = "../bsa105" }
 nvre-nif = { path = "../nvre-nif" }
 serde.workspace = true
@@ -38,3 +39,6 @@ egui_tiles = "0.17.1"
 # implement a subscriber, and a transitive dependency cannot be named. `std` is
 # what provides `set_global_default`.
 log = { version = "0.4", features = ["std"] }
+# The test that checks the compiled-in schemas are the ones on disk reads the
+# embedded layers directly.
+nvre-schemas = { path = "../nvre-schemas" }

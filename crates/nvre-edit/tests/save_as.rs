@@ -5,9 +5,9 @@
 //! nothing. The checks here use NVRE's own `fnvtool` on a file this crate
 //! actually produced, so the verdict comes from an independent reader.
 
-use nvre_esm::{LoadOrder, Plugin, Schema};
 use nvre_edit::save::{formid_map_for, write_plugin, write_plugin_scoped, MasterList, Scope};
 use nvre_edit::Document;
+use nvre_esm::{LoadOrder, Plugin, Schema};
 
 /// The game's Data folder, when the environment names one.
 fn data_dir() -> Option<std::path::PathBuf> {
@@ -62,10 +62,27 @@ fn saved_plugin_names_its_masters() {
         !saved.header.is_master(),
         "the output is a .esp, not an .esm"
     );
-    // Its own FormIDs must start above the masters' range.
-    assert_eq!(
-        saved.header.next_object_id, 0x0200_0000,
-        "2 masters => own IDs from 0x02xxxxxx"
+    // Its next object ID must be an offset into its *own* FormID space, one
+    // past the last record it defines — not a FormID. The shipped masters
+    // store the offset in the low 24 bits and a marker (`0xFF`) in the top
+    // byte, so the top byte says nothing about the plugin's master index.
+    let own_offset = saved.header.next_object_id & 0x00FF_FFFF;
+    assert!(
+        own_offset >= 0x0000_0ADD,
+        "the next object ID must be past the first ID the plugin may use"
+    );
+    // Every record of its own must sit below that offset, or the header would
+    // hand out an ID that is already taken.
+    let own_index = saved.header.masters.len() as u32;
+    let mut highest = 0u32;
+    nvre_esm::raw::visit_nodes(&saved.nodes, &mut |r, _| {
+        if r.header.sig != *b"TES4" && (r.header.form_id >> 24) == own_index {
+            highest = highest.max(r.header.form_id & 0x00FF_FFFF);
+        }
+    });
+    assert!(
+        own_offset > highest,
+        "the next object ID (0x{own_offset:06X}) must be past the highest record (0x{highest:06X})"
     );
     let _ = lo;
     std::fs::remove_file(&out).ok();
@@ -111,8 +128,16 @@ fn formids_are_remapped_into_the_new_plugin() {
     write_plugin(&doc, &masters, &schema, &out).unwrap();
 
     let saved = Plugin::open(&out).unwrap();
-    let rec = nvre_edit::document::record_of(&saved, 0x0200_0000).unwrap();
-    let base = nvre_edit::document::value_of(&schema, rec, b"NAME").unwrap();
+    // The inserted record's FormID is allocated by the save, so it is found by
+    // its Editor ID rather than by a hard-coded number.
+    let mut rec = None;
+    nvre_esm::raw::visit_nodes(&saved.nodes, &mut |r, _| {
+        if rec.is_none() && nvre_edit::document::edid_of(r).as_deref() == Some("NVFRemapTest") {
+            rec = Some(r.clone());
+        }
+    });
+    let rec = rec.expect("the inserted reference");
+    let base = nvre_edit::document::value_of(&schema, &rec, b"NAME").unwrap();
     assert_eq!(
         base.as_str(),
         Some("0x02157C89"),

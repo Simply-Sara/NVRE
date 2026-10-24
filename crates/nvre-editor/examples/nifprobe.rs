@@ -50,8 +50,8 @@ fn main() {
     let vfs =
         nvre_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).expect("the archives");
 
-    let paths: Vec<String> = vfs
-        .paths(|p| p.to_lowercase().ends_with(".nif") && p.to_lowercase().contains(&want));
+    let paths: Vec<String> =
+        vfs.paths(|p| p.to_lowercase().ends_with(".nif") && p.to_lowercase().contains(&want));
     println!("{} candidate files for {want:?}", paths.len());
     for p in paths.iter().take(5) {
         println!("  {p}");

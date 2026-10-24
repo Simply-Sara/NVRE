@@ -10,8 +10,8 @@ use crate::nif_material::{nif_material, NifMaterial, NifSurface};
 use crate::shape::{build_mesh, fix_vertex_colors, shape_props, ShapeProps};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::system::SystemParam;
-use bevy::math::{Affine3A, Mat3, Vec3};
 use bevy::image::CompressedImageFormatSupport;
+use bevy::math::{Affine3A, Mat3, Vec3};
 use bevy::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::*;
@@ -151,8 +151,7 @@ impl ModelCtx<'_> {
         let file = NifFile::parse(&bytes, Some(&schema)).map_err(|e| e.to_string())?;
         let dec = Decoded::new(&file, &bytes, &schema);
         let objects = scene_objects(&file, &dec);
-        let by_block: HashMap<usize, &SceneObject> =
-            objects.iter().map(|o| (o.block, o)).collect();
+        let by_block: HashMap<usize, &SceneObject> = objects.iter().map(|o| (o.block, o)).collect();
 
         let mut out = PreparedModel::default();
         // The nodes, and which shape hangs under each.
@@ -191,7 +190,9 @@ impl ModelCtx<'_> {
             } else {
                 None
             };
-            let Some(data) = data else { continue; };
+            let Some(data) = data else {
+                continue;
+            };
             let props = shape_props(&dec, o, &by_block);
             let Some((mut mesh, tris)) = build_mesh(data, file.header.bs_version()) else {
                 continue;
@@ -247,7 +248,12 @@ impl ModelCtx<'_> {
     /// grey shell — rather than as the file describes it. The file gives it no
     /// texture and an emissive grey, which as a lit surface is a white blob;
     /// the marker is a placement aid, and it has to read as one.
-    fn material_for(&mut self, props: &ShapeProps, mesh: &mut Mesh, editor_marker: bool) -> NifMaterial {
+    fn material_for(
+        &mut self,
+        props: &ShapeProps,
+        mesh: &mut Mesh,
+        editor_marker: bool,
+    ) -> NifMaterial {
         if editor_marker {
             return nif_material(StandardMaterial {
                 base_color: Color::srgba(0.55, 0.58, 0.62, 0.25),
@@ -328,9 +334,7 @@ impl ModelCtx<'_> {
 /// a mesh that names its own node `C_EditorMarker01` is not one.
 pub fn is_editor_marker(name: Option<&str>) -> bool {
     const PREFIX: &str = "editormarker";
-    name.is_some_and(|n| {
-        n.len() >= PREFIX.len() && n[..PREFIX.len()].eq_ignore_ascii_case(PREFIX)
-    })
+    name.is_some_and(|n| n.len() >= PREFIX.len() && n[..PREFIX.len()].eq_ignore_ascii_case(PREFIX))
 }
 
 /// The affine transform a NIF's transform is.
@@ -367,7 +371,10 @@ fn model_nodes(objects: &[SceneObject]) -> (Vec<ModelNode>, HashMap<usize, usize
         i += 1;
         for &c in &by_block[&b].children {
             // A node listed by two parents belongs to the first.
-            let Some(co) = by_block.get(&c).filter(|co| co.is_node && co.parent == Some(b)) else {
+            let Some(co) = by_block
+                .get(&c)
+                .filter(|co| co.is_node && co.parent == Some(b))
+            else {
                 continue;
             };
             if index.contains_key(&c) {

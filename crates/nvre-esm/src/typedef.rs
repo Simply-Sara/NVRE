@@ -123,25 +123,16 @@ impl Schema {
                     if !td.bits.is_empty() {
                         return TypeDef::Flags {
                             base: td.storage,
-                            bits: td
-                                .bits
-                                .iter()
-                                .map(|b| (b.first, b.name.clone()))
-                                .collect(),
+                            bits: td.bits.iter().map(|b| (b.first, b.name.clone())).collect(),
                         };
                     }
                     if !td.values.is_empty() {
                         return TypeDef::Enum {
                             base: td.storage,
-                            values: td
-                                .values
-                                .iter()
-                                .map(|(k, v)| (*k, v.clone()))
-                                .collect(),
+                            values: td.values.iter().map(|(k, v)| (*k, v.clone())).collect(),
                         };
                     }
-                    if td.peek_union.is_some() {
-                        let pu = td.peek_union.as_ref().unwrap();
+                    if let Some(pu) = td.peek_union.as_ref() {
                         return TypeDef::PeekUnion {
                             variants: pu
                                 .variants
@@ -152,8 +143,7 @@ impl Schema {
                             default: pu.default,
                         };
                     }
-                    if td.value_union.is_some() {
-                        let vu = td.value_union.as_ref().unwrap();
+                    if let Some(vu) = td.value_union.as_ref() {
                         return TypeDef::ValueUnion {
                             variants: vu
                                 .variants
@@ -171,9 +161,7 @@ impl Schema {
                         return TypeDef::Union(
                             td.union
                                 .iter()
-                                .map(|v| {
-                                    (v.size, self.resolve_def_depth(&v.ty, depth + 1))
-                                })
+                                .map(|v| (v.size, self.resolve_def_depth(&v.ty, depth + 1)))
                                 .collect(),
                         );
                     }

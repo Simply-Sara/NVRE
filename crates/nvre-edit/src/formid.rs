@@ -44,7 +44,7 @@ pub fn remap_sub(
     }
     let mut value = d.value?;
     let mut changed = false;
-    remap_value(schema, &schema.resolve_def(&def.ty), &mut value, map, &mut changed)?;
+    remap_value(&schema.resolve_def(&def.ty), &mut value, map, &mut changed)?;
     if !changed {
         return Some(sub.data.clone());
     }
@@ -75,13 +75,7 @@ fn nvre_edit_encode(
 ///
 /// Returns `None` when the shape does not match the layout, which means the
 /// subrecord cannot be remapped safely.
-fn remap_value(
-    schema: &Schema,
-    t: &TypeDef,
-    value: &mut Value,
-    map: &FormIdMap,
-    changed: &mut bool,
-) -> Option<()> {
+fn remap_value(t: &TypeDef, value: &mut Value, map: &FormIdMap, changed: &mut bool) -> Option<()> {
     match t {
         TypeDef::Prim(Prim::FormId) => {
             let local = parse_formid(value)?;
@@ -98,7 +92,7 @@ fn remap_value(
         TypeDef::Repeat(inner) => {
             let arr = value.as_array_mut()?;
             for v in arr.iter_mut() {
-                remap_value(schema, inner, v, map, changed)?;
+                remap_value(inner, v, map, changed)?;
             }
             Some(())
         }
@@ -114,14 +108,14 @@ fn remap_value(
                     return None;
                 }
                 let v = obj.get_mut(&f.name)?;
-                remap_value(schema, &f.ty, v, map, changed)?;
+                remap_value(&f.ty, v, map, changed)?;
             }
             Some(())
         }
         TypeDef::Array { elem, .. } => {
             let arr = value.as_array_mut()?;
             for v in arr.iter_mut() {
-                remap_value(schema, elem.as_ref(), v, map, changed)?;
+                remap_value(elem.as_ref(), v, map, changed)?;
             }
             Some(())
         }
@@ -155,7 +149,7 @@ pub fn count_formids(schema: &Schema, rec_sig: &[u8; 4], sub: &Subrecord) -> usi
     let d = nvre_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     let Some(v) = d.value else { return 0 };
     let mut n = 0;
-    count_in(schema, &schema.resolve_def(&def.ty), &v, &mut n);
+    count_in(&schema.resolve_def(&def.ty), &v, &mut n);
     n
 }
 
@@ -163,7 +157,7 @@ fn parse_one(sub: &Subrecord) -> Result<Vec<Subrecord>, ()> {
     Ok(vec![sub.clone()])
 }
 
-fn count_in(schema: &Schema, t: &TypeDef, value: &Value, n: &mut usize) {
+fn count_in(t: &TypeDef, value: &Value, n: &mut usize) {
     match t {
         TypeDef::Prim(Prim::FormId) => {
             if parse_formid(value).is_some_and(|f| f != 0) {
@@ -174,7 +168,7 @@ fn count_in(schema: &Schema, t: &TypeDef, value: &Value, n: &mut usize) {
             if let Some(obj) = value.as_object() {
                 for f in fields {
                     if let Some(v) = obj.get(&f.name) {
-                        count_in(schema, &f.ty, v, n);
+                        count_in(&f.ty, v, n);
                     }
                 }
             }
@@ -182,18 +176,18 @@ fn count_in(schema: &Schema, t: &TypeDef, value: &Value, n: &mut usize) {
         TypeDef::Array { elem, .. } => {
             if let Some(arr) = value.as_array() {
                 for v in arr {
-                    count_in(schema, elem, v, n);
+                    count_in(elem, v, n);
                 }
             }
         }
         TypeDef::Union(variants) => {
             for (_, vt) in variants {
-                count_in(schema, vt, value, n);
+                count_in(vt, value, n);
             }
         }
         TypeDef::ValueUnion { variants, .. } | TypeDef::PeekUnion { variants, .. } => {
             for vt in variants {
-                count_in(schema, vt, value, n);
+                count_in(vt, value, n);
             }
         }
         _ => {}
@@ -206,29 +200,29 @@ pub fn formid_fields(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> V
         return Vec::new();
     };
     let mut out = Vec::new();
-    fn walk(schema: &Schema, t: &TypeDef, out: &mut Vec<String>) {
+    fn walk(t: &TypeDef, out: &mut Vec<String>) {
         match t {
             TypeDef::Prim(Prim::FormId) => out.push("<formid>".to_string()),
             TypeDef::Struct(fields) => {
                 for f in fields {
-                    walk(schema, &f.ty, out);
+                    walk(&f.ty, out);
                 }
             }
-            TypeDef::Array { elem, .. } => walk(schema, elem, out),
+            TypeDef::Array { elem, .. } => walk(elem, out),
             TypeDef::Union(vs) => {
                 for (_, vt) in vs {
-                    walk(schema, vt, out);
+                    walk(vt, out);
                 }
             }
             TypeDef::ValueUnion { variants, .. } => {
                 for vt in variants {
-                    walk(schema, vt, out);
+                    walk(vt, out);
                 }
             }
             _ => {}
         }
     }
-    walk(schema, &schema.resolve_def(&def.ty), &mut out);
+    walk(&schema.resolve_def(&def.ty), &mut out);
     out.sort();
     out.dedup();
     out

@@ -8,9 +8,9 @@
 //! Game data is read from `$NVRE_DATA` (the game's `Data` folder) and the
 //! tests skip when it is not set, so CI never needs the game.
 
+use nvre_edit::encode::{encode_sub, roundtrips, sub_views};
 use nvre_esm::raw::visit_nodes;
 use nvre_esm::{Plugin, Schema};
-use nvre_edit::encode::{encode_sub, roundtrips, sub_views};
 
 /// The game's Data folder, when the environment names one.
 fn data_dir() -> Option<std::path::PathBuf> {

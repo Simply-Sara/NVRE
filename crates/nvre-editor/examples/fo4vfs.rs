@@ -60,9 +60,7 @@ fn main() {
             }
         }
     }
-    println!(
-        "  first 200 .nif: {read} read, {parsed} parsed, {shapes} shapes, {drawn} drawable"
-    );
+    println!("  first 200 .nif: {read} read, {parsed} parsed, {shapes} shapes, {drawn} drawable");
     // One texture, read all the way through.
     if let Some(t) = dds.first() {
         match data.vfs.read(t) {

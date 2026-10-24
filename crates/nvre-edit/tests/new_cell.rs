@@ -5,11 +5,11 @@
 //! labels are the part that is easy to get wrong, so the rules are checked
 //! against the shipped masters as well as against what this crate writes.
 
-use nvre_esm::raw::{group_type, Node};
-use nvre_esm::{Plugin, Schema};
 use nvre_edit::cell;
 use nvre_edit::save::{write_plugin, MasterList};
 use nvre_edit::Document;
+use nvre_esm::raw::{group_type, Node};
+use nvre_esm::{Plugin, Schema};
 
 fn data_dir() -> Option<std::path::PathBuf> {
     std::env::var("NVRE_DATA")

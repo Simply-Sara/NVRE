@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .split(',')
         .map(|d| root.join(d).to_string_lossy().into_owned())
         .collect();
-    let schema = Schema::load_game(&root.join("schemas/base"), &overlays)?;
+    let schema = Schema::load_game(root.join("schemas/base"), &overlays)?;
 
     let file = std::env::var("NVRE_FILE").unwrap_or_else(|_| "Fallout4.esm".into());
     let path = format!("{data}/{file}");

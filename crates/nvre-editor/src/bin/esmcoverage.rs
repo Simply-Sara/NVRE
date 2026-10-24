@@ -25,7 +25,7 @@ fn main() {
     // then version.
     let plugins: Vec<String> = args.collect();
     let schema = if overlays.is_empty() {
-        Schema::load_dir(&std::path::PathBuf::from(&schema_dir))
+        Schema::load_dir(std::path::PathBuf::from(&schema_dir))
     } else {
         // The base comes first, then the layers in the order they were
         // given.
@@ -33,10 +33,7 @@ fn main() {
         let base = dirs.remove(0);
         let mut all = vec![base];
         all.extend(dirs);
-        Schema::load_game(
-            &std::path::PathBuf::from(&all[0]),
-            &all[1..].to_vec(),
-        )
+        Schema::load_game(std::path::PathBuf::from(&all[0]), &all[1..])
     };
     let schema = match schema {
         Ok(s) => s,
@@ -61,7 +58,10 @@ fn main() {
         };
         let mut recs = Vec::new();
         let mut nsubs = 0u64;
-        visit_records(&p.groups, &mut |r, _| { nsubs += r.subrecords.len() as u64; recs.push(r); });
+        visit_records(&p.groups, &mut |r, _| {
+            nsubs += r.subrecords.len() as u64;
+            recs.push(r);
+        });
         eprintln!("the records: {}, the subrecords: {}", recs.len(), nsubs);
         let mut total = 0u64;
         let mut ok = 0u64;

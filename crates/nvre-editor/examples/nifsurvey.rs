@@ -180,6 +180,7 @@ fn main() {
     }
     println!("  positions outside bounding sphere: {outside}");
     println!("  non-unit normals:                  {bad_normals}");
+    println!("  normals that are the default filler: {filler_normals}");
     for e in &normal_examples {
         println!("    {e}");
     }
