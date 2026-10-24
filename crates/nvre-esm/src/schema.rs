@@ -274,7 +274,7 @@ pub struct BitField {
 impl BitField {
     /// The field's value in a stored value.
     pub fn value(&self, stored: i64) -> i64 {
-        let width = (self.last - self.first + 1) as u32;
+        let width = self.last - self.first + 1;
         if width >= 64 {
             return stored;
         }
@@ -518,6 +518,27 @@ pub struct CategoryDef {
     pub hidden: bool,
 }
 
+/// Give a struct's repeated field names distinct names.
+///
+/// A struct's JSON form is an object, so two fields may not share a name:
+/// the second would silently overwrite the first, and the value could not be
+/// re-encoded. xEdit does declare the same padding name repeatedly — CSTY's
+/// CSTD has six `wbUnused` fields — so the duplicates are disambiguated here
+/// in declaration order rather than rejected.
+///
+/// The byte layout is untouched; only the JSON keys differ.
+fn disambiguate(fields: &mut [Field]) {
+    let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for f in fields.iter_mut() {
+        let n = seen.entry(f.name.clone()).or_insert(0);
+        *n += 1;
+        let suffix = *n;
+        if suffix > 1 {
+            f.name = format!("{}_{}", f.name, suffix);
+        }
+    }
+}
+
 /// A bit mask for a union's bit test, from the schema's key.
 fn parse_bit_mask(k: &str) -> Result<u64, ()> {
     let k = k.trim();
@@ -655,7 +676,10 @@ impl Schema {
                         if let Some(prev_seq) = &prev.sequence {
                             if let Some(r_seq) = &mut r.sequence {
                                 for (bname, bdef) in &prev_seq.blocks {
-                                    r_seq.blocks.entry(bname.clone()).or_insert_with(|| bdef.clone());
+                                    r_seq
+                                        .blocks
+                                        .entry(bname.clone())
+                                        .or_insert_with(|| bdef.clone());
                                 }
                             } else {
                                 r.sequence = Some(prev_seq.clone());
@@ -687,7 +711,9 @@ impl Schema {
                 // bytes of uppercase text, which may hold digits: `MOD2` is
                 // a subrecord, and so is `MODL`.
                 if name.len() == 4
-                    && name.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+                    && name
+                        .chars()
+                        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
                 {
                     if let Some(d) = def.as_object() {
                         if d.get("type").is_some() && d.get("struct").is_none() {
@@ -758,10 +784,7 @@ impl Schema {
     /// `"merge": true`, which adds its fields to the category it shadows —
     /// the same rule a record follows, for the same reason: a layer that only
     /// renames a category should not have to restate its group.
-    fn merge_object_window(
-        &mut self,
-        ow: &serde_json::Map<String, Json>,
-    ) -> Result<(), String> {
+    fn merge_object_window(&mut self, ow: &serde_json::Map<String, Json>) -> Result<(), String> {
         if let Some(groups) = ow.get("groups").and_then(|v| v.as_array()) {
             let mut out = Vec::with_capacity(groups.len());
             for g in groups {
@@ -784,7 +807,11 @@ impl Schema {
                 };
                 let merges = o.get("merge").and_then(|v| v.as_bool()).unwrap_or(false);
                 let mut cat = if merges {
-                    self.object_window.categories.get(sig).cloned().unwrap_or_default()
+                    self.object_window
+                        .categories
+                        .get(sig)
+                        .cloned()
+                        .unwrap_or_default()
                 } else {
                     CategoryDef::default()
                 };
@@ -794,14 +821,22 @@ impl Schema {
                         // `null` means "no group of its own", which is how a
                         // layer undoes a heading a family layer set.
                         None if g.is_null() => cat.group = None,
-                        None => return Err(format!("object_window.categories.{sig}.group is not a string")),
+                        None => {
+                            return Err(format!(
+                                "object_window.categories.{sig}.group is not a string"
+                            ))
+                        }
                     }
                 }
                 if let Some(n) = o.get("name") {
                     match n.as_str() {
                         Some(name) => cat.name = Some(name.to_string()),
                         None if n.is_null() => cat.name = None,
-                        None => return Err(format!("object_window.categories.{sig}.name is not a string")),
+                        None => {
+                            return Err(format!(
+                                "object_window.categories.{sig}.name is not a string"
+                            ))
+                        }
                     }
                 }
                 if let Some(e) = o.get("editor") {
@@ -1000,7 +1035,10 @@ impl Schema {
                 }
             }
         }
-        let own_first = o.get("own_first").and_then(|v| v.as_bool()).unwrap_or(false);
+        let own_first = o
+            .get("own_first")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         Ok(BlockDef {
             opener,
             openers,
@@ -1020,10 +1058,7 @@ impl Schema {
     }
 
     /// Read a subrecord's type and its flags.
-    fn parse_sub(
-        &self,
-        def: &Json,
-    ) -> Result<(Type, bool, Option<String>, bool, bool), String> {
+    fn parse_sub(&self, def: &Json) -> Result<(Type, bool, Option<String>, bool, bool), String> {
         let t = def.get("type").ok_or("a subrecord has no type")?;
         let ty = self.parse_type_value(t)?;
         let optional = def
@@ -1037,7 +1072,10 @@ impl Schema {
         let expose = def.get("expose").and_then(|v| v.as_bool()).unwrap_or(false);
         // A subrecord that is published holds the value a union beside it is
         // read against.
-        let publish = def.get("publish").and_then(|v| v.as_bool()).unwrap_or(false);
+        let publish = def
+            .get("publish")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         Ok((ty, optional, count_from, expose, publish))
     }
 
@@ -1058,6 +1096,7 @@ impl Schema {
                     for f in st {
                         fields.push(self.parse_field(f)?);
                     }
+                    disambiguate(&mut fields);
                     return Ok(Type::Inline(fields));
                 }
                 if let Some(us) = o.get("union").and_then(|v| v.as_array()) {
@@ -1102,7 +1141,8 @@ impl Schema {
                             switch_on,
                             cases: map,
                             bits: bits_vec,
-                            default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
+                            default: o.get("default").and_then(|v| v.as_u64()).unwrap_or(0)
+                                as usize,
                             variants,
                             min_version,
                         }));
@@ -1333,6 +1373,7 @@ impl Schema {
             for f in st {
                 fields.push(self.parse_field(f)?);
             }
+            disambiguate(&mut fields);
             return Ok(TypeDef {
                 fields,
                 values: BTreeMap::new(),
