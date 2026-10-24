@@ -5,9 +5,9 @@
 //! nothing. The checks here use NVRE's own `fnvtool` on a file this crate
 //! actually produced, so the verdict comes from an independent reader.
 
-use nvre_esm::{LoadOrder, Plugin, Schema};
 use nvre_edit::save::{formid_map_for, write_plugin, write_plugin_scoped, MasterList, Scope};
 use nvre_edit::Document;
+use nvre_esm::{LoadOrder, Plugin, Schema};
 
 /// The game's Data folder, when the environment names one.
 fn data_dir() -> Option<std::path::PathBuf> {

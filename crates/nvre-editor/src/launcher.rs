@@ -301,8 +301,7 @@ pub fn ui(
                                     // The plugin list and masters are re-read
                                     // from the new game's own folder: a partial
                                     // install gives only the masters it holds.
-                                    let dir =
-                                        choice.active_dir().unwrap_or_default();
+                                    let dir = choice.active_dir().unwrap_or_default();
                                     launcher.masters = choice.game.masters_in(&dir);
                                     launcher.listing_dir = None;
                                     launcher.listing.clear();

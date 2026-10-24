@@ -666,7 +666,7 @@ fn rewrite_header(nodes: &mut [Node], masters: &MasterList, is_master: bool) -> 
         tes4.header.flags &= !record_flags::MASTER;
     }
     tes4.header.data_size = nvre_esm::raw::write_subrecords(&out).len() as u32;
-    tes4.raw = nvre_esm::raw::write_subrecords(&out).into();
+    tes4.raw = nvre_esm::raw::write_subrecords(&out);
     Ok(())
 }
 
@@ -823,9 +823,9 @@ fn remap_record(
         r.raw = if r.is_compressed() {
             let mut v = (payload.len() as u32).to_le_bytes().to_vec();
             v.extend_from_slice(&nvre_inflate::zlib_store(&payload));
-            v.into()
+            v
         } else {
-            payload.into()
+            payload
         };
     }
 }
@@ -1198,7 +1198,7 @@ fn add_onam(nodes: &mut [Node], overrides: &[u32]) -> Result<(), String> {
         extended: false,
     });
     tes4.header.data_size = nvre_esm::raw::write_subrecords(&subs).len() as u32;
-    tes4.raw = nvre_esm::raw::write_subrecords(&subs).into();
+    tes4.raw = nvre_esm::raw::write_subrecords(&subs);
     Ok(())
 }
 

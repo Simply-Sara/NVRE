@@ -20,7 +20,10 @@ pub mod cp1252 {
     /// C1 control of the same value, as the WHATWG encoding standard has
     /// them, so a decode never loses a byte.
     pub fn decode(bytes: &[u8]) -> String {
-        WINDOWS_1252.decode_without_bom_handling(bytes).0.into_owned()
+        WINDOWS_1252
+            .decode_without_bom_handling(bytes)
+            .0
+            .into_owned()
     }
 
     /// Encode text as Windows-1252 bytes.

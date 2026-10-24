@@ -272,10 +272,7 @@ fn localized_games_resolve_names_from_their_string_tables() {
         }
         for row in &rows {
             if row.name != *want {
-                failures.push(format!(
-                    "{edid} is named {:?}, expected {want:?}",
-                    row.name
-                ));
+                failures.push(format!("{edid} is named {:?}, expected {want:?}", row.name));
             }
         }
         // No name anywhere in the palette is decoded ID bytes: an

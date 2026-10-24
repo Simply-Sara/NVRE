@@ -525,9 +525,9 @@ fn apply_edits(r: &mut Record, edits: &[Edit]) {
                 r.raw = if r.is_compressed() {
                     let mut v = (payload.len() as u32).to_le_bytes().to_vec();
                     v.extend_from_slice(&nvre_inflate::zlib_store(&payload));
-                    v.into()
+                    v
                 } else {
-                    payload.into()
+                    payload
                 };
             }
             Err(e) => {
@@ -714,7 +714,7 @@ pub fn make_placed_record(
             form_version: 15,
             vc_info2: 0,
         },
-        raw: payload.into(),
+        raw: payload,
         subrecords: Vec::new(),
         offset: 0,
     }

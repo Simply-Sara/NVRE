@@ -33,7 +33,7 @@ impl Decoded {
             let (status, decoded) = file.decode_block_status(i, schema, data);
             blocks.push(decoded.ok_or(status).map(|mut s| {
                 let names = string_fields(schema, &b.type_name);
-                resolve_strings(&mut s, file, schema, &names);
+                resolve_strings(&mut s, file, &names);
                 s
             }));
             // The lineage is the type itself, then the types it derives
@@ -87,7 +87,10 @@ fn string_fields(schema: &Schema, type_name: &str) -> Vec<String> {
             .or_else(|| schema.struct_fields(ty))
             .unwrap_or_default();
         for f in &fields {
-            if matches!(f.ty, crate::schema::TypeRef::Prim(crate::schema::Prim::String)) {
+            if matches!(
+                f.ty,
+                crate::schema::TypeRef::Prim(crate::schema::Prim::String)
+            ) {
                 out.push(f.name.clone());
             }
             // A field whose type is a struct: the names inside it are
@@ -121,7 +124,7 @@ fn string_fields(schema: &Schema, type_name: &str) -> Vec<String> {
 /// field can hold a number that is a valid index into the table — a scale of
 /// one, a glossiness of one, a count of nine — and resolving those replaced
 /// them with unrelated text.
-fn resolve_strings(s: &mut Struct, file: &NifFile, schema: &Schema, names: &[String]) {
+fn resolve_strings(s: &mut Struct, file: &NifFile, names: &[String]) {
     let Some(table) = file.header.strings.as_ref() else {
         return;
     };
@@ -137,7 +140,7 @@ fn resolve_strings(s: &mut Struct, file: &NifFile, schema: &Schema, names: &[Str
         // A struct that holds strings of its own: a texture set's file names,
         // a material's shader name, and the like.
         if let Value::Struct(inner) = v {
-            resolve_strings(inner, file, schema, names);
+            resolve_strings(inner, file, names);
         }
     }
 }
@@ -315,7 +318,13 @@ fn floats(s: &Struct, name: &str) -> Option<Vec<f32>> {
 /// The numbers of a field, in groups of three.
 fn vec3s(s: &Struct, name: &str) -> Vec<[f32; 3]> {
     floats(s, name)
-        .map(|f| f.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect())
+        .map(|f| {
+            f.as_chunks::<3>()
+                .0
+                .iter()
+                .map(|c| [c[0], c[1], c[2]])
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -395,7 +404,9 @@ pub fn triangle_indices(s: &Struct) -> Vec<[u32; 3]> {
                 .collect();
         }
         return t
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| {
                 [
                     c[0].as_int().unwrap_or(0) as u32,
@@ -465,7 +476,9 @@ fn uv_set(set: &Value) -> Vec<[f32; 2]> {
             })
             .collect();
     }
-    l.chunks_exact(2)
+    l.as_chunks::<2>()
+        .0
+        .iter()
         .map(|c| {
             [
                 c[0].as_number().unwrap_or(0.0) as f32,
@@ -494,7 +507,7 @@ pub fn mesh_data(s: &Struct, bs_version: u32) -> MeshData {
     }
     let uv_sets = s
         .list("uv_sets")
-        .map(|sets| sets.iter().map(|set| uv_set(set)).collect())
+        .map(|sets| sets.iter().map(uv_set).collect())
         .unwrap_or_default();
     MeshData {
         positions: vec3s(s, "vertices"),
@@ -503,7 +516,9 @@ pub fn mesh_data(s: &Struct, bs_version: u32) -> MeshData {
         bitangents: vec3s(s, "bitangents"),
         colors: floats(s, "vertex_colors")
             .map(|f| {
-                f.chunks_exact(4)
+                f.as_chunks::<4>()
+                    .0
+                    .iter()
                     .map(|c| [c[0], c[1], c[2], c[3]])
                     .collect()
             })
@@ -561,17 +576,11 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
     let has_tangent = attrs & 24 == 24;
     let has_colors = attrs & 32 != 0;
     let has_bones = attrs & 64 != 0;
-    let has_eye = attrs & 256 != 0;
+    let _has_eye = attrs & 256 != 0;
     // Where each field sits, in four-byte words from the vertex's start.
     let word = |shift: u32| ((desc >> shift) & 0xF) as usize;
-    let (uv, normal, tangent, color, skin, eye) = (
-        word(8),
-        word(16),
-        word(20),
-        word(24),
-        word(28),
-        word(36),
-    );
+    let (uv, normal, tangent, color, skin, eye) =
+        (word(8), word(16), word(20), word(24), word(28), word(36));
     for i in 0..n {
         let base = i * stride;
         if base + stride > data.len() {
@@ -632,7 +641,8 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
         if has_normal {
             let at = normal * 4;
             if let Some(b) = bytes(at, 4) {
-                md.normals.push([normbyte(b[0]), normbyte(b[1]), normbyte(b[2])]);
+                md.normals
+                    .push([normbyte(b[0]), normbyte(b[1]), normbyte(b[2])]);
             } else {
                 md.normals.push([0.0, 0.0, 1.0]);
             }
@@ -643,7 +653,8 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
         if has_tangent {
             let at = tangent * 4;
             if let Some(b) = bytes(at, 4) {
-                md.tangents.push([normbyte(b[0]), normbyte(b[1]), normbyte(b[2])]);
+                md.tangents
+                    .push([normbyte(b[0]), normbyte(b[1]), normbyte(b[2])]);
             }
         }
         // vertex colours: ByteColor4.
@@ -666,7 +677,6 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
     md.triangles = triangle_indices(s);
     md
 }
-
 
 /// A Normbyte: an unsigned byte standing for a signed normal, as nifgen's
 /// `Normbyte.from_function` reads it. The Special Edition packs its normals
@@ -696,10 +706,9 @@ fn half_to_f32(h: u16) -> f32 {
             f32::INFINITY
         }
     } else {
-        let f = f32::from_bits(
+        f32::from_bits(
             ((sign as u32) << 31) | (((exp as i32 + 112) as u32) << 23) | ((mant as u32) << 13),
-        );
-        f
+        )
     }
 }
 

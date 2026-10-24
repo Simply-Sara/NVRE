@@ -53,10 +53,7 @@ fn main() {
             println!("{want}: new status {ns:?}");
             println!("  the block is {} bytes", b.range.end - b.range.start);
             let nf = new.as_ref().map(|s| s.fields.clone()).unwrap_or_default();
-            let of = old
-                .as_ref()
-                .map(|s| s.fields.clone())
-                .unwrap_or_else(|| Vec::new());
+            let of = old.as_ref().map(|s| s.fields.clone()).unwrap_or_default();
             let names: Vec<String> = nf
                 .iter()
                 .map(|(n, _)| n.clone())

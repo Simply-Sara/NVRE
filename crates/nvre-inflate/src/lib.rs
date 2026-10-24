@@ -88,7 +88,9 @@ pub fn inflate_raw(
     // Never trust a declared size for preallocation: cap it by what the input
     // could plausibly expand to. DEFLATE's maximum ratio is about 1032:1, so
     // 64x covers typical data and the Vec grows beyond that if needed.
-    let cap = size_hint.min(limit).min(input.len().saturating_mul(64).max(4096));
+    let cap = size_hint
+        .min(limit)
+        .min(input.len().saturating_mul(64).max(4096));
     // One byte of headroom past `limit` distinguishes "exactly limit" from
     // "more than limit".
     let hard = limit.saturating_add(1);
@@ -101,7 +103,11 @@ pub fn inflate_raw(
         }
         let (in_before, out_before) = (d.total_in(), d.total_out());
         let status = d
-            .decompress_vec(&input[d.total_in() as usize..], &mut out, FlushDecompress::None)
+            .decompress_vec(
+                &input[d.total_in() as usize..],
+                &mut out,
+                FlushDecompress::None,
+            )
             .map_err(corrupt)?;
         if out.len() > limit {
             return Err(InflateError::OutputLimit);
@@ -140,10 +146,7 @@ pub enum Trailer {
 /// Decompress a zlib stream, verifying the Adler-32 trailer.
 ///
 /// If `expected_len` is given, the output size must match it exactly.
-pub fn zlib_decompress(
-    input: &[u8],
-    expected_len: Option<usize>,
-) -> Result<Vec<u8>, InflateError> {
+pub fn zlib_decompress(input: &[u8], expected_len: Option<usize>) -> Result<Vec<u8>, InflateError> {
     match zlib_decompress_ex(input, expected_len)? {
         (out, Trailer::Verified) => Ok(out),
         (_, Trailer::Missing) => Err(InflateError::Truncated),

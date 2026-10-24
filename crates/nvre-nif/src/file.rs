@@ -133,7 +133,7 @@ impl NifFile {
         data: &[u8],
     ) -> (BlockStatus, Option<Struct>) {
         let b = &self.blocks[index];
-        if schema.blocks.get(&b.type_name).is_none() {
+        if !schema.blocks.contains_key(&b.type_name) {
             return (BlockStatus::Unknown, None);
         }
         let mut r = Reader::new(&data[b.range.start..b.range.end]);
@@ -181,15 +181,7 @@ impl NifFile {
                 .map(str::to_string),
         );
         let mut out = Vec::with_capacity(b.range.len());
-        crate::encode::encode_fields(
-            schema,
-            &self.header,
-            &lineage,
-            &fields,
-            &st,
-            None,
-            &mut out,
-        )?;
+        crate::encode::encode_fields(schema, &self.header, &lineage, &fields, &st, None, &mut out)?;
         Ok(out == data[b.range.clone()])
     }
 }
@@ -259,6 +251,7 @@ pub fn file_scope(header: &Header) -> HashMap<String, Value> {
 }
 
 /// Read a list of fields into a struct.
+#[allow(clippy::too_many_arguments)]
 fn read_fields(
     schema: &Schema,
     header: &Header,
@@ -366,7 +359,10 @@ fn read_field(
                 strings.push(Value::Str(nvre_util::cp1252::decode(b)));
             }
             return Ok(Some(if strings.len() == 1 {
-                strings.into_iter().next().unwrap_or(Value::Str(String::new()))
+                strings
+                    .into_iter()
+                    .next()
+                    .unwrap_or(Value::Str(String::new()))
             } else {
                 Value::List(strings)
             }));

@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let schema = Schema::load_game(
-        &root.join("schemas/base"),
+        root.join("schemas/base"),
         &[root.join("schemas/fo4").to_string_lossy().into_owned()],
     )?;
 
@@ -51,5 +51,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn hex(b: &[u8]) -> String {
-    b.iter().map(|x| format!("{x:02x}")).collect::<Vec<_>>().join(" ")
+    b.iter()
+        .map(|x| format!("{x:02x}"))
+        .collect::<Vec<_>>()
+        .join(" ")
 }

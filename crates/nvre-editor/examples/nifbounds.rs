@@ -42,8 +42,11 @@ fn main() {
         let objects = scene::scene_objects(&f, &dec);
         let by_block: HashMap<usize, &scene::SceneObject> =
             objects.iter().map(|o| (o.block, o)).collect();
-        let by_block_map: HashMap<usize, usize> =
-            objects.iter().enumerate().map(|(i, o)| (o.block, i)).collect();
+        let by_block_map: HashMap<usize, usize> = objects
+            .iter()
+            .enumerate()
+            .map(|(i, o)| (o.block, i))
+            .collect();
         for o in &objects {
             if o.is_node {
                 continue;

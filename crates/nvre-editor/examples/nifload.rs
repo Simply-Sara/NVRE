@@ -3,8 +3,8 @@
 //! The probe measures the schema against raw files. This asks the question
 //! the editor actually asks: given a game, can its own VFS and NIF schema
 //! read a mesh and give back a scene?
-use nvre_nif::scene;
 use nvre_editor::game::ALL;
+use nvre_nif::scene;
 
 fn main() {
     let game_id = std::env::args().nth(1).expect("a game id");

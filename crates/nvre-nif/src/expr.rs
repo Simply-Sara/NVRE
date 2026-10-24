@@ -104,30 +104,13 @@ enum BinOp {
     Rem,
 }
 
-impl BinOp {
-    /// How tightly the operator binds: a higher number binds tighter.
-    fn precedence(self) -> u8 {
-        match self {
-            BinOp::Or => 1,
-            BinOp::And => 2,
-            BinOp::Eq | BinOp::Ne => 3,
-            BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge => 4,
-            BinOp::BitOr | BinOp::BitAnd => 5,
-            BinOp::BitXor => 4,
-            BinOp::Shl | BinOp::Shr => 6,
-            BinOp::Add | BinOp::Sub => 6,
-            BinOp::Mul | BinOp::Div | BinOp::Rem => 7,
-        }
-    }
-}
-
 /// The state an expression is evaluated against: a block's fields so far.
 pub type Scope = HashMap<String, Value>;
 
 impl Expr {
     /// The expression as it was written.
-    pub fn to_string(&self) -> String {
-        self.source.clone()
+    pub fn source(&self) -> &str {
+        &self.source
     }
 
     /// Parse an expression.
@@ -244,8 +227,8 @@ impl BinOp {
                     Value::Bool(x != y)
                 }
             }
-            BitOr | BitAnd | BitXor | Shl | Shr | Add | Sub | Mul | Div | Rem | Lt | Le
-            | Gt | Ge => {
+            BitOr | BitAnd | BitXor | Shl | Shr | Add | Sub | Mul | Div | Rem | Lt | Le | Gt
+            | Ge => {
                 let (Some(x), Some(y)) = (a.as_number(), b.as_number()) else {
                     return Value::Bool(false);
                 };

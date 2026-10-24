@@ -575,7 +575,7 @@ mod tests {
             prop_assert_eq!(header.height, h);
             prop_assert_eq!(header.levels(), mips);
             let expected = header.expected_size(f);
-            d.extend(std::iter::repeat(0u8).take(expected));
+            d.extend(std::iter::repeat_n(0u8, expected));
             let parsed = Dds::parse(&d);
             prop_assert!(parsed.is_ok());
         }

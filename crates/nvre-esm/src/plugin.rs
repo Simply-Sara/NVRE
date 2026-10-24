@@ -80,11 +80,7 @@ impl Plugin {
     ///
     /// A `MAST` subrecord holds the master's file name.
     pub fn masters(&self) -> Vec<String> {
-        self.header
-            .masters
-            .iter()
-            .map(|m| m.name.clone())
-            .collect()
+        self.header.masters.iter().map(|m| m.name.clone()).collect()
     }
 
     /// The FormID the file's own header carries.

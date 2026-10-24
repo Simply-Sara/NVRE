@@ -167,7 +167,11 @@ fn archive_path(stored: &str) -> Option<String> {
     // trees\wastelandshrub01.spt.
     let m = m.replace('/', "\\").to_ascii_lowercase();
     let m = m.trim_start_matches('\\');
-    let root = if m.ends_with(".spt") { "trees\\" } else { "meshes\\" };
+    let root = if m.ends_with(".spt") {
+        "trees\\"
+    } else {
+        "meshes\\"
+    };
     Some(if m.starts_with(root) {
         m.to_string()
     } else {

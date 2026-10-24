@@ -18,10 +18,14 @@ fn main() {
     } else {
         Schema::load_game(&PathBuf::from(base), &layers).expect("the schema")
     };
+    // The files to read, kept so the totals at the end can say how many
+    // there were.
+    let files: Vec<String> = args.collect();
+    let args_len = files.len();
     let (mut outside, mut bad_normals, mut bad_uvs, mut bad_tris) = (0u64, 0u64, 0u64, 0u64);
     let mut outside_examples: Vec<String> = Vec::new();
     let mut zero_radius = 0u64;
-    for path in args {
+    for path in files {
         let Ok(data) = std::fs::read(&path) else {
             println!("{path}: cannot read");
             continue;
@@ -45,7 +49,11 @@ fn main() {
         let dec = nvre_nif::scene::Decoded::new(&f, &data, &schema);
         let objects = nvre_nif::scene::scene_objects(&f, &dec);
         let (mut shapes, mut built) = (0usize, 0usize);
-        println!("  {} scene objects ({} nodes)", objects.len(), objects.iter().filter(|o| o.is_node).count());
+        println!(
+            "  {} scene objects ({} nodes)",
+            objects.len(),
+            objects.iter().filter(|o| o.is_node).count()
+        );
         for o in &objects {
             if o.is_node {
                 continue;
@@ -79,7 +87,9 @@ fn main() {
                 md.positions.len(),
                 md.triangles.len(),
                 md.normals.len() == md.positions.len(),
-                md.uv_sets.first().is_some_and(|u| u.len() == md.positions.len())
+                md.uv_sets
+                    .first()
+                    .is_some_and(|u| u.len() == md.positions.len())
             );
             if !md.positions.is_empty() && !md.triangles.is_empty() {
                 built += 1;
@@ -124,7 +134,6 @@ fn main() {
                                     ((dx * dx + dy * dy + dz * dz).sqrt(), *p)
                                 })
                                 .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
-                                .map(|(d, p)| (d, p))
                                 .unwrap();
                             outside_examples.push(format!(
                                 "{path}: n={} far={far} radius={rad} worst_dist={:.3} worst_pos={:?} center={:?}",
@@ -177,7 +186,12 @@ fn main() {
         outside_examples.clear();
         println!("  header_len {}", f.header.header_len);
         for (i, b) in f.blocks.iter().enumerate() {
-            println!("  raw block {i} {} {:?} ({} bytes)", b.type_name, b.range, b.range.end - b.range.start);
+            println!(
+                "  raw block {i} {} {:?} ({} bytes)",
+                b.type_name,
+                b.range,
+                b.range.end - b.range.start
+            );
         }
         // Decode status of every block, so a failure shows up.
         for i in 0..f.blocks.len() {
@@ -216,4 +230,11 @@ fn main() {
             println!("    {k}: {v}");
         }
     }
+    // The totals over every file, which is what the per-file counts are for.
+    println!("== totals over {args_len} files ==");
+    println!("  positions outside bounding sphere: {outside}");
+    println!("  non-unit normals: {bad_normals}");
+    println!("  non-finite UVs: {bad_uvs}");
+    println!("  triangles naming a missing vertex: {bad_tris}");
+    println!("  shapes with a zero radius: {zero_radius}");
 }

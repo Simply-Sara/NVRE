@@ -308,7 +308,7 @@ pub struct BitField {
 impl BitField {
     /// The value of the field in a stored value.
     pub fn value(&self, stored: i64) -> i64 {
-        let width = (self.last - self.first + 1) as u32;
+        let width = self.last - self.first + 1;
         if width >= 64 {
             return stored;
         }
@@ -596,7 +596,7 @@ impl Schema {
     /// Check that the schema refers only to types it defines.
     pub fn check(&self) -> Result<(), SchemaError> {
         let mut errs = Vec::new();
-        for (name, _d) in &self.blocks {
+        for name in self.blocks.keys() {
             for base in self.block_chain(name) {
                 if !self.blocks.contains_key(base) {
                     errs.push(format!("block {name:?} is based on the unknown {base:?}"));
@@ -607,7 +607,7 @@ impl Schema {
             let all = self.block_fields(name).unwrap_or_default();
             self.check_fields(name, &all, &mut errs);
         }
-        for (name, _d) in &self.structs {
+        for name in self.structs.keys() {
             for base in self.struct_chain(name) {
                 if !self.structs.contains_key(base) {
                     errs.push(format!("struct {name:?} is based on the unknown {base:?}"));

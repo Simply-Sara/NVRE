@@ -37,6 +37,7 @@ pub fn encode_fields(
 ///
 /// The scope is the fields read so far, which the later fields' conditions
 /// and lengths are read against.
+#[allow(clippy::too_many_arguments)]
 fn encode_fields_in(
     schema: &Schema,
     header: &Header,
@@ -88,7 +89,7 @@ fn encode_fields_in(
 /// A field is in the file when the version allows it, the block's type
 /// allows it, and its condition holds.
 fn present(
-    schema: &Schema,
+    _schema: &Schema,
     header: &Header,
     lineage: &[String],
     f: &crate::schema::Field,
@@ -127,6 +128,7 @@ fn present(
 }
 
 /// Write one field's value.
+#[allow(clippy::too_many_arguments)]
 fn write_field(
     schema: &Schema,
     header: &Header,
@@ -343,10 +345,7 @@ fn sub_template(
 
 /// The scope a field's struct is read against: the enclosing scope, with
 /// the field's own argument.
-fn with_arg(
-    scope: &HashMap<String, Value>,
-    f: &crate::schema::Field,
-) -> HashMap<String, Value> {
+fn with_arg(scope: &HashMap<String, Value>, f: &crate::schema::Field) -> HashMap<String, Value> {
     let mut out = scope.clone();
     if let Some(arg) = f.arg.as_ref().and_then(|e| e.evaluate_number(scope).ok()) {
         out.insert("arg".into(), Value::Num(arg));
@@ -364,9 +363,8 @@ pub fn write_prim(
     use Prim::*;
     // The number a value holds, for the types that are numbers.
     let num = |v: &Value| -> Result<f64, CodecError> {
-        v.as_number().ok_or_else(|| {
-            CodecError::Layout(format!("the value {v:?} is not a number"))
-        })
+        v.as_number()
+            .ok_or_else(|| CodecError::Layout(format!("the value {v:?} is not a number")))
     };
     match prim {
         U8 => out.push(num(v)? as u8),
@@ -443,7 +441,11 @@ pub fn write_prim(
                 out.extend_from_slice(&(num(v)? as u32).to_le_bytes());
             } else {
                 let text = v.as_str().unwrap_or("");
-                out.extend_from_slice(nvre_util::cp1252::encode(text).unwrap_or_default().as_slice());
+                out.extend_from_slice(
+                    nvre_util::cp1252::encode(text)
+                        .unwrap_or_default()
+                        .as_slice(),
+                );
                 out.push(0);
             }
         }

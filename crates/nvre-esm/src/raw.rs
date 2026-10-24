@@ -245,8 +245,6 @@ pub struct Group {
     pub offset: u64,
 }
 
-
-
 impl Group {
     /// The group's contents, as one list: the records and the groups in the
     /// order they are in the file.
@@ -465,7 +463,9 @@ fn parse_header(c: &mut Cursor<'_>, data: &[u8]) -> Result<(PluginHeader, Record
     }
     let overridden_forms = field("ONAM")
         .map(|v| {
-            v.chunks_exact(4)
+            v.as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
                 .collect()
         })
@@ -515,11 +515,7 @@ fn parse_groups(c: &mut Cursor<'_>, data: &[u8], _depth: usize) -> Result<Vec<Gr
 ///
 /// The two kinds of thing may be interleaved, so the group is read in one
 /// walk rather than in two.
-fn parse_contents(
-    c: &mut Cursor<'_>,
-    data: &[u8],
-    end: usize,
-) -> Result<Vec<Node>, EsmError> {
+fn parse_contents(c: &mut Cursor<'_>, data: &[u8], end: usize) -> Result<Vec<Node>, EsmError> {
     let mut children = Vec::new();
     loop {
         let start = c.pos;
@@ -631,7 +627,12 @@ fn parse_record(
     let form_version = c.u16()?;
     let vc_info2 = c.u16()?;
     let header = RecordHeader {
-        sig: [data[start], data[start + 1], data[start + 2], data[start + 3]],
+        sig: [
+            data[start],
+            data[start + 1],
+            data[start + 2],
+            data[start + 3],
+        ],
         data_size,
         flags,
         form_id,
@@ -681,7 +682,7 @@ pub fn is_zlib_header(b: &[u8]) -> bool {
     if cmf & 0x0f != 8 {
         return false;
     }
-    if ((cmf as u16) * 256 + flg as u16) % 31 != 0 {
+    if !((cmf as u16) * 256 + flg as u16).is_multiple_of(31) {
         return false;
     }
     // A preset dictionary is not used here, and the header must not say so.
@@ -772,10 +773,7 @@ pub fn payload_checked(
             });
     }
     if !record.is_compressed() {
-        return Ok((
-            Cow::Borrowed(&record.raw),
-            nvre_inflate::Trailer::Verified,
-        ));
+        return Ok((Cow::Borrowed(&record.raw), nvre_inflate::Trailer::Verified));
     }
     // A compressed record's payload is a u32 decompressed size and then a
     // zlib stream.
@@ -960,10 +958,7 @@ pub fn write_record(r: &Record, out: &mut Vec<u8>) {
 ///
 /// The groups are the ones between the file's top and the record, nearest
 /// first, and what is given is each group's header.
-pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
-    groups: &'a [Group],
-    f: &mut F,
-) {
+pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(groups: &'a [Group], f: &mut F) {
     let mut path: Vec<&GroupHeader> = Vec::new();
     for g in groups {
         visit_in_group(g, &mut path, f);
@@ -972,10 +967,7 @@ pub fn visit_records<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
 
 /// Depth-first visit of every record in a list of nodes, with the chain of
 /// enclosing group headers.
-pub fn visit_nodes<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(
-    nodes: &'a [Node],
-    f: &mut F,
-) {
+pub fn visit_nodes<'a, F: FnMut(&'a Record, &[&'a GroupHeader])>(nodes: &'a [Node], f: &mut F) {
     let mut path: Vec<&GroupHeader> = Vec::new();
     for n in nodes {
         match n {

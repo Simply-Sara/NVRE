@@ -17,9 +17,9 @@ fn main() {
     let base = dirs.next().unwrap();
     let layers: Vec<String> = dirs.map(str::to_string).collect();
     let schema = if layers.is_empty() {
-        Schema::load_dir(&PathBuf::from(base)).expect("the schema")
+        Schema::load_dir(PathBuf::from(base)).expect("the schema")
     } else {
-        Schema::load_game(&PathBuf::from(base), &layers).expect("the schema")
+        Schema::load_game(PathBuf::from(base), &layers).expect("the schema")
     };
 
     let mut total = (0u64, 0u64, 0u64, 0u64, 0u64);

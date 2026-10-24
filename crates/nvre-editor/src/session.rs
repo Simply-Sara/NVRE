@@ -6,8 +6,8 @@
 //! viewport reads it to decide what to draw; the panels read and write it.
 
 use bevy::prelude::*;
-use nvre_esm::{LoadOrder, Schema};
 use nvre_edit::Document;
+use nvre_esm::{LoadOrder, Schema};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
@@ -1106,8 +1106,9 @@ impl Session {
         // inside a block, so the block the subrecord falls in says which
         // meaning is meant, both for reading it and for writing it back.
         let block = nvre_esm::decode::block_of(&rec_sig, &subs, &self.schema, *sig);
-        let mut decoded = nvre_edit::encode::decoded_in_block(&self.schema, &rec_sig, sub, block.as_deref())
-            .ok_or_else(|| format!("{} does not decode", nvre_util::tag_str(sig)))?;
+        let mut decoded =
+            nvre_edit::encode::decoded_in_block(&self.schema, &rec_sig, sub, block.as_deref())
+                .ok_or_else(|| format!("{} does not decode", nvre_util::tag_str(sig)))?;
         set_path(&mut decoded, path, value)?;
         let bytes = nvre_edit::encode::encode_sub_len_in_block(
             &self.schema,

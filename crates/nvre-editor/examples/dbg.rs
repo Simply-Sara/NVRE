@@ -8,7 +8,9 @@ use std::path::PathBuf;
 fn main() {
     let data_dir = std::env::args().nth(1).unwrap();
     let schema_dir = std::env::args().nth(2).unwrap();
-    let want = std::env::args().nth(3).unwrap_or_else(|| "NiTransformData".into());
+    let want = std::env::args()
+        .nth(3)
+        .unwrap_or_else(|| "NiTransformData".into());
     let mut dirs = schema_dir.split(':');
     let base = dirs.next().unwrap();
     let layers: Vec<String> = dirs.map(str::to_string).collect();
@@ -25,7 +27,9 @@ fn main() {
     let vfs = nvre_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).unwrap();
     let paths = vfs.paths(|p| p.to_lowercase().ends_with(".nif"));
     for p in paths.iter().take(2000) {
-        let Some(Ok(data)) = vfs.read(p) else { continue };
+        let Some(Ok(data)) = vfs.read(p) else {
+            continue;
+        };
         let Ok(f) = nvre_nif::NifFile::parse(&data, Some(&schema)) else {
             continue;
         };

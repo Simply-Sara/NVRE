@@ -65,7 +65,11 @@ pub const ARCHIVE_ORDER_ENV: &str = "NVF_ARCHIVE_ORDER";
 /// Archive names of a comma-separated list (`SArchiveList` style), trimmed, empty items
 /// dropped.
 pub fn parse_archive_list(list: &str) -> Vec<String> {
-    list.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect()
+    list.split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 /// Whether the file at `path` is a BA2 rather than a BSA, by its magic.
@@ -124,11 +128,21 @@ pub fn normal_map_beside(texture: &str) -> Option<String> {
 
 #[derive(Debug, Clone, Copy)]
 enum Location {
-    Archive { archive: usize, folder: usize, file: usize },
+    Archive {
+        archive: usize,
+        folder: usize,
+        file: usize,
+    },
     /// A file in a BA2 archive, by its index in that archive's record list.
-    Ba2 { archive: usize, index: usize },
+    Ba2 {
+        archive: usize,
+        index: usize,
+    },
     /// A texture in a BA2 DX10 archive, by its index there.
-    Ba2Texture { archive: usize, index: usize },
+    Ba2Texture {
+        archive: usize,
+        index: usize,
+    },
     Loose,
 }
 
@@ -159,7 +173,12 @@ impl Vfs {
                     .collect()
             })
             .unwrap_or_default();
-        let find = |name: &str| present.iter().find(|p| p.eq_ignore_ascii_case(name)).cloned();
+        let find = |name: &str| {
+            present
+                .iter()
+                .find(|p| p.eq_ignore_ascii_case(name))
+                .cloned()
+        };
         let mut order: Vec<String> = Vec::new();
         let push = |n: Option<String>, order: &mut Vec<String>| {
             if let Some(n) = n {
@@ -173,7 +192,10 @@ impl Vfs {
         }
         push(find("Update.bsa"), &mut order);
         for p in plugins {
-            let stem = p.rsplit_once('.').map_or(*p, |(s, _)| s).to_ascii_lowercase();
+            let stem = p
+                .rsplit_once('.')
+                .map_or(*p, |(s, _)| s)
+                .to_ascii_lowercase();
             let mut own: Vec<String> = present
                 .iter()
                 .filter(|n| {
@@ -218,7 +240,10 @@ impl Vfs {
                 for f in &a.files {
                     vfs.index.insert(
                         normalize(&f.path),
-                        Location::Ba2 { archive: ai, index: f.index },
+                        Location::Ba2 {
+                            archive: ai,
+                            index: f.index,
+                        },
                     );
                 }
                 // A texture archive's entries are textures rather than files,
@@ -226,7 +251,10 @@ impl Vfs {
                 for t in &a.textures {
                     vfs.index.insert(
                         normalize(&t.path),
-                        Location::Ba2Texture { archive: ai, index: t.index },
+                        Location::Ba2Texture {
+                            archive: ai,
+                            index: t.index,
+                        },
                     );
                 }
                 vfs.ba2_archives.push((name.clone(), Mutex::new(a)));
@@ -236,14 +264,19 @@ impl Vfs {
                 for e in a.entries() {
                     vfs.index.insert(
                         normalize(&e.path()),
-                        Location::Archive { archive: ai, folder: e.folder_index, file: e.file_index },
+                        Location::Archive {
+                            archive: ai,
+                            folder: e.folder_index,
+                            file: e.file_index,
+                        },
                     );
                 }
                 vfs.archives.push((name.clone(), Mutex::new(a)));
             }
         }
         let mut files = Vec::new();
-        walk(data_dir, data_dir, &mut files).map_err(|e| VfsError::Io(data_dir.to_path_buf(), e))?;
+        walk(data_dir, data_dir, &mut files)
+            .map_err(|e| VfsError::Io(data_dir.to_path_buf(), e))?;
         for rel in files {
             let key = normalize(&rel.to_string_lossy());
             // Plugins and archives at the top level are not part of the asset namespace.
@@ -270,7 +303,10 @@ impl Vfs {
     /// archives (`<mod> - *.bsa`, `<mod>.bsa`) come above the base game's and DLC's when
     /// its plugin loads after them, and loose files stay above every archive. The
     /// [`ARCHIVE_ORDER_ENV`] override applies as there.
-    pub fn open_for_plugins<S: AsRef<str>>(data_dir: &Path, plugins: &[S]) -> Result<Vfs, VfsError> {
+    pub fn open_for_plugins<S: AsRef<str>>(
+        data_dir: &Path,
+        plugins: &[S],
+    ) -> Result<Vfs, VfsError> {
         let order = match std::env::var(ARCHIVE_ORDER_ENV) {
             Ok(list) if !list.trim().is_empty() => parse_archive_list(&list),
             _ => {
@@ -318,18 +354,31 @@ impl Vfs {
         let key = normalize(path);
         Some(match *self.index.get(&key)? {
             Location::Loose => std::fs::read(self.data_dir.join(&self.loose[&key])),
-            Location::Archive { archive, folder, file } => {
-                let mut a = self.archives[archive].1.lock().unwrap_or_else(|p| p.into_inner());
+            Location::Archive {
+                archive,
+                folder,
+                file,
+            } => {
+                let mut a = self.archives[archive]
+                    .1
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 let r = a.folders[folder].files[file].clone();
                 a.extract(&r).map_err(std::io::Error::other)
             }
             Location::Ba2 { archive, index } => {
-                let mut a = self.ba2_archives[archive].1.lock().unwrap_or_else(|p| p.into_inner());
+                let mut a = self.ba2_archives[archive]
+                    .1
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 let f = a.files[index].clone();
                 a.extract(&f).map_err(std::io::Error::other)
             }
             Location::Ba2Texture { archive, index } => {
-                let mut a = self.ba2_archives[archive].1.lock().unwrap_or_else(|p| p.into_inner());
+                let mut a = self.ba2_archives[archive]
+                    .1
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 let t = a.textures[index].clone();
                 // A DX10 record holds raw mip chunks; a DDS reader wants a
                 // header in front of them, so one is written.
@@ -368,9 +417,15 @@ mod tests {
     #[test]
     fn paths_normalise() {
         assert_eq!(normalize("/Meshes/Clutter/X.NIF"), "meshes\\clutter\\x.nif");
-        assert_eq!(texture_path("Textures/Clutter/a.dds"), "textures\\clutter\\a.dds");
+        assert_eq!(
+            texture_path("Textures/Clutter/a.dds"),
+            "textures\\clutter\\a.dds"
+        );
         assert_eq!(texture_path("data\\textures\\a.dds"), "textures\\a.dds");
-        assert_eq!(texture_path("c:\\proj\\data\\textures\\b\\a.dds"), "textures\\b\\a.dds");
+        assert_eq!(
+            texture_path("c:\\proj\\data\\textures\\b\\a.dds"),
+            "textures\\b\\a.dds"
+        );
         assert_eq!(texture_path("clutter\\a.dds"), "textures\\clutter\\a.dds");
     }
 
@@ -381,17 +436,35 @@ mod tests {
             Some("textures\\characters\\ghoul\\upperbodymale_n.dds")
         );
         // The path is kept as written (case, separators, no `textures\` in front).
-        assert_eq!(normal_map_beside("Characters/RaiderFemale/HandFemale.DDS").as_deref(), Some("Characters/RaiderFemale/HandFemale_n.DDS"));
-        assert_eq!(normal_map_beside("headhuman.dds").as_deref(), Some("headhuman_n.dds"));
+        assert_eq!(
+            normal_map_beside("Characters/RaiderFemale/HandFemale.DDS").as_deref(),
+            Some("Characters/RaiderFemale/HandFemale_n.DDS")
+        );
+        assert_eq!(
+            normal_map_beside("headhuman.dds").as_deref(),
+            Some("headhuman_n.dds")
+        );
         // Only the last dot of the file name counts, and dots in folder names do not.
-        assert_eq!(normal_map_beside("a.b\\head.old.dds").as_deref(), Some("a.b\\head.old_n.dds"));
-        assert_eq!(normal_map_beside("textures\\characters\\facemods\\falloutnv.esm\\x"), None);
+        assert_eq!(
+            normal_map_beside("a.b\\head.old.dds").as_deref(),
+            Some("a.b\\head.old_n.dds")
+        );
+        assert_eq!(
+            normal_map_beside("textures\\characters\\facemods\\falloutnv.esm\\x"),
+            None
+        );
         // No file name or no extension: no sibling.
         assert_eq!(normal_map_beside(""), None);
         assert_eq!(normal_map_beside("textures\\characters\\male\\"), None);
         assert_eq!(normal_map_beside("textures\\characters\\male\\.dds"), None);
-        assert_eq!(normal_map_beside("textures\\characters\\male\\headhuman."), None);
-        assert_eq!(normal_map_beside("textures\\characters\\male\\headhuman"), None);
+        assert_eq!(
+            normal_map_beside("textures\\characters\\male\\headhuman."),
+            None
+        );
+        assert_eq!(
+            normal_map_beside("textures\\characters\\male\\headhuman"),
+            None
+        );
     }
 
     #[test]
@@ -399,11 +472,29 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("nvre-vfs-test-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("Meshes/Sub")).unwrap();
         std::fs::write(dir.join("Meshes/Sub/A.nif"), b"loose").unwrap();
-        for n in ["Fallout - Meshes.bsa", "Update.bsa", "DeadMoney - Main.bsa", "DeadMoney - Sounds.bsa", "Other.bsa"] {
+        for n in [
+            "Fallout - Meshes.bsa",
+            "Update.bsa",
+            "DeadMoney - Main.bsa",
+            "DeadMoney - Sounds.bsa",
+            "Other.bsa",
+        ] {
             std::fs::write(dir.join(n), b"").unwrap();
         }
-        let order = Vfs::archive_order(&dir, &DEFAULT_ARCHIVE_LIST, &["FalloutNV.esm", "DeadMoney.esm"]);
-        assert_eq!(order, ["Fallout - Meshes.bsa", "Update.bsa", "DeadMoney - Main.bsa", "DeadMoney - Sounds.bsa"]);
+        let order = Vfs::archive_order(
+            &dir,
+            &DEFAULT_ARCHIVE_LIST,
+            &["FalloutNV.esm", "DeadMoney.esm"],
+        );
+        assert_eq!(
+            order,
+            [
+                "Fallout - Meshes.bsa",
+                "Update.bsa",
+                "DeadMoney - Main.bsa",
+                "DeadMoney - Sounds.bsa"
+            ]
+        );
         let vfs = Vfs::open(&dir, &[]).unwrap();
         assert!(vfs.exists("meshes/sub/a.NIF"));
         assert_eq!(vfs.source_of("MESHES\\SUB\\A.nif"), Some("loose"));
@@ -416,13 +507,33 @@ mod tests {
     fn mod_archives_follow_their_plugins() {
         let dir = std::env::temp_dir().join(format!("nvre-vfs-mods-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        for n in ["Fallout - Meshes.bsa", "Update.bsa", "DeadMoney - Main.bsa", "MyMod.bsa", "MyMod - Textures.bsa", "Unused.bsa"] {
+        for n in [
+            "Fallout - Meshes.bsa",
+            "Update.bsa",
+            "DeadMoney - Main.bsa",
+            "MyMod.bsa",
+            "MyMod - Textures.bsa",
+            "Unused.bsa",
+        ] {
             std::fs::write(dir.join(n), b"").unwrap();
         }
         // Base archives, then each plugin's own archives in load order; an archive no
         // loaded plugin names stays out.
-        let order = Vfs::archive_order(&dir, &DEFAULT_ARCHIVE_LIST, &["FalloutNV.esm", "DeadMoney.esm", "MyMod.esp"]);
-        assert_eq!(order, ["Fallout - Meshes.bsa", "Update.bsa", "DeadMoney - Main.bsa", "MyMod - Textures.bsa", "MyMod.bsa"]);
+        let order = Vfs::archive_order(
+            &dir,
+            &DEFAULT_ARCHIVE_LIST,
+            &["FalloutNV.esm", "DeadMoney.esm", "MyMod.esp"],
+        );
+        assert_eq!(
+            order,
+            [
+                "Fallout - Meshes.bsa",
+                "Update.bsa",
+                "DeadMoney - Main.bsa",
+                "MyMod - Textures.bsa",
+                "MyMod.bsa"
+            ]
+        );
         // Without the plugin its archives are not read.
         let order = Vfs::archive_order(&dir, &DEFAULT_ARCHIVE_LIST, &DEFAULT_PLUGINS);
         assert!(!order.iter().any(|n| n.starts_with("MyMod")));

@@ -150,7 +150,12 @@ fn the_window_title_names_the_record_type() {
     };
     let mut state = ObjectEditorState::default();
     state.load_from_session(&s, AMEF_HP_DT, *b"AMEF");
-    let title = nvre_editor::object_editor::window_title(&s.schema, &state.sig, &state.edid, &state.full_name);
+    let title = nvre_editor::object_editor::window_title(
+        &s.schema,
+        &state.sig,
+        &state.edid,
+        &state.full_name,
+    );
     assert_eq!(
         title,
         "Ammo Effect - AmmoEffect5mmHPDTPenalty (Dam. Thresh. Increase)"

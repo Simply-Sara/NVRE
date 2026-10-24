@@ -9,8 +9,8 @@
 //! indistinguishable from the controller's fallback (its last depth), so a test
 //! aimed at the middle would pass even with a completely broken anchor.
 
-use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
 use bevy::camera::RenderTarget;
+use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
 use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, WindowResolution};
 use nvre_editor::viewport::{ViewportCamera, ViewportCameraPlugin};
@@ -58,13 +58,11 @@ fn app() -> (App, Entity, Entity) {
             }),
             Camera {
                 computed: bevy::camera::ComputedCameraValues {
-                    clip_from_view: bevy::camera::Projection::Perspective(
-                        PerspectiveProjection {
-                            far: 1_500_000.0,
-                            near: 1.0,
-                            ..default()
-                        },
-                    )
+                    clip_from_view: bevy::camera::Projection::Perspective(PerspectiveProjection {
+                        far: 1_500_000.0,
+                        near: 1.0,
+                        ..default()
+                    })
                     .get_clip_from_view(),
                     target_info: Some(bevy::camera::RenderTargetInfo {
                         physical_size: UVec2::new(1280, 800),
@@ -100,17 +98,10 @@ fn app() -> (App, Entity, Entity) {
         ],
     );
     mesh.insert_indices(bevy::mesh::Indices::U32(vec![0, 1, 2, 0, 2, 3]));
-    let handle = app
-        .world_mut()
-        .resource_mut::<Assets<Mesh>>()
-        .add(mesh);
+    let handle = app.world_mut().resource_mut::<Assets<Mesh>>().add(mesh);
     let target = app
         .world_mut()
-        .spawn((
-            Mesh3d(handle),
-            Transform::default(),
-            Visibility::default(),
-        ))
+        .spawn((Mesh3d(handle), Transform::default(), Visibility::default()))
         .id();
 
     (app, camera, target)
@@ -146,7 +137,9 @@ fn the_orbit_anchors_on_the_mesh_under_the_cursor() {
     app.update();
 
     let controller = app.world().get::<PanOrbitCamera>(camera).unwrap();
-    let anchor = controller.anchor_view_space().expect("a drag must start with an anchor");
+    let anchor = controller
+        .anchor_view_space()
+        .expect("a drag must start with an anchor");
 
     // The quad is at the origin, 250 units in front of the camera, so the anchor
     // must be about that far away and off to the right, where the cursor was.
