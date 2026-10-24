@@ -375,8 +375,13 @@ pub fn write_plugin_with_load_order(
     // after every record this session wrote — not the one before them. It is
     // derived from the file itself, so a whole-plugin copy reports the same
     // thing the source did.
+    //
+    // The offset the header already advertises is a floor: a plugin whose author
+    // has already handed out IDs keeps them, even when the file holds no records
+    // to derive the number from.
     let own_index = masters.names.len() as u32;
-    let offset = next_object_offset(&nodes, own_index, masters.names.len());
+    let current = header_next_object_id(&nodes)?;
+    let offset = next_object_offset(&nodes, own_index, masters.names.len(), current);
     set_next_object_id(&mut nodes, offset)?;
     report.unremapped = problems;
 
@@ -716,6 +721,34 @@ fn rewrite_header(nodes: &mut [Node], masters: &MasterList, is_master: bool) -> 
     Ok(())
 }
 
+/// The next-object-ID offset the header currently advertises.
+///
+/// Read from the file's own HEDR rather than from the plugin header's parsed
+/// copy, because this is called on the node tree the save is building.
+fn header_next_object_id(nodes: &[Node]) -> Result<u32, String> {
+    let Some(Node::Record(tes4)) = nodes.first() else {
+        return Err("plugin does not start with a TES4 record".into());
+    };
+    let subs = tes4
+        .subrecords()
+        .map_err(|e| format!("TES4 header will not parse: {e}"))?;
+    let Some(hedr) = subs.iter().find(|s| &s.sig == b"HEDR") else {
+        return Err("the TES4 header has no HEDR subrecord".into());
+    };
+    if hedr.data.len() < 12 {
+        return Err(format!(
+            "the TES4 header's HEDR is {} bytes, too short for a next-object-ID",
+            hedr.data.len()
+        ));
+    }
+    Ok(u32::from_le_bytes([
+        hedr.data[8],
+        hedr.data[9],
+        hedr.data[10],
+        hedr.data[11],
+    ]))
+}
+
 /// Set the header's next-object-ID offset.
 ///
 /// The value is an offset into the plugin's own FormID space: the shipped
@@ -753,9 +786,16 @@ fn set_next_object_id(nodes: &mut [Node], next_offset: u32) -> Result<(), String
 ///
 /// The header says where in the plugin's *own* numbering the next record
 /// belongs, so it must be one past the highest offset the file already uses.
-/// A file with no records of its own starts at [`first_object_id`], which is
-/// what GECK writes for a fresh plugin of that kind.
-fn next_object_offset(nodes: &[Node], own_index: u32, master_count: usize) -> u32 {
+///
+/// `current` is the offset the header already advertises, and the result is
+/// never below it: a plugin whose author has already handed out IDs keeps them.
+/// Deriving the value from the records alone resets the counter of any file with
+/// no records of its own to the constant, which moves a plugin's numbering
+/// *backwards* — GECK's own authored plugin advertises `0x00000DBA` with no
+/// records at all [measured: testfiles/fonv_geck_author_desc.esm], and a save
+/// that rewrote that to `0x00000ADD` would hand the next record an ID the plugin
+/// has already used.
+fn next_object_offset(nodes: &[Node], own_index: u32, master_count: usize, current: u32) -> u32 {
     let mut highest: Option<u32> = None;
     fn walk(nodes: &[Node], own_index: u32, highest: &mut Option<u32>) {
         for n in nodes {
@@ -774,7 +814,13 @@ fn next_object_offset(nodes: &[Node], own_index: u32, master_count: usize) -> u3
         }
     }
     walk(nodes, own_index, &mut highest);
-    highest.map_or(first_object_id(master_count), |h| h.wrapping_add(1))
+    // The header's own counter is a floor: it is the plugin's numbering, and
+    // only the records can push it forward, never back.
+    let current = current & 0x00FF_FFFF;
+    match highest {
+        Some(h) => (h + 1).max(current),
+        None => current.max(first_object_id(master_count)),
+    }
 }
 
 /// The lowest offset a new record may take.
