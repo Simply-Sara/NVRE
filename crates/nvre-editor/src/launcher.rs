@@ -26,6 +26,13 @@ pub struct Launcher {
     pub new_name: String,
     /// For creating a new plugin: true for .esm (Master), false for .esp (Plugin).
     pub new_is_master: bool,
+    /// For creating a new plugin: the author and description the header carries.
+    ///
+    /// Both are buffers rather than the committed value, because egui rebuilds
+    /// the field every frame and a value reconstructed from elsewhere discards
+    /// every keystroke.
+    pub new_author: String,
+    pub new_description: String,
     /// A master the user is typing in, to add to the list.
     pub adding: String,
     /// What the last attempt to load said.
@@ -50,6 +57,10 @@ impl Launcher {
             masters: game.masters_in(&game.data_dir().unwrap_or_default()),
             new_name: "NewPlugin.esp".to_string(),
             new_is_master: false,
+            // Empty, so the header gets GECK's `DEFAULT` author and no
+            // description unless the user types one.
+            new_author: String::new(),
+            new_description: String::new(),
             adding: String::new(),
             error: None,
             listing: Vec::new(),
@@ -514,6 +525,30 @@ pub fn ui(
                                         launcher.new_name.trim_end_matches(".esp").to_string()
                                             + ".esm";
                                 }
+                            });
+                        });
+
+                        ui.add_space(6.0);
+                        // The author and description the header carries. GECK's
+                        // own Create dialog has no such fields — its plugin is
+                        // always CNAM `DEFAULT` with no SNAM — so these are what
+                        // let a mod say who wrote it and what it is.
+                        ui.group(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Author:");
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut launcher.new_author)
+                                        .hint_text("DEFAULT")
+                                        .desired_width(ui.available_width() - 20.0),
+                                );
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label("Description:");
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut launcher.new_description)
+                                        .hint_text("what this plugin is for")
+                                        .desired_width(ui.available_width() - 20.0),
+                                );
                             });
                         });
 

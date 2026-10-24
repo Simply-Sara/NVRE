@@ -21,8 +21,16 @@ fn a_session_can_be_created_with_no_masters() {
     let dir = std::env::temp_dir().join("nvre-no-masters-session");
     std::fs::create_dir_all(&dir).unwrap();
 
-    let session = Session::create("NoMasters.esp", false, &dir, &no_schema_dir(), Vec::new())
-        .expect("a plugin with no masters is a valid session");
+    let session = Session::create(
+        "NoMasters.esp",
+        false,
+        &dir,
+        &no_schema_dir(),
+        Vec::new(),
+        None,
+        None,
+    )
+    .expect("a plugin with no masters is a valid session");
 
     assert!(
         session.masters.is_empty(),
@@ -62,8 +70,16 @@ fn a_session_can_be_created_with_no_masters() {
 fn a_new_records_formid_clears_the_reserved_range() {
     let dir = std::env::temp_dir().join("nvre-no-masters-ids");
     std::fs::create_dir_all(&dir).unwrap();
-    let session =
-        Session::create("NoMasters.esp", false, &dir, &no_schema_dir(), Vec::new()).unwrap();
+    let session = Session::create(
+        "NoMasters.esp",
+        false,
+        &dir,
+        &no_schema_dir(),
+        Vec::new(),
+        None,
+        None,
+    )
+    .unwrap();
 
     let fid = session.next_local_form_id();
     assert_eq!(
@@ -87,8 +103,16 @@ fn a_new_records_formid_clears_the_reserved_range() {
 fn saving_a_no_master_session_adds_no_master() {
     let dir = std::env::temp_dir().join("nvre-no-masters-save");
     std::fs::create_dir_all(&dir).unwrap();
-    let session =
-        Session::create("NoMasters.esp", false, &dir, &no_schema_dir(), Vec::new()).unwrap();
+    let session = Session::create(
+        "NoMasters.esp",
+        false,
+        &dir,
+        &no_schema_dir(),
+        Vec::new(),
+        None,
+        None,
+    )
+    .unwrap();
 
     let out = dir.join("NoMasters.esp");
     let report = session.save(&out).expect("a no-master session saves");

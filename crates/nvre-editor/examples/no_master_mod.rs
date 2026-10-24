@@ -24,6 +24,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::path::Path::new(&data),
         &schema_dir,
         Vec::new(),
+        Some("NVRE"),
+        Some("a standalone plugin with no masters"),
     )?;
     println!(
         "created: masters={:?} plugins={} header.next_object_id=0x{:08X}",

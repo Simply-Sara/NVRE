@@ -44,7 +44,7 @@ fn geck_no_master_esm() -> [u8; 56] {
 /// byte-identical to what the game's own editor produced".
 #[test]
 fn a_blank_plugin_with_no_masters_matches_gecks_file() {
-    let doc = Document::create_empty("NoMasters.esp", false, &[]).unwrap();
+    let doc = Document::create_empty("NoMasters.esp", false, &[], None, None).unwrap();
     assert_eq!(
         doc.plugin().nodes.len(),
         1,
@@ -56,7 +56,7 @@ fn a_blank_plugin_with_no_masters_matches_gecks_file() {
         "a no-master .esp must be the 56 bytes GECK writes, not a header with an empty master list"
     );
 
-    let as_master = Document::create_empty("NoMasters.esm", true, &[]).unwrap();
+    let as_master = Document::create_empty("NoMasters.esm", true, &[], None, None).unwrap();
     assert_eq!(
         as_master.to_bytes().unwrap(),
         geck_no_master_esm(),
@@ -73,10 +73,16 @@ fn the_first_object_id_depends_on_whether_a_master_is_declared() {
     assert_eq!(first_object_id(3), 0x0000_0ADD);
 
     // And the header the editor builds carries the same number.
-    let blank = Document::create_empty("NoMasters.esp", false, &[]).unwrap();
+    let blank = Document::create_empty("NoMasters.esp", false, &[], None, None).unwrap();
     assert_eq!(blank.plugin().header.next_object_id, 0x0000_0800);
-    let with_master =
-        Document::create_empty("WithMaster.esp", false, &["FalloutNV.esm".to_string()]).unwrap();
+    let with_master = Document::create_empty(
+        "WithMaster.esp",
+        false,
+        &["FalloutNV.esm".to_string()],
+        None,
+        None,
+    )
+    .unwrap();
     assert_eq!(with_master.plugin().header.next_object_id, 0x0000_0ADD);
 }
 
@@ -90,7 +96,7 @@ fn the_first_object_id_depends_on_whether_a_master_is_declared() {
 #[test]
 fn a_new_record_in_a_no_master_plugin_is_above_the_reserved_range() {
     let schema = nvre_esm::Schema::default();
-    let mut doc = Document::create_empty("NoMasters.esp", false, &[]).unwrap();
+    let mut doc = Document::create_empty("NoMasters.esp", false, &[], None, None).unwrap();
     doc.insert(PendingRecord {
         cell: 0x0000_0800,
         record: nvre_edit::document::make_refr(
@@ -144,7 +150,7 @@ fn a_new_record_in_a_no_master_plugin_is_above_the_reserved_range() {
 #[test]
 fn staged_cells_and_worldspaces_do_not_collide_with_placed_records() {
     let schema = nvre_esm::Schema::default();
-    let mut doc = Document::create_empty("NoMasters.esp", false, &[]).unwrap();
+    let mut doc = Document::create_empty("NoMasters.esp", false, &[], None, None).unwrap();
 
     // What the session does: take an ID from its own counter for each staged
     // thing, then place a record staged at the placeholder 0.

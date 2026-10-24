@@ -619,18 +619,78 @@ fn rewrite_header(nodes: &mut [Node], masters: &MasterList, is_master: bool) -> 
         .subrecords()
         .map_err(|e| format!("TES4 header will not parse: {e}"))?;
 
-    // Keep HEDR, CNAM and SNAM; drop the old MAST/DATA pairs and ONAM.
+    // The source's own author and description, read before the list is rebuilt.
+    // They are what the save keeps when the caller names neither: opening a mod
+    // and saving it must not blank the name its author gave it.
+    let source_author = subs
+        .iter()
+        .find(|s| &s.sig == b"CNAM")
+        .map(|s| nvre_util::cp1252::decode_z(&s.data));
+    let source_description = subs
+        .iter()
+        .find(|s| &s.sig == b"SNAM")
+        .map(|s| nvre_util::cp1252::decode_z(&s.data));
+
+    // Keep HEDR and any subrecord this function does not own; drop CNAM and
+    // SNAM (written again below), the MAST/DATA pairs and ONAM.
+    //
+    // CNAM and SNAM are dropped rather than kept because both are written
+    // again: a header that kept its own and appended the caller's would carry
+    // two CNAM subrecords, and a reader takes the last. Every plugin GECK
+    // writes has exactly one [measured: every plugin in the FNV Data folder is
+    // HEDR CNAM …], so the save must not be the thing that breaks that.
     let mut out: Vec<Subrecord> = Vec::new();
     for s in subs.drain(..) {
         match &s.sig {
-            b"MAST" | b"DATA" | b"ONAM" => {}
+            b"MAST" | b"DATA" | b"ONAM" | b"CNAM" | b"SNAM" => {}
             // HEDR is kept as it was: its next-object-ID is corrected once the
             // records are written, and its top byte is the source's own
             // convention, which the save must not overwrite.
             _ => out.push(s),
         }
     }
-    // The new master list, as MAST/DATA pairs.
+
+    // The author, always written: a header with no CNAM loses the string the
+    // game's file listing shows.
+    let author = masters
+        .author
+        .clone()
+        .or(source_author)
+        .unwrap_or_else(|| "DEFAULT".to_string());
+    // The description only when there is one: GECK's own empty plugin has no
+    // SNAM at all [measured: testfiles/fonv_geck_empty.esp is HEDR CNAM MAST
+    // DATA], so an empty description is no subrecord rather than an empty
+    // string.
+    let description = masters
+        .description
+        .clone()
+        .or(source_description)
+        .filter(|d| !d.is_empty());
+
+    // The order is HEDR CNAM [SNAM] MAST/DATA [ONAM], which is what fopdoc
+    // documents and what every installed plugin uses [measured over the FNV
+    // Data folder: 12 plugins are `HEDR CNAM MAST…`, one is
+    // `HEDR CNAM SNAM MAST…`].
+    let author_at = out
+        .iter()
+        .position(|s| &s.sig == b"HEDR")
+        .map_or(0, |i| i + 1);
+    out.insert(
+        author_at,
+        Subrecord {
+            sig: *b"CNAM",
+            data: crate::document::encode_zstring(&crate::document::header_text(&author)),
+            extended: false,
+        },
+    );
+    if let Some(d) = &description {
+        out.push(Subrecord {
+            sig: *b"SNAM",
+            data: crate::document::encode_zstring(&crate::document::header_text(d)),
+            extended: false,
+        });
+    }
+    // The new master list, as MAST/DATA pairs, after the author and description.
     for name in &masters.names {
         out.push(Subrecord {
             sig: *b"MAST",
@@ -640,20 +700,6 @@ fn rewrite_header(nodes: &mut [Node], masters: &MasterList, is_master: bool) -> 
         out.push(Subrecord {
             sig: *b"DATA",
             data: 0u64.to_le_bytes().to_vec(),
-            extended: false,
-        });
-    }
-    if let Some(a) = &masters.author {
-        out.push(Subrecord {
-            sig: *b"CNAM",
-            data: crate::document::encode_zstring(a),
-            extended: false,
-        });
-    }
-    if let Some(d) = &masters.description {
-        out.push(Subrecord {
-            sig: *b"SNAM",
-            data: crate::document::encode_zstring(d),
             extended: false,
         });
     }
@@ -1330,7 +1376,9 @@ pub fn empty_header(masters: &MasterList) -> PluginHeader {
         num_records: 0,
         // An offset into the plugin's own FormID space, not a FormID.
         next_object_id: first_object_id(masters.names.len()),
-        author: masters.author.clone(),
+        author: Some(crate::document::header_text(
+            masters.author.as_deref().unwrap_or("DEFAULT"),
+        )),
         description: masters.description.clone(),
         masters: masters
             .names

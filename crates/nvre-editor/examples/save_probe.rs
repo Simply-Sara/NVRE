@@ -18,7 +18,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let masters = MasterList::new(vec!["FalloutNV.esm".to_string()]);
 
     // 1. A plugin created from nothing, the way `Session::create` does.
-    let mut blank = Document::create_empty("SaveProbe.esp", false, &["FalloutNV.esm".to_string()])?;
+    let mut blank = Document::create_empty(
+        "SaveProbe.esp",
+        false,
+        &["FalloutNV.esm".to_string()],
+        None,
+        None,
+    )?;
     blank.insert(PendingRecord {
         cell: 0x0031e2a,
         record: nvre_edit::document::make_refr_flags(

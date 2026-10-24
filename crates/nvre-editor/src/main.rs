@@ -486,12 +486,23 @@ fn open_selected(
                         ".esp"
                     });
                 }
+                // An empty field is no value: the header then gets GECK's
+                // `DEFAULT` author and no SNAM at all, which is what a plugin
+                // created with nothing typed should look like.
+                let author = Some(launcher.new_author.trim())
+                    .filter(|a| !a.is_empty())
+                    .map(str::to_string);
+                let description = Some(launcher.new_description.trim())
+                    .filter(|d| !d.is_empty())
+                    .map(str::to_string);
                 session::Session::create(
                     &name,
                     launcher.new_is_master,
                     &data_dir,
                     &schema_dir,
                     launcher.masters.clone(),
+                    author.as_deref(),
+                    description.as_deref(),
                 )
             }
             launcher::LauncherTab::OpenExisting => {

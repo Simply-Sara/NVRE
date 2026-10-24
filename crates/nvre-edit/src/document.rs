@@ -133,10 +133,22 @@ impl Document {
     }
 
     /// Create a new, blank plugin (.esp or .esm) with the specified name and masters.
+    ///
+    /// `author` and `description` become the header's `CNAM` and `SNAM`. Both are
+    /// optional, and both are cstrings capped at 512 bytes including the
+    /// terminator [documented: fopdoc's TES4 page], so a longer one is cut
+    /// rather than written in a form the game cannot read.
+    ///
+    /// The subrecord order is `HEDR CNAM [SNAM] MAST/DATA`, which is what every
+    /// installed plugin uses [measured over the FNV Data folder: 12 plugins are
+    /// `HEDR CNAM MAST…`, one is `HEDR CNAM SNAM MAST…`] and what fopdoc
+    /// documents.
     pub fn create_empty(
         name: &str,
         is_master: bool,
         masters: &[String],
+        author: Option<&str>,
+        description: Option<&str>,
     ) -> Result<Document, EsmError> {
         let mut subs = Vec::new();
         // HEDR subrecord: version (1.34), num_records (0), next_object_id.
@@ -155,12 +167,26 @@ impl Document {
         });
 
         // CNAM: the author. GECK writes `DEFAULT` for a plugin nobody has
-        // claimed, and the game shows the string in its file listings.
+        // claimed, and the game shows the string in its file listings, so an
+        // author the caller did not name is still written.
         subs.push(nvre_esm::raw::Subrecord {
             sig: *b"CNAM",
-            data: b"DEFAULT\0".to_vec(),
+            data: crate::document::encode_zstring(&header_text(author.unwrap_or("DEFAULT"))),
             extended: false,
         });
+
+        // SNAM: the description, after the author and before the master list.
+        // Absent when the caller names none: GECK's own empty plugin has no
+        // SNAM at all [measured: testfiles/fonv_geck_empty.esp is HEDR CNAM
+        // MAST DATA], so an empty description is no subrecord rather than an
+        // empty string.
+        if let Some(d) = description.filter(|d| !d.is_empty()) {
+            subs.push(nvre_esm::raw::Subrecord {
+                sig: *b"SNAM",
+                data: crate::document::encode_zstring(&header_text(d)),
+                extended: false,
+            });
+        }
 
         for m in masters {
             let mut n = m.as_bytes().to_vec();
@@ -730,6 +756,34 @@ pub fn encode_zstring(s: &str) -> Vec<u8> {
     let mut v = nvre_util::cp1252::encode(s).unwrap_or_else(|| s.bytes().collect());
     v.push(0);
     v
+}
+
+/// The longest `CNAM`/`SNAM` a TES4 header may carry, including its terminator.
+///
+/// fopdoc puts the cap at 512 bytes for both [documented: fopdoc's TES4 page,
+/// "Maximum size is 512 bytes, including terminator"], and the field is a
+/// cstring, so the text is at most 511 bytes.
+pub const HEADER_TEXT_MAX: usize = 512;
+
+/// Header text cut to what a `CNAM`/`SNAM` subrecord can hold.
+///
+/// A description typed into the launcher can be longer than the format allows.
+/// Writing it whole produces a header the game's reader may reject, so the text
+/// is cut on a character boundary at the format's limit instead. Text that
+/// Windows-1252 cannot represent is a separate problem: [`encode_zstring`]
+/// falls back to the UTF-8 bytes, which is what the rest of the editor does for
+/// an Editor ID.
+pub fn header_text(s: &str) -> String {
+    let limit = HEADER_TEXT_MAX - 1;
+    if s.len() <= limit {
+        return s.to_string();
+    }
+    // Cut on a character boundary, and never mid-character.
+    let mut end = limit;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    s[..end].to_string()
 }
 
 /// Read a record's EDID, if present.

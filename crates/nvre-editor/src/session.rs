@@ -64,6 +64,14 @@ pub struct Session {
     pub index: nvre_world::WorldIndex,
     /// The masters the saved plugin will depend on.
     pub masters: Vec<String>,
+    /// The plugin's author (`CNAM`) and description (`SNAM`), as the header
+    /// carries them.
+    ///
+    /// Kept on the session because the save rewrites the header: a plugin
+    /// created with an author must keep it, and one opened from disk must keep
+    /// the author it already had rather than having it blanked.
+    pub author: Option<String>,
+    pub description: Option<String>,
     /// The cell currently open, by FormID.
     pub cell: Option<u32>,
     /// The selected reference, by FormID (0 for a record not yet saved).
@@ -154,6 +162,12 @@ impl Session {
             }
         }
 
+        // The header the file already has: the save keeps these rather than
+        // blanking an author the mod came with. Read before `doc` is moved into
+        // the session.
+        let author = doc.plugin().header.author.clone();
+        let description = doc.plugin().header.description.clone();
+
         Ok(Session {
             game: *game,
             doc,
@@ -163,6 +177,8 @@ impl Session {
             strings,
             index,
             masters,
+            author,
+            description,
             cell: None,
             selected: None,
             placed_index: 0,
@@ -197,6 +213,8 @@ impl Session {
         data_dir: &std::path::Path,
         schema_dir: &std::path::Path,
         masters: Vec<String>,
+        author: Option<&str>,
+        description: Option<&str>,
     ) -> Result<Session, String> {
         let game = crate::game::GameProfile::detect(data_dir);
         let schema = load_schema(schema_dir, game)?;
@@ -224,7 +242,8 @@ impl Session {
             }
         }
 
-        let doc = Document::create_empty(name, is_master, &masters).map_err(|e| e.to_string())?;
+        let doc = Document::create_empty(name, is_master, &masters, author, description)
+            .map_err(|e| e.to_string())?;
 
         Ok(Session {
             game: *game,
@@ -235,6 +254,10 @@ impl Session {
             strings,
             index,
             masters,
+            // What the new header was given, so the first save writes it back
+            // and the Properties page shows it.
+            author: author.map(str::to_string),
+            description: description.map(str::to_string),
             cell: None,
             selected: None,
             placed_index: 0,
@@ -1312,8 +1335,14 @@ impl Session {
     }
 
     /// Save as a new plugin.
+    ///
+    /// The session's own author and description go into the header, so a plugin
+    /// created with them keeps them across every save rather than only the
+    /// first.
     pub fn save(&self, out: &std::path::Path) -> Result<nvre_edit::SaveReport, String> {
-        let masters = nvre_edit::MasterList::new(self.masters.clone());
+        let mut masters = nvre_edit::MasterList::new(self.masters.clone());
+        masters.author = self.author.clone();
+        masters.description = self.description.clone();
         nvre_edit::write_plugin_with_load_order(
             &self.doc,
             &masters,
