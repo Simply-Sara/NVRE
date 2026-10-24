@@ -851,10 +851,14 @@ impl Session {
     /// The low bits are what matter for a cell: an interior cell's block and
     /// sub-block labels are computed from them, and the save keeps them when
     /// it moves the cell into the new plugin's numbering.
+    ///
+    /// The counter starts at [`nvre_edit::save::first_object_id`], not at 1:
+    /// offsets below `0x800` are the engine's hardcoded FormIDs, so a record
+    /// given one would override an engine record rather than be a new one.
     pub fn next_local_form_id(&self) -> u32 {
         let self_index = self.doc.plugin().self_index() as u32;
         let base = self_index << 24;
-        let mut next = 1u32;
+        let mut next = nvre_edit::save::first_object_id(self_index as usize);
         for (fid, _) in self.doc.records() {
             if (fid >> 24) == self_index {
                 next = next.max((fid & 0x00FF_FFFF) + 1);

@@ -376,7 +376,7 @@ pub fn write_plugin_with_load_order(
     // derived from the file itself, so a whole-plugin copy reports the same
     // thing the source did.
     let own_index = masters.names.len() as u32;
-    let offset = next_object_offset(&nodes, own_index);
+    let offset = next_object_offset(&nodes, own_index, masters.names.len());
     set_next_object_id(&mut nodes, offset)?;
     report.unremapped = problems;
 
@@ -707,9 +707,9 @@ fn set_next_object_id(nodes: &mut [Node], next_offset: u32) -> Result<(), String
 ///
 /// The header says where in the plugin's *own* numbering the next record
 /// belongs, so it must be one past the highest offset the file already uses.
-/// A file with no records of its own starts at [`FIRST_OBJECT_ID`], which is
-/// what GECK writes for a fresh plugin.
-fn next_object_offset(nodes: &[Node], own_index: u32) -> u32 {
+/// A file with no records of its own starts at [`first_object_id`], which is
+/// what GECK writes for a fresh plugin of that kind.
+fn next_object_offset(nodes: &[Node], own_index: u32, master_count: usize) -> u32 {
     let mut highest: Option<u32> = None;
     fn walk(nodes: &[Node], own_index: u32, highest: &mut Option<u32>) {
         for n in nodes {
@@ -728,16 +728,48 @@ fn next_object_offset(nodes: &[Node], own_index: u32) -> u32 {
         }
     }
     walk(nodes, own_index, &mut highest);
-    highest.map_or(FIRST_OBJECT_ID, |h| h.wrapping_add(1))
+    highest.map_or(first_object_id(master_count), |h| h.wrapping_add(1))
 }
 
-/// The offset the first record of a fresh plugin takes.
+/// The lowest offset a new record may take.
+///
+/// Offsets below `0x800` are the engine's own hardcoded FormIDs: a record
+/// written there overrides an engine record instead of being a new one,
+/// whatever the plugin's own index is [documented: the range is reserved in
+/// every Gamebryo/Creation game; xEdit reports records below it as overriding
+/// the hardcoded set]. So no new record may go below `0x800`.
+const RESERVED_OBJECT_IDS: u32 = 0x0000_0800;
+
+/// The offset the first record of a fresh plugin takes, given how many masters
+/// it declares.
 ///
 /// It is an offset into the plugin's own FormID space, not a FormID: the top
-/// byte (the plugin's own master index) is added when the ID is used. GECK
-/// starts a new plugin at `0x00000ADD` [measured: the header GECK writes for
-/// an empty plugin], and the game only reads the value as "where the next
-/// record goes", so any small offset is equally correct.
+/// byte (the plugin's own master index) is added when the ID is used.
+///
+/// GECK numbers its first record differently depending on whether the plugin
+/// has a master, and both values are measured from a file it wrote:
+///
+/// - **with a master**, `0x00000ADD` — `testfiles/fonv_geck_empty.esp`;
+/// - **with no master at all**, `0x00000800` — the lowest offset above the
+///   reserved range, `testfiles/fonv_geck_empty_no_master.esp`.
+///
+/// A plugin with no masters has its own index `0`, so its records carry
+/// `0x00......` — the same top byte the first *master* uses in a load order.
+/// Starting at the reserved range's end keeps such a file's records as far as
+/// possible from the engine's hardcoded set, which is the only numbering GECK
+/// can mean by it.
+pub fn first_object_id(master_count: usize) -> u32 {
+    if master_count == 0 {
+        RESERVED_OBJECT_IDS
+    } else {
+        FIRST_OBJECT_ID
+    }
+}
+
+/// The offset GECK gives the first record of a plugin that declares a master.
+///
+/// Kept as its own constant because it is the value a plugin with masters is
+/// expected to carry; see [`first_object_id`] for the no-master case.
 const FIRST_OBJECT_ID: u32 = 0x0000_0ADD;
 
 /// The first FormID index the new plugin's own records may use.
@@ -754,16 +786,37 @@ fn first_free_id(new_self: u32) -> u32 {
 ///
 /// The base is the plugin's own index plus the header's own next-object-ID
 /// offset, so the IDs handed out and the ID the header advertises are the same
-/// numbering.
+/// numbering. `new_self` is the plugin's own index, which is its master count,
+/// so it also decides which offset a fresh file starts at ([`first_object_id`]).
+///
+/// The staged cells and worldspaces count as well as the staged records: the
+/// session hands those out from its own counter as they are created, and a
+/// worldspace it gave `0x800` is already taken when the first reference is
+/// allocated. Ignoring them hands the reference the same FormID — in a
+/// no-master plugin, where both counters start at `0x800`, that collision is
+/// immediate.
 fn allocate_base(doc: &crate::Document, new_self: u32) -> u32 {
-    let base = first_free_id(new_self) | FIRST_OBJECT_ID;
+    let base = first_free_id(new_self) | first_object_id(new_self as usize);
     let mut next = base;
+    let mut take = |fid: u32| {
+        if fid >= base {
+            next = next.max(fid + 1);
+        }
+    };
     for p in doc.inserted() {
         // A staged placeholder is 0; anything else was handed out by a caller
         // that knows the numbering, and is left above.
-        if p.record.header.form_id >= base {
-            next = next.max(p.record.header.form_id + 1);
+        take(p.record.header.form_id);
+    }
+    for c in doc.added_cells() {
+        take(c.form_id);
+        // The cell's terrain carries the ID after the cell's own.
+        if let Some(land) = c.land_form_id {
+            take(land);
         }
+    }
+    for w in doc.added_worldspaces() {
+        take(w.form_id);
     }
     next
 }
@@ -1276,7 +1329,7 @@ pub fn empty_header(masters: &MasterList) -> PluginHeader {
         version: 1.34,
         num_records: 0,
         // An offset into the plugin's own FormID space, not a FormID.
-        next_object_id: FIRST_OBJECT_ID,
+        next_object_id: first_object_id(masters.names.len()),
         author: masters.author.clone(),
         description: masters.description.clone(),
         masters: masters

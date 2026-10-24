@@ -141,11 +141,13 @@ impl Document {
         let mut subs = Vec::new();
         // HEDR subrecord: version (1.34), num_records (0), next_object_id.
         // The next object ID is an offset into the plugin's own FormID space, so
-        // it is the same value GECK writes for a fresh plugin.
+        // it is the value GECK writes for a fresh plugin of this kind: `0xADD`
+        // when the plugin declares a master, `0x800` when it declares none —
+        // below `0x800` are the engine's own hardcoded FormIDs.
         let mut hedr = Vec::new();
         hedr.extend_from_slice(&1.34f32.to_le_bytes());
         hedr.extend_from_slice(&0i32.to_le_bytes());
-        hedr.extend_from_slice(&0x0000_0ADDu32.to_le_bytes());
+        hedr.extend_from_slice(&crate::save::first_object_id(masters.len()).to_le_bytes());
         subs.push(nvre_esm::raw::Subrecord {
             sig: *b"HEDR",
             data: hedr,

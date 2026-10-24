@@ -236,8 +236,11 @@ pub fn ui(
                             });
                         }
                         LauncherTab::CreateNew => {
-                            let ready = !launcher.new_name.trim().is_empty()
-                                && !launcher.masters.is_empty();
+                            // A name is all a new plugin needs. Zero masters is a
+                            // plugin GECK writes too — `fonv_geck_empty_no_master.esp`
+                            // is a TES4 header and nothing else — so an empty master
+                            // list is a choice, not an unfinished form.
+                            let ready = !launcher.new_name.trim().is_empty();
                             ui.add_enabled_ui(ready, |ui| {
                                 let label = if launcher.new_is_master {
                                     format!("Create & Open Master ({})", launcher.new_name.trim())
