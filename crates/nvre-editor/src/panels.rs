@@ -145,6 +145,9 @@ pub fn main_window(
         ui.heading(game.0.editor_name);
         ui.label(format!("game    {}", game.0.name));
         ui.label(format!("plugin  {}", session.doc.name()));
+        // Where a save writes, spelled out: a save that lands somewhere the user
+        // did not expect is only findable if the panel said where it went.
+        ui.label(format!("save    {}", session.save_target().display()));
         ui.label(format!("masters {:?}", session.masters));
         ui.label(format!("records {}", session.doc.records().len()));
         ui.separator();

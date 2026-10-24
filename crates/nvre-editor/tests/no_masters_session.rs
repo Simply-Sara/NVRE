@@ -94,6 +94,51 @@ fn a_new_records_formid_clears_the_reserved_range() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+/// A save writes into the game's Data folder, not the editor's working directory.
+///
+/// `save_target` used to be the plugin's bare file name, which the filesystem
+/// resolves against the process's working directory — so a mod saved from a
+/// shell anywhere else landed there, and never appeared in the game's load order.
+#[test]
+fn a_save_lands_in_the_data_folder() {
+    let dir = std::env::temp_dir().join("nvre-save-target");
+    std::fs::create_dir_all(&dir).unwrap();
+    let session = Session::create(
+        "NoMasters.esp",
+        false,
+        &dir,
+        &no_schema_dir(),
+        Vec::new(),
+        None,
+        None,
+    )
+    .unwrap();
+
+    assert_eq!(
+        session.save_target(),
+        dir.join("NoMasters.esp"),
+        "the save target must be the Data folder plus the plugin's own name"
+    );
+    // And the target is where the file actually appears: saving to it, not to
+    // the name alone, is the behaviour under test.
+    session
+        .save(&session.save_target())
+        .expect("a save succeeds");
+    assert!(
+        dir.join("NoMasters.esp").exists(),
+        "the plugin must be written into the Data folder"
+    );
+    assert!(
+        !std::env::current_dir()
+            .unwrap()
+            .join("NoMasters.esp")
+            .exists(),
+        "the plugin must not be written beside the working directory"
+    );
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 /// The saved file keeps the empty master list.
 ///
 /// The plausible failure is the save filling the master list in from the load

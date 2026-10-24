@@ -48,6 +48,13 @@ pub struct Session {
     /// Which game's data this session is over. Drives the object-window group
     /// table, and is what a panel reads when it has to name the game.
     pub game: crate::game::GameProfile,
+    /// The game's Data folder this session was opened in.
+    ///
+    /// A session knows one folder: the one its masters and its own file were
+    /// read from. [`Session::open`] derives it from the plugin's parent, and
+    /// [`Session::create`] is handed it. Keeping it on the session is what lets
+    /// a save name a folder without either caller passing it.
+    pub data_dir: std::path::PathBuf,
     /// The plugin being edited.
     pub doc: Document,
     /// The load order the plugin was opened in (masters first).
@@ -170,6 +177,11 @@ impl Session {
 
         Ok(Session {
             game: *game,
+            // The plugin's own folder, which is the Data folder the launcher
+            // chose. A save has to land here: a bare file name would be
+            // resolved against wherever the editor was launched from, and the
+            // mod would never appear in the game's load order.
+            data_dir: dir.to_path_buf(),
             doc,
             plugins: leaked_plugins,
             lo,
@@ -247,6 +259,9 @@ impl Session {
 
         Ok(Session {
             game: *game,
+            // The folder the new plugin is created in, which is also where it
+            // is saved: the game's Data folder, so the game finds it.
+            data_dir: data_dir.to_path_buf(),
             doc,
             plugins: leaked_plugins,
             lo,
@@ -1329,9 +1344,15 @@ impl Session {
             + self.deleted.len()
     }
 
-    /// Where a save goes: beside the plugin being edited, as a `.esp`.
+    /// Where a save goes: the plugin being edited's own name, in the game's Data
+    /// folder.
+    ///
+    /// The folder is the session's, not the process's working directory: a bare
+    /// file name would be resolved against wherever the editor was launched from,
+    /// and the mod would be written outside the game's load order. The name is the
+    /// document's, so a plugin saved under a new name is saved under that name.
     pub fn save_target(&self) -> std::path::PathBuf {
-        std::path::PathBuf::from(self.doc.name())
+        self.data_dir.join(self.doc.name())
     }
 
     /// Save as a new plugin.
