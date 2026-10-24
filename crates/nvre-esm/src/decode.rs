@@ -214,9 +214,20 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> 
     let sig = String::from_utf8_lossy(&s.sig).into_owned();
     let rec_key = String::from_utf8_lossy(rec_sig).into_owned();
     let block_def = ctx.block.as_ref().and_then(|bname| {
-        let seq = ctx.schema.records.get(&rec_key).and_then(|r| r.sequence.as_ref())?;
-        let b = seq.blocks.get(bname).or_else(|| seq.blocks.values().find(|b| &b.opener == bname))?;
-        ctx.block_variant.as_ref().and_then(|v| v.get(&sig)).cloned().or_else(|| b.subrecords.get(&sig).cloned())
+        let seq = ctx
+            .schema
+            .records
+            .get(&rec_key)
+            .and_then(|r| r.sequence.as_ref())?;
+        let b = seq
+            .blocks
+            .get(bname)
+            .or_else(|| seq.blocks.values().find(|b| &b.opener == bname))?;
+        ctx.block_variant
+            .as_ref()
+            .and_then(|v| v.get(&sig))
+            .cloned()
+            .or_else(|| b.subrecords.get(&sig).cloned())
     });
     let def = block_def.or_else(|| {
         ctx.schema
@@ -228,10 +239,13 @@ pub fn decode_sub(rec_sig: &[u8; 4], s: &Subrecord, ctx: &mut DecodeCtx<'_>) -> 
                     // record's texture layers are `00TX`, `10TX`, `20TX` and
                     // on, so the schema gives the suffix and the signature is
                     // matched against its trailing bytes.
-                    r.wildcards.iter().find(|(suffix, _)| {
-                        suffix.len() <= sig.len()
-                            && sig.as_bytes()[sig.len() - suffix.len()..] == suffix[..]
-                    }).map(|(_, d)| d.clone())
+                    r.wildcards
+                        .iter()
+                        .find(|(suffix, _)| {
+                            suffix.len() <= sig.len()
+                                && sig.as_bytes()[sig.len() - suffix.len()..] == suffix[..]
+                        })
+                        .map(|(_, d)| d.clone())
                 })
             })
             // A subrecord any record may carry: the editor ID and its like.
@@ -311,8 +325,7 @@ fn decode_type_value(
             while c.remaining() > 0 {
                 let before = c.pos;
                 elems.push(
-                    decode_type_value(inner, c, ctx, scope)
-                        .map_err(|e| format!("[{i}]: {e}"))?,
+                    decode_type_value(inner, c, ctx, scope).map_err(|e| format!("[{i}]: {e}"))?,
                 );
                 if c.pos == before {
                     return Err("a repeat element read no bytes".into());
@@ -448,9 +461,10 @@ fn decode_type_value(
                             let mut i = 0usize;
                             while c.remaining() > 0 {
                                 let before = c.pos;
-                                elems.push(decode_type_value(of, c, ctx, scope).map_err(
-                                    |e| format!("[{i}]: {e}"),
-                                )?);
+                                elems.push(
+                                    decode_type_value(of, c, ctx, scope)
+                                        .map_err(|e| format!("[{i}]: {e}"))?,
+                                );
                                 if c.pos == before {
                                     // An element that reads no bytes would
                                     // let the loop run for ever.
@@ -890,10 +904,10 @@ fn switch_value(v: &Json) -> Option<SwitchValue> {
                     text: n.to_string(),
                     number: Some(n),
                 })
-            } else if let Some(s) = m.get("name").and_then(|v| v.as_str()) {
-                Some(SwitchValue::text_only(s.to_string()))
             } else {
-                None
+                m.get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| SwitchValue::text_only(s.to_string()))
             }
         }
         Json::String(s) => {
@@ -934,7 +948,9 @@ fn decode_peek_union(
             c.remaining()
         ));
     }
-    let word = c.peek_u32().map_err(|e: nvre_util::OutOfBounds| e.to_string())? as i64;
+    let word = c
+        .peek_u32()
+        .map_err(|e: nvre_util::OutOfBounds| e.to_string())? as i64;
     let idx = pu.cases.get(&word).copied().unwrap_or(pu.default);
     let Some(variant) = pu.variants.get(idx) else {
         return Err(format!("the union has no variant {idx}"));
@@ -1038,7 +1054,9 @@ fn decode_sequence(
         let opener = if expected_here {
             None
         } else {
-            seq.blocks.values().find(|b| b.openers.contains(&sig) || b.opener == sig)
+            seq.blocks
+                .values()
+                .find(|b| b.openers.contains(&sig) || b.opener == sig)
         };
         if let Some(b) = opener {
             let flat_fits = if b.own_first {
@@ -1087,22 +1105,23 @@ fn decode_sequence(
         // block's chosen variant says which fields the block holds, so it
         // is asked first.
         let in_block = open.is_some()
-            && (ctx.block_variant.as_ref().map(|v| v.contains_key(&sig)).unwrap_or(false)
+            && (ctx
+                .block_variant
+                .as_ref()
+                .map(|v| v.contains_key(&sig))
+                .unwrap_or(false)
                 || open.unwrap().subrecords.contains_key(&sig));
         let d = match (open, in_block) {
             (Some(b), true) => decode_sub_in(b, &sig, s, ctx, &m),
             _ => decode_sub(&rec_sig, s, ctx),
         };
         count(cov, &d, s.data.len());
-        match d.value.clone() {
-            Some(v) => {
-                if open.is_some() {
-                    block_subs.push((sig, v));
-                } else {
-                    m.insert(sig, v);
-                }
+        if let Some(v) = d.value.clone() {
+            if open.is_some() {
+                block_subs.push((sig, v));
+            } else {
+                m.insert(sig, v);
             }
-            None => {}
         }
     }
     // The last block ends with the record.
@@ -1169,7 +1188,11 @@ pub fn walk_sequence(
         // is open expects it.
         let expected_here = open.map(|b| b.order.contains(&sig)).unwrap_or(false);
         if !expected_here {
-            if let Some(b) = seq.blocks.values().find(|b| b.openers.contains(&sig) || b.opener == sig) {
+            if let Some(b) = seq
+                .blocks
+                .values()
+                .find(|b| b.openers.contains(&sig) || b.opener == sig)
+            {
                 let flat_fits = if b.own_first {
                     schema
                         .records
@@ -1452,6 +1475,15 @@ mod tests {
     }
 
     fn record(subs: Vec<(&[u8; 4], Vec<u8>)>) -> Record {
+        // The record's payload, which is where the decoder reads the
+        // subrecords from: each one is its signature, its size, and its
+        // bytes.
+        let mut raw = Vec::new();
+        for (sig, data) in &subs {
+            raw.extend_from_slice(*sig);
+            raw.extend_from_slice(&(data.len() as u16).to_le_bytes());
+            raw.extend_from_slice(data);
+        }
         Record {
             header: RecordHeader {
                 sig: *b"TEST",
@@ -1470,7 +1502,7 @@ mod tests {
                     extended: false,
                 })
                 .collect(),
-            raw: Vec::new(),
+            raw,
             offset: 0,
         }
     }
@@ -1482,7 +1514,9 @@ mod tests {
         data.extend_from_slice(&42u32.to_le_bytes());
         let r = record(vec![(b"NAME", data)]);
         let (v, cov) = decode_record(&r, &s);
-        assert_eq!(v["NAME"], Json::from(42));
+        // A FormID is written as text, so the panels, the write path and
+        // the object window can all read the same shape back.
+        assert_eq!(v["NAME"], Json::from("0x0000002A"));
         assert_eq!(cov.ok(), 1);
         assert_eq!(cov.error(), 0);
     }

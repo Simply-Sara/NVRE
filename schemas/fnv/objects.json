@@ -327,6 +327,73 @@
     }
    }
   },
+  "COBJ": {
+   "confidence": "documented",
+   "name": "Constructible Object",
+   "note": "xEdit wbDefinitionsFNV.pas wbRecord(COBJ, 'Constructible Object'); the shipped masters hold no COBJ records, so this layout is from the definition rather than measured.",
+   "subrecords": {
+    "EDID": {
+     "confidence": "documented",
+     "name": "Editor ID",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbEDID)",
+     "type": "zstring"
+    },
+    "OBND": {
+     "confidence": "documented",
+     "name": "Object Bounds",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbObjectBounds)",
+     "type": "ObjectBounds"
+    },
+    "FULL": {
+     "confidence": "documented",
+     "name": "Name",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbFULL)",
+     "type": "zstring"
+    },
+    "MODL": {
+     "confidence": "documented",
+     "name": "Model FileName",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbGenericModel)",
+     "type": "zstring"
+    },
+    "ICON": {
+     "confidence": "documented",
+     "name": "Large Icon FileName",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbICON)",
+     "type": "zstring"
+    },
+    "MICO": {
+     "confidence": "documented",
+     "name": "Small Icon FileName",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbICON)",
+     "type": "zstring"
+    },
+    "SCRI": {
+     "confidence": "documented",
+     "name": "Script",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbSCRI)",
+     "type": "formid"
+    },
+    "YNAM": {
+     "confidence": "documented",
+     "name": "Sound - Pick Up",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbYNAM)",
+     "type": "formid"
+    },
+    "ZNAM": {
+     "confidence": "documented",
+     "name": "Sound - Drop",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbZNAM)",
+     "type": "formid"
+    },
+    "DATA": {
+     "confidence": "documented",
+     "name": "Value and Weight",
+     "note": "xEdit wbDefinitionsFNV.pas COBJ record (wbStruct(DATA): wbInteger('Value', itS32), wbFloat('Weight'))",
+     "type": "ValueWeight"
+    }
+   }
+  },
   "CSNO": {
    "confidence": "documented",
    "name": "Casino",

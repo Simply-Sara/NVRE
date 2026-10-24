@@ -124,6 +124,8 @@ pub fn write_synthetic_plugin(
 ) {
     use bytes::BufMut;
 
+    use nvre_esm::raw::GROUP_HEADER_SIZE;
+
     let mut out: Vec<u8> = Vec::new();
 
     // The TES4 header record. The editor reads the record count, the next
@@ -145,23 +147,29 @@ pub fn write_synthetic_plugin(
         body.put_u16_le(sub.data.len() as u16);
         body.put_slice(&sub.data);
     }
-    let body_len = body.len();
-    let group_body = body.clone();
-    write_record(&mut out, sig, form_id, body);
+    // The record, whole: its header and its payload. The group holds the
+    // record, not just its payload, and the group's size counts the record
+    // and the group's own header.
+    let mut record = Vec::new();
+    write_record(&mut record, sig, form_id, body.clone());
+    let group_size = record.len() as u32 + GROUP_HEADER_SIZE as u32;
 
     // The top-level group holding the record. Its header is the
     // signature, the size, the label, the group type, the stamp, two
     // unknown words and the version.
     let mut group = Vec::new();
     group.put_slice(b"GRUP");
-    group.put_u32_le((body_len + 24 + 24) as u32);
+    group.put_u32_le(group_size);
     group.put_u32_le(form_id); // the label
     group.put_i32_le(0); // the group type: top level
     group.put_u16_le(0); // the stamp
     group.put_u16_le(0); // unknown
     group.put_u16_le(0); // the version
     group.put_u16_le(0); // unknown
-    group.put_slice(&group_body);
+    group.put_slice(&record);
+
+    // The record is inside the group, as it is in a real plugin.
+    out.put_slice(&group);
 
     std::fs::write(path, out).expect("write the synthetic plugin");
 }
