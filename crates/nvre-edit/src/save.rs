@@ -740,9 +740,15 @@ fn next_object_offset(nodes: &[Node], own_index: u32) -> u32 {
 /// record goes", so any small offset is equally correct.
 const FIRST_OBJECT_ID: u32 = 0x0000_0ADD;
 
-/// The first FormID index the new plugin's own records may use.
-fn first_free_id(new_self: u32) -> u32 {
-    new_self << 24
+/// The first FormID index a plugin's own records may use.
+///
+/// An offset into the plugin's own FormID space, not a FormID: the top byte is
+/// the plugin's own master index. The offset is `FIRST_OBJECT_ID`, which is
+/// where the save starts allocating [documented: GECK's header for a fresh
+/// plugin], so a session that wants to know which FormID a staged record will
+/// carry asks this rather than re-deriving the rule.
+pub fn first_object_offset() -> u32 {
+    FIRST_OBJECT_ID
 }
 
 /// Where FormID allocation continues from for this session's inserts.
@@ -756,7 +762,7 @@ fn first_free_id(new_self: u32) -> u32 {
 /// offset, so the IDs handed out and the ID the header advertises are the same
 /// numbering.
 fn allocate_base(doc: &crate::Document, new_self: u32) -> u32 {
-    let base = first_free_id(new_self) | FIRST_OBJECT_ID;
+    let base = (new_self << 24) | FIRST_OBJECT_ID;
     let mut next = base;
     for p in doc.inserted() {
         // A staged placeholder is 0; anything else was handed out by a caller

@@ -68,19 +68,32 @@ pub struct Session {
     pub cell: Option<u32>,
     /// The selected reference, by FormID (0 for a record not yet saved).
     pub selected: Option<u32>,
-    /// How many records this session has placed, for resolving a placeholder.
-    placed_index: usize,
     /// The cached reference list, and the cell it was built for.
     refs: Vec<RefRow>,
     refs_cell: Option<u32>,
+    /// The session generation `refs_cell` was built at.
+    refs_gen: u64,
     /// Cached exterior grid references, and (cell, radius) they were built for.
     exterior_refs: Vec<RefRow>,
     exterior_refs_key: Option<(u32, i32)>,
+    /// The session generation `exterior_refs_key` was built at.
+    exterior_refs_gen: u64,
     /// Base FormID → model path, resolved once per base object.
     models: HashMap<u32, Option<String>>,
     /// The references table's resolved columns, and the cell they were built for.
     details: RefDetails,
     details_cell: Option<u32>,
+    /// The session generation [`details_cell`] was built at, so a mutation
+    /// inside the same cell invalidates the resolved columns too.
+    details_gen: u64,
+    /// How many times the session's cell contents have been mutated.
+    ///
+    /// Every mutation that changes which references a cell holds — a placement,
+    /// a deletion, a queued edit — bumps this. The per-cell caches (`refs_cell`,
+    /// `exterior_refs_key`, `details_cell`) are keyed by identity rather than by
+    /// content, so a mutation inside the same cell leaves them holding the old
+    /// answer; the generation is what makes them notice.
+    generation: u64,
     /// The place palette's query result, and the filter it was built for.
     ///
     /// Building it walks the load order, which is the editor's most expensive
@@ -165,14 +178,17 @@ impl Session {
             masters,
             cell: None,
             selected: None,
-            placed_index: 0,
             refs: Vec::new(),
             refs_cell: None,
+            refs_gen: 0,
             exterior_refs: Vec::new(),
             exterior_refs_key: None,
+            exterior_refs_gen: 0,
             models: HashMap::new(),
             details: RefDetails::default(),
             details_cell: None,
+            details_gen: 0,
+            generation: 0,
             palette_groups: Vec::new(),
             palette_filter: String::new(),
             deleted: Vec::new(),
@@ -237,14 +253,17 @@ impl Session {
             masters,
             cell: None,
             selected: None,
-            placed_index: 0,
             refs: Vec::new(),
             refs_cell: None,
+            refs_gen: 0,
             exterior_refs: Vec::new(),
             exterior_refs_key: None,
+            exterior_refs_gen: 0,
             models: HashMap::new(),
             details: RefDetails::default(),
             details_cell: None,
+            details_gen: 0,
+            generation: 0,
             palette_groups: Vec::new(),
             palette_filter: String::new(),
             deleted: Vec::new(),
@@ -616,13 +635,19 @@ impl Session {
     /// Built once per cell and cached: this is read by several systems every
     /// frame, and rebuilding it means decoding every reference's NAME subrecord
     /// and allocating a string per field, per frame.
+    ///
+    /// Keyed by *cell only*, so the generation is what makes a mutation inside
+    /// the same cell visible: a placement, a deletion or a queued edit appends or
+    /// removes a row, and a cache that only noticed the cell changing would serve
+    /// the pre-mutation list.
     pub fn cell_refs(&mut self) -> &[RefRow] {
         let Some(cell) = self.cell else {
             return &[];
         };
-        if self.refs_cell != Some(cell) {
+        if self.refs_cell != Some(cell) || self.refs_gen != self.generation {
             self.refs = self.build_cell_refs(cell);
             self.refs_cell = Some(cell);
+            self.refs_gen = self.generation;
         }
         &self.refs
     }
@@ -637,7 +662,9 @@ impl Session {
         let Some(cell) = self.cell else {
             return &[];
         };
-        if self.exterior_refs_key == Some((cell, radius)) {
+        if self.exterior_refs_key == Some((cell, radius))
+            && self.exterior_refs_gen == self.generation
+        {
             return &self.exterior_refs;
         }
 
@@ -680,6 +707,7 @@ impl Session {
         }
         self.exterior_refs = all_rows;
         self.exterior_refs_key = Some((cell, radius));
+        self.exterior_refs_gen = self.generation;
         &self.exterior_refs
     }
 
@@ -689,13 +717,20 @@ impl Session {
     /// hundreds of milliseconds to build. The panel draws every frame, so the
     /// answers are cached per cell rather than resolved per row per frame: a
     /// cell names a handful of owners, and one load order serves them all.
+    ///
+    /// The cache is keyed by *cell only*, so it is invalidated by the session
+    /// generation as well as by the cell: a mutation that changes which
+    /// references a cell holds — a placement, a deletion, a move that changes
+    /// the row's own base — changes the answers, and a stale map names a new
+    /// row's base object nothing.
     pub fn ref_details(&mut self) -> &RefDetails {
         let Some(cell) = self.cell else {
             return &EMPTY_DETAILS;
         };
-        if self.details_cell != Some(cell) {
+        if self.details_cell != Some(cell) || self.details_gen != self.generation {
             self.details = self.build_ref_details(cell);
             self.details_cell = Some(cell);
+            self.details_gen = self.generation;
         }
         &self.details
     }
@@ -839,6 +874,19 @@ impl Session {
             .and_then(|c| c.edid.clone())
             .unwrap_or_else(|| format!("{cell:08X}"));
         self.status = format!("opened {name}");
+    }
+
+    /// Note that the open cell's contents changed.
+    ///
+    /// The per-cell caches are keyed by identity — a cell, a cell and a radius —
+    /// not by content, so a mutation *inside* the same cell leaves them holding
+    /// the old answer. The generation is the second half of the key: every
+    /// mutation bumps it, and every cache records the value it was built at.
+    ///
+    /// This is what makes a freshly placed reference's row resolve its base
+    /// object immediately, instead of after the cell is reopened.
+    fn touch(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
     }
 
     /// The next FormID a new record may use, in the plugin's own numbering.
@@ -1123,6 +1171,7 @@ impl Session {
         // staged copy, which is addressed by that same placeholder.
         self.doc.set_sub(fid, sig, bytes);
         self.status = format!("set {}.{} on {fid:08X}", nvre_util::tag_str(sig), path);
+        self.touch();
         Ok(())
     }
 
@@ -1134,8 +1183,7 @@ impl Session {
             }
             self.doc.delete_record(fid);
             self.status = format!("queued {fid:08X} for deletion");
-            self.refs_cell = None;
-            self.exterior_refs_key = None;
+            self.touch();
         }
     }
 
@@ -1185,8 +1233,7 @@ impl Session {
             .insert(nvre_edit::document::PendingRecord { cell, record: rec });
         self.selected = Some(next);
         self.status = format!("placed {base:08X} at {position:?}");
-        self.refs_cell = None;
-        self.exterior_refs_key = None;
+        self.touch();
     }
 
     /// Move the selected reference to a game position.
@@ -1200,8 +1247,7 @@ impl Session {
             data[(3 + i) * 4..(3 + i) * 4 + 4].copy_from_slice(&rot[i].to_le_bytes());
         }
         self.edit_selected(b"DATA", data);
-        self.refs_cell = None;
-        self.exterior_refs_key = None;
+        self.touch();
     }
 
     /// Rotate the selected reference in game space (Euler angles [pitch, roll, yaw] in radians).
@@ -1215,16 +1261,14 @@ impl Session {
             data[(3 + i) * 4..(3 + i) * 4 + 4].copy_from_slice(&rotation[i].to_le_bytes());
         }
         self.edit_selected(b"DATA", data);
-        self.refs_cell = None;
-        self.exterior_refs_key = None;
+        self.touch();
     }
 
     /// Scale the selected reference (uniform scale).
     pub fn scale_selected(&mut self, scale: f32) {
         let bytes = scale.to_le_bytes().to_vec();
         self.edit_selected(b"XSCL", bytes);
-        self.refs_cell = None;
-        self.exterior_refs_key = None;
+        self.touch();
     }
 
     /// The selected reference's current (position, rotation, scale) in game space.
@@ -1286,13 +1330,19 @@ impl Session {
     /// A newly placed record is staged with FormID 0 and the save assigns its real
     /// one from the new plugin's own range, so the selection has to be translated
     /// before it names anything in the saved file.
+    ///
+    /// The numbering is the save's own: `masters.len()` is the new plugin's index
+    /// in its own master list, and the offset is where the save starts allocating
+    /// ([`nvre_edit::save::first_object_offset`]). Deriving it here rather than
+    /// re-deriving the rule is what keeps the session's answer and the file's
+    /// answer the same number.
     pub fn selected_saved_id(&self) -> Option<u32> {
         let fid = self.selected?;
         if fid != 0 {
             return Some(fid);
         }
         let base = (self.masters.len() as u32) << 24;
-        Some(base + self.placed_index as u32)
+        Some(base | nvre_edit::save::first_object_offset())
     }
 
     /// The pending edits, for a save summary.
