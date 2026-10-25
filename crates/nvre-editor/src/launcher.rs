@@ -3,6 +3,8 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 
+use crate::plugin_order::{self, PluginOrder};
+
 /// Which tab the launcher is currently showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LauncherTab {
@@ -22,6 +24,15 @@ pub struct Launcher {
     pub required: Vec<String>,
     /// Every master in the load order: the required ones, plus any added.
     pub masters: Vec<String>,
+    /// What order the two lists are shown in, and what order a master list
+    /// picked from a file is in.
+    ///
+    /// Only the *master* list follows an order file. The file list is a
+    /// listing, and a plugin the order file has never heard of would be pushed
+    /// to its end by an order it is not part of; the order the game loads
+    /// masters in is the one that decides whose record wins, so that list is
+    /// the one worth ordering.
+    pub order: PluginOrder,
     /// For creating a new plugin: file name.
     pub new_name: String,
     /// For creating a new plugin: true for .esm (Master), false for .esp (Plugin).
@@ -39,7 +50,18 @@ pub struct Launcher {
     pub error: Option<String>,
     /// The plugins found in the Data folder, and the folder they came from.
     pub listing: Vec<std::path::PathBuf>,
-    pub listing_dir: Option<std::path::PathBuf>,
+    /// What `listing` was built from: the folder, and the order it was read
+    /// with. The launcher draws every frame, so the folder is listed and the
+    /// order applied only when one of these changes.
+    pub listing_key: Option<(std::path::PathBuf, PluginOrder)>,
+    /// The order file the current order was read from, when it was found.
+    pub order_file: Option<std::path::PathBuf>,
+    /// Why the order file could not be used, for the launcher to say.
+    ///
+    /// An order the user asked for and did not get has to say so: a list in
+    /// file-name order looks exactly like an order file that was read and
+    /// happened to agree.
+    pub order_note: Option<String>,
 }
 
 impl Launcher {
@@ -50,11 +72,13 @@ impl Launcher {
     /// user has installed comes along. `for_game` is called once at startup,
     /// which is when the game is known.
     pub fn for_game(game: &crate::game::GameProfile) -> Launcher {
+        let dir = game.data_dir().unwrap_or_default();
         Launcher {
             tab: LauncherTab::OpenExisting,
             active: None,
             required: Vec::new(),
-            masters: game.masters_in(&game.data_dir().unwrap_or_default()),
+            masters: game.masters_in(&dir),
+            order: PluginOrder::Name,
             new_name: "NewPlugin.esp".to_string(),
             new_is_master: false,
             // Empty, so the header gets GECK's `DEFAULT` author and no
@@ -64,8 +88,70 @@ impl Launcher {
             adding: String::new(),
             error: None,
             listing: Vec::new(),
-            listing_dir: None,
+            listing_key: None,
+            order_file: None,
+            order_note: None,
         }
+    }
+
+    /// Point at `game`'s Data folder: re-list its plugins and re-read its order.
+    ///
+    /// Called when the game or the Data folder changes. The order stays the
+    /// user's pick — a game switch is not a reason to go back to file-name
+    /// order — but it is re-read from the new folder, which may have no such
+    /// file.
+    ///
+    /// `None` is a game with no folder yet: nothing is listed and no master is
+    /// named, which is the state the launcher says so in rather than one it
+    /// guesses at. That is spelled out here rather than left to `read_dir` on an
+    /// empty path failing, which happens to give the same answer by accident.
+    pub fn retarget(&mut self, game: &crate::game::GameProfile, dir: Option<&std::path::Path>) {
+        self.listing_key = None;
+        self.listing.clear();
+        self.active = None;
+        self.required.clear();
+        self.order_file = None;
+        self.order_note = None;
+        let Some(dir) = dir else {
+            self.masters.clear();
+            return;
+        };
+        self.refresh_listing(game, dir);
+    }
+
+    /// Re-list the folder and re-read the order, when either has changed.
+    ///
+    /// The launcher draws every frame, so this is called every frame and does
+    /// the work only when the key moves.
+    pub fn refresh_listing(&mut self, game: &crate::game::GameProfile, dir: &std::path::Path) {
+        let key = (dir.to_path_buf(), self.order);
+        if self.listing_key.as_ref() == Some(&key) {
+            return;
+        }
+        self.listing_key = Some(key);
+        self.listing = list_plugins(dir);
+
+        let Some(file) = plugin_order::read(dir, self.order) else {
+            // No order file: the list is the folder, and the master list is the
+            // one the headers give.
+            self.order_file = None;
+            self.order_note = self
+                .order
+                .file()
+                .map(|f| format!("no {f} in {} — listed by file name", dir.display()));
+            self.masters = game.masters_in(dir);
+            return;
+        };
+        self.order_file = Some(file.path);
+        self.order_note = None;
+        let rank = plugin_order::Rank::of(&file.names);
+        plugin_order::order_paths(&mut self.listing, &rank);
+        // The masters are re-derived with the file's order rather than re-sorted
+        // into it: the headers constrain the order and the file only says where
+        // it has a preference, so a master the file puts after something that
+        // requires it stays where the headers put it. Re-sorting the result
+        // instead would produce a list `LoadOrder::new` rejects.
+        self.masters = game.masters_in_with(dir, &rank);
     }
 }
 
@@ -205,15 +291,13 @@ pub fn ui(
     // picker's: the game's own install, or the one typed into the field. A game
     // with no folder yet lists nothing until one is named.
     let active_dir = choice.active_dir();
-    if launcher.listing_dir.as_deref() != active_dir.as_deref() {
-        launcher.listing_dir = active_dir.clone();
-        launcher.listing = match &active_dir {
-            Some(d) => list_plugins(d),
-            None => Vec::new(),
-        };
+    if let Some(dir) = &active_dir {
+        launcher.refresh_listing(choice.game, dir);
     }
 
     let listing = launcher.listing.clone();
+    let order_note = launcher.order_note.clone();
+    let order_file = launcher.order_file.clone();
 
     egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "launcher"), |ui| {
         // Lay out bottom bar anchored to the bottom of the window
@@ -315,12 +399,7 @@ pub fn ui(
                                     // The plugin list and masters are re-read
                                     // from the new game's own folder: a partial
                                     // install gives only the masters it holds.
-                                    let dir = choice.active_dir().unwrap_or_default();
-                                    launcher.masters = choice.game.masters_in(&dir);
-                                    launcher.listing_dir = None;
-                                    launcher.listing.clear();
-                                    launcher.active = None;
-                                    launcher.required.clear();
+                                    launcher.retarget(picked, choice.active_dir().as_deref());
                                 }
                             }
                         });
@@ -342,10 +421,7 @@ pub fn ui(
                         let before = choice.data_dir.clone();
                         choice.commit_folder();
                         if choice.data_dir != before {
-                            launcher.listing_dir = None;
-                            launcher.listing.clear();
-                            launcher.active = None;
-                            launcher.required.clear();
+                            launcher.retarget(choice.game, choice.active_dir().as_deref());
                         }
                     }
                 });
@@ -395,6 +471,44 @@ pub fn ui(
                         .clicked()
                     {
                         launcher.tab = LauncherTab::CreateNew;
+                    }
+                });
+                ui.separator();
+
+                // What order the master list is in. The order file is read from
+                // the Data folder, and its own order is the one the game loads
+                // masters in, so this is also the order a session's load order
+                // is built from — the plugin whose definition wins.
+                ui.horizontal(|ui| {
+                    ui.label("Order:");
+                    let mut picked = launcher.order;
+                    egui::ComboBox::from_id_salt("order_pick")
+                        .selected_text(launcher.order.label())
+                        .show_ui(ui, |ui| {
+                            for o in PluginOrder::ALL {
+                                ui.selectable_value(&mut picked, o, o.label());
+                            }
+                        });
+                    if picked != launcher.order {
+                        launcher.order = picked;
+                        // Re-lists the folder and re-reads the file, on the next
+                        // frame's refresh: the two lists follow it either way.
+                    }
+                    // Which file was read, or why none was. An order the user
+                    // asked for and did not get has to say so: a list in
+                    // file-name order looks exactly like a file that was read
+                    // and agreed.
+                    match (&order_file, &order_note) {
+                        (Some(p), _) => {
+                            ui.colored_label(
+                                egui::Color32::from_rgb(0x80, 0xc0, 0x80),
+                                format!("{}", p.display()),
+                            );
+                        }
+                        (None, Some(note)) => {
+                            ui.colored_label(egui::Color32::from_rgb(0xd0, 0xa0, 0x40), note);
+                        }
+                        (None, None) => {}
                     }
                 });
                 ui.separator();
@@ -608,7 +722,7 @@ pub fn ui(
 
 /// The masters a plugin's own header names.
 pub fn read_masters_for(path: &std::path::Path) -> Vec<String> {
-    nvre_esm::Plugin::open(path)
-        .map(|p| p.header.masters.iter().map(|m| m.name.clone()).collect())
-        .unwrap_or_default()
+    // Header only: the caller draws this inside a frame, and the whole file is
+    // not needed to answer it.
+    nvre_esm::Plugin::masters_in_header(path).unwrap_or_default()
 }

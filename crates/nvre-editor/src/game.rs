@@ -362,6 +362,26 @@ impl GameProfile {
     ///
     /// `.esp` files are not masters and are never included.
     pub fn masters_in(&self, data_dir: &Path) -> Vec<String> {
+        self.masters_in_with(data_dir, &crate::plugin_order::Rank::default())
+    }
+
+    /// The same list, with an order file's order deciding where it can.
+    ///
+    /// The headers are a constraint and the file is a preference: a master may
+    /// not load after a plugin that requires it, so the file's order is applied
+    /// **inside** the topological sort rather than by re-sorting its result.
+    /// Re-sorting afterwards would take the file literally and put
+    /// `FalloutNV.esm` after the plugins that require it, which
+    /// `LoadOrder::new` rejects as `MasterAfterDependent` — a list the game
+    /// cannot load, produced by a file that merely ordered things differently.
+    ///
+    /// An empty rank is every master unranked, which is exactly the order
+    /// [`GameProfile::masters_in`] returns.
+    pub fn masters_in_with(
+        &self,
+        data_dir: &Path,
+        rank: &crate::plugin_order::Rank,
+    ) -> Vec<String> {
         // Every `.esm`/`.esl` in the folder, lower-cased for lookups.
         let present: Vec<String> = match std::fs::read_dir(data_dir) {
             Ok(rd) => rd
@@ -382,42 +402,64 @@ impl GameProfile {
         // checks report that rather than this ordering guessing at it.
         let mut needs: Vec<(usize, Vec<usize>)> = Vec::with_capacity(present.len());
         for (i, name) in present.iter().enumerate() {
-            let deps = match nvre_esm::Plugin::open(data_dir.join(name)) {
-                Ok(p) => p
-                    .header
-                    .masters
-                    .iter()
-                    .filter_map(|m| {
-                        let l = m.name.to_ascii_lowercase();
-                        // The master must be present, and a plugin naming itself
-                        // is not a dependency edge.
-                        lower.iter().position(|n| *n == l && *n != lower[i])
-                    })
-                    .collect::<Vec<_>>(),
-                // An unreadable file is still a master the folder holds; with no
-                // header to read it simply constrains nothing.
-                Err(_) => Vec::new(),
-            };
+            let deps = nvre_esm::Plugin::masters_in_header(data_dir.join(name))
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|m| {
+                    let l = m.to_ascii_lowercase();
+                    // The master must be present, and a plugin naming itself
+                    // is not a dependency edge.
+                    lower.iter().position(|n| *n == l && *n != lower[i])
+                })
+                .collect::<Vec<_>>();
             needs.push((i, deps));
         }
 
-        // Kahn's algorithm. Which ready master goes next is decided by how many
-        // plugins depend on it, most first, then by name: a master many plugins
-        // need is the one the game loads early, and the name keeps the result
-        // deterministic rather than dependent on directory order. Nothing on
-        // disk pins the order among Fallout: New Vegas's DLC — every one of
-        // them declares only `FalloutNV.esm` — so this is a valid load order
-        // that is not necessarily the game's canonical one.
+        self.order_masters(&present, &needs, rank)
+    }
+
+    /// The load order for a dependency graph, as `(node, its dependencies)`.
+    ///
+    /// Kahn's algorithm. Which ready master goes next is decided by the order
+    /// file's position first — that is the game's own answer where it has one —
+    /// then by how many plugins depend on it, most first, then by name. A master
+    /// many plugins need is the one the game loads early, and the name keeps the
+    /// result deterministic rather than dependent on directory order. Nothing on
+    /// disk pins the order among Fallout: New Vegas's DLC — every one of them
+    /// declares only `FalloutNV.esm` — so without a file this is a valid load
+    /// order that is not necessarily the game's canonical one, and with one it is
+    /// the file's.
+    ///
+    /// The dependency edges are a constraint and are enforced by the filter, not
+    /// by this key: a master that is not ready is not a candidate however early
+    /// the file puts it.
+    ///
+    /// Split out from [`GameProfile::masters_in`] so the ordering rule is
+    /// testable on a graph rather than only through a Data folder.
+    pub fn order_masters(
+        &self,
+        present: &[String],
+        needs: &[(usize, Vec<usize>)],
+        rank: &crate::plugin_order::Rank,
+    ) -> Vec<String> {
         let dependents: Vec<usize> = (0..present.len())
             .map(|i| needs.iter().filter(|(_, d)| d.contains(&i)).count())
             .collect();
+        let lower: Vec<String> = present.iter().map(|n| n.to_ascii_lowercase()).collect();
         let mut done: Vec<bool> = vec![false; present.len()];
         let mut out: Vec<String> = Vec::with_capacity(present.len());
         while out.len() < present.len() {
             let next = (0..present.len())
                 .filter(|&i| !done[i])
                 .filter(|&i| needs[i].1.iter().all(|&d| done[d]))
-                .min_by_key(|&i| (std::cmp::Reverse(dependents[i]), lower[i].clone()))
+                .min_by_key(|&i| {
+                    (
+                        rank.position(&present[i])
+                            .unwrap_or(crate::plugin_order::UNRANKED),
+                        std::cmp::Reverse(dependents[i]),
+                        lower[i].clone(),
+                    )
+                })
                 .or_else(|| {
                     // Nothing is ready: a cycle among the headers (a mod pair
                     // that depend on each other), which the game cannot load

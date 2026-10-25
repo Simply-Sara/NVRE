@@ -10,6 +10,7 @@ pub mod gizmo;
 pub mod launcher;
 pub mod object_editor;
 pub mod panels;
+pub mod plugin_order;
 pub mod session;
 pub mod strings;
 pub mod viewport;
