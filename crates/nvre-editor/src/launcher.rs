@@ -870,9 +870,6 @@ pub fn ui(
                         });
                     }
                     LauncherTab::CreateNew => {
-                        ui.label("Configure and create a new plugin file:");
-                        ui.add_space(4.0);
-
                         ui.group(|ui| {
                             ui.horizontal(|ui| {
                                 ui.label("File Name:");
