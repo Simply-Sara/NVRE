@@ -269,29 +269,69 @@ fn the_master_list_is_the_folders_not_the_files() {
 /// Reading a real plugin's header agrees with reading the whole file.
 ///
 /// `masters_in_header` exists to answer `Plugin::open().masters()` for a tenth
-/// of the cost, so the two must agree on real files — the whole point is that it
-/// is the cheap answer to the same question. The fixtures are GECK's own, and
-/// two of them declare no master at all.
+/// of the cost, so the two must agree — the whole point is that it is the cheap
+/// answer to the same question, and an answer that differs is worse than a slow
+/// one. The plugins are written by the editor itself rather than read from
+/// `testfiles/`: that directory is not part of the repository (`*.esm` is
+/// ignored), so a test that read it would pass here and fail everywhere else.
+///
+/// The three cases are the ones a header reader can get wrong: one master, no
+/// masters, and a master list long enough to cross a subrecord boundary.
 #[test]
 fn the_header_reader_agrees_with_the_whole_file_reader() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testfiles");
-    let mut checked = 0;
-    for name in [
-        "fonv_geck_empty.esm",
-        "fonv_geck_empty.esp",
-        "fonv_geck_add_weap.esm",
-        "fonv_geck_author_desc.esm",
-        "fonv_geck_empty_no_master.esm",
-        "fonv_geck_empty_no_master.esp",
-    ] {
+    let dir = std::env::temp_dir().join("nvre-plugin-order-header");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    let cases: [(&str, &[&str]); 3] = [
+        ("OneMaster.esm", &["FalloutNV.esm"]),
+        ("NoMasters.esm", &[]),
+        (
+            "ManyMasters.esm",
+            &[
+                "FalloutNV.esm",
+                "DeadMoney.esm",
+                "HonestHearts.esm",
+                "OldWorldBlues.esm",
+                "LonesomeRoad.esm",
+                "GunRunnersArsenal.esm",
+                "ClassicPack.esm",
+                "MercenaryPack.esm",
+                "TribalPack.esm",
+                "CaravanPack.esm",
+            ],
+        ),
+    ];
+
+    for (name, masters) in cases {
+        let masters: Vec<String> = masters.iter().map(|m| m.to_string()).collect();
+        let doc = nvre_edit::Document::create_empty(name, true, &masters, Some("NVRE"), None)
+            .expect("a blank plugin is a plugin");
         let path = dir.join(name);
-        let Some(whole) = nvre_esm::Plugin::open(&path).ok() else {
-            continue;
-        };
+        doc.save(&path).expect("written to the scratch folder");
+
+        let whole = nvre_esm::Plugin::open(&path).expect("the file it just wrote is a plugin");
         let header = nvre_esm::Plugin::masters_in_header(&path)
             .unwrap_or_else(|| panic!("{name} has a TES4 header"));
-        assert_eq!(header, whole.masters(), "{name}: header vs whole file");
-        checked += 1;
+        assert_eq!(
+            header,
+            whole.masters(),
+            "{name}: the header reader and the whole-file reader must agree"
+        );
+        assert_eq!(
+            header, masters,
+            "{name}: and both must be the masters the plugin was made with"
+        );
     }
-    assert!(checked > 0, "no testfile was readable at {}", dir.display());
+
+    // A file that is not a plugin is not read as one, rather than yielding
+    // nonsense names: the header reader's whole job is to be safe to call on
+    // every file in a Data folder.
+    let not_a_plugin = dir.join("readme.txt");
+    std::fs::write(&not_a_plugin, b"this is not a plugin\n").unwrap();
+    assert_eq!(nvre_esm::Plugin::masters_in_header(&not_a_plugin), None);
+    assert_eq!(
+        nvre_esm::Plugin::masters_in_header(dir.join("NotThere.esm")),
+        None
+    );
 }
