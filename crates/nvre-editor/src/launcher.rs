@@ -53,9 +53,26 @@ pub struct Launcher {
     /// What `listing` was built from: the folder, and the order it was read
     /// with. The launcher draws every frame, so the folder is listed and the
     /// order applied only when one of these changes.
-    pub listing_key: Option<(std::path::PathBuf, PluginOrder)>,
+    pub listing_key: Option<(std::path::PathBuf, PluginOrder, Option<std::path::PathBuf>)>,
     /// The order file the current order was read from, when it was found.
     pub order_file: Option<std::path::PathBuf>,
+    /// An order file the user picked by hand, which replaces the search.
+    ///
+    /// `Some` while a picked file is in force: the drop-down still says which
+    /// *kind* of order this is, but the file comes from wherever the picker
+    /// pointed — a mod manager's profile, a backup, a list kept by hand. The
+    /// launcher's search is skipped entirely, because a picked file that was
+    /// silently overridden by a discovered one would be the opposite of what
+    /// picking it meant.
+    ///
+    /// Cleared when the user picks a different order from the drop-down: that
+    /// is a request for the game's own file, not for the last picked one.
+    pub custom_order: Option<std::path::PathBuf>,
+    /// Why a picked order file could not be read, for the launcher to say.
+    ///
+    /// Separate from `order_note` so a failed pick reads as a failure rather
+    /// than as "the game has no such file".
+    pub custom_error: Option<String>,
     /// Why the order file could not be used, for the launcher to say.
     ///
     /// An order the user asked for and did not get has to say so: a list in
@@ -90,6 +107,8 @@ impl Launcher {
             listing: Vec::new(),
             listing_key: None,
             order_file: None,
+            custom_order: None,
+            custom_error: None,
             order_note: None,
         }
     }
@@ -112,6 +131,11 @@ impl Launcher {
         self.required.clear();
         self.order_file = None;
         self.order_note = None;
+        // A file picked for one game is not an order for another: the pick is
+        // cleared rather than carried across, so a switch cannot leave the
+        // previous game's list in force under the new game's name.
+        self.custom_order = None;
+        self.custom_error = None;
         let Some(dir) = dir else {
             self.masters.clear();
             return;
@@ -124,26 +148,51 @@ impl Launcher {
     /// The launcher draws every frame, so this is called every frame and does
     /// the work only when the key moves.
     pub fn refresh_listing(&mut self, game: &crate::game::GameProfile, dir: &std::path::Path) {
-        let key = (dir.to_path_buf(), self.order);
+        // A picked file is part of the key: switching to it or away from it has
+        // to re-read, exactly as changing the drop-down does.
+        let key = (dir.to_path_buf(), self.order, self.custom_order.clone());
         if self.listing_key.as_ref() == Some(&key) {
             return;
         }
         self.listing_key = Some(key);
         self.listing = list_plugins(dir);
 
-        // The order file is the game's user state, not the Data folder's: on
-        // Windows it is under `%LOCALAPPDATA%\<game>\`, and the Data folder is
-        // only where a portable install or a hand-placed copy has it. Both are
-        // searched, and the path shown is the one that answered.
-        let Some(file) = plugin_order::read_for_game(game, dir, self.order) else {
+        // A file the user picked replaces the search rather than joining it: a
+        // picked file that a discovered one could override would be the
+        // opposite of what picking it meant.
+        let found = match &self.custom_order {
+            Some(path) => match plugin_order::read_file(path) {
+                Some(f) => {
+                    self.custom_error = None;
+                    Some(f)
+                }
+                None => {
+                    self.custom_error = Some(format!("cannot read {}", path.display()));
+                    None
+                }
+            },
+            // Otherwise the game's own file: its user state on Windows, or the
+            // Data folder where a portable install or a hand-placed copy has
+            // it. The path shown is the one that answered.
+            None => plugin_order::read_for_game(game, dir, self.order),
+        };
+
+        let Some(file) = found else {
             // No order file: the list is the folder, and the master list is the
             // one the headers give.
             self.order_file = None;
-            self.order_note = self.order.file().map(|f| {
-                let dirs = plugin_order::order_dirs(game, dir);
-                let places: Vec<String> = dirs.iter().map(|d| d.display().to_string()).collect();
-                format!("no {f} in {}", places.join(" or "))
-            });
+            self.order_note = if self.custom_order.is_some() {
+                // The picked file failed, and `custom_error` says why; the
+                // search's own answer would only confuse the message.
+                None
+            } else {
+                self.order.file().map(|f| {
+                    let dirs = plugin_order::order_dirs(game, dir);
+                    let places: Vec<String> =
+                        dirs.iter().map(|d| d.display().to_string()).collect();
+                    format!("no {f} in {}", places.join(" or "))
+                })
+            };
             self.masters = game.masters_in(dir);
             return;
         };
@@ -314,6 +363,7 @@ pub fn ui(
     let listing = launcher.listing.clone();
     let order_note = launcher.order_note.clone();
     let order_file = launcher.order_file.clone();
+    let order_error = launcher.custom_error.clone();
 
     egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "launcher"), |ui| {
         // Lay out bottom bar anchored to the bottom of the window
@@ -527,6 +577,7 @@ pub fn ui(
                             &mut launcher,
                             order_file.as_deref(),
                             order_note.as_deref(),
+                            order_error.as_deref(),
                         );
                         ui.add_space(4.0);
 
@@ -684,6 +735,7 @@ pub fn ui(
                             &mut launcher,
                             order_file.as_deref(),
                             order_note.as_deref(),
+                            order_error.as_deref(),
                         );
 
                         ui.add_space(6.0);
@@ -740,7 +792,8 @@ pub fn ui(
     });
 }
 
-/// The master-list order drop-down, and what it did.
+/// The master-list order drop-down, the button that picks a file by hand, and
+/// what either did.
 ///
 /// Drawn on both tabs, directly above the master list it orders: the order file
 /// is read from the Data folder and its order is the one the game loads masters
@@ -750,11 +803,16 @@ pub fn ui(
 /// `file` is the order file that was read and `note` why none was. An order the
 /// user asked for and did not get has to say so: a list in file-name order looks
 /// exactly like a file that was read and agreed.
+///
+/// The `Browse…` button appears only for an order that *comes from a file* —
+/// `plugins.txt` and `loadorder.txt`, not `File name (A-Z)`, which is read from
+/// nowhere — and it opens the OS's own file picker for any `.txt`.
 fn order_picker(
     ui: &mut egui::Ui,
     launcher: &mut Launcher,
     file: Option<&std::path::Path>,
     note: Option<&str>,
+    error: Option<&str>,
 ) {
     ui.horizontal(|ui| {
         ui.label("Order:");
@@ -766,22 +824,51 @@ fn order_picker(
                     ui.selectable_value(&mut picked, o, o.label());
                 }
             });
-        // Written back and acted on next frame: `refresh_listing` re-lists the
-        // folder and re-reads the file when the order changes, which is also
-        // what re-derives the master list from it.
-        launcher.order = picked;
+        if picked != launcher.order {
+            launcher.order = picked;
+            // A different order means the game's own file, not the last file
+            // picked by hand: keeping the pick would make the drop-down look
+            // like it chose a source it is not reading.
+            launcher.custom_order = None;
+            launcher.custom_error = None;
+        }
 
-        match (file, note) {
-            (Some(p), _) => {
-                ui.colored_label(
-                    egui::Color32::from_rgb(0x80, 0xc0, 0x80),
-                    p.display().to_string(),
-                );
+        // Any `.txt`, because an order file is a list of plugin names and the
+        // format is the same wherever it was written — a mod manager's profile,
+        // a backup, a list kept by hand.
+        if launcher.order.file().is_some() && ui.button("Browse…").clicked() {
+            let mut dialog = rfd::FileDialog::new()
+                .set_title("Choose an order file")
+                .add_filter("Order file", &["txt"]);
+            // Start where the file in force is, or in the Data folder, so the
+            // picker opens somewhere meaningful rather than at home.
+            if let Some(dir) = file.and_then(|p| p.parent()).filter(|d| d.is_dir()) {
+                dialog = dialog.set_directory(dir);
             }
-            (None, Some(note)) => {
-                ui.colored_label(egui::Color32::from_rgb(0xd0, 0xa0, 0x40), note);
+            if let Some(chosen) = dialog.pick_file() {
+                launcher.custom_order = Some(chosen);
+                launcher.custom_error = None;
             }
-            (None, None) => {}
+        }
+
+        // Which file is in force, or why none is. The path says it either way:
+        // a picked file is a different answer from a discovered one, and the
+        // user has to be able to tell which they are looking at.
+        if let Some(err) = error {
+            ui.colored_label(egui::Color32::RED, err);
+        } else {
+            match (file, note) {
+                (Some(p), _) => {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(0x80, 0xc0, 0x80),
+                        p.display().to_string(),
+                    );
+                }
+                (None, Some(note)) => {
+                    ui.colored_label(egui::Color32::from_rgb(0xd0, 0xa0, 0x40), note);
+                }
+                (None, None) => {}
+            }
         }
     });
 }

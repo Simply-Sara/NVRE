@@ -328,6 +328,73 @@ fn the_windows_localappdata_location_is_searched() {
     }
 }
 
+/// A file picked by hand replaces the search rather than joining it.
+///
+/// The point of the launcher's `Browse…` button is to order by a list that is
+/// *not* where the game keeps one — a mod manager's profile, a backup, a list
+/// kept by hand. If a discovered file could override the picked one, picking it
+/// would mean nothing, so the picked path is read directly and the search is
+/// skipped.
+#[test]
+fn a_picked_file_replaces_the_search() {
+    let root = std::env::temp_dir().join("nvre-plugin-order-picked");
+    let _ = std::fs::remove_dir_all(&root);
+    let data = root.join("Data");
+    let elsewhere = root.join("profile");
+    std::fs::create_dir_all(&data).unwrap();
+    std::fs::create_dir_all(&elsewhere).unwrap();
+
+    // The folder has its own order file, and the user picks a different one.
+    std::fs::write(data.join("plugins.txt"), "a.esm\nb.esm\n").unwrap();
+    let picked = elsewhere.join("my-order.txt");
+    std::fs::write(&picked, "b.esm\na.esm\n").unwrap();
+
+    let from_data =
+        plugin_order::read_for_game(&nvre_editor::game::FNV, &data, PluginOrder::PluginsTxt)
+            .expect("the Data folder's own file");
+    assert_eq!(from_data.names, vec!["a.esm", "b.esm"]);
+
+    let from_pick = plugin_order::read_file(&picked).expect("the picked file");
+    assert_eq!(from_pick.names, vec!["b.esm", "a.esm"]);
+    assert_eq!(from_pick.path, picked);
+
+    // A picked file is not required to be named like the order it stands in
+    // for: `my-order.txt` orders a `plugins.txt` list.
+    assert_eq!(from_pick.path.file_name().unwrap(), "my-order.txt");
+}
+
+/// A picked file that cannot be read is a failure, not a silent fallback.
+///
+/// Falling back to the search would show a list the user did not ask for while
+/// the picker's own choice appeared to be in force. The launcher keeps the error
+/// so it can say so.
+#[test]
+fn an_unreadable_pick_is_none() {
+    let missing = std::env::temp_dir().join("nvre-plugin-order-does-not-exist.txt");
+    let _ = std::fs::remove_file(&missing);
+    assert!(plugin_order::read_file(&missing).is_none());
+}
+
+/// A picked file obeys the same format rules as a discovered one.
+///
+/// The format does not know where the file came from: comments, blank lines and
+/// the `*` active marker are handled identically, because one parser reads both.
+#[test]
+fn a_picked_file_is_parsed_like_any_other() {
+    let root = std::env::temp_dir().join("nvre-plugin-order-picked-format");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    let picked = root.join("exported.txt");
+    std::fs::write(
+        &picked,
+        "# exported from a mod manager\n\n*Mod.esm\nOther.esp\n",
+    )
+    .unwrap();
+
+    let file = plugin_order::read_file(&picked).unwrap();
+    assert_eq!(file.names, vec!["Mod.esm", "Other.esp"]);
+}
+
 /// Reading a real plugin's header agrees with reading the whole file.
 ///
 /// `masters_in_header` exists to answer `Plugin::open().masters()` for a tenth

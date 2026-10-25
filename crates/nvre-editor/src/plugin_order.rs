@@ -98,10 +98,19 @@ pub struct OrderFile {
 /// that searches both.
 pub fn read(dir: &Path, order: PluginOrder) -> Option<OrderFile> {
     let file = order.file()?;
-    let path = dir.join(file);
-    let bytes = std::fs::read(&path).ok()?;
+    read_file(&dir.join(file))
+}
+
+/// Read one order file by its own path.
+///
+/// The file the user picked in the launcher, which may be anywhere at all — a
+/// mod manager's profile, a backup, a list they keep by hand. The rules are the
+/// same ones [`read`] applies, because the format does not know where it came
+/// from.
+pub fn read_file(path: &Path) -> Option<OrderFile> {
+    let bytes = std::fs::read(path).ok()?;
     Some(OrderFile {
-        path,
+        path: path.to_path_buf(),
         names: parse(&decode(&bytes)),
     })
 }
@@ -159,12 +168,8 @@ pub fn read_for_game(
 ) -> Option<OrderFile> {
     let file = order.file()?;
     for dir in order_dirs(game, data_dir) {
-        let path = dir.join(file);
-        if let Ok(bytes) = std::fs::read(&path) {
-            return Some(OrderFile {
-                path,
-                names: parse(&decode(&bytes)),
-            });
+        if let Some(found) = read_file(&dir.join(file)) {
+            return Some(found);
         }
     }
     None
