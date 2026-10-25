@@ -29,7 +29,7 @@ pub mod strings;
 pub mod typedef;
 
 pub use loadorder::LoadOrder;
-pub use plugin::Plugin;
+pub use plugin::{HeaderSummary, Plugin};
 pub use raw::MasterRef;
 pub use raw::PluginHeader;
 pub use raw::{EsmError, Group, GroupHeader, Node, Record, RecordHeader, Subrecord};

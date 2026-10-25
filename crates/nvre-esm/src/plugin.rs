@@ -4,6 +4,31 @@ pub use crate::raw::MasterRef;
 use crate::raw::{self, EsmError, Group, Node, PluginHeader, Record};
 use std::path::Path;
 
+/// What a plugin's `TES4` header says, read without parsing the plugin.
+///
+/// See [`Plugin::header_summary`]. The masters, the author and the description
+/// are all subrecords of the header record, so one walk of its payload answers
+/// all three.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HeaderSummary {
+    /// `MAST`: the masters the plugin depends on, in the header's order.
+    pub masters: Vec<String>,
+    /// `CNAM`: the plugin's author. `None` when the header has none, or has an
+    /// empty one.
+    pub author: Option<String>,
+    /// `SNAM`: the plugin's description, under the same rule as `author`.
+    pub description: Option<String>,
+}
+
+impl HeaderSummary {
+    /// The masters, in the header's order.
+    ///
+    /// The same list [`Plugin::masters`] gives for a plugin read whole.
+    pub fn masters(&self) -> &[String] {
+        &self.masters
+    }
+}
+
 /// A plugin file, read.
 #[derive(Debug, Clone)]
 pub struct Plugin {
@@ -96,12 +121,23 @@ impl Plugin {
     /// `None` when the file cannot be read or does not start with a `TES4`
     /// header, so a caller can let an unreadable file constrain nothing rather
     /// than fail a whole folder for one bad plugin.
-    ///
-    /// The header may carry `COMPRESSED`; a plugin's `TES4` is not compressed in
-    /// any shipped file, and the flag is honoured anyway because a header that
-    /// says it is compressed and is then read as plain bytes would yield
-    /// nonsense names.
     pub fn masters_in_header(path: impl AsRef<Path>) -> Option<Vec<String>> {
+        Self::header_summary(path).map(|h| h.masters)
+    }
+
+    /// What a plugin's `TES4` header says, without reading the plugin.
+    ///
+    /// The masters, the author and the description are all subrecords of the
+    /// header record, so one walk of its payload answers all three. A caller
+    /// that wants more than one of them — the launcher's file list, which shows
+    /// the masters and the header's own text — should not read the file twice.
+    ///
+    /// `None` when the file cannot be read or does not start with a `TES4`
+    /// header. The header may carry `COMPRESSED`; a plugin's `TES4` is not
+    /// compressed in any shipped file, and the flag is honoured anyway because a
+    /// header that says it is compressed and is then read as plain bytes would
+    /// yield nonsense names.
+    pub fn header_summary(path: impl AsRef<Path>) -> Option<HeaderSummary> {
         use std::io::{Read, Seek, SeekFrom};
 
         /// The record header: four bytes of signature, then twenty more.
@@ -127,21 +163,32 @@ impl Plugin {
             payload = nvre_inflate::zlib_decompress(&payload[4..], Some(size)).ok()?;
         }
 
-        let mut out = Vec::new();
+        // A header string is a null-terminated name, in Windows-1252 like every
+        // other name in these formats.
+        let text = |data: &[u8]| {
+            let end = data.iter().position(|b| *b == 0).unwrap_or(data.len());
+            nvre_util::cp1252::decode(&data[..end])
+        };
+
+        let mut summary = HeaderSummary::default();
         let mut off = 0usize;
         while off + 6 <= payload.len() {
             let sig = &payload[off..off + 4];
             let len = u16::from_le_bytes(payload[off + 4..off + 6].try_into().unwrap()) as usize;
             let data = payload.get(off + 6..off + 6 + len)?;
-            if sig == b"MAST" {
-                // A null-terminated name, in Windows-1252 like every other name
-                // in these formats.
-                let end = data.iter().position(|b| *b == 0).unwrap_or(data.len());
-                out.push(nvre_util::cp1252::decode(&data[..end]));
+            match sig {
+                b"MAST" => summary.masters.push(text(data)),
+                // `CNAM` is the author and `SNAM` the description [documented:
+                // fopdoc's TES4 page]. An empty string is treated as absent: a
+                // zero-length subrecord is what GECK writes for a field nobody
+                // filled in, and showing "" is the same as showing nothing.
+                b"CNAM" => summary.author = Some(text(data)).filter(|s| !s.is_empty()),
+                b"SNAM" => summary.description = Some(text(data)).filter(|s| !s.is_empty()),
+                _ => {}
             }
             off += 6 + len;
         }
-        Some(out)
+        Some(summary)
     }
 
     /// The FormID the file's own header carries.

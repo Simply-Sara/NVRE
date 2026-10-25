@@ -395,6 +395,136 @@ fn a_picked_file_is_parsed_like_any_other() {
     assert_eq!(file.names, vec!["Mod.esm", "Other.esp"]);
 }
 
+/// The header summary reads the author and description, not only the masters.
+///
+/// The launcher's Open Existing tab shows all three above the master list, and
+/// they are three subrecords of the same `TES4` record — so one walk has to
+/// yield all of them. The plugin is written by the editor, which is the only
+/// fixture available: `testfiles/` is not in the repository.
+#[test]
+fn the_header_summary_carries_author_and_description() {
+    let dir = std::env::temp_dir().join("nvre-plugin-order-summary");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    let doc = nvre_edit::Document::create_empty(
+        "Authored.esp",
+        false,
+        &["FalloutNV.esm".to_string(), "DeadMoney.esm".to_string()],
+        Some("Someone"),
+        Some("what this plugin is for"),
+    )
+    .unwrap();
+    let path = dir.join("Authored.esp");
+    doc.save(&path).unwrap();
+
+    let summary = nvre_esm::Plugin::header_summary(&path).expect("a TES4 header");
+    assert_eq!(summary.masters, vec!["FalloutNV.esm", "DeadMoney.esm"]);
+    assert_eq!(summary.author.as_deref(), Some("Someone"));
+    assert_eq!(
+        summary.description.as_deref(),
+        Some("what this plugin is for")
+    );
+
+    // And it agrees with reading the whole file, which is the claim that makes
+    // the cheap reader safe to use in place of it.
+    let whole = nvre_esm::Plugin::open(&path).unwrap();
+    assert_eq!(summary.masters, whole.masters());
+    assert_eq!(summary.author, whole.header.author);
+    assert_eq!(summary.description, whole.header.description);
+
+    // An empty description is no `SNAM`, not an empty one: `None` here, so the
+    // panel shows "(none)" rather than a blank line.
+    let bare = nvre_edit::Document::create_empty("Bare.esp", false, &[], None, None).unwrap();
+    let bare_path = dir.join("Bare.esp");
+    bare.save(&bare_path).unwrap();
+    let bare_summary = nvre_esm::Plugin::header_summary(&bare_path).unwrap();
+    assert!(bare_summary.masters.is_empty());
+    assert_eq!(bare_summary.description, None);
+    // GECK's own default author is written by `create_empty`, so this is the
+    // string a plugin nobody claimed carries.
+    assert_eq!(bare_summary.author.as_deref(), Some("DEFAULT"));
+}
+
+/// A plugin's master list is the masters its own header declares, in load
+/// order, and nothing else.
+///
+/// This is what the Open Existing tab shows: the file's own `MAST` names, put
+/// in the order the game would load them. A folder holding other masters must
+/// not add them — that was the checkboxes' behaviour, and it let a session open
+/// with masters the plugin does not declare.
+#[test]
+fn the_master_list_is_the_files_own() {
+    let root = std::env::temp_dir().join("nvre-plugin-order-files-own");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+
+    // Four masters installed; the plugin declares two of them, in the reverse
+    // of load order. `DeadMoney` declares `FalloutNV` the way a real DLC does,
+    // which is what makes the load order a fact rather than a preference.
+    let base: Vec<String> = Vec::new();
+    let on_base = vec!["FalloutNV.esm".to_string()];
+    for (name, masters) in [
+        ("FalloutNV.esm", &base),
+        ("DeadMoney.esm", &on_base),
+        ("HonestHearts.esm", &on_base),
+        ("Unrelated.esm", &base),
+    ] {
+        let doc = nvre_edit::Document::create_empty(name, true, masters, None, None).unwrap();
+        doc.save(root.join(name)).unwrap();
+    }
+    let declared = vec!["DeadMoney.esm".to_string(), "FalloutNV.esm".to_string()];
+    let plugin =
+        nvre_edit::Document::create_empty("Mod.esp", false, &declared, None, None).unwrap();
+    let plugin_path = root.join("Mod.esp");
+    plugin.save(&plugin_path).unwrap();
+
+    let summary = nvre_esm::Plugin::header_summary(&plugin_path).unwrap();
+    let ordered = nvre_editor::game::order_named(
+        &summary.masters,
+        &root,
+        &nvre_editor::plugin_order::Rank::default(),
+    );
+
+    assert_eq!(
+        ordered,
+        vec!["FalloutNV.esm", "DeadMoney.esm"],
+        "the two declared masters, base first because DeadMoney requires it"
+    );
+    assert!(
+        !ordered
+            .iter()
+            .any(|m| m == "HonestHearts.esm" || m == "Unrelated.esm"),
+        "a master the plugin does not declare must not appear"
+    );
+}
+
+/// A declared master that is not installed stays in the list, at the end.
+///
+/// It is what the file says, and hiding it would make the plugin look openable
+/// when it is not: the session would fail on the missing master with no
+/// indication of which one was absent.
+#[test]
+fn a_missing_master_is_listed_not_hidden() {
+    let root = std::env::temp_dir().join("nvre-plugin-order-missing-master");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    let doc = nvre_edit::Document::create_empty("FalloutNV.esm", true, &[], None, None).unwrap();
+    doc.save(root.join("FalloutNV.esm")).unwrap();
+
+    let declared = vec!["FalloutNV.esm".to_string(), "NotInstalled.esm".to_string()];
+    let ordered = nvre_editor::game::order_named(
+        &declared,
+        &root,
+        &nvre_editor::plugin_order::Rank::default(),
+    );
+    assert_eq!(
+        ordered,
+        vec!["FalloutNV.esm", "NotInstalled.esm"],
+        "the installed master first, the missing one kept after it"
+    );
+}
+
 /// Reading a real plugin's header agrees with reading the whole file.
 ///
 /// `masters_in_header` exists to answer `Plugin::open().masters()` for a tenth

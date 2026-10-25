@@ -20,9 +20,19 @@ pub struct Launcher {
     pub tab: LauncherTab,
     /// The plugin to edit, chosen with the file list.
     pub active: Option<std::path::PathBuf>,
-    /// The active file's own masters, read from its header.
-    pub required: Vec<String>,
-    /// Every master in the load order: the required ones, plus any added.
+    /// The selected file's own header: its masters, author and description,
+    /// read from its `TES4` record without parsing the plugin.
+    ///
+    /// The masters the file declares *are* the master list for this tab: a
+    /// plugin is opened with the masters its header names and nothing else, so
+    /// there is nothing to tick. This is what the right-hand column shows.
+    pub header: nvre_esm::HeaderSummary,
+    /// The masters the session will open with, in load order.
+    ///
+    /// On **Create New** this is the set the user ticks, which is why it is a
+    /// list of its own rather than the header's: the plugin does not exist yet.
+    /// On **Open Existing** it is derived — the selected file's own `MAST`
+    /// names, put in the order the chosen order file (or the headers) gives.
     pub masters: Vec<String>,
     /// What order the two lists are shown in, and what order a master list
     /// picked from a file is in.
@@ -93,7 +103,7 @@ impl Launcher {
         Launcher {
             tab: LauncherTab::OpenExisting,
             active: None,
-            required: Vec::new(),
+            header: Default::default(),
             masters: game.masters_in(&dir),
             order: PluginOrder::Name,
             new_name: "NewPlugin.esp".to_string(),
@@ -128,7 +138,7 @@ impl Launcher {
         self.listing_key = None;
         self.listing.clear();
         self.active = None;
-        self.required.clear();
+        self.header = Default::default();
         self.order_file = None;
         self.order_note = None;
         // A file picked for one game is not an order for another: the pick is
@@ -141,6 +151,35 @@ impl Launcher {
             return;
         };
         self.refresh_listing(game, dir);
+    }
+
+    /// Point the master list at `path`, the file just selected.
+    ///
+    /// On this tab the master list is **derived, not chosen**: a plugin is
+    /// opened with the masters its own `MAST` header names and nothing else, so
+    /// the list is those names put in load order. It is derived through the same
+    /// `masters_in_with` the order file feeds, which keeps the headers a
+    /// constraint — a master the file names still cannot end up after something
+    /// that requires it.
+    ///
+    /// A name the header declares that the folder does not hold stays in the
+    /// list: it is what the file says, and hiding it would make the plugin look
+    /// openable when it is not. The column marks it.
+    pub fn select_file(&mut self, path: &std::path::Path) {
+        let dir = path.parent().unwrap_or(std::path::Path::new("."));
+        let rank = self.rank();
+        self.masters = crate::game::order_named(&self.header.masters, dir, &rank);
+    }
+
+    /// The order file's ranking, for putting a derived list in load order.
+    fn rank(&self) -> plugin_order::Rank {
+        // `order_file` is only `Some` for a file that was read, so this needs no
+        // separate check on the listing.
+        self.order_file
+            .as_deref()
+            .and_then(plugin_order::read_file)
+            .map(|f| plugin_order::Rank::of(&f.names))
+            .unwrap_or_default()
     }
 
     /// Re-list the folder and re-read the order, when either has changed.
@@ -513,9 +552,6 @@ pub fn ui(
                         }
                     }
                 });
-                if let Some(dir) = &choice.data_dir {
-                    ui.label(format!("{}", dir.display()));
-                }
                 // A game with no Data folder yet says so, rather than
                 // opening a session that reads nothing.
                 match choice.active_dir() {
@@ -565,11 +601,6 @@ pub fn ui(
 
                 match launcher.tab {
                     LauncherTab::OpenExisting => {
-                        ui.label(
-                            "Select a file to edit. Required masters are checked automatically.",
-                        );
-                        ui.add_space(4.0);
-
                         // Above the master list it orders, which is the column
                         // on the right.
                         order_picker(
@@ -600,70 +631,81 @@ pub fn ui(
                                         if ui.selectable_label(selected, &name).clicked() {
                                             launcher.active = Some(p.clone());
                                             launcher.error = None;
-                                            launcher.required = read_masters_for(p);
-                                            launcher.masters = launcher.required.clone();
+                                            // The header is what the right-hand
+                                            // column shows, and the masters are
+                                            // the ones it declares — read in one
+                                            // pass, since both come from the same
+                                            // `TES4` record.
+                                            launcher.header = nvre_esm::Plugin::header_summary(p)
+                                                .unwrap_or_default();
+                                            launcher.select_file(p);
                                         }
                                     }
                                 });
 
-                            // Masters on right with checkboxes
-                            cols[1].label("Masters (Checkboxes):");
-                            egui::ScrollArea::vertical()
-                                .id_salt("masters_open")
-                                .max_height(scroll_height - 35.0)
-                                .show(&mut cols[1], |ui| {
-                                    for p in &listing {
-                                        let name = p
-                                            .file_name()
-                                            .map(|n| n.to_string_lossy().into_owned())
-                                            .unwrap_or_default();
-                                        let is_esm =
-                                            name.ends_with(".esm") || name.ends_with(".ESM");
-                                        if !is_esm && !launcher.masters.contains(&name) {
-                                            continue;
+                            // The selected file's header, and the masters it
+                            // declares. No checkboxes: a plugin is opened with
+                            // the masters its own header names, so there is
+                            // nothing here to choose.
+                            //
+                            // The author and description come first because they
+                            // are how a user tells one file from another in the
+                            // list on the left — GECK's own Data Files dialog
+                            // shows the same two.
+                            cols[1].group(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label("Author:");
+                                    match &launcher.header.author {
+                                        Some(a) => ui.label(a),
+                                        // GECK writes `CNAM DEFAULT` for a plugin
+                                        // nobody has claimed, so an absent author
+                                        // is the normal case rather than an
+                                        // error.
+                                        None => ui.weak("(none)"),
+                                    };
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("Description:");
+                                    match &launcher.header.description {
+                                        Some(d) => ui.label(d),
+                                        None => ui.weak("(none)"),
+                                    };
+                                });
+                            });
+                            cols[1].add_space(6.0);
+                            cols[1].label("Masters:");
+                            if launcher.active.is_some() {
+                                egui::ScrollArea::vertical()
+                                    .id_salt("masters_open")
+                                    .max_height(scroll_height - 35.0)
+                                    .show(&mut cols[1], |ui| {
+                                        if launcher.masters.is_empty() {
+                                            ui.label("(this plugin declares no masters)");
                                         }
-                                        let is_required = launcher.required.contains(&name);
-                                        let mut checked = launcher.masters.contains(&name);
-
-                                        let label = if is_required {
-                                            format!("{name} (required)")
-                                        } else {
-                                            name.clone()
-                                        };
-
-                                        let resp = ui.add_enabled(
-                                            !is_required,
-                                            egui::Checkbox::new(&mut checked, label),
-                                        );
-                                        if resp.changed() {
-                                            if checked {
-                                                if !launcher.masters.contains(&name) {
-                                                    launcher.masters.push(name);
-                                                }
+                                        for name in &launcher.masters {
+                                            // Whether the file is installed is
+                                            // worth saying: a header naming a
+                                            // master the folder lacks cannot be
+                                            // opened, and the open itself would
+                                            // only report it as a failure.
+                                            let present = listing.iter().any(|p| {
+                                                p.file_name().is_some_and(|n| {
+                                                    n.to_string_lossy().eq_ignore_ascii_case(name)
+                                                })
+                                            });
+                                            if present {
+                                                ui.monospace(name);
                                             } else {
-                                                launcher.masters.retain(|m| m != &name);
+                                                ui.colored_label(
+                                                    egui::Color32::from_rgb(0xd0, 0xa0, 0x40),
+                                                    format!("{name}  (not installed)"),
+                                                );
                                             }
                                         }
-                                    }
-                                });
-
-                            // Add custom master text box
-                            cols[1].horizontal(|ui| {
-                                let resp = ui.add(
-                                    egui::TextEdit::singleline(&mut launcher.adding)
-                                        .hint_text("add custom master..."),
-                                );
-                                let add = ui.button("Add").clicked()
-                                    || (resp.lost_focus()
-                                        && ui.input(|i| i.key_pressed(egui::Key::Enter)));
-                                if add && !launcher.adding.trim().is_empty() {
-                                    let name = launcher.adding.trim().to_string();
-                                    if !launcher.masters.contains(&name) {
-                                        launcher.masters.push(name);
-                                    }
-                                    launcher.adding.clear();
-                                }
-                            });
+                                    });
+                            } else {
+                                cols[1].label("Select a file to see its masters.");
+                            }
                         });
                     }
                     LauncherTab::CreateNew => {
@@ -871,11 +913,4 @@ fn order_picker(
             }
         }
     });
-}
-
-/// The masters a plugin's own header names.
-pub fn read_masters_for(path: &std::path::Path) -> Vec<String> {
-    // Header only: the caller draws this inside a frame, and the whole file is
-    // not needed to answer it.
-    nvre_esm::Plugin::masters_in_header(path).unwrap_or_default()
 }

@@ -684,6 +684,65 @@ impl GameProfile {
     }
 }
 
+/// Put a known list of master names in load order, in `dir`.
+///
+/// For the launcher's **Open Existing** tab, where the master list is *derived*
+/// rather than chosen: the names are the ones the selected plugin's own `MAST`
+/// header declares, and this puts them in the order the game would load them.
+///
+/// The header order is not a load order by itself — a plugin lists its masters
+/// in whatever order its author's tool wrote them, and a master may not load
+/// after something that requires it — so this reads each named master's own
+/// header and sorts through the same dependency graph
+/// [`GameProfile::masters_in_with`] uses. `rank` is the order file's preference
+/// where it has one.
+///
+/// A name the folder does not hold is kept, at the end: it is what the file
+/// says, and the caller shows it as missing rather than pretending the plugin
+/// can be opened.
+pub fn order_named(names: &[String], dir: &Path, rank: &crate::plugin_order::Rank) -> Vec<String> {
+    // The named masters that are actually installed, in the list's own order.
+    let mut present: Vec<String> = Vec::new();
+    let mut missing: Vec<String> = Vec::new();
+    for name in names {
+        let installed = std::fs::read_dir(dir)
+            .ok()
+            .into_iter()
+            .flatten()
+            .filter_map(|e| e.ok())
+            .any(|e| {
+                let n = e.file_name();
+                n.to_string_lossy().eq_ignore_ascii_case(name)
+            });
+        if installed {
+            present.push(name.clone());
+        } else {
+            missing.push(name.clone());
+        }
+    }
+    let lower: Vec<String> = present.iter().map(|n| n.to_ascii_lowercase()).collect();
+
+    // The edges among them: a named master's own dependencies, where those are
+    // also named. A dependency on a master outside the list is not an edge —
+    // this list is what the plugin asks for, not the whole load order.
+    let mut needs: Vec<(usize, Vec<usize>)> = Vec::with_capacity(present.len());
+    for (i, name) in present.iter().enumerate() {
+        let deps = nvre_esm::Plugin::masters_in_header(dir.join(name))
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|m| {
+                let l = m.to_ascii_lowercase();
+                lower.iter().position(|n| *n == l && *n != lower[i])
+            })
+            .collect();
+        needs.push((i, deps));
+    }
+
+    let mut out = FNV.order_masters(&present, &needs, rank);
+    out.extend(missing);
+    out
+}
+
 /// Remember a game's Data folder so the user does not type it again.
 ///
 /// Written to `~/.config/nvre/data-dirs.json` as `{ "<game id>": "<path>" }`.
