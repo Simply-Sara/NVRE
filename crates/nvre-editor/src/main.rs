@@ -13,7 +13,8 @@
 //! main window is the primary one and the viewport names its own render target.
 
 use nvre_editor::{
-    file_details_window, game, gizmo, launcher, object_editor, panels, session, viewport, windows,
+    file_details_window, game, gizmo, launcher, object_editor, panels, session, size_info_window,
+    viewport, windows,
 };
 
 use bevy::prelude::*;
@@ -299,6 +300,7 @@ fn main() {
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
         .init_resource::<file_details_window::FileDetailsState>()
+        .init_resource::<size_info_window::SizeInfoState>()
         // The camera controller: the plugin group that owns the pose, and the
         // input plugin that says which button starts which motion. Both are added
         // at startup because they only register systems; the camera that uses them
@@ -376,6 +378,7 @@ fn main() {
             file_details_window::FileDetailsSchedule,
             file_details_window::ui,
         )
+        .add_systems(size_info_window::SizeInfoSchedule, size_info_window::ui)
         // The File Details window is opened from the launcher, which is
         // `Launching`, so its systems run in both states. A state gate here was
         // the bug that made the Details button do nothing.
@@ -384,6 +387,7 @@ fn main() {
             (
                 file_details_window::poll_scan,
                 file_details_window::manage_window,
+                size_info_window::manage_window,
             )
                 .run_if(in_state(EditorState::Editing).or_else(in_state(EditorState::Launching))),
         )
@@ -585,9 +589,13 @@ struct CloseTargets<'w, 's> {
     object: Query<'w, 's, Entity, With<object_editor::ObjectEditorWindow>>,
     /// The File Details window, if it is open.
     details: Query<'w, 's, Entity, With<file_details_window::FileDetailsWindow>>,
+    /// The Size Info window, if it is open.
+    size_info: Query<'w, 's, Entity, With<size_info_window::SizeInfoWindow>>,
     /// The File Details state, whose request is cleared on close — otherwise
     /// `manage_window` would spawn the window straight back.
     details_state: Option<ResMut<'w, file_details_window::FileDetailsState>>,
+    /// The Size Info state, whose `open` is cleared on close for the same reason.
+    size_info_state: Option<ResMut<'w, size_info_window::SizeInfoState>>,
 }
 
 /// Handle window close requests: primary window exits app, object editor window closes.
@@ -602,6 +610,7 @@ fn handle_window_close(
     let primary_ent = primary.iter().next();
     let obj_ent = targets.object.iter().next();
     let details_ent = targets.details.iter().next();
+    let size_info_ent = targets.size_info.iter().next();
 
     for ev in closed.read() {
         if Some(ev.window) == primary_ent {
@@ -609,6 +618,10 @@ fn handle_window_close(
         } else if Some(ev.window) == details_ent {
             // Clearing the request is what stops `manage_window` respawning it.
             if let Some(s) = &mut targets.details_state {
+                s.close();
+            }
+        } else if Some(ev.window) == size_info_ent {
+            if let Some(s) = &mut targets.size_info_state {
                 s.close();
             }
         } else if Some(ev.window) == obj_ent {

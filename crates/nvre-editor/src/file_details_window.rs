@@ -88,6 +88,9 @@ impl FileDetailsState {
     }
 
     /// Close the window.
+    ///
+    /// The Size Info window is closed by its own system, because it describes a
+    /// file this one no longer holds — see `size_info_window::manage_window`.
     pub fn close(&mut self) {
         self.wanted = None;
         self.task = None;
@@ -246,6 +249,7 @@ pub fn manage_window(
 pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<7>>>,
     mut state: ResMut<FileDetailsState>,
+    mut size_info: ResMut<crate::size_info_window::SizeInfoState>,
 ) {
     let Some(mut ctx) = ctx.iter_mut().next() else {
         return;
@@ -270,6 +274,18 @@ pub fn ui(
                 state.refilter();
             }
             ui.separator();
+            // Top-right, as GECK puts it: the file's totals, not a row's.
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.add_enabled_ui(state.details.is_some(), |ui| {
+                    if ui
+                        .button("Size Info…")
+                        .on_hover_text("How much space each record type takes")
+                        .clicked()
+                    {
+                        size_info.open = true;
+                    }
+                });
+            });
             if state.is_scanning() {
                 ui.spinner();
                 ui.label("reading…");

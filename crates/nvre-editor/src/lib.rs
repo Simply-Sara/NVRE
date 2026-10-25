@@ -14,6 +14,8 @@ pub mod object_editor;
 pub mod panels;
 pub mod plugin_order;
 pub mod session;
+pub mod size_info;
+pub mod size_info_window;
 pub mod strings;
 pub mod viewport;
 pub mod windows;

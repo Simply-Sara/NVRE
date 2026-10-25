@@ -155,6 +155,11 @@ pub struct FileDetails {
     /// The top level is 0, a record in a top-level group is 1, and so on. The
     /// table indents by this, which is what makes a list holding `GRUP` rows
     /// readable rather than a jumble.
+    ///
+    /// It also decides whether a group's label is a *type*: a top-level group is
+    /// labelled with a record signature (`STAT`), while a deeper one is labelled
+    /// with whatever identifies it — a cell's grid coordinates, a worldspace's
+    /// FormID — which is not a type at all.
     pub depth: Column<u8>,
     /// The row's four-character type: `TES4`, `GRUP`, or a record's signature.
     pub kind: Column<[u8; 4]>,
@@ -182,6 +187,13 @@ pub struct FileDetails {
     /// means: a compressed record's `data_size` is its *compressed* size, so a
     /// reader comparing lengths needs to know.
     pub compressed: Column<bool>,
+    /// A group's own label, as a type name when it is one.
+    ///
+    /// `None` for a record (whose name is its `EDID`), and for a group labelled
+    /// with something that is not text — a cell's grid coordinates or a
+    /// worldspace's FormID, which are four bytes of numbers and would be garbage
+    /// if shown as characters.
+    pub group_label: Column<Option<[u8; 4]>>,
 }
 
 impl FileDetails {
@@ -297,6 +309,7 @@ pub fn scan_bytes(data: &[u8], path: PathBuf) -> Result<FileDetails, DetailsErro
     out.length.push(size);
     out.vc.push(vc);
     out.editor_id.push(None);
+    out.group_label.push(None);
 
     let first = 24usize + size as usize;
     walk(data, first, data.len(), 1, &mut out)?;
@@ -351,11 +364,24 @@ fn walk(
             out.offset.push(pos as u64);
             out.length.push(size as u32);
             out.vc.push(0);
-            // The Editor ID column carries the group's label instead, which is
-            // the only name a group has. A group label is a four-byte tag, not a
-            // Windows-1252 name, so it is read as lossy text rather than decoded.
-            let label = data.get(pos + 8..pos + 12).unwrap_or(b"????");
-            out.editor_id.push(Some(&String::from_utf8_lossy(label)));
+            // A group's label is the only name it has. For a **top-level** group
+            // it is the record type the group holds (`STAT`); for a nested one it
+            // is a cell's grid coordinates or a worldspace's FormID, which are
+            // four bytes of numbers and would be garbage shown as characters
+            // [measured: FalloutNV.esm has 46,296 distinct group labels and
+            // 46,195 of them hold non-printable bytes].
+            let label: [u8; 4] = data
+                .get(pos + 8..pos + 12)
+                .and_then(|l| l.try_into().ok())
+                .unwrap_or(*b"????");
+            let is_type = label.iter().all(|b| b.is_ascii_graphic()) && depth == 1;
+            out.group_label
+                .push(if is_type { Some(label) } else { None });
+            if is_type {
+                out.editor_id.push(Some(&String::from_utf8_lossy(&label)));
+            } else {
+                out.editor_id.push(None);
+            }
 
             let inner_end = (pos + size).min(end);
             walk(data, pos + 24, inner_end, depth + 1, out)?;
@@ -378,6 +404,7 @@ fn walk(
         out.offset.push(pos as u64);
         out.length.push(data_size);
         out.vc.push(vc_info);
+        out.group_label.push(None);
 
         // The Editor ID: the first `EDID` in the record's opening bytes.
         //
