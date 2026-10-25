@@ -159,8 +159,6 @@ pub struct Launcher {
     /// every keystroke.
     pub new_author: String,
     pub new_description: String,
-    /// A master the user is typing in, to add to the list.
-    pub adding: String,
     /// What the last attempt to load said.
     pub error: Option<String>,
     /// The plugins found in the Data folder, and the folder they came from.
@@ -218,7 +216,6 @@ impl Launcher {
             // description unless the user types one.
             new_author: String::new(),
             new_description: String::new(),
-            adding: String::new(),
             error: None,
             listing: Vec::new(),
             listing_key: None,
@@ -990,25 +987,6 @@ pub fn ui(
                                         .desired_rows(6),
                                 );
                             });
-                        });
-
-                        // The add-a-master row stays under the list, on the left:
-                        // it acts on that list, not on the header fields.
-                        ui.horizontal(|ui| {
-                            let resp = ui.add(
-                                egui::TextEdit::singleline(&mut launcher.adding)
-                                    .hint_text("add custom master..."),
-                            );
-                            let add = ui.button("Add").clicked()
-                                || (resp.lost_focus()
-                                    && ui.input(|i| i.key_pressed(egui::Key::Enter)));
-                            if add && !launcher.adding.trim().is_empty() {
-                                let name = launcher.adding.trim().to_string();
-                                if !launcher.masters.contains(&name) {
-                                    launcher.masters.push(name);
-                                }
-                                launcher.adding.clear();
-                            }
                         });
                     }
                 }
