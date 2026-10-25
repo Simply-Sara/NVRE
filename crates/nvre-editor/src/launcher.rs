@@ -821,7 +821,11 @@ pub fn ui(
                                         None => ui.weak("(none)"),
                                     };
                                 });
-                                ui.horizontal(|ui| {
+                                // `horizontal_top`, not `horizontal`: with a
+                                // three-row box beside it, a vertically centred
+                                // label floats in the middle of the field rather
+                                // than naming it.
+                                ui.horizontal_top(|ui| {
                                     ui.label("Description:");
                                     match &launcher.header.description {
                                         Some(d) => ui.label(d),
@@ -956,23 +960,35 @@ pub fn ui(
                             // plugin is always CNAM `DEFAULT` with no SNAM — so
                             // these are what let a mod say who wrote it and what
                             // it is.
+                            // Label above field, not beside it: the fields take
+                            // the column's full width that way, which is what the
+                            // long description wants, and the two labels line up
+                            // with each other rather than with the middle of a
+                            // six-row box.
                             cols[1].group(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label("Author:");
-                                    ui.add(
-                                        egui::TextEdit::singleline(&mut launcher.new_author)
-                                            .hint_text("DEFAULT")
-                                            .desired_width(ui.available_width() - 12.0),
-                                    );
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.label("Description:");
-                                    ui.add(
-                                        egui::TextEdit::singleline(&mut launcher.new_description)
-                                            .hint_text("what this plugin is for")
-                                            .desired_width(ui.available_width() - 12.0),
-                                    );
-                                });
+                                ui.label("Author:");
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut launcher.new_author)
+                                        .hint_text("DEFAULT")
+                                        .desired_width(f32::INFINITY),
+                                );
+                                ui.add_space(6.0);
+                                ui.label("Description:");
+                                // A multi-line field: `SNAM` is a description, and
+                                // a single line of it is a caption rather than a
+                                // description. Six rows is room to write a
+                                // paragraph in.
+                                //
+                                // It is not a `singleline` with a bigger box:
+                                // `TextEdit::multiline` is a different widget, and
+                                // a newline typed into a singleline field is
+                                // silently dropped.
+                                ui.add(
+                                    egui::TextEdit::multiline(&mut launcher.new_description)
+                                        .hint_text("what this plugin is for")
+                                        .desired_width(f32::INFINITY)
+                                        .desired_rows(6),
+                                );
                             });
                         });
 
