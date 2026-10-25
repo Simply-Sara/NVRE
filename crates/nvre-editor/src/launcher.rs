@@ -904,32 +904,8 @@ pub fn ui(
                         });
 
                         ui.add_space(6.0);
-                        // The author and description the header carries. GECK's
-                        // own Create dialog has no such fields — its plugin is
-                        // always CNAM `DEFAULT` with no SNAM — so these are what
-                        // let a mod say who wrote it and what it is.
-                        ui.group(|ui| {
-                            ui.horizontal(|ui| {
-                                ui.label("Author:");
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut launcher.new_author)
-                                        .hint_text("DEFAULT")
-                                        .desired_width(ui.available_width() - 20.0),
-                                );
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label("Description:");
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut launcher.new_description)
-                                        .hint_text("what this plugin is for")
-                                        .desired_width(ui.available_width() - 20.0),
-                                );
-                            });
-                        });
-
-                        ui.add_space(6.0);
-                        // Below the author and description and above the master
-                        // list, because it is the master list it orders.
+                        // Below the file name and above the master list, because
+                        // it is the master list it orders.
                         order_picker(
                             ui,
                             &mut launcher,
@@ -939,37 +915,69 @@ pub fn ui(
                         );
 
                         ui.add_space(6.0);
-                        ui.label("Select Masters to depend on (Checkboxes):");
+                        // Two columns: the masters on the left, where the list is
+                        // long, and the author and description on the right, where
+                        // two text fields fit without pushing the list down.
+                        ui.columns(2, |cols| {
+                            cols[0].label("Select Masters to depend on (Checkboxes):");
 
-                        // As above: measured where it is drawn, so it reaches
-                        // the bottom bar instead of stopping short of it.
-                        let masters_height = ui.available_height().max(120.0);
-                        egui::ScrollArea::vertical()
-                            .id_salt("masters_new")
-                            .max_height(masters_height)
-                            .show(ui, |ui| {
-                                for p in &listing {
-                                    let name = p
-                                        .file_name()
-                                        .map(|n| n.to_string_lossy().into_owned())
-                                        .unwrap_or_default();
-                                    let is_esm = name.ends_with(".esm") || name.ends_with(".ESM");
-                                    if !is_esm && !launcher.masters.contains(&name) {
-                                        continue;
-                                    }
-                                    let mut checked = launcher.masters.contains(&name);
-                                    if ui.checkbox(&mut checked, &name).changed() {
-                                        if checked {
-                                            if !launcher.masters.contains(&name) {
-                                                launcher.masters.push(name);
+                            // Measured where it is drawn, so it reaches the
+                            // bottom bar instead of stopping short of it.
+                            let masters_height = cols[0].available_height().max(120.0);
+                            egui::ScrollArea::vertical()
+                                .id_salt("masters_new")
+                                .max_height(masters_height)
+                                .show(&mut cols[0], |ui| {
+                                    for p in &listing {
+                                        let name = p
+                                            .file_name()
+                                            .map(|n| n.to_string_lossy().into_owned())
+                                            .unwrap_or_default();
+                                        let is_esm =
+                                            name.ends_with(".esm") || name.ends_with(".ESM");
+                                        if !is_esm && !launcher.masters.contains(&name) {
+                                            continue;
+                                        }
+                                        let mut checked = launcher.masters.contains(&name);
+                                        if ui.checkbox(&mut checked, &name).changed() {
+                                            if checked {
+                                                if !launcher.masters.contains(&name) {
+                                                    launcher.masters.push(name);
+                                                }
+                                            } else {
+                                                launcher.masters.retain(|m| m != &name);
                                             }
-                                        } else {
-                                            launcher.masters.retain(|m| m != &name);
                                         }
                                     }
-                                }
-                            });
+                                });
 
+                            // The author and description the header carries.
+                            // GECK's own Create dialog has no such fields — its
+                            // plugin is always CNAM `DEFAULT` with no SNAM — so
+                            // these are what let a mod say who wrote it and what
+                            // it is.
+                            cols[1].group(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label("Author:");
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut launcher.new_author)
+                                            .hint_text("DEFAULT")
+                                            .desired_width(ui.available_width() - 12.0),
+                                    );
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("Description:");
+                                    ui.add(
+                                        egui::TextEdit::singleline(&mut launcher.new_description)
+                                            .hint_text("what this plugin is for")
+                                            .desired_width(ui.available_width() - 12.0),
+                                    );
+                                });
+                            });
+                        });
+
+                        // The add-a-master row stays under the list, on the left:
+                        // it acts on that list, not on the header fields.
                         ui.horizontal(|ui| {
                             let resp = ui.add(
                                 egui::TextEdit::singleline(&mut launcher.adding)
