@@ -122,6 +122,23 @@ impl Names {
     }
 }
 
+/// What a row is: the file's header, a group, or a record.
+///
+/// The table lists all three, as xEdit's does: a plugin is a tree of groups, and
+/// a flat list of records with the groups left out hides the structure that says
+/// where a record lives. GECK's own dialog lists records only, which is why this
+/// distinction is worth stating rather than assuming.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RowKind {
+    /// The `TES4` record: the file's own header.
+    Header,
+    /// A `GRUP`: a group of records, or of other groups.
+    Group,
+    /// A record.
+    #[default]
+    Record,
+}
+
 /// One record, as the table shows it.
 ///
 /// The columns are GECK's own, in its own order: the record's type, whether it
@@ -131,7 +148,15 @@ impl Names {
 pub struct FileDetails {
     /// The file the rows came from.
     pub path: PathBuf,
-    /// The record's four-character type, e.g. `WEAP`.
+    /// What the row is: the header, a group, or a record.
+    pub row_kind: Column<RowKind>,
+    /// How deep in the group tree the row sits.
+    ///
+    /// The top level is 0, a record in a top-level group is 1, and so on. The
+    /// table indents by this, which is what makes a list holding `GRUP` rows
+    /// readable rather than a jumble.
+    pub depth: Column<u8>,
+    /// The row's four-character type: `TES4`, `GRUP`, or a record's signature.
     pub kind: Column<[u8; 4]>,
     /// The `Deleted` record flag (`0x20`).
     pub deleted: Column<bool>,
@@ -162,12 +187,21 @@ pub struct FileDetails {
 impl FileDetails {
     /// How many rows the table holds.
     pub fn len(&self) -> usize {
-        self.kind.len()
+        self.row_kind.len()
     }
 
     /// Whether the table holds no rows.
     pub fn is_empty(&self) -> bool {
-        self.kind.is_empty()
+        self.row_kind.is_empty()
+    }
+
+    /// How many of the rows are records, rather than the header or a group.
+    pub fn record_count(&self) -> usize {
+        self.row_kind
+            .as_slice()
+            .iter()
+            .filter(|k| **k == RowKind::Record)
+            .count()
     }
 }
 
@@ -238,16 +272,34 @@ pub fn scan_bytes(data: &[u8], path: PathBuf) -> Result<FileDetails, DetailsErro
         path,
         ..Default::default()
     };
-    // The TES4 header record, which the table does not list: it is the file's
-    // header, not a record in it, and GECK does not show it either.
+    // The `TES4` row first: it is the file's own header, and xEdit lists it as
+    // the tree's root. Its FormID, VC and flags are real header fields, so they
+    // are shown rather than blanked.
     let size = u32::from_le_bytes(
         data.get(4..8)
             .ok_or(DetailsError::NotAPlugin)?
             .try_into()
             .unwrap(),
     );
+    let flags = u32::from_le_bytes(data[8..12].try_into().unwrap());
+    let vc = u32::from_le_bytes(data[16..20].try_into().unwrap());
+    out.row_kind.push(RowKind::Header);
+    out.depth.push(0);
+    out.kind.push(*b"TES4");
+    out.deleted.push(flags & flags::DELETED != 0);
+    out.ignored.push(flags & flags::IGNORED != 0);
+    out.compressed.push(flags & flags::COMPRESSED != 0);
+    // The header record's own FormID is 0 in every plugin [documented: fopdoc's
+    // Record Format table, "TES4 records have a FormID of 0"].
+    out.form_id
+        .push(u32::from_le_bytes(data[12..16].try_into().unwrap()));
+    out.offset.push(0);
+    out.length.push(size);
+    out.vc.push(vc);
+    out.editor_id.push(None);
+
     let first = 24usize + size as usize;
-    walk(data, first, data.len(), 0, &mut out)?;
+    walk(data, first, data.len(), 1, &mut out)?;
     Ok(out)
 }
 
@@ -284,6 +336,27 @@ fn walk(
                     format!("a group claims {size} bytes, less than its own header"),
                 ));
             }
+            // The group is a row of its own, as xEdit shows it: its label and
+            // type say what the records under it are.
+            out.row_kind.push(RowKind::Group);
+            out.depth.push(depth as u8);
+            out.kind.push(*b"GRUP");
+            // A group has no flags, FormID, VC or length of its own — its header
+            // is a size, a label and a type — so those cells are zero and the
+            // table shows them blank.
+            out.deleted.push(false);
+            out.ignored.push(false);
+            out.compressed.push(false);
+            out.form_id.push(0);
+            out.offset.push(pos as u64);
+            out.length.push(size as u32);
+            out.vc.push(0);
+            // The Editor ID column carries the group's label instead, which is
+            // the only name a group has. A group label is a four-byte tag, not a
+            // Windows-1252 name, so it is read as lossy text rather than decoded.
+            let label = data.get(pos + 8..pos + 12).unwrap_or(b"????");
+            out.editor_id.push(Some(&String::from_utf8_lossy(label)));
+
             let inner_end = (pos + size).min(end);
             walk(data, pos + 24, inner_end, depth + 1, out)?;
             pos += size;
@@ -295,14 +368,16 @@ fn walk(
         let form_id = u32::from_le_bytes(data[pos + 12..pos + 16].try_into().unwrap());
         let vc_info = u32::from_le_bytes(data[pos + 16..pos + 20].try_into().unwrap());
 
-        out.kind.values.push([sig[0], sig[1], sig[2], sig[3]]);
-        out.deleted.values.push(flags & flags::DELETED != 0);
-        out.ignored.values.push(flags & flags::IGNORED != 0);
-        out.compressed.values.push(flags & flags::COMPRESSED != 0);
-        out.form_id.values.push(form_id);
-        out.offset.values.push(pos as u64);
-        out.length.values.push(data_size);
-        out.vc.values.push(vc_info);
+        out.row_kind.push(RowKind::Record);
+        out.depth.push(depth as u8);
+        out.kind.push([sig[0], sig[1], sig[2], sig[3]]);
+        out.deleted.push(flags & flags::DELETED != 0);
+        out.ignored.push(flags & flags::IGNORED != 0);
+        out.compressed.push(flags & flags::COMPRESSED != 0);
+        out.form_id.push(form_id);
+        out.offset.push(pos as u64);
+        out.length.push(data_size);
+        out.vc.push(vc_info);
 
         // The Editor ID: the first `EDID` in the record's opening bytes.
         //

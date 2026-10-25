@@ -376,6 +376,17 @@ fn main() {
             file_details_window::FileDetailsSchedule,
             file_details_window::ui,
         )
+        // The File Details window is opened from the launcher, which is
+        // `Launching`, so its systems run in both states. A state gate here was
+        // the bug that made the Details button do nothing.
+        .add_systems(
+            Update,
+            (
+                file_details_window::poll_scan,
+                file_details_window::manage_window,
+            )
+                .run_if(in_state(EditorState::Editing).or_else(in_state(EditorState::Launching))),
+        )
         .add_systems(
             Update,
             (
@@ -389,8 +400,6 @@ fn main() {
                 viewport::pick,
                 viewport::flat_material_diagnostic,
                 object_editor::manage_window,
-                file_details_window::poll_scan,
-                file_details_window::manage_window,
                 handle_window_close,
                 // Last, because everything above can ask for a view — a cell
                 // opening, a frame request, `F`, a double-click in `pick` — and
@@ -400,9 +409,13 @@ fn main() {
                 .chain()
                 .run_if(in_state(EditorState::Editing)),
         )
+        // In both states, because the File Details window can be closed from
+        // either: leaving `Launching` out would let it respawn every frame once
+        // closed while the launcher is still up.
         .add_systems(
             Update,
-            handle_window_close.run_if(in_state(EditorState::Launching)),
+            handle_window_close
+                .run_if(in_state(EditorState::Launching).or_else(in_state(EditorState::Editing))),
         )
         .run();
 }

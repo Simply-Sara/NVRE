@@ -117,20 +117,66 @@ fn a_file_that_is_not_a_plugin_is_refused() {
     ));
 }
 
-/// An empty plugin is a plugin with no rows.
+/// An empty plugin's only row is its `TES4` header.
 ///
-/// The `TES4` header is not a record in the table: it is the file's header, and
-/// GECK's dialog does not list it either.
+/// The header is a row because xEdit lists it as the tree's root, and it carries
+/// real fields — flags, a FormID, a revision word — rather than being a label.
 #[test]
-fn a_plugin_with_no_records_has_no_rows() {
+fn an_empty_plugin_lists_only_its_header() {
     let path = plugin("empty");
     let details = file_details::scan(&path).expect("a blank plugin scans");
-    assert_eq!(details.len(), 0, "the TES4 header is not a row");
-    assert!(details.is_empty());
-    // And every column agrees on that.
-    assert!(details.kind.is_empty());
-    assert!(details.editor_id.is_empty());
+    assert_eq!(details.len(), 1, "just the TES4 row");
+    assert_eq!(details.record_count(), 0, "and no records");
+    assert_eq!(details.row_kind.get(0), Some(file_details::RowKind::Header));
+    assert_eq!(details.kind.get(0), Some(*b"TES4"));
+    assert_eq!(details.offset.get(0), Some(0));
+    assert_eq!(details.depth.get(0), Some(0));
     assert_eq!(details.path, path);
+}
+
+/// The header and the groups are rows, and they nest.
+///
+/// A plugin is a tree: `TES4`, then a `GRUP` per record type, then the records
+/// in it. A flat list of records with the groups left out hides where a record
+/// lives, which is half of what the dialog is for.
+#[test]
+fn the_header_and_groups_are_rows() {
+    let path = plugin("structure");
+    std::fs::write(&path, three_stat_plugin()).unwrap();
+    let details = file_details::scan(&path).unwrap();
+
+    // The header, the STAT group, and the three records in it.
+    assert_eq!(details.len(), 5, "TES4 + GRUP + three records");
+    assert_eq!(details.record_count(), 3, "three of them are records");
+
+    let kinds: Vec<_> = (0..details.len())
+        .map(|r| details.row_kind.get(r).unwrap())
+        .collect();
+    assert_eq!(
+        kinds,
+        vec![
+            file_details::RowKind::Header,
+            file_details::RowKind::Group,
+            file_details::RowKind::Record,
+            file_details::RowKind::Record,
+            file_details::RowKind::Record,
+        ]
+    );
+
+    // The tree's shape: the header at the top, the group under it, the records
+    // under the group.
+    assert_eq!(details.depth.get(0), Some(0), "the header is the root");
+    assert_eq!(details.depth.get(1), Some(1), "the group is one level in");
+    for row in 2..5 {
+        assert_eq!(details.depth.get(row), Some(2), "records are two levels in");
+    }
+
+    // A group carries its label, which is the only name it has.
+    assert_eq!(details.editor_id.get(1), Some("STAT"));
+    // And a group has no FormID or revision word, so those are zero rather than
+    // a number that means nothing.
+    assert_eq!(details.form_id.get(1), Some(0));
+    assert_eq!(details.vc.get(1), Some(0));
 }
 
 /// Every row's header fields are the ones the full parser reports.
@@ -153,7 +199,7 @@ fn the_scan_agrees_with_the_full_parser() {
 
     let parsed = whole.records();
     assert_eq!(
-        details.len(),
+        details.record_count(),
         parsed.len(),
         "the scan must see every record the parser sees"
     );
@@ -163,6 +209,11 @@ fn the_scan_agrees_with_the_full_parser() {
     let by_offset: std::collections::HashMap<u64, &nvre_esm::Record> =
         parsed.iter().map(|r| (r.offset, *r)).collect();
     for row in 0..details.len() {
+        // Only records: the header and the groups are rows too, and the parser
+        // has no equivalent to compare them against.
+        if details.row_kind.get(row) != Some(file_details::RowKind::Record) {
+            continue;
+        }
         let off = details.offset.get(row).unwrap();
         let r = by_offset
             .get(&off)
@@ -183,6 +234,7 @@ fn the_scan_agrees_with_the_full_parser() {
     // The Editor IDs really are the ones that went in, so the comparison above is
     // not two readers agreeing on nothing.
     let named: Vec<&str> = (0..details.len())
+        .filter(|r| details.row_kind.get(*r) == Some(file_details::RowKind::Record))
         .filter_map(|r| details.editor_id.get(r))
         .collect();
     assert!(named.contains(&"FirstRecord"), "got {named:?}");
@@ -205,6 +257,8 @@ fn the_flag_columns_read_the_flags_they_name() {
     assert_eq!(details.deleted.len(), details.len());
     assert_eq!(details.ignored.len(), details.len());
     assert_eq!(details.compressed.len(), details.len());
+    assert_eq!(details.depth.len(), details.len());
+    assert_eq!(details.row_kind.len(), details.len());
 }
 
 /// The filter matches a record's type, Editor ID or FormID.
@@ -221,6 +275,8 @@ fn the_filter_searches_type_name_and_form_id() {
         (*b"WEAP", "LaserRifle", 0x0002_3456),
         (*b"NPC_", "Raul", 0x0003_4567),
     ] {
+        d.row_kind.push(file_details::RowKind::Record);
+        d.depth.push(1);
         d.kind.push(kind);
         d.form_id.push(fid);
         d.editor_id.push(Some(edid));

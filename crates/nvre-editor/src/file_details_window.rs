@@ -25,7 +25,7 @@ use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
 use bevy_egui::egui;
 use std::path::PathBuf;
 
-use crate::file_details::{self, FileDetails};
+use crate::file_details::{self, FileDetails, RowKind};
 
 /// The schedule label for the File Details window.
 #[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
@@ -276,12 +276,19 @@ pub fn ui(
             } else if let Some(err) = &state.error {
                 ui.colored_label(egui::Color32::RED, err);
             } else {
-                let total = state.details.as_ref().map(|d| d.len()).unwrap_or(0);
+                let (rows, records) = state
+                    .details
+                    .as_ref()
+                    .map(|d| (d.len(), d.record_count()))
+                    .unwrap_or((0, 0));
                 let shown = state.row_count();
-                if shown == total {
-                    ui.label(format!("{total} records"));
+                // Both numbers, because the list holds groups and the header as
+                // well as records: "465,016 records" over a list of 470,000 rows
+                // would look like a bug.
+                if shown == rows {
+                    ui.label(format!("{records} records in {rows} rows"));
                 } else {
-                    ui.label(format!("{shown} of {total} records"));
+                    ui.label(format!("{shown} of {rows} rows ({records} records)"));
                 }
             }
         });
@@ -349,12 +356,30 @@ pub fn ui(
                     };
                     row.set_selected(selected == Some(index));
 
-                    // The record's type, and nothing else: the four-byte code is
-                    // what GECK shows, not the schema's long name.
+                    // The type, indented by the row's depth so the group tree
+                    // reads as a tree. A `GRUP` is shown as its label (which is
+                    // in the Editor ID column) plus its type, and the `TES4`
+                    // root is marked, because those rows are structure rather
+                    // than content.
+                    let depth = details.depth.get(index).unwrap_or(0) as usize;
+                    let kind = details.row_kind.get(index).unwrap_or_default();
                     row.col(|ui| {
-                        if let Some(k) = details.kind.get(index) {
-                            ui.monospace(String::from_utf8_lossy(&k));
-                        }
+                        ui.horizontal(|ui| {
+                            ui.add_space(depth as f32 * 10.0);
+                            if let Some(k) = details.kind.get(index) {
+                                let text = String::from_utf8_lossy(&k).into_owned();
+                                match kind {
+                                    RowKind::Record => {
+                                        ui.monospace(text);
+                                    }
+                                    // Weaker, so a scan down the Type column finds
+                                    // records and not the scaffolding.
+                                    RowKind::Group | RowKind::Header => {
+                                        ui.weak(egui::RichText::new(text).monospace());
+                                    }
+                                }
+                            }
+                        });
                     });
                     row.col(|ui| {
                         if details.deleted.get(index).unwrap_or(false) {
@@ -374,7 +399,14 @@ pub fn ui(
                             None => ui.label(""),
                         };
                     });
+                    // A group header has no FormID and no revision word, so
+                    // showing a zero there would be a number that means nothing.
+                    // Its offset and size are real, though, so those stay.
+                    let is_group = kind == RowKind::Group;
                     row.col(|ui| {
+                        if is_group {
+                            return;
+                        }
                         if let Some(fid) = details.form_id.get(index) {
                             ui.monospace(format!("{fid:08X}"));
                         }
@@ -390,6 +422,9 @@ pub fn ui(
                         }
                     });
                     row.col(|ui| {
+                        if is_group {
+                            return;
+                        }
                         if let Some(vc) = details.vc.get(index) {
                             ui.monospace(format!("{vc:08X}"));
                         }
