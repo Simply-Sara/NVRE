@@ -249,6 +249,17 @@ impl GameChoice {
         self.data_dir.clone()
     }
 
+    /// Point the field at `dir`, as the folder picker's answer.
+    ///
+    /// The text the picker returns is committed through the same path as a
+    /// typed one — [`GameChoice::commit_folder`] — so a browsed folder and a
+    /// typed one cannot end up stored differently. The field is set first
+    /// because that is the value `commit_folder` reads.
+    pub fn pick_folder(&mut self, dir: &std::path::Path) {
+        self.folder_edit = dir.to_string_lossy().into_owned();
+        self.commit_folder();
+    }
+
     /// Commit the field's text as the Data folder, and remember it.
     ///
     /// An empty field clears the override rather than keeping the last one, so
@@ -415,6 +426,28 @@ pub fn ui(
                             .desired_width(360.0)
                             .hint_text("/path/to/<Game>/Data"),
                     );
+                    // The OS's own folder picker, to the right of the field.
+                    // A chosen folder is committed on the spot — the picker is
+                    // an explicit answer, not a keystroke still being typed —
+                    // so the plugin and master lists follow it immediately
+                    // rather than waiting for the field to lose focus.
+                    if ui.button("Browse…").clicked() {
+                        let mut dialog = rfd::FileDialog::new()
+                            .set_title(format!("{} — choose the Data folder", choice.game.name));
+                        // Start where the field points, when it points
+                        // somewhere real: the common case is browsing from the
+                        // folder already in use.
+                        if let Some(dir) = choice.active_dir().filter(|d| d.is_dir()) {
+                            dialog = dialog.set_directory(dir);
+                        }
+                        if let Some(picked) = dialog.pick_folder() {
+                            let before = choice.data_dir.clone();
+                            choice.pick_folder(&picked);
+                            if choice.data_dir != before {
+                                launcher.retarget(choice.game, choice.active_dir().as_deref());
+                            }
+                        }
+                    }
                     // Commit on losing focus or Enter: the plugin list and the
                     // master list both follow the folder.
                     if resp.lost_focus() {

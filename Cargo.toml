@@ -39,6 +39,12 @@ bevy_egui = "=0.43.0"
 # rather than in egui core, and this is the same version line as the egui
 # bevy_egui pins, so the two share one egui.
 egui_extras = "0.36"
+# The native folder picker behind the launcher's Browse button. A blocking
+# `FileDialog::pick_folder()` call: the XDG desktop portal on Linux (so the
+# dialog is the desktop's own and the app needs no GTK), and the OS dialog on
+# Windows and macOS. Default features are kept — `xdg-portal` is the Linux
+# backend, and dropping it would leave Linux with no picker at all.
+rfd = "0.15"
 clap = { version = "4", features = ["derive", "env"] }
 
 # Enable high optimization for external dependencies in dev/debug builds.
