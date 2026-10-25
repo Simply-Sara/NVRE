@@ -1050,7 +1050,7 @@ pub fn ui(
                         // long, and the author and description on the right, where
                         // two text fields fit without pushing the list down.
                         ui.columns(2, |cols| {
-                            cols[0].label("Select Masters to depend on (Checkboxes):");
+                            cols[0].label("Select masters for new plugin:");
 
                             // Measured where it is drawn, so it reaches the
                             // bottom bar instead of stopping short of it.
