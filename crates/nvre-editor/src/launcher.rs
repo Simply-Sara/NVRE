@@ -5,6 +5,100 @@ use bevy_egui::egui;
 
 use crate::plugin_order::{self, PluginOrder};
 
+/// The launcher's primary action: Open, or Create & Open.
+///
+/// Right-aligned in the bottom bar by the caller, which is why it is a function
+/// of its own rather than an inline match: the row it lives in also carries the
+/// selected file's dates, and mixing the two inline made the row unreadable.
+fn action_button(
+    ui: &mut egui::Ui,
+    launcher: &Launcher,
+    open: &mut MessageWriter<crate::OpenRequested>,
+) {
+    match launcher.tab {
+        LauncherTab::OpenExisting => {
+            let ready = launcher.active.is_some();
+            ui.add_enabled_ui(ready, |ui| {
+                let label = if let Some(p) = &launcher.active {
+                    format!(
+                        "Open {}",
+                        p.file_name()
+                            .map(|n| n.to_string_lossy())
+                            .unwrap_or_default()
+                    )
+                } else {
+                    "Open".to_string()
+                };
+                if ui
+                    .add_sized([160.0, 32.0], egui::Button::new(label))
+                    .clicked()
+                {
+                    open.write(crate::OpenRequested);
+                }
+            });
+        }
+        LauncherTab::CreateNew => {
+            // A name is all a new plugin needs. Zero masters is a plugin GECK
+            // writes too — `fonv_geck_empty_no_master.esp` is a TES4 header and
+            // nothing else — so an empty master list is a choice, not an
+            // unfinished form.
+            let ready = !launcher.new_name.trim().is_empty();
+            ui.add_enabled_ui(ready, |ui| {
+                let label = if launcher.new_is_master {
+                    format!("Create & Open Master ({})", launcher.new_name.trim())
+                } else {
+                    format!("Create & Open Plugin ({})", launcher.new_name.trim())
+                };
+                if ui
+                    .add_sized([220.0, 32.0], egui::Button::new(label))
+                    .clicked()
+                {
+                    open.write(crate::OpenRequested);
+                }
+            });
+        }
+    }
+}
+
+/// A file's created and modified times.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FileTimes {
+    /// When the file was created, if the filesystem records it.
+    pub created: Option<std::time::SystemTime>,
+    /// When it was last modified.
+    pub modified: Option<std::time::SystemTime>,
+}
+
+impl FileTimes {
+    /// Read a file's times, or `None` when it cannot be stat'ed.
+    pub fn of(path: &std::path::Path) -> Option<FileTimes> {
+        let meta = std::fs::metadata(path).ok()?;
+        Some(FileTimes {
+            created: meta.created().ok(),
+            modified: meta.modified().ok(),
+        })
+    }
+}
+
+/// A timestamp as `2026-10-25 16:31`, in the local time zone.
+///
+/// The `time` crate with the local-offset feature, because a file's time is
+/// something a person reads in their own zone and `SystemTime` alone is a
+/// duration since 1970. Formatted to the minute: a plugin's mtime to the second
+/// is noise, and the format is what a file browser shows.
+fn format_time(t: std::time::SystemTime) -> String {
+    let offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
+    let dt = time::OffsetDateTime::from(t).to_offset(offset);
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}",
+        dt.year(),
+        u8::from(dt.month()),
+        dt.day(),
+        dt.hour(),
+        dt.minute()
+    )
+}
+
 /// Which tab the launcher is currently showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LauncherTab {
@@ -20,6 +114,17 @@ pub struct Launcher {
     pub tab: LauncherTab,
     /// The plugin to edit, chosen with the file list.
     pub active: Option<std::path::PathBuf>,
+    /// The selected file's created and modified times, as the OS reports them.
+    ///
+    /// Read once when the file is picked rather than every frame: a `stat` per
+    /// frame is a syscall per frame, and the values cannot change while the
+    /// launcher is up unless something else writes the file — at which point a
+    /// restart is the honest answer anyway.
+    ///
+    /// `created` is `None` on a filesystem that does not record it, which is
+    /// most of them on Linux: the format has no birth time, so a `.esp` on ext4
+    /// often has none.
+    pub active_times: Option<FileTimes>,
     /// The selected file's own header: its masters, author and description,
     /// read from its `TES4` record without parsing the plugin.
     ///
@@ -103,6 +208,7 @@ impl Launcher {
         Launcher {
             tab: LauncherTab::OpenExisting,
             active: None,
+            active_times: None,
             header: Default::default(),
             masters: game.masters_in(&dir),
             order: PluginOrder::Name,
@@ -138,6 +244,7 @@ impl Launcher {
         self.listing_key = None;
         self.listing.clear();
         self.active = None;
+        self.active_times = None;
         self.header = Default::default();
         self.order_file = None;
         self.order_note = None;
@@ -433,54 +540,54 @@ pub fn ui(
 
             // Action button anchored at the bottom
             ui.horizontal(|ui| {
-                ui.with_layout(
-                    egui::Layout::right_to_left(egui::Align::Center),
-                    |ui| match launcher.tab {
-                        LauncherTab::OpenExisting => {
-                            let ready = launcher.active.is_some();
-                            ui.add_enabled_ui(ready, |ui| {
-                                let label = if let Some(p) = &launcher.active {
-                                    format!(
-                                        "Open {}",
-                                        p.file_name()
-                                            .map(|n| n.to_string_lossy())
-                                            .unwrap_or_default()
-                                    )
-                                } else {
-                                    "Open".to_string()
-                                };
-                                if ui
-                                    .add_sized([160.0, 32.0], egui::Button::new(label))
-                                    .clicked()
-                                {
-                                    open.write(crate::OpenRequested);
-                                }
-                            });
+                // Details at the bottom left, where GECK's Data Files dialog has
+                // it. Only meaningful once a file is picked: there is nothing to
+                // list otherwise.
+                if launcher.tab == LauncherTab::OpenExisting {
+                    ui.add_enabled_ui(launcher.active.is_some(), |ui| {
+                        // The same height as the action button it sits opposite
+                        // — 32, which is what `action_button` asks for — but
+                        // narrower: "Details…" is a shorter label than "Open
+                        // FalloutNV.esm", and matching its width would leave a
+                        // button mostly empty. Equal heights, sized to content.
+                        if ui
+                            .add_sized([110.0, 32.0], egui::Button::new("Details…"))
+                            .on_hover_text("Every record in the selected file")
+                            .clicked()
+                        {
+                            if let Some(path) = &launcher.active {
+                                details.open(path.clone());
+                            }
                         }
-                        LauncherTab::CreateNew => {
-                            // A name is all a new plugin needs. Zero masters is a
-                            // plugin GECK writes too — `fonv_geck_empty_no_master.esp`
-                            // is a TES4 header and nothing else — so an empty master
-                            // list is a choice, not an unfinished form.
-                            let ready = !launcher.new_name.trim().is_empty();
-                            ui.add_enabled_ui(ready, |ui| {
-                                let label = if launcher.new_is_master {
-                                    format!("Create & Open Master ({})", launcher.new_name.trim())
-                                } else {
-                                    format!("Create & Open Plugin ({})", launcher.new_name.trim())
-                                };
-                                if ui
-                                    .add_sized([220.0, 32.0], egui::Button::new(label))
-                                    .clicked()
-                                {
-                                    open.write(crate::OpenRequested);
-                                }
-                            });
-                        }
-                    },
-                );
+                    });
+                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // The action button, rightmost.
+                    action_button(ui, &launcher, &mut open);
+                    // The selected file's times, immediately left of it and
+                    // stacked two lines.
+                    //
+                    // They live in this row rather than in one of their own
+                    // because the bottom bar is laid out `bottom_up` inside
+                    // the panel: a row of its own would take its height from
+                    // the body above, shortening the file list for a label
+                    // that only occupies the right-hand side.
+                    if let Some(times) = launcher.active_times {
+                        let created = times
+                            .created
+                            .map(format_time)
+                            .unwrap_or_else(|| "(not recorded)".to_string());
+                        let modified = times
+                            .modified
+                            .map(format_time)
+                            .unwrap_or_else(|| "(unknown)".to_string());
+                        ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
+                            ui.weak(format!("created  {created}"));
+                            ui.weak(format!("modified {modified}"));
+                        });
+                    }
+                });
             });
-
             if let Some(e) = &launcher.error {
                 ui.colored_label(egui::Color32::RED, e);
             }
@@ -646,30 +753,13 @@ pub fn ui(
                     LauncherTab::OpenExisting => {
                         // Above the master list it orders, which is the column
                         // on the right.
-                        ui.horizontal(|ui| {
-                            order_picker(
-                                ui,
-                                &mut launcher,
-                                order_file.as_deref(),
-                                order_note.as_deref(),
-                                order_error.as_deref(),
-                            );
-                            // GECK's Data Files dialog has the same pair of
-                            // buttons, and Details is only meaningful once a file
-                            // is picked — there is nothing to list otherwise.
-                            ui.separator();
-                            ui.add_enabled_ui(launcher.active.is_some(), |ui| {
-                                if ui
-                                    .button("Details…")
-                                    .on_hover_text("Every record in the selected file")
-                                    .clicked()
-                                {
-                                    if let Some(path) = &launcher.active {
-                                        details.open(path.clone());
-                                    }
-                                }
-                            });
-                        });
+                        order_picker(
+                            ui,
+                            &mut launcher,
+                            order_file.as_deref(),
+                            order_note.as_deref(),
+                            order_error.as_deref(),
+                        );
                         ui.add_space(4.0);
 
                         let scroll_height = (ui.available_height() - 40.0).max(180.0);
@@ -690,6 +780,7 @@ pub fn ui(
                                             launcher.active.as_deref() == Some(p.as_path());
                                         if ui.selectable_label(selected, &name).clicked() {
                                             launcher.active = Some(p.clone());
+                                            launcher.active_times = FileTimes::of(p);
                                             launcher.error = None;
                                             // The header is what the right-hand
                                             // column shows, and the masters are

@@ -45,6 +45,10 @@ egui_extras = "0.36"
 # Windows and macOS. Default features are kept — `xdg-portal` is the Linux
 # backend, and dropping it would leave Linux with no picker at all.
 rfd = "0.15"
+# Dates, in the local time zone: a file's mtime is something a person reads in
+# their own zone, and `SystemTime` alone is a duration since 1970. The
+# `local-offset` feature is what makes the offset resolvable at runtime.
+time = { version = "0.3", features = ["local-offset"] }
 clap = { version = "4", features = ["derive", "env"] }
 
 # Enable high optimization for external dependencies in dev/debug builds.
