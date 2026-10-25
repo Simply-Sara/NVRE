@@ -131,14 +131,19 @@ impl Launcher {
         self.listing_key = Some(key);
         self.listing = list_plugins(dir);
 
-        let Some(file) = plugin_order::read(dir, self.order) else {
+        // The order file is the game's user state, not the Data folder's: on
+        // Windows it is under `%LOCALAPPDATA%\<game>\`, and the Data folder is
+        // only where a portable install or a hand-placed copy has it. Both are
+        // searched, and the path shown is the one that answered.
+        let Some(file) = plugin_order::read_for_game(game, dir, self.order) else {
             // No order file: the list is the folder, and the master list is the
             // one the headers give.
             self.order_file = None;
-            self.order_note = self
-                .order
-                .file()
-                .map(|f| format!("no {f} in {} — listed by file name", dir.display()));
+            self.order_note = self.order.file().map(|f| {
+                let dirs = plugin_order::order_dirs(game, dir);
+                let places: Vec<String> = dirs.iter().map(|d| d.display().to_string()).collect();
+                format!("no {f} in {}", places.join(" or "))
+            });
             self.masters = game.masters_in(dir);
             return;
         };

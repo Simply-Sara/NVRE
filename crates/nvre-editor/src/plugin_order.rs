@@ -92,6 +92,10 @@ pub struct OrderFile {
 /// folder the game keeps no order file in, and for a game that has none at all:
 /// the caller reports it rather than showing a list that looks ordered by a file
 /// that is not there.
+///
+/// `dir` alone is not enough on Windows, where the game keeps these files under
+/// `%LOCALAPPDATA%` rather than in `Data`; [`read_for_game`] is the entry point
+/// that searches both.
 pub fn read(dir: &Path, order: PluginOrder) -> Option<OrderFile> {
     let file = order.file()?;
     let path = dir.join(file);
@@ -100,6 +104,70 @@ pub fn read(dir: &Path, order: PluginOrder) -> Option<OrderFile> {
         path,
         names: parse(&decode(&bytes)),
     })
+}
+
+/// Where an order file may live, most authoritative first.
+///
+/// A plugin lives in the Data folder, but the order files are the game's *user*
+/// state and on Windows live in `%LOCALAPPDATA%\<game>\` beside the INIs and
+/// saves — not in `Data` at all [documented: LOOT's "plugins you have accessed
+/// are listed in `%LOCALAPPDATA%\plugins.txt`"]. So both are searched:
+///
+/// 1. **LocalAppData**, which is where the game and every mod manager put the
+///    real file on Windows. It comes first because a copy in `Data` is not where
+///    the game reads from, so the user's actual order must win when both exist.
+/// 2. **The Data folder**, which is the only place a portable install or a
+///    hand-placed copy has it, and is the whole answer on Linux, where there is
+///    no LocalAppData convention for these games at all.
+///
+/// A Proton prefix is a Windows layout on a Linux disk, so `%LOCALAPPDATA%`
+/// there is `…/compatdata/<appid>/pfx/drive_c/users/<user>/AppData/Local`. That
+/// is found through the same environment variable when the editor itself runs
+/// under Proton; when it does not, the Data-folder entry is what applies and the
+/// prefix is not guessed at.
+pub fn order_dirs(game: &crate::game::GameProfile, data_dir: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(folder) = game.local_appdata_folder {
+        if let Some(local) = local_appdata() {
+            dirs.push(local.join(folder));
+        }
+    }
+    dirs.push(data_dir.to_path_buf());
+    dirs
+}
+
+/// The user's LocalAppData folder, as the OS names it.
+///
+/// `%LOCALAPPDATA%` on Windows, and the same variable inside a Proton prefix
+/// (which is why one rule covers both). On a plain Linux session there is no
+/// such folder for these games, so this is `None` and the Data folder is the
+/// only place searched — which is correct rather than a fallback.
+fn local_appdata() -> Option<PathBuf> {
+    std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .filter(|p| p.is_dir())
+}
+
+/// Read `order` for `game`, searching every place it may live.
+///
+/// Returns the first file found, and the path says which location that was, so
+/// the launcher can show it rather than implying the Data folder.
+pub fn read_for_game(
+    game: &crate::game::GameProfile,
+    data_dir: &Path,
+    order: PluginOrder,
+) -> Option<OrderFile> {
+    let file = order.file()?;
+    for dir in order_dirs(game, data_dir) {
+        let path = dir.join(file);
+        if let Ok(bytes) = std::fs::read(&path) {
+            return Some(OrderFile {
+                path,
+                names: parse(&decode(&bytes)),
+            });
+        }
+    }
+    None
 }
 
 /// The file names in an order file's text, in order.

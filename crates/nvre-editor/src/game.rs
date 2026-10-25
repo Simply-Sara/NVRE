@@ -99,6 +99,20 @@ pub struct GameProfile {
     /// What this game cannot do yet, for the UI to say plainly rather than
     /// showing an empty viewport as if it were the game's fault.
     pub notes: &'static [&'static str],
+    /// The folder this game keeps its `plugins.txt` in, under the user's
+    /// LocalAppData — the game's own folder name, not its title.
+    ///
+    /// This is **not** the Data folder. A plugin lives in `Data`, but the order
+    /// files are the game's *user* state and live beside its INIs and saves:
+    /// `%LOCALAPPDATA%\FalloutNV\plugins.txt` on Windows [documented: the
+    /// location every mod manager and LOOT's own docs name — "the plugins you
+    /// have accessed are listed in `%LOCALAPPDATA%\plugins.txt`"]. The names
+    /// are measured, not guessed: `FalloutNV`, `Fallout3`, `Skyrim`,
+    /// `Skyrim Special Edition`, `Fallout4`, and the Proton prefixes on this
+    /// machine hold the same layout verbatim.
+    ///
+    /// `None` for a game whose folder has not been measured.
+    pub local_appdata_folder: Option<&'static str>,
 }
 
 /// Fallout: New Vegas — the editor's own game, and the only one whose record
@@ -124,6 +138,7 @@ pub const FNV: GameProfile = GameProfile {
     schema_version_dir: "fnv",
     schema_family_dir: "",
     notes: &[],
+    local_appdata_folder: Some("FalloutNV"),
 };
 
 /// Fallout 3. Same BSA v104 container and the same Gamebryo NIF versions as
@@ -152,6 +167,7 @@ pub const FO3: GameProfile = GameProfile {
     schema_version_dir: "fo3",
     schema_family_dir: "fnv",
     notes: &[],
+    local_appdata_folder: Some("Fallout3"),
 };
 
 /// Skyrim (Legendary Edition). BSA v104, like FNV and Fallout 3.
@@ -179,6 +195,7 @@ pub const SKYRIM: GameProfile = GameProfile {
     schema_family_dir: "skyrim",
     schema_version_dir: "skyrimle",
     notes: &[],
+    local_appdata_folder: Some("Skyrim"),
 };
 
 /// Skyrim Special Edition. Its archives are BSA v105 with LZ4-compressed
@@ -219,6 +236,7 @@ pub const SKYRIM_SE: GameProfile = GameProfile {
     schema_family_dir: "skyrim",
     schema_version_dir: "skyrimse",
     notes: &[],
+    local_appdata_folder: Some("Skyrim Special Edition"),
 };
 
 /// Fallout 4. BA2 archives, ESL plugins, and a record set the least shared with
@@ -260,6 +278,7 @@ pub const FALLOUT_4: GameProfile = GameProfile {
     schema_version_dir: "fo4",
     schema_family_dir: "",
     notes: &[],
+    local_appdata_folder: Some("Fallout4"),
 };
 
 /// Every profile the editor knows, in the order [`detect`] tries them.

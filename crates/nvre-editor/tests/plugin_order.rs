@@ -266,6 +266,68 @@ fn the_master_list_is_the_folders_not_the_files() {
     );
 }
 
+/// The Windows layout: the order file is under `%LOCALAPPDATA%`, not in `Data`.
+///
+/// On Windows the game keeps `plugins.txt` in `%LOCALAPPDATA%\<game>\` beside
+/// its INIs and saves — the Data folder holds plugins, not the user's order
+/// [documented: LOOT, "Introduction to Load Orders"]. A launcher that searched
+/// only `Data` would therefore never find the real file on the platform most of
+/// these games are played on.
+///
+/// `LOCALAPPDATA` is read from the environment, so the layout is reproduced
+/// here on any platform by pointing that variable at a scratch folder. The test
+/// is serialised against the other environment-reading test in this file by
+/// running single-threaded, which is how CI runs the workspace.
+#[test]
+fn the_windows_localappdata_location_is_searched() {
+    let root = std::env::temp_dir().join("nvre-plugin-order-localappdata");
+    let _ = std::fs::remove_dir_all(&root);
+    // `%LOCALAPPDATA%\FalloutNV\plugins.txt`, and a Data folder that holds the
+    // plugins but no order file.
+    let local = root.join("AppData").join("Local");
+    let game_dir = local.join("FalloutNV");
+    let data = root.join("Fallout New Vegas").join("Data");
+    std::fs::create_dir_all(&game_dir).unwrap();
+    std::fs::create_dir_all(&data).unwrap();
+    std::fs::write(game_dir.join("plugins.txt"), "b.esm\na.esm\n").unwrap();
+    for name in ["a.esm", "b.esm"] {
+        std::fs::write(data.join(name), b"").unwrap();
+    }
+
+    // The variable is process-wide, so it is restored before this test returns
+    // rather than left for whatever runs next.
+    let previous = std::env::var_os("LOCALAPPDATA");
+    unsafe { std::env::set_var("LOCALAPPDATA", &local) };
+
+    let game = &nvre_editor::game::FNV;
+    let found = plugin_order::read_for_game(game, &data, PluginOrder::PluginsTxt)
+        .expect("the file under LOCALAPPDATA must be found");
+    assert_eq!(found.path, game_dir.join("plugins.txt"));
+    assert_eq!(found.names, vec!["b.esm", "a.esm"]);
+
+    // And the Data folder is still searched, which is the only place a portable
+    // install has it.
+    std::fs::write(data.join("loadorder.txt"), "a.esm\nb.esm\n").unwrap();
+    let from_data = plugin_order::read_for_game(game, &data, PluginOrder::LoadOrderTxt)
+        .expect("the Data folder must still be searched");
+    assert_eq!(from_data.path, data.join("loadorder.txt"));
+
+    // LocalAppData wins when both have the file: it is where the game reads
+    // from, so the user's actual order is the one that must apply.
+    std::fs::write(game_dir.join("loadorder.txt"), "b.esm\na.esm\n").unwrap();
+    let both = plugin_order::read_for_game(game, &data, PluginOrder::LoadOrderTxt).unwrap();
+    assert_eq!(
+        both.path,
+        game_dir.join("loadorder.txt"),
+        "the game's own location wins over a copy in Data"
+    );
+
+    match previous {
+        Some(v) => unsafe { std::env::set_var("LOCALAPPDATA", v) },
+        None => unsafe { std::env::remove_var("LOCALAPPDATA") },
+    }
+}
+
 /// Reading a real plugin's header agrees with reading the whole file.
 ///
 /// `masters_in_header` exists to answer `Plugin::open().masters()` for a tenth
