@@ -467,6 +467,15 @@ impl Default for Launcher {
     }
 }
 
+/// A vertical scroll area.
+///
+/// The scroll bar's *width* and opacity are not set here: egui keeps those in the
+/// style, not on the `ScrollArea`, so they are set for the whole app by
+/// [`crate::windows::widen_scroll_bars`] instead.
+fn scroll_area(id_salt: &str) -> bevy_egui::egui::ScrollArea {
+    bevy_egui::egui::ScrollArea::vertical().id_salt(id_salt)
+}
+
 /// The plugins in a folder, sorted by name.
 fn list_plugins(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut out: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
@@ -891,10 +900,9 @@ pub fn ui(
                             cols[0].label("Files in Data:");
                             // Everything left in the column, measured now.
                             let list_height = cols[0].available_height().max(120.0);
-                            egui::ScrollArea::vertical()
-                                .id_salt("files_open")
-                                .max_height(list_height)
-                                .show(&mut cols[0], |ui| {
+                            scroll_area("files_open").max_height(list_height).show(
+                                &mut cols[0],
+                                |ui| {
                                     for p in &listing {
                                         let name = p
                                             .file_name()
@@ -916,7 +924,8 @@ pub fn ui(
                                             launcher.select_file(p);
                                         }
                                     }
-                                });
+                                },
+                            );
 
                             // The selected file's header, and the masters it
                             // declares. No checkboxes: a plugin is opened with
@@ -958,10 +967,9 @@ pub fn ui(
                                 // and the "Masters:" label above it, so the list
                                 // reaches the bottom of the column.
                                 let masters_height = cols[1].available_height().max(120.0);
-                                egui::ScrollArea::vertical()
-                                    .id_salt("masters_open")
-                                    .max_height(masters_height)
-                                    .show(&mut cols[1], |ui| {
+                                scroll_area("masters_open").max_height(masters_height).show(
+                                    &mut cols[1],
+                                    |ui| {
                                         if launcher.masters.is_empty() {
                                             ui.label("(this plugin declares no masters)");
                                         }
@@ -985,7 +993,8 @@ pub fn ui(
                                                 );
                                             }
                                         }
-                                    });
+                                    },
+                                );
                             } else {
                                 cols[1].label("Select a file to see its masters.");
                             }
@@ -1046,10 +1055,9 @@ pub fn ui(
                             // Measured where it is drawn, so it reaches the
                             // bottom bar instead of stopping short of it.
                             let masters_height = cols[0].available_height().max(120.0);
-                            egui::ScrollArea::vertical()
-                                .id_salt("masters_new")
-                                .max_height(masters_height)
-                                .show(&mut cols[0], |ui| {
+                            scroll_area("masters_new").max_height(masters_height).show(
+                                &mut cols[0],
+                                |ui| {
                                     for p in &listing {
                                         let name = p
                                             .file_name()
@@ -1071,7 +1079,8 @@ pub fn ui(
                                             }
                                         }
                                     }
-                                });
+                                },
+                            );
 
                             // The author and description the header carries.
                             // GECK's own Create dialog has no such fields — its

@@ -34,6 +34,39 @@ use bevy::prelude::*;
 use bevy::window::WindowRef;
 use bevy_egui::{EguiGlobalSettings, EguiSchedule, PrimaryEguiContext};
 
+/// Make every scroll bar in every window visible at its full width.
+///
+/// This has to visit each `EguiContext` in turn, because the app has one per
+/// window — the primary context for the launcher and the main window, and one
+/// `PanelContext<N>` per panel — and an egui style lives on its context. Setting
+/// it on one context reaches only that window: the launcher's bars were widened
+/// while every panel's stayed thin and transparent.
+///
+/// Runs every frame rather than once, so a context spawned later (a panel window
+/// opened after startup) is covered on its first frame.
+///
+/// The two things this changes, both of which hide a floating scroll bar:
+///
+/// * **Width** — egui's idle bar is 2px and grows to `bar_width` only under the
+///   pointer, so `floating_width` is set to `bar_width`.
+/// * **Opacity** — egui's default `floating()` preset sets the `dormant_*`
+///   opacities to `0.0`, so the bar is transparent once the pointer leaves. A
+///   full-width bar at zero opacity is still invisible.
+///
+/// Both are set to the level egui itself uses while the pointer is over the
+/// scroll area but not the bar: a visible grey, rather than the solid handle of
+/// a direct hover.
+pub fn widen_scroll_bars(mut contexts: Query<&mut bevy_egui::EguiContext>) {
+    for mut ctx in &mut contexts {
+        ctx.get_mut().all_styles_mut(|style| {
+            let scroll = &mut style.spacing.scroll;
+            scroll.floating_width = scroll.bar_width;
+            scroll.dormant_handle_opacity = scroll.active_handle_opacity;
+            scroll.dormant_background_opacity = scroll.active_background_opacity;
+        });
+    }
+}
+
 /// A panel window: its schedule, and the marker that ties it to its egui
 /// context.
 ///

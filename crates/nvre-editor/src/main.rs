@@ -288,7 +288,14 @@ fn main() {
         // edited rather than the one present at startup.
         .add_systems(
             Update,
-            sync_game_resource.run_if(in_state(EditorState::Launching)),
+            (
+                sync_game_resource.run_if(in_state(EditorState::Launching)),
+                // Before anything draws: this app has one egui context per window,
+                // and a style lives on its context, so every one is visited. In
+                // `Update` rather than an egui pass so it runs whether the window
+                // is the primary context or a panel with its own schedule.
+                windows::widen_scroll_bars,
+            ),
         )
         .insert_resource(launcher::GameChoice::new(profile))
         .insert_resource(launcher::Launcher::for_game(profile))
