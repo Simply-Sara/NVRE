@@ -299,6 +299,13 @@ pub struct GameChoice {
     /// looks editable and silently is not. This holds the text between frames;
     /// `data_dir` is only written when the edit is committed.
     pub folder_edit: String,
+    /// Whether the Data-folder row is showing.
+    ///
+    /// The row is normally folded away — the game's install is found for it, so
+    /// the field is a detail rather than a question. The gear beside the game
+    /// dropdown unfolds it, and it starts unfolded whenever the folder is
+    /// missing or wrong, because then it is the thing the user has to fix.
+    pub show_folder_row: bool,
 }
 
 impl GameChoice {
@@ -316,10 +323,18 @@ impl GameChoice {
             .clone()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_default();
+        // Unfolded when the folder is missing or does not hold the game's own
+        // master: then the field is the thing the user has to fix, and hiding it
+        // would leave a launcher that cannot open anything with no visible way
+        // out. Folded otherwise, because a found install is not a question.
+        let show_folder_row = !data_dir
+            .as_ref()
+            .is_some_and(|d| d.join(game.master).exists());
         GameChoice {
             game,
             data_dir,
             folder_edit,
+            show_folder_row,
         }
     }
 
@@ -333,6 +348,12 @@ impl GameChoice {
             .clone()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_default();
+        // The new game's folder decides whether the row is worth showing: a
+        // game with no install found has to show the field it needs filled in.
+        self.show_folder_row = !self
+            .data_dir
+            .as_ref()
+            .is_some_and(|d| d.join(game.master).exists());
     }
 
     /// The Data folder in use: the game's own install, or the folder the user
@@ -508,50 +529,71 @@ pub fn ui(
                                 }
                             }
                         });
+                    // The gear unfolds the Data-folder row. A button rather than
+                    // a bare glyph, so it reads as clickable, and it highlights
+                    // while the row is showing so the state is visible.
+                    let open = choice.show_folder_row;
+                    if ui
+                        .selectable_label(open, "⚙")
+                        .on_hover_text("Show or hide the Data folder")
+                        .clicked()
+                    {
+                        choice.show_folder_row = !open;
+                    }
                 });
 
-                // The Data folder. Filled from Steam when the install is there;
-                // empty for the user to fill when it is not. The buffer lives in
-                // the resource so typing is not discarded every frame.
-                ui.horizontal(|ui| {
-                    ui.label("Data folder:");
-                    let resp = ui.add(
-                        egui::TextEdit::singleline(&mut choice.folder_edit)
-                            .desired_width(360.0)
-                            .hint_text("/path/to/<Game>/Data"),
-                    );
-                    // The OS's own folder picker, to the right of the field.
-                    // A chosen folder is committed on the spot — the picker is
-                    // an explicit answer, not a keystroke still being typed —
-                    // so the plugin and master lists follow it immediately
-                    // rather than waiting for the field to lose focus.
-                    if ui.button("Browse…").clicked() {
-                        let mut dialog = rfd::FileDialog::new()
-                            .set_title(format!("{} — choose the Data folder", choice.game.name));
-                        // Start where the field points, when it points
-                        // somewhere real: the common case is browsing from the
-                        // folder already in use.
-                        if let Some(dir) = choice.active_dir().filter(|d| d.is_dir()) {
-                            dialog = dialog.set_directory(dir);
+                // The Data folder, folded away unless the gear is pressed or the
+                // folder is missing — see `GameChoice::show_folder_row`. Filled
+                // from Steam when the install is there; empty for the user to
+                // fill when it is not. The buffer lives in the resource so typing
+                // is not discarded every frame.
+                if choice.show_folder_row {
+                    ui.horizontal(|ui| {
+                        ui.label("Data folder:");
+                        let resp = ui.add(
+                            egui::TextEdit::singleline(&mut choice.folder_edit)
+                                .desired_width(360.0)
+                                .hint_text("/path/to/<Game>/Data"),
+                        );
+                        // The OS's own folder picker, to the right of the field.
+                        // A chosen folder is committed on the spot — the picker
+                        // is an explicit answer, not a keystroke still being
+                        // typed — so the plugin and master lists follow it
+                        // immediately rather than waiting for the field to lose
+                        // focus.
+                        if ui.button("Browse…").clicked() {
+                            let mut dialog = rfd::FileDialog::new().set_title(format!(
+                                "{} — choose the Data folder",
+                                choice.game.name
+                            ));
+                            // Start where the field points, when it points
+                            // somewhere real: the common case is browsing from
+                            // the folder already in use.
+                            if let Some(dir) = choice.active_dir().filter(|d| d.is_dir()) {
+                                dialog = dialog.set_directory(dir);
+                            }
+                            if let Some(picked) = dialog.pick_folder() {
+                                let before = choice.data_dir.clone();
+                                choice.pick_folder(&picked);
+                                if choice.data_dir != before {
+                                    launcher.retarget(choice.game, choice.active_dir().as_deref());
+                                }
+                                // A folder that now holds the game's master has
+                                // answered the question the row was showing.
+                                choice.show_folder_row = !picked.join(choice.game.master).exists();
+                            }
                         }
-                        if let Some(picked) = dialog.pick_folder() {
+                        // Commit on losing focus or Enter: the plugin list and
+                        // the master list both follow the folder.
+                        if resp.lost_focus() {
                             let before = choice.data_dir.clone();
-                            choice.pick_folder(&picked);
+                            choice.commit_folder();
                             if choice.data_dir != before {
                                 launcher.retarget(choice.game, choice.active_dir().as_deref());
                             }
                         }
-                    }
-                    // Commit on losing focus or Enter: the plugin list and the
-                    // master list both follow the folder.
-                    if resp.lost_focus() {
-                        let before = choice.data_dir.clone();
-                        choice.commit_folder();
-                        if choice.data_dir != before {
-                            launcher.retarget(choice.game, choice.active_dir().as_deref());
-                        }
-                    }
-                });
+                    });
+                }
                 // A game with no Data folder yet says so, rather than
                 // opening a session that reads nothing.
                 match choice.active_dir() {
