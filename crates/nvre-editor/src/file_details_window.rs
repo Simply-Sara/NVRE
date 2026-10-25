@@ -412,8 +412,11 @@ pub fn ui(
                         }
                     });
                     row.col(|ui| {
+                        // Decimal, not hex: the offset is a byte position in the
+                        // file, and a reader comparing it against a hex dump is
+                        // the rarer case than one reading it as a number.
                         if let Some(off) = details.offset.get(index) {
-                            ui.monospace(format!("{off:08X}"));
+                            ui.monospace(off.to_string());
                         }
                     });
                     row.col(|ui| {
