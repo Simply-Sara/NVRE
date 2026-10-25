@@ -138,6 +138,10 @@ pub struct Launcher {
     /// list of its own rather than the header's: the plugin does not exist yet.
     /// On **Open Existing** it is derived — the selected file's own `MAST`
     /// names, put in the order the chosen order file (or the headers) gives.
+    ///
+    /// The Create New default is the game's own base master alone
+    /// ([`Launcher::default_masters`]); the rest of the folder is offered as
+    /// tickable rows.
     pub masters: Vec<String>,
     /// What order the two lists are shown in, and what order a master list
     /// picked from a file is in.
@@ -195,12 +199,16 @@ pub struct Launcher {
 }
 
 impl Launcher {
-    /// A fresh launcher for `game`, whose masters are read from `data_dir`.
+    /// A fresh launcher for `game`, on the **Open Existing** tab.
     ///
-    /// The master list is the game's own Data folder, not a fixed table: a
-    /// partial install gives only the masters it holds, and a mod master the
-    /// user has installed comes along. `for_game` is called once at startup,
-    /// which is when the game is known.
+    /// The launcher opens on that tab, so the master list is what *it* needs: the
+    /// selected file's own `MAST` names once a file is chosen, and the folder's
+    /// masters until then. `for_game` is called once at startup, which is when
+    /// the game is known.
+    ///
+    /// The **Create New** tab's default is different and is [`default_masters`]:
+    /// the base master alone, because a new plugin depends on the base game and
+    /// nothing else until it says so.
     pub fn for_game(game: &crate::game::GameProfile) -> Launcher {
         let dir = game.data_dir().unwrap_or_default();
         Launcher {
@@ -208,7 +216,9 @@ impl Launcher {
             active: None,
             active_times: None,
             header: Default::default(),
-            masters: game.masters_in(&dir),
+            // The base master alone, not every installed ESM. See
+            // `default_masters`.
+            masters: default_masters(game, &dir),
             order: PluginOrder::Name,
             new_name: "NewPlugin.esp".to_string(),
             new_is_master: false,
@@ -254,6 +264,30 @@ impl Launcher {
             self.masters.clear();
             return;
         };
+        self.refresh_listing(game, Some(dir));
+    }
+
+    /// Switch between the two tabs, re-deriving the master list for the one
+    /// being entered.
+    ///
+    /// The two tabs' master lists mean different things — a file's own `MAST`
+    /// names on Open Existing, the game's base master on Create New — so the
+    /// list cannot be carried across a tab switch. Without this, the Create New
+    /// tab inherited whatever the Open Existing tab had derived, which is why
+    /// the DLC were all still ticked until the game was switched away and back.
+    ///
+    pub fn set_tab(
+        &mut self,
+        tab: LauncherTab,
+        game: &crate::game::GameProfile,
+        dir: Option<&std::path::Path>,
+    ) {
+        self.tab = tab;
+        // The listing itself is not re-read — the folder has not changed — but
+        // the listing key must move, so the next `refresh_listing` re-reads and
+        // re-derives the master list for the tab now in front. Leaving the key
+        // alone made the next refresh short-circuit and the old list survive.
+        self.listing_key = None;
         self.refresh_listing(game, dir);
     }
 
@@ -290,9 +324,25 @@ impl Launcher {
     ///
     /// The launcher draws every frame, so this is called every frame and does
     /// the work only when the key moves.
-    pub fn refresh_listing(&mut self, game: &crate::game::GameProfile, dir: &std::path::Path) {
-        // A picked file is part of the key: switching to it or away from it has
-        // to re-read, exactly as changing the drop-down does.
+    pub fn refresh_listing(
+        &mut self,
+        game: &crate::game::GameProfile,
+        dir: Option<&std::path::Path>,
+    ) {
+        // What the *file list* depends on: the folder, and the order it is read
+        // with. A picked file is part of that key too — switching to it or away
+        // from it has to re-read, exactly as changing the drop-down does.
+        //
+        // The tab is deliberately NOT part of it. The master list belongs to the
+        // tab, and `refresh_listing` runs every frame: keying it on the tab would
+        // re-derive the master list on every frame and drop the ticks the user had
+        // just made. A tab switch re-derives through `set_tab` instead.
+        let Some(dir) = dir else {
+            self.listing_key = None;
+            self.listing.clear();
+            self.masters.clear();
+            return;
+        };
         let key = (dir.to_path_buf(), self.order, self.custom_order.clone());
         if self.listing_key.as_ref() == Some(&key) {
             return;
@@ -336,7 +386,7 @@ impl Launcher {
                     format!("no {f} in {}", places.join(" or "))
                 })
             };
-            self.masters = game.masters_in(dir);
+            self.derive_masters(game, dir, &plugin_order::Rank::default());
             return;
         };
         self.order_file = Some(file.path);
@@ -348,8 +398,67 @@ impl Launcher {
         // it has a preference, so a master the file puts after something that
         // requires it stays where the headers put it. Re-sorting the result
         // instead would produce a list `LoadOrder::new` rejects.
-        self.masters = game.masters_in_with(dir, &rank);
+        self.derive_masters(game, dir, &rank);
     }
+
+    /// Put the master list in the state this tab wants.
+    ///
+    /// Only called from the branches of `refresh_listing` that actually re-list
+    /// the folder, never on an unchanged frame: re-deriving there would replace
+    /// the ticks the Create New tab's user has made with the folder's defaults.
+    fn derive_masters(
+        &mut self,
+        game: &crate::game::GameProfile,
+        dir: &std::path::Path,
+        rank: &plugin_order::Rank,
+    ) {
+        self.masters = self.masters_for(game, dir, rank);
+    }
+
+    /// The master list this launcher's tab wants.
+    ///
+    /// Split out because `refresh_listing` is shared: it runs on both tabs, and
+    /// the two want different things. **Open Existing** derives the list from
+    /// the selected file's `MAST` names; **Create New** starts from the game's
+    /// own base master and lets the user tick the rest.
+    ///
+    /// This is only called when the listing is being re-derived — see
+    /// [`Launcher::refresh_listing`]. It is not called on a frame where the
+    /// listing is unchanged, because that is how a tick survives.
+    fn masters_for(
+        &self,
+        game: &crate::game::GameProfile,
+        dir: &std::path::Path,
+        rank: &plugin_order::Rank,
+    ) -> Vec<String> {
+        if self.tab == LauncherTab::CreateNew {
+            default_masters(game, dir)
+        } else {
+            game.masters_in_with(dir, rank)
+        }
+    }
+}
+
+/// The master a new plugin depends on by default: the game's own base master,
+/// when the folder holds it.
+///
+/// Not every installed ESM. A new plugin depends on the base game and nothing
+/// else until it says otherwise — the DLC are optional content, and a plugin
+/// written against them will not load without them installed. Pre-ticking all
+/// of them made the default plugin depend on five files the user may not own.
+///
+/// The base master is `GameProfile::master`, and it is checked against the
+/// folder rather than trusted: a portable install may lack it, and a
+/// master the plugin cannot open is a worse default than none. When the
+/// folder does not hold it the list is empty, which the Create New tab's
+/// `action_button` already treats as a valid choice — GECK writes plugins with
+/// no `MAST` at all.
+pub fn default_masters(game: &crate::game::GameProfile, dir: &std::path::Path) -> Vec<String> {
+    let held = dir.join(game.master);
+    held.is_file()
+        .then(|| game.master.to_string())
+        .into_iter()
+        .collect()
 }
 
 impl Default for Launcher {
@@ -522,7 +631,7 @@ pub fn ui(
     // with no folder yet lists nothing until one is named.
     let active_dir = choice.active_dir();
     if let Some(dir) = &active_dir {
-        launcher.refresh_listing(choice.game, dir);
+        launcher.refresh_listing(choice.game, Some(dir));
     }
 
     let listing = launcher.listing.clone();
@@ -732,7 +841,15 @@ pub fn ui(
                         )
                         .clicked()
                     {
-                        launcher.tab = LauncherTab::OpenExisting;
+                        // Through `set_tab`, not a bare field write: the master
+                        // list means different things on the two tabs, and a
+                        // switch that left it alone carried the other tab's
+                        // masters into this one.
+                        launcher.set_tab(
+                            LauncherTab::OpenExisting,
+                            choice.game,
+                            active_dir.as_deref(),
+                        );
                     }
                     if ui
                         .selectable_label(
@@ -741,7 +858,11 @@ pub fn ui(
                         )
                         .clicked()
                     {
-                        launcher.tab = LauncherTab::CreateNew;
+                        launcher.set_tab(
+                            LauncherTab::CreateNew,
+                            choice.game,
+                            active_dir.as_deref(),
+                        );
                     }
                 });
                 ui.separator();
