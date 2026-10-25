@@ -762,14 +762,20 @@ pub fn ui(
                         );
                         ui.add_space(4.0);
 
-                        let scroll_height = (ui.available_height() - 40.0).max(180.0);
-
+                        // No `- 40`: the height is measured where the scroll
+                        // area is drawn, after the label above it and after the
+                        // columns have taken their share. Subtracting a constant
+                        // here was a guess at the height of things that had not
+                        // been laid out yet, and it left a gap above the bottom
+                        // bar.
                         ui.columns(2, |cols| {
                             // Files on left
                             cols[0].label("Files in Data:");
+                            // Everything left in the column, measured now.
+                            let list_height = cols[0].available_height().max(120.0);
                             egui::ScrollArea::vertical()
                                 .id_salt("files_open")
-                                .max_height(scroll_height)
+                                .max_height(list_height)
                                 .show(&mut cols[0], |ui| {
                                     for p in &listing {
                                         let name = p
@@ -826,9 +832,13 @@ pub fn ui(
                             cols[1].add_space(6.0);
                             cols[1].label("Masters:");
                             if launcher.active.is_some() {
+                                // Measured after the author/description group
+                                // and the "Masters:" label above it, so the list
+                                // reaches the bottom of the column.
+                                let masters_height = cols[1].available_height().max(120.0);
                                 egui::ScrollArea::vertical()
                                     .id_salt("masters_open")
-                                    .max_height(scroll_height - 35.0)
+                                    .max_height(masters_height)
                                     .show(&mut cols[1], |ui| {
                                         if launcher.masters.is_empty() {
                                             ui.label("(this plugin declares no masters)");
@@ -934,11 +944,12 @@ pub fn ui(
                         ui.add_space(6.0);
                         ui.label("Select Masters to depend on (Checkboxes):");
 
-                        let scroll_height = (ui.available_height() - 40.0).max(180.0);
-
+                        // As above: measured where it is drawn, so it reaches
+                        // the bottom bar instead of stopping short of it.
+                        let masters_height = ui.available_height().max(120.0);
                         egui::ScrollArea::vertical()
                             .id_salt("masters_new")
-                            .max_height(scroll_height - 35.0)
+                            .max_height(masters_height)
                             .show(ui, |ui| {
                                 for p in &listing {
                                     let name = p
