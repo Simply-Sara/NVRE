@@ -405,6 +405,7 @@ pub fn ui(
     mut choice: ResMut<GameChoice>,
     mut open: MessageWriter<crate::OpenRequested>,
     failed: Option<Res<crate::OpenFailed>>,
+    mut details: ResMut<crate::file_details_window::FileDetailsState>,
 ) {
     let ctx = ctx.get_mut();
 
@@ -645,13 +646,30 @@ pub fn ui(
                     LauncherTab::OpenExisting => {
                         // Above the master list it orders, which is the column
                         // on the right.
-                        order_picker(
-                            ui,
-                            &mut launcher,
-                            order_file.as_deref(),
-                            order_note.as_deref(),
-                            order_error.as_deref(),
-                        );
+                        ui.horizontal(|ui| {
+                            order_picker(
+                                ui,
+                                &mut launcher,
+                                order_file.as_deref(),
+                                order_note.as_deref(),
+                                order_error.as_deref(),
+                            );
+                            // GECK's Data Files dialog has the same pair of
+                            // buttons, and Details is only meaningful once a file
+                            // is picked — there is nothing to list otherwise.
+                            ui.separator();
+                            ui.add_enabled_ui(launcher.active.is_some(), |ui| {
+                                if ui
+                                    .button("Details…")
+                                    .on_hover_text("Every record in the selected file")
+                                    .clicked()
+                                {
+                                    if let Some(path) = &launcher.active {
+                                        details.open(path.clone());
+                                    }
+                                }
+                            });
+                        });
                         ui.add_space(4.0);
 
                         let scroll_height = (ui.available_height() - 40.0).max(180.0);

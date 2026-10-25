@@ -5,6 +5,8 @@
 
 use bevy::prelude::*;
 
+pub mod file_details;
+pub mod file_details_window;
 pub mod game;
 pub mod gizmo;
 pub mod launcher;

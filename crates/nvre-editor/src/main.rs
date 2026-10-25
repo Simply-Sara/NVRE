@@ -12,7 +12,9 @@
 //! viewport, and one window per panel. See [`nvre_editor::windows`] for why the
 //! main window is the primary one and the viewport names its own render target.
 
-use nvre_editor::{game, gizmo, launcher, object_editor, panels, session, viewport, windows};
+use nvre_editor::{
+    file_details_window, game, gizmo, launcher, object_editor, panels, session, viewport, windows,
+};
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
@@ -296,6 +298,7 @@ fn main() {
         .init_resource::<viewport::Spawned>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
+        .init_resource::<file_details_window::FileDetailsState>()
         // The camera controller: the plugin group that owns the pose, and the
         // input plugin that says which button starts which motion. Both are added
         // at startup because they only register systems; the camera that uses them
@@ -367,6 +370,12 @@ fn main() {
             object_editor::ObjectEditorSchedule,
             object_editor::ui.run_if(in_state(EditorState::Editing)),
         )
+        // The File Details window is spawned from the launcher, so it runs in
+        // both states: it is opened before a session exists.
+        .add_systems(
+            file_details_window::FileDetailsSchedule,
+            file_details_window::ui,
+        )
         .add_systems(
             Update,
             (
@@ -380,6 +389,8 @@ fn main() {
                 viewport::pick,
                 viewport::flat_material_diagnostic,
                 object_editor::manage_window,
+                file_details_window::poll_scan,
+                file_details_window::manage_window,
                 handle_window_close,
                 // Last, because everything above can ask for a view — a cell
                 // opening, a frame request, `F`, a double-click in `pick` — and
@@ -550,21 +561,43 @@ fn open_selected(
 /// which time it is in place.
 fn spawn_session() {}
 
+/// The windows a close request can be for, other than the primary one.
+///
+/// Grouped because `handle_window_close` had grown past what a system signature
+/// should carry, and these three are one idea: the windows the editor opens for
+/// itself, and what closing each means.
+#[derive(bevy::ecs::system::SystemParam)]
+struct CloseTargets<'w, 's> {
+    /// The object editor's window, if it is open.
+    object: Query<'w, 's, Entity, With<object_editor::ObjectEditorWindow>>,
+    /// The File Details window, if it is open.
+    details: Query<'w, 's, Entity, With<file_details_window::FileDetailsWindow>>,
+    /// The File Details state, whose request is cleared on close — otherwise
+    /// `manage_window` would spawn the window straight back.
+    details_state: Option<ResMut<'w, file_details_window::FileDetailsState>>,
+}
+
 /// Handle window close requests: primary window exits app, object editor window closes.
 fn handle_window_close(
     mut commands: Commands,
     mut closed: MessageReader<bevy::window::WindowCloseRequested>,
     mut app_exit: MessageWriter<AppExit>,
     primary: Query<Entity, With<bevy::window::PrimaryWindow>>,
-    object_win: Query<Entity, With<object_editor::ObjectEditorWindow>>,
+    mut targets: CloseTargets,
     mut session: Option<ResMut<session::Session>>,
 ) {
     let primary_ent = primary.iter().next();
-    let obj_ent = object_win.iter().next();
+    let obj_ent = targets.object.iter().next();
+    let details_ent = targets.details.iter().next();
 
     for ev in closed.read() {
         if Some(ev.window) == primary_ent {
             app_exit.write(AppExit::Success);
+        } else if Some(ev.window) == details_ent {
+            // Clearing the request is what stops `manage_window` respawning it.
+            if let Some(s) = &mut targets.details_state {
+                s.close();
+            }
         } else if Some(ev.window) == obj_ent {
             if let Some(s) = &mut session {
                 s.close_object_editor();

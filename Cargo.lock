@@ -4634,6 +4634,7 @@ dependencies = [
  "nvre-assets",
  "nvre-edit",
  "nvre-esm",
+ "nvre-inflate",
  "nvre-nif",
  "nvre-schemas",
  "nvre-util",

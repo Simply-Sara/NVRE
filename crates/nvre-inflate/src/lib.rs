@@ -125,6 +125,52 @@ pub fn inflate_raw(
     Ok((out, d.total_in() as usize))
 }
 
+/// Inflate a raw DEFLATE stream, stopping once `want` bytes have come out.
+///
+/// For a caller that needs the *start* of a stream and not the whole thing: a
+/// record's payload can decompress to tens of kilobytes, and reading only its
+/// first subrecord should not cost the rest. [`inflate_raw`] cannot serve this —
+/// it treats `limit` as a ceiling to refuse past, discarding what it produced —
+/// so this returns the prefix instead.
+///
+/// The result may be shorter than `want` when the stream ends first, which is not
+/// an error: a short stream is a short stream. A stream that is corrupt still
+/// fails, because a caller reading a prefix is reading a real record, not
+/// guessing.
+pub fn inflate_prefix(input: &[u8], want: usize) -> Result<Vec<u8>, InflateError> {
+    let mut out: Vec<u8> = Vec::with_capacity(want.min(input.len().saturating_mul(8)).max(256));
+    let mut d = Decompress::new(false);
+    loop {
+        if out.len() >= want {
+            break;
+        }
+        if out.len() == out.capacity() {
+            out.reserve_exact(want - out.len());
+        }
+        let (in_before, out_before) = (d.total_in(), d.total_out());
+        let status = d
+            .decompress_vec(
+                &input[d.total_in() as usize..],
+                &mut out,
+                FlushDecompress::None,
+            )
+            .map_err(corrupt)?;
+        if matches!(status, Status::StreamEnd) {
+            break;
+        }
+        // A stalled inflate with room to spare is a truncated stream.
+        if d.total_in() == in_before && d.total_out() == out_before && out.len() < out.capacity() {
+            return Err(InflateError::Truncated);
+        }
+        // Input exhausted without the stream ending: the prefix is what there is.
+        if d.total_in() as usize >= input.len() {
+            break;
+        }
+    }
+    out.truncate(want);
+    Ok(out)
+}
+
 /// What was found after the deflate data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Trailer {
