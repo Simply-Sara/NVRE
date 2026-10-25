@@ -475,48 +475,20 @@ pub fn ui(
                 });
                 ui.separator();
 
-                // What order the master list is in. The order file is read from
-                // the Data folder, and its own order is the one the game loads
-                // masters in, so this is also the order a session's load order
-                // is built from — the plugin whose definition wins.
-                ui.horizontal(|ui| {
-                    ui.label("Order:");
-                    let mut picked = launcher.order;
-                    egui::ComboBox::from_id_salt("order_pick")
-                        .selected_text(launcher.order.label())
-                        .show_ui(ui, |ui| {
-                            for o in PluginOrder::ALL {
-                                ui.selectable_value(&mut picked, o, o.label());
-                            }
-                        });
-                    if picked != launcher.order {
-                        launcher.order = picked;
-                        // Re-lists the folder and re-reads the file, on the next
-                        // frame's refresh: the two lists follow it either way.
-                    }
-                    // Which file was read, or why none was. An order the user
-                    // asked for and did not get has to say so: a list in
-                    // file-name order looks exactly like a file that was read
-                    // and agreed.
-                    match (&order_file, &order_note) {
-                        (Some(p), _) => {
-                            ui.colored_label(
-                                egui::Color32::from_rgb(0x80, 0xc0, 0x80),
-                                format!("{}", p.display()),
-                            );
-                        }
-                        (None, Some(note)) => {
-                            ui.colored_label(egui::Color32::from_rgb(0xd0, 0xa0, 0x40), note);
-                        }
-                        (None, None) => {}
-                    }
-                });
-                ui.separator();
-
                 match launcher.tab {
                     LauncherTab::OpenExisting => {
                         ui.label(
                             "Select a file to edit. Required masters are checked automatically.",
+                        );
+                        ui.add_space(4.0);
+
+                        // Above the master list it orders, which is the column
+                        // on the right.
+                        order_picker(
+                            ui,
+                            &mut launcher,
+                            order_file.as_deref(),
+                            order_note.as_deref(),
                         );
                         ui.add_space(4.0);
 
@@ -667,6 +639,16 @@ pub fn ui(
                         });
 
                         ui.add_space(6.0);
+                        // Below the author and description and above the master
+                        // list, because it is the master list it orders.
+                        order_picker(
+                            ui,
+                            &mut launcher,
+                            order_file.as_deref(),
+                            order_note.as_deref(),
+                        );
+
+                        ui.add_space(6.0);
                         ui.label("Select Masters to depend on (Checkboxes):");
 
                         let scroll_height = (ui.available_height() - 40.0).max(180.0);
@@ -717,6 +699,52 @@ pub fn ui(
                 }
             });
         });
+    });
+}
+
+/// The master-list order drop-down, and what it did.
+///
+/// Drawn on both tabs, directly above the master list it orders: the order file
+/// is read from the Data folder and its order is the one the game loads masters
+/// in, so this is also the order a session's load order is built from — the
+/// plugin whose definition wins.
+///
+/// `file` is the order file that was read and `note` why none was. An order the
+/// user asked for and did not get has to say so: a list in file-name order looks
+/// exactly like a file that was read and agreed.
+fn order_picker(
+    ui: &mut egui::Ui,
+    launcher: &mut Launcher,
+    file: Option<&std::path::Path>,
+    note: Option<&str>,
+) {
+    ui.horizontal(|ui| {
+        ui.label("Order:");
+        let mut picked = launcher.order;
+        egui::ComboBox::from_id_salt("order_pick")
+            .selected_text(launcher.order.label())
+            .show_ui(ui, |ui| {
+                for o in PluginOrder::ALL {
+                    ui.selectable_value(&mut picked, o, o.label());
+                }
+            });
+        // Written back and acted on next frame: `refresh_listing` re-lists the
+        // folder and re-reads the file when the order changes, which is also
+        // what re-derives the master list from it.
+        launcher.order = picked;
+
+        match (file, note) {
+            (Some(p), _) => {
+                ui.colored_label(
+                    egui::Color32::from_rgb(0x80, 0xc0, 0x80),
+                    p.display().to_string(),
+                );
+            }
+            (None, Some(note)) => {
+                ui.colored_label(egui::Color32::from_rgb(0xd0, 0xa0, 0x40), note);
+            }
+            (None, None) => {}
+        }
     });
 }
 
