@@ -2,13 +2,15 @@
 //!
 //! The unit tests pin the maths and the button mapping. This one builds a real
 //! `App` with the same plugin the editor adds, presses a button, feeds pointer
-//! motion, and checks the camera actually moved and actually stopped — which is
-//! the part that cannot be checked by reading the code: whether the systems are
-//! wired to each other in the right order.
+//! motion, and checks the camera actually did what the hand asked — which is the
+//! part that cannot be checked by reading the code: whether the systems are wired
+//! to each other in the right order.
+//!
+//! The behaviour pinned here is the free camera's whole point: a turn rotates the
+//! camera in place, a slide translates it sideways, and a wheel notch walks it
+//! along the line it is looking down. None of them has a pivot.
 
-use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
-use bevy::input::mouse::{MouseMotion, MouseWheel};
-use bevy::picking::pointer::{PointerId, PointerLocation, PointerMap};
+use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use nvre_editor::viewport::{ViewportCamera, ViewportCameraPlugin};
@@ -19,26 +21,17 @@ fn app() -> App {
     app.add_plugins(MinimalPlugins)
         .add_message::<MouseMotion>()
         .add_message::<MouseWheel>()
-        // The controller asks for a redraw whenever it moves the camera; the
-        // window plugin normally provides this.
-        .add_message::<bevy::window::RequestRedraw>()
         .init_resource::<ButtonInput<MouseButton>>()
-        .init_resource::<ButtonInput<KeyCode>>()
-        .init_resource::<PointerMap>()
-        // `MeshRayCast` (the cursor anchor) reads this.
-        .init_resource::<Assets<Mesh>>()
-        .add_plugins(bevy::camera_controller::pan_orbit_camera::DefaultPanOrbitCameraPlugins)
-        .add_plugins(ViewportCameraPlugin);
+        .init_resource::<ButtonInput<KeyCode>>();
 
-    // The window the pointer is in, and the camera rendering to it.
-    let window = app
-        .world_mut()
-        .spawn(Window {
+    // The viewport window, which the camera renders to and the input is read from.
+    app.world_mut().spawn((
+        Window {
             resolution: WindowResolution::new(1280, 800),
             ..default()
-        })
-        .id();
-    let _ = window;
+        },
+        nvre_editor::windows::ViewportWindow,
+    ));
 
     app.world_mut().spawn((
         Camera3d::default(),
@@ -47,35 +40,12 @@ fn app() -> App {
             near: 1.0,
             ..default()
         }),
-        // The controller computes pan and orbit distances from the camera's
-        // logical viewport size, and zoom from its clip-from-view matrix. Both
-        // are filled in by the render plugin, which is not in this harness, so
-        // they are set directly: without them every motion silently does nothing,
-        // which is what made this harness report a camera that never moved.
-        Camera {
-            computed: bevy::camera::ComputedCameraValues {
-                clip_from_view: bevy::camera::Projection::Perspective(PerspectiveProjection {
-                    far: 1_500_000.0,
-                    near: 1.0,
-                    ..default()
-                })
-                .get_clip_from_view(),
-                target_info: Some(bevy::camera::RenderTargetInfo {
-                    physical_size: UVec2::new(1280, 800),
-                    scale_factor: 1.0,
-                }),
-                ..default()
-            },
-            ..default()
-        },
-        PanOrbitCamera {
-            last_anchor_depth: -(nvre_editor::viewport::ViewportFocus::DEFAULT_DISTANCE as f64),
-            ..default()
-        },
+        // Look at the origin from 250 units back, along +Z.
         Transform::from_xyz(0.0, 0.0, 250.0).looking_at(Vec3::ZERO, Vec3::Y),
         ViewportCamera,
     ));
 
+    app.add_plugins(ViewportCameraPlugin);
     app
 }
 
@@ -86,6 +56,15 @@ fn eye(app: &mut App) -> Vec3 {
         .single(app.world())
         .expect("the camera must exist")
         .translation
+}
+
+/// The direction the camera is looking along.
+fn forward(app: &mut App) -> Vec3 {
+    *app.world_mut()
+        .query_filtered::<&Transform, With<ViewportCamera>>()
+        .single(app.world())
+        .expect("the camera must exist")
+        .forward()
 }
 
 /// Press a button, as a frame of input does.
@@ -118,42 +97,55 @@ fn move_pointer(app: &mut App, delta: Vec2) {
     app.world_mut().write_message(MouseMotion { delta });
 }
 
-#[test]
-fn a_right_drag_orbits_the_camera() {
-    // The pointer has to exist for the picking map, even with no backend: the
-    // anchor is looked up by pointer id.
-    let mut app = app();
-    let pointer = app
-        .world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()))
-        .id();
-    let _ = pointer;
+/// One wheel notch.
+fn wheel(app: &mut App, y: f32) {
+    app.world_mut().write_message(MouseWheel {
+        unit: MouseScrollUnit::Line,
+        x: 0.0,
+        y,
+        window: Entity::PLACEHOLDER,
+        phase: bevy::input::touch::TouchPhase::Moved,
+    });
+}
 
-    let before = eye(&mut app);
+/// The camera entity, for moving it by hand.
+fn camera_entity(app: &mut App) -> Entity {
+    app.world_mut()
+        .query_filtered::<Entity, With<ViewportCamera>>()
+        .single(app.world())
+        .unwrap()
+}
+
+#[test]
+fn a_right_drag_turns_the_view_in_place() {
+    // A turn is a rotation: the eye stays where it is and the heading changes.
+    // That is what makes this a free camera and not an orbit — an orbit would swing
+    // the eye round a pivot, which is the behaviour this editor does not want.
+    let mut app = app();
+
+    let before_eye = eye(&mut app);
+    let before_forward = forward(&mut app);
 
     press(&mut app, MouseButton::Right);
     app.update();
 
-    // A drag to the right, over several frames the way a mouse delivers it.
     for _ in 0..8 {
         move_pointer(&mut app, Vec2::new(20.0, 0.0));
         app.update();
         next_frame(&mut app);
     }
 
-    let during = eye(&mut app);
+    let during_eye = eye(&mut app);
+    let during_forward = forward(&mut app);
+
     assert!(
-        before.distance(during) > 1.0,
-        "a right drag must move the camera, stayed at {before:?}"
+        during_eye.distance(before_eye) < 1.0,
+        "a turn must not move the eye, moved {} units",
+        during_eye.distance(before_eye)
     );
-    // An orbit keeps the distance to what it is looking at: the eye swings round
-    // rather than flying off.
-    let centre = Vec3::ZERO;
     assert!(
-        (during.distance(centre) - before.distance(centre)).abs() < before.distance(centre) * 0.25,
-        "an orbit must keep its distance, went from {} to {}",
-        before.distance(centre),
-        during.distance(centre)
+        during_forward.distance(before_forward) > 0.01,
+        "a turn must change the heading, stayed at {before_forward:?}"
     );
 
     release(&mut app, MouseButton::Right);
@@ -161,47 +153,14 @@ fn a_right_drag_orbits_the_camera() {
 }
 
 #[test]
-fn the_camera_stops_when_the_button_comes_up() {
-    // Momentum means it coasts briefly, but it must settle: a camera that never
-    // stops is a camera that cannot be left alone. The coast decays with real
-    // time, so this runs the clock forward rather than counting frames.
+fn a_middle_drag_slides_the_camera() {
+    // A slide is a translation in the camera's own plane: the eye moves, the
+    // heading does not.
     let mut app = app();
-    app.world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()));
 
-    press(&mut app, MouseButton::Right);
-    app.update();
-    move_pointer(&mut app, Vec2::new(40.0, 0.0));
-    app.update();
-    next_frame(&mut app);
+    let before_eye = eye(&mut app);
+    let before_forward = forward(&mut app);
 
-    release(&mut app, MouseButton::Right);
-    app.update();
-
-    // Let any momentum decay. Five simulated seconds is well past the point a
-    // flick should have stopped.
-    for _ in 0..60 {
-        std::thread::sleep(std::time::Duration::from_millis(16));
-        app.update();
-    }
-    let settled = eye(&mut app);
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    app.update();
-    let later = eye(&mut app);
-    assert!(
-        settled.distance(later) < 1.0,
-        "the camera must come to rest, drifted {} units",
-        settled.distance(later)
-    );
-}
-
-#[test]
-fn a_middle_drag_pans_the_camera() {
-    let mut app = app();
-    app.world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()));
-
-    let before = eye(&mut app);
     press(&mut app, MouseButton::Middle);
     app.update();
 
@@ -211,10 +170,14 @@ fn a_middle_drag_pans_the_camera() {
         next_frame(&mut app);
     }
 
-    let during = eye(&mut app);
+    let during_eye = eye(&mut app);
     assert!(
-        before.distance(during) > 1.0,
-        "a middle drag must pan the camera, stayed at {before:?}"
+        before_eye.distance(during_eye) > 1.0,
+        "a slide must move the camera, stayed at {before_eye:?}"
+    );
+    assert!(
+        forward(&mut app).distance(before_forward) < 1e-4,
+        "a slide must not change the heading"
     );
 
     release(&mut app, MouseButton::Middle);
@@ -222,159 +185,159 @@ fn a_middle_drag_pans_the_camera() {
 }
 
 #[test]
-fn wasd_does_not_move_the_camera() {
-    // The flight keys were removed on purpose: the controller's own orbit is the
-    // whole camera, and WASD was a second way to move it that fought the first.
+fn the_wheel_walks_along_the_line_of_sight() {
+    // The wheel is a dolly, not a zoom: the camera moves along the line it is
+    // looking down, by a fixed distance, with no sideways component and no scaling
+    // with how far away it is.
     let mut app = app();
-    app.world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()));
 
-    let before = eye(&mut app);
-    press(&mut app, MouseButton::Right);
-    app.update();
+    let before_eye = eye(&mut app);
+    let before_forward = forward(&mut app);
 
-    for key in [KeyCode::KeyW, KeyCode::KeyA, KeyCode::KeyS, KeyCode::KeyD] {
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .press(key);
-        app.update();
-        next_frame(&mut app);
-    }
-
-    let after = eye(&mut app);
-    assert!(
-        before.distance(after) < 1.0,
-        "WASD must not move the camera, it moved {} units",
-        before.distance(after)
-    );
-}
-
-#[test]
-fn the_wheel_zooms_without_a_button_held() {
-    // A wheel notch with nothing pressed is a zoom, which is how a viewport
-    // behaves: you do not hold a button to zoom.
-    let mut app = app();
-    app.world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()));
-
-    let before = eye(&mut app).distance(Vec3::ZERO);
-
-    app.world_mut().write_message(MouseWheel {
-        unit: bevy::input::mouse::MouseScrollUnit::Line,
-        x: 0.0,
-        y: 3.0,
-        window: Entity::PLACEHOLDER,
-        phase: bevy::input::touch::TouchPhase::Moved,
-    });
+    wheel(&mut app, 1.0);
     for _ in 0..30 {
         app.update();
     }
 
-    let after = eye(&mut app).distance(Vec3::ZERO);
+    let after_eye = eye(&mut app);
     assert!(
-        (after - before).abs() > 1.0,
-        "the wheel must zoom, distance stayed {before}"
+        before_eye.distance(after_eye) > 1.0,
+        "a wheel notch must move the camera, stayed at {before_eye:?}"
+    );
+    assert!(
+        forward(&mut app).distance(before_forward) < 1e-4,
+        "the wheel must not turn the camera"
+    );
+    // The camera looks down -Z here, so the walk is along -Z and only there.
+    assert!(
+        (after_eye.x - before_eye.x).abs() < 1.0 && (after_eye.y - before_eye.y).abs() < 1.0,
+        "the walk must be along the line of sight: {before_eye:?} -> {after_eye:?}"
     );
 }
 
 #[test]
-fn the_wheel_stops_zooming_when_the_wheel_stops() {
-    // The bug this pins: a zoom whose input is only sent on wheel events never
-    // decays, because the smoothing queue's last smoothed sample stays constant
-    // and is applied every frame. The camera then scrolls for ever, which is what
-    // scrolling while an orbit is held looked like.
-    let mut app = app();
-    app.world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()));
+fn a_wheel_notch_moves_the_same_ground_at_any_distance() {
+    // The bug this pins: a zoom is proportional to the distance it is zooming
+    // along, so one notch at 16,000 units crosses 160 times the ground one does at
+    // 1,000, and three notches end up inside the terrain. A dolly must move the
+    // same step everywhere.
+    fn notch_at(distance: f32) -> f32 {
+        let mut app = app();
+        let cam = camera_entity(&mut app);
+        app.world_mut()
+            .get_mut::<Transform>(cam)
+            .unwrap()
+            .translation = Vec3::new(0.0, 0.0, distance);
+        // The focus sits at the same distance, which is what the slide's pixel
+        // conversion reads.
+        nvre_editor::viewport::request_view(
+            &mut app.world_mut()
+                .resource_mut::<nvre_editor::viewport::ViewportFocus>(),
+            nvre_editor::viewport::ViewPose {
+                target: Vec3::ZERO,
+                distance,
+                pitch: Some(0.0),
+                yaw: Some(0.0),
+            },
+        );
 
-    app.world_mut().write_message(MouseWheel {
-        unit: bevy::input::mouse::MouseScrollUnit::Line,
-        x: 0.0,
-        y: 3.0,
-        window: Entity::PLACEHOLDER,
-        phase: bevy::input::touch::TouchPhase::Moved,
-    });
-    // A burst of frames, then no more wheel input at all.
-    for _ in 0..20 {
-        app.update();
+        let before = eye(&mut app).z;
+        wheel(&mut app, 1.0);
+        for _ in 0..30 {
+            app.update();
+        }
+        (before - eye(&mut app).z).abs()
     }
-    let settled = eye(&mut app).distance(Vec3::ZERO);
-    for _ in 0..60 {
-        std::thread::sleep(std::time::Duration::from_millis(16));
-        app.update();
-    }
-    let later = eye(&mut app).distance(Vec3::ZERO);
+
+    let near = notch_at(1_000.0);
+    let far = notch_at(16_000.0);
     assert!(
-        (settled - later).abs() < 1.0,
-        "the camera must stop zooming once the wheel stops, drifted {} units",
-        (settled - later).abs()
+        near > 1.0 && far > 1.0,
+        "a notch must move the camera at both distances, got {near} and {far}"
+    );
+    assert!(
+        (near - far).abs() / far < 0.1,
+        "one notch must move the same ground at any distance: {near} at 1,000 vs {far} at 16,000"
     );
 }
 
 #[test]
-fn scrolling_while_orbiting_stops_when_the_wheel_stops() {
-    // The reported bug: hold right (orbiting), scroll, release the wheel. The
-    // zoom must end with the wheel, not continue for as long as the button is
-    // held.
+fn wasd_moves_the_camera_only_while_right_is_held() {
+    // The flight keys are armed by a right-drag: hold right and W walks forward,
+    // and let go and the same key does nothing. That is the whole rule, and both
+    // halves of it are pinned here.
     let mut app = app();
-    app.world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()));
 
+    // Nothing held: W must not move the camera. The keys stay free for whatever
+    // else wants them.
+    let idle_before = eye(&mut app);
+    app.world_mut()
+        .resource_mut::<ButtonInput<KeyCode>>()
+        .press(KeyCode::KeyW);
+    for _ in 0..10 {
+        app.update();
+        next_frame(&mut app);
+    }
+    assert!(
+        idle_before.distance(eye(&mut app)) < 1.0,
+        "WASD must not move the camera with nothing held, moved {} units",
+        idle_before.distance(eye(&mut app))
+    );
+
+    // Right held: the same key walks. The flight is a per-second speed, so the
+    // clock has to advance — the harness drives `Time` with wall-clock time, which
+    // is what the sleeps are for.
     press(&mut app, MouseButton::Right);
     app.update();
     next_frame(&mut app);
 
-    app.world_mut().write_message(MouseWheel {
-        unit: bevy::input::mouse::MouseScrollUnit::Line,
-        x: 0.0,
-        y: 2.0,
-        window: Entity::PLACEHOLDER,
-        phase: bevy::input::touch::TouchPhase::Moved,
-    });
-    for _ in 0..20 {
-        app.update();
-    }
-    // Still holding right, but no longer scrolling.
-    let settled = eye(&mut app).distance(Vec3::ZERO);
+    let armed_before = eye(&mut app);
+    let before_forward = forward(&mut app);
     for _ in 0..60 {
         std::thread::sleep(std::time::Duration::from_millis(16));
         app.update();
+        next_frame(&mut app);
     }
-    let later = eye(&mut app).distance(Vec3::ZERO);
+
+    let armed_after = eye(&mut app);
     assert!(
-        (settled - later).abs() < 1.0,
-        "the zoom must stop when the wheel stops, even with right held; drifted {} units",
-        (settled - later).abs()
+        armed_before.distance(armed_after) > 1.0,
+        "W must walk the camera while right is held, stayed at {armed_before:?}"
     );
+    assert!(
+        forward(&mut app).distance(before_forward) < 1e-4,
+        "the flight keys must move the camera, not turn it"
+    );
+
+    release(&mut app, MouseButton::Right);
+    app.update();
 }
 
 #[test]
-fn one_wheel_notch_is_a_visible_step() {
-    // "The zoom is too slow" is a complaint about magnitude, so the amount is
-    // pinned: a single notch at the editor's default distance must move the view
-    // by a noticeable fraction of that distance, not by a rounding error. The
-    // scale is Bevy's CAD example's 150-per-line, which is what makes a notch
-    // feel like a step rather than a crawl in a world measured in game units.
+fn wasd_does_not_move_the_camera_during_a_middle_drag() {
+    // A middle-drag is a deliberate slide, and the flight keys are armed by a
+    // right-drag only: pressing them during a slide must not add a second motion.
     let mut app = app();
-    app.world_mut()
-        .spawn((PointerId::Mouse, PointerLocation::default()));
 
-    let before = eye(&mut app).distance(Vec3::ZERO);
-    app.world_mut().write_message(MouseWheel {
-        unit: bevy::input::mouse::MouseScrollUnit::Line,
-        x: 0.0,
-        y: 1.0,
-        window: Entity::PLACEHOLDER,
-        phase: bevy::input::touch::TouchPhase::Moved,
-    });
-    for _ in 0..30 {
+    press(&mut app, MouseButton::Middle);
+    app.update();
+    next_frame(&mut app);
+
+    let before = eye(&mut app);
+    app.world_mut()
+        .resource_mut::<ButtonInput<KeyCode>>()
+        .press(KeyCode::KeyW);
+    for _ in 0..10 {
         app.update();
+        next_frame(&mut app);
     }
 
-    let after = eye(&mut app).distance(Vec3::ZERO);
-    let moved = (after - before).abs();
     assert!(
-        moved > before * 0.02,
-        "one notch must move the view by more than 2% of {before}, moved {moved}"
+        before.distance(eye(&mut app)) < 1.0,
+        "the flight keys must not move the camera during a middle-drag, moved {} units",
+        before.distance(eye(&mut app))
     );
+
+    release(&mut app, MouseButton::Middle);
+    app.update();
 }

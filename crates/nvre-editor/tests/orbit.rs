@@ -1,21 +1,17 @@
 //! The camera's pose helpers must agree with each other.
 //!
-//! `place_camera` writes a pose and `camera_focus` reads one back. If the two
-//! disagree, framing a reference puts the camera somewhere other than where the
-//! debug window says, and the readout lies. These test the two together against a
-//! real `PanOrbitCamera`, which is what the viewport drives.
+//! `place_camera` writes a pose and the pose read back off the `Transform` must
+//! match it. If the two disagree, framing a reference puts the camera somewhere
+//! other than where the debug window says, and the readout lies. These test the two
+//! together.
+//!
+//! There is no controller and no focus point in either direction: `place_camera`
+//! takes a target because that is where the editor has asked the camera to look,
+//! and what is read back is the pose the camera is actually in. That is the whole
+//! of the editor's camera state — a pose in, a pose out.
 
-use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
 use bevy::prelude::*;
-use nvre_editor::viewport::{camera_focus, place_camera, ViewPose, ViewportFocus};
-
-/// A controller in the state the viewport spawns it in.
-fn controller() -> PanOrbitCamera {
-    PanOrbitCamera {
-        last_anchor_depth: -(ViewportFocus::DEFAULT_DISTANCE as f64),
-        ..default()
-    }
-}
+use nvre_editor::viewport::{place_camera, ViewPose, ViewportFocus};
 
 /// A camera looking down -Z, as a fresh `Transform` does.
 fn camera() -> Transform {
@@ -31,10 +27,8 @@ fn placing_a_pose_puts_the_eye_the_distance_away() {
         (Vec3::new(-72360.0, -3082.0, 7557.0), 200_000.0),
     ] {
         let mut transform = camera();
-        let mut cam = controller();
         place_camera(
             &mut transform,
-            &mut cam,
             ViewPose {
                 target,
                 distance,
@@ -60,17 +54,15 @@ fn placing_a_pose_puts_the_eye_the_distance_away() {
 }
 
 #[test]
-fn a_pose_round_trips_through_the_camera() {
-    // What `place_camera` writes, `camera_focus` must read back: the debug window
-    // shows the second and the viewport applies the first, so a mismatch is a
-    // readout that does not describe the view.
+fn a_pose_round_trips_through_the_transform() {
+    // What `place_camera` writes, the pose read back must describe: the debug
+    // window shows the second and the viewport applies the first, so a mismatch is
+    // a readout that does not describe the view.
     let target = Vec3::new(512.0, 256.0, -1024.0);
     let distance = 4096.0;
     let mut transform = camera();
-    let mut cam = controller();
     place_camera(
         &mut transform,
-        &mut cam,
         ViewPose {
             target,
             distance,
@@ -79,14 +71,16 @@ fn a_pose_round_trips_through_the_camera() {
         },
     );
 
-    let (read_target, read_distance) = camera_focus(&transform, &cam);
+    let forward = *transform.forward();
+    let read_target = transform.translation + forward * distance;
     assert!(
         read_target.distance(target) < 1.0,
         "the target must round-trip, got {read_target:?} vs {target:?}"
     );
     assert!(
-        (read_distance - distance).abs() < 1.0,
-        "the distance must round-trip, got {read_distance} vs {distance}"
+        (transform.translation.distance(target) - distance).abs() < 1.0,
+        "the distance must round-trip, got {}",
+        transform.translation.distance(target)
     );
 }
 
@@ -99,10 +93,8 @@ fn a_pose_without_angles_keeps_the_heading() {
     transform.rotation = Quat::from_rotation_y(-std::f32::consts::FRAC_PI_2);
     let heading_before = *transform.forward();
 
-    let mut cam = controller();
     place_camera(
         &mut transform,
-        &mut cam,
         ViewPose {
             target: Vec3::new(500.0, 0.0, 0.0),
             distance: 250.0,
@@ -128,10 +120,8 @@ fn a_negative_pitch_looks_down_from_above() {
     // way GECK frames a zone.
     let target = Vec3::new(0.0, 0.0, 0.0);
     let mut above = camera();
-    let mut cam = controller();
     place_camera(
         &mut above,
-        &mut cam,
         ViewPose {
             target,
             distance: 1000.0,
@@ -146,10 +136,8 @@ fn a_negative_pitch_looks_down_from_above() {
     );
 
     let mut below = camera();
-    let mut cam = controller();
     place_camera(
         &mut below,
-        &mut cam,
         ViewPose {
             target,
             distance: 1000.0,
@@ -165,28 +153,12 @@ fn a_negative_pitch_looks_down_from_above() {
 }
 
 #[test]
-fn placing_a_pose_resets_the_controllers_anchor() {
-    // The controller remembers the depth of its last hit and orbits and zooms
-    // about it. Left stale after the camera is moved, that anchor is a point that
-    // no longer exists, and the next drag swings the view about it.
-    let mut transform = camera();
-    let mut cam = controller();
-    cam.last_anchor_depth = -12.0;
-
-    place_camera(
-        &mut transform,
-        &mut cam,
-        ViewPose {
-            target: Vec3::new(100.0, 0.0, 0.0),
-            distance: 3000.0,
-            pitch: Some(0.0),
-            yaw: Some(0.0),
-        },
-    );
-
-    assert!(
-        (cam.last_anchor_depth().abs() - 3000.0).abs() < 1.0,
-        "the anchor depth must follow the new distance, got {}",
-        cam.last_anchor_depth()
+fn the_default_distance_is_the_one_a_cell_opens_at() {
+    // Framing a reference and opening the cell it sits in have to put the camera
+    // the same distance away, which is why there is one constant for both.
+    assert_eq!(
+        ViewportFocus::default().distance,
+        ViewportFocus::DEFAULT_DISTANCE,
+        "the default focus distance must be the cell-opening distance"
     );
 }

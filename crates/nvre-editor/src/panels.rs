@@ -1446,6 +1446,11 @@ pub fn status(
 /// What is shown is read off the camera itself, not from a copy of what the
 /// editor last asked for, so the readout describes the view rather than the
 /// request.
+///
+/// The target is the point the camera is looking at, which a free camera has no
+/// pivot to keep it aimed at: it is the eye pushed out along the heading by the
+/// distance, so it follows the camera rather than the other way round. It can be
+/// dialled in here — that is a request like any other — and the distance with it.
 pub fn debug(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<5>>>,
     mut focus: ResMut<crate::viewport::ViewportFocus>,
@@ -1462,8 +1467,8 @@ pub fn debug(
 
         egui::Grid::new("orbit").num_columns(2).show(ui, |ui| {
             // The target is where the camera looks, in Bevy space. A cell sits
-            // tens of thousands of units from the origin, so the values are
-            // shown to a unit rather than the default two decimals.
+            // tens of thousands of units from the origin, so the values are shown
+            // to a unit rather than the default two decimals.
             let mut target = [focus.target.x, focus.target.y, focus.target.z];
             ui.label("target");
             ui.horizontal(|ui| {
@@ -1475,8 +1480,9 @@ pub fn debug(
             ui.end_row();
             if target != [focus.target.x, focus.target.y, focus.target.z] {
                 // A dialled-in target is a request like any other: it goes through
-                // the same path a frame request does, so the camera and the
-                // controller's anchor stay in step.
+                // the same path a frame request does. The heading is kept, so the
+                // camera swings round to the new point rather than snapping to a
+                // fixed angle.
                 let distance = focus.distance;
                 crate::viewport::request_view(
                     &mut focus,
@@ -1489,6 +1495,9 @@ pub fn debug(
                 );
             }
 
+            // The distance is how far the camera sits from what it is looking at.
+            // A cell sits tens of thousands of units from the origin, so the value
+            // is shown to a unit rather than the default two decimals.
             let mut distance = focus.distance;
             ui.label("distance");
             ui.add(
@@ -1498,6 +1507,8 @@ pub fn debug(
             );
             ui.end_row();
             if (distance - focus.distance).abs() > f32::EPSILON {
+                // A dialled-in distance keeps the target and only closes or opens
+                // the gap between the camera and what it is looking at.
                 let target = focus.target;
                 crate::viewport::request_view(
                     &mut focus,
@@ -1523,13 +1534,17 @@ pub fn debug(
         ui.separator();
         if ui.button("Reset").clicked() {
             let default = crate::viewport::ViewportFocus::default();
+            // Reset is a distance and a heading, not a place: the camera is put
+            // the default distance away from where it already points, facing level
+            // along its own yaw. It is the same pose a fresh cell opens with.
+            let (pitch, yaw) = (forward.y.asin(), forward.x.atan2(forward.z));
             crate::viewport::request_view(
                 &mut focus,
                 crate::viewport::ViewPose {
-                    target: default.target,
+                    target: eye + forward * default.distance,
                     distance: default.distance,
-                    pitch: Some(0.0),
-                    yaw: Some(0.0),
+                    pitch: Some(pitch),
+                    yaw: Some(yaw),
                 },
             );
         }

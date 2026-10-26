@@ -1,5 +1,5 @@
-//! The viewport: a 3D view of the open cell's placed references, with an orbit
-//! camera and click-to-select.
+//! The viewport: a 3D view of the open cell's placed references, with a camera
+//! and click-to-select.
 //!
 //! The editor's own state lives in [`crate::session`]; this module only turns it
 //! into entities and reads clicks back. Meshes are spawned through NVRE's
@@ -15,21 +15,28 @@
 //!
 //! ## The camera
 //!
-//! The viewport's camera is Bevy's own `PanOrbitCamera`. It owns the pose: a drag
-//! is a motion it is told to start and then fed screen-space deltas, and it moves
-//! the `Transform` itself. That is why nothing here keeps a yaw/pitch/distance
-//! alongside the camera — the editor asks the camera where it is
-//! ([`sync_focus`]) and, when something has to be looked at, writes a pose
-//! ([`place_camera`]). [`ViewportFocus`] is the one piece of intent the editor
-//! keeps: what is worth looking at, and from how far.
+//! The viewport's camera is a **free** camera, not an orbit. There is no pivot and
+//! no anchor: every motion is the camera's own translation or rotation, so a drag
+//! turns the view in place and the wheel walks it along the line it is looking
+//! down — the way GECK's viewer moves, and the way a person walks up to a wall.
+//!
+//! The editor owns this outright. Bevy ships a `FreeCamera`, but it is a *fly*
+//! camera: it reads Bevy's own accumulated-mouse-motion resource, drives WASD, and
+//! grabs the cursor. None of that is what a viewport wants — the viewport's input
+//! is the same `MouseMotion` stream the gizmo and the picking read, and a second
+//! reader of it is how one drag stops being one drag. So the motion is implemented
+//! here, directly on the `Transform`, and [`ViewportCameraPlugin`] is the whole of
+//! it.
+//!
+//! The pose is the `Transform`, with no state alongside it: a drag changes the
+//! heading or the position, a frame request rewrites both. [`ViewportFocus`] holds
+//! the intent behind a request — where to look and how far away — and the pending
+//! pose waiting to be applied.
 
 use bevy::asset::RenderAssetUsages;
-use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
-use bevy::camera_controller::pan_orbit_camera::controller::motion::CurrentMotion;
 use bevy::ecs::message::MessageReader;
 use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::mesh::{Indices, PrimitiveTopology};
-use bevy::picking::mesh_picking::ray_cast::{MeshRayCast, MeshRayCastSettings, RayCastVisibility};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use nvre_assets::model::ModelCtx;
@@ -39,7 +46,7 @@ use nvre_world::land::{
 use nvre_world::transform::ref_rotation;
 use std::collections::{HashMap, HashSet};
 
-/// Marks the viewport's orbit camera.
+/// Marks the viewport's free camera.
 #[derive(Component)]
 pub struct ViewportCamera;
 
@@ -74,7 +81,7 @@ pub fn ref_transform(position: [f32; 3], rotation: [f32; 3], scale: f32) -> Tran
     }
 }
 
-/// What the viewport is looking at, as the editor thinks of it.
+/// What the viewport wants the camera to do, as the editor thinks of it.
 ///
 /// The camera itself owns its pose; this is the intent behind it. `target` is
 /// where a cell opening or a frame request wants the view, and `distance` is how
@@ -177,39 +184,35 @@ pub fn setup(mut commands: Commands) {
 
 /// Keep the camera where the focus says it is.
 ///
-/// The camera controller owns the pose between moves, so this only acts when the
-/// editor has actually asked for a view: [`ViewportFocus`] holds a pending
-/// [`ViewPose`], and it is cleared here once the camera has been put there.
-/// Reading the pose back afterwards is what keeps the debug window honest — it
-/// describes where the camera is, not the last thing that was requested.
+/// The camera owns the pose between moves, so this only acts when the editor has
+/// actually asked for a view: [`ViewportFocus`] holds a pending [`ViewPose`], and
+/// it is cleared here once the camera has been put there. Reading the pose back
+/// afterwards is what keeps the debug window honest — it describes where the
+/// camera is, not the last thing that was requested.
 pub fn sync_focus(
-    mut cameras: Query<(&mut Transform, &mut PanOrbitCamera), With<ViewportCamera>>,
+    mut cameras: Query<&mut Transform, With<ViewportCamera>>,
     mut focus: ResMut<ViewportFocus>,
 ) {
-    let Ok((mut transform, mut controller)) = cameras.single_mut() else {
+    let Ok(mut transform) = cameras.single_mut() else {
         return;
     };
     if let Some(pose) = focus.pending.take() {
-        place_camera(&mut transform, &mut controller, pose);
+        place_camera(&mut transform, pose);
     }
-    // A camera in the middle of a move is where the user put it a frame ago; the
-    // pose it is heading for is the next frame's business.
-    if controller.current_motion.is_moving() {
-        return;
-    }
-    let (target, distance) = camera_focus(&transform, &controller);
-    focus.target = target;
-    focus.distance = distance;
+    // The focus follows the camera: a free camera has no pivot to keep it aimed
+    // at anything, so what it is looking at is its own position pushed out along
+    // its own heading. The distance is that same length, which is what the debug
+    // window and the framing requests both want.
+    let forward = *transform.forward();
+    focus.target = transform.translation + forward * focus.distance;
 }
 
 /// Put the camera at a pose.
 ///
 /// The heading is kept unless the pose names one — only the distance and the aim
 /// change — so a view that is already turned towards an object swings round to it
-/// rather than snapping to a fixed angle. The controller's anchor depth is reset
-/// with it, because a controller that remembers the depth of its last hit would
-/// otherwise orbit about a point that is no longer there.
-pub fn place_camera(transform: &mut Transform, controller: &mut PanOrbitCamera, pose: ViewPose) {
+/// rather than snapping to a fixed angle.
+pub fn place_camera(transform: &mut Transform, pose: ViewPose) {
     // The camera sits opposite the direction it looks along, so the pose's
     // direction of view is the negation of where the camera goes.
     let direction = match (pose.yaw, pose.pitch) {
@@ -226,24 +229,6 @@ pub fn place_camera(transform: &mut Transform, controller: &mut PanOrbitCamera, 
     };
     transform.translation = pose.target - direction * pose.distance;
     transform.look_at(pose.target, Vec3::Y);
-    controller.current_motion = CurrentMotion::Stationary;
-    controller.last_anchor_depth = -(pose.distance.abs() as f64);
-}
-
-/// Where a camera is looking and from how far, read off its own pose.
-///
-/// The distance is the controller's own anchor depth, which is what it orbits and
-/// zooms about: after a wheel-zoom or a pan that is the only record of how far the
-/// view is from what it is looking at.
-pub fn camera_focus(transform: &Transform, controller: &PanOrbitCamera) -> (Vec3, f32) {
-    let distance = controller.last_anchor_depth().abs() as f32;
-    let distance = if distance.is_finite() && distance > 0.0 {
-        distance
-    } else {
-        ViewportFocus::DEFAULT_DISTANCE
-    };
-    let forward = transform.forward();
-    (transform.translation + *forward * distance, distance)
 }
 
 /// Ask for a view.
@@ -260,17 +245,10 @@ pub fn request_view(focus: &mut ViewportFocus, pose: ViewPose) {
 /// The viewport's camera input: which button starts which motion, and the
 /// screen-space deltas that drive it.
 ///
-/// The controller itself has no opinion about buttons — it is told to start an
-/// orbit, a pan or a zoom, fed deltas while the motion lasts, and told when it
-/// ends. This is that telling, and it is the whole of the editor's camera
-/// handling: the pose, the smoothing, the momentum, the clamping and the orbit
-/// constraint are Bevy's.
-///
-/// The anchor for an orbit or a zoom is the point under the cursor, taken from
-/// real mesh hits — orbiting about a wall you clicked on keeps that wall under the
-/// pointer instead of swinging the view about the screen centre. When the cursor
-/// is over empty space the controller falls back to the depth of its last hit, so
-/// dragging from the sky still orbits about something sensible.
+/// The whole of the editor's camera handling is here. Right-drag turns the view,
+/// middle-drag slides it, and the wheel walks it forward or back along the line it
+/// is looking down. None of them has a pivot: a turn rotates the camera in place,
+/// and a slide and a walk translate it.
 pub struct ViewportCameraPlugin;
 
 impl Plugin for ViewportCameraPlugin {
@@ -279,19 +257,7 @@ impl Plugin for ViewportCameraPlugin {
             .init_resource::<ViewportFocus>()
             .add_systems(
                 PreUpdate,
-                (
-                    start_camera_motions,
-                    feed_camera_input,
-                    end_camera_motions,
-                    end_zoom_motion,
-                )
-                    .chain()
-                    // After picking has produced its hits for this frame, and
-                    // before the controller consumes them. The controller's own
-                    // system runs in `SyncCameraPosition`, which is already
-                    // ordered after picking, so this is the window between.
-                    .after(bevy::picking::PickingSystems::Last)
-                    .before(PanOrbitCamera::update_camera_positions),
+                (start_camera_motions, feed_camera_input, end_camera_motions).chain(),
             );
         // `frame_selected` and `sync_focus` are registered by the binary, in the
         // `Editing` state: the first reads the session, which does not exist
@@ -303,26 +269,28 @@ impl Plugin for ViewportCameraPlugin {
 /// Which camera motion a button starts.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Motion {
-    Orbit,
-    Pan,
+    /// Right-drag: turn the view in place.
+    Turn,
+    /// Middle-drag: slide the view across the world.
+    Slide,
 }
 
 /// The button that starts each motion.
 ///
-/// Right-drag orbits, middle-drag pans, and the wheel zooms. This is the mapping
-/// Bevy's own CAD example uses, and the reason for it: an orbit is the motion a
+/// Right-drag turns and middle-drag slides. This is the mapping Bevy's own CAD
+/// example uses for its two drags, and the reason for it: a turn is the motion a
 /// hand reaches for constantly and the right button is the one under it, while a
-/// pan is deliberate and gets the middle button, which nothing else wants.
+/// slide is deliberate and gets the middle button, which nothing else wants.
 ///
 /// Public because it is the whole of the editor's own camera policy; everything
-/// else about the camera is the controller's. It is a pure function of the input
+/// else about the camera is the motion itself. It is a pure function of the input
 /// state so the mapping can be pinned without a window.
 pub fn motion_for(buttons: &ButtonInput<MouseButton>) -> Option<Motion> {
     if buttons.just_pressed(MouseButton::Right) {
-        return Some(Motion::Orbit);
+        return Some(Motion::Turn);
     }
     if buttons.just_pressed(MouseButton::Middle) {
-        return Some(Motion::Pan);
+        return Some(Motion::Slide);
     }
     None
 }
@@ -333,24 +301,77 @@ pub fn motion_for(buttons: &ButtonInput<MouseButton>) -> Option<Motion> {
 /// else can end it early.
 pub fn motion_held(motion: Motion, buttons: &ButtonInput<MouseButton>) -> bool {
     match motion {
-        Motion::Orbit => buttons.pressed(MouseButton::Right),
-        Motion::Pan => buttons.pressed(MouseButton::Middle),
+        Motion::Turn => buttons.pressed(MouseButton::Right),
+        Motion::Slide => buttons.pressed(MouseButton::Middle),
     }
 }
 
-/// How much a wheel notch of each unit is worth to the controller.
+/// How far one wheel notch moves the camera, in game units.
 ///
-/// The controller treats zoom input as a number it multiplies by the size of a
-/// pixel at the anchor, so the scale here is what decides how fast the wheel
-/// feels. 150 is Bevy's own CAD example's figure for a line-based wheel, and it is
-/// the one that makes a notch a visible step rather than a crawl: NVRE's anchor
-/// depths are in game units (thousands of them), where a multiplier of 1 moves the
-/// camera by a fraction of a unit and the view looks stuck.
-fn scroll_scale(unit: MouseScrollUnit) -> f32 {
-    match unit {
-        MouseScrollUnit::Line => 150.0,
-        MouseScrollUnit::Pixel => 1.0,
-    }
+/// A fixed distance rather than a fraction of the camera's distance. Bevy's zoom
+/// is proportional to the depth it is zooming along, which is what a *zoom* is:
+/// at 16,000 units out — a worldspace at its viewing distance — a notch covers
+/// 160 times the ground one does at 1,000, and three notches cross the whole cell
+/// and end up inside the terrain. A dolly wants the same step everywhere.
+///
+/// A cell is 4,096 units across, so one notch is a sixteenth of that: a small
+/// step, the sort you make to line the camera up with a door or a wall rather than
+/// the sort you make to cross a cell. Scrolling across a whole worldspace takes a
+/// deliberate run of notches, which is what keeps the wheel from overshooting.
+const SCROLL_STEP: f32 = 256.0;
+
+/// How much less a wheel notch moves the camera.
+///
+/// The wheel's own units are fine-grained — a line wheel reports whole notches and
+/// a trackpad reports fractions — so the step is divided here to make a notch a
+/// small move rather than a leap. A cell is 4,096 units across; at 16,000 units a
+/// worldspace is a few notches away, and a notch that covered a sixteenth of a cell
+/// crossed it in one.
+const SCROLL_DIVISOR: f32 = 2.0;
+
+/// How far a drag of one screen pixel turns the view, in radians.
+///
+/// A full sweep across the viewport is a turn of a few degrees, which is what a
+/// viewport's drag feels like: the view follows the hand closely without being so
+/// sensitive that a pixel of jitter is visible.
+const DRAG_TURN: f32 = 0.006;
+
+/// How far the flight keys move the camera in one second, in game units.
+///
+/// A cell is 4,096 units across, so this is about a third of a cell a second: fast
+/// enough to cross a worldspace by holding a key, slow enough to stop on a
+/// reference. A game unit is ~4.19 cm, so this is a walk and not a sprint — which
+/// is what a viewport wants, since the alternative is the wheel.
+const FLIGHT_SPEED: f32 = 1400.0;
+
+/// Which flight keys move the camera along which direction, while a drag is held.
+///
+/// `W` and `S` walk along the view, `A` and `D` strafe across it. Q and E are not
+/// bound: the view is level-locked, so there is no up or down to fly along, and
+/// giving them a meaning would be a third motion nobody asked for.
+const FLIGHT_KEYS: [(KeyCode, FlightDir); 4] = [
+    (KeyCode::KeyW, FlightDir::Forward),
+    (KeyCode::KeyS, FlightDir::Backward),
+    (KeyCode::KeyA, FlightDir::Left),
+    (KeyCode::KeyD, FlightDir::Right),
+];
+
+/// Which way a flight key moves the camera.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FlightDir {
+    Forward,
+    Backward,
+    Left,
+    Right,
+}
+
+/// Whether a drag is in progress that flight keys should be read for.
+///
+/// Only a right-drag arms them. A middle-drag is a deliberate slide, and adding
+/// flight keys to it would make the two motions fight; and with nothing held, the
+/// keys are free for whatever else wants them.
+fn flight_armed(buttons: &ButtonInput<MouseButton>) -> bool {
+    buttons.pressed(MouseButton::Right)
 }
 
 /// Which motion is in progress.
@@ -362,183 +383,150 @@ pub struct CameraDrag {
     motion: Option<Motion>,
 }
 
-/// Start a motion on a button press, anchored at the mesh under the cursor.
-fn start_camera_motions(
-    mut drag: ResMut<CameraDrag>,
-    buttons: Res<ButtonInput<MouseButton>>,
-    mut ray_cast: MeshRayCast,
-    windows: Query<&Window, With<crate::windows::ViewportWindow>>,
-    mut controllers: Query<(&mut PanOrbitCamera, &Camera, &GlobalTransform), With<ViewportCamera>>,
-) {
-    let Some(motion) = motion_for(&buttons) else {
-        return;
-    };
-    let Ok((mut controller, camera, camera_transform)) = controllers.single_mut() else {
-        return;
-    };
-    // A motion already in flight is not restarted: the controller debounces that
-    // itself, and starting one would drop the anchor it is orbiting about.
-    if controller.is_actively_controlled() {
-        return;
+/// Start a motion on a button press.
+fn start_camera_motions(mut drag: ResMut<CameraDrag>, buttons: Res<ButtonInput<MouseButton>>) {
+    if let Some(motion) = motion_for(&buttons) {
+        drag.motion = Some(motion);
     }
-    let anchor = cursor_anchor(&mut ray_cast, &windows, camera, camera_transform);
-    match motion {
-        Motion::Orbit => controller.start_orbit(anchor),
-        Motion::Pan => controller.start_pan(anchor),
-    }
-    drag.motion = Some(motion);
 }
 
-/// The point under the cursor, in the camera's view space.
-///
-/// A ray is cast from the viewport camera through the viewport window's cursor and
-/// the nearest mesh it meets is the anchor. That is what makes a drag orbit about
-/// the thing under the pointer rather than the screen centre.
-///
-/// This casts the ray itself rather than reading `bevy_picking`'s
-/// `PointerInteraction`. In a multi-window editor that component is per *pointer*,
-/// not per camera, and what it holds for the mouse is dominated by the window
-/// entity the pointer is over — its `position` is the cursor in screen
-/// coordinates, not a world point. Filtering that out leaves nothing unless the
-/// mesh backend happened to contribute a hit for *this* camera, and when it does
-/// not, the controller silently falls back to its last depth and orbits the centre
-/// of the screen. A ray cast from this camera has neither problem: it is scoped to
-/// the viewport, it cannot see another window's geometry, and a miss is a miss.
-fn cursor_anchor(
-    ray_cast: &mut MeshRayCast,
-    windows: &Query<&Window, With<crate::windows::ViewportWindow>>,
-    camera: &Camera,
-    camera_transform: &GlobalTransform,
-) -> Option<bevy::math::DVec3> {
-    let window = windows.single().ok()?;
-    let cursor = window.cursor_position()?;
-    let ray = camera.viewport_to_world(camera_transform, cursor).ok()?;
-    // `Visible`, not `VisibleInView`. `ViewVisibility` is set by the render
-    // plugin for entities a camera is actually drawing, which makes it the more
-    // precise filter — but it is per-view state that is only correct after a
-    // render pass has run, and an anchor is read while the input is handled. When
-    // it is stale or unset the cast culls every mesh and the orbit silently
-    // anchors on the screen centre instead of the cursor. `Visible` asks the
-    // hierarchy, which is what the editor means by "the thing under the pointer".
-    let settings = MeshRayCastSettings {
-        visibility: RayCastVisibility::Visible,
-        ..default()
-    };
-    let (_, hit) = ray_cast.cast_ray(ray, &settings).first()?;
-    Some(
-        camera_transform
-            .affine()
-            .inverse()
-            .transform_point3(hit.point)
-            .as_dvec3(),
-    )
-}
-
-/// Feed the frame's movement and wheel to the controller.
-///
-/// The wheel is handled whether or not a drag is in progress, because zooming is
-/// the one motion that does not need a button held: the controller is told to
-/// start a zoom-only motion, given the wheel, and the motion is left to lapse.
+/// Feed the frame's movement, wheel and flight keys to the camera.
+#[allow(clippy::too_many_arguments)]
 fn feed_camera_input(
     drag: Res<CameraDrag>,
-    mut ray_cast: MeshRayCast,
+    focus: Res<ViewportFocus>,
+    time: Res<Time>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut cameras: Query<(&mut Transform, &Projection), With<ViewportCamera>>,
     windows: Query<&Window, With<crate::windows::ViewportWindow>>,
-    mut controllers: Query<(&mut PanOrbitCamera, &Camera, &GlobalTransform), With<ViewportCamera>>,
     mut motion: MessageReader<MouseMotion>,
     mut wheel: MessageReader<MouseWheel>,
 ) {
-    let Ok((mut controller, camera, camera_transform)) = controllers.single_mut() else {
+    let Ok((mut transform, projection)) = cameras.single_mut() else {
         return;
     };
+    // The viewport's height, which is what a pixel's size is measured against. A
+    // slide is a screen-space motion, so it is expressed in pixels and converted
+    // at the camera's own depth.
+    let viewport_height = windows
+        .single()
+        .map(|w| w.resolution.height())
+        .unwrap_or(800.0)
+        .max(1.0);
 
-    // The wheel, and then the zoom input *every* frame — including a zero when
-    // there was no wheel this frame. The controller's zoom is a smoothed input
-    // queue: `send_zoom_input` is what pushes a new sample, and the smoothed
-    // velocity it applies is the average over the queue's window. Sending only on
-    // wheel events leaves the last sample as the newest entry, so the queue keeps
-    // returning the same non-zero velocity and the camera zooms for ever — the
-    // "it keeps scrolling" bug. A zero every frame is what lets the average fall
-    // back to nothing.
-    let mut zoomed = 0.0;
-    for w in wheel.read() {
-        zoomed += w.y * scroll_scale(w.unit);
-    }
-
-    if zoomed != 0.0 && drag.motion.is_none() {
-        // A wheel notch with no drag in progress starts a zoom-only motion,
-        // anchored at the cursor: zooming towards the thing under the pointer is
-        // the whole point of a wheel in an editor, and `None` would zoom towards
-        // the centre of the screen instead.
-        let anchor = cursor_anchor(&mut ray_cast, &windows, camera, camera_transform);
-        controller.start_zoom(anchor);
-    }
-    // Every motion that can zoom gets a sample every frame, zero included.
+    // The wheel, handled whether or not a drag is in progress: walking is the one
+    // motion that does not need a button held, and a drag that is already turning
+    // or sliding should still be able to walk.
     //
-    // An orbit drag is `OrbitZoom` and a pan is `PanZoom`, so neither
-    // `is_zooming_only` nor a "no drag" test alone covers it: a wheel turned
-    // during an orbit feeds the *orbit's* zoom queue, and that queue decays by the
-    // same mechanism. `send_zoom_input` is a no-op unless the camera is under
-    // user control, so sending unconditionally is safe and is what Bevy's own
-    // input plugin does.
-    controller.send_zoom_input(zoomed);
+    // A notch is a fixed distance along the camera's own forward vector, so the
+    // same notch is worth the same ground at any distance. The wheel is not a zoom:
+    // it does not scale with how far away the camera is.
+    let mut walked = 0.0;
+    for w in wheel.read() {
+        let step = match w.unit {
+            MouseScrollUnit::Line => SCROLL_STEP,
+            MouseScrollUnit::Pixel => SCROLL_STEP / 150.0,
+        };
+        walked += w.y * step / SCROLL_DIVISOR;
+    }
+    if walked != 0.0 {
+        let forward = *transform.forward();
+        transform.translation += forward * walked;
+    }
 
-    if drag.motion.is_none() {
+    // The flight keys, read while a right-drag is held. They are the walking
+    // counterpart to the wheel: the wheel steps, the keys move continuously for as
+    // long as they are down, which is what makes crossing a worldspace a held key
+    // rather than a run of notches.
+    //
+    // Armed only by a right-drag, so the keys stay free when nothing is held and
+    // do not fight a middle-drag slide.
+    if flight_armed(&buttons) {
+        let mut travel = Vec3::ZERO;
+        for (key, dir) in FLIGHT_KEYS {
+            if keys.pressed(key) {
+                let axis = match dir {
+                    FlightDir::Forward => *transform.forward(),
+                    FlightDir::Backward => -*transform.forward(),
+                    FlightDir::Left => -*transform.right(),
+                    FlightDir::Right => *transform.right(),
+                };
+                travel += axis;
+            }
+        }
+        if travel != Vec3::ZERO {
+            transform.translation += travel.normalize() * FLIGHT_SPEED * time.delta_secs();
+        }
+    }
+
+    let Some(current) = drag.motion else {
         // Read and drop, so a drag from before this motion does not arrive as one
         // huge delta the next time a button is pressed.
         motion.clear();
         return;
-    }
+    };
     // `MouseMotion`'s delta is cumulative since the last read, so the frame's
     // movement is the sum of the messages read this frame.
     let screenspace: Vec2 = motion.read().map(|m| m.delta).sum();
-    controller.send_screenspace_input(screenspace);
+    if screenspace == Vec2::ZERO {
+        return;
+    }
+
+    match current {
+        Motion::Turn => {
+            // A turn is a rotation in place: the eye does not move, the heading
+            // does. Yaw is about the world up axis so the view stays level, and
+            // pitch about the camera's own right axis so it can look straight up
+            // and down. Neither axis moves the camera, which is what makes this a
+            // turn and not a swing.
+            transform.rotate_y(-screenspace.x * DRAG_TURN);
+            transform.rotate_local_x(-screenspace.y * DRAG_TURN);
+        }
+        Motion::Slide => {
+            // A slide is a translation in the camera's own plane. The pixels are
+            // converted at the camera's own distance, which is what keeps the thing
+            // under the cursor under the cursor: the further the camera is, the
+            // more ground a pixel covers, so the same drag moves the same screen
+            // fraction at any distance.
+            let Some(pixels) = slide_pixels(projection, screenspace, focus.distance, viewport_height)
+            else {
+                return;
+            };
+            let right = *transform.right();
+            let up = *transform.up();
+            transform.translation += right * -pixels.x + up * pixels.y;
+        }
+    }
 }
 
-/// Let a zoom-only motion lapse once the wheel has stopped.
+/// The world distance a slide of `screenspace` pixels covers.
 ///
-/// A zoom started by the wheel has no button to release, so it is ended when its
-/// own input has been consumed. Without this the controller would stay in a
-/// zooming motion for ever and the next orbit would be interpreted as a zoom.
-fn end_zoom_motion(
-    drag: Res<CameraDrag>,
-    mut controllers: Query<&mut PanOrbitCamera, With<ViewportCamera>>,
-) {
-    if drag.motion.is_some() {
-        return;
-    }
-    let Ok(mut controller) = controllers.single_mut() else {
-        return;
+/// A pixel's size at unit depth from the projection, scaled by the camera's own
+/// distance from what it is looking at. At unit depth a pixel is
+/// `2 * tan(fov/2) / viewport_height`, and the camera is `distance` away, so a
+/// pixel there is that times the distance.
+fn slide_pixels(
+    projection: &Projection,
+    screenspace: Vec2,
+    distance: f32,
+    viewport_height: f32,
+) -> Option<Vec2> {
+    let fov = match projection {
+        Projection::Perspective(p) => p.fov,
+        _ => return None,
     };
-    if !controller.current_motion.is_zooming_only() {
-        return;
-    }
-    // The queue still holds samples for the smoothing window; once the smoothed
-    // velocity has decayed to nothing the zoom is over.
-    let still_zooming = controller
-        .current_motion
-        .inputs()
-        .map(|inputs| inputs.zoom_velocity_abs(controller.smoothing.zoom.mul_f32(2.0)))
-        .unwrap_or(0.0)
-        > 0.0;
-    if !still_zooming {
-        controller.end_move();
-    }
+    let units_per_pixel = 2.0 * (fov * 0.5).tan() / viewport_height;
+    Some(screenspace * units_per_pixel * distance)
 }
 
 /// End the motion when the button that started it comes up.
-fn end_camera_motions(
-    mut drag: ResMut<CameraDrag>,
-    buttons: Res<ButtonInput<MouseButton>>,
-    mut controllers: Query<&mut PanOrbitCamera, With<ViewportCamera>>,
-) {
+fn end_camera_motions(mut drag: ResMut<CameraDrag>, buttons: Res<ButtonInput<MouseButton>>) {
     let Some(motion) = drag.motion else {
         return;
     };
     if motion_held(motion, &buttons) {
         return;
-    }
-    if let Ok(mut controller) = controllers.single_mut() {
-        controller.end_move();
     }
     drag.motion = None;
 }

@@ -27,7 +27,6 @@
 
 use bevy::camera::OrthographicProjection;
 use bevy::camera::RenderTarget;
-use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::log::info;
 use bevy::prelude::*;
@@ -149,27 +148,10 @@ pub fn spawn_viewport(mut commands: Commands) {
             near: 1.0,
             ..default()
         }),
-        // The camera's own controller: it owns the pose, and the viewport tells it
-        // which motion to start and feeds it the mouse.
-        PanOrbitCamera {
-            // The anchor depth is how far away the thing being orbited and zoomed
-            // at is, and it drives the zoom speed. The default is two metres,
-            // which is right for a metre-scale scene and far too close for NVRE:
-            // game units are ~4.19 cm, so a cell's contents sit thousands of units
-            // out. Without this, the first wheel notch would zoom by a fraction of
-            // a unit and the view would appear stuck.
-            last_anchor_depth: -(crate::viewport::ViewportFocus::DEFAULT_DISTANCE as f64),
-            // The controller moves the near plane with the anchor depth, which is
-            // right for a metre-scale scene and wrong here: at a worldspace's
-            // viewing distance it would push the near plane out by thousands of
-            // units and clip whatever the camera is next to. Bounding it keeps a
-            // near plane of about a unit, as the camera was spawned with.
-            perspective: bevy::camera_controller::pan_orbit_camera::controller::projections::PerspectiveSettings {
-                near_clip_limits: 1.0..1_000.0,
-                ..default()
-            },
-            ..default()
-        },
+        // A free camera: it is the `Transform` that moves, driven by the viewport's
+        // own input systems. There is no controller component, because there is no
+        // pivot — a turn rotates the camera in place and a wheel notch walks it
+        // along the line it is looking down.
         RenderTarget::Window(WindowRef::Entity(window)),
         crate::viewport::ViewportCamera,
     ));

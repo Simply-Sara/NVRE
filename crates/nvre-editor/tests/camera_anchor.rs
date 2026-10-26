@@ -1,16 +1,16 @@
-//! Does the orbit actually anchor on the mesh under the cursor?
+//! The viewport camera has no pivot, and these tests pin that.
 //!
-//! This is what distinguishes an editor camera from a turntable: a drag starts an
-//! orbit about the point under the pointer, so the thing you grabbed stays under
-//! the pointer while the view swings around it.
+//! This is the whole of NVRE's camera policy, and it is the opposite of what an
+//! orbit camera does. A turn rotates the camera in place — the eye does not move —
+//! and a wheel notch walks it along the line it is looking down.
 //!
-//! The anchor comes from a ray cast through the viewport camera. The cursor is
-//! aimed *off centre* on purpose: an anchor at the screen centre is
-//! indistinguishable from the controller's fallback (its last depth), so a test
-//! aimed at the middle would pass even with a completely broken anchor.
+//! The cursor is aimed *off centre* on purpose throughout. A behaviour that only
+//! differs at the screen centre is indistinguishable from one that ignores the
+//! cursor entirely, so a test aimed at the middle would pass with a broken
+//! implementation. A quarter of the way to the right edge is a position the
+//! centre cannot be confused with.
 
-use bevy::camera::RenderTarget;
-use bevy::camera_controller::pan_orbit_camera::controller::component::PanOrbitCamera;
+use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, WindowResolution};
 use nvre_editor::viewport::{ViewportCamera, ViewportCameraPlugin};
@@ -19,21 +19,13 @@ use nvre_editor::viewport::{ViewportCamera, ViewportCameraPlugin};
 fn app() -> (App, Entity, Entity) {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .add_message::<bevy::input::mouse::MouseMotion>()
-        .add_message::<bevy::input::mouse::MouseWheel>()
-        .add_message::<bevy::window::RequestRedraw>()
-        .add_message::<bevy::window::WindowEvent>()
+        .add_message::<MouseMotion>()
+        .add_message::<MouseWheel>()
         .add_message::<bevy::input::touch::TouchInput>()
         .init_resource::<ButtonInput<MouseButton>>()
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<Assets<Mesh>>()
-        .init_resource::<Assets<bevy::mesh::skinning::SkinnedMeshInverseBindposes>>()
-        // The picking plumbing: pointer input, the plugin, and the hover map that
-        // fills in `PointerInteraction`.
-        .add_plugins(bevy::camera_controller::pan_orbit_camera::DefaultPanOrbitCameraPlugins)
-        .add_plugins(ViewportCameraPlugin)
-        .add_plugins(bevy::camera::visibility::VisibilityPlugin)
-        .add_plugins(bevy::transform::TransformPlugin);
+        .add_plugins(ViewportCameraPlugin);
 
     let window = app
         .world_mut()
@@ -46,6 +38,7 @@ fn app() -> (App, Entity, Entity) {
             nvre_editor::windows::ViewportWindow,
         ))
         .id();
+    let _ = window;
 
     let camera = app
         .world_mut()
@@ -56,34 +49,15 @@ fn app() -> (App, Entity, Entity) {
                 near: 1.0,
                 ..default()
             }),
-            Camera {
-                computed: bevy::camera::ComputedCameraValues {
-                    clip_from_view: bevy::camera::Projection::Perspective(PerspectiveProjection {
-                        far: 1_500_000.0,
-                        near: 1.0,
-                        ..default()
-                    })
-                    .get_clip_from_view(),
-                    target_info: Some(bevy::camera::RenderTargetInfo {
-                        physical_size: UVec2::new(1280, 800),
-                        scale_factor: 1.0,
-                    }),
-                    ..default()
-                },
-                ..default()
-            },
-            RenderTarget::Window(bevy::window::WindowRef::Entity(window)),
-            PanOrbitCamera {
-                last_anchor_depth: -250.0,
-                ..default()
-            },
             // Look at the mesh from 250 units back, along +Z.
             Transform::from_xyz(0.0, 0.0, 250.0).looking_at(Vec3::ZERO, Vec3::Y),
             ViewportCamera,
         ))
         .id();
 
-    // A quad at the origin, 200 units across, facing the camera.
+    // A quad at the origin, 200 units across, facing the camera. It exists so the
+    // scene is a real one: a turn with a mesh in front of the camera is the case
+    // that would have been an orbit about it.
     let mut mesh = Mesh::new(
         bevy::mesh::PrimitiveTopology::TriangleList,
         bevy::asset::RenderAssetUsages::default(),
@@ -107,48 +81,130 @@ fn app() -> (App, Entity, Entity) {
     (app, camera, target)
 }
 
-/// Put the cursor in the viewport window, where `cursor_anchor` reads it.
+/// Put the cursor in the viewport window, where the input systems read it.
 fn point_at(app: &mut App, window: Entity, position: Vec2) {
     let mut w = app.world_mut().get_mut::<Window>(window).unwrap();
     w.set_physical_cursor_position(Some(position.as_dvec2()));
 }
 
-#[test]
-fn the_orbit_anchors_on_the_mesh_under_the_cursor() {
-    let (mut app, camera, _target) = app();
-    let window = app
+/// The camera's translation.
+fn eye(app: &mut App) -> Vec3 {
+    app.world_mut()
+        .query_filtered::<&Transform, With<ViewportCamera>>()
+        .single(app.world())
+        .expect("the camera must exist")
+        .translation
+}
+
+/// The direction the camera is looking along.
+fn forward(app: &mut App) -> Vec3 {
+    *app
         .world_mut()
+        .query_filtered::<&Transform, With<ViewportCamera>>()
+        .single(app.world())
+        .expect("the camera must exist")
+        .forward()
+}
+
+/// The viewport window.
+fn viewport_window(app: &mut App) -> Entity {
+    app.world_mut()
         .query_filtered::<Entity, With<PrimaryWindow>>()
         .single(app.world())
-        .unwrap();
+        .unwrap()
+}
 
-    // Off-centre on purpose. An anchor at the screen centre is indistinguishable
-    // from the controller's fallback (its last depth), so aiming at the middle
-    // would let a completely broken picking path pass. A quarter of the way to
-    // the right edge is a position the fallback can never produce.
-    let cursor = Vec2::new(800.0, 400.0);
-    point_at(&mut app, window, cursor);
+#[test]
+fn a_drag_turns_the_camera_and_leaves_the_eye_where_it_was() {
+    let (mut app, _camera, _target) = app();
+    let window = viewport_window(&mut app);
+
+    // Off-centre on purpose. A turn must rotate the camera in place regardless of
+    // where the pointer is, so a cursor over the mesh must not swing the eye
+    // around it.
+    point_at(&mut app, window, Vec2::new(800.0, 400.0));
     app.update();
     app.update();
+
+    let before_eye = eye(&mut app);
+    let before_forward = forward(&mut app);
 
     app.world_mut()
         .resource_mut::<ButtonInput<MouseButton>>()
         .press(MouseButton::Right);
     app.update();
 
-    let controller = app.world().get::<PanOrbitCamera>(camera).unwrap();
-    let anchor = controller
-        .anchor_view_space()
-        .expect("a drag must start with an anchor");
+    // A drag to the right, over several frames the way a mouse delivers it.
+    for _ in 0..8 {
+        app.world_mut().write_message(MouseMotion {
+            delta: Vec2::new(20.0, 0.0),
+        });
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<MouseButton>>()
+            .clear();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+    }
 
-    // The quad is at the origin, 250 units in front of the camera, so the anchor
-    // must be about that far away and off to the right, where the cursor was.
+    let during_eye = eye(&mut app);
+    let during_forward = forward(&mut app);
+
+    // The eye must not have moved at all: a turn is a rotation, not a swing. An
+    // orbit about the view centre — or about the mesh under the cursor — would
+    // have moved it.
     assert!(
-        anchor.z < -200.0 && anchor.z > -300.0,
-        "the anchor must be on the quad, ~250 in front; got {anchor:?}"
+        during_eye.distance(before_eye) < 1.0,
+        "a turn must leave the eye where it was, moved {} units to {during_eye:?}",
+        during_eye.distance(before_eye)
+    );
+    // The heading must have changed: a drag that moved nothing is not a turn.
+    assert!(
+        during_forward.distance(before_forward) > 0.01,
+        "a turn must change the heading, stayed at {before_forward:?}"
+    );
+}
+
+#[test]
+fn a_wheel_notch_moves_the_camera_along_its_own_line_of_sight() {
+    // Scrolling forward must walk the view towards whatever is in the middle of
+    // the screen, not towards the mesh under the cursor. The camera here looks
+    // down -Z, so a notch must move it along -Z and leave X and Y alone.
+    let (mut app, _camera, _target) = app();
+    let window = viewport_window(&mut app);
+
+    // Off-centre again: a cursor at the centre would hide the difference.
+    point_at(&mut app, window, Vec2::new(800.0, 400.0));
+    app.update();
+    app.update();
+
+    let before = eye(&mut app);
+    let before_forward = forward(&mut app);
+
+    app.world_mut().write_message(MouseWheel {
+        unit: MouseScrollUnit::Line,
+        x: 0.0,
+        y: 3.0,
+        window: Entity::PLACEHOLDER,
+        phase: bevy::input::touch::TouchPhase::Moved,
+    });
+    for _ in 0..30 {
+        app.update();
+    }
+
+    let after = eye(&mut app);
+
+    assert!(
+        (after.z - before.z).abs() > 1.0,
+        "a wheel notch must move the camera along its line of sight, stayed at {before:?}"
     );
     assert!(
-        anchor.x > 5.0,
-        "the anchor must be to the right, where the cursor was, not on the centre line; got {anchor:?}"
+        (after.x - before.x).abs() < 1.0 && (after.y - before.y).abs() < 1.0,
+        "the wheel must not steer the camera sideways towards the cursor: {before:?} -> {after:?}"
+    );
+    assert!(
+        forward(&mut app).distance(before_forward) < 1e-4,
+        "the wheel must not turn the camera"
     );
 }

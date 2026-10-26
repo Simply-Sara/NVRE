@@ -308,11 +308,9 @@ fn main() {
         .init_resource::<object_editor::ObjectEditorState>()
         .init_resource::<file_details_window::FileDetailsState>()
         .init_resource::<size_info_window::SizeInfoState>()
-        // The camera controller: the plugin group that owns the pose, and the
-        // input plugin that says which button starts which motion. Both are added
-        // at startup because they only register systems; the camera that uses them
-        // appears with the viewport window.
-        .add_plugins(bevy::camera_controller::pan_orbit_camera::DefaultPanOrbitCameraPlugins)
+        // The camera: the viewport's own plugin registers its input systems. There
+        // is no controller plugin to add, because there is no controller — the
+        // camera is a free one and the viewport moves its `Transform` itself.
         .add_plugins(viewport::ViewportCameraPlugin)
         .init_state::<EditorState>()
         .add_message::<nvre_editor::OpenRequested>()
