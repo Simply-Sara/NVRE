@@ -426,6 +426,10 @@ fn main() {
             Update,
             (
                 viewport::draw_cell,
+                // The game's own lights, spawned from the same references and the
+                // same cell. After the models so a light is never one frame ahead
+                // of the thing it lights.
+                viewport::draw_cell_lights,
                 // Before the camera is placed: a frame request has to be applied
                 // in the same frame it arrives, or the view snaps a frame late.
                 viewport::apply_frame_requests,

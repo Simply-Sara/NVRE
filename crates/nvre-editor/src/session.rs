@@ -93,6 +93,11 @@ pub struct Session {
     exterior_refs_key: Option<(u32, i32)>,
     /// Base FormID → model path, resolved once per base object.
     models: HashMap<u32, Option<String>>,
+    /// Base FormID → `LIGH` data, resolved once per base object.
+    ///
+    /// `None` means the base object is not a light, which is cached just like
+    /// `Some`, so a non-light is walked only once per session too.
+    lights: HashMap<u32, Option<LightData>>,
     /// The references table's resolved columns, and the cell they were built for.
     details: RefDetails,
     details_cell: Option<u32>,
@@ -199,6 +204,7 @@ impl Session {
             exterior_refs: Vec::new(),
             exterior_refs_key: None,
             models: HashMap::new(),
+            lights: HashMap::new(),
             details: RefDetails::default(),
             details_cell: None,
             palette_groups: Vec::new(),
@@ -281,6 +287,7 @@ impl Session {
             exterior_refs: Vec::new(),
             exterior_refs_key: None,
             models: HashMap::new(),
+            lights: HashMap::new(),
             details: RefDetails::default(),
             details_cell: None,
             palette_groups: Vec::new(),
@@ -371,6 +378,94 @@ impl Session {
         let lo = self.load_order().ok()?;
         let b = nvre_world::placed::base_object(lo, &self.schema, base)?;
         b.world_model_path().or_else(|| b.model_path())
+    }
+
+    /// The `LIGH` data a base object's reference is lit by, cached.
+    ///
+    /// `None` means the base object is not a light at all. A light whose `DATA`
+    /// this game's schema does not decode still answers — with
+    /// [`LightData::UNKNOWN`] — because the reference *is* a light, and a cell
+    /// full of lamps should not render as if it had none.
+    ///
+    /// Resolving one base object builds a `LoadOrder`, which is hundreds of
+    /// milliseconds, so a cell's worth of references belongs in
+    /// [`Session::light_paths_for`].
+    pub fn light_for(&mut self, base: u32) -> Option<LightData> {
+        if let Some(hit) = self.lights.get(&base) {
+            return hit.clone();
+        }
+        let found = self.resolve_light(base);
+        self.lights.insert(base, found.clone());
+        found
+    }
+
+    /// A base object's light data, with no caching.
+    fn resolve_light(&mut self, base: u32) -> Option<LightData> {
+        let lo = self.load_order().ok()?;
+        let b = nvre_world::placed::base_object(lo, &self.schema, base)?;
+        if b.sig != *b"LIGH" {
+            return None;
+        }
+        // The `DATA` subrecord is the whole of it: colour, radius, flags.
+        let (_, rec) = nvre_world::fields::winner(lo, base)?;
+        light_data_in(rec, &self.schema)
+    }
+
+    /// Resolve many base objects' light data against one `LoadOrder`.
+    ///
+    /// The same shape as [`Session::model_paths_for`]: the walk is the
+    /// expensive part, so a cell's references are resolved in one pass.
+    pub fn light_paths_for(&mut self, bases: &[u32]) -> Vec<Option<LightData>> {
+        let mut out = Vec::with_capacity(bases.len());
+        // Everything cached is answered without a walk; only the misses cost.
+        let misses: Vec<u32> = bases
+            .iter()
+            .copied()
+            .filter(|b| !self.lights.contains_key(b))
+            .collect();
+        if !misses.is_empty() {
+            // Resolved outside the borrow of the cache, which needs `&mut self`.
+            let resolved = (|| {
+                let lo = self.load_order().ok()?;
+                Some(
+                    misses
+                        .iter()
+                        .map(|&b| {
+                            let is_ligh = nvre_world::placed::base_object(lo, &self.schema, b)
+                                .is_some_and(|o| o.sig == *b"LIGH");
+                            if !is_ligh {
+                                return None;
+                            }
+                            let (_, rec) = nvre_world::fields::winner(lo, b)?;
+                            light_data_in(rec, &self.schema)
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })();
+            if let Some(resolved) = resolved {
+                for (b, light) in misses.iter().zip(resolved) {
+                    self.lights.insert(*b, light);
+                }
+            } else {
+                // A load order that will not resolve: record the failure so it is
+                // not retried every frame.
+                for b in &misses {
+                    self.lights.insert(*b, None);
+                }
+            }
+        }
+        for base in bases {
+            out.push(self.lights.get(base).cloned().flatten());
+        }
+        out
+    }
+
+    /// How many of these base objects are lights.
+    ///
+    /// The viewport asks before spawning anything, so a cell with no lights does
+    /// not walk the load order to discover that.
+    pub fn lights_in(&mut self, bases: &[u32]) -> usize {
+        self.light_paths_for(bases).iter().flatten().count()
     }
 
     /// The object palette, grouped into the schema's categories.
@@ -1447,6 +1542,240 @@ impl CellScope {
                 .unwrap_or_else(|| format!("{w:08X}")),
         }
     }
+}
+
+/// A placed light's own data, for the viewport to draw a real light from.
+///
+/// This is the `LIGH` record's `DATA` as the game stores it, read once per base
+/// object and cached. The viewport turns it into a Bevy `PointLight` or
+/// `SpotLight` at the reference's position.
+///
+/// ## The two families name the same fields differently
+///
+/// Measured on the shipped masters:
+///
+/// | Game | `DATA` | Colour | Radius | FOV | Spot flag | Off-by-default |
+/// |---|---|---|---|---|---|---|
+/// | FNV | 32 B | `color` | `radius` | `fov` | `Spot Light` | `Off By Default` |
+/// | FO3 | 32 B | `color` | `radius` | `fov` | `Spot Light` | `Off By Default` |
+/// | Skyrim LE | 48 B | *not decoded* | — | — | — | — |
+/// | Skyrim SE | 64 B | `Color` | `Radius` | `FOV` | `NonShadow Spotlight` | `Off By Default` |
+/// | FO4 | 64 B | `Color` | `Radius` | `FOV` | `NonShadow Spotlight` | `Off By Default` |
+///
+/// Fallout's 32-byte layout is one struct; Skyrim SE and Fallout 4 share a
+/// 64-byte one with capitalised field names. The reader takes each field by both
+/// spellings, which is what lets one function cover the four games that decode.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightData {
+    /// The light's colour, as 0-255 bytes.
+    pub color: [u8; 3],
+    /// The light's radius in game units.
+    pub radius: f32,
+    /// The light's fade value: its brightness multiplier, as the game stores it.
+    ///
+    /// `FNAM`. The engine scales a light's intensity by it, so 2.0 is twice as
+    /// bright and 0.1 is a tenth. The engine's own default is 1.0, and a light
+    /// with no `FNAM` at all is drawn at 1.0 too — xEdit writes one when it
+    /// opens a record that lacks it.
+    pub fade: f32,
+    /// The spotlight's field of view in degrees. A point light ignores it.
+    pub fov: f32,
+    /// The light is a spotlight rather than an omnidirectional one.
+    pub spot: bool,
+    /// The light is off until something turns it on.
+    ///
+    /// The game's `Off By Default` flag. The viewport honours it by simply not
+    /// drawing the light: a light that is off produces nothing, which is what
+    /// the flag asks for.
+    pub off_by_default: bool,
+}
+
+impl LightData {
+    /// A light with no data: a point light of radius one, white, full fade.
+    ///
+    /// The fallback for a game whose `LIGH` layout is not decoded. It is not a
+    /// real light — it is a marker that the reference *is* a light, so a cell
+    /// full of lamps does not silently render as if it had none.
+    pub const UNKNOWN: LightData = LightData {
+        color: [255, 255, 255],
+        radius: 1.0,
+        fade: 1.0,
+        fov: 90.0,
+        spot: false,
+        off_by_default: false,
+    };
+
+    /// The light's colour as a Bevy colour, bytes scaled to 0-1.
+    pub fn bevy_color(&self) -> bevy::color::Color {
+        bevy::color::Color::srgb(
+            f32::from(self.color[0]) / 255.0,
+            f32::from(self.color[1]) / 255.0,
+            f32::from(self.color[2]) / 255.0,
+        )
+    }
+}
+
+/// Read a `LIGH` record's `DATA` into [`LightData`].
+///
+/// `None` means the record has no `DATA` at all, which is not a light that
+/// failed to read but a record that carries no light data.
+fn light_data_in(rec: &nvre_esm::Record, schema: &Schema) -> Option<LightData> {
+    let subs = rec.subrecords().ok()?;
+    let data = subs
+        .iter()
+        .find(|s| s.sig.as_slice() == b"DATA")
+        .and_then(|s| nvre_edit::encode::decoded(schema, b"LIGH", s))?;
+    let mut out = light_data(&data);
+    // The fade is a sibling subrecord, not part of `DATA`: `FNAM` is the
+    // brightness multiplier, and the engine's default is 1.0 when it is absent.
+    if let Some(fnam) = subs
+        .iter()
+        .find(|s| s.sig.as_slice() == b"FNAM")
+        .and_then(|s| nvre_edit::encode::decoded(schema, b"LIGH", s))
+        .and_then(|v| v.as_f64())
+    {
+        out.fade = fnam as f32;
+    }
+    Some(out)
+}
+
+/// Read a `LIGH` record's `DATA`, taking each field by either spelling.
+///
+/// The two families differ in more than capitalisation: Fallout's `DATA` is
+/// 32 bytes and Skyrim SE's is 64, with extra fields (`Constant`, `Exponent`,
+/// `Scalar`, `Flicker Effect`, `God Rays`) interleaved. Reading by field name
+/// rather than by offset is what makes one function cover both, and it is the
+/// same trick `shape_props` uses for the NIF's shader properties.
+///
+/// A field that is absent keeps its default: a missing radius is 1.0, a
+/// missing colour is white. That is deliberate — a light with no colour is not
+/// a light the engine would draw, but a light the viewport cannot read should
+/// still be visible rather than silently dropped.
+pub fn light_data(value: &serde_json::Value) -> LightData {
+    let mut out = LightData::UNKNOWN;
+    let Some(obj) = value.as_object() else {
+        return out;
+    };
+    // The colour: `color` (Fallout) or `Color` (Skyrim SE, Fallout 4). Each is
+    // a struct of bytes, and each family spells its components differently too.
+    for key in ["color", "Color"] {
+        if let Some(c) = obj.get(key) {
+            out.color = [
+                byte_field(c, &["red", "Red"]).unwrap_or(255),
+                byte_field(c, &["green", "Green"]).unwrap_or(255),
+                byte_field(c, &["blue", "Blue"]).unwrap_or(255),
+            ];
+        }
+    }
+    // The radius and the field of view, both families.
+    for key in ["radius", "Radius"] {
+        if let Some(n) = num_field(obj, key) {
+            out.radius = n;
+        }
+    }
+    for key in ["fov", "FOV"] {
+        if let Some(n) = num_field(obj, key) {
+            out.fov = n;
+        }
+    }
+    // The spot flag. The two families call it differently and at different
+    // bits: Fallout's is `Spot Light` at bit 9, Skyrim's is `Spot Light` at
+    // bit 9 too — but Skyrim also has `Shadow Spotlight` (bit 11) and
+    // `Shadow Hemisphere`/`Shadow Omnidirectional` (bits 12, 13), and Fallout
+    // 4 uses `NonShadow Spotlight` (bit 15). Every one of them means the light
+    // is a cone rather than a sphere, so all are read.
+    out.spot = flag_field(
+        obj,
+        &[
+            "Spot Light",
+            "Shadow Spotlight",
+            "NonShadow Spotlight",
+            "Shadow Hemisphere",
+            "Shadow Omnidirectional",
+        ],
+    );
+    out.off_by_default = flag_field(obj, &["Off By Default"]);
+    out
+}
+
+/// A byte component of a decoded colour struct.
+fn byte_field(v: &serde_json::Value, names: &[&str]) -> Option<u8> {
+    let o = v.as_object()?;
+    let n = names.iter().find_map(|n| o.get(*n))?.as_u64()?;
+    u8::try_from(n).ok()
+}
+
+/// A number field of a decoded `DATA`, by either spelling.
+fn num_field(obj: &serde_json::Map<String, serde_json::Value>, key: &str) -> Option<f32> {
+    obj.get(key)?.as_f64().map(|n| n as f32)
+}
+
+/// A flag field of a decoded `DATA`.
+///
+/// The schema decodes a flags subrecord as `{"value": n, "fields": {name: 0|1}}`
+/// — the per-bit values are **numbers**, not booleans, so a `0`/`1` is read
+/// either way rather than with `as_bool`, which would never match and silently
+/// fall through to the bit-number table.
+///
+/// The named table is read first; when it has no entry for the name, the raw
+/// value is masked against the bit the name sits at, which is the fallback for
+/// a schema that names no bits.
+fn flag_field(obj: &serde_json::Map<String, serde_json::Value>, names: &[&str]) -> bool {
+    let Some(f) = obj.get("flags").or_else(|| obj.get("Flags")) else {
+        return false;
+    };
+    for name in names {
+        // The named table first: the schema's own bit table is authoritative.
+        if let Some(v) = f.get("fields").and_then(|t| t.get(*name)) {
+            if v.as_u64().unwrap_or(0) != 0 || v.as_bool().unwrap_or(false) {
+                return true;
+            }
+            continue;
+        }
+        // A name the schema did not name: mask the raw value against the bit
+        // the name sits at. A name may sit at several bits across the games, so
+        // the first match wins — but a bit that is *not* set must not stop the
+        // search, or a later name would never be tried.
+        if let (Some(bit), Some(raw)) = (flag_bit(name), f.get("value").and_then(|v| v.as_u64())) {
+            if raw & (1 << bit) != 0 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// The bit a named flag sits at, for the flags the schema does not name.
+///
+/// The table is the union of the layouts, because the same name means a
+/// different bit in different games: Fallout's `Spot Light` is bit 9, Skyrim's
+/// is bit 9 too, but `Shadow Spotlight` is bit 10 in Fallout and bit 10 in
+/// Skyrim, and Fallout 4's `NonShadow Spotlight` is bit 15. A name that appears
+/// at several bits returns the first, so a game whose schema does not name the
+/// bit still gets an answer rather than a silent false.
+///
+/// The bits are the mask values from xEdit's `wbDefinitionsTES5.pas` and
+/// `wbDefinitionsFNV.pas` (`{0x00000200}` is bit 9, not 10).
+///
+/// This is a fallback for a schema that names no bits. When the schema names
+/// them — which the `skyrim`, `fnv` and `fo4` layers all do — the named table
+/// is authoritative and this is not consulted.
+fn flag_bit(name: &str) -> Option<u32> {
+    const TABLE: &[(&str, u32)] = &[
+        ("Off By Default", 5),
+        // Fallout's family: bit 9 spot, bit 10 spot shadow.
+        ("Spot Light", 9),
+        ("Spot Shadow", 10),
+        // Skyrim's family: bit 9 spot, 10 shadow spot, 11 hemisphere,
+        // 12 omnidirectional, 13 portal-strict.
+        ("Shadow Spotlight", 10),
+        ("Shadow Hemisphere", 11),
+        ("Shadow Omnidirectional", 12),
+        ("Portal-strict", 13),
+        // Fallout 4's: bit 15 non-shadow spot.
+        ("NonShadow Spotlight", 15),
+    ];
+    TABLE.iter().find(|(n, _)| *n == name).map(|(_, b)| *b)
 }
 
 /// A placed reference, for the browser list and the viewport.

@@ -981,24 +981,101 @@
    }
   },
   "LIGH": {
-   "confidence": "hypothesis",
+   "confidence": "documented",
+   "merge": true,
    "name": "Light",
-   "note": "Generated from the UESP field table for LIGH; every entry still needs checking against the shipped data.",
+   "note": "The light's own data. xEdit wbDefinitionsTES5.pas wbStruct(DATA): the same first eight fields as the Fallout layout, with Near Clip and Flicker Effect after the FOV, and Value and Weight last. [measured: every LIGH record in Skyrim.esm carries a 48-byte DATA]",
    "subrecords": {
     "DATA": {
-     "confidence": "hypothesis",
+     "confidence": "documented",
      "name": "Light Data",
-     "note": "UESP, Skyrim Mod:Mod File Format/LIGH.",
-     "type": "bytes"
+     "note": "xEdit wbDefinitionsTES5.pas wbStruct(DATA).",
+     "type": {
+      "struct": [
+       {
+        "name": "time",
+        "type": "i32"
+       },
+       {
+        "name": "radius",
+        "type": "u32"
+       },
+       {
+        "name": "color",
+        "type": "ByteColor"
+       },
+       {
+        "name": "flags",
+        "type": {
+         "bits": {
+          "0": "Dynamic",
+          "1": "Can be Carried",
+          "10": "Shadow Spotlight",
+          "11": "Shadow Hemisphere",
+          "12": "Shadow Omnidirectional",
+          "13": "Portal-strict",
+          "2": "Negative",
+          "3": "Flicker",
+          "4": "Unknown",
+          "5": "Off By Default",
+          "6": "Flicker Slow",
+          "7": "Pulse",
+          "8": "Pulse Slow",
+          "9": "Spot Light"
+         },
+         "flags": "u32"
+        }
+       },
+       {
+        "name": "falloff_exponent",
+        "type": "f32"
+       },
+       {
+        "name": "fov",
+        "type": "f32"
+       },
+       {
+        "name": "near_clip",
+        "type": "f32"
+       },
+       {
+        "name": "flicker_effect",
+        "type": {
+         "struct": [
+          {
+           "name": "period",
+           "type": "f32"
+          },
+          {
+           "name": "intensity_amplitude",
+           "type": "f32"
+          },
+          {
+           "name": "movement_amplitude",
+           "type": "f32"
+          }
+         ]
+        }
+       },
+       {
+        "name": "value",
+        "type": "u32"
+       },
+       {
+        "name": "weight",
+        "type": "f32"
+       }
+      ]
+     }
     },
     "EDID": {
-     "confidence": "hypothesis",
+     "confidence": "documented",
      "name": "EditorID",
      "note": "UESP, Skyrim Mod:Mod File Format/LIGH.",
      "type": "zstring"
     },
     "FNAM": {
-     "confidence": "hypothesis",
+     "confidence": "documented",
      "name": "Fade",
      "note": "UESP, Skyrim Mod:Mod File Format/LIGH. Ranges from 0.1 to 10",
      "type": "f32"

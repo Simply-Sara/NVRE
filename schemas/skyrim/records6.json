@@ -567,26 +567,6 @@
     }
    }
   },
-  "LIGH": {
-   "confidence": "documented",
-   "merge": true,
-   "name": "Light",
-   "note": "UESP, Skyrim Mod:Mod File Format/LIGH. [measured: 2 VMAD fields of 48 bytes in Dragonborn.esm]",
-   "subrecords": {
-    "EDID": {
-     "confidence": "documented",
-     "name": "Editor ID",
-     "note": "The editor id.",
-     "type": "zstring"
-    },
-    "VMAD": {
-     "confidence": "documented",
-     "name": "Scripting",
-     "note": "The script data. [observed: 48 bytes]",
-     "type": "bytes"
-    }
-   }
-  },
   "MISC": {
    "confidence": "documented",
    "merge": true,

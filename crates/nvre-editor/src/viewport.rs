@@ -33,6 +33,7 @@
 //! the intent behind a request — where to look and how far away — and the pending
 //! pose waiting to be applied.
 
+use crate::session::LightData;
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::message::MessageReader;
 use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
@@ -158,6 +159,17 @@ pub struct Spawned {
     pub loaded_models: HashSet<String>,
     /// References that could not be drawn, so they are not retried every frame.
     failed: HashSet<u32>,
+    /// The lights the cell's references emitted, by their reference's FormID.
+    ///
+    /// Separate from `refs` because a light is a real Bevy light rather than a
+    /// mesh: it has no model to load and no bounds to select with, and it is
+    /// despawned with the cell like everything else.
+    pub lights: HashMap<u32, Entity>,
+    /// Base FormID → `LIGH` data, resolved once per base object.
+    pub light_paths: HashMap<u32, Option<LightData>>,
+    /// The cell and radius the lights were spawned for.
+    pub light_cell: Option<u32>,
+    pub light_radius: i32,
 }
 
 /// Spawn the viewport's ambient light.
@@ -853,6 +865,154 @@ pub fn draw_cell(
         bevy::log::warn!("draw_cell: no models spawned; {counts:?}");
     }
 }
+
+/// Spawn the lights the cell's references emit.
+///
+/// Every placed reference whose base object is a `LIGH` gets a real Bevy light at
+/// its position: a `PointLight`, or a `SpotLight` when the record's spot flag is
+/// set. These are the game's own lights, read from the load order — not the
+/// viewport's ambient, which is a flat global term and a separate switch
+/// entirely (see [`crate::windows::ViewportHotbar`]).
+///
+/// A light is not a model: it has no mesh, no bounds and nothing to click, so
+/// it is spawned from the references directly rather than through the model
+/// loader. A light whose base object is missing from the load order is skipped,
+/// exactly as a model would be.
+pub fn draw_cell_lights(
+    mut commands: Commands,
+    mut session: ResMut<crate::session::Session>,
+    mut spawned: ResMut<Spawned>,
+) {
+    let Some(cell) = session.cell else {
+        return;
+    };
+    // The same references the models come from, so a light is drawn for exactly
+    // the cells a model is.
+    let (refs, radius) = if spawned.radius != 0 {
+        (
+            session.exterior_grid_refs(spawned.radius).to_vec(),
+            spawned.radius,
+        )
+    } else {
+        (session.cell_refs().to_vec(), 0)
+    };
+    // A different cell: drop the lights with the models.
+    if spawned.light_cell != Some(cell) || spawned.light_radius != radius {
+        for (_, e) in spawned.lights.drain() {
+            commands.entity(e).despawn();
+        }
+        spawned.light_cell = Some(cell);
+        spawned.light_radius = radius;
+    }
+    // Resolve the base objects' light data in one batch, as the model paths are.
+    let bases: Vec<u32> = refs
+        .iter()
+        .filter(|r| r.position.is_some())
+        .filter_map(|r| r.base.as_deref().and_then(parse_formid))
+        .collect();
+    let mut missing: Vec<u32> = bases
+        .iter()
+        .copied()
+        .filter(|b| !spawned.light_paths.contains_key(b))
+        .collect();
+    missing.sort_unstable();
+    missing.dedup();
+    if !missing.is_empty() {
+        let found = session.light_paths_for(&missing);
+        for (base, light) in missing.iter().zip(found) {
+            spawned.light_paths.insert(*base, light);
+        }
+    }
+    for r in &refs {
+        if spawned.lights.contains_key(&r.form_id) {
+            continue;
+        }
+        let Some(position) = r.position else { continue };
+        let Some(base) = r.base.as_deref().and_then(parse_formid) else {
+            continue;
+        };
+        let Some(Some(data)) = spawned.light_paths.get(&base).cloned() else {
+            continue;
+        };
+        // `Off By Default` means the light is off until something turns it on,
+        // which in the game is a script or a linked reference. The editor has no
+        // such state, so the flag is honoured literally: the light is not drawn.
+        if data.off_by_default {
+            continue;
+        }
+        let transform =
+            game_to_bevy() * ref_transform(position, r.rotation.unwrap_or([0.0, 0.0, 0.0]), 1.0);
+        let entity = if data.spot {
+            commands
+                .spawn((
+                    Name::new(format!("light {:08X}", r.form_id)),
+                    light_bundle_spot(&data),
+                    transform,
+                    Visibility::default(),
+                ))
+                .id()
+        } else {
+            commands
+                .spawn((
+                    Name::new(format!("light {:08X}", r.form_id)),
+                    light_bundle(&data),
+                    transform,
+                    Visibility::default(),
+                ))
+                .id()
+        };
+        spawned.lights.insert(r.form_id, entity);
+    }
+    if std::env::var("NVRE_TRACE").is_ok() {
+        bevy::log::info!("draw_cell_lights: {} lights", spawned.lights.len());
+    }
+}
+
+/// A point light from a `LIGH`'s data.
+///
+/// The mapping is the game's own, not a guess: the radius is the light's reach,
+/// the colour is its colour, and the intensity is the fade value scaled by a
+/// constant that puts a full-fade light at a readable brightness.
+fn light_bundle(data: &LightData) -> PointLight {
+    PointLight {
+        color: data.bevy_color(),
+        // Bevy's intensity is lumens and its default is a "very large cinema
+        // light"; a game light's fade is a 0-10 multiplier with 1.0 the norm.
+        // The constant is chosen so a fade of 1.0 reads as a normal lamp at the
+        // viewport's exposure, and the fade scales it from there.
+        intensity: data.fade * LIGHT_LUMENS,
+        range: data.radius,
+        radius: 0.0,
+        shadow_maps_enabled: false,
+        ..default()
+    }
+}
+
+/// A spotlight from a `LIGH`'s data.
+///
+/// The game's `FOV` is the cone's full angle in degrees; Bevy's `outer_angle` is
+/// a half-angle in radians, so it is halved and converted. The inner angle is
+/// left at zero, which makes the cone's edge hard — the game's own soft edge is
+/// a falloff the viewport's shader does not reproduce.
+fn light_bundle_spot(data: &LightData) -> SpotLight {
+    SpotLight {
+        color: data.bevy_color(),
+        intensity: data.fade * LIGHT_LUMENS,
+        range: data.radius,
+        radius: 0.0,
+        outer_angle: (data.fov.to_radians() / 2.0).clamp(0.0, std::f32::consts::FRAC_PI_2),
+        shadow_maps_enabled: false,
+        ..default()
+    }
+}
+
+/// The intensity of a light whose fade is 1.0, in lumens.
+///
+/// A constant rather than a computed value because the game's fade is a
+/// multiplier with no absolute scale: the engine's own unit is not a lumen.
+/// This is the one number that has to be tuned by eye, and it is here so the
+/// tuning is a single edit.
+const LIGHT_LUMENS: f32 = 4_000.0;
 
 /// Why references were skipped, for a cell that draws nothing.
 #[derive(Debug, Default)]
