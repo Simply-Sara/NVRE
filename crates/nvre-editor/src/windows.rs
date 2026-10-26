@@ -25,13 +25,16 @@
 //! the primary-window fallback is what makes the camera's destination
 //! unambiguous when several windows are open.
 
-use bevy::camera::OrthographicProjection;
-use bevy::camera::RenderTarget;
+use bevy::camera::{OrthographicProjection, RenderTarget};
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::log::info;
+use bevy::pbr::wireframe::{WireframeConfig, WireframeTopology};
 use bevy::prelude::*;
 use bevy::window::WindowRef;
+use bevy_egui::egui;
 use bevy_egui::{EguiGlobalSettings, EguiSchedule, PrimaryEguiContext};
+
+use crate::panels::root_ui;
 
 /// Make every scroll bar in every window visible at its full width.
 ///
@@ -86,6 +89,8 @@ pub enum Panel {
     Status,
     /// The camera's state, read and written while the editor runs.
     Debug,
+    /// The viewport's own hotbar, drawn over the 3D view.
+    Viewport,
 }
 
 /// Marks the egui context that belongs to one panel's window.
@@ -111,10 +116,10 @@ pub const VIEWPORT_TITLE: &str = "Viewport";
 /// camera with no target falls back to the primary window, and that fallback is
 /// what the viewport used to depend on.
 ///
-/// It carries **no** egui context. The viewport draws 3D models and nothing else,
-/// so it needs no UI; giving it a context would put an egui pass in the loop with
-/// no window of its own to render into, and bevy_egui would drop that pass's
-/// output unapplied and panic.
+/// It **does** carry an egui context now, on the camera: the viewport's own
+/// hotbar is drawn into it (see [`ViewportContext`]). That is one egui pass more
+/// than the panels' — the difference is that this context's window *is* the
+/// 3D view, so the hotbar is drawn over the models rather than beside them.
 /// Attach the primary egui context to the main window.
 ///
 /// Runs from `Startup`, before anything else: the launcher draws into the primary
@@ -129,6 +134,74 @@ pub fn setup_primary(mut commands: Commands) {
 #[derive(Component)]
 pub struct ViewportWindow;
 
+/// The viewport's wireframe: the one thing its hotbar controls.
+///
+/// Bevy's wireframe is a plugin of its own, not part of `PbrPlugin` — so a
+/// wireframe button does nothing until [`WireframePlugin`] is added. It needs
+/// the GPU to support `POLYGON_MODE_LINE` and immediates; on a device without
+/// them it logs one warning and leaves the scene alone rather than failing.
+///
+/// `global` is what makes the button work without being carried to anything:
+/// it puts a wireframe on **every** mesh in the scene rather than one per
+/// entity, so a reference whose model loads while the wireframe is on is drawn
+/// as one the same frame. The hotbar flips it; nothing else touches it.
+fn wireframe_config() -> WireframeConfig {
+    WireframeConfig {
+        global: false,
+        // 3px, not Bevy's 1px. At 1px the line is a single hardware line, thin
+        // enough to vanish against a textured mesh. Above 1px Bevy takes the wide
+        // path, which shades the line across its width, so a 3px line is drawn at
+        // 3px rather than as a 1px line with a halo.
+        default_line_width: 3.0,
+        // Quads rather than triangles: a NIF shape is triangulated for the GPU, so
+        // a triangle wireframe shows the triangulation's own diagonals across every
+        // quad face — a mesh reads as a mass of triangles rather than as its
+        // geometry. Quad topology suppresses the shared diagonal, which is what
+        // makes the wireframe describe the shape instead of its tessellation.
+        default_topology: WireframeTopology::Quads,
+        // X-ray: the lines are drawn without depth testing, so every edge of every
+        // shape shows at once. That is what a wireframe is for — seeing the whole
+        // mesh, back edges included — and without it the button would produce an
+        // outline of whatever happens to face the camera.
+        xray_mode: true,
+        default_color: Color::srgb(0.9, 0.9, 0.25),
+    }
+}
+
+/// Put the viewport's wireframe config in the world, off by default.
+///
+/// Runs when the editor opens, so the hotbar's button has a config to flip: the
+/// plugin's own `WireframeConfig` is inserted by `WireframePlugin` with Bevy's
+/// defaults, and this replaces it with the viewport's — 3px quad lines, x-ray,
+/// yellow — rather than leaving the button wired to someone else's defaults.
+pub fn setup_viewport_wireframe(mut commands: Commands) {
+    commands.insert_resource(wireframe_config());
+}
+
+/// How the viewport's hotbar is drawn.
+///
+/// A resource rather than a `Local` because the hotbar draws in the viewport's
+/// own egui schedule while the wireframe it toggles is a render-world resource:
+/// this is the single place the two halves meet, so the button and the wireframe
+/// cannot disagree about what is on.
+#[derive(Resource, Default)]
+pub struct ViewportHotbar {
+    /// Whether every mesh is drawn as a wireframe.
+    pub wireframe: bool,
+}
+
+/// The egui context the viewport draws its hotbar into.
+///
+/// On the viewport's **camera**, not its window. bevy_egui paints a context in a
+/// pass per camera — its extract system walks `Camera` and its pass runs in
+/// `Core3d` — so a context with no camera is built and never drawn, and the
+/// hotbar is silently absent. The viewport is the only window whose 3D contents
+/// and its egui are the *same* window, which is why the context has to be its
+/// own: a hotbar drawn into a panel's context would appear in that panel's
+/// window, beside the 3D view rather than over it.
+#[derive(Component, Clone, Copy)]
+pub struct ViewportContext;
+
 pub fn spawn_viewport(mut commands: Commands) {
     let window = commands
         .spawn((
@@ -141,21 +214,70 @@ pub fn spawn_viewport(mut commands: Commands) {
             ViewportWindow,
         ))
         .id();
-    commands.spawn((
-        Camera3d::default(),
-        Projection::Perspective(PerspectiveProjection {
-            far: 1_500_000.0,
-            near: 1.0,
-            ..default()
-        }),
-        // A free camera: it is the `Transform` that moves, driven by the viewport's
-        // own input systems. There is no controller component, because there is no
-        // pivot — a turn rotates the camera in place and a wheel notch walks it
-        // along the line it is looking down.
-        RenderTarget::Window(WindowRef::Entity(window)),
-        crate::viewport::ViewportCamera,
-    ));
+    let camera = commands
+        .spawn((
+            Camera3d::default(),
+            Projection::Perspective(PerspectiveProjection {
+                far: 1_500_000.0,
+                near: 1.0,
+                ..default()
+            }),
+            // A free camera: it is the `Transform` that moves, driven by the viewport's
+            // own input systems. There is no controller component, because there is no
+            // pivot — a turn rotates the camera in place and a wheel notch walks it
+            // along the line it is looking down.
+            RenderTarget::Window(WindowRef::Entity(window)),
+            crate::viewport::ViewportCamera,
+        ))
+        .id();
+    // The viewport's own egui context, on the **camera**, not the window.
+    // bevy_egui paints a context per camera — its extract system walks `Camera`
+    // and its pass runs in `Core3d` — so a context with no camera is built and
+    // never drawn, and the hotbar would be silently absent. It is added here
+    // rather than in the tuple above only because that bundle is already at the
+    // tuple limit.
+    commands
+        .entity(camera)
+        .insert((EguiSchedule::new(Panel::Viewport), ViewportContext));
     info!("spawned viewport window {window}");
+}
+
+/// The viewport's hotbar, drawn over the 3D view.
+///
+/// A strip along the top of the viewport's own window. It is the viewport's only
+/// UI: the 3D view fills the rest, and this is the frame around the top of it.
+///
+/// What a hotbar is for in a viewport is a display mode, not a tool — so the
+/// wireframe is the whole of it for now. Clicking writes the intent to
+/// [`ViewportHotbar`], and [`apply_wireframe`] reads that into [`WireframeConfig`].
+pub fn viewport_hotbar(
+    mut ctx: Single<&mut bevy_egui::EguiContext, With<ViewportContext>>,
+    mut hotbar: ResMut<ViewportHotbar>,
+) {
+    let ui = &mut root_ui(ctx.get_mut(), "viewport");
+    egui::containers::panel::Panel::top("viewport_hotbar").show(ui, |ui| {
+        ui.horizontal(|ui| {
+            if ui
+                .selectable_label(hotbar.wireframe, egui::RichText::new("Wireframe").strong())
+                .on_hover_text(
+                    "Draw every mesh as a wireframe: the whole mesh, back edges included",
+                )
+                .clicked()
+            {
+                hotbar.wireframe = !hotbar.wireframe;
+            }
+        });
+    });
+}
+
+/// Turn the hotbar's wireframe on or off.
+///
+/// [`WireframeConfig::global`] is the whole switch: it puts a wireframe on every
+/// mesh in the scene at once, and taking it off puts the scene back. The colour
+/// and width are the ones [`wireframe_config`] names, so the config is only ever
+/// changed here.
+pub fn apply_wireframe(hotbar: Res<ViewportHotbar>, mut config: ResMut<WireframeConfig>) {
+    config.global = hotbar.wireframe;
 }
 
 /// How many panel windows `spawn_windows` opens.

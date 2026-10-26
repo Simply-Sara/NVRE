@@ -281,6 +281,13 @@ fn main() {
         // NIF schema, and the caches over them — is added by `AddAssets` once
         // the launcher has been through.
         .add_plugins(nvre_assets::nif_material::NifMaterialPlugin)
+        // The viewport's hotbar draws a wireframe, and Bevy's wireframe is a
+        // plugin of its own rather than part of `PbrPlugin`. Adding it here, at
+        // startup like the NIF material, keeps the app's render-world plugins in
+        // one place: on a GPU without `POLYGON_MODE_LINE` or immediates it logs
+        // one warning and the button simply does nothing, which is better than
+        // the button being wired to a plugin that is not there.
+        .add_plugins(bevy::pbr::wireframe::WireframePlugin::default())
         .insert_resource(args.clone())
         .insert_resource(nvre_editor::Game(profile))
         // The `Game` resource is refreshed from the launcher's pick whenever it
@@ -304,6 +311,7 @@ fn main() {
             ..default()
         })
         .init_resource::<viewport::Spawned>()
+        .init_resource::<windows::ViewportHotbar>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
         .init_resource::<file_details_window::FileDetailsState>()
@@ -337,6 +345,7 @@ fn main() {
             (
                 windows::spawn_viewport,
                 viewport::setup,
+                windows::setup_viewport_wireframe,
                 spawn_session,
                 windows::spawn_windows,
             )
@@ -372,6 +381,21 @@ fn main() {
         .add_systems(
             windows::Panel::Debug,
             panels::debug.run_if(in_state(EditorState::Editing)),
+        )
+        // The viewport's hotbar, in the viewport's own egui schedule. It draws
+        // into the viewport camera's own context, so it is a schedule of its own
+        // rather than a `PanelContext<N>` panel.
+        .add_systems(
+            windows::Panel::Viewport,
+            windows::viewport_hotbar.run_if(in_state(EditorState::Editing)),
+        )
+        // Reads what the hotbar decided and puts it on the wireframe the render
+        // world draws with. In `Update`, not the viewport's egui schedule: the
+        // config is a render-world resource, and the change has to land before
+        // the frame's extract.
+        .add_systems(
+            Update,
+            windows::apply_wireframe.run_if(in_state(EditorState::Editing)),
         )
         .add_systems(
             object_editor::ObjectEditorSchedule,
