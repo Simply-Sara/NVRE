@@ -181,13 +181,26 @@ pub fn setup_viewport_wireframe(mut commands: Commands) {
 /// How the viewport's hotbar is drawn.
 ///
 /// A resource rather than a `Local` because the hotbar draws in the viewport's
-/// own egui schedule while the wireframe it toggles is a render-world resource:
-/// this is the single place the two halves meet, so the button and the wireframe
-/// cannot disagree about what is on.
-#[derive(Resource, Default)]
+/// own egui schedule while the things it toggles are render-world resources:
+/// this is the single place the two halves meet, so the buttons and what they
+/// switch cannot disagree about what is on.
+#[derive(Resource)]
 pub struct ViewportHotbar {
     /// Whether every mesh is drawn as a wireframe.
     pub wireframe: bool,
+    /// Whether the viewport's ambient light is on.
+    pub ambient: bool,
+}
+
+impl Default for ViewportHotbar {
+    /// The ambient on and no wireframe: the viewport opens the way the editor has
+    /// always drawn it, and the toggles are what change that.
+    fn default() -> Self {
+        Self {
+            wireframe: false,
+            ambient: true,
+        }
+    }
 }
 
 /// The egui context the viewport draws its hotbar into.
@@ -247,9 +260,11 @@ pub fn spawn_viewport(mut commands: Commands) {
 /// A strip along the top of the viewport's own window. It is the viewport's only
 /// UI: the 3D view fills the rest, and this is the frame around the top of it.
 ///
-/// What a hotbar is for in a viewport is a display mode, not a tool — so the
-/// wireframe is the whole of it for now. Clicking writes the intent to
-/// [`ViewportHotbar`], and [`apply_wireframe`] reads that into [`WireframeConfig`].
+/// What a hotbar is for in a viewport is a display mode, not a tool — so every
+/// button here switches how the scene is drawn rather than what is in it. The
+/// wireframe and the ambient each write to [`ViewportHotbar`], and
+/// [`apply_wireframe`] and [`apply_ambient`] read that back into the render
+/// world.
 pub fn viewport_hotbar(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<ViewportContext>>,
     mut hotbar: ResMut<ViewportHotbar>,
@@ -257,17 +272,29 @@ pub fn viewport_hotbar(
     let ui = &mut root_ui(ctx.get_mut(), "viewport");
     egui::containers::panel::Panel::top("viewport_hotbar").show(ui, |ui| {
         ui.horizontal(|ui| {
-            if ui
-                .selectable_label(hotbar.wireframe, egui::RichText::new("Wireframe").strong())
-                .on_hover_text(
-                    "Draw every mesh as a wireframe: the whole mesh, back edges included",
-                )
-                .clicked()
-            {
-                hotbar.wireframe = !hotbar.wireframe;
-            }
+            toggle(ui, &mut hotbar.wireframe, "Wireframe")
+                .on_hover_text("Draw every mesh as a wireframe: the whole mesh, back edges included");
+            ui.separator();
+            toggle(ui, &mut hotbar.ambient, "Ambient").on_hover_text(
+                "The viewport's ambient light — the only light the scene is lit by. Off leaves every surface black.",
+            );
         });
     });
+}
+
+/// One hotbar button: a toggle, highlighted while it is on.
+///
+/// The label is what the button says and the value is what it switches, so the
+/// three buttons are one widget rather than three copies of it. The highlight is
+/// the value itself, which is what makes a toggle readable: a button that is on
+/// looks different from one that is off, and there is no second piece of state
+/// that can fall out of step with it.
+fn toggle(ui: &mut egui::Ui, on: &mut bool, label: &str) -> egui::Response {
+    let response = ui.selectable_label(*on, egui::RichText::new(label).strong());
+    if response.clicked() {
+        *on = !*on;
+    }
+    response
 }
 
 /// Turn the hotbar's wireframe on or off.
@@ -279,6 +306,31 @@ pub fn viewport_hotbar(
 pub fn apply_wireframe(hotbar: Res<ViewportHotbar>, mut config: ResMut<WireframeConfig>) {
     config.global = hotbar.wireframe;
 }
+
+/// Turn the hotbar's ambient light off and on.
+///
+/// The ambient is a resource rather than an entity, so its brightness is the
+/// whole of its switch: zero is the off state — Bevy's own `lighting` example
+/// toggles the same resource the same way — and [`DEFAULT_AMBIENT_BRIGHTNESS`],
+/// the value the editor opens with, is written back when it is turned on. That
+/// is why the constant exists rather than a literal: the off state is zero and
+/// the on state is this, and one name keeps the two from drifting.
+pub fn apply_ambient(hotbar: Res<ViewportHotbar>, mut ambient: ResMut<GlobalAmbientLight>) {
+    let wanted = if hotbar.ambient {
+        DEFAULT_AMBIENT_BRIGHTNESS
+    } else {
+        0.0
+    };
+    if (ambient.brightness - wanted).abs() > f32::EPSILON {
+        ambient.brightness = wanted;
+    }
+}
+
+/// The brightness the viewport's ambient light opens with, in cd/m².
+///
+/// Named because the toggle writes it back: the off state is zero and the on
+/// state is this, and a literal in each place would let the two drift.
+pub const DEFAULT_AMBIENT_BRIGHTNESS: f32 = 800.0;
 
 /// How many panel windows `spawn_windows` opens.
 const WINDOW_COUNT: usize = 6;

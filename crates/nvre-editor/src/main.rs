@@ -389,13 +389,15 @@ fn main() {
             windows::Panel::Viewport,
             windows::viewport_hotbar.run_if(in_state(EditorState::Editing)),
         )
-        // Reads what the hotbar decided and puts it on the wireframe the render
-        // world draws with. In `Update`, not the viewport's egui schedule: the
-        // config is a render-world resource, and the change has to land before
-        // the frame's extract.
+        // Reads what the hotbar decided and puts it on the wireframe and the
+        // ambient that the render world draws with. In `Update`, not the
+        // viewport's egui schedule: both are render-world resources, and the
+        // change has to land before the frame's extract.
         .add_systems(
             Update,
-            windows::apply_wireframe.run_if(in_state(EditorState::Editing)),
+            (windows::apply_wireframe, windows::apply_ambient)
+                .chain()
+                .run_if(in_state(EditorState::Editing)),
         )
         .add_systems(
             object_editor::ObjectEditorSchedule,

@@ -286,6 +286,22 @@ impl ModelCtx<'_> {
         let has_uv = mesh.attribute(Mesh::ATTRIBUTE_UV_0).is_some();
         let normal = normal.filter(|_| has_uv && mesh.generate_tangents().is_ok());
 
+        // The glow map: the texture the emissive light is multiplied by, which
+        // is what makes a lamp's filament or a neon tube glow along its shape
+        // rather than as a flat wash. The engine calls this slot 2 of the
+        // texture set, and it is the same texture in every game that has one.
+        // It needs UVs for the same reason a diffuse texture does.
+        let glow = props.glow.as_ref().and_then(|t| {
+            self.textures.get(
+                t,
+                false,
+                &self.data,
+                &mut self.images,
+                self.formats.as_deref(),
+            )
+        });
+        let glow = glow.filter(|_| has_uv);
+
         let standard = StandardMaterial {
             base_color: Color::srgba(1.0, 1.0, 1.0, props.alpha.unwrap_or(1.0)),
             base_color_texture: base,
@@ -295,9 +311,20 @@ impl ModelCtx<'_> {
             flip_normal_map_y: true,
             perceptual_roughness: gloss_roughness(props.glossiness.unwrap_or(10.0)),
             metallic: 0.0,
+            // The engine scales the emissive colour by its multiplier before
+            // adding it, so the multiplier is applied here rather than in the
+            // shader: it is a property of the material, not of the light, and
+            // a shape with no emissive colour at all stays black whatever the
+            // multiplier says.
             emissive: props.emissive.map_or(LinearRgba::BLACK, |e| {
-                LinearRgba::new(e[0], e[1], e[2], 1.0)
+                LinearRgba::new(
+                    e[0] * props.emissive_mult,
+                    e[1] * props.emissive_mult,
+                    e[2] * props.emissive_mult,
+                    1.0,
+                )
             }),
+            emissive_texture: glow,
             alpha_mode: props.alpha_mode,
             double_sided: props.double_sided,
             cull_mode: if props.double_sided {

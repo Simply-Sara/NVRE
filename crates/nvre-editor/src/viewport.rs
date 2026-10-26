@@ -160,21 +160,18 @@ pub struct Spawned {
     failed: HashSet<u32>,
 }
 
-/// Spawn the viewport's light and ambient light.
+/// Spawn the viewport's ambient light.
 ///
 /// The camera itself is spawned by [`crate::windows::spawn_viewport`], which is
 /// what ties it to the viewport window. Spawning a second camera here would
 /// leave one with no window to render to, and its egui context's output would
 /// never be consumed.
+///
+/// The ambient is the viewport's only light: it is on when the editor opens, and
+/// the hotbar's Ambient toggle turns it off — see
+/// [`crate::windows::ViewportHotbar`]. So this value is the default the toggle
+/// starts from, not a setting fixed for the session.
 pub fn setup(mut commands: Commands) {
-    commands.spawn((
-        DirectionalLight {
-            illuminance: 12000.0,
-            shadow_maps_enabled: false,
-            ..default()
-        },
-        Transform::from_rotation(Quat::from_euler(EulerRot::YXZ, 0.8, -0.9, 0.0)),
-    ));
     commands.insert_resource(GlobalAmbientLight {
         color: Color::srgb(0.7, 0.75, 0.8),
         brightness: 800.0,
@@ -489,7 +486,8 @@ fn feed_camera_input(
             // under the cursor under the cursor: the further the camera is, the
             // more ground a pixel covers, so the same drag moves the same screen
             // fraction at any distance.
-            let Some(pixels) = slide_pixels(projection, screenspace, focus.distance, viewport_height)
+            let Some(pixels) =
+                slide_pixels(projection, screenspace, focus.distance, viewport_height)
             else {
                 return;
             };

@@ -32,18 +32,31 @@ use nvre_nif::value::Struct;
 use std::collections::HashMap;
 
 /// What a shape is drawn with.
-#[derive(Debug, Clone, Default)]
+///
+/// A manual `Default` because one field's default is not `0.0`: the emissive
+/// multiplier is 1.0. A `#[derive(Default)]` would make it zero, and a shape
+/// whose file carries an `emissive_color` but no multiplier — which
+/// `NiMaterialProperty` allows, since `emissive_mult` needs `bs_version > 21` —
+/// would have its emissive colour scaled to nothing.
+#[derive(Debug, Clone)]
 pub struct ShapeProps {
     /// The shape's diffuse texture.
     pub texture: Option<String>,
     /// The shape's normal map.
     pub normal_texture: Option<String>,
-    /// The shape's glow map.
+    /// The shape's glow map: the texture the emissive light is multiplied by.
     pub glow: Option<String>,
     /// The shape's own colour.
     pub alpha: Option<f32>,
-    /// The shape's emissive light.
+    /// The shape's emissive colour, before its multiplier.
     pub emissive: Option<[f32; 3]>,
+    /// The emissive multiplier: what the engine scales `emissive_color` by.
+    ///
+    /// Named `emissive_mult` in `NiMaterialProperty` and `emissive_multiple` in
+    /// `BSLightingShaderProperty`, so it is read by both names and a shape that
+    /// has neither is 1.0 — the engine's own default, and the value a shape
+    /// with no emissive at all wants.
+    pub emissive_mult: f32,
     /// How glossy the shape is.
     pub glossiness: Option<f32>,
     /// The shape is drawn without lighting.
@@ -66,6 +79,29 @@ pub struct ShapeProps {
     pub vertex_alpha: bool,
     /// The vertex colours tint the shape.
     pub vertex_colors: bool,
+}
+
+impl Default for ShapeProps {
+    fn default() -> Self {
+        Self {
+            texture: None,
+            normal_texture: None,
+            glow: None,
+            alpha: None,
+            emissive: None,
+            emissive_mult: 1.0,
+            glossiness: None,
+            unlit: false,
+            double_sided: false,
+            alpha_mode: AlphaMode::Opaque,
+            falloff: None,
+            alpha_cut: 0.0,
+            add_whole: false,
+            decal: false,
+            vertex_alpha: false,
+            vertex_colors: false,
+        }
+    }
 }
 
 /// `BSShaderFlags` bit 3: the shader takes the vertex colours' alpha.
@@ -105,10 +141,9 @@ pub fn shape_props(
     o: &SceneObject,
     _by_block: &HashMap<usize, &SceneObject>,
 ) -> ShapeProps {
-    let mut props = ShapeProps {
-        alpha_mode: AlphaMode::Opaque,
-        ..default()
-    };
+    // `ShapeProps::default()` carries the two non-zero defaults: an opaque
+    // blend mode and an emissive multiplier of one.
+    let mut props = ShapeProps::default();
     let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
         return props;
     };
@@ -141,11 +176,25 @@ pub fn shape_props(
             shader_flags = Some(prop.int("shader_flags").unwrap_or(0));
         }
         // The lighting property: glossiness, emissive, alpha.
+        //
+        // The emissive multiplier is read by both its spellings, because the
+        // two property types that carry an emissive colour name it differently:
+        // `emissive_mult` on `NiMaterialProperty` (FNV and FO3) and
+        // `emissive_multiple` on `BSLightingShaderProperty` (Skyrim). Reading
+        // each by name rather than branching on the type is what makes one loop
+        // cover all five games — a property that has neither is the engine's
+        // own default of 1.0, which `unwrap_or` supplies.
         if let Some(g) = prop.num("glossiness") {
             props.glossiness = Some(g as f32);
         }
         if let Some(e) = color3(prop, "emissive_color") {
             props.emissive = Some(e);
+        }
+        if let Some(m) = prop
+            .num("emissive_mult")
+            .or_else(|| prop.num("emissive_multiple"))
+        {
+            props.emissive_mult = m as f32;
         }
         if let Some(a) = prop.num("alpha") {
             props.alpha = Some(a as f32);
@@ -509,5 +558,66 @@ mod tests {
     #[test]
     fn no_flags_is_opaque() {
         assert_eq!(alpha_mode(0, 0), AlphaMode::Opaque);
+    }
+
+    /// A shape's default emissive multiplier is one, not zero.
+    ///
+    /// This is the default that keeps a shape with an `emissive_color` but no
+    /// multiplier rendering as the engine does. `NiMaterialProperty` gates
+    /// `emissive_mult` on `bs_version > 21`, so a file can carry the colour
+    /// without the multiplier — and a derived `Default` would make it zero,
+    /// which scales every emissive colour to black.
+    #[test]
+    fn the_default_emissive_multiplier_is_one() {
+        assert_eq!(ShapeProps::default().emissive_mult, 1.0);
+    }
+
+    /// A shape with no emissive colour has none, whatever the multiplier.
+    ///
+    /// The multiplier scales the colour; it does not create one. A shape whose
+    /// property is missing — Fallout 4's shapes, whose `BSLightingShaderProperty`
+    /// this schema does not define — must stay black rather than glowing at
+    /// whatever the multiplier says.
+    #[test]
+    fn no_emissive_colour_stays_none() {
+        let props = ShapeProps::default();
+        assert_eq!(props.emissive, None);
+        assert_eq!(props.emissive_mult, 1.0);
+    }
+
+    /// Both spellings of the emissive multiplier are read.
+    ///
+    /// `NiMaterialProperty` (FNV and FO3) calls it `emissive_mult`;
+    /// `BSLightingShaderProperty` (Skyrim) calls it `emissive_multiple`. The
+    /// reader takes either, which is what lets one loop cover all five games.
+    #[test]
+    fn either_spelling_of_the_multiplier_reads() {
+        // A struct with the FNV spelling.
+        let mut a = Struct::new();
+        a.fields.push((
+            "emissive_mult".to_string(),
+            nvre_nif::value::Value::Num(5.0),
+        ));
+        // A struct with the Skyrim spelling.
+        let mut b = Struct::new();
+        b.fields.push((
+            "emissive_multiple".to_string(),
+            nvre_nif::value::Value::Num(6.27),
+        ));
+        // A struct with neither: the engine's own default.
+        let c = Struct::new();
+        for (s, want) in [(&a, 5.0_f32), (&b, 6.27_f32)] {
+            let got = s
+                .num("emissive_mult")
+                .or_else(|| s.num("emissive_multiple"))
+                .map(|m| m as f32);
+            assert_eq!(got, Some(want), "{s:?}");
+        }
+        assert_eq!(
+            c.num("emissive_mult")
+                .or_else(|| c.num("emissive_multiple")),
+            None,
+            "a property with no multiplier is the engine's 1.0, supplied by the caller"
+        );
     }
 }
