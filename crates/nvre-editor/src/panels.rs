@@ -234,22 +234,14 @@ pub fn cells(
                 ui.checkbox(&mut filters.full_terrain, "Full landscape");
             });
         }
-        let filter = filters.cell.to_lowercase();
+        let filter = filters.cell.clone();
         let scope = filters.cell_scope;
         let cells = session.cells(scope);
         // Filtered here rather than in the session: the session's list is what
         // the dropdown counts, and the count has to say what the scope holds
         // rather than what the filter leaves.
-        let rows: Vec<&crate::session::CellRow> = cells
-            .iter()
-            .filter(|c| {
-                filter.is_empty()
-                    || c.editor_id().to_lowercase().contains(&filter)
-                    || c.name
-                        .as_deref()
-                        .is_some_and(|n| n.to_lowercase().contains(&filter))
-            })
-            .collect();
+        let rows: Vec<&crate::session::CellRow> =
+            cells.iter().filter(|c| row_matches(c, &filter)).collect();
         let shown = cells.len();
         let matched = rows.len();
         // A header row, then one row per cell, in a table whose columns have
@@ -326,8 +318,6 @@ pub fn cells(
                 format!(" ({matched} match)")
             }
         ));
-        ui.label("filter");
-        ui.text_edit_singleline(&mut filters.cell);
         ui.separator();
         // What the session has staged, so the user can see what a save will
         // write. A staged cell is not in the cell list yet — the list reads
@@ -365,7 +355,7 @@ pub fn cells(
     });
 }
 
-/// The "new cell" and "new worldspace" controls.
+/// The "new cell" and "new worldspace" controls, and the cell search box.
 ///
 /// GECK's Cell View has a "Create" button that makes a new cell in the
 /// current worldspace. This is the same: two buttons that open a form, and
@@ -374,6 +364,12 @@ pub fn cells(
 /// The buttons sit at the **top** of the Cells window, next to the scope
 /// dropdown, because the cell list below is a scroll area that fills the
 /// window — anything after it is pushed out of sight.
+///
+/// The cell filter's text box lives in this same row, to the right of the
+/// "+ New worldspace" button, for the same reason: it narrows the list below,
+/// so it belongs with the list's controls and has to stay on screen. The
+/// string it edits is [`Filters::cell`], which the list below reads next
+/// frame, so nothing is copied into a local that would be dropped.
 fn new_cell_ui(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
@@ -389,7 +385,10 @@ fn new_cell_ui(
     let mut cell_open = filters.new_cell_open;
     let mut world_open = filters.new_world_open;
 
-    // The two buttons, in a row.
+    // The two buttons and the cell search box, in a row. The search box is the
+    // "filter" line that used to sit below the table, moved up here: it filters
+    // the list, so it belongs next to the list's other controls, and putting it
+    // above the scroll area keeps it on screen at every window height.
     ui.horizontal(|ui| {
         if ui
             .selectable_label(cell_open, egui::RichText::new("+ New cell").strong())
@@ -409,6 +408,15 @@ fn new_cell_ui(
                 cell_open = false;
             }
         }
+        // The box takes what the row has left, and never less than a readable
+        // width: a squeezed search box is worse than no search box. Its hint
+        // names the columns it searches, because that is not guessable from
+        // the box itself.
+        ui.add(
+            egui::TextEdit::singleline(&mut filters.cell)
+                .hint_text("editor ID, name, FormID, grid")
+                .desired_width(ui.available_width().max(180.0)),
+        );
     });
 
     if cell_open {
@@ -592,7 +600,7 @@ pub fn references(
                         return false;
                     }
                 }
-                filter.is_empty() || row_matches(r, &details, &filter)
+                filter.is_empty() || ref_row_matches(r, &details, &filter)
             })
             .collect();
         let matched = rows.len();
@@ -746,16 +754,65 @@ pub fn references(
 }
 
 /// Parse the decoder's FormID text form ("0x0001EE8F").
+///
+/// The prefix is optional, so a bare `0001EE8F` is read as the same FormID:
+/// a FormID is a number, and which of its two spellings the user typed should
+/// not change what it is. Anything that is not hex is not a FormID, which is
+/// what keeps a word from matching as the number 0.
 fn parse_formid(s: &str) -> Option<u32> {
-    u32::from_str_radix(s.strip_prefix("0x")?, 16).ok()
+    let hex = s.trim().strip_prefix("0x").unwrap_or(s.trim());
+    if hex.is_empty() || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    u32::from_str_radix(hex, 16).ok()
 }
 
-/// Whether one row's columns contain the filter text, lower-cased.
+/// Whether one cell row's columns contain the filter text.
+///
+/// Every column the table shows is searched, not just the first: the Editor ID
+/// is what a modded cell is named by, the display name is what GECK shows, the
+/// Form ID is the only way to name a cell that has neither — which is most of
+/// FalloutNV's exterior cells — and the grid square is how the user thinks of
+/// an exterior cell's place. The FormID is matched in the spelling the table
+/// uses, `0031E2A`, and the `0x` form the decoder writes is accepted too.
+///
+/// A partial hex string narrows on the digits typed so far rather than on the
+/// whole FormID: `0031` is the first four digits of a column of eight-digit
+/// numbers, and the user is typing left to right. The name columns are matched
+/// case-insensitively, the hex ones exactly as shown. An explicit `0x` is a
+/// FormID and nothing else — no name or location column starts that way.
+pub fn row_matches(c: &crate::session::CellRow, filter: &str) -> bool {
+    if filter.is_empty() {
+        return true;
+    }
+    let form_id = format!("{:08X}", c.form_id);
+    // An explicit 0x is a FormID and nothing else: no name or location column
+    // starts that way, so it cannot be a substring of one.
+    if let Some(hex) = filter.strip_prefix("0x") {
+        return form_id
+            .get(..hex.len().min(form_id.len()))
+            .is_some_and(|head| head.eq_ignore_ascii_case(hex));
+    }
+    let lower = filter.to_lowercase();
+    c.editor_id().to_lowercase().contains(&lower)
+        || c.name
+            .as_deref()
+            .is_some_and(|n| n.to_lowercase().contains(&lower))
+        || form_id.contains(filter)
+        // The grid square as the column shows it, `-4, 7` and `-4,7` alike: the
+        // space after the comma is one character the user may or may not type.
+        // It is matched in full, not as a substring, because `4, 7` is a
+        // substring of `-4, 7` and a search that matched every cell in the
+        // left-hand column would find nothing the user was looking for.
+        || c.location().replace(' ', "") == lower.replace(' ', "")
+}
+
+/// Whether one reference row's columns contain the filter text, lower-cased.
 ///
 /// The Editor ID, the FormID, the base object's Editor ID and the owner's name
 /// are all searched: a cell's references mostly have no Editor ID of their own,
 /// so matching only that column would make most rows unfindable.
-fn row_matches(
+fn ref_row_matches(
     r: &crate::session::RefRow,
     details: &crate::session::RefDetails,
     filter: &str,
