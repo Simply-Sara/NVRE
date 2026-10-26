@@ -204,3 +204,35 @@ impl TextureCache {
         &self.failures
     }
 }
+
+/// Extract texture paths from a Fallout 4 .bgsm binary.
+pub fn extract_bgsm_textures(bytes: &[u8]) -> (Option<String>, Option<String>, Option<String>) {
+    if bytes.len() < 4 || &bytes[..4] != b"BGSM" {
+        return (None, None, None);
+    }
+    let mut diffuse = None;
+    let mut normal = None;
+    let mut glow = None;
+
+    let text = String::from_utf8_lossy(bytes);
+    let lower_text = text.to_lowercase();
+    let mut start = 0;
+    while let Some(idx) = lower_text[start..].find(".dds") {
+        let abs_idx = start + idx + 4;
+        let mut p_start = start + idx;
+        while p_start > start && bytes[p_start - 1] > 32 && bytes[p_start - 1] < 127 {
+            p_start -= 1;
+        }
+        let path = &text[p_start..abs_idx];
+        let path_lower = path.to_lowercase();
+        if path_lower.contains("_n.dds") {
+            normal = Some(path.replace('/', "\\"));
+        } else if path_lower.contains("_g.dds") || path_lower.contains("_m.dds") {
+            glow = Some(path.replace('/', "\\"));
+        } else if diffuse.is_none() {
+            diffuse = Some(path.replace('/', "\\"));
+        }
+        start = abs_idx;
+    }
+    (diffuse, normal, glow)
+}

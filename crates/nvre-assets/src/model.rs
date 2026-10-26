@@ -264,9 +264,23 @@ impl ModelCtx<'_> {
                 ..default()
             });
         }
+        let resolve_tex = |t: &str, is_normal: bool| -> Option<String> {
+            if t.to_lowercase().ends_with(".bgsm") {
+                if let Some(bytes) = self.data.read(t) {
+                    let (diffuse, normal, _glow) = crate::texture::extract_bgsm_textures(&bytes);
+                    if is_normal { normal } else { diffuse }
+                } else {
+                    None
+                }
+            } else {
+                Some(t.to_string())
+            }
+        };
+
         let base = props.texture.as_ref().and_then(|t| {
+            let path = resolve_tex(t, false)?;
             self.textures.get(
-                t,
+                &path,
                 true,
                 &self.data,
                 &mut self.images,
@@ -274,8 +288,9 @@ impl ModelCtx<'_> {
             )
         });
         let normal = props.normal_texture.as_ref().and_then(|t| {
+            let path = resolve_tex(t, true)?;
             self.textures.get(
-                t,
+                &path,
                 false,
                 &self.data,
                 &mut self.images,
@@ -292,8 +307,9 @@ impl ModelCtx<'_> {
         // texture set, and it is the same texture in every game that has one.
         // It needs UVs for the same reason a diffuse texture does.
         let glow = props.glow.as_ref().and_then(|t| {
+            let path = resolve_tex(t, false)?;
             self.textures.get(
-                t,
+                &path,
                 false,
                 &self.data,
                 &mut self.images,
