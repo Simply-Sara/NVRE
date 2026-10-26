@@ -85,4 +85,3 @@ fn one_motion_does_not_end_when_the_other_button_moves() {
     );
     assert!(!motion_held(Motion::Turn, &b));
 }
-

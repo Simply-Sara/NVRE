@@ -231,7 +231,8 @@ fn a_wheel_notch_moves_the_same_ground_at_any_distance() {
         // The focus sits at the same distance, which is what the slide's pixel
         // conversion reads.
         nvre_editor::viewport::request_view(
-            &mut app.world_mut()
+            &mut app
+                .world_mut()
                 .resource_mut::<nvre_editor::viewport::ViewportFocus>(),
             nvre_editor::viewport::ViewPose {
                 target: Vec3::ZERO,

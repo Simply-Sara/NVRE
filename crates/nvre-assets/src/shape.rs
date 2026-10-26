@@ -280,11 +280,12 @@ pub fn shape_props(
     // An unlit shape takes the vertex colours' alpha through "Dynamic_Alpha"
     // where the lit path uses "Vertex_Alpha".
     let flags = shader_flags.unwrap_or(0);
-    props.vertex_alpha =
-        flags & SHADER_VERTEX_ALPHA != 0 || (props.unlit && flags & SHADER_DYNAMIC_ALPHA != 0);
-    // The falloff scales the alpha, so it only shows on a shape that blends,
-    // and only where the flags switch it on.
-    if flags & SHADER_FALLOFF != 0 && is_blended(props.alpha_mode) {
+    // Unlit effect meshes use vertex alpha for their fading gradient, and apply falloff
+    // whenever falloff fields are present (even if bit 6 is omitted).
+    props.vertex_alpha = props.unlit || flags & SHADER_VERTEX_ALPHA != 0 || flags & SHADER_DYNAMIC_ALPHA != 0;
+    
+    let has_falloff = flags & SHADER_FALLOFF != 0 || (props.unlit && falloff_fields.is_some());
+    if has_falloff && is_blended(props.alpha_mode) {
         if let Some([a, b, c, d]) = falloff_fields {
             props.falloff = crate::nif_material::Falloff::from_fields(a, b, c, d).map(|f| f.params);
         }

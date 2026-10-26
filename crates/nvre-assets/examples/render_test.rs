@@ -97,8 +97,21 @@ struct RenderTest {
 
 /// A camera, a light, and the game's files.
 fn setup(mut commands: Commands, test: Res<RenderTest>) {
-    // The game's files and the schema.
-    let data = GameData::open(&test.data_dir, &test.schema_dir).expect("the game's files");
+    // The game's files, including all BSA archives, and the schema.
+    let mut bsa_names = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&test.data_dir) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("bsa")) {
+                if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
+                    bsa_names.push(name.to_string());
+                }
+            }
+        }
+    }
+    bsa_names.sort();
+    let data = GameData::open_with_archives(&test.data_dir, &bsa_names, &test.schema_dir, &[])
+        .expect("the game's files with archives");
     commands.insert_resource(data);
 
     // The camera is placed once the model is known, so it frames it.

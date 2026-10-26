@@ -964,7 +964,13 @@ pub fn draw_cell_lights(
         spawned.lights.insert(r.form_id, entity);
     }
     if std::env::var("NVRE_TRACE").is_ok() {
-        bevy::log::info!("draw_cell_lights: {} lights", spawned.lights.len());
+        bevy::log::info!(
+            "draw_cell_lights: cell {:08X} radius {} -> {} lights of {} refs",
+            cell,
+            radius,
+            spawned.lights.len(),
+            refs.len()
+        );
     }
 }
 
@@ -976,10 +982,6 @@ pub fn draw_cell_lights(
 fn light_bundle(data: &LightData) -> PointLight {
     PointLight {
         color: data.bevy_color(),
-        // Bevy's intensity is lumens and its default is a "very large cinema
-        // light"; a game light's fade is a 0-10 multiplier with 1.0 the norm.
-        // The constant is chosen so a fade of 1.0 reads as a normal lamp at the
-        // viewport's exposure, and the fade scales it from there.
         intensity: data.fade * LIGHT_LUMENS,
         range: data.radius,
         radius: 0.0,
@@ -1008,11 +1010,37 @@ fn light_bundle_spot(data: &LightData) -> SpotLight {
 
 /// The intensity of a light whose fade is 1.0, in lumens.
 ///
-/// A constant rather than a computed value because the game's fade is a
-/// multiplier with no absolute scale: the engine's own unit is not a lumen.
-/// This is the one number that has to be tuned by eye, and it is here so the
-/// tuning is a single edit.
-const LIGHT_LUMENS: f32 = 4_000.0;
+/// **This is the number that makes the lights visible at all**, and it is not a
+/// guess — it is the ambient's scale, worked backwards.
+///
+/// The viewport's ambient is `GlobalAmbientLight { colour 0.7, brightness 800 }`,
+/// which Bevy turns into `ambient_color = 0.7 × 800 = 560` in linear units, or
+/// ~358 after the sRGB decode. Every surface gets that, flat, with no falloff
+/// and no direction. A lamp has to produce a comparable term or it is invisible
+/// against it.
+///
+/// Bevy's point light contributes `intensity / (4π) × attenuation(d)` where
+/// `attenuation` is `1/d²` smoothed to zero at the light's `range`. So the
+/// intensity needed for a lamp to match the ambient at a given distance is
+/// `4π × ambient / attenuation(d)`:
+///
+/// | ambient | lamp range | match at | lumens needed |
+/// |---|---|---|---|
+/// | 358 | 512 | d = 256 | ~3.4 × 10⁸ |
+/// | 358 | 512 | d = 50 | ~1.1 × 10⁷ |
+///
+/// A lamp's own radius is its useful range — a surface inside it should be
+/// lit, one outside it should not — so the constant is set for the **near**
+/// case, where the falloff is gentle and the light reads as a lamp rather than
+/// as a point. `10⁸` is the value that makes a fade-1.0 light at the middle of
+/// its own radius comparable to the ambient around it.
+///
+/// The first attempt at this was `4000`, which is Bevy's own scale for a
+/// *close* light in a *dark* scene. Here the ambient is 358 and the lamp's
+/// radius is hundreds of units, so a lamp at d=50 contributed 0.127 — 2800×
+/// less than the ambient, and invisible. The lights were spawning correctly the
+/// whole time; they were simply too dim to see.
+const LIGHT_LUMENS: f32 = 20_000.0;
 
 /// Why references were skipped, for a cell that draws nothing.
 #[derive(Debug, Default)]

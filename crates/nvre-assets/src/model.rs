@@ -361,7 +361,11 @@ impl ModelCtx<'_> {
 /// a mesh that names its own node `C_EditorMarker01` is not one.
 pub fn is_editor_marker(name: Option<&str>) -> bool {
     const PREFIX: &str = "editormarker";
-    name.is_some_and(|n| n.len() >= PREFIX.len() && n[..PREFIX.len()].eq_ignore_ascii_case(PREFIX))
+    name.is_some_and(|n| {
+        let lower = n.to_lowercase();
+        (lower.len() >= PREFIX.len() && lower[..PREFIX.len()].eq_ignore_ascii_case(PREFIX))
+            || lower.contains("lightbeam")
+    })
 }
 
 /// The affine transform a NIF's transform is.

@@ -98,7 +98,8 @@ fn blend_out(color: vec4<f32>, multiply_emissive: vec3<f32>) -> vec4<f32> {
     return vec4<f32>(factor * color.a, color.a);
 }
 @elif(BLEND_ADD) {
-    return vec4<f32>(color.rgb, add_alpha(color.a));
+    let lum = dot(color.rgb, vec3<f32>(0.299, 0.587, 0.114));
+    return vec4<f32>(color.rgb * multiply_emissive * lum, add_alpha(lum));
 }
 @else {
     return color;

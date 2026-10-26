@@ -98,8 +98,7 @@ fn eye(app: &mut App) -> Vec3 {
 
 /// The direction the camera is looking along.
 fn forward(app: &mut App) -> Vec3 {
-    *app
-        .world_mut()
+    *app.world_mut()
         .query_filtered::<&Transform, With<ViewportCamera>>()
         .single(app.world())
         .expect("the camera must exist")
