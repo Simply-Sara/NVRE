@@ -170,6 +170,8 @@ pub struct Spawned {
     /// The cell and radius the lights were spawned for.
     pub light_cell: Option<u32>,
     pub light_radius: i32,
+    /// The cell the ambient, the sun and the fog were last written for.
+    pub lighting_cell: Option<u32>,
 }
 
 /// Spawn the viewport's ambient light.
@@ -183,6 +185,10 @@ pub struct Spawned {
 /// the hotbar's Ambient toggle turns it off — see
 /// [`crate::windows::ViewportHotbar`]. So this value is the default the toggle
 /// starts from, not a setting fixed for the session.
+///
+/// A cell with its own `XCLL` overrides it entirely: [`apply_cell_lighting`]
+/// writes the cell's own ambient colour, its sun and its fog, and restores this
+/// default when a cell has none.
 pub fn setup(mut commands: Commands) {
     commands.insert_resource(GlobalAmbientLight {
         color: Color::srgb(0.7, 0.75, 0.8),
@@ -190,6 +196,157 @@ pub fn setup(mut commands: Commands) {
         ..default()
     });
 }
+
+/// The viewport's own sun: one directional light, whose direction and colour
+/// the open cell's `XCLL` says.
+///
+/// A cell with no `XCLL` — every exterior — leaves this dark: an exterior's
+/// lighting comes from the weather system, which the viewport does not model,
+/// and a made-up sun would be worse than none.
+#[derive(Component)]
+pub struct CellSun;
+
+/// Put the open cell's own lighting on the render world.
+///
+/// The cell's `XCLL` is the ambient colour, the sun's colour and the fog the
+/// game draws that cell with, and this writes all three. It runs once per cell
+/// rather than every frame: the ambient is a resource, the sun and the fog live
+/// on the camera, and none of them change while a cell is open.
+///
+/// An interior cell is the case this exists for — every game's interiors carry
+/// an `XCLL`. An exterior cell carries none, so this leaves the viewport's own
+/// ambient in place and despawns the sun.
+pub fn apply_cell_lighting(
+    mut commands: Commands,
+    mut session: ResMut<crate::session::Session>,
+    mut ambient: ResMut<GlobalAmbientLight>,
+    mut spawned: ResMut<Spawned>,
+    cameras: Query<Entity, With<ViewportCamera>>,
+    suns: Query<Entity, With<CellSun>>,
+) {
+    let Some(cell) = session.cell else {
+        return;
+    };
+    if spawned.lighting_cell == Some(cell) {
+        return;
+    }
+    spawned.lighting_cell = Some(cell);
+
+    let lighting = session.cell_lighting();
+    match lighting {
+        Some(l) => {
+            // The ambient is the cell's own colour. The game scales it by the
+            // same brightness the viewport's default uses, so the two are
+            // comparable and the hotbar's Ambient toggle still works.
+            ambient.color = l.ambient_color();
+            if std::env::var("NVRE_TRACE").is_ok() {
+                bevy::log::info!(
+                    "cell lighting {:08X}: ambient {:?} directional {:?} fog {:?} {}..{} power {}",
+                    cell,
+                    l.ambient,
+                    l.directional,
+                    l.fog,
+                    l.fog_near,
+                    l.fog_far,
+                    l.fog_power
+                );
+            }
+            // The sun, unless one is already standing.
+            if suns.iter().next().is_none() {
+                commands.spawn((
+                    Name::new("cell sun"),
+                    CellSun,
+                    DirectionalLight {
+                        color: l.directional_color(),
+                        // The directional colour is a display value in the
+                        // game, and the fade is its own scale on top of that.
+                        illuminance: DEFAULT_SUN_ILLUMINANCE * l.directional_fade.max(0.0),
+                        shadow_maps_enabled: true,
+                        ..default()
+                    },
+                    sun_transform(l),
+                ));
+            } else if let Ok(e) = suns.single() {
+                commands.entity(e).insert((
+                    DirectionalLight {
+                        color: l.directional_color(),
+                        illuminance: DEFAULT_SUN_ILLUMINANCE * l.directional_fade.max(0.0),
+                        shadow_maps_enabled: true,
+                        ..default()
+                    },
+                    sun_transform(l),
+                ));
+            }
+            // The fog, on the camera so the PBR pass blends to it.
+            //
+            // [hypothesis] `fog_power` shapes how sharply the fog thickens
+            // between `fog_near` and `fog_far`, and Bevy's `Linear` falloff has
+            // no such parameter — its curve is a straight ramp. The linear
+            // mapping is what the two distances alone say, and the power is
+            // left unapplied rather than approximated.
+            if l.has_fog() {
+                for c in &cameras {
+                    commands.entity(c).insert(DistanceFog {
+                        color: l.fog_color(),
+                        falloff: FogFalloff::Linear {
+                            start: l.fog_near,
+                            end: l.fog_far,
+                        },
+                        ..default()
+                    });
+                }
+            } else {
+                for c in &cameras {
+                    commands.entity(c).remove::<DistanceFog>();
+                }
+            }
+        }
+        None => {
+            // No lighting of its own: leave the viewport's ambient where it
+            // was, and take the sun away.
+            for e in &suns {
+                commands.entity(e).despawn();
+            }
+            for c in &cameras {
+                commands.entity(c).remove::<DistanceFog>();
+            }
+        }
+    }
+}
+
+/// The sun's transform, from the cell's directional rotation.
+///
+/// [hypothesis] The two angles are the sun's heading and elevation in degrees,
+/// which is what the GECK's own lighting dialog shows them as. The exact
+/// convention — which axis each turns around, and where zero points — is not
+/// documented authoritatively, so this is the reading that puts the sun
+/// overhead at `rotation_z = 0` and turns it around the vertical with
+/// `rotation_xy`.
+fn sun_transform(l: crate::session::CellLighting) -> Transform {
+    let yaw = (l.rotation_xy as f32).to_radians();
+    let pitch = (l.rotation_z as f32).to_radians();
+    // The light *shines towards* the direction it is rotated to face, so it is
+    // placed opposite where the light comes from.
+    let dir = Vec3::new(
+        yaw.cos() * pitch.cos(),
+        pitch.sin(),
+        yaw.sin() * pitch.cos(),
+    );
+    Transform::from_translation(dir * SUN_DISTANCE).looking_at(Vec3::ZERO, Vec3::Y)
+}
+
+/// How far from the cell's centre the sun stands, in game units.
+///
+/// Far enough that its light arrives parallel across a whole cell, which is
+/// what a directional light means; close enough to stay inside the far plane.
+const SUN_DISTANCE: f32 = 20_000.0;
+
+/// The sun's brightness, in lux.
+///
+/// The game's directional colour is a display value — it is what the surface
+/// ends up as, not a luminous power — so this is the scale that makes a
+/// `directional_fade` of 1.0 read as daylight rather than as a lamp.
+const DEFAULT_SUN_ILLUMINANCE: f32 = 20_000.0;
 
 /// Keep the camera where the focus says it is.
 ///
@@ -1032,7 +1189,7 @@ fn light_bundle_spot(data: &LightData) -> SpotLight {
 /// A lamp's own radius is its useful range — a surface inside it should be
 /// lit, one outside it should not — so the constant is set for the **near**
 /// case, where the falloff is gentle and the light reads as a lamp rather than
-/// as a point. `10⁸` is the value that makes a fade-1.0 light at the middle of
+/// as a point. `10⁷` is the value that makes a fade-1.0 light at the middle of
 /// its own radius comparable to the ambient around it.
 ///
 /// The first attempt at this was `4000`, which is Bevy's own scale for a
@@ -1040,7 +1197,10 @@ fn light_bundle_spot(data: &LightData) -> SpotLight {
 /// radius is hundreds of units, so a lamp at d=50 contributed 0.127 — 2800×
 /// less than the ambient, and invisible. The lights were spawning correctly the
 /// whole time; they were simply too dim to see.
-const LIGHT_LUMENS: f32 = 20_000.0;
+///
+/// The second attempt was `20_000`, which was still ~550× short of the near
+/// case above. `10⁷` is what the derivation actually calls for.
+const LIGHT_LUMENS: f32 = 10_000_000.0;
 
 /// Why references were skipped, for a cell that draws nothing.
 #[derive(Debug, Default)]

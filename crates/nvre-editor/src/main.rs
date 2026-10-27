@@ -425,6 +425,9 @@ fn main() {
         .add_systems(
             Update,
             (
+                // The cell's own ambient, sun and fog, before anything is
+                // drawn with them.
+                viewport::apply_cell_lighting,
                 viewport::draw_cell,
                 // The game's own lights, spawned from the same references and the
                 // same cell. After the models so a light is never one frame ahead

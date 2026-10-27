@@ -26,6 +26,7 @@
 //! unambiguous when several windows are open.
 
 use bevy::camera::{OrthographicProjection, RenderTarget};
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::log::info;
 use bevy::pbr::wireframe::{WireframeConfig, WireframeTopology};
@@ -230,6 +231,12 @@ pub fn spawn_viewport(mut commands: Commands) {
     let camera = commands
         .spawn((
             Camera3d::default(),
+            // No tone curve. Every game the editor supports writes its
+            // surfaces straight to the framebuffer in sRGB — the ambient, the
+            // lights and the textures are already display values, and a tone
+            // curve on top of them is what made the viewport's colours not
+            // match the game's. Bevy's default is `TonyMcMapface`.
+            Tonemapping::None,
             Projection::Perspective(PerspectiveProjection {
                 far: 1_500_000.0,
                 near: 1.0,

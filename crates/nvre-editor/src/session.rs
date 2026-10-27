@@ -468,6 +468,17 @@ impl Session {
         self.light_paths_for(bases).iter().flatten().count()
     }
 
+    /// The open cell's own lighting, if it has any.
+    ///
+    /// The cell's `XCLL` is the ambient colour, the sun's colour and the fog
+    /// the renderer draws with. An exterior cell has none — it takes its
+    /// lighting from the weather system — so this answers `None` outdoors, and
+    /// the viewport keeps its own ambient there instead of going black.
+    pub fn cell_lighting(&mut self) -> Option<CellLighting> {
+        let cell = self.cell?;
+        cell_lighting(&self.cell_sub(cell, b"XCLL")?)
+    }
+
     /// The object palette, grouped into the schema's categories.
     ///
     /// GECK's Object Window is a category list on the left and that category's
@@ -763,6 +774,24 @@ impl Session {
     /// The uncached build, for measuring what the cache costs.
     pub fn build_cell_refs_pub(&self, cell: u32) -> Vec<RefRow> {
         self.build_cell_refs(cell)
+    }
+
+    /// One subrecord of a cell's winning record, as its raw bytes.
+    ///
+    /// The cell's own data lives in its `CELL` record, which the index points
+    /// at but does not keep. This walks the load order for the winner and
+    /// hands back the subrecord's payload, which is what a reader that wants
+    /// a field the index does not carry needs.
+    ///
+    /// `None` when the cell has no such subrecord, or its record is missing.
+    pub fn cell_sub(&mut self, cell: u32, sig: &[u8; 4]) -> Option<Vec<u8>> {
+        let lo = self.load_order().ok()?;
+        let (_, rec) = nvre_world::fields::winner(lo, cell)?;
+        rec.subrecords()
+            .ok()?
+            .into_iter()
+            .find(|s| &s.sig == sig)
+            .map(|s| s.data)
     }
 
     /// Collect references for the active cell and its exterior grid neighbors within `radius`.
@@ -1542,6 +1571,109 @@ impl CellScope {
                 .unwrap_or_else(|| format!("{w:08X}")),
         }
     }
+}
+
+/// A cell's own lighting, as the renderer draws it.
+///
+/// This is the `CELL`'s `XCLL` subrecord — the ambient colour, the directional
+/// (sun) colour, and the fog. Every game's interiors carry one; measured on the
+/// shipped masters, an exterior cell carries none (it takes its lighting from
+/// the weather system instead), so this is an interior's lighting.
+///
+/// ## The two lengths
+///
+/// | Game | `XCLL` |
+/// |---|---|
+/// | FNV, FO3 | 40 B — exactly this struct |
+/// | Skyrim LE, Skyrim SE, FO4 | 92 B — this struct, then 52 more bytes |
+///
+/// The 40-byte prefix is the same in all five, so one reader covers every game
+/// and the extra bytes are simply left unread. `fopdoc` documents the layout
+/// for the Fallout family; UESP documents it for Skyrim.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CellLighting {
+    /// The ambient colour, as 0-255 bytes.
+    pub ambient: [u8; 3],
+    /// The directional (sun) colour, as 0-255 bytes.
+    pub directional: [u8; 3],
+    /// The fog colour, as 0-255 bytes.
+    pub fog: [u8; 3],
+    /// Where the fog starts, in game units. Zero means no fog at all.
+    pub fog_near: f32,
+    /// Where the fog is fully opaque, in game units.
+    pub fog_far: f32,
+    /// The sun's heading around the vertical, in degrees.
+    pub rotation_xy: i32,
+    /// The sun's elevation, in degrees.
+    pub rotation_z: i32,
+    /// The directional light's fade, a scale on its colour.
+    pub directional_fade: f32,
+    /// The distance beyond which nothing is drawn for fog.
+    pub fog_clip_dist: f32,
+    /// The fog's power: how sharply it thickens with distance.
+    pub fog_power: f32,
+}
+
+impl CellLighting {
+    /// Whether the cell draws any fog at all.
+    ///
+    /// A `fog_far` of zero is what a cell with no fog stores: there is no
+    /// distance at which the fog is opaque, so there is nothing to blend to.
+    /// Many cells do this deliberately.
+    pub fn has_fog(&self) -> bool {
+        self.fog_far > 0.0 && self.fog_far > self.fog_near
+    }
+
+    /// The ambient colour as a Bevy colour, bytes scaled to 0-1.
+    pub fn ambient_color(&self) -> bevy::color::Color {
+        bytes_color(self.ambient)
+    }
+
+    /// The directional colour as a Bevy colour, bytes scaled to 0-1.
+    pub fn directional_color(&self) -> bevy::color::Color {
+        bytes_color(self.directional)
+    }
+
+    /// The fog colour as a Bevy colour, bytes scaled to 0-1.
+    pub fn fog_color(&self) -> bevy::color::Color {
+        bytes_color(self.fog)
+    }
+}
+
+/// A byte triple as a Bevy colour in sRGB.
+fn bytes_color(b: [u8; 3]) -> bevy::color::Color {
+    bevy::color::Color::srgb(
+        f32::from(b[0]) / 255.0,
+        f32::from(b[1]) / 255.0,
+        f32::from(b[2]) / 255.0,
+    )
+}
+
+/// Read a cell's `XCLL` bytes into [`CellLighting`].
+///
+/// `None` unless the subrecord is at least the 40 bytes the layout needs. A
+/// longer subrecord is fine: the trailing bytes are Skyrim's and Fallout 4's
+/// own extra fields, which the viewport does not draw with.
+pub fn cell_lighting(bytes: &[u8]) -> Option<CellLighting> {
+    if bytes.len() < 40 {
+        return None;
+    }
+    let f32_at =
+        |o: usize| f32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
+    let i32_at =
+        |o: usize| i32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
+    Some(CellLighting {
+        ambient: [bytes[0], bytes[1], bytes[2]],
+        directional: [bytes[4], bytes[5], bytes[6]],
+        fog: [bytes[8], bytes[9], bytes[10]],
+        fog_near: f32_at(12),
+        fog_far: f32_at(16),
+        rotation_xy: i32_at(20),
+        rotation_z: i32_at(24),
+        directional_fade: f32_at(28),
+        fog_clip_dist: f32_at(32),
+        fog_power: f32_at(36),
+    })
 }
 
 /// A placed light's own data, for the viewport to draw a real light from.
