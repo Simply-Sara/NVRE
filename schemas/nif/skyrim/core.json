@@ -58,31 +58,15 @@
    ]
   },
   "BSLightingShaderProperty": {
-   "inherit": "NiObject",
+   "inherit": "BSShaderProperty",
    "fields": [
     {
-     "name": "shader_type",
-     "type": "u32"
-    },
-    {
-     "name": "name",
-     "type": "string"
-    },
-    {
-     "name": "extra_data",
-     "type": "ref"
-    },
-    {
-     "name": "controller",
-     "type": "ref"
-    },
-    {
      "name": "shader_flags",
-     "type": "u32"
+     "type": "BSShaderFlags"
     },
     {
      "name": "shader_flags_2",
-     "type": "u32"
+     "type": "BSShaderFlags2"
     },
     {
      "name": "uv_offset",
@@ -216,7 +200,7 @@
   "BSShaderProperty": {
    "inherit": "NiShadeProperty",
    "fields": [],
-   "note": "nif.xml marks BSShaderProperty's four fields NI_BS_LTE_FO3, so a Skyrim shader property has none of them and carries its own flags."
+   "note": "nif.xml marks BSShaderProperty's four fields NI_BS_LTE_FO3, so a Skyrim shader property has none of them and carries its own flags. This is the block `is_a` walks through to reach every Bethesda shader property: inheriting it is what makes `shape_props` read a Skyrim shape's `shader_flags`."
   },
   "NiShadeProperty": {
    "inherit": "NiObject",

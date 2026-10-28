@@ -468,6 +468,20 @@ impl Session {
         self.light_paths_for(bases).iter().flatten().count()
     }
 
+    /// One subrecord of a record's winning definition, as its raw bytes.
+    ///
+    /// The record walk already resolves the winner; this is the accessor a
+    /// diagnostic wants when it needs a subrecord the readers do not carry.
+    pub fn record_sub(&mut self, form_id: u32, sig: &[u8; 4]) -> Option<Vec<u8>> {
+        let lo = self.load_order().ok()?;
+        let (_, rec) = nvre_world::fields::winner(lo, form_id)?;
+        rec.subrecords()
+            .ok()?
+            .into_iter()
+            .find(|s| &s.sig == sig)
+            .map(|s| s.data)
+    }
+
     /// The open cell's own lighting, if it has any.
     ///
     /// The cell's `XCLL` is the ambient colour, the sun's colour and the fog
@@ -1812,19 +1826,14 @@ pub fn light_data(value: &serde_json::Value) -> LightData {
     }
     // The spot flag. The two families call it differently and at different
     // bits: Fallout's is `Spot Light` at bit 9, Skyrim's is `Spot Light` at
-    // bit 9 too — but Skyrim also has `Shadow Spotlight` (bit 11) and
-    // `Shadow Hemisphere`/`Shadow Omnidirectional` (bits 12, 13), and Fallout
-    // 4 uses `NonShadow Spotlight` (bit 15). Every one of them means the light
-    // is a cone rather than a sphere, so all are read.
+    // bit 9 too — plus `Shadow Spotlight` at bit 10 and `NonShadow Spotlight`
+    // at bit 15 in Fallout 4. A shadow flag is about the shadows, not the
+    // shape: an omnidirectional light casts shadows too. `Shadow Hemisphere`
+    // (bit 11), `Shadow Omnidirectional` (bit 12) and `Portal-strict` (bit 13)
+    // are never cones, so they are not read.
     out.spot = flag_field(
         obj,
-        &[
-            "Spot Light",
-            "Shadow Spotlight",
-            "NonShadow Spotlight",
-            "Shadow Hemisphere",
-            "Shadow Omnidirectional",
-        ],
+        &["Spot Light", "Shadow Spotlight", "NonShadow Spotlight"],
     );
     out.off_by_default = flag_field(obj, &["Off By Default"]);
     out
