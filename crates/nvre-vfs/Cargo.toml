@@ -19,3 +19,7 @@ thiserror.workspace = true
 # Writes a canonical v104 BSA, so the precedence tests can put real contents
 # in two archives and assert which one is read.
 bsa105 = { path = "../bsa105" }
+# The NIF reader, for the `nifreencode` checker: the parity plan's S1-1
+# measurement runs over a whole game's meshes, and it belongs in a crate that
+# builds in seconds rather than one that pulls in Bevy.
+nvre-nif = { path = "../nvre-nif" }

@@ -165,7 +165,7 @@ impl NifFile {
         index: usize,
     ) -> Result<bool, CodecError> {
         let b = &self.blocks[index];
-        let Some(fields) = schema.block_fields(&b.type_name) else {
+        let Some(fields) = schema.block_fields_ref(&b.type_name) else {
             return Err(CodecError::Layout(format!(
                 "the unknown block type {:?}",
                 b.type_name
@@ -204,7 +204,7 @@ pub fn decode_block(
     type_name: &str,
     r: &mut Reader<'_>,
 ) -> Result<Struct, CodecError> {
-    let Some(fields) = schema.block_fields(type_name) else {
+    let Some(fields) = schema.block_fields_ref(type_name) else {
         return Err(CodecError::Layout(format!(
             "no definition for the block type {type_name:?}"
         )));
@@ -231,7 +231,7 @@ pub struct BlockCtx {
 impl BlockCtx {
     /// Whether the block is of type `name`, or of a type based on it.
     fn is(&self, schema: &Schema, name: &str) -> bool {
-        self.type_name == name || schema.block_chain(&self.type_name).contains(&name)
+        schema.is_a(&self.type_name, name)
     }
 }
 
@@ -295,6 +295,13 @@ fn read_fields(
         }
         // The scope holds the fields read so far, so a later field's
         // condition or length can use them.
+        //
+        // The value goes in as it is, including an array: a *width* is the
+        // name of an earlier field and reads that field's elements as the row
+        // widths — `NiTriStripsData.points` is as wide as `strip_lengths`
+        // says, per row — so an array has to stay reachable by name, and
+        // holding its length instead would read one row where the file has
+        // many. The clone is the price of that.
         scope.insert(f.name.clone(), value.clone());
         out.set(&f.name, value);
     }
@@ -368,7 +375,7 @@ fn read_field(
             }));
         }
         let fields = schema
-            .struct_fields(n)
+            .struct_fields_ref(n)
             .ok_or_else(|| CodecError::Layout(format!("the unknown struct type {n:?}")))?;
         // The template says what `T` stands for inside the struct. A
         // template of "T" means "the enclosing template", so it is passed
@@ -436,7 +443,7 @@ fn read_field(
             return Ok(Some(crate::codec::read_prim(p, r, header.version)?));
         }
         let fields = schema
-            .struct_fields(t)
+            .struct_fields_ref(t)
             .ok_or_else(|| CodecError::Layout(format!("the unknown struct type {t:?}")))?;
         let mut sub = Struct::new();
         let mut sub_scope = scope.clone();
@@ -467,7 +474,7 @@ fn read_field(
         // An array of structs: the struct is read once per element.
         if let TypeRef::Named(name) = &f.ty {
             if name != "sized_string" && !schema.enums.contains_key(name) {
-                let sub_fields = schema.struct_fields(name).ok_or_else(|| {
+                let sub_fields = schema.struct_fields_ref(name).ok_or_else(|| {
                     CodecError::Layout(format!("the unknown struct type {name:?}"))
                 })?;
                 let sub_template: Option<String> = match f.template.as_deref() {

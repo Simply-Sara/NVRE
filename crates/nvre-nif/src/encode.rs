@@ -13,6 +13,100 @@ use crate::schema::{Prim, Schema, TypeRef};
 use crate::value::{Struct, Value};
 use std::collections::HashMap;
 
+/// The state a field's length and condition are read against.
+///
+/// A stack of frames, innermost last: the file's own state at the bottom,
+/// then each enclosing struct's fields, and the struct being written's own
+/// fields on top. A name is looked up from the top down, so an inner field
+/// shadows an outer one of the same name — which is what a cloned
+/// `HashMap` per struct used to do, at the cost of copying every value in it
+/// once per struct and once per array element.
+struct Frames<'a> {
+    /// The enclosing scopes, outermost first.
+    base: Vec<&'a HashMap<String, Value>>,
+    /// The struct fields of each frame, outermost first, beside its base.
+    own: Vec<&'a [(String, Value)]>,
+    /// The enclosing type's argument, when there is one: read as `arg` by a
+    /// struct type's own fields. It is computed rather than borrowed, because
+    /// it comes from an expression over the enclosing scope.
+    arg: Option<Value>,
+}
+
+impl<'a> Frames<'a> {
+    /// The value of `name`, innermost frame first.
+    fn get(&self, name: &str) -> Option<&Value> {
+        if name == "arg" {
+            if let Some(v) = &self.arg {
+                return Some(v);
+            }
+        }
+        for own in self.own.iter().rev() {
+            if let Some((_, v)) = own.iter().find(|(n, _)| n == name) {
+                return Some(v);
+            }
+        }
+        self.base.iter().rev().find_map(|s| s.get(name))
+    }
+
+    /// The frames with `st`'s own fields pushed on top.
+    fn push(&self, st: &'a Struct) -> Frames<'a> {
+        let mut out = Frames {
+            base: self.base.clone(),
+            own: self.own.clone(),
+            arg: self.arg.clone(),
+        };
+        out.own.push(&st.fields);
+        out
+    }
+
+    /// An expression's value as a number, or `None` when a name it reads is
+    /// not in scope — which is how the decoder's own scope answers, and what
+    /// the callers already treat as "not there".
+    ///
+    /// `scratch` is a cleared map the caller owns. It is filled here rather
+    /// than allocated, because this runs once per field of a struct and the
+    /// values can be large: a vertex array copied once per vertex is what made
+    /// a corpus-wide re-encode slow. It is left filled for the next call to
+    /// clear, so the map's capacity is kept.
+    fn number(&self, e: &crate::expr::Expr, scratch: &mut HashMap<String, Value>) -> Option<f64> {
+        scratch.clear();
+        if let Some(v) = &self.arg {
+            scratch.insert("arg".into(), v.clone());
+        }
+        for frame in &self.own {
+            for (n, v) in frame.iter() {
+                scratch.insert(n.clone(), v.clone());
+            }
+        }
+        // The base is the file's own state, filled in only where the struct's
+        // own fields have not shadowed it — the order the decoder reads in.
+        for base in &self.base {
+            for (n, v) in base.iter() {
+                scratch.entry(n.clone()).or_insert_with(|| v.clone());
+            }
+        }
+        e.number_in(scratch)
+    }
+
+    /// The frames a struct type's fields are read against, with the field's
+    /// own argument added as the innermost frame.
+    fn with_arg(
+        &self,
+        f: &crate::schema::Field,
+        scratch: &mut HashMap<String, Value>,
+    ) -> Frames<'_> {
+        Frames {
+            base: self.base.clone(),
+            own: self.own.clone(),
+            arg: f
+                .arg
+                .as_ref()
+                .and_then(|e| self.number(e, scratch))
+                .map(Value::Num),
+        }
+    }
+}
+
 /// Write a block's fields back out.
 ///
 /// `scope` holds the values of the fields read so far, which the lengths
@@ -30,7 +124,26 @@ pub fn encode_fields(
     for (name, v) in &st.fields {
         scope.insert(name.clone(), v.clone());
     }
-    encode_fields_in(schema, header, lineage, fields, st, template, &scope, out)
+    // One map, reused for every condition and length the encoder evaluates:
+    // the alternative is one allocation per field, and the values it holds can
+    // be a whole vertex array.
+    let mut scratch: HashMap<String, Value> = HashMap::new();
+    let frames = Frames {
+        base: vec![&scope],
+        own: Vec::new(),
+        arg: None,
+    };
+    encode_fields_in(
+        schema,
+        header,
+        lineage,
+        fields,
+        st,
+        template,
+        &frames,
+        &mut scratch,
+        out,
+    )
 }
 
 /// Write a list of fields, against a scope.
@@ -45,15 +158,13 @@ fn encode_fields_in(
     fields: &[crate::schema::Field],
     st: &Struct,
     template: Option<&str>,
-    scope: &HashMap<String, Value>,
+    scope: &Frames<'_>,
+    scratch: &mut HashMap<String, Value>,
     out: &mut Vec<u8>,
 ) -> Result<(), CodecError> {
-    // The scope a field's length and condition are read against: the
-    // fields of this struct, over the enclosing scope.
-    let mut own: HashMap<String, Value> = scope.clone();
-    for (name, v) in &st.fields {
-        own.insert(name.clone(), v.clone());
-    }
+    // The struct's own fields shadow the enclosing scope's, which is what
+    // the decoder's scope does and what a clone per struct used to buy.
+    let own = scope.push(st);
     // The values are matched to the fields in order, not by name: a schema
     // may name two fields the same and tell them apart by their
     // conditions — `HavokFilter`'s two `layer` fields, and `NiPSysData`'s
@@ -65,7 +176,7 @@ fn encode_fields_in(
     // in.
     let present_fields: Vec<&crate::schema::Field> = fields
         .iter()
-        .filter(|f| present(schema, header, lineage, f, &own).unwrap_or(false))
+        .filter(|f| present(schema, header, lineage, f, &own, scratch).unwrap_or(false))
         .collect();
     for (i, f) in present_fields.iter().enumerate() {
         let Some((_, v)) = st.fields.get(i) else {
@@ -76,7 +187,7 @@ fn encode_fields_in(
         };
         let f = *f;
         let at = out.len();
-        write_field(schema, header, lineage, f, v, template, &own, out)?;
+        write_field(schema, header, lineage, f, v, template, &own, scratch, out)?;
         if std::env::var("NVRE_NIF_TRACE").is_ok() {
             eprintln!("  {}+{}..{} = {:?}", f.name, at, out.len(), v);
         }
@@ -93,7 +204,8 @@ fn present(
     header: &Header,
     lineage: &[String],
     f: &crate::schema::Field,
-    scope: &HashMap<String, Value>,
+    scope: &Frames<'_>,
+    scratch: &mut HashMap<String, Value>,
 ) -> Result<bool, CodecError> {
     let version = header.version;
     if let Some(since) = f.since {
@@ -117,10 +229,10 @@ fn present(
     }
     match &f.cond {
         None => Ok(true),
-        Some(e) => match e.evaluate_number(scope) {
-            Ok(x) => Ok(x != 0.0),
-            Err(msg) => Err(CodecError::Layout(format!(
-                "the condition of {:?} cannot be read: {msg}",
+        Some(e) => match scope.number(e, scratch) {
+            Some(x) => Ok(x != 0.0),
+            None => Err(CodecError::Layout(format!(
+                "the condition of {:?} cannot be read",
                 f.name
             ))),
         },
@@ -136,7 +248,8 @@ fn write_field(
     f: &crate::schema::Field,
     v: &Value,
     template: Option<&str>,
-    scope: &HashMap<String, Value>,
+    scope: &Frames<'_>,
+    scratch: &mut HashMap<String, Value>,
     out: &mut Vec<u8>,
 ) -> Result<(), CodecError> {
     // The length of an array, if it has one.
@@ -144,7 +257,7 @@ fn write_field(
         None => None,
         Some(crate::schema::Length::Fixed(n)) => Some(*n),
         Some(crate::schema::Length::Expr(e)) => {
-            Some(e.evaluate_number(scope).unwrap_or(0.0) as usize)
+            Some(scope.number(e, scratch).unwrap_or(0.0) as usize)
         }
         Some(crate::schema::Length::Field(name)) => {
             let Some(v) = scope.get(name) else {
@@ -182,7 +295,7 @@ fn write_field(
         // field's own, or the enclosing one.
         let sub_template = sub_template(schema, f, template);
         // The argument the struct's own fields are read against.
-        let sub_scope = with_arg(scope, f);
+        let sub_scope = scope.with_arg(f, scratch);
         // An array of structs: the struct is written once per element.
         if let Some(count) = length {
             let items = v.as_list().unwrap_or(&[]);
@@ -201,6 +314,7 @@ fn write_field(
                     sub,
                     sub_template.as_deref(),
                     &sub_scope,
+                    scratch,
                     out,
                 )?;
             }
@@ -220,6 +334,7 @@ fn write_field(
             sub,
             sub_template.as_deref(),
             &sub_scope,
+            scratch,
             out,
         );
     }
@@ -244,7 +359,17 @@ fn write_field(
                 f.name
             )));
         };
-        return encode_fields_in(schema, header, lineage, &fields, sub, Some(t), scope, out);
+        return encode_fields_in(
+            schema,
+            header,
+            lineage,
+            &fields,
+            sub,
+            Some(t),
+            scope,
+            scratch,
+            out,
+        );
     }
 
     let TypeRef::Prim(prim) = f.ty else {
@@ -262,7 +387,7 @@ fn write_field(
         }
         // A two-dimensional array: each row is as wide as the width says.
         if let Some(w) = &f.width {
-            let widths = widths(schema, w, n, scope);
+            let widths = widths(schema, w, n, scope, scratch);
             let Value::List(rows) = v else {
                 return Err(CodecError::Layout(format!(
                     "the value of {:?} is not a list",
@@ -299,23 +424,31 @@ fn widths(
     _schema: &Schema,
     w: &crate::schema::Width,
     n: usize,
-    scope: &HashMap<String, Value>,
+    scope: &Frames<'_>,
+    scratch: &mut HashMap<String, Value>,
 ) -> Vec<usize> {
     match w {
         crate::schema::Width::Fixed(k) => vec![*k; n],
-        crate::schema::Width::Expr(e) => vec![e.evaluate_number(scope).unwrap_or(0.0) as usize; n],
+        crate::schema::Width::Expr(e) => vec![scope.number(e, scratch).unwrap_or(0.0) as usize; n],
         crate::schema::Width::Field(name) => {
+            // The field the width comes from. It is usually an array whose
+            // elements are the row widths — `NiTriStripsData.points` is as
+            // wide as `strip_lengths` says, per row — and sometimes a single
+            // count, which is then the width of every row.
+            //
+            // The array is read from the frames, which hold it by reference;
+            // a scope carries only an array's length, because that is all a
+            // condition or a length reads from one.
             let Some(v) = scope.get(name) else {
                 return vec![0; n];
             };
-            match v.as_list() {
-                // An array of counts: one width per row.
-                Some(l) => l
+            match v {
+                Value::List(l) => l
                     .iter()
                     .map(|x| x.as_number().unwrap_or(0.0) as usize)
                     .collect(),
                 // A single count: the same width for every row.
-                None => vec![v.as_number().unwrap_or(0.0) as usize; n],
+                other => vec![other.as_number().unwrap_or(0.0) as usize; n],
             }
         }
     }
@@ -341,16 +474,6 @@ fn sub_template(
                 .or_else(|| template.map(str::to_string))
         }
     }
-}
-
-/// The scope a field's struct is read against: the enclosing scope, with
-/// the field's own argument.
-fn with_arg(scope: &HashMap<String, Value>, f: &crate::schema::Field) -> HashMap<String, Value> {
-    let mut out = scope.clone();
-    if let Some(arg) = f.arg.as_ref().and_then(|e| e.evaluate_number(scope).ok()) {
-        out.insert("arg".into(), Value::Num(arg));
-    }
-    out
 }
 
 /// Write a primitive's value.

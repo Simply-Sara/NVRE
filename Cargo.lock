@@ -4726,6 +4726,7 @@ version = "0.1.0"
 dependencies = [
  "ba2",
  "bsa105",
+ "nvre-nif",
  "thiserror 2.0.21",
 ]
 

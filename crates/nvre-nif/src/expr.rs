@@ -147,6 +147,17 @@ impl Expr {
             .ok_or_else(|| "expression is not a number".to_string())
     }
 
+    /// The expression's value, as a number, against a scope the caller fills.
+    ///
+    /// The same answer [`Expr::evaluate_number`] gives. It exists for the
+    /// encoder, which holds a struct's fields beside the enclosing scope and
+    /// would otherwise build a merged map once per field it writes: the map is
+    /// the caller's to clear and refill, so a block with a vertex array does
+    /// not allocate a copy of that array per vertex.
+    pub fn number_in(&self, scope: &mut Scope) -> Option<f64> {
+        self.eval(&mut Eval { scope }).as_number()
+    }
+
     fn eval(&self, e: &mut Eval<'_>) -> Value {
         self.root.eval(e)
     }
