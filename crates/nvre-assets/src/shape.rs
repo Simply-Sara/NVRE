@@ -320,7 +320,7 @@ pub fn alpha_mode(flags: i64, threshold: i64) -> AlphaMode {
     let strict = (flags >> 10) & 7 == 4;
     let cutoff = (threshold as f32 + if strict { 0.5 } else { 0.0 }) / 255.0;
     match (blend, test, src, dst) {
-        (true, _, _, 0) => AlphaMode::Add,
+        (true, _, _, 0) => AlphaMode::Blend,
         (false, true, _, _) => AlphaMode::Mask(cutoff),
         (true, true, _, _) if threshold >= BLEND_TEST_CUT => AlphaMode::Mask(cutoff),
         (true, _, 1 | 4, _) => AlphaMode::Multiply,
@@ -543,9 +543,9 @@ mod tests {
     }
 
     #[test]
-    fn a_destination_of_one_is_additive() {
+    fn a_destination_of_one_blends() {
         // blend, source ZERO, destination ONE.
-        assert_eq!(alpha_mode(1, 0), AlphaMode::Add);
+        assert_eq!(alpha_mode(1, 0), AlphaMode::Blend);
     }
 
     #[test]

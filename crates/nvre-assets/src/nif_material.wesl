@@ -92,14 +92,13 @@ fn add_alpha(a: f32) -> f32 {
 //
 // An additive shape adds about what it would add to display values, so its
 // alpha is raised to a power.
-fn blend_out(color: vec4<f32>, multiply_emissive: vec3<f32>) -> vec4<f32> {
+fn blend_out(color: vec4<f32>, multiply_emissive: vec3<f32>, raw_emissive: vec3<f32>) -> vec4<f32> {
 @if(BLEND_MULTIPLY) {
     let factor = multiply_factor(color.rgb, multiply_emissive);
     return vec4<f32>(factor * color.a, color.a);
 }
 @elif(BLEND_ADD) {
-    let lum = dot(color.rgb, vec3<f32>(0.299, 0.587, 0.114));
-    return vec4<f32>(color.rgb * multiply_emissive * lum, add_alpha(lum));
+    return vec4<f32>(color.rgb * raw_emissive * color.a, color.a);
 }
 @else {
     return color;
@@ -180,11 +179,12 @@ fn fragment(
         out.color = pbr_input.material.base_color;
     }
 
+    let raw_emissive = e.rgb;
     // A multiply-blended shape is a factor on what lies behind it, and an
     // additive one adds about what it would add to display values. Both are
     // written in their own functions, so that the two conditionals do not
     // have to be nested.
-    out.color = blend_out(out.color, multiply_emissive);
+    out.color = blend_out(out.color, multiply_emissive, raw_emissive);
 }
 
     return out;

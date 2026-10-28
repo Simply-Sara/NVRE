@@ -348,7 +348,7 @@ impl ModelCtx<'_> {
             } else {
                 Some(bevy::render::render_resource::Face::Back)
             },
-            unlit: props.unlit,
+            unlit: false,
             ..default()
         };
         let mut m = nif_material(standard);
