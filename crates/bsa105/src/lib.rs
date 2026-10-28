@@ -52,6 +52,9 @@ pub const VERSION_104: u32 = 104;
 /// Bytes in a v104 folder record: hash(8) + count(4) + offset(4).
 pub const FOLDER_RECORD_SIZE_104: usize = 16;
 
+/// Write a minimal BSA archive, for tests that need real archive contents.
+pub mod write;
+
 /// Archive flag bits. Names follow public community documentation; the two
 /// marked "unconfirmed" have no observed layout effect.
 pub mod flags {

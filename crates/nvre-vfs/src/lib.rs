@@ -539,4 +539,75 @@ mod tests {
         assert!(!order.iter().any(|n| n.starts_with("MyMod")));
         std::fs::remove_dir_all(&dir).unwrap();
     }
+
+    /// S0-2: which archive a file comes from is decided by the order they are
+    /// opened in, and the archive opened last wins.
+    ///
+    /// This needs real archive contents: an empty archive indexes nothing, so
+    /// a test built from empty files cannot see the rule at all. The archives
+    /// are written by `bsa105::write`, which produces a canonical v104 archive
+    /// the reader takes without a warning.
+    #[test]
+    fn the_archive_opened_last_wins() {
+        let dir = std::env::temp_dir().join(format!("nvre-vfs-prec-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let same = bsa105::write::File {
+            folder: "Meshes".into(),
+            name: "shared.nif".into(),
+            data: b"low".to_vec(),
+        };
+        bsa105::write::write(dir.join("Low.bsa"), std::slice::from_ref(&same)).unwrap();
+        bsa105::write::write(
+            dir.join("High.bsa"),
+            &[bsa105::write::File {
+                data: b"high".to_vec(),
+                ..same
+            }],
+        )
+        .unwrap();
+
+        // Low first, high second: high wins.
+        let vfs = Vfs::open(&dir, &["Low.bsa".into(), "High.bsa".into()]).unwrap();
+        assert_eq!(
+            vfs.read("meshes\\shared.nif").unwrap().unwrap(),
+            b"high",
+            "the archive opened last wins"
+        );
+        assert_eq!(vfs.source_of("MESHES\\SHARED.NIF"), Some("High.bsa"));
+
+        // The other order: low wins. The order is the whole of the rule.
+        let vfs = Vfs::open(&dir, &["High.bsa".into(), "Low.bsa".into()]).unwrap();
+        assert_eq!(vfs.read("meshes\\shared.nif").unwrap().unwrap(), b"low");
+        assert_eq!(vfs.source_of("meshes\\shared.nif"), Some("Low.bsa"));
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// S0-2: a loose file beats every archive, whichever is opened last.
+    ///
+    /// The loose files are indexed after the archives, so their `insert` is
+    /// the last one — but the rule is worth stating, because the game's own
+    /// precedence is exactly this and a reader that got it backwards would
+    /// silently draw the base game's mesh over a mod's.
+    #[test]
+    fn a_loose_file_beats_every_archive() {
+        let dir = std::env::temp_dir().join(format!("nvre-vfs-loose-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("Meshes")).unwrap();
+        bsa105::write::write(
+            dir.join("Arch.bsa"),
+            &[bsa105::write::File {
+                folder: "Meshes".into(),
+                name: "x.nif".into(),
+                data: b"archived".to_vec(),
+            }],
+        )
+        .unwrap();
+        std::fs::write(dir.join("Meshes/x.nif"), b"loose").unwrap();
+
+        let vfs = Vfs::open(&dir, &["Arch.bsa".into()]).unwrap();
+        assert_eq!(vfs.read("meshes\\x.nif").unwrap().unwrap(), b"loose");
+        assert_eq!(vfs.source_of("meshes\\x.nif"), Some("loose"));
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

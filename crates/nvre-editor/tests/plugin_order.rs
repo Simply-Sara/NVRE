@@ -594,3 +594,93 @@ fn the_header_reader_agrees_with_the_whole_file_reader() {
         None
     );
 }
+
+/// S0-3: every game's own order file is found, and the master ordering the
+/// game itself would produce is the one computed here.
+///
+/// The games differ in where they keep the file and in what decides the order —
+/// Fallout 3, New Vegas and Oblivion order by file timestamp and use
+/// `plugins.txt` only to record what is active, while Skyrim and Fallout 4 read
+/// the file's own order — so each profile is exercised with its own file, and
+/// the ordering rule is asserted on the dependency graph rather than on the
+/// file. [documented: LOOT, "Introduction to Load Orders"]
+#[test]
+fn every_game_finds_its_own_order_file() {
+    for game in nvre_editor::game::ALL {
+        let dir = std::env::temp_dir().join(format!("nvre-order-{}", game.id));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // The file each game reads, with a `*` as Skyrim SE onward marks an
+        // active plugin — a leading star must be dropped, not kept in the name.
+        std::fs::write(dir.join("plugins.txt"), "*base.esm\nsecond.esm\n").unwrap();
+        std::fs::write(dir.join("loadorder.txt"), "base.esm\nsecond.esm\n").unwrap();
+
+        let from_txt = plugin_order::read_for_game(&game, &dir, PluginOrder::PluginsTxt)
+            .unwrap_or_else(|| panic!("{}: plugins.txt", game.id));
+        assert_eq!(
+            from_txt.names,
+            vec!["base.esm", "second.esm"],
+            "{}: the names as the file lists them, star dropped",
+            game.id
+        );
+        // `read_for_game` reports where it found the file rather than implying
+        // the Data folder, and on Linux that is the only place there is.
+        assert_eq!(
+            from_txt.path.parent(),
+            Some(dir.as_path()),
+            "{}: the file it read",
+            game.id
+        );
+
+        let from_load = plugin_order::read_for_game(&game, &dir, PluginOrder::LoadOrderTxt)
+            .unwrap_or_else(|| panic!("{}: loadorder.txt", game.id));
+        assert_eq!(from_load.names, vec!["base.esm", "second.esm"]);
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+/// S0-3: a master list is a load order, and a master that another requires is
+/// ordered first — for every game, because the rule is the engine's, not one
+/// game's.
+#[test]
+fn every_game_orders_masters_by_their_dependencies() {
+    for game in nvre_editor::game::ALL {
+        let root = std::env::temp_dir().join(format!("nvre-masters-{}", game.id));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        // The base master, and a DLC that requires it.
+        nvre_edit::Document::create_empty("Base.esm", true, &[], None, None)
+            .unwrap()
+            .save(root.join("Base.esm"))
+            .unwrap();
+        nvre_edit::Document::create_empty("Dlc.esm", true, &["Base.esm".to_string()], None, None)
+            .unwrap()
+            .save(root.join("Dlc.esm"))
+            .unwrap();
+
+        let present = game.masters_in(&root);
+        assert_eq!(
+            present,
+            vec!["Base.esm", "Dlc.esm"],
+            "{}: the DLC cannot load before the master it requires",
+            game.id
+        );
+
+        // Reversed on purpose: the ordering must not depend on how the folder
+        // happens to list them.
+        let declared = vec!["Dlc.esm".to_string(), "Base.esm".to_string()];
+        let ordered = nvre_editor::game::order_named(
+            &declared,
+            &root,
+            &nvre_editor::plugin_order::Rank::default(),
+        );
+        assert_eq!(
+            ordered,
+            vec!["Base.esm", "Dlc.esm"],
+            "{}: the declared masters, base first",
+            game.id
+        );
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+}

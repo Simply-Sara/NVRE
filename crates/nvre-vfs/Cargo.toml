@@ -14,3 +14,8 @@ bsa105 = { path = "../bsa105" }
 # from the caller.
 ba2 = { path = "../ba2" }
 thiserror.workspace = true
+
+[dev-dependencies]
+# Writes a canonical v104 BSA, so the precedence tests can put real contents
+# in two archives and assert which one is read.
+bsa105 = { path = "../bsa105" }
