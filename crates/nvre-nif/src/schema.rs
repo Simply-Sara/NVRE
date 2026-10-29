@@ -473,6 +473,12 @@ impl Schema {
                     self.abstract_blocks.remove(name);
                 }
             }
+            // A layer changes what the resolved lists and chains hold, so the
+            // caches built from the layers below are stale. They are dropped
+            // rather than updated, because the next lookup rebuilds them from
+            // the schema as it now stands.
+            self.block_fields_cache = OnceLock::new();
+            self.chains_cache = OnceLock::new();
         }
         if let Some(structs) = obj.get("structs").and_then(|v| v.as_object()) {
             for (name, def) in structs {
@@ -494,6 +500,8 @@ impl Schema {
                     }
                 }
             }
+            // As for the blocks: a layer changes the resolved struct lists.
+            self.struct_fields_cache = OnceLock::new();
         }
         if let Some(enums) = obj.get("enums").and_then(|v| v.as_object()) {
             for (name, def) in enums {
@@ -1024,6 +1032,67 @@ mod tests {
             .unwrap(),
         );
         assert!(e.is_err());
+    }
+
+    /// A layer merged after a lookup has already been made must still apply.
+    ///
+    /// The resolved field lists and chains are cached, so a cache built while
+    /// only the base was loaded would answer every later question from the base
+    /// alone: a block the version layer defines reads as having no fields at
+    /// all, and the file fails to decode rather than failing on a wrong layout.
+    /// Skyrim SE's `BSTriShape` is the case that found it.
+    #[test]
+    fn a_layer_merged_after_a_lookup_still_applies() {
+        let mut s = schema_from(
+            r#"{"format":"nvre.nif.schema/1",
+                "blocks":{"NiNode":{"fields":[{"name":"a","type":"u32"}]}}}"#,
+        );
+        // The lookup that fills the cache, before the layer is merged.
+        assert_eq!(s.block_fields("NiNode").map(|f| f.len()), Some(1));
+        assert!(!s.is_a("NiNode", "NiAVObject"));
+
+        s.merge(
+            &serde_json::from_str(
+                r#"{"format":"nvre.nif.schema/1",
+                    "blocks":{
+                      "NiNode":{"inherit":"NiAVObject","fields":[{"name":"b","type":"u32"}]},
+                      "NiAVObject":{"fields":[{"name":"name","type":"string"}]}}}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        // Both the new field and the inherited one, and the new ancestry.
+        let f = s.block_fields("NiNode").unwrap();
+        let names: Vec<&str> = f.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec!["name", "b"],
+            "the layer's fields and its base's"
+        );
+        assert!(s.is_a("NiNode", "NiAVObject"), "the layer's inheritance");
+    }
+
+    /// A struct layer merged after a lookup applies, as a block's does.
+    #[test]
+    fn a_struct_layer_merged_after_a_lookup_still_applies() {
+        let mut s = schema_from(
+            r#"{"format":"nvre.nif.schema/1",
+                "structs":{"S":{"fields":[{"name":"a","type":"u32"}]}}}"#,
+        );
+        assert_eq!(s.struct_fields("S").map(|f| f.len()), Some(1));
+        s.merge(
+            &serde_json::from_str(
+                r#"{"format":"nvre.nif.schema/1",
+                    "structs":{"S":{"inherit":"T","fields":[{"name":"b","type":"u32"}]},
+                               "T":{"fields":[{"name":"c","type":"u32"}]}}}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let fields = s.struct_fields("S").unwrap();
+        let names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(names, vec!["c", "b"]);
     }
 
     #[test]

@@ -18,13 +18,45 @@
 //!
 //! The schema chain differs per game — FNV and FO3 pass the base schema
 //! directory alone, the others pass `base:<version dir>` — and the same binary
-//! takes either, because `Schema::load_game` does. The archive list is the
-//! VFS's default, which is Fallout's; a game whose archives are named
-//! differently will show fewer files until the profile's own list is passed in.
+//! takes either, because `Schema::load_game` does.
 
 use nvre_nif::Schema;
 use std::path::PathBuf;
 use std::time::Instant;
+
+/// Open `data_dir`'s archives so every game's meshes are reachable.
+///
+/// The VFS's default list is Fallout's, which is why a Skyrim or Fallout 4
+/// folder would otherwise report no NIFs at all: their archives are named
+/// differently and none of them is opened. So every archive in the folder is
+/// opened, in name order.
+///
+/// That is not the game's own load order — a mod's archive should be read over
+/// the base game's, and name order does not guarantee that — so this is right
+/// for asking *what the archives hold* and wrong for asking *which of two
+/// files a reference resolves to*. S0-1 answers the second question; this
+/// checker answers the first.
+fn open_vfs(data_dir: &str) -> nvre_vfs::Vfs {
+    let dir = PathBuf::from(data_dir);
+    let mut names: Vec<String> = match std::fs::read_dir(&dir) {
+        Ok(rd) => rd
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| {
+                let l = n.to_ascii_lowercase();
+                l.ends_with(".bsa") || l.ends_with(".ba2")
+            })
+            .collect(),
+        Err(e) => panic!("{data_dir}: {e}"),
+    };
+    names.sort();
+    if names.is_empty() {
+        // A folder with no archives still has loose files; the VFS reads those
+        // from the folder itself.
+        eprintln!("no .bsa or .ba2 in {data_dir}; reading loose files only");
+    }
+    nvre_vfs::Vfs::open(&dir, &names).expect("the archives")
+}
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -43,8 +75,7 @@ fn main() {
         Schema::load_game(&base, &layers).expect("the schema")
     };
 
-    let vfs =
-        nvre_vfs::Vfs::open_default(PathBuf::from(&data_dir).as_path()).expect("the archives");
+    let vfs = open_vfs(&data_dir);
     let paths = vfs.paths(|p| {
         p.to_lowercase().ends_with(".nif")
             && (filter.is_empty() || p.to_lowercase().contains(&filter))

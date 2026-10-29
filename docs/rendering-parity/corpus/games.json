@@ -1,0 +1,61 @@
+{
+  "$comment": "The mesh corpus the S1 checks run over: one entry per installed game, with the schema chain its NIFs decode against. The path is the game's Data folder; the schema chain is the base plus the family and version layers, exactly as GameProfile names them. The counts are what nifreencode reported when it opened the folder, so they say how much of the game the check covered.",
+  "games": [
+    {
+      "id": "fnv",
+      "name": "Fallout: New Vegas",
+      "data": "/home/sara/.local/share/Steam/steamapps/common/Fallout New Vegas/Data",
+      "schema": "schemas/nif/base",
+      "layers": [],
+      "nifs": 20542,
+      "bsa": ["Fallout - Textures.bsa", "Fallout - Textures2.bsa", "Fallout - Meshes.bsa", "Fallout - Voices1.bsa", "Fallout - Sound.bsa", "Fallout - Misc.bsa"],
+      "classes": ["prop", "clutter", "architecture", "effect", "weapon", "actor", "terrain", "light", "marker"]
+    },
+    {
+      "id": "fo3",
+      "name": "Fallout 3",
+      "data": "/home/sara/Games/BethesdaGames/Fallout3/Data",
+      "schema": "schemas/nif/base",
+      "layers": [],
+      "nifs": 17163,
+      "bsa": [],
+      "classes": ["prop", "clutter", "architecture", "effect", "weapon", "actor", "terrain", "light", "marker"]
+    },
+    {
+      "id": "skyrimle",
+      "name": "Skyrim (Legendary Edition)",
+      "data": "/home/sara/Games/BethesdaGames/Skyrim/Data",
+      "schema": "schemas/nif/base",
+      "layers": ["schemas/nif/skyrim", "schemas/nif/skyrimle"],
+      "nifs": 21476,
+      "bsa": [],
+      "classes": ["prop", "clutter", "architecture", "effect", "weapon", "actor", "terrain", "light", "marker"]
+    },
+    {
+      "id": "skyrimse",
+      "name": "Skyrim Special Edition",
+      "data": "/home/sara/Games/BethesdaGames/Skyrim Special Edition/Data",
+      "schema": "schemas/nif/base",
+      "layers": ["schemas/nif/skyrim", "schemas/nif/skyrimse"],
+      "nifs": 22761,
+      "bsa": [],
+      "classes": ["prop", "clutter", "architecture", "effect", "weapon", "actor", "terrain", "light", "marker"]
+    },
+    {
+      "id": "fo4",
+      "name": "Fallout 4",
+      "data": "/home/sara/Games/BethesdaGames/Fallout4/Data",
+      "schema": "schemas/nif/base",
+      "layers": ["schemas/nif/fo4"],
+      "nifs": 224734,
+      "bsa": [],
+      "classes": ["prop", "clutter", "architecture", "effect", "weapon", "actor", "terrain", "light", "marker"]
+    }
+  ],
+  "total_nifs": 306676,
+  "notes": [
+    "The schema chain is the one GameProfile::load_nif_schema builds: nif/base, then nif/<family>, then nif/<version>. FNV and FO3 pass the base alone because their family directory is empty in the profile.",
+    "fnv's profile names nif_schema_version_dir \"fnv\", and there is no schemas/nif/fnv directory: the layer is absent, so FNV reads the base alone. That is a gap in the plan rather than a decode failure — the base alone re-encodes FNV's blocks correctly.",
+    "The path filter argument scopes a run to one data subtree, which is how a 224k-file game is checked inside a timeout: meshes\\architecture, meshes\\weapons, and so on."
+  ]
+}
