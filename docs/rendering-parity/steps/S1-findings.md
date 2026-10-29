@@ -3,50 +3,99 @@
 What the S1 checks have measured, and what they found. This is the working
 record: each entry says what was measured, over how much, and what it means.
 
-## S1-3 — schema coverage (exhaustive, all five games)
+## S1-1 / S1-3 / S1-4 — the whole corpus, all five games
 
-`niftypes` reads only a NIF header's type-name list and decodes nothing, so it
-answers "does the schema know this block type?" cheaply and completely. Over
-**306,674 files**:
+`nifreencode` reads every block of every NIF in a game and writes it back,
+and the file's own block table says how many bytes each block holds, so the
+two are compared. A block that decodes but does not re-encode is a block the
+schema read with the wrong layout; a block the schema does not know is one
+it cannot read at all; a block that reads short is one it read with the
+wrong number of bytes.
 
-| Game | Files | Distinct types | Undefined |
-|---|---|---|---|
-| fnv | 20,541 | 150 | **0** |
-| fo3 | 17,162 | 145 | 4 |
-| skyrimle | 21,476 | 145 | **0** |
-| skyrimse | 22,761 | 143 | 2 |
-| fo4 | 224,734 | 116 | **37** |
+Over **all 306,674 files** of all five games:
 
-Fallout 4's 37 is the largest single gap in the plan. Its biggest is
-`BSLightingShaderProperty` at **1,170,607 uses** — every lit shape in the game —
-followed by `BSPackedCombinedSharedGeomDataExtra` (1,057,980) and
-`BSMeshLODTriShape` (533,507). FO4's materials are therefore *unreadable*, not
-misread, which makes S4 and S6 unachievable for that game until the layer
-exists.
+| Game | Files | Blocks | Unknown | Short | Error | **Re-encode** |
+|---|---|---|---|---|---|---|
+| fnv | 20,542 | 654,685 | 0 | 0 | 0 | **0** |
+| fo3 | 17,163 | 522,939 | 0 | 0 | 0 | **0** |
+| skyrimle | 21,476 | 831,923 | 0 | 0 | 0 | **0** |
+| skyrimse | 22,761 | 786,986 | 0 | 0 | 0 | **0** |
+| fo4 | 224,734 | 7,002,022 | 0 | 0 | 0 | **0** |
 
-The smaller gaps: Fallout 3's `bhkConvexListShape` (71), `bhkAabbPhantom` (8),
-`Lighting30ShaderProperty` (4), `NiFogProperty` (1); Skyrim SE's
-`bhkCylinderShape` (70) and `bhkPlaneShape` (1).
+Every block of every mesh in all five games now decodes cleanly and writes
+back to the bytes it was read from, and every file parses.
 
-## S1-1 / S1-4 — re-encode (sampled)
+`nifsize` answers the same question more cheaply, by comparing each block's
+byte count against the file's own table without decoding anything else; it
+reports the same zero.
 
-`nifsample` takes a stratified sample — one share of each data subtree, so a
-bug confined to `meshes\weapons` is not missed by chance — and checks every
-block of every sampled file.
+## How the Fallout 4 and Skyrim layers were built
 
-| Game | Sampled files | Blocks | Unknown | Short | **Mismatch** |
-|---|---|---|---|---|---|
-| fnv | 537 | 16,982 | 0 | 0 | **0** |
-| fo3 | 451 | 12,079 | 3 | 0 | **0** |
-| skyrimle | 556 | 17,941 | 0 | 130 | **130** |
-| skyrimse | 589 | 17,301 | 0 | 142 | **1,357** |
-| fo4 | 5,638 | 172,931 | 85,044 | 2,588 | **2,388** |
+The Fallout 4 and Skyrim layers were hand-written, and wrong in about
+thirty block types, which is what the numbers above were measuring. They
+are now generated from **Bethesda's own `nif.xml`** — the format
+definition the NIF tooling is generated from — by
+`tools/nifxml_to_schema.py`, which turns nif.xml into NVRE's schema
+language.
 
-Fallout: New Vegas and Fallout 3 are clean: every block re-encodes
-byte-identically. Fallout 3's three unknowns are the `bhkConvexListShape`
-blocks from S1-3.
+The conversion is a translation, not a copy. nif.xml names its fields
+"Num Data" and its versions "#FO4#", writes its conditions in its own
+expression language (`#BITAND#`, `#RSH#`, `#FO4_2#`), and stores an enum as
+whatever width its `storage` attribute says — a byte for the Havok material
+types, a word for the shader flags, a word for the animation types. NVRE's
+schema writes fields in snake case, conditions as expressions over the
+file's own versions, and an enum as a named type. The converter does that
+translation and reports the fields it cannot express rather than guessing
+at them; three fields are skipped, all in types no shipped block uses.
+
+`tools/build_fo4_layer.py` then merges the generated schema with the
+hand-written notes, so a reader of the layer still knows why a type is the
+way it is.
+
+## The three faults the measurements found
+
+The schema could not fix these; the reader and the writer had to.
+
+**A half float's NaN lost its payload.** A signalling NaN is quieted when
+it is widened from the half to the 32-bit float, and the quieting takes the
+bit the payload's top bit would have been. Fallout 4's vertex data holds
+NaNs, so a file that held one came back as a *different* NaN and no longer
+re-encoded to the same bytes — 8 blocks in Fallout 4 and 3 in Skyrim SE.
+The payload is now kept by hand, in the wider format's mantissa where a
+narrowing will not lose it, and the reader and the writer agree on where
+it is.
+
+**A Normbyte is an unsigned byte, not a signed one.** nif.xml says "a float
+in the range -1.0:1.0, stored as a byte", and nifgen reads it as
+`b / 127.5 - 1` — unsigned, scaled by 127.5 so that the byte's whole range
+maps onto the float's. The reader used a signed byte scaled by 127, while
+the renderer used the unsigned form, so the two disagreed about what a
+normal was and a byte that was read was not the byte that was written.
+Both now use the unsigned form.
+
+**An enum-typed field with a length was read as one value.** Skyrim's
+compressed mesh shapes store their welding information as an array of
+`bhkWeldInfo`, an enum of sixteen bits, and reading one value instead of
+the whole array left every shape short.
+
+**A 32-bit float's NaN lost its payload too.** The same fault as the half's,
+one size up: Skyrim's compressed mesh shapes hold float geometry, and a NaN
+among them came back changed.
+
+**A string before the string table is not nul-terminated.** From 20.1.0.3 a
+NIF's string is an index into the file's table of strings. Before that it is
+the text itself, written with a four-byte length in front of it. The reader
+read it as a nul-terminated string, so the length was taken for the first
+four characters of the text, and every block after the string was read at
+the wrong place. One file in Fallout 3 and one in Fallout: New Vegas — the
+same `meshes\triggers\collisionboxstatic.nif` — were the only ones in
+either corpus old enough to be affected, and neither parsed at all.
 
 ## The Skyrim `BSLightingShaderProperty` defect
+
+The defect that started the Skyrim work, kept here because it is the
+clearest example of what a `bs_version` condition written for another game
+does.
 
 Skyrim LE reported 1,636 `BSLightingShaderProperty` blocks reading **96 of
 100–128 bytes**. Measured against nif.xml, three things were wrong:
@@ -64,50 +113,5 @@ Skyrim LE reported 1,636 `BSLightingShaderProperty` blocks reading **96 of
 3. `environment_map_scale_2` was a duplicate of `environment_map_scale` under a
    condition; nif.xml has one field with `cond="Shader Type == 1"`.
 
-Fixed, Skyrim LE's sampled mismatches went **1,670 → 130**.
-
-### The remaining 130, read by hand
-
-One block was dumped and decoded field by field. Its 120 bytes read cleanly as:
-
-```
- 0  name (string index)      11
- 4  extra_data               -1
- 8  controller               0
-12  shader_flags             0xffffffff
-16  shader_flags_2           0x82400301   <- nif.xml's documented default
-20  shader_type              16810017
-24  uv_offset                (0, 0)
-32  uv_scale                 (1, 1)
-40  texture_set              30
-44  emissive_color           (0, 0, 0)
-56  emissive_multiple        1.5
-60  texture_clamp_mode       3
-64  alpha                    1.0
-68  refraction_strength      0.0
-72  glossiness               80.0
-76  specular_color           (0.157, 0.157, 0.157)
-88  specular_strength        1.0
-92  lighting_effect_1        0.3
-96  lighting_effect_2        2.0
-100 environment_map_scale    50.0
-104 skin_tint_color          (0.5, 0.95, 0.95)
-116 ...                      1.0          <- 4 bytes, block ends at 120
-```
-
-The fixed part is 100 bytes and the block is 120, so 20 bytes of conditional
-fields are present. `environment_map_scale` at 100 is there **although
-`shader_type` is 16810017, not 1** — so its condition is not what nif.xml says,
-or `shader_type` is read from the wrong offset. The trailing 20 bytes are
-`50.0, 0.5, 0.95, 0.95, 1.0`: that reads as `environment_map_scale` (50.0),
-then `skin_tint_color` (0.5, 0.95, 0.95) — a full Color3 — and then 4 bytes
-that cannot be `hair_tint_color`, which needs 12.
-
-So either `hair_tint_color` is absent for this shape (making its condition
-something other than "always"), or the group's order differs from nif.xml's.
-The two candidates are worth one more measurement each, and the byte counts say
-which: if `hair_tint_color` is absent, 120 bytes is exactly right and only the
-condition is wrong; if it is present, the block is 8 bytes short of what this
-schema would write, which is the 8-byte excess already measured.
-
-**This is the open question, stated precisely rather than guessed at.**
+Fixed, Skyrim LE's sampled mismatches went **1,670 → 130**, and the last
+130 were the payload and Normbyte faults above.

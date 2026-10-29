@@ -116,6 +116,9 @@ fn main() {
             let Ok(data) = r else { return acc };
             let Ok(f) = nvre_nif::NifFile::parse(&data, Some(&schema)) else {
                 acc.parse_fail += 1;
+                acc.examples
+                    .entry("the file does not parse".to_string())
+                    .or_insert_with(|| p.clone());
                 return acc;
             };
             acc.files += 1;
@@ -200,5 +203,13 @@ fn main() {
             Some(p) => println!("    {k}: {v}   (e.g. {p})"),
             None => println!("    {k}: {v}"),
         }
+    }
+    // A file that does not parse at all is not counted as a block, so it
+    // has no block type to be listed under; it is named here instead.
+    if let Some(p) = found.examples.get("the file does not parse") {
+        println!(
+            "    the file does not parse: {}   (e.g. {p})",
+            found.parse_fail
+        );
     }
 }

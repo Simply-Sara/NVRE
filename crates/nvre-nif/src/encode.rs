@@ -566,7 +566,7 @@ pub fn write_prim(
             Value::Int64(n) => out.extend_from_slice(&n.to_le_bytes()),
             _ => out.extend_from_slice(&(num(v)? as u64).to_le_bytes()),
         },
-        F32 => out.extend_from_slice(&(num(v)? as f32).to_le_bytes()),
+        F32 => out.extend_from_slice(&f32_bits(v).to_le_bytes()),
         Bool => {
             // A flag is a byte, and a byte above one is not a flag: it is
             // the number it is, and it is written back as it was.
@@ -607,11 +607,11 @@ pub fn write_prim(
         Mat44 => write_floats(v, 16, out)?,
         Quat => {
             // A quaternion is stored w, x, y, z.
-            let c = floats(v, 4)?;
-            out.extend_from_slice(&c[0].to_le_bytes());
-            out.extend_from_slice(&c[1].to_le_bytes());
-            out.extend_from_slice(&c[2].to_le_bytes());
-            out.extend_from_slice(&c[3].to_le_bytes());
+            let items = v.as_list().unwrap_or(&[]);
+            for i in 0..4 {
+                let c = items.get(i).unwrap_or(&Value::Num(0.0));
+                out.extend_from_slice(&f32_bits(c).to_le_bytes());
+            }
         }
         ByteColor4 => {
             for c in bytes(v, 4)? {
@@ -651,13 +651,12 @@ pub fn write_prim(
                 // A string is an index into the file's string table.
                 out.extend_from_slice(&(num(v)? as u32).to_le_bytes());
             } else {
-                let text = v.as_str().unwrap_or("");
-                out.extend_from_slice(
-                    nvre_util::cp1252::encode(text)
-                        .unwrap_or_default()
-                        .as_slice(),
-                );
-                out.push(0);
+                // Before that it is the text itself, with its length in
+                // front of it.
+                let bytes = nvre_util::cp1252::encode(v.as_str().unwrap_or(""))
+                    .unwrap_or_default();
+                out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+                out.extend_from_slice(&bytes);
             }
         }
         SizedString => {
@@ -762,8 +761,25 @@ fn bytes(v: &Value, n: usize) -> Result<Vec<u8>, CodecError> {
 
 /// Write a vector of floats.
 fn write_floats(v: &Value, n: usize, out: &mut Vec<u8>) -> Result<(), CodecError> {
-    for c in floats(v, n)? {
-        out.extend_from_slice(&c.to_le_bytes());
+    let items = v.as_list().unwrap_or(&[]);
+    for i in 0..n {
+        let c = items.get(i).unwrap_or(&Value::Num(0.0));
+        out.extend_from_slice(&f32_bits(c).to_le_bytes());
     }
     Ok(())
+}
+
+/// The 32-bit float a value is.
+///
+/// A NaN is written from the bits the reader kept, rather than from a
+/// narrowing: a narrowing of a NaN loses the payload, and a NIF's mesh
+/// data holds NaNs whose payload is the file's own.
+fn f32_bits(v: &Value) -> u32 {
+    let Some(n) = v.as_number() else {
+        return 0;
+    };
+    if n.is_nan() {
+        return crate::codec::f32_from_nan(n);
+    }
+    (n as f32).to_bits()
 }

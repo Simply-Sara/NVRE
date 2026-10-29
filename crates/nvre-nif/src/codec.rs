@@ -200,6 +200,42 @@ pub fn half_from_nan(v: f64) -> u16 {
     sign | 0x7C00 | payload
 }
 
+/// A 32-bit float, widened to the 64-bit float the value type holds.
+///
+/// A NaN is widened by hand, as a half's is: a signalling NaN is quieted
+/// on the way, and the quieting takes the bit the payload's top bit would
+/// have been.
+pub fn f32_bits_to_f64(bits: u32) -> f64 {
+    let exp = (bits >> 23) & 0xFF;
+    let mant = bits & 0x7F_FFFF;
+    if exp == 0xFF && mant != 0 {
+        return f32_nan(bits);
+    }
+    f32::from_bits(bits) as f64
+}
+
+/// The 64-bit float a NaN float becomes.
+///
+/// The float's 23 payload bits are kept in the wider format's mantissa,
+/// at the top, and the quiet bit is set so that the value is never a
+/// signalling NaN. The inverse is [`f32_from_nan`].
+pub fn f32_nan(bits: u32) -> f64 {
+    let sign = ((bits as u64 >> 31) & 1) << 63;
+    let payload = (bits as u64) & 0x7F_FFFF;
+    f64::from_bits(sign | 0x7FF8_0000_0000_0000 | (1 << 51) | (payload << 28))
+}
+
+/// The float a NaN came from.
+///
+/// The inverse of [`f32_nan`]: the payload is taken from where
+/// [`f32_nan`] put it, and the quiet bit is dropped.
+pub fn f32_from_nan(v: f64) -> u32 {
+    let bits = v.to_bits();
+    let sign = ((bits >> 32) & 0x8000_0000) as u32;
+    let payload = ((bits >> 28) & 0x7F_FFFF) as u32;
+    sign | 0x7F80_0000 | payload
+}
+
 /// A 32-bit float, narrowed to a 16-bit float.
 ///
 /// Rounds to nearest, ties to even — the way a conversion instruction does,
@@ -272,6 +308,15 @@ pub fn to_hex(b: &[u8]) -> String {
     nvre_util::sha256::to_hex(b)
 }
 
+/// Read a 32-bit float, as the 64-bit float the value type holds.
+///
+/// A NaN keeps its payload, so that the float it was read from can be
+/// written back as the same float.
+fn read_f32(r: &mut Reader<'_>) -> Result<f64, CodecError> {
+    let bits = r.int(4, false)? as u32;
+    Ok(crate::codec::f32_bits_to_f64(bits))
+}
+
 /// Read a value of the given shape.
 ///
 /// This is the primitive level: the schema's `Prim` says what to read, and
@@ -293,7 +338,10 @@ pub fn read_prim(
             let b = r.bytes(8)?;
             Value::Int64(u64::from_le_bytes(b.try_into().unwrap()))
         }
-        Prim::F32 => Value::Num(r.f32()? as f64),
+        Prim::F32 => {
+            let bits = r.int(4, false)? as u32;
+            Value::Num(crate::codec::f32_bits_to_f64(bits))
+        }
         Prim::Bool => {
             // A flag is a byte, and a byte above one is not a flag: the
             // Special Edition's `NiBoolInterpolator` stores 2 for "invalid",
@@ -308,59 +356,51 @@ pub fn read_prim(
         Prim::Ref => Value::Ref(r.reference()?),
         Prim::Ptr => Value::Ref(r.reference()?),
         Prim::Vec2 => {
-            let a = r.f32()?;
-            let b = r.f32()?;
-            Value::List(vec![Value::Num(a as f64), Value::Num(b as f64)])
+            let a = read_f32(r)?;
+            let b = read_f32(r)?;
+            Value::List(vec![Value::Num(a), Value::Num(b)])
         }
         Prim::Vec3 => {
-            let a = r.f32()?;
-            let b = r.f32()?;
-            let c = r.f32()?;
-            Value::List(vec![
-                Value::Num(a as f64),
-                Value::Num(b as f64),
-                Value::Num(c as f64),
-            ])
+            let a = read_f32(r)?;
+            let b = read_f32(r)?;
+            let c = read_f32(r)?;
+            Value::List(vec![Value::Num(a), Value::Num(b), Value::Num(c)])
         }
         Prim::Vec4 => {
-            let a = r.f32()?;
-            let b = r.f32()?;
-            let c = r.f32()?;
-            let d = r.f32()?;
+            let a = read_f32(r)?;
+            let b = read_f32(r)?;
+            let c = read_f32(r)?;
+            let d = read_f32(r)?;
             Value::List(vec![
-                Value::Num(a as f64),
-                Value::Num(b as f64),
-                Value::Num(c as f64),
-                Value::Num(d as f64),
+                Value::Num(a),
+                Value::Num(b),
+                Value::Num(c),
+                Value::Num(d),
             ])
         }
         Prim::Mat33 => {
             let mut v = Vec::with_capacity(9);
             for _ in 0..9 {
-                v.push(Value::Num(r.f32()? as f64));
+                v.push(Value::Num(read_f32(r)?));
             }
             Value::List(v)
         }
         Prim::Color3 => {
-            let a = r.f32()?;
-            let b = r.f32()?;
-            let c = r.f32()?;
-            Value::List(vec![
-                Value::Num(a as f64),
-                Value::Num(b as f64),
-                Value::Num(c as f64),
-            ])
+            let a = read_f32(r)?;
+            let b = read_f32(r)?;
+            let c = read_f32(r)?;
+            Value::List(vec![Value::Num(a), Value::Num(b), Value::Num(c)])
         }
         Prim::Color4 => {
-            let a = r.f32()?;
-            let b = r.f32()?;
-            let c = r.f32()?;
-            let d = r.f32()?;
+            let a = read_f32(r)?;
+            let b = read_f32(r)?;
+            let c = read_f32(r)?;
+            let d = read_f32(r)?;
             Value::List(vec![
-                Value::Num(a as f64),
-                Value::Num(b as f64),
-                Value::Num(c as f64),
-                Value::Num(d as f64),
+                Value::Num(a),
+                Value::Num(b),
+                Value::Num(c),
+                Value::Num(d),
             ])
         }
         Prim::ByteColor4 => {
@@ -369,11 +409,13 @@ pub fn read_prim(
         }
         Prim::String => {
             // A string is an index into the file's string table from
-            // 20.1.0.3 on, and inline text before that.
+            // 20.1.0.3 on. Before that it is the text itself, written
+            // with its length in front of it.
             if version >= V20_1_0_3 {
                 Value::Num(r.int(4, false)? as f64)
             } else {
-                Value::Str(r.string_z()?)
+                let len = r.int(4, false)? as usize;
+                Value::Str(r.string_n(len)?)
             }
         }
         Prim::SizedString => {
@@ -423,21 +465,21 @@ pub fn read_prim(
             ])
         }
         Prim::TexCoord => {
-            let a = r.f32()?;
-            let b = r.f32()?;
-            Value::List(vec![Value::Num(a as f64), Value::Num(b as f64)])
+            let a = read_f32(r)?;
+            let b = read_f32(r)?;
+            Value::List(vec![Value::Num(a), Value::Num(b)])
         }
         Prim::Quat => {
             // A quaternion is stored w, x, y, z.
-            let a = r.f32()?;
-            let b = r.f32()?;
-            let c = r.f32()?;
-            let d = r.f32()?;
+            let a = read_f32(r)?;
+            let b = read_f32(r)?;
+            let c = read_f32(r)?;
+            let d = read_f32(r)?;
             Value::List(vec![
-                Value::Num(a as f64),
-                Value::Num(b as f64),
-                Value::Num(c as f64),
-                Value::Num(d as f64),
+                Value::Num(a),
+                Value::Num(b),
+                Value::Num(c),
+                Value::Num(d),
             ])
         }
         Prim::ByteVec3 => {
@@ -474,21 +516,21 @@ pub fn read_prim(
         Prim::Mat22 => {
             let mut v = Vec::with_capacity(4);
             for _ in 0..4 {
-                v.push(Value::Num(r.f32()? as f64));
+                v.push(Value::Num(read_f32(r)?));
             }
             Value::List(v)
         }
         Prim::Mat34 => {
             let mut v = Vec::with_capacity(12);
             for _ in 0..12 {
-                v.push(Value::Num(r.f32()? as f64));
+                v.push(Value::Num(read_f32(r)?));
             }
             Value::List(v)
         }
         Prim::Mat44 => {
             let mut v = Vec::with_capacity(16);
             for _ in 0..16 {
-                v.push(Value::Num(r.f32()? as f64));
+                v.push(Value::Num(read_f32(r)?));
             }
             Value::List(v)
         }
@@ -514,6 +556,7 @@ pub fn read_prim(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::Prim;
 
     #[test]
     fn every_half_float_survives_the_round_trip() {
@@ -592,6 +635,24 @@ mod tests {
         let mut r = Reader::new(b"hello\0world");
         assert_eq!(r.string_z().unwrap(), "hello");
         assert_eq!(r.pos, 6);
+    }
+
+    #[test]
+    fn a_string_before_the_string_table_carries_its_length() {
+        // Before 20.1.0.3 a string is the text itself, with a four-byte
+        // length in front of it, and not a nul at the end.
+        let mut r = Reader::new(&[5, 0, 0, 0, b'h', b'e', b'l', b'l', b'o']);
+        let v = read_prim(Prim::String, &mut r, 0x1400_0004).unwrap();
+        assert_eq!(v.as_str().unwrap(), "hello");
+        assert_eq!(r.pos, 9);
+    }
+
+    #[test]
+    fn a_string_after_the_string_table_is_an_index() {
+        // From 20.1.0.3 a string is an index into the file's table.
+        let mut r = Reader::new(&[7, 0, 0, 0]);
+        let v = read_prim(Prim::String, &mut r, 0x1401_0003).unwrap();
+        assert_eq!(v.as_number().unwrap(), 7.0);
     }
 
     #[test]
