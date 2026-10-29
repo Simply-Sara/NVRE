@@ -66,6 +66,12 @@ pub struct PreparedModel {
     /// The model's shapes.
     pub shapes: Vec<PreparedShape>,
     /// The model's root transform.
+    ///
+    /// This is the transform of the node that hangs under nothing, and it
+    /// is **already included** in each shape's own transform: the chain of
+    /// ancestors is composed into the shape, and the root is the last link
+    /// in that chain. Applying it again on top of a shape's transform puts
+    /// the model in the wrong place.
     pub root: Affine3A,
     /// The model's bounds, if it has any: the smallest corner and the
     /// largest.
@@ -158,26 +164,17 @@ impl ModelCtx<'_> {
         let (nodes, _node_index) = model_nodes(&objects);
         out.nodes = nodes;
         // The root's own transform.
-        if let Some(root) = objects.iter().find(|o| o.parent.is_none()) {
+        //
+        // The root is the node that hangs under nothing — a shape that no
+        // node lists is not a root, and its own transform is not the
+        // model's.
+        if let Some(root) = objects.iter().find(|o| o.is_node && o.parent.is_none()) {
             out.root = affine(&root.transform);
         }
 
         for o in objects.iter().filter(|o| !o.is_node) {
             // Where the shape sits: the product of its ancestors' transforms.
-            let mut t = if o.parent.is_some() {
-                affine(&o.transform)
-            } else {
-                Affine3A::IDENTITY
-            };
-            let mut ancestors = Vec::new();
-            let mut cur = o.parent;
-            while let Some(p) = cur {
-                let Some(po) = by_block.get(&p) else { break };
-                ancestors.push(affine(&po.transform));
-                t = affine(&po.transform) * t;
-                cur = po.parent;
-            }
-            ancestors.reverse();
+            let (t, ancestors) = world_transform(&by_block, o);
 
             // The shape's data block.
             let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
@@ -215,11 +212,16 @@ impl ModelCtx<'_> {
             );
             let material = self.material_for(&props, &mut mesh, editor_marker);
             // The model's bounds, from the mesh's own positions.
+            //
+            // The shape's transform already carries the whole chain of
+            // ancestors, the root included, so the root is not applied
+            // again here: a model whose root is translated would otherwise
+            // have its bounds twice as far out as its geometry is.
             if let Some(VertexAttributeValues::Float32x3(p)) =
                 mesh.attribute(Mesh::ATTRIBUTE_POSITION)
             {
                 for v in p {
-                    let q = (out.root * t).transform_point3(Vec3::from_array(*v));
+                    let q = t.transform_point3(Vec3::from_array(*v));
                     out.bounds = Some(match out.bounds {
                         Some((lo, hi)) => (lo.min(q), hi.max(q)),
                         None => (q, q),
@@ -388,6 +390,30 @@ pub fn is_editor_marker(name: Option<&str>) -> bool {
     })
 }
 
+/// Where a shape sits in its file's own space, and the chain of transforms
+/// that put it there.
+///
+/// The shape's own transform, times each ancestor's, from the shape up to
+/// the root. The root's own transform is included, because it is an
+/// ancestor like any other: applying it again on top of the result is
+/// what would put a model in the wrong place.
+fn world_transform(
+    by_block: &HashMap<usize, &SceneObject>,
+    o: &SceneObject,
+) -> (Affine3A, Vec<Affine3A>) {
+    let mut t = affine(&o.transform);
+    let mut ancestors = Vec::new();
+    let mut cur = o.parent;
+    while let Some(p) = cur {
+        let Some(po) = by_block.get(&p) else { break };
+        ancestors.push(affine(&po.transform));
+        t = affine(&po.transform) * t;
+        cur = po.parent;
+    }
+    ancestors.reverse();
+    (t, ancestors)
+}
+
 /// The affine transform a NIF's transform is.
 ///
 /// A NIF's rotation is a row-major 3×3, and Bevy's matrix is column-major,
@@ -534,5 +560,80 @@ mod tests {
             "the translation moved: {:?}",
             a.translation
         );
+    }
+
+    /// A node with a translation and no rotation.
+    fn node(block: usize, parent: Option<usize>, at: f32) -> SceneObject {
+        SceneObject {
+            block,
+            type_name: "NiNode".into(),
+            name: None,
+            parent,
+            transform: Transform {
+                translation: [at, 0.0, 0.0],
+                rotation: Transform::IDENTITY.rotation,
+                scale: 1.0,
+            },
+            is_node: true,
+            children: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn the_root_transform_is_applied_exactly_once() {
+        // A root at x=10 with a shape at x=1 under it: the shape's place in
+        // the file's space is x=11, not x=21 and not x=1.
+        let root = node(0, None, 10.0);
+        let mid = node(1, Some(0), 5.0);
+        let shape = SceneObject {
+            block: 2,
+            type_name: "NiTriShape".into(),
+            name: None,
+            parent: Some(1),
+            transform: Transform {
+                translation: [1.0, 0.0, 0.0],
+                rotation: Transform::IDENTITY.rotation,
+                scale: 1.0,
+            },
+            is_node: false,
+            children: Vec::new(),
+        };
+        let objects = vec![root, mid, shape];
+        let by_block: HashMap<usize, &SceneObject> = objects.iter().map(|o| (o.block, o)).collect();
+        let (t, ancestors) = world_transform(&by_block, &objects[2]);
+        let x = t.transform_point3(Vec3::ZERO).x;
+        assert!(
+            (x - 16.0).abs() < 1e-5,
+            "the shape is at x={x}, expected 16"
+        );
+        // The ancestors are the root and the node above the shape, from the
+        // root down.
+        assert_eq!(ancestors.len(), 2);
+        assert!(
+            (ancestors[0].transform_point3(Vec3::ZERO).x - 10.0).abs() < 1e-5,
+            "the first ancestor is not the root"
+        );
+    }
+
+    #[test]
+    fn a_shape_with_no_parent_sits_where_its_own_transform_says() {
+        let shape = SceneObject {
+            block: 7,
+            type_name: "NiTriShape".into(),
+            name: None,
+            parent: None,
+            transform: Transform {
+                translation: [3.0, 0.0, 0.0],
+                rotation: Transform::IDENTITY.rotation,
+                scale: 1.0,
+            },
+            is_node: false,
+            children: Vec::new(),
+        };
+        let objects = vec![shape];
+        let by_block: HashMap<usize, &SceneObject> = objects.iter().map(|o| (o.block, o)).collect();
+        let (t, ancestors) = world_transform(&by_block, &objects[0]);
+        assert!(ancestors.is_empty());
+        assert!((t.transform_point3(Vec3::ZERO).x - 3.0).abs() < 1e-5);
     }
 }
