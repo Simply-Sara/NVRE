@@ -78,6 +78,11 @@ pub struct PreparedModel {
     pub bounds: Option<(Vec3, Vec3)>,
     /// The time the model was prepared in.
     pub elapsed: f32,
+    /// The triangles that named a vertex that is not there, and were
+    /// dropped.
+    pub dropped_triangles: u64,
+    /// The shapes that dropped a triangle.
+    pub shapes_with_dropped_triangles: u64,
 }
 
 /// The prepared models, by their path. A `None` remembers a failure, so a
@@ -191,9 +196,16 @@ impl ModelCtx<'_> {
                 continue;
             };
             let props = shape_props(&dec, o, &by_block);
-            let Some((mut mesh, tris)) = build_mesh(data, file.header.bs_version()) else {
+            let Some((mut mesh, tris, dropped)) = build_mesh(data, file.header.bs_version()) else {
                 continue;
             };
+            // A triangle that named a vertex that is not there is dropped,
+            // and the count is kept: a shape that drops any is a shape
+            // whose data block and its vertex count disagree.
+            if dropped > 0 {
+                out.dropped_triangles += dropped as u64;
+                out.shapes_with_dropped_triangles += 1;
+            }
             // The vertex colours are part of the material: a shape whose
             // shader does not take the vertex alpha must not keep it, and an
             // unlit shape's colour is a display value.

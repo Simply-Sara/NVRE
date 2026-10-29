@@ -423,7 +423,13 @@ fn texture_set(dec: &Decoded, set: i32) -> (Option<String>, Option<String>, Opti
 ///
 /// `bs_version` decides which packed vertex format the shape uses; see
 /// `nvre_nif::scene::mesh_data`. `None` when the data holds no geometry.
-pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize)> {
+///
+/// The second number is the triangles the shape declares, and the third is
+/// how many of them were dropped because they named a vertex that is not
+/// there. A shape that drops any is a shape whose data block and whose
+/// vertex count disagree, and that is worth counting rather than
+/// swallowing: a stray triangle is drawn where the model should be empty.
+pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize, usize)> {
     let md = mesh_data(data, bs_version);
     if md.positions.is_empty() || md.triangles.is_empty() {
         return None;
@@ -446,20 +452,22 @@ pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize)> {
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, md.colors);
     }
     // A triangle that names a vertex that is not there would draw a stray
-    // triangle, so it is dropped.
+    // triangle, so it is dropped — and counted.
     let max = n as u32;
-    let idx: Vec<u32> = md
-        .triangles
-        .iter()
-        .filter(|t| t.iter().all(|&i| i < max))
-        .flatten()
-        .copied()
-        .collect();
+    let mut dropped = 0usize;
+    let mut idx: Vec<u32> = Vec::with_capacity(tris * 3);
+    for t in &md.triangles {
+        if t.iter().all(|&i| i < max) {
+            idx.extend_from_slice(t);
+        } else {
+            dropped += 1;
+        }
+    }
     mesh.insert_indices(Indices::U32(idx));
     if !has_normals {
         mesh.compute_normals();
     }
-    Some((mesh, tris))
+    Some((mesh, tris, dropped))
 }
 
 /// Clean a shape's vertex colours for the material it is drawn with.
