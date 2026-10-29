@@ -115,9 +115,13 @@ fn every_games_interior_cells_read_their_lighting() {
     ];
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas");
     let mut ran = false;
+    let data_fallback = std::env::var("NVRE_DATA").ok();
     for (var, id, master) in cases {
-        let Ok(data) = std::env::var(var) else {
-            continue;
+        let master_env = std::env::var(var).ok();
+        let data = match (&master_env, &data_fallback) {
+            (Some(m), _) => m.clone(),
+            (None, Some(d)) if id == "fnv" => d.clone(),
+            _ => continue,
         };
         let profile = GameProfile::by_id(id).expect("a known game");
         let master_path = std::path::Path::new(&data).join(profile.master);
@@ -174,9 +178,13 @@ fn an_exterior_cell_has_no_lighting_of_its_own() {
     ];
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas");
     let mut ran = false;
+    let data_fallback = std::env::var("NVRE_DATA").ok();
     for (var, id, master) in cases {
-        let Ok(data) = std::env::var(var) else {
-            continue;
+        let master_env = std::env::var(var).ok();
+        let data = match (&master_env, &data_fallback) {
+            (Some(m), _) => m.clone(),
+            (None, Some(d)) if id == "fnv" => d.clone(),
+            _ => continue,
         };
         let profile = GameProfile::by_id(id).expect("a known game");
         let master_path = std::path::Path::new(&data).join(profile.master);
@@ -216,4 +224,34 @@ fn the_struct_is_copy() {
     let l = cell_lighting(&cistern_a()).expect("40 bytes is enough");
     let m: CellLighting = l;
     assert_eq!(l, m);
+}
+
+#[test]
+fn s9_6_sun_transform_heading_and_elevation() {
+    let mut l = cell_lighting(&cistern_a()).expect("valid cell lighting");
+    // cistern_a has rotation_xy = 120, rotation_z = 270
+    let tr = nvre_editor::viewport::sun_transform(l);
+    // At rotation_z = 270 deg (pitch = 3*PI/2 = -PI/2), pitch.sin() = -1.0, cos() = 0.0
+    // Sun direction vector = [0, -1, 0] * 20000.0
+    assert!((tr.translation.y - (-20000.0)).abs() < 1.0);
+    assert!(tr.translation.x.abs() < 1.0);
+    assert!(tr.translation.z.abs() < 1.0);
+
+    // Test overhead sun: rotation_xy = 0, rotation_z = 90 deg (pitch = PI/2)
+    l.rotation_xy = 0;
+    l.rotation_z = 90;
+    let tr_up = nvre_editor::viewport::sun_transform(l);
+    assert!((tr_up.translation.y - 20000.0).abs() < 1.0);
+    assert!(tr_up.translation.x.abs() < 1.0);
+    assert!(tr_up.translation.z.abs() < 1.0);
+}
+
+#[test]
+fn s9_7_fog_power_and_distance_bounds() {
+    let l = cell_lighting(&cistern_a()).expect("valid cell lighting");
+    // cistern_a has fog_near = 32.0, fog_far = 1600.0, fog_power = 0.6
+    assert_eq!(l.fog_near, 32.0);
+    assert_eq!(l.fog_far, 1600.0);
+    assert!((l.fog_power - 0.6).abs() < 1e-5);
+    assert!(l.has_fog());
 }

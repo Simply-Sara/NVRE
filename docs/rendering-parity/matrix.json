@@ -913,25 +913,25 @@
       "id": "S9-6",
       "title": "Sun angle convention",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "residue; [hypothesis] at viewport.rs:319"
+      "evidence": "crates/nvre-editor::viewport::sun_transform tested in tests/cell_lighting.rs"
     },
     {
       "id": "S9-7",
       "title": "fog_power shapes the fog curve",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "residue; power unapplied at viewport.rs:282"
+      "evidence": "crates/nvre-editor::tests::cell_lighting::s9_7_fog_power_and_distance_bounds"
     },
     {
       "id": "S9-8",

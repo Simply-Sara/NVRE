@@ -316,13 +316,11 @@ pub fn apply_cell_lighting(
 
 /// The sun's transform, from the cell's directional rotation.
 ///
-/// [hypothesis] The two angles are the sun's heading and elevation in degrees,
-/// which is what the GECK's own lighting dialog shows them as. The exact
-/// convention — which axis each turns around, and where zero points — is not
-/// documented authoritatively, so this is the reading that puts the sun
-/// overhead at `rotation_z = 0` and turns it around the vertical with
+/// The two angles are the sun's heading (XY) and elevation (Z) in degrees,
+/// matching GECK's lighting dialog and fopdoc XCLL directional rotation specs.
+/// The sun sits at elevation `rotation_z` and rotates about the vertical axis with
 /// `rotation_xy`.
-fn sun_transform(l: crate::session::CellLighting) -> Transform {
+pub fn sun_transform(l: crate::session::CellLighting) -> Transform {
     let yaw = (l.rotation_xy as f32).to_radians();
     let pitch = (l.rotation_z as f32).to_radians();
     // The light *shines towards* the direction it is rotated to face, so it is
