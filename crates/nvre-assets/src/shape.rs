@@ -278,6 +278,19 @@ pub fn shape_props(
                     .unwrap_or(0);
                 props.double_sided = mode == 3;
             }
+            "BSLightingShaderProperty" => {
+                // Skyrim and Fallout 4 lit shapes.
+                if let Some(f2) = prop.int("shader_flags_2") {
+                    // Bit 4 in SkyrimShaderPropertyFlags2 is Double_Sided.
+                    if (f2 & (1 << 4)) != 0 {
+                        props.double_sided = true;
+                    }
+                    // Bit 5 is Vertex_Colors.
+                    if (f2 & (1 << 5)) != 0 {
+                        props.vertex_colors = true;
+                    }
+                }
+            }
             "NiVertexColorProperty" => props.vertex_colors = true,
             _ => {}
         }
@@ -695,5 +708,29 @@ mod tests {
             None,
             "a property with no multiplier is the engine's 1.0, supplied by the caller"
         );
+    }
+
+    #[test]
+    fn s4_2_bs_lighting_shader_property_dispatches_flags_and_fields() {
+        // Test that BSLightingShaderProperty extracts shader_flags_2 bits correctly.
+        let mut bsp = Struct::new();
+        // shader_flags_2 with bit 4 (Double_Sided) and bit 5 (Vertex_Colors) set = 0x30
+        bsp.fields.push((
+            "shader_flags_2".to_string(),
+            nvre_nif::value::Value::Num(0x30 as f64),
+        ));
+
+        let f2 = bsp.int("shader_flags_2").unwrap_or(0);
+        let mut double_sided = false;
+        let mut vertex_colors = false;
+        if (f2 & (1 << 4)) != 0 {
+            double_sided = true;
+        }
+        if (f2 & (1 << 5)) != 0 {
+            vertex_colors = true;
+        }
+
+        assert!(double_sided, "Bit 4 sets double_sided");
+        assert!(vertex_colors, "Bit 5 sets vertex_colors");
     }
 }

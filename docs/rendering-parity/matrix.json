@@ -315,11 +315,11 @@
       "cells": {
         "fnv": "not_applicable",
         "fo3": "not_applicable",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "shape_props has no match arm for it; and FO4's BSLightingShaderProperty is not defined in schemas/nif at all — 1,170,607 uses across 224,734 files, so every lit FO4 shape is unreadable. That is S1-3's largest gap and it blocks this step entirely for FO4."
+      "evidence": "crates/nvre-assets::shape::shape_props match arm and s4_2_bs_lighting_shader_property_dispatches_flags_and_fields"
     },
     {
       "id": "S4-3",
