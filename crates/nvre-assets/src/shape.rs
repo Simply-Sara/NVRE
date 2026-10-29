@@ -492,8 +492,9 @@ pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize, usize)
 ///
 /// An unlit shape's colour is texture × vertex colour, which the game forms in
 /// display values; this renderer multiplies in linear ones, so the colour is
-/// converted and the alpha kept.
-pub fn fix_vertex_colors(mesh: &mut Mesh, vertex_alpha: bool, unlit: bool) {
+/// converted and the alpha kept. When `vertex_colors` is false, RGB vertex
+/// colours do not tint the shape and are normalized to white.
+pub fn fix_vertex_colors(mesh: &mut Mesh, vertex_alpha: bool, vertex_colors: bool, unlit: bool) {
     let Some(VertexAttributeValues::Float32x4(colors)) = mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR)
     else {
         return;
@@ -506,12 +507,16 @@ pub fn fix_vertex_colors(mesh: &mut Mesh, vertex_alpha: bool, unlit: bool) {
         }
     };
     for c in colors.iter_mut() {
-        let rgb = [clean(c[0]), clean(c[1]), clean(c[2])];
-        let rgb = if unlit {
-            let l = LinearRgba::from(Srgba::new(rgb[0], rgb[1], rgb[2], 1.0));
-            [l.red, l.green, l.blue]
+        let rgb = if vertex_colors {
+            let rgb = [clean(c[0]), clean(c[1]), clean(c[2])];
+            if unlit {
+                let l = LinearRgba::from(Srgba::new(rgb[0], rgb[1], rgb[2], 1.0));
+                [l.red, l.green, l.blue]
+            } else {
+                rgb
+            }
         } else {
-            rgb
+            [1.0, 1.0, 1.0]
         };
         *c = [
             rgb[0],
@@ -712,9 +717,7 @@ mod tests {
 
     #[test]
     fn s4_2_bs_lighting_shader_property_dispatches_flags_and_fields() {
-        // Test that BSLightingShaderProperty extracts shader_flags_2 bits correctly.
         let mut bsp = Struct::new();
-        // shader_flags_2 with bit 4 (Double_Sided) and bit 5 (Vertex_Colors) set = 0x30
         bsp.fields.push((
             "shader_flags_2".to_string(),
             nvre_nif::value::Value::Num(0x30 as f64),
@@ -732,5 +735,39 @@ mod tests {
 
         assert!(double_sided, "Bit 4 sets double_sided");
         assert!(vertex_colors, "Bit 5 sets vertex_colors");
+    }
+
+    #[test]
+    fn s4_11_vertex_colors_gate_rgb_tinting() {
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            bevy::asset::RenderAssetUsages::RENDER_WORLD,
+        );
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_COLOR,
+            vec![[0.2, 0.4, 0.6, 0.5], [0.8, 0.1, 0.3, 1.0]],
+        );
+
+        // When vertex_colors = false, RGB becomes [1.0, 1.0, 1.0], alpha kept if vertex_alpha=true.
+        let mut mesh_no_tint = mesh.clone();
+        fix_vertex_colors(&mut mesh_no_tint, true, false, false);
+        if let Some(VertexAttributeValues::Float32x4(colors)) =
+            mesh_no_tint.attribute(Mesh::ATTRIBUTE_COLOR)
+        {
+            assert_eq!(colors[0], [1.0, 1.0, 1.0, 0.5]);
+            assert_eq!(colors[1], [1.0, 1.0, 1.0, 1.0]);
+        } else {
+            panic!("ATTRIBUTE_COLOR missing");
+        }
+
+        // When vertex_colors = true, RGB is preserved.
+        let mut mesh_tint = mesh.clone();
+        fix_vertex_colors(&mut mesh_tint, true, true, false);
+        if let Some(VertexAttributeValues::Float32x4(colors)) =
+            mesh_tint.attribute(Mesh::ATTRIBUTE_COLOR)
+        {
+            assert_eq!(colors[0], [0.2, 0.4, 0.6, 0.5]);
+            assert_eq!(colors[1], [0.8, 0.1, 0.3, 1.0]);
+        }
     }
 }

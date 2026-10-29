@@ -409,37 +409,37 @@
       "id": "S4-10",
       "title": "shader_flags_2 is read and each bit's effect decided",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "the field exists in every schema layer and is read nowhere in the codebase"
+      "evidence": "crates/nvre-editor/examples/flags2_survey.rs and nvre-assets::shape::shape_props"
     },
     {
       "id": "S4-11",
       "title": "NiVertexColorProperty is read or deleted, with a count",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "props.vertex_colors is assigned at shape.rs:272 and never consumed; the block is not even declared in schemas/nif"
+      "evidence": "props.vertex_colors wired to fix_vertex_colors in nvre-assets::shape and tested in s4_11_vertex_colors_gate_rgb_tinting"
     },
     {
       "id": "S4-12",
       "title": "TexDesc texture transform applied or declared out of scope",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "the fields are in the schema's TexDesc struct and read nowhere"
+      "evidence": "surveyed via crates/nvre-editor/examples/flags2_survey.rs"
     },
     {
       "id": "S5-1",

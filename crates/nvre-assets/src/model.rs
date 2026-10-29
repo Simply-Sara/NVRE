@@ -210,7 +210,7 @@ impl ModelCtx<'_> {
             // shader does not take the vertex alpha must not keep it, and an
             // unlit shape's colour is a display value.
             let editor_marker = is_editor_marker(o.name.as_deref());
-            fix_vertex_colors(&mut mesh, props.vertex_alpha, props.unlit);
+            fix_vertex_colors(&mut mesh, props.vertex_alpha, props.vertex_colors, props.unlit);
             // The shape's own report: what it is, and what it is drawn
             // with.
             info!(
