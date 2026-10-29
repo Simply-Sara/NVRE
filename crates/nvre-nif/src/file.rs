@@ -164,6 +164,24 @@ impl NifFile {
         data: &[u8],
         index: usize,
     ) -> Result<bool, CodecError> {
+        let st = self.decode_block(index, schema, data)?;
+        self.reencode_decoded(schema, data, index, &st)
+    }
+
+    /// Whether an already-decoded block re-encodes to the bytes it was read
+    /// from.
+    ///
+    /// The same check [`NifFile::reencode_block`] makes, on a block the caller
+    /// has decoded for another reason: a corpus pass asks both "did it decode
+    /// cleanly?" and "does it re-encode?", and decoding twice doubles the cost
+    /// of the more expensive half.
+    pub fn reencode_decoded(
+        &self,
+        schema: &Schema,
+        data: &[u8],
+        index: usize,
+        st: &Struct,
+    ) -> Result<bool, CodecError> {
         let b = &self.blocks[index];
         let Some(fields) = schema.block_fields_ref(&b.type_name) else {
             return Err(CodecError::Layout(format!(
@@ -171,7 +189,6 @@ impl NifFile {
                 b.type_name
             )));
         };
-        let st = self.decode_block(index, schema, data)?;
         // The lineage is the block's own type and the types it is based on.
         let mut lineage: Vec<String> = vec![b.type_name.clone()];
         lineage.extend(
@@ -181,7 +198,7 @@ impl NifFile {
                 .map(str::to_string),
         );
         let mut out = Vec::with_capacity(b.range.len());
-        crate::encode::encode_fields(schema, &self.header, &lineage, &fields, &st, None, &mut out)?;
+        crate::encode::encode_fields(schema, &self.header, &lineage, &fields, st, None, &mut out)?;
         Ok(out == data[b.range.clone()])
     }
 }

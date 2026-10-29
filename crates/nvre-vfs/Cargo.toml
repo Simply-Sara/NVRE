@@ -23,3 +23,7 @@ bsa105 = { path = "../bsa105" }
 # measurement runs over a whole game's meshes, and it belongs in a crate that
 # builds in seconds rather than one that pulls in Bevy.
 nvre-nif = { path = "../nvre-nif" }
+# The corpus checks are per-file and independent, so they run in parallel:
+# a whole game's meshes is 20k-225k files and one core at a time is the
+# difference between a minute and half an hour.
+rayon = "1"

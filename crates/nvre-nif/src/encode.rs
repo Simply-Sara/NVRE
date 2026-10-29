@@ -12,6 +12,7 @@ use crate::header::{Header, Version, V20_1_0_3};
 use crate::schema::{Prim, Schema, TypeRef};
 use crate::value::{Struct, Value};
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 /// The state a field's length and condition are read against.
 ///
@@ -30,6 +31,15 @@ struct Frames<'a> {
     /// struct type's own fields. It is computed rather than borrowed, because
     /// it comes from an expression over the enclosing scope.
     arg: Option<Value>,
+    /// The scope a struct's own field conditions read, flattened once.
+    ///
+    /// A condition reads a count or a flag from the block *around* the struct —
+    /// `arg` for a packed vertex, `num_vertices` for a geometry array — and
+    /// that scope is the same for every element of an array. Resolving it once
+    /// and sharing it is what keeps an array of structs linear in its length:
+    /// resolving it per element copied the enclosing arrays once per element,
+    /// which is quadratic.
+    flat: OnceLock<HashMap<String, Value>>,
 }
 
 impl<'a> Frames<'a> {
@@ -49,11 +59,17 @@ impl<'a> Frames<'a> {
     }
 
     /// The frames with `st`'s own fields pushed on top.
+    ///
+    /// The child inherits the parent's resolved scope, because that scope is
+    /// what the child's own field conditions read and it does not change from
+    /// one array element to the next. A fresh cache per element would resolve
+    /// it again for each, which is quadratic in the array's length.
     fn push(&self, st: &'a Struct) -> Frames<'a> {
         let mut out = Frames {
             base: self.base.clone(),
             own: self.own.clone(),
             arg: self.arg.clone(),
+            flat: self.flat.clone(),
         };
         out.own.push(&st.fields);
         out
@@ -63,29 +79,56 @@ impl<'a> Frames<'a> {
     /// not in scope — which is how the decoder's own scope answers, and what
     /// the callers already treat as "not there".
     ///
-    /// `scratch` is a cleared map the caller owns. It is filled here rather
-    /// than allocated, because this runs once per field of a struct and the
-    /// values can be large: a vertex array copied once per vertex is what made
-    /// a corpus-wide re-encode slow. It is left filled for the next call to
-    /// clear, so the map's capacity is kept.
+    /// `scratch` is a cleared map the caller owns, filled here rather than
+    /// allocated: this runs once per field of a struct, and a struct written
+    /// once per array element runs it once per element. The packed vertices of
+    /// a skin partition are 991 elements of a twelve-field struct whose every
+    /// field is conditional on `arg`, so a full scope rebuild per condition is
+    /// what turned one block's re-encode from milliseconds into ten seconds.
+    ///
+    /// The names an expression reads are resolved from the frames and the
+    /// result is cached on the frames, so the second and later conditions of
+    /// the same struct cost a lookup rather than a rebuild.
     fn number(&self, e: &crate::expr::Expr, scratch: &mut HashMap<String, Value>) -> Option<f64> {
+        let flat = self.flat.get_or_init(|| self.flatten());
         scratch.clear();
-        if let Some(v) = &self.arg {
-            scratch.insert("arg".into(), v.clone());
+        scratch.extend(flat.iter().map(|(k, v)| (k.clone(), v.clone())));
+        e.number_in(scratch)
+    }
+
+    /// Every name in scope, innermost frame first.
+    ///
+    /// A frame's own fields shadow the enclosing scope's, and `arg` shadows
+    /// both, which is the order the decoder reads them in.
+    ///
+    /// Only a scalar is put in. A condition is an expression over a count or a
+    /// flag — `arg`, `num_vertices`, `flags` — and an evaluator that hands back
+    /// a value by clone would otherwise copy an entire array on every name it
+    /// reads: a skin partition's 991 packed vertices, re-cloned once per
+    /// condition per vertex, is what turned one block's re-encode from
+    /// milliseconds into fifteen seconds. A *width* still reads its array from
+    /// the frames directly, through [`Frames::get`], so nothing that needs the
+    /// array is denied it.
+    fn flatten(&self) -> HashMap<String, Value> {
+        let mut out: HashMap<String, Value> = HashMap::new();
+        for base in self.base.iter().rev() {
+            for (n, v) in base.iter() {
+                if let Some(s) = scalar(v) {
+                    out.insert(n.clone(), s);
+                }
+            }
         }
         for frame in &self.own {
             for (n, v) in frame.iter() {
-                scratch.insert(n.clone(), v.clone());
+                if let Some(s) = scalar(v) {
+                    out.insert(n.clone(), s);
+                }
             }
         }
-        // The base is the file's own state, filled in only where the struct's
-        // own fields have not shadowed it — the order the decoder reads in.
-        for base in &self.base {
-            for (n, v) in base.iter() {
-                scratch.entry(n.clone()).or_insert_with(|| v.clone());
-            }
+        if let Some(v) = &self.arg {
+            out.insert("arg".into(), v.clone());
         }
-        e.number_in(scratch)
+        out
     }
 
     /// The frames a struct type's fields are read against, with the field's
@@ -103,7 +146,19 @@ impl<'a> Frames<'a> {
                 .as_ref()
                 .and_then(|e| self.number(e, scratch))
                 .map(Value::Num),
+            flat: OnceLock::new(),
         }
+    }
+}
+
+/// The scalar a value is, or `None` when it is an array, a struct or bytes.
+///
+/// A condition reads a count or a flag and never the contents of an array, so
+/// this is what a scope holds. See [`Frames::flatten`] for why it matters.
+fn scalar(v: &Value) -> Option<Value> {
+    match v {
+        Value::List(_) | Value::Bytes(_) | Value::Struct(_) => None,
+        other => Some(other.clone()),
     }
 }
 
@@ -132,6 +187,7 @@ pub fn encode_fields(
         base: vec![&scope],
         own: Vec::new(),
         arg: None,
+        flat: OnceLock::new(),
     };
     encode_fields_in(
         schema,

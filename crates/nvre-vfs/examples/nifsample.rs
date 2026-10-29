@@ -1,23 +1,27 @@
 //! S1-1 on a sample: does every block of every NIF in a *sample* of the corpus
 //! re-encode to the bytes it was read from?
 //!
-//! The full sweep over all five games is 306,674 files and takes hours, which
-//! is too slow to run after every change. A sample of a fixed size, drawn the
-//! same way each time, gives an answer in minutes and is reproducible: the
-//! same seed and the same corpus give the same files.
+//! The exhaustive sweep over all five games is 306,674 files and takes hours,
+//! which is too slow to run after every change. A sample of a fixed size, drawn
+//! the same way each time, gives an answer in minutes and is reproducible: the
+//! same corpus gives the same files.
 //!
 //! The sample is *stratified by data subtree*, not drawn at random from the
-//! whole archive. A random draw over 20k paths lands mostly in whatever
-//! subtree happens to be largest, so a bug confined to `meshes\weapons` would
-//! be missed by chance; taking a share of each subtree means every class of
-//! mesh is represented whether or not it is numerous.
+//! whole archive. A random draw over 20k paths lands mostly in whatever subtree
+//! happens to be largest, so a bug confined to `meshes\weapons` would be missed
+//! by chance; taking a share of each subtree means every class of mesh is
+//! represented whether or not it is numerous.
+//!
+//! The files are independent, so they are checked in parallel — one core at a
+//! time is the difference between a minute and half an hour over a quarter of a
+//! million files.
 //!
 //! Usage: `nifsample <data dir> <schema dir[:layers]> [per-subtree count]`
 //!
-//! With no count it takes 1 in every 40 paths of each subtree, which over
-//! Fallout: New Vegas is about 500 files.
+//! With no count it takes 1 in every 40 paths of each subtree.
 
 use nvre_nif::Schema;
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -53,9 +57,9 @@ fn main() {
     let vfs = nvre_vfs::Vfs::open(&dir, &names).expect("the archives");
     let all = vfs.paths(|p| p.to_lowercase().ends_with(".nif"));
 
-    // Group the paths by their data subtree: everything up to the third
-    // separator, so `meshes\architecture\...` and `meshes\clutter\...` are
-    // different strata and `meshes\landscape\lod` is its own.
+    // Group the paths by their data subtree: everything up to the second
+    // separator, so `meshes\architecture` and `meshes\clutter` are different
+    // strata and a bug confined to one of them is still represented.
     let mut strata: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for p in all {
         let key = p
@@ -85,71 +89,105 @@ fn main() {
         sample.len()
     );
 
-    let started = std::time::Instant::now();
-    let mut files = 0u64;
-    let mut blocks = 0u64;
-    let mut unknown = 0u64;
-    let mut short = 0u64;
-    let mut err = 0u64;
-    let mut mismatch = 0u64;
-    let mut reasons: BTreeMap<String, u64> = BTreeMap::new();
-    let mut examples: BTreeMap<String, String> = BTreeMap::new();
-
-    for p in &sample {
-        let Some(r) = vfs.read(p) else { continue };
-        let Ok(data) = r else { continue };
-        let Ok(f) = nvre_nif::NifFile::parse(&data, Some(&schema)) else {
-            continue;
-        };
-        files += 1;
-        for (i, _b) in f.blocks.iter().enumerate() {
-            blocks += 1;
-            let (status, _) = f.decode_block_status(i, &schema, &data);
-            match status {
-                nvre_nif::BlockStatus::Unknown => {
-                    unknown += 1;
-                    *reasons
-                        .entry(format!("{} unknown", f.blocks[i].type_name))
-                        .or_insert(0) += 1;
-                }
-                nvre_nif::BlockStatus::Short { consumed, size } => {
-                    short += 1;
-                    *reasons
-                        .entry(format!(
-                            "{} short: consumed {consumed} of {size}",
-                            f.blocks[i].type_name
-                        ))
-                        .or_insert(0) += 1;
-                }
-                nvre_nif::BlockStatus::Error(e) => {
-                    err += 1;
-                    *reasons
-                        .entry(format!("{} error: {e}", f.blocks[i].type_name))
-                        .or_insert(0) += 1;
-                }
-                _ => {}
-            }
-            if f.reencode_block(&schema, &data, i) == Ok(false) {
-                mismatch += 1;
-                *reasons
-                    .entry(format!("{} re-encode", f.blocks[i].type_name))
-                    .or_insert(0) += 1;
-                examples
-                    .entry(f.blocks[i].type_name.clone())
-                    .or_insert_with(|| p.clone());
-            }
-        }
+    // One file's result: the counts and the reasons, so the parallel pass can
+    // return them and the totals are a sum rather than a shared counter.
+    #[derive(Default)]
+    struct Found {
+        files: u64,
+        blocks: u64,
+        unknown: u64,
+        short: u64,
+        err: u64,
+        mismatch: u64,
+        reasons: BTreeMap<String, u64>,
+        examples: BTreeMap<String, String>,
     }
+
+    let started = std::time::Instant::now();
+    let found: Found = sample
+        .par_iter()
+        .fold(Found::default, |mut acc, p| {
+            let Some(r) = vfs.read(p) else { return acc };
+            let Ok(data) = r else { return acc };
+            // Each block is decoded once: the status and the re-encode read the
+            // same struct, and decoding twice doubles the cost of the more
+            // expensive half.
+            let Ok(f) = nvre_nif::NifFile::parse(&data, Some(&schema)) else {
+                return acc;
+            };
+            acc.files += 1;
+            for (i, _b) in f.blocks.iter().enumerate() {
+                acc.blocks += 1;
+                let (status, decoded) = f.decode_block_status(i, &schema, &data);
+                match status {
+                    nvre_nif::BlockStatus::Unknown => {
+                        acc.unknown += 1;
+                        *acc.reasons
+                            .entry(format!("{} unknown", f.blocks[i].type_name))
+                            .or_insert(0) += 1;
+                    }
+                    nvre_nif::BlockStatus::Short { consumed, size } => {
+                        acc.short += 1;
+                        *acc.reasons
+                            .entry(format!(
+                                "{} short: consumed {consumed} of {size}",
+                                f.blocks[i].type_name
+                            ))
+                            .or_insert(0) += 1;
+                    }
+                    nvre_nif::BlockStatus::Error(e) => {
+                        acc.err += 1;
+                        *acc.reasons
+                            .entry(format!("{} error: {e}", f.blocks[i].type_name))
+                            .or_insert(0) += 1;
+                    }
+                    _ => {}
+                }
+                // The re-encode, on the struct the status already decoded.
+                let ok = match &decoded {
+                    Some(st) => f.reencode_decoded(&schema, &data, i, st),
+                    None => f.reencode_block(&schema, &data, i),
+                };
+                if ok == Ok(false) {
+                    acc.mismatch += 1;
+                    *acc.reasons
+                        .entry(format!("{} re-encode", f.blocks[i].type_name))
+                        .or_insert(0) += 1;
+                    acc.examples
+                        .entry(f.blocks[i].type_name.clone())
+                        .or_insert_with(|| p.clone());
+                }
+            }
+            acc
+        })
+        .reduce(Found::default, |mut a, b| {
+            a.files += b.files;
+            a.blocks += b.blocks;
+            a.unknown += b.unknown;
+            a.short += b.short;
+            a.err += b.err;
+            a.mismatch += b.mismatch;
+            for (k, v) in b.reasons {
+                *a.reasons.entry(k).or_insert(0) += v;
+            }
+            for (k, v) in b.examples {
+                a.examples.entry(k).or_insert(v);
+            }
+            a
+        });
 
     let secs = started.elapsed().as_secs_f32();
     println!();
-    println!("files {files}, blocks {blocks}");
-    println!("unknown {unknown}, short {short}, error {err}, re-encode mismatches {mismatch}");
-    println!("in {secs:.1}s");
+    println!("files {}, blocks {}", found.files, found.blocks);
+    println!(
+        "unknown {}, short {}, error {}, re-encode mismatches {}",
+        found.unknown, found.short, found.err, found.mismatch
+    );
+    println!("in {secs:.1}s on {} threads", rayon::current_num_threads());
     println!();
     println!("by block:");
-    for (k, v) in &reasons {
-        let first = examples.get(k.split(':').next().unwrap_or(k));
+    for (k, v) in &found.reasons {
+        let first = found.examples.get(k.split(':').next().unwrap_or(k));
         match first {
             Some(p) => println!("    {k}: {v}   (e.g. {p})"),
             None => println!("    {k}: {v}"),
