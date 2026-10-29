@@ -1077,23 +1077,25 @@
       "id": "S12-2",
       "title": "Weight normalisation matches the engine",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::scene::normalize_vertex_weights tested in s12_2_and_s12_3_skin_weight_normalization_and_bind_pose"
     },
     {
       "id": "S12-3",
       "title": "Skinning is the identity at the bind pose",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::scene::tests::s12_2_and_s12_3_skin_weight_normalization_and_bind_pose"
     },
     {
       "id": "S13-1",

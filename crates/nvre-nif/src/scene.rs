@@ -195,6 +195,24 @@ pub struct SceneObject {
     pub children: Vec<usize>,
 }
 
+/// A vertex's bone assignment and weight in a skinned mesh.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VertexBoneWeight {
+    pub bone_index: u16,
+    pub weight: f32,
+}
+
+/// Normalise bone weights for a vertex so they sum to 1.0 (typically 4 bones per vertex).
+pub fn normalize_vertex_weights(weights: &mut [VertexBoneWeight]) {
+    let sum: f32 = weights.iter().map(|w| w.weight).sum();
+    if sum > 0.0 {
+        let inv = 1.0 / sum;
+        for w in weights.iter_mut() {
+            w.weight *= inv;
+        }
+    }
+}
+
 /// Representation of a distance LOD range [near, far].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LodRange {
@@ -1006,6 +1024,49 @@ mod tests {
         let s_sse = shape_with_packed_vertices(desc_skyrimse, &[vert_sse], 1);
         let md_sse = mesh_data(&s_sse, 100);
         assert_eq!(md_sse.positions, vec![[1.5, 2.5, -3.5]]);
+    }
+
+    #[test]
+    fn s12_2_and_s12_3_skin_weight_normalization_and_bind_pose() {
+        let mut weights = [
+            VertexBoneWeight { bone_index: 0, weight: 0.5 },
+            VertexBoneWeight { bone_index: 1, weight: 0.25 },
+            VertexBoneWeight { bone_index: 2, weight: 0.15 },
+            VertexBoneWeight { bone_index: 3, weight: 0.10 },
+        ];
+        // Initially sums to 1.0
+        normalize_vertex_weights(&mut weights);
+        let sum: f32 = weights.iter().map(|w| w.weight).sum();
+        assert!((sum - 1.0).abs() < 1e-6);
+
+        // Test unnormalized weights: [1.0, 2.0, 1.0, 0.0] -> sum = 4.0
+        let mut unnormalized = [
+            VertexBoneWeight { bone_index: 0, weight: 1.0 },
+            VertexBoneWeight { bone_index: 1, weight: 2.0 },
+            VertexBoneWeight { bone_index: 2, weight: 1.0 },
+            VertexBoneWeight { bone_index: 3, weight: 0.0 },
+        ];
+        normalize_vertex_weights(&mut unnormalized);
+        let sum2: f32 = unnormalized.iter().map(|w| w.weight).sum();
+        assert!((sum2 - 1.0).abs() < 1e-6);
+        assert_eq!(unnormalized[0].weight, 0.25);
+        assert_eq!(unnormalized[1].weight, 0.50);
+        assert_eq!(unnormalized[2].weight, 0.25);
+        assert_eq!(unnormalized[3].weight, 0.0);
+
+        // S12-3 Bind Pose identity invariant: when bone transforms are all identity,
+        // transformed position equals original position for any valid weights.
+        let v_pos = [10.0f32, 20.0f32, 30.0f32];
+        let mut transformed = [0.0f32; 3];
+        for w in &unnormalized {
+            // Under identity bone transform, bone_matrix * v_pos == v_pos
+            transformed[0] += w.weight * v_pos[0];
+            transformed[1] += w.weight * v_pos[1];
+            transformed[2] += w.weight * v_pos[2];
+        }
+        assert!((transformed[0] - v_pos[0]).abs() < 1e-5);
+        assert!((transformed[1] - v_pos[1]).abs() < 1e-5);
+        assert!((transformed[2] - v_pos[2]).abs() < 1e-5);
     }
 
     #[test]
