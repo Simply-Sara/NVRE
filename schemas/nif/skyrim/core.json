@@ -69,6 +69,10 @@
      "type": "BSShaderFlags2"
     },
     {
+     "name": "shader_type",
+     "type": "BSShaderType"
+    },
+    {
      "name": "uv_offset",
      "type": "vec2"
     },
@@ -110,6 +114,14 @@
      "type": "f32"
     },
     {
+     "name": "specular_color",
+     "type": "color3"
+    },
+    {
+     "name": "specular_strength",
+     "type": "f32"
+    },
+    {
      "name": "lighting_effect_1",
      "type": "f32"
     },
@@ -119,13 +131,8 @@
     },
     {
      "name": "environment_map_scale",
-     "type": "f32"
-    },
-    {
-     "name": "environment_map_scale_2",
      "type": "f32",
-     "cond": "shader_type == 1",
-     "note": "nif.xml: the environment-map shader's own scale."
+     "cond": "shader_type == 1"
     },
     {
      "name": "parallax_inner_layer_thickness",
