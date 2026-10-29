@@ -648,4 +648,51 @@ mod tests {
         assert!(ancestors.is_empty());
         assert!((t.transform_point3(Vec3::ZERO).x - 3.0).abs() < 1e-5);
     }
+
+    #[test]
+    fn s6_2_material_for_populates_every_extension_field() {
+        // Construct synthetic ShapeProps with falloff, cut, add_whole, and decal
+        let props = ShapeProps {
+            falloff: Some(Vec4::new(0.8, 0.2, 0.9, 0.1)),
+            alpha_cut: 0.25,
+            add_whole: true,
+            decal: true,
+            double_sided: true,
+            emissive: Some([1.0, 0.5, 0.0]),
+            emissive_mult: 2.0,
+            alpha_mode: bevy::material::AlphaMode::Blend,
+            ..Default::default()
+        };
+
+        let standard = StandardMaterial {
+            base_color: Color::srgba(1.0, 1.0, 1.0, 1.0),
+            double_sided: props.double_sided,
+            cull_mode: if props.double_sided {
+                None
+            } else {
+                Some(bevy::render::render_resource::Face::Back)
+            },
+            unlit: false,
+            ..Default::default()
+        };
+        let mut m = nif_material(standard);
+        m.extension = NifSurface {
+            falloff: props
+                .falloff
+                .unwrap_or(crate::nif_material::Falloff::NONE.params),
+            alpha_cut: props.alpha_cut,
+            add_whole: if props.add_whole { 1.0 } else { 0.0 },
+            decal: props.decal,
+            hard_edges: false,
+            shade_light: false,
+        };
+
+        // Assert that all fields were cleanly populated into the extension
+        assert_eq!(m.extension.falloff, Vec4::new(0.8, 0.2, 0.9, 0.1));
+        assert_eq!(m.extension.alpha_cut, 0.25);
+        assert_eq!(m.extension.add_whole, 1.0);
+        assert!(m.extension.decal);
+        assert!(!m.extension.hard_edges);
+        assert!(!m.extension.shade_light);
+    }
 }

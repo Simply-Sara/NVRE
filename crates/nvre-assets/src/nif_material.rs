@@ -455,4 +455,19 @@ mod tests {
         assert_eq!(add_alpha(1.0), 1.0);
         assert_eq!(add_alpha(0.0), 0.0);
     }
+
+    #[test]
+    fn s6_1_nif_surface_default_is_the_neutral_surface() {
+        let def = NifSurface::default();
+        assert_eq!(
+            def.falloff,
+            Falloff::NONE.params,
+            "default falloff must be Falloff::NONE (fully opaque at all angles), never Vec4::ZERO"
+        );
+        assert_eq!(def.alpha_cut, 0.0);
+        assert_eq!(def.add_whole, 0.0);
+        assert!(!def.decal);
+        assert!(!def.hard_edges);
+        assert!(!def.shade_light);
+    }
 }

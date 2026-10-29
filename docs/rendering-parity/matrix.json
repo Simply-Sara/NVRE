@@ -547,7 +547,7 @@
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "nif_material.rs:91 writes Falloff::NONE explicitly; not asserted in a test"
+      "evidence": "crates/nvre-assets::nif_material::tests::s6_1_nif_surface_default_is_the_neutral_surface"
     },
     {
       "id": "S6-2",
@@ -559,7 +559,7 @@
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "model.rs:358 populates all four; not asserted"
+      "evidence": "crates/nvre-assets::model::tests::s6_2_material_for_populates_every_extension_field"
     },
     {
       "id": "S6-3",
