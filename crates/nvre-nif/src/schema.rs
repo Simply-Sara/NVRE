@@ -1107,4 +1107,22 @@ mod tests {
         assert!(f[0].cond.is_none());
         assert!(f[1].cond.is_some());
     }
+
+    #[test]
+    fn s1_6_lineage_trace_through_inheritance_hierarchy() {
+        let s = schema_from(
+            r#"{"format":"nvre.nif.schema/1",
+                "blocks":{
+                  "NiObject":{"fields":[]},
+                  "NiProperty":{"inherit":"NiObject","fields":[]},
+                  "BSShaderProperty":{"inherit":"NiProperty","fields":[]},
+                  "BSLightingShaderProperty":{"inherit":"BSShaderProperty","fields":[]}
+                }}"#,
+        );
+        assert!(s.is_a("BSLightingShaderProperty", "BSLightingShaderProperty"));
+        assert!(s.is_a("BSLightingShaderProperty", "BSShaderProperty"));
+        assert!(s.is_a("BSLightingShaderProperty", "NiProperty"));
+        assert!(s.is_a("BSLightingShaderProperty", "NiObject"));
+        assert!(!s.is_a("BSLightingShaderProperty", "NiNode"));
+    }
 }

@@ -735,16 +735,6 @@
      "type": "f32",
      "length": "num_vertices",
      "cond": "has_rotation_speeds && 1 == 1"
-    },
-    {
-     "name": "num_added_particles",
-     "type": "u16",
-     "cond": "1 == 1"
-    },
-    {
-     "name": "added_particles_base",
-     "type": "u16",
-     "cond": "1 == 1"
     }
    ],
    "note": "nif.xml's BS202 condition excludes these fields from a 20.2.0.7 file, but Skyrim's particle data holds them: measured, the block is 21 bytes longer than the base's layout accounts for."

@@ -880,4 +880,44 @@ mod tests {
         let s = shape_with_packed_vertices(0, &[vec![0u8; 4]], 1);
         assert!(mesh_data(&s, 100).positions.is_empty());
     }
+
+    #[test]
+    fn s1_5_resolve_strings_only_resolves_declared_string_fields() {
+        let mut st = Struct::new();
+        st.set("name", Value::Num(0.0));
+        st.set("scale", Value::Num(1.0));
+
+        let header = crate::header::Header {
+            header_string: Vec::new(),
+            version: 0,
+            endian: 1,
+            user_version: 0,
+            num_blocks: 0,
+            bs: None,
+            block_types: Vec::new(),
+            block_type_index: Vec::new(),
+            block_sizes: None,
+            max_string_length: None,
+            strings: Some(vec![
+                crate::header::RawString(b"TargetString0".to_vec()),
+                crate::header::RawString(b"TargetString1".to_vec()),
+            ]),
+            groups: Vec::new(),
+            header_len: 0,
+        };
+        let file = NifFile {
+            header,
+            blocks: Vec::new(),
+            trailing: 0,
+        };
+
+        // Only "name" is declared as a string field:
+        let string_names = vec!["name".to_string()];
+        resolve_strings(&mut st, &file, &string_names);
+
+        // 'name' must be resolved to "TargetString0"
+        assert_eq!(st.text("name"), Some("TargetString0"));
+        // 'scale' must REMAIN a number (1.0) and NOT be replaced by "TargetString1"
+        assert_eq!(st.num("scale"), Some(1.0));
+    }
 }
