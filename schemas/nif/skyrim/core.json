@@ -769,7 +769,7 @@
    ]
   },
   "BSPSysHavokUpdateModifier": {
-   "inherit": "NiPSysModifier",
+   "inherit": "NiPSysMeshUpdateModifier",
    "fields": [
     {
      "name": "modifier",
@@ -1238,6 +1238,21 @@
     }
    ],
    "note": "nifgen's NiNode, measured: the effects come before the children, where Fallout's has the children first. The two orders are indistinguishable when a node has no effects, which is most of them."
+  },
+  "NiPSysMeshUpdateModifier": {
+   "inherit": "NiPSysModifier",
+   "fields": [
+    {
+     "name": "num_meshes",
+     "type": "u32"
+    },
+    {
+     "name": "meshes",
+     "type": "ref",
+     "length": "num_meshes"
+    }
+   ],
+   "note": "nif.xml <niobject name=\"NiPSysMeshUpdateModifier\">."
   }
  },
  "structs": {

@@ -17,6 +17,18 @@
      "type": "f32"
     }
    ]
+  },
+  "BoneLOD": {
+   "fields": [
+    {
+     "name": "distance",
+     "type": "u32"
+    },
+    {
+     "name": "bone_name",
+     "type": "string"
+    }
+   ]
   }
  },
  "blocks": {
@@ -210,7 +222,8 @@
   },
   "bhkPhysicsSystem": {
    "inherit": "bhkWorldObject",
-   "note": "Auto-defined Fallout 4 block bhkPhysicsSystem."
+   "note": "Auto-defined Fallout 4 block bhkPhysicsSystem.",
+   "fields": []
   },
   "BSEffectShaderProperty": {
    "inherit": "BSShaderProperty",
@@ -233,11 +246,11 @@
    "note": "Auto-defined Fallout 4 block BSEffectShaderPropertyFloatController."
   },
   "BSConnectPoint::Parents": {
-   "inherit": "NiNode",
+   "inherit": "NiExtraData",
    "note": "Auto-defined Fallout 4 block BSConnectPoint::Parents."
   },
   "BSConnectPoint::Children": {
-   "inherit": "NiNode",
+   "inherit": "NiExtraData",
    "note": "Auto-defined Fallout 4 block BSConnectPoint::Children."
   },
   "BSPSysLODModifier": {
@@ -250,7 +263,17 @@
   },
   "BSBehaviorGraphExtraData": {
    "inherit": "NiExtraData",
-   "note": "Auto-defined Fallout 4 block BSBehaviorGraphExtraData."
+   "note": "Auto-defined Fallout 4 block BSBehaviorGraphExtraData.",
+   "fields": [
+    {
+     "name": "behaviour_graph_file",
+     "type": "string"
+    },
+    {
+     "name": "controls_base_skeleton",
+     "type": "bool"
+    }
+   ]
   },
   "BSLightingShaderPropertyFloatController": {
    "inherit": "BSShaderProperty",
@@ -274,7 +297,8 @@
   },
   "BSClothExtraData": {
    "inherit": "NiExtraData",
-   "note": "Auto-defined Fallout 4 block BSClothExtraData."
+   "note": "Auto-defined Fallout 4 block BSClothExtraData.",
+   "fields": []
   },
   "NiStringsExtraData": {
    "inherit": "NiExtraData",
@@ -290,7 +314,8 @@
   },
   "bhkRagdollSystem": {
    "inherit": "bhkWorldObject",
-   "note": "Auto-defined Fallout 4 block bhkRagdollSystem."
+   "note": "Auto-defined Fallout 4 block bhkRagdollSystem.",
+   "fields": []
   },
   "BSPSysInheritVelocityModifier": {
    "inherit": "NiObject",
@@ -318,7 +343,18 @@
   },
   "BSBoneLODExtraData": {
    "inherit": "NiExtraData",
-   "note": "Auto-defined Fallout 4 block BSBoneLODExtraData."
+   "note": "Auto-defined Fallout 4 block BSBoneLODExtraData.",
+   "fields": [
+    {
+     "name": "num_bone_lods",
+     "type": "u32"
+    },
+    {
+     "name": "bone_lods",
+     "type": "BoneLOD",
+     "length": "num_bone_lods"
+    }
+   ]
   },
   "BSPSysRecycleBoundModifier": {
    "inherit": "NiObject",

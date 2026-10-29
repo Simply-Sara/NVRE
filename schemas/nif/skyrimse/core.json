@@ -103,8 +103,14 @@
      "length": "num_triangles"
     },
     {
-     "name": "trailing",
+     "name": "particle_data_size",
      "type": "u32"
+    },
+    {
+     "name": "particle_data",
+     "type": "bytes",
+     "length": "particle_data_size * 2",
+     "cond": "particle_data_size > 0"
     }
    ],
    "note": "nif.xml's BSTriShape: the Special Edition holds its vertices in the shape itself, in a packed format, where the original edition keeps them in a separate NiTriShapeData block. Measured: the data size is the vertex data's bytes plus the triangles' six bytes each, so the vertex data is the data size less the triangles; a word follows the triangles. The vertex description's low nibble is the vertex's size in four-byte words, and its next nibbles are the word offsets of the UV, the normal, the tangent and the colour. The packed vertices themselves are read by the NIF reader, not by the schema: their layout is a function of the description, and the schema language has no way to say 'a field whose size another field decides'."
