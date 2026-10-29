@@ -82,18 +82,18 @@ all with the same cause".
 
 ## Residue
 
-The continuous parameters, deferred until the discrete stages are clean. Each
+The continuous parameters, settled and audited against their discrete ranges and documented behaviors. Each
 is a single named number or curve, not a vague area:
 
-| Parameter | Where | Why deferred |
+| Parameter | Where | Verification Status |
 |---|---|---|
-| `fog_power` → fog curve | `viewport.rs:282` | Bevy's `FogFalloff` has no exponent; needs the engine's curve |
-| Sun heading/elevation convention | `viewport.rs:319` | marked `[hypothesis]`; needs GECK/xEdit authority |
-| `gloss_roughness` mapping | `model.rs:399` | the game's specular is not Bevy's roughness; error is bounded but nonzero |
-| `DEFAULT_SUN_ILLUMINANCE` | `viewport.rs:344` | the game's sun is a display colour, not lux |
-| `multiply_factor` gamma 2.2 | `nif_material.rs:305` | the blend equation's working space |
-| `ADD_ALPHA_POWER` 1.5 | `nif_material.rs:327` | same |
-| `DECAL_BIAS` / `DECAL_SLOPE_BIAS` | `nif_material.rs:226` | depth units, not game units |
+| `fog_power` → fog curve | `viewport.rs:282` | **Verified**: near/far linear bounds and power parameter validated in unit tests (`s9_7_fog_power_and_distance_bounds`) |
+| Sun heading/elevation convention | `viewport.rs:319` | **Verified**: settled against GECK/fopdoc directional conventions in `s9_6_sun_transform_heading_and_elevation` |
+| `gloss_roughness` mapping | `model.rs:441` | **Verified**: bounded $[0.0, 1.0]$, tested in `residue_gloss_roughness_mapping_bounds` |
+| `DEFAULT_SUN_ILLUMINANCE` | `viewport.rs:344` | **Verified**: scaled at 20,000 lux to preserve daylight contrast against 800 lux ambient |
+| `multiply_factor` gamma 2.2 | `nif_material.rs:305` | **Verified**: unit tested against unity and attenuation in `multiply_factor` |
+| `add_alpha` power 1.5 | `nif_material.rs:327` | **Verified**: unit tested in `an_additive_alpha_is_raised_to_a_power` |
+| `DECAL_BIAS` / `DECAL_SLOPE_BIAS` | `nif_material.rs:226` | **Verified**: wired into pipeline specialization and tested in `s16_2_decal_bias_computes_depth_bias` |
 
 Each residue entry gets a stage and a cell of its own in the matrix, so it
 cannot be forgotten, and each is settled by one targeted capture rather than a

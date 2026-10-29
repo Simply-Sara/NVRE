@@ -650,6 +650,16 @@ mod tests {
     }
 
     #[test]
+    fn residue_gloss_roughness_mapping_bounds() {
+        // glossiness 0.0 -> fully rough (1.0)
+        assert_eq!(gloss_roughness(0.0), 1.0);
+        // glossiness 100.0 -> perfectly smooth (0.0)
+        assert_eq!(gloss_roughness(100.0), 0.0);
+        // default glossiness 10.0 -> 1.0 - sqrt(0.10) ~ 0.6838
+        assert!((gloss_roughness(10.0) - 0.6838).abs() < 1e-3);
+    }
+
+    #[test]
     fn s6_2_material_for_populates_every_extension_field() {
         // Construct synthetic ShapeProps with falloff, cut, add_whole, and decal
         let props = ShapeProps {
