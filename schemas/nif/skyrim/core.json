@@ -176,10 +176,6 @@
     },
     {
      "name": "skin_tint_color",
-     "type": "color3"
-    },
-    {
-     "name": "skin_tint_color_2",
      "type": "color3",
      "cond": "shader_type == 5",
      "note": "nif.xml: the skin-tint shader's own colour."
