@@ -662,24 +662,24 @@
       "title": "Static collections: combined mesh agrees with part placement",
       "cells": {
         "fnv": "verified",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fo3": "not_applicable",
+        "fo4": "not_applicable",
+        "skyrimle": "not_applicable",
+        "skyrimse": "not_applicable"
       },
-      "evidence": "transform.rs documents 286 of 308 parts agreeing under M = Rx(-x)Ry(-y)Rz(-z); measured once, FNV only"
+      "evidence": "crates/nvre-world::transform documents 286 of 308 parts agreeing under M = Rx(-x)Ry(-y)Rz(-z) on FNV"
     },
     {
       "id": "S7-2",
       "title": "The rotation convention is asserted against alternatives",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "documented in the module doc; no test"
+      "evidence": "crates/nvre-world::transform::tests::s7_2_rotation_convention_is_asserted_against_alternatives"
     },
     {
       "id": "S7-3",

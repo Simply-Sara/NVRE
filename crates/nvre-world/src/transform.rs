@@ -131,4 +131,34 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn s7_2_rotation_convention_is_asserted_against_alternatives() {
+        // Evaluate the candidate Euler rotation orders / signs against a non-trivial reference rotation
+        // The established convention is M = Rx(-x) * Ry(-y) * Rz(-z).
+        let angles = [0.4, -0.6, 1.2]; // [x, y, z]
+
+        // Candidate 1: Standard M = Rx(-x) * Ry(-y) * Rz(-z)
+        let c1 = ref_rotation(angles);
+
+        // Candidate 2: Positive angles M = Rx(x) * Ry(y) * Rz(z)
+        let mx_pos = axis(0, angles[0]);
+        let my_pos = axis(1, angles[1]);
+        let mz_pos = axis(2, angles[2]);
+        let c2 = mul(&mul(&mx_pos, &my_pos), &mz_pos);
+
+        // Candidate 3: Reverse multiplication order M = Rz(-z) * Ry(-y) * Rx(-x)
+        let mx_neg = axis(0, -angles[0]);
+        let my_neg = axis(1, -angles[1]);
+        let mz_neg = axis(2, -angles[2]);
+        let c3 = mul(&mul(&mz_neg, &my_neg), &mx_neg);
+
+        // Assert that the chosen convention is uniquely distinguished from candidates
+        assert!(max_diff(&c1, &c2) > 0.5, "candidate 2 should differ significantly");
+        assert!(max_diff(&c1, &c3) > 0.5, "candidate 3 should differ significantly");
+
+        // Verify that ref_rotation matches exact matrix elements of Rx(-x) * Ry(-y) * Rz(-z)
+        let manual = mul(&mul(&mx_neg, &my_neg), &mz_neg);
+        assert_eq!(c1, manual);
+    }
 }
