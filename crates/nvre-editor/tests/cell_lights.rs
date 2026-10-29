@@ -104,6 +104,37 @@ fn the_colour_is_scaled_to_bevy_range() {
     assert!((r - 1.0).abs() < 1e-3 && (g - 1.0).abs() < 1e-3 && (b - 1.0).abs() < 1e-3);
 }
 
+#[test]
+fn s9_4_and_s9_5_point_and_spot_light_unit_mappings() {
+    // S9-4: Point light radius maps to range, color maps to linear RGB, fade scales lumens
+    let point_data = LightData {
+        color: [200, 100, 50],
+        radius: 350.0,
+        fade: 1.5,
+        spot: false,
+        off_by_default: false,
+        fov: 60.0,
+    };
+    let point = nvre_editor::viewport::light_bundle(&point_data);
+    assert_eq!(point.range, 350.0);
+    assert_eq!(point.intensity, 1.5 * nvre_editor::viewport::LIGHT_LUMENS);
+
+    // S9-5: Spot light maps FOV to half-angle radians outer_angle
+    let spot_data = LightData {
+        color: [255, 255, 255],
+        radius: 500.0,
+        fade: 1.0,
+        spot: true,
+        off_by_default: false,
+        fov: 90.0,
+    };
+    let spot = nvre_editor::viewport::light_bundle_spot(&spot_data);
+    assert_eq!(spot.range, 500.0);
+    assert_eq!(spot.intensity, 1.0 * nvre_editor::viewport::LIGHT_LUMENS);
+    // 90 deg FOV / 2 = 45 deg = PI / 4 radians
+    assert!((spot.outer_angle - std::f32::consts::FRAC_PI_4).abs() < 1e-5);
+}
+
 /// A real master's lights read through the session, for every game.
 ///
 /// This is the check that the schema layer, the record walk and the reader agree

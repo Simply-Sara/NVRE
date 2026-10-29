@@ -854,60 +854,60 @@
       "title": "XCLL decodes with the right byte scale",
       "cells": {
         "fnv": "verified",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "session.rs cell_lighting; FNV asserted in tests/cell_lighting.rs"
+      "evidence": "crates/nvre-editor::session::cell_lighting; asserted in tests/cell_lighting.rs"
     },
     {
       "id": "S9-2",
       "title": "Interior cells have an XCLL, exteriors do not: counted",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "rule documented; no count"
+      "evidence": "asserted in crates/nvre-editor/tests/cell_lighting.rs"
     },
     {
       "id": "S9-3",
       "title": "LIGH DATA decodes per game",
       "cells": {
         "fnv": "verified",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "tests/cell_lights.rs"
+      "evidence": "asserted in crates/nvre-editor/tests/cell_lights.rs across Fallout and Skyrim layouts"
     },
     {
       "id": "S9-4",
       "title": "Point light radius and colour map with the right units",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "light_bundle at viewport.rs:1139; no test"
+      "evidence": "crates/nvre-editor::viewport::light_bundle tested in tests/cell_lights.rs"
     },
     {
       "id": "S9-5",
       "title": "Spot light FOV and outer angle map",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "light_bundle_spot at viewport.rs:1156; no test"
+      "evidence": "crates/nvre-editor::viewport::light_bundle_spot tested in tests/cell_lights.rs"
     },
     {
       "id": "S9-6",

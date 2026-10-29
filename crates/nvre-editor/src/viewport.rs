@@ -1136,7 +1136,7 @@ pub fn draw_cell_lights(
 /// The mapping is the game's own, not a guess: the radius is the light's reach,
 /// the colour is its colour, and the intensity is the fade value scaled by a
 /// constant that puts a full-fade light at a readable brightness.
-fn light_bundle(data: &LightData) -> PointLight {
+pub fn light_bundle(data: &LightData) -> PointLight {
     PointLight {
         color: data.bevy_color(),
         intensity: data.fade * LIGHT_LUMENS,
@@ -1153,7 +1153,7 @@ fn light_bundle(data: &LightData) -> PointLight {
 /// a half-angle in radians, so it is halved and converted. The inner angle is
 /// left at zero, which makes the cone's edge hard — the game's own soft edge is
 /// a falloff the viewport's shader does not reproduce.
-fn light_bundle_spot(data: &LightData) -> SpotLight {
+pub fn light_bundle_spot(data: &LightData) -> SpotLight {
     SpotLight {
         color: data.bevy_color(),
         intensity: data.fade * LIGHT_LUMENS,
@@ -1200,7 +1200,7 @@ fn light_bundle_spot(data: &LightData) -> SpotLight {
 ///
 /// The second attempt was `20_000`, which was still ~550× short of the near
 /// case above. `10⁷` is what the derivation actually calls for.
-const LIGHT_LUMENS: f32 = 10_000_000.0;
+pub const LIGHT_LUMENS: f32 = 10_000_000.0;
 
 /// Why references were skipped, for a cell that draws nothing.
 #[derive(Debug, Default)]
