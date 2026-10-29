@@ -990,6 +990,68 @@ mod tests {
     }
 
     #[test]
+    fn s2_4_multi_parent_child_takes_first_listing_parent() {
+        // Build a synthetic NifFile with two NiNodes (blocks 0 and 1) that both list block 2 (NiTriShape) as a child
+        let f = NifFile {
+            header: crate::header::Header {
+                header_string: Vec::new(),
+                version: 0x14020007,
+                endian: 1,
+                user_version: 0,
+                num_blocks: 3,
+                bs: None,
+                block_types: vec![
+                    crate::header::RawString(b"NiNode".to_vec()),
+                    crate::header::RawString(b"NiTriShape".to_vec()),
+                ],
+                block_type_index: vec![0, 0, 1],
+                block_sizes: Some(vec![0, 0, 0]),
+                max_string_length: None,
+                strings: None,
+                groups: Vec::new(),
+                header_len: 0,
+            },
+            blocks: vec![
+                crate::file::RawBlock {
+                    type_name: "NiNode".into(),
+                    range: 0..0,
+                },
+                crate::file::RawBlock {
+                    type_name: "NiNode".into(),
+                    range: 0..0,
+                },
+                crate::file::RawBlock {
+                    type_name: "NiTriShape".into(),
+                    range: 0..0,
+                },
+            ],
+            trailing: 0,
+        };
+
+        let mut node0 = Struct::new();
+        node0.set("children", Value::List(vec![Value::Num(2.0)]));
+        let mut node1 = Struct::new();
+        node1.set("children", Value::List(vec![Value::Num(2.0)]));
+        let shape = Struct::new();
+
+        let dec = Decoded {
+            blocks: vec![Ok(node0), Ok(node1), Ok(shape)],
+            lineage: vec![
+                vec!["NiNode".into()],
+                vec!["NiNode".into()],
+                vec!["NiTriShape".into()],
+            ],
+        };
+
+        let objects = scene_objects(&f, &dec);
+        assert_eq!(objects.len(), 3);
+        // Shape block 2 is listed by both node 0 and node 1.
+        // Rule: parent is the first/lowest-index listing node (node 0).
+        let shape_obj = objects.iter().find(|o| o.block == 2).unwrap();
+        assert_eq!(shape_obj.parent, Some(0));
+    }
+
+    #[test]
     fn s1_5_resolve_strings_only_resolves_declared_string_fields() {
         let mut st = Struct::new();
         st.set("name", Value::Num(0.0));
