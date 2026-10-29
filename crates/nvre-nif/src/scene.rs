@@ -765,6 +765,71 @@ mod tests {
         }
     }
 
+    /// A shape-data block with one triangle strip, holding `points`.
+    fn strip(points: &[u16]) -> Struct {
+        Struct {
+            fields: vec![(
+                "points".into(),
+                Value::List(vec![Value::List(
+                    points.iter().map(|&p| Value::Num(p as f64)).collect(),
+                )]),
+            )],
+        }
+    }
+
+    #[test]
+    fn a_triangle_strip_unrolls_to_a_triangle_list() {
+        // A strip of four points is two triangles: (0,1,2) and (1,2,3).
+        let tris = triangle_indices(&strip(&[0, 1, 2, 3]));
+        assert_eq!(tris.len(), 2);
+        assert_eq!(tris[0], [0, 1, 2]);
+        // The second triangle's winding is reversed, because the strip
+        // alternates: without the reversal the two triangles face opposite
+        // ways and half of the model is invisible.
+        assert_eq!(tris[1], [1, 3, 2]);
+    }
+
+    #[test]
+    fn a_degenerate_join_is_dropped_from_a_strip() {
+        // A strip that repeats a vertex to join two runs: the repeated
+        // vertex makes a triangle with two of the same index, which is not
+        // a triangle at all.
+        let tris = triangle_indices(&strip(&[0, 1, 2, 2, 3, 4]));
+        // Every triangle that came out must name three different vertices.
+        for t in &tris {
+            assert!(
+                t[0] != t[1] && t[1] != t[2] && t[0] != t[2],
+                "{t:?} names the same vertex twice"
+            );
+        }
+    }
+
+    #[test]
+    fn a_strip_of_two_points_is_no_triangle() {
+        assert!(triangle_indices(&strip(&[0, 1])).is_empty());
+        assert!(triangle_indices(&strip(&[])).is_empty());
+    }
+
+    #[test]
+    fn a_triangle_list_is_read_as_it_is() {
+        // A shape that has a triangle list rather than a strip: the three
+        // indices of each triangle, in order.
+        let s = Struct {
+            fields: vec![(
+                "triangles".into(),
+                Value::List(vec![
+                    Value::List(vec![Value::Num(0.0), Value::Num(1.0), Value::Num(2.0)]),
+                    Value::List(vec![Value::Num(2.0), Value::Num(1.0), Value::Num(3.0)]),
+                ]),
+            )],
+        };
+        assert_eq!(
+            triangle_indices(&s),
+            vec![[0, 1, 2], [2, 1, 3]],
+            "a triangle list must not have its winding reversed"
+        );
+    }
+
     #[test]
     fn segments_tile_the_triangle_list() {
         // Start indices count indices; an empty segment's start is not looked
