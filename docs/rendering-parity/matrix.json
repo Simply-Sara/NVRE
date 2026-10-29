@@ -75,11 +75,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
-        "skyrimle": "mismatch",
-        "skyrimse": "not_started"
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "nifsample: fnv 537 files/16,982 blocks 0 mismatches; fo3 451/12,079 0 mismatches (3 unknown from S1-3); skyrimle 556/17,941 130 mismatches, all BSLightingShaderProperty. See steps/S1-findings.md"
+      "evidence": "nifreencode over the whole corpus of all five games: fnv 20,542 files/654,685 blocks, fo3 17,163/522,939, skyrimle 21,476/831,923, skyrimse 22,761/786,986, fo4 224,734/7,002,022 — 0 unknown, 0 short, 0 read errors, 0 re-encode mismatches, 0 files that fail to parse. See steps/S1-findings.md"
     },
     {
       "id": "S1-2",
@@ -98,12 +98,12 @@
       "title": "No block type is Unknown to the schema",
       "cells": {
         "fnv": "verified",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
+        "fo3": "verified",
+        "fo4": "verified",
         "skyrimle": "verified",
-        "skyrimse": "mismatch"
+        "skyrimse": "verified"
       },
-      "evidence": "niftypes over 306,674 files: fnv 0, fo3 4, skyrimle 0, skyrimse 2, fo4 37 undefined types. FO4's include BSLightingShaderProperty at 1,170,607 uses \u2014 every lit shape in the game. corpus/s1-3-undefined-types.json"
+      "evidence": "nifreencode over the whole corpus of all five games: fnv 20,542 files/654,685 blocks, fo3 17,163/522,939, skyrimle 21,476/831,923, skyrimse 22,761/786,986, fo4 224,734/7,002,022 — 0 unknown, 0 short, 0 read errors, 0 re-encode mismatches, 0 files that fail to parse. See steps/S1-findings.md"
     },
     {
       "id": "S1-4",
@@ -111,11 +111,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
-        "skyrimle": "mismatch",
-        "skyrimse": "not_started"
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "nifsample: fnv 0 short, fo3 0 short, skyrimle 130 short \u2014 all BSLightingShaderProperty consuming 112 of 120 or 128, an 8-byte shortfall"
+      "evidence": "nifreencode over the whole corpus of all five games: fnv 20,542 files/654,685 blocks, fo3 17,163/522,939, skyrimle 21,476/831,923, skyrimse 22,761/786,986, fo4 224,734/7,002,022 — 0 unknown, 0 short, 0 read errors, 0 re-encode mismatches, 0 files that fail to parse. See steps/S1-findings.md"
     },
     {
       "id": "S1-5",
@@ -135,11 +135,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "Skyrim's BSLightingShaderProperty inheritance fixed in 19698c1; FO4 layer not audited"
+      "evidence": "FO4's layer is generated from Bethesda's nif.xml (tools/nifxml_to_schema.py), so every block's inheritance is nif.xml's own; Skyrim's BSLightingShaderProperty inheritance was fixed in 19698c1. The generated layers are checked by re-encoding the whole corpus."
     },
     {
       "id": "S2-1",
@@ -319,7 +319,7 @@
         "skyrimle": "mismatch",
         "skyrimse": "mismatch"
       },
-      "evidence": "shape_props has no match arm for it; and FO4's BSLightingShaderProperty is not defined in schemas/nif at all \u2014 1,170,607 uses across 224,734 files, so every lit FO4 shape is unreadable. That is S1-3's largest gap and it blocks this step entirely for FO4."
+      "evidence": "shape_props has no match arm for it; and FO4's BSLightingShaderProperty is not defined in schemas/nif at all — 1,170,607 uses across 224,734 files, so every lit FO4 shape is unreadable. That is S1-3's largest gap and it blocks this step entirely for FO4."
     },
     {
       "id": "S4-3",
