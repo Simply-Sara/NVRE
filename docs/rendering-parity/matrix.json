@@ -205,13 +205,13 @@
       "id": "S3-1",
       "title": "Triangle indices are in range, and drops are counted",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "build_mesh drops out-of-range triangles silently (shape.rs:439); the drop is never counted, so a layout error is invisible"
+      "evidence": "crates/nvre-assets::shape::build_mesh returns (mesh, tris, dropped); unit-tested in s3_1_build_mesh_drops_and_counts_out_of_range_triangles"
     },
     {
       "id": "S3-2",

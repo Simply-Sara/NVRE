@@ -770,4 +770,40 @@ mod tests {
             assert_eq!(colors[1], [0.8, 0.1, 0.3, 1.0]);
         }
     }
+
+    #[test]
+    fn s3_1_build_mesh_drops_and_counts_out_of_range_triangles() {
+        use nvre_nif::Value;
+        let mut s = Struct::new();
+        // 3 vertices: indices 0, 1, 2
+        s.set(
+            "vertices",
+            Value::List(vec![
+                Value::List(vec![Value::Num(0.0), Value::Num(0.0), Value::Num(0.0)]),
+                Value::List(vec![Value::Num(1.0), Value::Num(0.0), Value::Num(0.0)]),
+                Value::List(vec![Value::Num(0.0), Value::Num(1.0), Value::Num(0.0)]),
+            ]),
+        );
+        s.set("num_vertices", Value::Num(3.0));
+        // 2 triangles: [0, 1, 2] (valid) and [0, 1, 3] (index 3 out of range -> dropped)
+        s.set(
+            "triangles",
+            Value::List(vec![
+                Value::List(vec![Value::Num(0.0), Value::Num(1.0), Value::Num(2.0)]),
+                Value::List(vec![Value::Num(0.0), Value::Num(1.0), Value::Num(3.0)]),
+            ]),
+        );
+        s.set("num_triangles", Value::Num(2.0));
+
+        let res = build_mesh(&s, 0);
+        assert!(res.is_some());
+        let (mesh, tris, dropped) = res.unwrap();
+        assert_eq!(tris, 2, "declared triangles should be 2");
+        assert_eq!(dropped, 1, "out of bounds triangle must be dropped and counted");
+        if let Some(Indices::U32(indices)) = mesh.indices() {
+            assert_eq!(indices, &[0, 1, 2], "only valid triangle indices should remain");
+        } else {
+            panic!("expected U32 indices");
+        }
+    }
 }
