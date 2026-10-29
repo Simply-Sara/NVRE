@@ -2124,6 +2124,72 @@
     }
    ],
    "note": "nif.xml <niobject name=\"bhkConvexListShape\">."
+  },
+  "bhkHeightFieldShape": {
+   "abstract": true,
+   "inherit": "bhkShape",
+   "fields": [
+    {
+     "name": "material",
+     "type": "HavokMaterial"
+    }
+   ],
+   "note": "nif.xml <niobject name=\"bhkHeightFieldShape\">."
+  },
+  "bhkCylinderShape": {
+   "inherit": "bhkConvexShape",
+   "fields": [
+    {
+     "name": "unused_01",
+     "type": "bytes",
+     "length": 8
+    },
+    {
+     "name": "vertex_a",
+     "type": "vec4"
+    },
+    {
+     "name": "vertex_b",
+     "type": "vec4"
+    },
+    {
+     "name": "cylinder_radius",
+     "type": "f32"
+    },
+    {
+     "name": "unused_02",
+     "type": "bytes",
+     "length": 12
+    }
+   ],
+   "note": "nif.xml <niobject name=\"bhkCylinderShape\">."
+  },
+  "bhkPlaneShape": {
+   "inherit": "bhkHeightFieldShape",
+   "fields": [
+    {
+     "name": "unused_01",
+     "type": "bytes",
+     "length": 12
+    },
+    {
+     "name": "plane_normal",
+     "type": "vec3"
+    },
+    {
+     "name": "plane_constant",
+     "type": "f32"
+    },
+    {
+     "name": "aabb_half_extents",
+     "type": "vec4"
+    },
+    {
+     "name": "aabb_center",
+     "type": "vec4"
+    }
+   ],
+   "note": "nif.xml <niobject name=\"bhkPlaneShape\">."
   }
  }
 }
