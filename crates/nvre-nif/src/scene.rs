@@ -950,6 +950,46 @@ mod tests {
     }
 
     #[test]
+    fn s3_3_and_s3_4_packed_vertex_precision_and_game_version() {
+        // Fallout 4 BSVertexData (bs_version >= 130) without FULL_PRECISION (bit 10 of attrs = 1024):
+        // Position is HalfVector3 (3 x 16-bit half floats, 6 bytes).
+        // 1.0 in f16 is 0x3C00, 2.0 is 0x4000, -3.0 is 0xC200.
+        let desc_fo4_half = (1u64 << 44) | 4; // attrs = 1 (has_pos), stride = 4 words (16 bytes)
+        let mut vert_fo4_half = vec![0u8; 16];
+        vert_fo4_half[0..2].copy_from_slice(&0x3C00u16.to_le_bytes()); // 1.0
+        vert_fo4_half[2..4].copy_from_slice(&0x4000u16.to_le_bytes()); // 2.0
+        vert_fo4_half[4..6].copy_from_slice(&0xC200u16.to_le_bytes()); // -3.0
+
+        let s_fo4_half = shape_with_packed_vertices(desc_fo4_half, &[vert_fo4_half], 1);
+        let md_fo4_half = mesh_data(&s_fo4_half, 130);
+        assert_eq!(md_fo4_half.positions, vec![[1.0, 2.0, -3.0]]);
+
+        // Fallout 4 BSVertexData with FULL_PRECISION (bit 10 set, 1024):
+        // attrs = 1 | 1024 = 1025 (0x401 in hex)
+        let desc_fo4_full = (1025u64 << 44) | 4; // stride 4 words (16 bytes)
+        let mut vert_fo4_full = vec![0u8; 16];
+        vert_fo4_full[0..4].copy_from_slice(&1.5f32.to_le_bytes());
+        vert_fo4_full[4..8].copy_from_slice(&2.5f32.to_le_bytes());
+        vert_fo4_full[8..12].copy_from_slice(&(-3.5f32).to_le_bytes());
+
+        let s_fo4_full = shape_with_packed_vertices(desc_fo4_full, &[vert_fo4_full], 1);
+        let md_fo4_full = mesh_data(&s_fo4_full, 130);
+        assert_eq!(md_fo4_full.positions, vec![[1.5, 2.5, -3.5]]);
+
+        // Skyrim SE (bs_version 100): even with FULL_PRECISION bit clear (attrs = 1),
+        // Skyrim SE BSVertexDataSSE ALWAYS uses full f32 floats (Vector3).
+        let desc_skyrimse = (1u64 << 44) | 4;
+        let mut vert_sse = vec![0u8; 16];
+        vert_sse[0..4].copy_from_slice(&1.5f32.to_le_bytes());
+        vert_sse[4..8].copy_from_slice(&2.5f32.to_le_bytes());
+        vert_sse[8..12].copy_from_slice(&(-3.5f32).to_le_bytes());
+
+        let s_sse = shape_with_packed_vertices(desc_skyrimse, &[vert_sse], 1);
+        let md_sse = mesh_data(&s_sse, 100);
+        assert_eq!(md_sse.positions, vec![[1.5, 2.5, -3.5]]);
+    }
+
+    #[test]
     fn s1_5_resolve_strings_only_resolves_declared_string_fields() {
         let mut st = Struct::new();
         st.set("name", Value::Num(0.0));

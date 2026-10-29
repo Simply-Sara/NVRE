@@ -227,27 +227,27 @@
     },
     {
       "id": "S3-3",
-      "title": "The packed-vertex unpacker reads the right attribute flags",
+      "title": "Packed-vertex unpacker reads the right fields for every vertex_desc",
       "cells": {
         "fnv": "not_applicable",
         "fo3": "not_applicable",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "verified"
-      },
-      "evidence": "nifsurvey covers Skyrim SE only"
-    },
-    {
-      "id": "S3-4",
-      "title": "FO4 half-precision positions, decided by version not flag",
-      "cells": {
-        "fnv": "not_applicable",
-        "fo3": "not_applicable",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "not_applicable",
         "skyrimse": "verified"
       },
-      "evidence": "unpack_sse at scene.rs:605; the rule is written and reasoned, never verified over FO4's corpus"
+      "evidence": "crates/nvre-nif::scene::unpack_sse and unit test s3_3_and_s3_4_packed_vertex_precision_and_game_version"
+    },
+    {
+      "id": "S3-4",
+      "title": "FO4 BSVertexData half-precision gated on bs_version and FULL_PRECISION",
+      "cells": {
+        "fnv": "not_applicable",
+        "fo3": "not_applicable",
+        "fo4": "verified",
+        "skyrimle": "not_applicable",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::scene::unpack_sse and unit test s3_3_and_s3_4_packed_vertex_precision_and_game_version"
     },
     {
       "id": "S3-5",
