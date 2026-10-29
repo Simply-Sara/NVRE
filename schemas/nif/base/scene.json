@@ -817,6 +817,10 @@
    ],
    "note": "nif.xml <niobject name=\"BSShaderPPLightingProperty\">; the emissive colour needs bs_version > 34."
   },
+  "Lighting30ShaderProperty": {
+   "inherit": "BSShaderPPLightingProperty",
+   "note": "nif.xml <niobject name=\"Lighting30ShaderProperty\">."
+  },
   "BSShaderNoLightingProperty": {
    "inherit": "BSShaderLightingProperty",
    "fields": [
@@ -1632,6 +1636,24 @@
     }
    ],
    "note": "nif.xml <niobject name=\"BSWArray\">."
+  },
+  "NiFogProperty": {
+   "inherit": "NiProperty",
+   "fields": [
+    {
+     "name": "flags",
+     "type": "u16"
+    },
+    {
+     "name": "fog_depth",
+     "type": "f32"
+    },
+    {
+     "name": "fog_color",
+     "type": "color3"
+    }
+   ],
+   "note": "nif.xml <niobject name=\"NiFogProperty\">."
   }
  }
 }

@@ -2053,6 +2053,77 @@
      "length": "num_filters"
     }
    ]
+  },
+  "hkAabb": {
+   "fields": [
+    {
+     "name": "min",
+     "type": "vec4"
+    },
+    {
+     "name": "max",
+     "type": "vec4"
+    }
+   ],
+   "note": "nif.xml <struct name=\"hkAabb\">."
+  },
+  "bhkAabbPhantom": {
+   "inherit": "bhkPhantom",
+   "fields": [
+    {
+     "name": "unused_01",
+     "type": "bytes",
+     "length": 8
+    },
+    {
+     "name": "aabb",
+     "type": "hkAabb"
+    }
+   ],
+   "note": "nif.xml <niobject name=\"bhkAabbPhantom\">."
+  },
+  "bhkConvexListShape": {
+   "inherit": "bhkConvexShapeBase",
+   "fields": [
+    {
+     "name": "num_sub_shapes",
+     "type": "u32"
+    },
+    {
+     "name": "sub_shapes",
+     "type": "ref",
+     "length": "num_sub_shapes"
+    },
+    {
+     "name": "material",
+     "type": "HavokMaterial"
+    },
+    {
+     "name": "radius",
+     "type": "f32"
+    },
+    {
+     "name": "unknown_int_1",
+     "type": "u32"
+    },
+    {
+     "name": "unknown_float_1",
+     "type": "f32"
+    },
+    {
+     "name": "child_shape_property",
+     "type": "bhkWorldObjCInfoProperty"
+    },
+    {
+     "name": "use_cached_aabb",
+     "type": "bool"
+    },
+    {
+     "name": "closest_point_min_distance",
+     "type": "f32"
+    }
+   ],
+   "note": "nif.xml <niobject name=\"bhkConvexListShape\">."
   }
  }
 }
