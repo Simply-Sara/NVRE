@@ -69,10 +69,6 @@
      "type": "BSShaderFlags2"
     },
     {
-     "name": "shader_type",
-     "type": "BSShaderType"
-    },
-    {
      "name": "uv_offset",
      "type": "vec2"
     },
@@ -208,6 +204,13 @@
   "NiShadeProperty": {
    "inherit": "NiObject",
    "fields": [
+    {
+     "name": "shader_type",
+     "type": "u32",
+     "only": [
+      "BSLightingShaderProperty"
+     ]
+    },
     {
      "name": "name",
      "type": "string"
