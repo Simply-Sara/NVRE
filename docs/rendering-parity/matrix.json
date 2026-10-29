@@ -1044,23 +1044,25 @@
       "id": "S11-2",
       "title": "Text keys and sequence list read",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::anim::TextKey tested in s11_2_text_keys_representation"
     },
     {
       "id": "S11-3",
       "title": "One translation track samples correctly",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::anim::sample_translation_track tested in s11_3_animation_sample_translation_track_interpolation"
     },
     {
       "id": "S12-1",
