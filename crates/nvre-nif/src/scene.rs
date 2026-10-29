@@ -195,6 +195,45 @@ pub struct SceneObject {
     pub children: Vec<usize>,
 }
 
+/// Particle emitter parameters decoded from NiPSysEmitter.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleEmitterParams {
+    pub speed: f32,
+    pub speed_variation: f32,
+    pub declination: f32,
+    pub declination_variation: f32,
+    pub planar_angle: f32,
+    pub planar_angle_variation: f32,
+    pub initial_radius: f32,
+    pub radius_variation: f32,
+    pub life_span: f32,
+    pub life_span_variation: f32,
+    /// Maximum allowed active particles (hard cap to prevent hangs).
+    pub max_particles: usize,
+}
+
+impl ParticleEmitterParams {
+    /// Safe default bounds for particle emitters.
+    pub const DEFAULT_MAX_PARTICLES: usize = 4096;
+
+    /// Sanitize and clamp emitter parameters into valid rendering ranges.
+    pub fn sanitized(&self) -> ParticleEmitterParams {
+        ParticleEmitterParams {
+            speed: self.speed.max(0.0),
+            speed_variation: self.speed_variation.max(0.0),
+            declination: self.declination,
+            declination_variation: self.declination_variation.max(0.0),
+            planar_angle: self.planar_angle,
+            planar_angle_variation: self.planar_angle_variation.max(0.0),
+            initial_radius: self.initial_radius.max(0.0),
+            radius_variation: self.radius_variation.max(0.0),
+            life_span: self.life_span.max(0.001),
+            life_span_variation: self.life_span_variation.max(0.0),
+            max_particles: self.max_particles.clamp(1, Self::DEFAULT_MAX_PARTICLES),
+        }
+    }
+}
+
 /// A vertex's bone assignment and weight in a skinned mesh.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VertexBoneWeight {
@@ -1024,6 +1063,28 @@ mod tests {
         let s_sse = shape_with_packed_vertices(desc_skyrimse, &[vert_sse], 1);
         let md_sse = mesh_data(&s_sse, 100);
         assert_eq!(md_sse.positions, vec![[1.5, 2.5, -3.5]]);
+    }
+
+    #[test]
+    fn s13_2_and_s13_3_particle_emitter_params_and_bounds() {
+        let raw = ParticleEmitterParams {
+            speed: -10.0, // negative speed clamped to 0
+            speed_variation: 5.0,
+            declination: 0.5,
+            declination_variation: 0.1,
+            planar_angle: 1.2,
+            planar_angle_variation: 0.2,
+            initial_radius: 2.0,
+            radius_variation: 0.5,
+            life_span: -1.0, // non-positive lifespan clamped to 0.001
+            life_span_variation: 0.5,
+            max_particles: 100_000, // exceeds cap, clamped to DEFAULT_MAX_PARTICLES (4096)
+        };
+        let sane = raw.sanitized();
+        assert_eq!(sane.speed, 0.0);
+        assert_eq!(sane.life_span, 0.001);
+        assert_eq!(sane.max_particles, ParticleEmitterParams::DEFAULT_MAX_PARTICLES);
+        assert_eq!(sane.initial_radius, 2.0);
     }
 
     #[test]

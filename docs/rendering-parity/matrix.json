@@ -1112,23 +1112,25 @@
       "id": "S13-2",
       "title": "One emitter decodes to sane values",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::scene::ParticleEmitterParams::sanitized tested in s13_2_and_s13_3_particle_emitter_params_and_bounds"
     },
     {
       "id": "S13-3",
       "title": "Particle count is bounded",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::scene::ParticleEmitterParams::DEFAULT_MAX_PARTICLES (4096 cap)"
     },
     {
       "id": "S14-1",
