@@ -228,6 +228,13 @@
      "cond": "version == 0x14020007 && bs_version > 0"
     },
     {
+     "name": "geometry_flags",
+     "type": "u8",
+     "length": "4",
+     "cond": "bs_version > 34",
+     "note": "Skyrim's four flag bytes after data flags."
+    },
+    {
      "name": "has_normals",
      "type": "bool"
     },
@@ -259,10 +266,10 @@
     },
     {
      "name": "vertex_colors",
-     "type": "byte_color4",
+     "type": "color4",
      "length": "num_vertices",
      "cond": "has_vertex_colors",
-     "note": "The Special Edition packs its vertex colours into four bytes, where the original edition's are four floats."
+     "note": "Four floats, matching skyrim/core.json."
     },
     {
      "name": "uv_sets",

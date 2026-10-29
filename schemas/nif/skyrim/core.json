@@ -569,7 +569,8 @@
      "name": "geometry_flags",
      "type": "u8",
      "length": "4",
-     "note": "Skyrim's four flag bytes after the data flags, where Fallout has none."
+     "note": "Skyrim's four flag bytes after the data flags, where Fallout has none.",
+     "cond": "bs_version > 34"
     },
     {
      "name": "has_normals",
@@ -1253,6 +1254,68 @@
     }
    ],
    "note": "nif.xml <niobject name=\"NiPSysMeshUpdateModifier\">."
+  },
+  "BSShaderPPLightingProperty": {
+   "inherit": "NiObject",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    },
+    {
+     "name": "num_extra_data",
+     "type": "u32"
+    },
+    {
+     "name": "controller",
+     "type": "ref"
+    },
+    {
+     "name": "flags",
+     "type": "u16"
+    },
+    {
+     "name": "shader_type",
+     "type": "u32"
+    },
+    {
+     "name": "shader_flags",
+     "type": "u32"
+    },
+    {
+     "name": "shader_flags_2",
+     "type": "u32"
+    },
+    {
+     "name": "environment_map_scale",
+     "type": "f32"
+    },
+    {
+     "name": "texture_clamp_mode",
+     "type": "u32"
+    },
+    {
+     "name": "texture_set",
+     "type": "ref"
+    },
+    {
+     "name": "refraction_strength",
+     "type": "f32"
+    },
+    {
+     "name": "refraction_fire_period",
+     "type": "i32"
+    },
+    {
+     "name": "parallax_max_passes",
+     "type": "f32"
+    },
+    {
+     "name": "parallax_scale",
+     "type": "f32"
+    }
+   ],
+   "note": "Legacy FO3/Skyrim early (bs_version 32) BSShaderPPLightingProperty."
   }
  },
  "structs": {
