@@ -455,7 +455,8 @@ pub fn empty_mesh() -> Mesh {
 
 #[cfg(test)]
 mod tests {
-    use super::is_editor_marker;
+    use super::*;
+    use nvre_nif::scene::Transform;
 
     #[test]
     fn an_editor_marker_is_recognised_by_its_prefix() {
@@ -466,5 +467,72 @@ mod tests {
         assert!(!is_editor_marker(Some("C_EditorMarker01")));
         assert!(!is_editor_marker(Some("Marker")));
         assert!(!is_editor_marker(None));
+    }
+
+    #[test]
+    fn a_rotation_is_transposed_into_bevys_column_major_form() {
+        // A quarter turn about the Z axis: the NIF stores it row-major, so
+        // the row is (0, -1, 0) and the column is (0, 1, 0).
+        let t = Transform {
+            translation: [0.0; 3],
+            rotation: [
+                0.0, -1.0, 0.0, //
+                1.0, 0.0, 0.0, //
+                0.0, 0.0, 1.0,
+            ],
+            scale: 1.0,
+        };
+        let a = affine(&t);
+        // The X axis must end up pointing along Y, not along -Y: a model
+        // that is mirrored rather than turned is the symptom of getting
+        // this backwards.
+        let x = a.transform_vector3(Vec3::X);
+        assert!((x - Vec3::Y).length() < 1e-5, "X became {x:?}, expected Y");
+        let y = a.transform_vector3(Vec3::Y);
+        assert!(
+            (y - Vec3::NEG_X).length() < 1e-5,
+            "Y became {y:?}, expected -X"
+        );
+    }
+
+    #[test]
+    fn a_scale_is_applied_before_the_rotation() {
+        // A scale of two and a quarter turn: the scale is a property of
+        // the node's own axes, so it is applied first and then turned.
+        let t = Transform {
+            translation: [0.0; 3],
+            rotation: [
+                0.0, -1.0, 0.0, //
+                1.0, 0.0, 0.0, //
+                0.0, 0.0, 1.0,
+            ],
+            scale: 2.0,
+        };
+        let a = affine(&t);
+        let x = a.transform_vector3(Vec3::X);
+        // Scaled to two along X, then turned: two along Y.
+        assert!(
+            (x - Vec3::Y * 2.0).length() < 1e-5,
+            "X became {x:?}, expected 2Y"
+        );
+    }
+
+    #[test]
+    fn a_translation_is_not_rotated() {
+        let t = Transform {
+            translation: [1.0, 2.0, 3.0],
+            rotation: [
+                0.0, -1.0, 0.0, //
+                1.0, 0.0, 0.0, //
+                0.0, 0.0, 1.0,
+            ],
+            scale: 1.0,
+        };
+        let a = affine(&t);
+        assert!(
+            (a.translation - Vec3A::new(1.0, 2.0, 3.0)).length() < 1e-5,
+            "the translation moved: {:?}",
+            a.translation
+        );
     }
 }
