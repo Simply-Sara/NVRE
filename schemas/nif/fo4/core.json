@@ -29,6 +29,34 @@
      "type": "string"
     }
    ]
+  },
+  "BSSPWetnessParams": {
+   "fields": [
+    {
+     "name": "spec_scale",
+     "type": "f32"
+    },
+    {
+     "name": "spec_power",
+     "type": "f32"
+    },
+    {
+     "name": "min_var",
+     "type": "f32"
+    },
+    {
+     "name": "env_map_scale",
+     "type": "f32"
+    },
+    {
+     "name": "fresnel_power",
+     "type": "f32"
+    },
+    {
+     "name": "metalness",
+     "type": "f32"
+    }
+   ]
   }
  },
  "blocks": {
@@ -207,8 +235,136 @@
    "note": "The child half of a connect point pair."
   },
   "BSLightingShaderProperty": {
-   "inherit": "BSShaderProperty",
-   "note": "Auto-defined Fallout 4 block BSLightingShaderProperty."
+   "inherit": "NiObject",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    },
+    {
+     "name": "extra_data",
+     "type": "ref"
+    },
+    {
+     "name": "extra_data_2",
+     "type": "ref"
+    },
+    {
+     "name": "controller",
+     "type": "ref"
+    },
+    {
+     "name": "shader_flags_1",
+     "type": "u32"
+    },
+    {
+     "name": "shader_flags_2",
+     "type": "u32"
+    },
+    {
+     "name": "uv_offset",
+     "type": "vec2"
+    },
+    {
+     "name": "uv_scale",
+     "type": "vec2"
+    },
+    {
+     "name": "texture_set",
+     "type": "ref"
+    },
+    {
+     "name": "emissive_color",
+     "type": "color3"
+    },
+    {
+     "name": "emissive_multiple",
+     "type": "f32"
+    },
+    {
+     "name": "root_material",
+     "type": "string"
+    },
+    {
+     "name": "texture_clamp_mode",
+     "type": "u32"
+    },
+    {
+     "name": "alpha",
+     "type": "f32"
+    },
+    {
+     "name": "refraction_strength",
+     "type": "f32"
+    },
+    {
+     "name": "smoothness",
+     "type": "f32"
+    },
+    {
+     "name": "specular_color",
+     "type": "color3"
+    },
+    {
+     "name": "specular_strength",
+     "type": "f32"
+    },
+    {
+     "name": "subsurface_rolloff",
+     "type": "f32"
+    },
+    {
+     "name": "rimlight_power",
+     "type": "f32"
+    },
+    {
+     "name": "backlight_power",
+     "type": "f32"
+    },
+    {
+     "name": "grayscale_to_palette_scale",
+     "type": "f32"
+    },
+    {
+     "name": "fresnel_power",
+     "type": "f32"
+    },
+    {
+     "name": "wetness",
+     "type": "BSSPWetnessParams"
+    },
+    {
+     "name": "environment_map_scale",
+     "type": "f32",
+     "cond": "(shader_flags_1 & 128) != 0"
+    },
+    {
+     "name": "use_screen_space_reflections",
+     "type": "bool",
+     "cond": "(shader_flags_1 & 128) != 0"
+    },
+    {
+     "name": "wetness_control_use_ssr",
+     "type": "bool",
+     "cond": "(shader_flags_1 & 128) != 0"
+    },
+    {
+     "name": "skin_tint_color",
+     "type": "color3",
+     "cond": "(shader_flags_1 & 2097152) != 0"
+    },
+    {
+     "name": "skin_tint_alpha",
+     "type": "f32",
+     "cond": "(shader_flags_1 & 2097152) != 0"
+    },
+    {
+     "name": "hair_tint_color",
+     "type": "color3",
+     "cond": "(shader_flags_1 & 262144) != 0"
+    }
+   ],
+   "note": "Fallout 4 BSLightingShaderProperty layout (140 bytes base, 146 bytes with environment mapping)."
   },
   "BSPackedCombinedSharedGeomDataExtra": {
    "inherit": "NiExtraData",
