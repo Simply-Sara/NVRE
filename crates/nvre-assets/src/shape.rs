@@ -562,6 +562,14 @@ mod tests {
         assert_eq!(alpha_mode(0, 0), AlphaMode::Opaque);
     }
 
+    #[test]
+    fn s4_3_exhaustive_alpha_mode_space() {
+        for flags in 0..8192 {
+            let _ = alpha_mode(flags, 0);
+            let _ = alpha_mode(flags, 200);
+        }
+    }
+
     /// A shape's default emissive multiplier is one, not zero.
     ///
     /// This is the default that keeps a shape with an `emissive_color` but no
