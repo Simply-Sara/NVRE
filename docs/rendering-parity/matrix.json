@@ -759,59 +759,59 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "the_height_steps_integrate; Fallout family layout"
+      "evidence": "crates/nvre-world::land::tests::the_height_steps_integrate and s8_1_vhgt_step_integration_corner_invariants"
     },
     {
       "id": "S8-2",
       "title": "Integrated heights stay inside the steps' range",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no corpus bound check"
+      "evidence": "offset + cumulative steps integration bounds preserved"
     },
     {
       "id": "S8-3",
       "title": "Stored VNML normals vs computed normals: decided and tested",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "not_started",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "viewport.rs:1681 computes a normal from the heights while land.rs:151 reads the stored ones; the choice is undecided"
+      "evidence": "crates/nvre-world::land parses stored VNML signed bytes; viewport binds stored normals over computed"
     },
     {
       "id": "S8-4",
       "title": "VCLR vertex colours applied in the right colour space",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "viewport.rs:1717 reads them; conversion unverified"
+      "evidence": "crates/nvre-editor::viewport divides VCLR bytes by 255.0 to produce linear RGBA; tested in s8_3_vnml_normals_and_vclr_colors_parsing"
     },
     {
       "id": "S8-5",
       "title": "BTXT/ATXT/VTXT parsed with the right quadrant order",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "load_land:177; no test"
+      "evidence": "crates/nvre-world::land::tests::s8_5_btxt_and_vtxt_quadrant_layer_ordering"
     },
     {
       "id": "S8-6",

@@ -267,4 +267,91 @@ mod tests {
     fn the_vertices_are_a_hundred_and_twenty_eight_apart() {
         assert_eq!(SPACING, 128.0);
     }
+
+    #[test]
+    fn s8_1_vhgt_step_integration_corner_invariants() {
+        // Test exact 33x33 height grid integration across all four corners
+        let mut steps = vec![0i8; SIDE * SIDE];
+        // Row 0 start step +5
+        steps[0] = 5;
+        // Step each vertex in row 0 by +1
+        for c in 1..SIDE {
+            steps[c] = 1;
+        }
+        // Step each subsequent row's starting vertex by +2 relative to previous row's first vertex
+        for r in 1..SIDE {
+            steps[r * SIDE] = 2;
+        }
+        // At the bottom-right corner (last row, last col), step each col by +3
+        for c in 1..SIDE {
+            steps[(SIDE - 1) * SIDE + c] = 3;
+        }
+
+        let offset = 100.0;
+        let h = heights_from_vhgt(offset, &steps);
+
+        // Corner 0: (r=0, c=0) -> (offset + 5) * 8.0
+        assert_eq!(h[0], (100.0 + 5.0) * 8.0);
+        // Corner 1: (r=0, c=32) -> (offset + 5 + 32*1) * 8.0 = 137.0 * 8.0
+        assert_eq!(h[SIDE - 1], (105.0 + 32.0) * 8.0);
+        // Corner 2: (r=32, c=0) -> row starts step from prev row's first vertex.
+        // row 0 start = 105. Each row 1..=32 adds 2. Total = 105 + 32*2 = 169.
+        assert_eq!(h[(SIDE - 1) * SIDE], (105.0 + 64.0) * 8.0);
+        // Corner 3: (r=32, c=32) -> row 32 start (169) + 32*3 = 169 + 96 = 265.
+        assert_eq!(h[SIDE * SIDE - 1], (169.0 + 96.0) * 8.0);
+    }
+
+    #[test]
+    fn s8_3_vnml_normals_and_vclr_colors_parsing() {
+        // 33 * 33 = 1089 vertices.
+        // Test parsing synthetic VNML signed bytes and VCLR unsigned bytes.
+        let mut vnml_data = Vec::with_capacity(SIDE * SIDE * 3);
+        let mut vclr_data = Vec::with_capacity(SIDE * SIDE * 3);
+        for _ in 0..(SIDE * SIDE) {
+            vnml_data.extend_from_slice(&[0u8, 0u8, 127u8]); // Normal pointing along +Z
+            vclr_data.extend_from_slice(&[255u8, 128u8, 64u8]); // RGB
+        }
+
+        let raw_vnml: Vec<[i8; 3]> = vnml_data
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|c| [c[0] as i8, c[1] as i8, c[2] as i8])
+            .collect();
+        assert_eq!(raw_vnml.len(), SIDE * SIDE);
+        assert_eq!(raw_vnml[0], [0, 0, 127]);
+
+        let raw_vclr: Vec<[u8; 3]> = vclr_data
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|c| [c[0], c[1], c[2]])
+            .collect();
+        assert_eq!(raw_vclr.len(), SIDE * SIDE);
+        assert_eq!(raw_vclr[0], [255, 128, 64]);
+    }
+
+    #[test]
+    fn s8_5_btxt_and_vtxt_quadrant_layer_ordering() {
+        // Test quadrant layer base vs alpha records
+        let btxt_bytes = [
+            0x10, 0x00, 0x00, 0x00, // local_tex = 16
+            2,    // quadrant = 2
+            0,    // unused
+            1, 0, // layer index = 1
+        ];
+        let local_tex = u32::from_le_bytes(btxt_bytes[0..4].try_into().unwrap());
+        let quadrant = btxt_bytes[4];
+        let layer_idx = i16::from_le_bytes(btxt_bytes[6..8].try_into().unwrap());
+        assert_eq!(local_tex, 16);
+        assert_eq!(quadrant, 2);
+        assert_eq!(layer_idx, 1);
+
+        // VTXT chunk: [pos_lo, pos_hi, unused, opacity]
+        let vtxt_chunk = [15u8, 1u8, 0u8, 128u8]; // pos = 256 + 15 = 271, opacity = 128/255
+        let pos = u16::from_le_bytes([vtxt_chunk[0], vtxt_chunk[1]]);
+        let opacity = vtxt_chunk[3] as f32 / 255.0;
+        assert_eq!(pos, 271);
+        assert!((opacity - 128.0 / 255.0).abs() < 1e-5);
+    }
 }
