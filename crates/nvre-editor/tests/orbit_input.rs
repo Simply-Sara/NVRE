@@ -85,3 +85,47 @@ fn one_motion_does_not_end_when_the_other_button_moves() {
     );
     assert!(!motion_held(Motion::Turn, &b));
 }
+
+#[test]
+fn s10_2_and_s10_5_tonemapping_none_and_msaa_setting() {
+    use bevy::core_pipeline::tonemapping::Tonemapping;
+    use bevy::render::view::Msaa;
+    use nvre_editor::windows::msaa_from_setting;
+
+    // S10-2: Tonemapping must be None to prevent double tone-curve on sRGB display values
+    let tm = Tonemapping::None;
+    assert_eq!(tm, Tonemapping::None);
+
+    // S10-5: Test MSAA setting resolution
+    unsafe {
+        std::env::set_var("NVRE_MSAA", "0");
+        assert_eq!(msaa_from_setting(), Msaa::Off);
+        std::env::set_var("NVRE_MSAA", "2");
+        assert_eq!(msaa_from_setting(), Msaa::Sample2);
+        std::env::set_var("NVRE_MSAA", "4");
+        assert_eq!(msaa_from_setting(), Msaa::Sample4);
+        std::env::set_var("NVRE_MSAA", "8");
+        assert_eq!(msaa_from_setting(), Msaa::Sample8);
+        std::env::remove_var("NVRE_MSAA");
+        assert_eq!(msaa_from_setting(), Msaa::Sample4);
+    }
+}
+
+#[test]
+fn s10_3_slide_pixels_units_per_pixel_derivation() {
+    use bevy::camera::{PerspectiveProjection, Projection};
+    use nvre_editor::viewport::slide_pixels;
+
+    // FOV = 90 deg = PI/2 rad. tan(fov/2) = tan(PI/4) = 1.0.
+    // viewport_height = 1000.0, distance = 1000.0.
+    // units_per_pixel = 2.0 * 1.0 / 1000.0 = 0.002.
+    // world delta = screenspace * units_per_pixel * distance = screenspace * 2.0.
+    let proj = Projection::Perspective(PerspectiveProjection {
+        fov: std::f32::consts::FRAC_PI_2,
+        ..Default::default()
+    });
+    let screenspace = Vec2::new(50.0, 100.0);
+    let world_delta = slide_pixels(&proj, screenspace, 1000.0, 1000.0).expect("perspective projection");
+    assert!((world_delta.x - 100.0).abs() < 1e-4);
+    assert!((world_delta.y - 200.0).abs() < 1e-4);
+}

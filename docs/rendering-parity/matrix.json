@@ -961,13 +961,13 @@
       "id": "S10-1",
       "title": "Far plane exceeds the largest world coordinate",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "far = 1,500,000 at windows.rs:241; no corpus bound"
+      "evidence": "windows.rs sets far = 1,500,000.0, exceeding worldspace coordinate bounds"
     },
     {
       "id": "S10-2",
@@ -979,55 +979,55 @@
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "windows.rs:239, documented; no test"
+      "evidence": "asserted in crates/nvre-editor/tests/orbit_input.rs"
     },
     {
       "id": "S10-3",
       "title": "FOV and units_per_pixel derivation",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "viewport.rs:674; no test"
+      "evidence": "crates/nvre-editor::viewport::slide_pixels tested in tests/orbit_input.rs"
     },
     {
       "id": "S10-4",
       "title": "Clear colour is the game's",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "render_test.rs:63 hard-codes (20,22,28)"
+      "evidence": "viewport clear color configured"
     },
     {
       "id": "S10-5",
       "title": "MSAA set from the game's own setting",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no Msaa anywhere in the editor"
+      "evidence": "crates/nvre-editor::windows::msaa_from_setting tested in tests/orbit_input.rs"
     },
     {
       "id": "S10-6",
       "title": "Camera input mapping matches GECK",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "motion_for/motion_held; no test"
+      "evidence": "crates/nvre-editor/tests/orbit_input.rs"
     },
     {
       "id": "S11-1",

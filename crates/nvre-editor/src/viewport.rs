@@ -671,7 +671,7 @@ fn feed_camera_input(
 /// distance from what it is looking at. At unit depth a pixel is
 /// `2 * tan(fov/2) / viewport_height`, and the camera is `distance` away, so a
 /// pixel there is that times the distance.
-fn slide_pixels(
+pub fn slide_pixels(
     projection: &Projection,
     screenspace: Vec2,
     distance: f32,

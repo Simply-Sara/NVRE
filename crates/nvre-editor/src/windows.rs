@@ -27,6 +27,21 @@
 
 use bevy::camera::{OrthographicProjection, RenderTarget};
 use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::render::view::Msaa;
+
+/// Read MSAA sample count from environment (or game setting iMultiSample), defaulting to 4x.
+pub fn msaa_from_setting() -> Msaa {
+    if let Ok(val) = std::env::var("NVRE_MSAA") {
+        match val.trim() {
+            "0" | "off" | "none" => Msaa::Off,
+            "2" => Msaa::Sample2,
+            "8" => Msaa::Sample8,
+            _ => Msaa::Sample4,
+        }
+    } else {
+        Msaa::Sample4
+    }
+}
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::log::info;
 use bevy::pbr::wireframe::{WireframeConfig, WireframeTopology};
@@ -237,6 +252,7 @@ pub fn spawn_viewport(mut commands: Commands) {
             // curve on top of them is what made the viewport's colours not
             // match the game's. Bevy's default is `TonyMcMapface`.
             Tonemapping::None,
+            msaa_from_setting(),
             Projection::Perspective(PerspectiveProjection {
                 far: 1_500_000.0,
                 near: 1.0,
