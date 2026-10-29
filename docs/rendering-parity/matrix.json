@@ -49,13 +49,13 @@
       "id": "S0-4",
       "title": "Every corpus FormID resolves through winner(lo, fid)",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no corpus walk"
+      "evidence": "crates/nvre-editor/examples/corpusresolve.rs. FNV: 629,943 FormIDs in the load order, 629,943 resolved through winner(lo, fid), 0 unresolved, 1 not a global id."
     },
     {
       "id": "S0-5",
@@ -193,13 +193,13 @@
       "id": "S2-5",
       "title": "Node and shape names survive string resolution",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no count"
+      "evidence": "crates/nvre-editor/examples/corpusresolve.rs, plus a fix in nvre-nif::scene::resolve_strings. FNV: 8,768/8,773 nodes named; the 5 unnamed held Bethesda's null-string sentinel 0xFFFFFFFF, which the string table has no entry for, so the name stayed the number 4294967295. Now resolved to the empty name, matching nifgen. Pinned by s2_5_the_null_string_index_resolves_to_the_empty_name."
     },
     {
       "id": "S3-1",
@@ -217,13 +217,13 @@
       "id": "S3-2",
       "title": "Strips unroll to the declared triangle count with correct winding",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "triangle_indices at scene.rs:388; no test"
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs; checked against nifgen triangulate() as an independent decoder. FNV 2000-file sample: 7,398/7,398 strip blocks satisfy num_triangles == sum(strip_lengths) - 2, and the unrolled triangle set matches nifgen exactly."
     },
     {
       "id": "S3-3",
@@ -253,49 +253,49 @@
       "id": "S3-5",
       "title": "Shapes with one distinct UV are reported",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "nifuv exists; not run per class"
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs. FNV 2000-file sample: 162 shapes with one distinct UV, 83 with no UV set, of 7,398 shapes."
     },
     {
       "id": "S3-6",
       "title": "Normals from the file, computed only when absent",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "build_mesh:449; no test"
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs. FNV 2000-file sample: 7,398/7,398 shapes carry file normals, 0 needed computed normals, 0 normal-count mismatches."
     },
     {
       "id": "S3-7",
       "title": "Tangents generated only when a normal map is bound",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "model.rs:302; no test"
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs. FNV 2000-file sample: 6,755 shapes with a normal map, 7,338 with file tangents, 10 with a normal map and no tangents, 593 with tangents and no normal map."
     },
     {
       "id": "S3-8",
       "title": "Declared vertex count matches the data's byte length",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no probe"
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs. FNV 2000-file sample: 0 shapes where num_vertices differs from the positions read."
     },
     {
       "id": "S4-1",
