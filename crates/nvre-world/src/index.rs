@@ -324,3 +324,45 @@ fn label_u32(label: &[u8; 4]) -> u32 {
 pub fn global_of(lo: &LoadOrder, plugin: usize, v: &serde_json::Value) -> Option<u32> {
     global(lo, plugin, formid_of(v)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn s14_1_water_surface_precedence_and_sentinel_handling() {
+        let mut cell = Cell {
+            form_id: 1,
+            edid: None,
+            name: None,
+            data_flags: 0, // no water
+            grid: Some((0, 0)),
+            world: Some(10),
+            water_height: None,
+            water_type: None,
+            plugin: 0,
+            refs: Vec::new(),
+            land: None,
+        };
+        // Case 1: has_water = false -> None even if world has default
+        assert_eq!(cell.water_surface(Some(100.0)), None);
+
+        // Set has_water flag (bit 1 = 2)
+        cell.data_flags = 2;
+
+        // Case 2: has_water = true, no XCLW -> world default (100.0)
+        assert_eq!(cell.water_surface(Some(100.0)), Some(100.0));
+
+        // Case 3: has_water = true, XCLW present -> XCLW overrides world default
+        cell.water_height = Some(150.0);
+        assert_eq!(cell.water_surface(Some(100.0)), Some(150.0));
+
+        // Case 4: XCLW holds the 3.4e38 sentinel -> falls back to world default
+        cell.water_height = Some(3.4028235e38);
+        assert_eq!(cell.water_surface(Some(100.0)), Some(100.0));
+
+        // Case 5: Interior cell (data_flags bit 0 set: 1 | 2 = 3) with sentinel and no real XCLW -> None
+        cell.data_flags = 3;
+        assert_eq!(cell.water_surface(Some(100.0)), None);
+    }
+}

@@ -1132,12 +1132,13 @@
       "id": "S14-1",
       "title": "Water surface height precedence",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-world::index::Cell::water_surface tested in s14_1_water_surface_precedence_and_sentinel_handling"
     },
     {
       "id": "S14-2",
