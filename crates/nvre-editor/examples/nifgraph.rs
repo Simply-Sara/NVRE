@@ -148,18 +148,20 @@ fn main() {
                     // A cycle: the shape is in a loop and reaches nothing.
                     break;
                 }
-                if !is_node.get(&p).copied().unwrap_or(false) {
+                let Some(node_obj) = objects.iter().find(|obj| obj.block == p) else {
+                    // Parent block not in objects or broken.
+                    break;
+                };
+                if !node_obj.is_node {
                     // The parent is not a node, so the chain is broken.
                     break;
                 }
-                match parent_of.get(&p) {
-                    // A node with no parent is a root, and the shape is
-                    // under it.
+                match node_obj.parent {
                     None => {
                         reached = true;
                         break;
                     }
-                    Some(&up) => cur = Some(up),
+                    Some(up) => cur = Some(up),
                 }
             }
             if !reached {

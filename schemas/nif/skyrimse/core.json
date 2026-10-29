@@ -230,29 +230,6 @@
       "inherit": "NiObject",
       "note": "The Special Edition's geometry data. Like the original edition's, but its vertex colours are four bytes rather than four floats."
     },
-    "NiNode": {
-      "fields": [
-        {
-          "name": "num_effects",
-          "type": "u32"
-        },
-        {
-          "length": "num_effects",
-          "name": "effects",
-          "type": "ref"
-        },
-        {
-          "name": "num_children",
-          "type": "u32"
-        },
-        {
-          "length": "num_children",
-          "name": "children",
-          "type": "ref"
-        }
-      ],
-      "inherit": "NiAVObject"
-    },
     "NiSkinPartition": {
       "fields": [
         {
