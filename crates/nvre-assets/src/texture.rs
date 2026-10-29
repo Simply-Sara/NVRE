@@ -210,6 +210,23 @@ impl TextureCache {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn s5_5_set_anisotropy_clamps_range() {
+        set_anisotropy(16);
+        assert_eq!(ANISOTROPY.load(Ordering::Relaxed), 16);
+        set_anisotropy(32); // clamps to 16
+        assert_eq!(ANISOTROPY.load(Ordering::Relaxed), 16);
+        set_anisotropy(0); // clamps to 1
+        assert_eq!(ANISOTROPY.load(Ordering::Relaxed), 1);
+        set_anisotropy(8); // restore default
+        assert_eq!(ANISOTROPY.load(Ordering::Relaxed), 8);
+    }
+}
+
 /// Extract texture paths from a Fallout 4 .bgsm binary.
 pub fn extract_bgsm_textures(bytes: &[u8]) -> (Option<String>, Option<String>, Option<String>) {
     if bytes.len() < 4 || &bytes[..4] != b"BGSM" {

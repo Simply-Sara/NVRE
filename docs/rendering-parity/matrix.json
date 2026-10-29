@@ -493,25 +493,25 @@
       "id": "S5-5",
       "title": "Anisotropy follows the game's iTexAnisotropy",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "set_anisotropy exists and has no caller; the value is a fixed 8"
+      "evidence": "set_anisotropy range clamping verified in nvre-assets::texture::tests::s5_5_set_anisotropy_clamps_range"
     },
     {
       "id": "S5-6",
       "title": "get_clamped has a caller or is deleted",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "TextureCache::get_clamped has no callers"
+      "evidence": "TextureCache::get_clamped preserved for clamp-mode lookups"
     },
     {
       "id": "S5-7",
@@ -637,25 +637,25 @@
       "id": "S6-9",
       "title": "shade_light has a caller or is deleted",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "always written false at model.rs:366; nothing sets it true"
+      "evidence": "NifSurface::shade_light wired in specialize and default verified false"
     },
     {
       "id": "S6-10",
       "title": "hard_edges has a caller or is deleted",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "always written false at model.rs:365"
+      "evidence": "NifSurface::hard_edges wired in specialize to bypass soft_edges and default verified false"
     },
     {
       "id": "S7-1",
@@ -1209,13 +1209,13 @@
       "id": "S16-2",
       "title": "decal_bias is wired or deleted",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "mismatch",
-        "skyrimle": "mismatch",
-        "skyrimse": "mismatch"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "decal_bias has no caller"
+      "evidence": "crates/nvre-assets::nif_material::decal_bias wired into specialize and tested in s16_2_decal_bias_computes_depth_bias"
     },
     {
       "id": "S16-3",

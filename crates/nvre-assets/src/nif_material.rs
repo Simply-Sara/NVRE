@@ -181,19 +181,11 @@ impl MaterialExtension for NifSurface {
                     .depth_stencil
                     .clone()
                     .map(|d| DepthStencilState {
-                        bias: DepthBiasState {
-                            constant: d.bias.constant + DECAL_BIAS,
-                            slope_scale: d.bias.slope_scale + DECAL_SLOPE_BIAS,
-                            ..d.bias
-                        },
+                        bias: decal_bias(d.bias),
                         ..d
                     })
                     .unwrap_or(DepthStencilState {
-                        bias: DepthBiasState {
-                            constant: DECAL_BIAS,
-                            slope_scale: DECAL_SLOPE_BIAS,
-                            ..default()
-                        },
+                        bias: decal_bias(DepthBiasState::default()),
                         format: bevy::render::render_resource::TextureFormat::Depth32Float,
                         depth_write_enabled: Some(true),
                         depth_compare: Some(
@@ -469,5 +461,13 @@ mod tests {
         assert!(!def.decal);
         assert!(!def.hard_edges);
         assert!(!def.shade_light);
+    }
+
+    #[test]
+    fn s16_2_decal_bias_computes_depth_bias() {
+        let default_bias = DepthBiasState::default();
+        let biased = decal_bias(default_bias);
+        assert_eq!(biased.constant, default_bias.constant + DECAL_BIAS);
+        assert_eq!(biased.slope_scale, default_bias.slope_scale + DECAL_SLOPE_BIAS);
     }
 }
