@@ -95,12 +95,14 @@
     {
      "name": "vertex_data",
      "type": "bytes",
-     "length": "data_size - num_triangles * 6"
+     "length": "data_size - num_triangles * 6",
+     "cond": "data_size > 0"
     },
     {
      "name": "triangles",
      "type": "triangle",
-     "length": "num_triangles"
+     "length": "num_triangles",
+     "cond": "data_size > 0"
     },
     {
      "name": "particle_data_size",

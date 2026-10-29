@@ -144,12 +144,14 @@
     {
      "name": "vertex_data",
      "type": "bytes",
-     "length": "data_size - num_triangles * 6"
+     "length": "data_size - num_triangles * 6",
+     "cond": "data_size > 0"
     },
     {
      "name": "triangles",
      "type": "triangle",
-     "length": "num_triangles"
+     "length": "num_triangles",
+     "cond": "data_size > 0"
     }
    ],
    "note": "nif.xml's BSTriShape: Fallout 4 holds its vertices in the shape itself, in a packed format, where the original edition keeps them in a separate NiTriShapeData block. Measured: the data size is the vertex data's bytes plus the triangles' six bytes each, so the vertex data is the data size less the triangles. The vertex description's low nibble is the vertex's size in four-byte words, and its next nibbles are the word offsets of the UV, the normal, the tangent and the colour; bits 44 and up are the VertexAttribute flags that say which of those fields are present. The packed vertices themselves are read by the NIF reader, not by the schema: their layout is a function of the description, and the schema language has no way to say 'a field whose size another field decides'."
@@ -242,8 +244,49 @@
    "note": "Auto-defined Fallout 4 block BSSubIndexTriShape."
   },
   "BSEffectShaderPropertyFloatController": {
-   "inherit": "BSShaderProperty",
-   "note": "Auto-defined Fallout 4 block BSEffectShaderPropertyFloatController."
+   "inherit": "NiFloatInterpController",
+   "fields": [
+    {
+     "name": "type",
+     "type": "u16"
+    }
+   ]
+  },
+  "BSLightingShaderPropertyFloatController": {
+   "inherit": "NiFloatInterpController",
+   "fields": [
+    {
+     "name": "type",
+     "type": "u16"
+    }
+   ]
+  },
+  "BSEffectShaderPropertyColorController": {
+   "inherit": "NiPoint3InterpController",
+   "fields": [
+    {
+     "name": "type",
+     "type": "u16"
+    }
+   ]
+  },
+  "BSLightingShaderPropertyColorController": {
+   "inherit": "NiPoint3InterpController",
+   "fields": [
+    {
+     "name": "type",
+     "type": "u16"
+    }
+   ]
+  },
+  "BSLightingShaderPropertyUShortController": {
+   "inherit": "NiFloatInterpController",
+   "fields": [
+    {
+     "name": "type",
+     "type": "u16"
+    }
+   ]
   },
   "BSConnectPoint::Parents": {
    "inherit": "NiExtraData",
@@ -275,17 +318,9 @@
     }
    ]
   },
-  "BSLightingShaderPropertyFloatController": {
-   "inherit": "BSShaderProperty",
-   "note": "Auto-defined Fallout 4 block BSLightingShaderPropertyFloatController."
-  },
   "BSEyeCenterExtraData": {
    "inherit": "NiExtraData",
    "note": "Auto-defined Fallout 4 block BSEyeCenterExtraData."
-  },
-  "BSEffectShaderPropertyColorController": {
-   "inherit": "BSShaderProperty",
-   "note": "Auto-defined Fallout 4 block BSEffectShaderPropertyColorController."
   },
   "BSPSysSubTexModifier": {
    "inherit": "NiObject",
@@ -329,10 +364,6 @@
    "inherit": "NiTimeController",
    "note": "Auto-defined Fallout 4 block BSProceduralLightningController."
   },
-  "BSLightingShaderPropertyColorController": {
-   "inherit": "BSShaderProperty",
-   "note": "Auto-defined Fallout 4 block BSLightingShaderPropertyColorController."
-  },
   "BSLagBoneController": {
    "inherit": "NiTimeController",
    "note": "Auto-defined Fallout 4 block BSLagBoneController."
@@ -367,10 +398,6 @@
   "BSWaterShaderProperty": {
    "inherit": "BSShaderProperty",
    "note": "Auto-defined Fallout 4 block BSWaterShaderProperty."
-  },
-  "BSLightingShaderPropertyUShortController": {
-   "inherit": "BSShaderProperty",
-   "note": "Auto-defined Fallout 4 block BSLightingShaderPropertyUShortController."
   },
   "BSTreeNode": {
    "inherit": "NiNode",
