@@ -282,8 +282,9 @@ pub fn shape_props(
     let flags = shader_flags.unwrap_or(0);
     // Unlit effect meshes use vertex alpha for their fading gradient, and apply falloff
     // whenever falloff fields are present (even if bit 6 is omitted).
-    props.vertex_alpha = props.unlit || flags & SHADER_VERTEX_ALPHA != 0 || flags & SHADER_DYNAMIC_ALPHA != 0;
-    
+    props.vertex_alpha =
+        props.unlit || flags & SHADER_VERTEX_ALPHA != 0 || flags & SHADER_DYNAMIC_ALPHA != 0;
+
     let has_falloff = flags & SHADER_FALLOFF != 0 || (props.unlit && falloff_fields.is_some());
     if has_falloff && is_blended(props.alpha_mode) {
         if let Some([a, b, c, d]) = falloff_fields {

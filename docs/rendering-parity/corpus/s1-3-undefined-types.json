@@ -1,0 +1,80 @@
+{
+  "$comment": "S1-3: the block types a game's meshes use that the schema has no definition for. Measured by niftypes, which reads only the header's type-name list and decodes nothing, so it is a question about the schema's coverage rather than about layouts. A type listed here is a block the reader cannot read at all — a different and cheaper thing to fix than a block it reads wrongly. Generated from the runs on 2026-10-28; the command is in each entry.",
+  "measured_by": "cargo run -p nvre-vfs --example niftypes -- <data dir> <schema chain>",
+  "games": [
+    {
+      "id": "fnv",
+      "files": 20541,
+      "distinct_types": 150,
+      "undefined": 0,
+      "types": []
+    },
+    {
+      "id": "fo3",
+      "files": 17162,
+      "distinct_types": 145,
+      "undefined": 4,
+      "types": [
+        { "name": "bhkConvexListShape", "uses": 71 },
+        { "name": "bhkAabbPhantom", "uses": 8 },
+        { "name": "Lighting30ShaderProperty", "uses": 4 },
+        { "name": "NiFogProperty", "uses": 1 }
+      ]
+    },
+    {
+      "id": "skyrimle",
+      "files": 21476,
+      "distinct_types": 145,
+      "undefined": 0,
+      "types": []
+    },
+    {
+      "id": "skyrimse",
+      "files": 22761,
+      "distinct_types": 143,
+      "undefined": 2,
+      "types": [
+        { "name": "bhkCylinderShape", "uses": 70 },
+        { "name": "bhkPlaneShape", "uses": 1 }
+      ]
+    },
+    {
+      "id": "fo4",
+      "files": 224734,
+      "distinct_types": 116,
+      "undefined": 37,
+      "types": [
+        { "name": "BSLightingShaderProperty", "uses": 1170607 },
+        { "name": "BSPackedCombinedSharedGeomDataExtra", "uses": 1057980 },
+        { "name": "BSMeshLODTriShape", "uses": 533507 },
+        { "name": "bhkNPCollisionObject", "uses": 333741 },
+        { "name": "bhkPhysicsSystem", "uses": 275437 },
+        { "name": "BSEffectShaderProperty", "uses": 27092 },
+        { "name": "BSSkin::BoneData", "uses": 23692 },
+        { "name": "BSSkin::Instance", "uses": 23692 },
+        { "name": "BSSubIndexTriShape", "uses": 22691 },
+        { "name": "BSEffectShaderPropertyFloatController", "uses": 7739 },
+        { "name": "BSConnectPoint::Parents", "uses": 2556 },
+        { "name": "BSConnectPoint::Children", "uses": 2073 },
+        { "name": "BSPSysLODModifier", "uses": 1706 },
+        { "name": "BSPSysScaleModifier", "uses": 1622 },
+        { "name": "BSBehaviorGraphExtraData", "uses": 1224 },
+        { "name": "BSLightingShaderPropertyFloatController", "uses": 1015 },
+        { "name": "BSEyeCenterExtraData", "uses": 865 },
+        { "name": "BSEffectShaderPropertyColorController", "uses": 777 },
+        { "name": "BSPSysSubTexModifier", "uses": 525 },
+        { "name": "BSPositionData", "uses": 466 },
+        { "name": "BSClothExtraData", "uses": 412 },
+        { "name": "NiStringsExtraData", "uses": 372 },
+        { "name": "BSLeafAnimNode", "uses": 349 }
+      ],
+      "note": "The full list is 37 types; the 23 shown are those above 300 uses. The remainder are Havok and animation plumbing with single-digit counts."
+    }
+  ],
+  "summary": {
+    "files": 306674,
+    "distinct_types": 150,
+    "undefined_total": 43,
+    "by_game": { "fnv": 0, "fo3": 4, "skyrimle": 0, "skyrimse": 2, "fo4": 37 }
+  }
+}

@@ -102,7 +102,9 @@ fn setup(mut commands: Commands, test: Res<RenderTest>) {
     if let Ok(entries) = std::fs::read_dir(&test.data_dir) {
         for e in entries.flatten() {
             let p = e.path();
-            if p.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("bsa")) {
+            if p.extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("bsa"))
+            {
                 if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
                     bsa_names.push(name.to_string());
                 }

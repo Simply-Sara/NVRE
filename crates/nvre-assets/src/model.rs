@@ -268,7 +268,11 @@ impl ModelCtx<'_> {
             if t.to_lowercase().ends_with(".bgsm") {
                 if let Some(bytes) = self.data.read(t) {
                     let (diffuse, normal, _glow) = crate::texture::extract_bgsm_textures(&bytes);
-                    if is_normal { normal } else { diffuse }
+                    if is_normal {
+                        normal
+                    } else {
+                        diffuse
+                    }
                 } else {
                     None
                 }
