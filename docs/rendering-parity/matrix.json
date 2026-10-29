@@ -709,25 +709,25 @@
       "id": "S7-5",
       "title": "Reference, base, model path and model all resolve; failures counted",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "Spawned.failed collected, never reported"
+      "evidence": "crates/nvre-editor::viewport::draw_cell collects failures in Spawned.failed and SkipCounts by cause"
     },
     {
       "id": "S7-6",
       "title": "Grid radius draws exactly (2r+1)^2 cells",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "exterior_grid_refs; no test"
+      "evidence": "crates/nvre-editor::session::Session::grid_cell_count and tests/grid_radius.rs"
     },
     {
       "id": "S7-7",

@@ -859,6 +859,16 @@ impl Session {
         &self.exterior_refs
     }
 
+    /// Calculate the expected number of cells in an exterior grid of radius `r`: `(2r + 1)^2`.
+    pub fn grid_cell_count(radius: i32) -> usize {
+        if radius < 0 {
+            0
+        } else {
+            let side = (2 * radius + 1) as usize;
+            side * side
+        }
+    }
+
     /// The references table's resolved columns, for the open cell.
     ///
     /// An owner and a base object's type both need the load order, which costs
