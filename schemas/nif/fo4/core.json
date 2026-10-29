@@ -1,86 +1,344 @@
 {
-  "format": "fnv.nif.schema/1",
-  "_comment": "Fallout 4's own NIF layouts, layered over schemas/nif/base. Fallout 4 is 20.2.0.7 with user version 12 and bs_version 130 (nifgen's is_v20_2_0_7_fo4). Measured against the meshes in Fallout4 - Meshes.ba2: every block below was checked byte for byte, and the vertex data's length was confirmed against data_size - num_triangles * 6. Fallout 4 uses the same BSVertexDataSSE packed vertex format as Skyrim SE, so the reader's unpacker is shared.",
-  "structs": {
-    "BSFurnitureMarker": {
-      "fields": [
-        {"name": "name", "type": "string"},
-        {"name": "position", "type": "vec3"},
-        {"name": "orientation", "type": "f32"}
-      ]
+ "format": "fnv.nif.schema/1",
+ "_comment": "Fallout 4's own NIF layouts, layered over schemas/nif/base. Fallout 4 is 20.2.0.7 with user version 12 and bs_version 130 (nifgen's is_v20_2_0_7_fo4). Measured against the meshes in Fallout4 - Meshes.ba2: every block below was checked byte for byte, and the vertex data's length was confirmed against data_size - num_triangles * 6. Fallout 4 uses the same BSVertexDataSSE packed vertex format as Skyrim SE, so the reader's unpacker is shared.",
+ "structs": {
+  "BSFurnitureMarker": {
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    },
+    {
+     "name": "position",
+     "type": "vec3"
+    },
+    {
+     "name": "orientation",
+     "type": "f32"
     }
-  },
-  "blocks": {
-    "NiAVObject": {
-      "inherit": "NiObjectNET",
-      "fields": [
-        {"name": "flags", "type": "u32", "cond": "bs_version > 26"},
-        {"name": "flags", "type": "u16", "cond": "bs_version <= 26"},
-        {"name": "translation", "type": "vec3"},
-        {"name": "rotation", "type": "mat33"},
-        {"name": "scale", "type": "f32"},
-        {"name": "velocity", "type": "vec3", "cond": "version <= 67240448"},
-        {"name": "num_properties", "type": "u32", "cond": "bs_version <= 34"},
-        {"name": "properties", "type": "ref", "length": "num_properties", "cond": "bs_version <= 34"},
-        {"name": "collision_object", "type": "ref"}
-      ],
-      "note": "Same as the base's, written out here so this file stands on its own: bs_version 130 is above 34, so the property list is gone, and 20.2.0.7 is above 67240448, so the velocity vector is gone too. What is left is the flags, the transform and the collision object."
-    },
-    "NiNode": {
-      "inherit": "NiAVObject",
-      "fields": [
-        {"name": "num_children", "type": "u32"},
-        {"name": "children", "type": "ref", "length": "num_children"},
-        {"name": "num_effects", "type": "u32", "cond": "bs_version < 130"},
-        {"name": "effects", "type": "ref", "length": "num_effects", "cond": "bs_version < 130"}
-      ],
-      "note": "The node effects list is a pre-Fallout-4 field: nifgen's NiNode yields num_effects and effects only when bs_version < 130, and Fallout 4 (bs_version 130) drops it entirely."
-    },
-    "BSTriShape": {
-      "inherit": "NiAVObject",
-      "fields": [
-        {"name": "bounding_sphere", "type": "NiBound"},
-        {"name": "skin", "type": "ref"},
-        {"name": "shader_property", "type": "ref"},
-        {"name": "alpha_property", "type": "ref"},
-        {"name": "vertex_desc", "type": "u64"},
-        {"name": "num_triangles", "type": "u32"},
-        {"name": "num_vertices", "type": "u16"},
-        {"name": "data_size", "type": "u32"},
-        {"name": "vertex_data", "type": "bytes", "length": "data_size - num_triangles * 6"},
-        {"name": "triangles", "type": "triangle", "length": "num_triangles"}
-      ],
-      "note": "nif.xml's BSTriShape: Fallout 4 holds its vertices in the shape itself, in a packed format, where the original edition keeps them in a separate NiTriShapeData block. Measured: the data size is the vertex data's bytes plus the triangles' six bytes each, so the vertex data is the data size less the triangles. The vertex description's low nibble is the vertex's size in four-byte words, and its next nibbles are the word offsets of the UV, the normal, the tangent and the colour; bits 44 and up are the VertexAttribute flags that say which of those fields are present. The packed vertices themselves are read by the NIF reader, not by the schema: their layout is a function of the description, and the schema language has no way to say 'a field whose size another field decides'."
-    },
-    "BSDynamicTriShape": {
-      "inherit": "BSTriShape",
-      "fields": [
-        {"name": "dynamic_data_size", "type": "u32"},
-        {"name": "dynamic_vertex_data", "type": "bytes", "length": "dynamic_data_size"}
-      ],
-      "note": "A BSTriShape whose vertices the engine updates every frame: the same packed vertex block, then the dynamic copy of it."
-    },
-    "BSFurnitureMarkerNode": {
-      "inherit": "NiNode",
-      "fields": [
-        {"name": "num_positions", "type": "u32"},
-        {"name": "positions", "type": "BSFurnitureMarker", "length": "num_positions"}
-      ],
-      "note": "A node that marks where furniture's markers sit. Each marker is a name and a position and a rotation, which the base's own structs describe."
-    },
-    "BSConnectPoint__Parents": {
-      "inherit": "NiNode",
-      "fields": [
-        {"name": "name", "type": "string"}
-      ],
-      "note": "Written with two colons in the file's block type table; the schema language's block names cannot hold one, so the block type index is what identifies it."
-    },
-    "BSConnectPoint__Children": {
-      "inherit": "NiNode",
-      "fields": [
-        {"name": "name", "type": "string"}
-      ],
-      "note": "The child half of a connect point pair."
-    }
+   ]
   }
+ },
+ "blocks": {
+  "NiAVObject": {
+   "inherit": "NiObjectNET",
+   "fields": [
+    {
+     "name": "flags",
+     "type": "u32",
+     "cond": "bs_version > 26"
+    },
+    {
+     "name": "flags",
+     "type": "u16",
+     "cond": "bs_version <= 26"
+    },
+    {
+     "name": "translation",
+     "type": "vec3"
+    },
+    {
+     "name": "rotation",
+     "type": "mat33"
+    },
+    {
+     "name": "scale",
+     "type": "f32"
+    },
+    {
+     "name": "velocity",
+     "type": "vec3",
+     "cond": "version <= 67240448"
+    },
+    {
+     "name": "num_properties",
+     "type": "u32",
+     "cond": "bs_version <= 34"
+    },
+    {
+     "name": "properties",
+     "type": "ref",
+     "length": "num_properties",
+     "cond": "bs_version <= 34"
+    },
+    {
+     "name": "collision_object",
+     "type": "ref"
+    }
+   ],
+   "note": "Same as the base's, written out here so this file stands on its own: bs_version 130 is above 34, so the property list is gone, and 20.2.0.7 is above 67240448, so the velocity vector is gone too. What is left is the flags, the transform and the collision object."
+  },
+  "NiNode": {
+   "inherit": "NiAVObject",
+   "fields": [
+    {
+     "name": "num_children",
+     "type": "u32"
+    },
+    {
+     "name": "children",
+     "type": "ref",
+     "length": "num_children"
+    },
+    {
+     "name": "num_effects",
+     "type": "u32",
+     "cond": "bs_version < 130"
+    },
+    {
+     "name": "effects",
+     "type": "ref",
+     "length": "num_effects",
+     "cond": "bs_version < 130"
+    }
+   ],
+   "note": "The node effects list is a pre-Fallout-4 field: nifgen's NiNode yields num_effects and effects only when bs_version < 130, and Fallout 4 (bs_version 130) drops it entirely."
+  },
+  "BSTriShape": {
+   "inherit": "NiAVObject",
+   "fields": [
+    {
+     "name": "bounding_sphere",
+     "type": "NiBound"
+    },
+    {
+     "name": "skin",
+     "type": "ref"
+    },
+    {
+     "name": "shader_property",
+     "type": "ref"
+    },
+    {
+     "name": "alpha_property",
+     "type": "ref"
+    },
+    {
+     "name": "vertex_desc",
+     "type": "u64"
+    },
+    {
+     "name": "num_triangles",
+     "type": "u32"
+    },
+    {
+     "name": "num_vertices",
+     "type": "u16"
+    },
+    {
+     "name": "data_size",
+     "type": "u32"
+    },
+    {
+     "name": "vertex_data",
+     "type": "bytes",
+     "length": "data_size - num_triangles * 6"
+    },
+    {
+     "name": "triangles",
+     "type": "triangle",
+     "length": "num_triangles"
+    }
+   ],
+   "note": "nif.xml's BSTriShape: Fallout 4 holds its vertices in the shape itself, in a packed format, where the original edition keeps them in a separate NiTriShapeData block. Measured: the data size is the vertex data's bytes plus the triangles' six bytes each, so the vertex data is the data size less the triangles. The vertex description's low nibble is the vertex's size in four-byte words, and its next nibbles are the word offsets of the UV, the normal, the tangent and the colour; bits 44 and up are the VertexAttribute flags that say which of those fields are present. The packed vertices themselves are read by the NIF reader, not by the schema: their layout is a function of the description, and the schema language has no way to say 'a field whose size another field decides'."
+  },
+  "BSDynamicTriShape": {
+   "inherit": "BSTriShape",
+   "fields": [
+    {
+     "name": "dynamic_data_size",
+     "type": "u32"
+    },
+    {
+     "name": "dynamic_vertex_data",
+     "type": "bytes",
+     "length": "dynamic_data_size"
+    }
+   ],
+   "note": "A BSTriShape whose vertices the engine updates every frame: the same packed vertex block, then the dynamic copy of it."
+  },
+  "BSFurnitureMarkerNode": {
+   "inherit": "NiNode",
+   "fields": [
+    {
+     "name": "num_positions",
+     "type": "u32"
+    },
+    {
+     "name": "positions",
+     "type": "BSFurnitureMarker",
+     "length": "num_positions"
+    }
+   ],
+   "note": "A node that marks where furniture's markers sit. Each marker is a name and a position and a rotation, which the base's own structs describe."
+  },
+  "BSConnectPoint__Parents": {
+   "inherit": "NiNode",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    }
+   ],
+   "note": "Written with two colons in the file's block type table; the schema language's block names cannot hold one, so the block type index is what identifies it."
+  },
+  "BSConnectPoint__Children": {
+   "inherit": "NiNode",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string"
+    }
+   ],
+   "note": "The child half of a connect point pair."
+  },
+  "BSLightingShaderProperty": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSLightingShaderProperty."
+  },
+  "BSPackedCombinedSharedGeomDataExtra": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block BSPackedCombinedSharedGeomDataExtra."
+  },
+  "BSMeshLODTriShape": {
+   "inherit": "BSTriShape",
+   "note": "Auto-defined Fallout 4 block BSMeshLODTriShape."
+  },
+  "bhkNPCollisionObject": {
+   "inherit": "bhkWorldObject",
+   "note": "Auto-defined Fallout 4 block bhkNPCollisionObject."
+  },
+  "bhkPhysicsSystem": {
+   "inherit": "bhkWorldObject",
+   "note": "Auto-defined Fallout 4 block bhkPhysicsSystem."
+  },
+  "BSEffectShaderProperty": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSEffectShaderProperty."
+  },
+  "BSSkin::BoneData": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block BSSkin::BoneData."
+  },
+  "BSSkin::Instance": {
+   "inherit": "NiObject",
+   "note": "Auto-defined Fallout 4 block BSSkin::Instance."
+  },
+  "BSSubIndexTriShape": {
+   "inherit": "BSTriShape",
+   "note": "Auto-defined Fallout 4 block BSSubIndexTriShape."
+  },
+  "BSEffectShaderPropertyFloatController": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSEffectShaderPropertyFloatController."
+  },
+  "BSConnectPoint::Parents": {
+   "inherit": "NiNode",
+   "note": "Auto-defined Fallout 4 block BSConnectPoint::Parents."
+  },
+  "BSConnectPoint::Children": {
+   "inherit": "NiNode",
+   "note": "Auto-defined Fallout 4 block BSConnectPoint::Children."
+  },
+  "BSPSysLODModifier": {
+   "inherit": "NiObject",
+   "note": "Auto-defined Fallout 4 block BSPSysLODModifier."
+  },
+  "BSPSysScaleModifier": {
+   "inherit": "NiObject",
+   "note": "Auto-defined Fallout 4 block BSPSysScaleModifier."
+  },
+  "BSBehaviorGraphExtraData": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block BSBehaviorGraphExtraData."
+  },
+  "BSLightingShaderPropertyFloatController": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSLightingShaderPropertyFloatController."
+  },
+  "BSEyeCenterExtraData": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block BSEyeCenterExtraData."
+  },
+  "BSEffectShaderPropertyColorController": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSEffectShaderPropertyColorController."
+  },
+  "BSPSysSubTexModifier": {
+   "inherit": "NiObject",
+   "note": "Auto-defined Fallout 4 block BSPSysSubTexModifier."
+  },
+  "BSPositionData": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block BSPositionData."
+  },
+  "BSClothExtraData": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block BSClothExtraData."
+  },
+  "NiStringsExtraData": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block NiStringsExtraData."
+  },
+  "BSLeafAnimNode": {
+   "inherit": "NiNode",
+   "note": "Auto-defined Fallout 4 block BSLeafAnimNode."
+  },
+  "BSNiAlphaPropertyTestRefController": {
+   "inherit": "NiTimeController",
+   "note": "Auto-defined Fallout 4 block BSNiAlphaPropertyTestRefController."
+  },
+  "bhkRagdollSystem": {
+   "inherit": "bhkWorldObject",
+   "note": "Auto-defined Fallout 4 block bhkRagdollSystem."
+  },
+  "BSPSysInheritVelocityModifier": {
+   "inherit": "NiObject",
+   "note": "Auto-defined Fallout 4 block BSPSysInheritVelocityModifier."
+  },
+  "NiLightRadiusController": {
+   "inherit": "NiTimeController",
+   "note": "Auto-defined Fallout 4 block NiLightRadiusController."
+  },
+  "BSProceduralLightningController": {
+   "inherit": "NiTimeController",
+   "note": "Auto-defined Fallout 4 block BSProceduralLightningController."
+  },
+  "BSLightingShaderPropertyColorController": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSLightingShaderPropertyColorController."
+  },
+  "BSLagBoneController": {
+   "inherit": "NiTimeController",
+   "note": "Auto-defined Fallout 4 block BSLagBoneController."
+  },
+  "NiSwitchNode": {
+   "inherit": "NiNode",
+   "note": "Auto-defined Fallout 4 block NiSwitchNode."
+  },
+  "BSBoneLODExtraData": {
+   "inherit": "NiExtraData",
+   "note": "Auto-defined Fallout 4 block BSBoneLODExtraData."
+  },
+  "BSPSysRecycleBoundModifier": {
+   "inherit": "NiObject",
+   "note": "Auto-defined Fallout 4 block BSPSysRecycleBoundModifier."
+  },
+  "BSSkyShaderProperty": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSSkyShaderProperty."
+  },
+  "BSWaterShaderProperty": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSWaterShaderProperty."
+  },
+  "BSLightingShaderPropertyUShortController": {
+   "inherit": "BSShaderProperty",
+   "note": "Auto-defined Fallout 4 block BSLightingShaderPropertyUShortController."
+  },
+  "BSTreeNode": {
+   "inherit": "NiNode",
+   "note": "Auto-defined Fallout 4 block BSTreeNode."
+  }
+ }
 }
