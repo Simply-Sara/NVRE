@@ -75,11 +75,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "mismatch",
-        "skyrimle": "verified",
-        "skyrimse": "verified"
+        "fo4": "not_started",
+        "skyrimle": "mismatch",
+        "skyrimse": "not_started"
       },
-      "evidence": "nifreencode over 306,674 files; fnv 20,542 files 0 mismatches; the failures are the S1-3 undefined types and the S1-4 shorts"
+      "evidence": "nifsample: fnv 537 files/16,982 blocks 0 mismatches; fo3 451/12,079 0 mismatches (3 unknown from S1-3); skyrimle 556/17,941 130 mismatches, all BSLightingShaderProperty. See steps/S1-findings.md"
     },
     {
       "id": "S1-2",
@@ -110,12 +110,12 @@
       "title": "No block is Short",
       "cells": {
         "fnv": "verified",
-        "fo3": "not_started",
+        "fo3": "verified",
         "fo4": "not_started",
-        "skyrimle": "not_started",
+        "skyrimle": "mismatch",
         "skyrimse": "not_started"
       },
-      "evidence": "nifreencode reports the short count by type per game; fnv 0 shorts, the others still running"
+      "evidence": "nifsample: fnv 0 short, fo3 0 short, skyrimle 130 short \u2014 all BSLightingShaderProperty consuming 112 of 120 or 128, an 8-byte shortfall"
     },
     {
       "id": "S1-5",
