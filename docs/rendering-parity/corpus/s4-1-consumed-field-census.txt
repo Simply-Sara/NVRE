@@ -1,0 +1,3809 @@
+============================================================
+Game: fnv
+============================================================
+Schema property types evaluated: 16
+
+Property: BSShaderLightingProperty (10 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+
+Property: BSShaderNoLightingProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+
+Property: BSShaderPPLightingProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: BSShaderProperty (9 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: Lighting30ShaderProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: NiAlphaProperty (6 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - threshold                      [READ]
+
+Property: NiFogProperty (7 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - fog_depth                      [IGNORED]
+  - fog_color                      [IGNORED]
+
+Property: NiMaterialProperty (11 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - ambient_color                  [IGNORED]
+  - diffuse_color                  [IGNORED]
+  - specular_color                 [IGNORED]
+  - emissive_color                 [READ]
+  - glossiness                     [READ]
+  - alpha                          [READ]
+  - emissive_mult                  [READ]
+
+Property: NiProperty (4 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+
+Property: NiShadeProperty (5 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiStencilProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - stencil_enabled                [IGNORED]
+  - stencil_function               [IGNORED]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+  - fail_action                    [IGNORED]
+  - z_fail_action                  [IGNORED]
+  - pass_action                    [IGNORED]
+  - draw_mode                      [READ]
+  - flags                          [READ]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+
+Property: NiTexturingProperty (41 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: SkyShaderProperty (12 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - sky_object_type                [IGNORED]
+
+Property: TallGrassShaderProperty (10 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - file_name                      [READ]
+
+Property: TileShaderProperty (11 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+
+Property: WaterShaderProperty (9 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+--- Summary for fnv ---
+  READ fields:       42
+  STRUCTURAL fields: 32
+  IGNORED fields:    121
+
+  Ignored fields backlog by property:
+    BSShaderLightingProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderNoLightingProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderPPLightingProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    BSShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    Lighting30ShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    NiAlphaProperty:
+      * num_extra_data
+      * extra_data
+    NiFogProperty:
+      * num_extra_data
+      * extra_data
+      * fog_depth
+      * fog_color
+    NiMaterialProperty:
+      * num_extra_data
+      * extra_data
+      * ambient_color
+      * diffuse_color
+      * specular_color
+    NiProperty:
+      * num_extra_data
+      * extra_data
+    NiShadeProperty:
+      * num_extra_data
+      * extra_data
+    NiStencilProperty:
+      * num_extra_data
+      * extra_data
+      * stencil_enabled
+      * stencil_function
+      * stencil_ref
+      * stencil_mask
+      * fail_action
+      * z_fail_action
+      * pass_action
+      * stencil_ref
+      * stencil_mask
+    NiTexturingProperty:
+      * num_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    SkyShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * sky_object_type
+    TallGrassShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    TileShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    WaterShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+
+============================================================
+Game: fo3
+============================================================
+Schema property types evaluated: 16
+
+Property: BSShaderLightingProperty (10 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+
+Property: BSShaderNoLightingProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+
+Property: BSShaderPPLightingProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: BSShaderProperty (9 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: Lighting30ShaderProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: NiAlphaProperty (6 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - threshold                      [READ]
+
+Property: NiFogProperty (7 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - fog_depth                      [IGNORED]
+  - fog_color                      [IGNORED]
+
+Property: NiMaterialProperty (11 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - ambient_color                  [IGNORED]
+  - diffuse_color                  [IGNORED]
+  - specular_color                 [IGNORED]
+  - emissive_color                 [READ]
+  - glossiness                     [READ]
+  - alpha                          [READ]
+  - emissive_mult                  [READ]
+
+Property: NiProperty (4 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+
+Property: NiShadeProperty (5 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiStencilProperty (15 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - stencil_enabled                [IGNORED]
+  - stencil_function               [IGNORED]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+  - fail_action                    [IGNORED]
+  - z_fail_action                  [IGNORED]
+  - pass_action                    [IGNORED]
+  - draw_mode                      [READ]
+  - flags                          [READ]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+
+Property: NiTexturingProperty (41 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: SkyShaderProperty (12 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - sky_object_type                [IGNORED]
+
+Property: TallGrassShaderProperty (10 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - file_name                      [READ]
+
+Property: TileShaderProperty (11 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+
+Property: WaterShaderProperty (9 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - extra_data                     [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+--- Summary for fo3 ---
+  READ fields:       42
+  STRUCTURAL fields: 32
+  IGNORED fields:    121
+
+  Ignored fields backlog by property:
+    BSShaderLightingProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderNoLightingProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderPPLightingProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    BSShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    Lighting30ShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    NiAlphaProperty:
+      * num_extra_data
+      * extra_data
+    NiFogProperty:
+      * num_extra_data
+      * extra_data
+      * fog_depth
+      * fog_color
+    NiMaterialProperty:
+      * num_extra_data
+      * extra_data
+      * ambient_color
+      * diffuse_color
+      * specular_color
+    NiProperty:
+      * num_extra_data
+      * extra_data
+    NiShadeProperty:
+      * num_extra_data
+      * extra_data
+    NiStencilProperty:
+      * num_extra_data
+      * extra_data
+      * stencil_enabled
+      * stencil_function
+      * stencil_ref
+      * stencil_mask
+      * fail_action
+      * z_fail_action
+      * pass_action
+      * stencil_ref
+      * stencil_mask
+    NiTexturingProperty:
+      * num_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    SkyShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * sky_object_type
+    TallGrassShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    TileShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    WaterShaderProperty:
+      * num_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+
+============================================================
+Game: skyrim
+============================================================
+Schema property types evaluated: 33
+
+Property: BSDistantTreeShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: BSEffectShaderProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - source_texture                 [READ]
+  - texture_clamp_mode             [IGNORED]
+  - lighting_influence             [IGNORED]
+  - env_map_min_lod                [IGNORED]
+  - unused_byte                    [IGNORED]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+  - refraction_power               [IGNORED]
+  - base_color                     [IGNORED]
+  - base_color_scale               [IGNORED]
+  - soft_falloff_depth             [IGNORED]
+  - greyscale_texture              [IGNORED]
+  - env_map_texture                [IGNORED]
+  - normal_texture                 [READ]
+  - env_mask_texture               [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - reflectance_texture            [IGNORED]
+  - lighting_texture               [IGNORED]
+  - emittance_color                [IGNORED]
+  - emit_gradient_texture          [IGNORED]
+  - luminance                      [IGNORED]
+
+Property: BSLightingShaderProperty (66 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_type                    [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - texture_set                    [READ]
+  - emissive_color                 [READ]
+  - emissive_multiple              [READ]
+  - root_material                  [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - alpha                          [READ]
+  - refraction_strength            [IGNORED]
+  - glossiness                     [READ]
+  - smoothness                     [READ]
+  - specular_color                 [IGNORED]
+  - specular_strength              [IGNORED]
+  - lighting_effect_1              [IGNORED]
+  - lighting_effect_2              [IGNORED]
+  - subsurface_rolloff             [IGNORED]
+  - rimlight_power                 [IGNORED]
+  - backlight_power                [IGNORED]
+  - grayscale_to_palette_scale     [IGNORED]
+  - fresnel_power                  [IGNORED]
+  - wetness                        [IGNORED]
+  - luminance                      [IGNORED]
+  - do_translucency                [IGNORED]
+  - translucency                   [IGNORED]
+  - has_texture_arrays             [IGNORED]
+  - num_texture_arrays             [IGNORED]
+  - texture_arrays                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - use_screen_space_reflections   [IGNORED]
+  - wetness_control_use_ssr        [IGNORED]
+  - skin_tint_color                [IGNORED]
+  - hair_tint_color                [IGNORED]
+  - skin_tint_color                [IGNORED]
+  - skin_tint_alpha                [IGNORED]
+  - hair_tint_color                [IGNORED]
+  - max_passes                     [IGNORED]
+  - scale                          [IGNORED]
+  - parallax_inner_layer_thickness [IGNORED]
+  - parallax_refraction_scale      [IGNORED]
+  - parallax_inner_layer_texture_scale [IGNORED]
+  - parallax_envmap_strength       [IGNORED]
+  - sparkle_parameters             [IGNORED]
+  - eye_cubemap_scale              [IGNORED]
+  - left_eye_reflection_center     [IGNORED]
+  - right_eye_reflection_center    [IGNORED]
+
+Property: BSShaderLightingProperty (13 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+
+Property: BSShaderNoLightingProperty (18 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+
+Property: BSShaderPPLightingProperty (14 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: BSShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: BSSkyShaderProperty (22 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - source_texture                 [READ]
+  - sky_object_type                [IGNORED]
+
+Property: BSWaterShaderProperty (21 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - water_shader_flags             [IGNORED]
+
+Property: DistantLODShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: HairShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: Lighting30ShaderProperty (14 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: NiAlphaProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - threshold                      [READ]
+  - unknown_short_1                [IGNORED]
+  - unknown_short_1                [IGNORED]
+  - unknown_int_2                  [IGNORED]
+
+Property: NiDitherProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiFogProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - fog_depth                      [IGNORED]
+  - fog_color                      [IGNORED]
+
+Property: NiMaterialProperty (15 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - ambient_color                  [IGNORED]
+  - diffuse_color                  [IGNORED]
+  - specular_color                 [IGNORED]
+  - emissive_color                 [READ]
+  - glossiness                     [READ]
+  - alpha                          [READ]
+  - emissive_mult                  [READ]
+
+Property: NiMultiTextureProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: NiProperty (7 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+
+Property: NiShadeProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiSpecularProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiStencilProperty (19 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - stencil_enabled                [IGNORED]
+  - stencil_function               [IGNORED]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+  - fail_action                    [IGNORED]
+  - z_fail_action                  [IGNORED]
+  - pass_action                    [IGNORED]
+  - draw_mode                      [READ]
+  - flags                          [READ]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+
+Property: NiTextureModeProperty (11 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown_ints                   [IGNORED]
+  - flags                          [READ]
+  - ps2_l                          [IGNORED]
+  - ps2_k                          [IGNORED]
+
+Property: NiTextureProperty (11 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown_ints_1                 [IGNORED]
+  - flags                          [READ]
+  - image                          [IGNORED]
+  - unknown_ints_2                 [IGNORED]
+
+Property: NiTexturingProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: NiTransparentProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown                        [IGNORED]
+
+Property: NiVertexColorProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - vertex_mode                    [IGNORED]
+  - lighting_mode                  [IGNORED]
+
+Property: NiWireframeProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiZBufferProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - function                       [IGNORED]
+  - unknown_qqspeed_uint           [IGNORED]
+
+Property: SkyShaderProperty (15 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - sky_object_type                [IGNORED]
+
+Property: TallGrassShaderProperty (13 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - file_name                      [READ]
+
+Property: TileShaderProperty (14 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+
+Property: VolumetricFogShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: WaterShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+--- Summary for skyrim ---
+  READ fields:       92
+  STRUCTURAL fields: 128
+  IGNORED fields:    342
+
+  Ignored fields backlog by property:
+    BSDistantTreeShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    BSEffectShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * texture_clamp_mode
+      * lighting_influence
+      * env_map_min_lod
+      * unused_byte
+      * refraction_power
+      * base_color
+      * base_color_scale
+      * soft_falloff_depth
+      * greyscale_texture
+      * env_map_texture
+      * env_mask_texture
+      * environment_map_scale
+      * reflectance_texture
+      * lighting_texture
+      * emittance_color
+      * emit_gradient_texture
+      * luminance
+    BSLightingShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * shader_flags_2
+      * shader_type
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * root_material
+      * texture_clamp_mode
+      * refraction_strength
+      * specular_color
+      * specular_strength
+      * lighting_effect_1
+      * lighting_effect_2
+      * subsurface_rolloff
+      * rimlight_power
+      * backlight_power
+      * grayscale_to_palette_scale
+      * fresnel_power
+      * wetness
+      * luminance
+      * do_translucency
+      * translucency
+      * has_texture_arrays
+      * num_texture_arrays
+      * texture_arrays
+      * environment_map_scale
+      * use_screen_space_reflections
+      * wetness_control_use_ssr
+      * skin_tint_color
+      * hair_tint_color
+      * skin_tint_color
+      * skin_tint_alpha
+      * hair_tint_color
+      * max_passes
+      * scale
+      * parallax_inner_layer_thickness
+      * parallax_refraction_scale
+      * parallax_inner_layer_texture_scale
+      * parallax_envmap_strength
+      * sparkle_parameters
+      * eye_cubemap_scale
+      * left_eye_reflection_center
+      * right_eye_reflection_center
+    BSShaderLightingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderNoLightingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderPPLightingProperty:
+      * num_extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    BSShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    BSSkyShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * sky_object_type
+    BSWaterShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * water_shader_flags
+    DistantLODShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    HairShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    Lighting30ShaderProperty:
+      * num_extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    NiAlphaProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_short_1
+      * unknown_short_1
+      * unknown_int_2
+    NiDitherProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiFogProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * fog_depth
+      * fog_color
+    NiMaterialProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * ambient_color
+      * diffuse_color
+      * specular_color
+    NiMultiTextureProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    NiProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiShadeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiSpecularProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiStencilProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * stencil_enabled
+      * stencil_function
+      * stencil_ref
+      * stencil_mask
+      * fail_action
+      * z_fail_action
+      * pass_action
+      * stencil_ref
+      * stencil_mask
+    NiTextureModeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_ints
+      * ps2_l
+      * ps2_k
+    NiTextureProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_ints_1
+      * image
+      * unknown_ints_2
+    NiTexturingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    NiTransparentProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown
+    NiVertexColorProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * vertex_mode
+      * lighting_mode
+    NiWireframeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiZBufferProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * function
+      * unknown_qqspeed_uint
+    SkyShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * sky_object_type
+    TallGrassShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    TileShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    VolumetricFogShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    WaterShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+
+============================================================
+Game: skyrimse
+============================================================
+Schema property types evaluated: 33
+
+Property: BSDistantTreeShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: BSEffectShaderProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - source_texture                 [READ]
+  - texture_clamp_mode             [IGNORED]
+  - lighting_influence             [IGNORED]
+  - env_map_min_lod                [IGNORED]
+  - unused_byte                    [IGNORED]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+  - refraction_power               [IGNORED]
+  - base_color                     [IGNORED]
+  - base_color_scale               [IGNORED]
+  - soft_falloff_depth             [IGNORED]
+  - greyscale_texture              [IGNORED]
+  - env_map_texture                [IGNORED]
+  - normal_texture                 [READ]
+  - env_mask_texture               [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - reflectance_texture            [IGNORED]
+  - lighting_texture               [IGNORED]
+  - emittance_color                [IGNORED]
+  - emit_gradient_texture          [IGNORED]
+  - luminance                      [IGNORED]
+
+Property: BSLightingShaderProperty (66 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_type                    [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - texture_set                    [READ]
+  - emissive_color                 [READ]
+  - emissive_multiple              [READ]
+  - root_material                  [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - alpha                          [READ]
+  - refraction_strength            [IGNORED]
+  - glossiness                     [READ]
+  - smoothness                     [READ]
+  - specular_color                 [IGNORED]
+  - specular_strength              [IGNORED]
+  - lighting_effect_1              [IGNORED]
+  - lighting_effect_2              [IGNORED]
+  - subsurface_rolloff             [IGNORED]
+  - rimlight_power                 [IGNORED]
+  - backlight_power                [IGNORED]
+  - grayscale_to_palette_scale     [IGNORED]
+  - fresnel_power                  [IGNORED]
+  - wetness                        [IGNORED]
+  - luminance                      [IGNORED]
+  - do_translucency                [IGNORED]
+  - translucency                   [IGNORED]
+  - has_texture_arrays             [IGNORED]
+  - num_texture_arrays             [IGNORED]
+  - texture_arrays                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - use_screen_space_reflections   [IGNORED]
+  - wetness_control_use_ssr        [IGNORED]
+  - skin_tint_color                [IGNORED]
+  - hair_tint_color                [IGNORED]
+  - skin_tint_color                [IGNORED]
+  - skin_tint_alpha                [IGNORED]
+  - hair_tint_color                [IGNORED]
+  - max_passes                     [IGNORED]
+  - scale                          [IGNORED]
+  - parallax_inner_layer_thickness [IGNORED]
+  - parallax_refraction_scale      [IGNORED]
+  - parallax_inner_layer_texture_scale [IGNORED]
+  - parallax_envmap_strength       [IGNORED]
+  - sparkle_parameters             [IGNORED]
+  - eye_cubemap_scale              [IGNORED]
+  - left_eye_reflection_center     [IGNORED]
+  - right_eye_reflection_center    [IGNORED]
+
+Property: BSShaderLightingProperty (13 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+
+Property: BSShaderNoLightingProperty (18 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+
+Property: BSShaderPPLightingProperty (14 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: BSShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: BSSkyShaderProperty (22 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - source_texture                 [READ]
+  - sky_object_type                [IGNORED]
+
+Property: BSWaterShaderProperty (21 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - water_shader_flags             [IGNORED]
+
+Property: DistantLODShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: HairShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: Lighting30ShaderProperty (14 fields)
+  - name                           [STRUCTURAL (n/a)]
+  - num_extra_data                 [IGNORED]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: NiAlphaProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - threshold                      [READ]
+  - unknown_short_1                [IGNORED]
+  - unknown_short_1                [IGNORED]
+  - unknown_int_2                  [IGNORED]
+
+Property: NiDitherProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiFogProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - fog_depth                      [IGNORED]
+  - fog_color                      [IGNORED]
+
+Property: NiMaterialProperty (15 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - ambient_color                  [IGNORED]
+  - diffuse_color                  [IGNORED]
+  - specular_color                 [IGNORED]
+  - emissive_color                 [READ]
+  - glossiness                     [READ]
+  - alpha                          [READ]
+  - emissive_mult                  [READ]
+
+Property: NiMultiTextureProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: NiProperty (7 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+
+Property: NiShadeProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiSpecularProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiStencilProperty (19 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - stencil_enabled                [IGNORED]
+  - stencil_function               [IGNORED]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+  - fail_action                    [IGNORED]
+  - z_fail_action                  [IGNORED]
+  - pass_action                    [IGNORED]
+  - draw_mode                      [READ]
+  - flags                          [READ]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+
+Property: NiTextureModeProperty (11 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown_ints                   [IGNORED]
+  - flags                          [READ]
+  - ps2_l                          [IGNORED]
+  - ps2_k                          [IGNORED]
+
+Property: NiTextureProperty (11 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown_ints_1                 [IGNORED]
+  - flags                          [READ]
+  - image                          [IGNORED]
+  - unknown_ints_2                 [IGNORED]
+
+Property: NiTexturingProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: NiTransparentProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown                        [IGNORED]
+
+Property: NiVertexColorProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - vertex_mode                    [IGNORED]
+  - lighting_mode                  [IGNORED]
+
+Property: NiWireframeProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiZBufferProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - function                       [IGNORED]
+  - unknown_qqspeed_uint           [IGNORED]
+
+Property: SkyShaderProperty (15 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - sky_object_type                [IGNORED]
+
+Property: TallGrassShaderProperty (13 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - file_name                      [READ]
+
+Property: TileShaderProperty (14 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+
+Property: VolumetricFogShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: WaterShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+--- Summary for skyrimse ---
+  READ fields:       92
+  STRUCTURAL fields: 128
+  IGNORED fields:    342
+
+  Ignored fields backlog by property:
+    BSDistantTreeShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    BSEffectShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * texture_clamp_mode
+      * lighting_influence
+      * env_map_min_lod
+      * unused_byte
+      * refraction_power
+      * base_color
+      * base_color_scale
+      * soft_falloff_depth
+      * greyscale_texture
+      * env_map_texture
+      * env_mask_texture
+      * environment_map_scale
+      * reflectance_texture
+      * lighting_texture
+      * emittance_color
+      * emit_gradient_texture
+      * luminance
+    BSLightingShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * shader_flags_2
+      * shader_type
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * root_material
+      * texture_clamp_mode
+      * refraction_strength
+      * specular_color
+      * specular_strength
+      * lighting_effect_1
+      * lighting_effect_2
+      * subsurface_rolloff
+      * rimlight_power
+      * backlight_power
+      * grayscale_to_palette_scale
+      * fresnel_power
+      * wetness
+      * luminance
+      * do_translucency
+      * translucency
+      * has_texture_arrays
+      * num_texture_arrays
+      * texture_arrays
+      * environment_map_scale
+      * use_screen_space_reflections
+      * wetness_control_use_ssr
+      * skin_tint_color
+      * hair_tint_color
+      * skin_tint_color
+      * skin_tint_alpha
+      * hair_tint_color
+      * max_passes
+      * scale
+      * parallax_inner_layer_thickness
+      * parallax_refraction_scale
+      * parallax_inner_layer_texture_scale
+      * parallax_envmap_strength
+      * sparkle_parameters
+      * eye_cubemap_scale
+      * left_eye_reflection_center
+      * right_eye_reflection_center
+    BSShaderLightingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderNoLightingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderPPLightingProperty:
+      * num_extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    BSShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    BSSkyShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * sky_object_type
+    BSWaterShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * water_shader_flags
+    DistantLODShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    HairShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    Lighting30ShaderProperty:
+      * num_extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    NiAlphaProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_short_1
+      * unknown_short_1
+      * unknown_int_2
+    NiDitherProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiFogProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * fog_depth
+      * fog_color
+    NiMaterialProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * ambient_color
+      * diffuse_color
+      * specular_color
+    NiMultiTextureProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    NiProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiShadeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiSpecularProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiStencilProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * stencil_enabled
+      * stencil_function
+      * stencil_ref
+      * stencil_mask
+      * fail_action
+      * z_fail_action
+      * pass_action
+      * stencil_ref
+      * stencil_mask
+    NiTextureModeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_ints
+      * ps2_l
+      * ps2_k
+    NiTextureProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_ints_1
+      * image
+      * unknown_ints_2
+    NiTexturingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    NiTransparentProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown
+    NiVertexColorProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * vertex_mode
+      * lighting_mode
+    NiWireframeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiZBufferProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * function
+      * unknown_qqspeed_uint
+    SkyShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * sky_object_type
+    TallGrassShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    TileShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    VolumetricFogShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    WaterShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+
+============================================================
+Game: fo4
+============================================================
+Schema property types evaluated: 33
+
+Property: BSDistantTreeShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: BSEffectShaderProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - source_texture                 [READ]
+  - texture_clamp_mode             [IGNORED]
+  - lighting_influence             [IGNORED]
+  - env_map_min_lod                [IGNORED]
+  - unused_byte                    [IGNORED]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+  - refraction_power               [IGNORED]
+  - base_color                     [IGNORED]
+  - base_color_scale               [IGNORED]
+  - soft_falloff_depth             [IGNORED]
+  - greyscale_texture              [IGNORED]
+  - env_map_texture                [IGNORED]
+  - normal_texture                 [READ]
+  - env_mask_texture               [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - reflectance_texture            [IGNORED]
+  - lighting_texture               [IGNORED]
+  - emittance_color                [IGNORED]
+  - emit_gradient_texture          [IGNORED]
+  - luminance                      [IGNORED]
+
+Property: BSLightingShaderProperty (66 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - shader_type                    [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - texture_set                    [READ]
+  - emissive_color                 [READ]
+  - emissive_multiple              [READ]
+  - root_material                  [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - alpha                          [READ]
+  - refraction_strength            [IGNORED]
+  - glossiness                     [READ]
+  - smoothness                     [READ]
+  - specular_color                 [IGNORED]
+  - specular_strength              [IGNORED]
+  - lighting_effect_1              [IGNORED]
+  - lighting_effect_2              [IGNORED]
+  - subsurface_rolloff             [IGNORED]
+  - rimlight_power                 [IGNORED]
+  - backlight_power                [IGNORED]
+  - grayscale_to_palette_scale     [IGNORED]
+  - fresnel_power                  [IGNORED]
+  - wetness                        [IGNORED]
+  - luminance                      [IGNORED]
+  - do_translucency                [IGNORED]
+  - translucency                   [IGNORED]
+  - has_texture_arrays             [IGNORED]
+  - num_texture_arrays             [IGNORED]
+  - texture_arrays                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - use_screen_space_reflections   [IGNORED]
+  - wetness_control_use_ssr        [IGNORED]
+  - skin_tint_color                [IGNORED]
+  - hair_tint_color                [IGNORED]
+  - skin_tint_color                [IGNORED]
+  - skin_tint_alpha                [IGNORED]
+  - hair_tint_color                [IGNORED]
+  - max_passes                     [IGNORED]
+  - scale                          [IGNORED]
+  - parallax_inner_layer_thickness [IGNORED]
+  - parallax_refraction_scale      [IGNORED]
+  - parallax_inner_layer_texture_scale [IGNORED]
+  - parallax_envmap_strength       [IGNORED]
+  - sparkle_parameters             [IGNORED]
+  - eye_cubemap_scale              [IGNORED]
+  - left_eye_reflection_center     [IGNORED]
+  - right_eye_reflection_center    [IGNORED]
+
+Property: BSShaderLightingProperty (13 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+
+Property: BSShaderNoLightingProperty (18 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - falloff_start_angle            [READ]
+  - falloff_stop_angle             [READ]
+  - falloff_start_opacity          [READ]
+  - falloff_stop_opacity           [READ]
+
+Property: BSShaderPPLightingProperty (18 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: BSShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: BSSkyShaderProperty (22 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - source_texture                 [READ]
+  - sky_object_type                [IGNORED]
+
+Property: BSWaterShaderProperty (21 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - shader_flags_1                 [READ]
+  - shader_flags_2                 [IGNORED]
+  - num_sf1                        [IGNORED]
+  - num_sf2                        [IGNORED]
+  - sf1                            [IGNORED]
+  - sf2                            [IGNORED]
+  - uv_offset                      [IGNORED]
+  - uv_scale                       [IGNORED]
+  - water_shader_flags             [IGNORED]
+
+Property: DistantLODShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: HairShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: Lighting30ShaderProperty (18 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - texture_set                    [READ]
+  - refraction_strength            [IGNORED]
+  - refraction_fire_period         [IGNORED]
+  - parallax_max_passes            [IGNORED]
+  - parallax_scale                 [IGNORED]
+
+Property: NiAlphaProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - threshold                      [READ]
+  - unknown_short_1                [IGNORED]
+  - unknown_short_1                [IGNORED]
+  - unknown_int_2                  [IGNORED]
+
+Property: NiDitherProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiFogProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - fog_depth                      [IGNORED]
+  - fog_color                      [IGNORED]
+
+Property: NiMaterialProperty (15 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - ambient_color                  [IGNORED]
+  - diffuse_color                  [IGNORED]
+  - specular_color                 [IGNORED]
+  - emissive_color                 [READ]
+  - glossiness                     [READ]
+  - alpha                          [READ]
+  - emissive_mult                  [READ]
+
+Property: NiMultiTextureProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: NiProperty (7 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+
+Property: NiShadeProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiSpecularProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiStencilProperty (19 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - stencil_enabled                [IGNORED]
+  - stencil_function               [IGNORED]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+  - fail_action                    [IGNORED]
+  - z_fail_action                  [IGNORED]
+  - pass_action                    [IGNORED]
+  - draw_mode                      [READ]
+  - flags                          [READ]
+  - stencil_ref                    [IGNORED]
+  - stencil_mask                   [IGNORED]
+
+Property: NiTextureModeProperty (11 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown_ints                   [IGNORED]
+  - flags                          [READ]
+  - ps2_l                          [IGNORED]
+  - ps2_k                          [IGNORED]
+
+Property: NiTextureProperty (11 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown_ints_1                 [IGNORED]
+  - flags                          [READ]
+  - image                          [IGNORED]
+  - unknown_ints_2                 [IGNORED]
+
+Property: NiTexturingProperty (45 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - flags                          [READ]
+  - apply_mode                     [IGNORED]
+  - texture_count                  [IGNORED]
+  - has_base_texture               [IGNORED]
+  - base_texture                   [READ]
+  - has_dark_texture               [IGNORED]
+  - dark_texture                   [IGNORED]
+  - has_detail_texture             [IGNORED]
+  - detail_texture                 [IGNORED]
+  - has_gloss_texture              [IGNORED]
+  - gloss_texture                  [IGNORED]
+  - has_glow_texture               [IGNORED]
+  - glow_texture                   [READ]
+  - has_bump_map_texture           [IGNORED]
+  - bump_map_texture               [IGNORED]
+  - bump_map_luma_scale            [IGNORED]
+  - bump_map_luma_offset           [IGNORED]
+  - bump_map_matrix                [IGNORED]
+  - has_normal_texture             [IGNORED]
+  - normal_texture                 [READ]
+  - has_parallax_texture           [IGNORED]
+  - parallax_texture               [IGNORED]
+  - parallax_offset                [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - has_decal_0_texture            [IGNORED]
+  - decal_0_texture                [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - has_decal_1_texture            [IGNORED]
+  - decal_1_texture                [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - has_decal_2_texture            [IGNORED]
+  - decal_2_texture                [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - has_decal_3_texture            [IGNORED]
+  - decal_3_texture                [IGNORED]
+  - num_shader_textures            [IGNORED]
+  - shader_textures                [IGNORED]
+
+Property: NiTransparentProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - unknown                        [IGNORED]
+
+Property: NiVertexColorProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - vertex_mode                    [IGNORED]
+  - lighting_mode                  [IGNORED]
+
+Property: NiWireframeProperty (8 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+
+Property: NiZBufferProperty (10 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - function                       [IGNORED]
+  - unknown_qqspeed_uint           [IGNORED]
+
+Property: SkyShaderProperty (15 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+  - sky_object_type                [IGNORED]
+
+Property: TallGrassShaderProperty (13 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - file_name                      [READ]
+
+Property: TileShaderProperty (14 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+  - texture_clamp_mode             [IGNORED]
+  - file_name                      [READ]
+
+Property: VolumetricFogShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+Property: WaterShaderProperty (12 fields)
+  - shader_type                    [IGNORED]
+  - name                           [STRUCTURAL (n/a)]
+  - legacy_extra_data              [IGNORED]
+  - extra_data                     [IGNORED]
+  - num_extra_data_list            [STRUCTURAL (n/a)]
+  - extra_data_list                [STRUCTURAL (n/a)]
+  - controller                     [STRUCTURAL (n/a)]
+  - flags                          [READ]
+  - shader_type                    [IGNORED]
+  - shader_flags                   [READ]
+  - shader_flags_2                 [IGNORED]
+  - environment_map_scale          [IGNORED]
+
+--- Summary for fo4 ---
+  READ fields:       92
+  STRUCTURAL fields: 132
+  IGNORED fields:    346
+
+  Ignored fields backlog by property:
+    BSDistantTreeShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    BSEffectShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * texture_clamp_mode
+      * lighting_influence
+      * env_map_min_lod
+      * unused_byte
+      * refraction_power
+      * base_color
+      * base_color_scale
+      * soft_falloff_depth
+      * greyscale_texture
+      * env_map_texture
+      * env_mask_texture
+      * environment_map_scale
+      * reflectance_texture
+      * lighting_texture
+      * emittance_color
+      * emit_gradient_texture
+      * luminance
+    BSLightingShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * shader_flags_2
+      * shader_type
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * root_material
+      * texture_clamp_mode
+      * refraction_strength
+      * specular_color
+      * specular_strength
+      * lighting_effect_1
+      * lighting_effect_2
+      * subsurface_rolloff
+      * rimlight_power
+      * backlight_power
+      * grayscale_to_palette_scale
+      * fresnel_power
+      * wetness
+      * luminance
+      * do_translucency
+      * translucency
+      * has_texture_arrays
+      * num_texture_arrays
+      * texture_arrays
+      * environment_map_scale
+      * use_screen_space_reflections
+      * wetness_control_use_ssr
+      * skin_tint_color
+      * hair_tint_color
+      * skin_tint_color
+      * skin_tint_alpha
+      * hair_tint_color
+      * max_passes
+      * scale
+      * parallax_inner_layer_thickness
+      * parallax_refraction_scale
+      * parallax_inner_layer_texture_scale
+      * parallax_envmap_strength
+      * sparkle_parameters
+      * eye_cubemap_scale
+      * left_eye_reflection_center
+      * right_eye_reflection_center
+    BSShaderLightingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderNoLightingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    BSShaderPPLightingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    BSShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    BSSkyShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * sky_object_type
+    BSWaterShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * shader_flags_2
+      * num_sf1
+      * num_sf2
+      * sf1
+      * sf2
+      * uv_offset
+      * uv_scale
+      * water_shader_flags
+    DistantLODShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    HairShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    Lighting30ShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * refraction_strength
+      * refraction_fire_period
+      * parallax_max_passes
+      * parallax_scale
+    NiAlphaProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_short_1
+      * unknown_short_1
+      * unknown_int_2
+    NiDitherProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiFogProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * fog_depth
+      * fog_color
+    NiMaterialProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * ambient_color
+      * diffuse_color
+      * specular_color
+    NiMultiTextureProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    NiProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiShadeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiSpecularProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiStencilProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * stencil_enabled
+      * stencil_function
+      * stencil_ref
+      * stencil_mask
+      * fail_action
+      * z_fail_action
+      * pass_action
+      * stencil_ref
+      * stencil_mask
+    NiTextureModeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_ints
+      * ps2_l
+      * ps2_k
+    NiTextureProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown_ints_1
+      * image
+      * unknown_ints_2
+    NiTexturingProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * apply_mode
+      * texture_count
+      * has_base_texture
+      * has_dark_texture
+      * dark_texture
+      * has_detail_texture
+      * detail_texture
+      * has_gloss_texture
+      * gloss_texture
+      * has_glow_texture
+      * has_bump_map_texture
+      * bump_map_texture
+      * bump_map_luma_scale
+      * bump_map_luma_offset
+      * bump_map_matrix
+      * has_normal_texture
+      * has_parallax_texture
+      * parallax_texture
+      * parallax_offset
+      * has_decal_0_texture
+      * has_decal_0_texture
+      * decal_0_texture
+      * has_decal_1_texture
+      * has_decal_1_texture
+      * decal_1_texture
+      * has_decal_2_texture
+      * has_decal_2_texture
+      * decal_2_texture
+      * has_decal_3_texture
+      * has_decal_3_texture
+      * decal_3_texture
+      * num_shader_textures
+      * shader_textures
+    NiTransparentProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * unknown
+    NiVertexColorProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * vertex_mode
+      * lighting_mode
+    NiWireframeProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+    NiZBufferProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * function
+      * unknown_qqspeed_uint
+    SkyShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+      * sky_object_type
+    TallGrassShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    TileShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+      * texture_clamp_mode
+    VolumetricFogShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+    WaterShaderProperty:
+      * shader_type
+      * legacy_extra_data
+      * extra_data
+      * shader_type
+      * shader_flags_2
+      * environment_map_scale
+

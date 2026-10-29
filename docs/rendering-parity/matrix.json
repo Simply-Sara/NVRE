@@ -25,25 +25,25 @@
       "id": "S0-2",
       "title": "Loose file beats archive; last archive in list order wins",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no test"
+      "evidence": "crates/nvre-vfs::tests::the_archive_opened_last_wins and a_loose_file_beats_every_archive"
     },
     {
       "id": "S0-3",
       "title": "Computed load order equals the game's own",
       "cells": {
         "fnv": "verified",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "crates/nvre-editor/tests/plugin_order.rs"
+      "evidence": "crates/nvre-editor/tests/plugin_order.rs::every_game_orders_masters_by_their_dependencies and every_game_finds_its_own_order_file"
     },
     {
       "id": "S0-4",
@@ -301,13 +301,13 @@
       "id": "S4-1",
       "title": "The consumed-field census",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no such checker exists"
+      "evidence": "crates/nvre-editor/examples/fieldcensus.rs -> docs/rendering-parity/corpus/s4-1-consumed-field-census.txt"
     },
     {
       "id": "S4-2",
