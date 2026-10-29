@@ -122,8 +122,13 @@ impl<'a> Reader<'a> {
 /// The format is a sign bit, a five-bit exponent and a ten-bit mantissa. The
 /// exponent's bias is 15, and the two exponents either side of it are the
 /// subnormals and the infinities.
+///
+/// A NaN keeps its payload, so that the half it was read from can be
+/// written back as the same half: a NIF's vertex data holds NaNs, and a
+/// NaN that comes back as a different NaN is a file that no longer
+/// re-encodes to the same bytes.
 pub fn half_to_f32(bits: u16) -> f32 {
-    let sign = (bits >> 15) & 1;
+    let sign = ((bits >> 15) & 1) as u32;
     let exp = ((bits >> 10) & 0x1F) as i32;
     let mant = (bits & 0x03FF) as i32;
 
@@ -138,18 +143,61 @@ pub fn half_to_f32(bits: u16) -> f32 {
     } else if exp == 0x1F {
         // An infinity, or a NaN.
         if mant == 0 {
-            f32::INFINITY
+            if sign == 1 {
+                f32::NEG_INFINITY
+            } else {
+                f32::INFINITY
+            }
         } else {
-            f32::NAN
+            // A NaN, with its payload carried into the wider format's
+            // payload, so that it survives the trip back.
+            f32::from_bits((sign << 31) | 0x7F80_0000 | ((mant as u32) << 13))
         }
     } else {
         (1.0 + (mant as f32) / 1024.0) * (2.0f32).powi(exp - 15)
     };
-    if sign == 1 {
+    if sign == 1 && exp != 0x1F {
         -value
     } else {
         value
     }
+}
+
+/// A 16-bit float, widened to the 64-bit float the value type holds.
+///
+/// A NaN is the one case where widening loses something: a signalling
+/// NaN is quieted on the way, and the quieting sets the bit that the
+/// payload's top bit would have been. So a NaN is widened by hand, with
+/// its payload kept where a narrowing will not lose it.
+pub fn half_bits_to_f64(bits: u16) -> f64 {
+    let exp = (bits >> 10) & 0x1F;
+    let mant = bits & 0x03FF;
+    if exp == 0x1F && mant != 0 {
+        return nan_half(bits);
+    }
+    half_to_f32(bits) as f64
+}
+
+/// The 64-bit float a NaN half becomes.
+///
+/// The half's ten payload bits are kept in the wider format's mantissa,
+/// at the top, and the quiet bit is set so that the value is never a
+/// signalling NaN. The inverse is [`half_from_nan`].
+pub fn nan_half(bits: u16) -> f64 {
+    let sign = ((bits as u64 >> 15) & 1) << 63;
+    let payload = (bits as u64) & 0x3FF;
+    f64::from_bits(sign | 0x7FF8_0000_0000_0000 | (1 << 51) | (payload << 41))
+}
+
+/// The half a NaN came from.
+///
+/// The inverse of [`nan_half`]: the payload is taken from where
+/// [`nan_half`] put it, and the quiet bit is dropped.
+pub fn half_from_nan(v: f64) -> u16 {
+    let bits = v.to_bits();
+    let sign = ((bits >> 48) & 0x8000) as u16;
+    let payload = ((bits >> 41) & 0x3FF) as u16;
+    sign | 0x7C00 | payload
 }
 
 /// A 32-bit float, narrowed to a 16-bit float.
@@ -164,8 +212,15 @@ pub fn f32_to_half(value: f32) -> u16 {
 
     if exp == 0xFF {
         // An infinity, or a NaN.
-        let m = if mant != 0 { 0x200 } else { 0 };
-        return sign | 0x7C00 | m;
+        if mant == 0 {
+            return sign | 0x7C00;
+        }
+        // A NaN. Its payload is carried down to the half's payload, so
+        // that the half it was read from comes back as the same half: a
+        // NIF's vertex data holds NaNs, and a NaN that changes is a file
+        // that no longer re-encodes to the same bytes.
+        let payload = (mant >> 13).max(1);
+        return sign | 0x7C00 | (payload as u16 & 0x03FF);
     }
 
     // The exponent in the half's terms, and how far it has to move.
@@ -252,7 +307,6 @@ pub fn read_prim(
         }
         Prim::Ref => Value::Ref(r.reference()?),
         Prim::Ptr => Value::Ref(r.reference()?),
-        Prim::HFloat => Value::Num(r.f16()? as f64),
         Prim::Vec2 => {
             let a = r.f32()?;
             let b = r.f32()?;
@@ -326,24 +380,52 @@ pub fn read_prim(
             let len = r.int(4, false)? as usize;
             Value::Str(r.string_n(len)?)
         }
+        Prim::SizedString16 => {
+            let len = r.int(2, false)? as usize;
+            Value::Str(r.string_n(len)?)
+        }
         Prim::Bytes => {
             let len = r.int(4, false)? as usize;
             Value::Bytes(r.bytes(len)?.to_vec())
         }
+        Prim::HFloat => {
+            let bits = r.int(2, false)? as u16;
+            Value::Num(crate::codec::half_bits_to_f64(bits))
+        }
         Prim::HalfVec2 => {
-            let a = r.f16()?;
-            let b = r.f16()?;
-            Value::List(vec![Value::Num(a as f64), Value::Num(b as f64)])
+            let a = r.int(2, false)? as u16;
+            let b = r.int(2, false)? as u16;
+            Value::List(vec![
+                Value::Num(crate::codec::half_bits_to_f64(a)),
+                Value::Num(crate::codec::half_bits_to_f64(b)),
+            ])
         }
         Prim::HalfVec3 => {
-            let a = r.f16()?;
-            let b = r.f16()?;
-            let c = r.f16()?;
+            let a = r.int(2, false)? as u16;
+            let b = r.int(2, false)? as u16;
+            let c = r.int(2, false)? as u16;
             Value::List(vec![
-                Value::Num(a as f64),
-                Value::Num(b as f64),
-                Value::Num(c as f64),
+                Value::Num(crate::codec::half_bits_to_f64(a)),
+                Value::Num(crate::codec::half_bits_to_f64(b)),
+                Value::Num(crate::codec::half_bits_to_f64(c)),
             ])
+        }
+        Prim::HalfVec4 => {
+            let a = r.int(2, false)? as u16;
+            let b = r.int(2, false)? as u16;
+            let c = r.int(2, false)? as u16;
+            let d = r.int(2, false)? as u16;
+            Value::List(vec![
+                Value::Num(crate::codec::half_bits_to_f64(a)),
+                Value::Num(crate::codec::half_bits_to_f64(b)),
+                Value::Num(crate::codec::half_bits_to_f64(c)),
+                Value::Num(crate::codec::half_bits_to_f64(d)),
+            ])
+        }
+        Prim::TexCoord => {
+            let a = r.f32()?;
+            let b = r.f32()?;
+            Value::List(vec![Value::Num(a as f64), Value::Num(b as f64)])
         }
         Prim::Quat => {
             // A quaternion is stored w, x, y, z.
@@ -359,13 +441,35 @@ pub fn read_prim(
             ])
         }
         Prim::ByteVec3 => {
+            // Three bytes, each a value in the range -1 to 1: a vertex's
+            // normal or tangent, as the format stores them.
             let b = r.bytes(3)?;
-            Value::List(b.iter().map(|&x| Value::Num(x as f64)).collect())
+            Value::List(
+                b.iter()
+                    .map(|&x| Value::Num(x as f64 / 127.5 - 1.0))
+                    .collect(),
+            )
+        }
+        Prim::U16Vec3 => {
+            let a = r.int(2, false)?;
+            let b = r.int(2, false)?;
+            let c = r.int(2, false)?;
+            Value::List(vec![
+                Value::Num(a as f64),
+                Value::Num(b as f64),
+                Value::Num(c as f64),
+            ])
         }
         Prim::NormByte => {
-            // A byte holding a signed value: -128 to 127 mapped to -1.0 to 1.0.
-            let b = r.bytes(1)?[0] as i8;
-            Value::Num(b as f64 / 127.0)
+            // A byte holding a value in the range -1 to 1.
+            //
+            // The byte is unsigned: 0 is -1 and 255 is 1, and the scale is
+            // 127.5 rather than 127, so that the whole range of the byte
+            // maps onto the whole range of the float. The scale is what
+            // makes the round trip exact — a value written back from
+            // `b / 127.5 - 1` is the byte it came from.
+            let b = r.bytes(1)?[0];
+            Value::Num(b as f64 / 127.5 - 1.0)
         }
         Prim::Mat22 => {
             let mut v = Vec::with_capacity(4);
@@ -417,13 +521,49 @@ mod tests {
         for bits in 0u16..=0xFFFF {
             let value = half_to_f32(bits);
             let back = f32_to_half(value);
-            // A NaN is not equal to itself, so it is checked by its bits.
-            if value.is_nan() {
-                assert!(half_to_f32(back).is_nan(), "{bits:#06x} became {back:#06x}");
-            } else {
-                assert_eq!(back, bits, "{bits:#06x} became {back:#06x}");
+            // The round trip is by the bits: a NaN is not equal to itself,
+            // and a NaN's payload has to survive too, or a file that holds
+            // one no longer re-encodes to the same bytes.
+            assert_eq!(back, bits, "{bits:#06x} became {back:#06x}");
+        }
+    }
+
+    #[test]
+    fn a_half_float_nan_keeps_its_payload() {
+        // A NaN with a payload, and one without: both come back as the
+        // same half.
+        for bits in [0x7E00u16, 0x7FFF, 0xFE00, 0xFFFF] {
+            let value = half_to_f32(bits);
+            assert!(value.is_nan(), "{bits:#06x} is not a NaN");
+            assert_eq!(f32_to_half(value), bits, "{bits:#06x} changed");
+        }
+    }
+
+    #[test]
+    fn a_half_float_nan_survives_the_value_type() {
+        // Every NaN half, through the 64-bit float the value type holds.
+        //
+        // A signalling NaN is quieted on the way from the half to the
+        // 32-bit float, and the quieting takes the bit the payload's top
+        // bit would have been. So the payload is kept by hand, and every
+        // NaN half comes back as itself.
+        for bits in 0x7C01u16..=0x7FFF {
+            for bits in [bits, bits | 0x8000] {
+                let value = half_bits_to_f64(bits);
+                assert!(value.is_nan(), "{bits:#06x} is not a NaN");
+                assert_eq!(half_from_nan(value), bits, "{bits:#06x} changed");
             }
         }
+    }
+
+    #[test]
+    fn a_half_float_infinity_keeps_its_sign() {
+        assert!(half_to_f32(0x7C00).is_infinite());
+        assert!(half_to_f32(0x7C00).is_sign_positive());
+        assert!(half_to_f32(0xFC00).is_infinite());
+        assert!(half_to_f32(0xFC00).is_sign_negative());
+        assert_eq!(f32_to_half(f32::INFINITY), 0x7C00);
+        assert_eq!(f32_to_half(f32::NEG_INFINITY), 0xFC00);
     }
 
     #[test]

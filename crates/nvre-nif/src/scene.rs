@@ -196,7 +196,7 @@ pub struct SceneObject {
 }
 
 /// The blocks that are a shape.
-pub const SHAPE_TYPES: [&str; 5] = [
+pub const SHAPE_TYPES: [&str; 6] = [
     "NiTriShape",
     "NiTriStrips",
     "BSSegmentedTriShape",
@@ -205,6 +205,9 @@ pub const SHAPE_TYPES: [&str; 5] = [
     // itself, in a packed format, where the original edition keeps them in
     // a separate block.
     "BSTriShape",
+    // Fallout 4's shape block: it is a `BSTriShape` with its triangles
+    // split into segments, one per body part or LOD level.
+    "BSSubIndexTriShape",
 ];
 
 /// The blocks that carry a shape's geometry.

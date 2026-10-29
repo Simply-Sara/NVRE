@@ -121,7 +121,7 @@
           "name": "sizes",
           "type": "f32",
           "length": "num_vertices",
-          "cond": "has_sizes && version != 0x14020007"
+          "cond": "has_sizes && (version != 0x14020007 || bs_version >= 83)"
         },
         {
           "name": "has_rotations",
@@ -131,7 +131,7 @@
           "name": "rotations",
           "type": "quat",
           "length": "num_vertices",
-          "cond": "has_rotations && version != 0x14020007"
+          "cond": "has_rotations && (version != 0x14020007 || bs_version >= 83)"
         },
         {
           "name": "has_rotation_angles",
@@ -151,7 +151,7 @@
           "name": "rotation_axes",
           "type": "vec3",
           "length": "num_vertices",
-          "cond": "has_rotation_axes && version != 0x14020007"
+          "cond": "has_rotation_axes && (version != 0x14020007 || bs_version >= 83)"
         },
         {
           "name": "has_texture_indices",
@@ -166,38 +166,38 @@
         {
           "name": "num_subtexture_offsets",
           "type": "u32",
-          "cond": "version == 0x14020007 && bs_version > 34"
+          "cond": "version == 0x14020007 && bs_version > 34 && bs_version < 130"
         },
         {
           "name": "subtexture_offsets",
           "type": "vec4",
           "length": "num_subtexture_offsets",
-          "cond": "version == 0x14020007"
+          "cond": "version == 0x14020007 && bs_version < 130"
         },
         {
           "name": "aspect_ratio",
           "type": "f32",
-          "cond": "bs_version > 34"
+          "cond": "bs_version > 34 && bs_version < 130"
         },
         {
           "name": "aspect_flags",
           "type": "u16",
-          "cond": "bs_version > 34"
+          "cond": "bs_version > 34 && bs_version < 130"
         },
         {
           "name": "speed_to_aspect_aspect_2",
           "type": "f32",
-          "cond": "bs_version > 34"
+          "cond": "bs_version > 34 && bs_version < 130"
         },
         {
           "name": "speed_to_aspect_speed_1",
           "type": "f32",
-          "cond": "bs_version > 34"
+          "cond": "bs_version > 34 && bs_version < 130"
         },
         {
           "name": "speed_to_aspect_speed_2",
           "type": "f32",
-          "cond": "bs_version > 34"
+          "cond": "bs_version > 34 && bs_version < 130"
         }
       ],
       "confidence": "documented",
@@ -210,7 +210,7 @@
           "name": "particle_info",
           "type": "NiParticleInfo",
           "length": "num_vertices",
-          "cond": "version != 0x14020007"
+          "cond": "version != 0x14020007 || bs_version >= 83"
         },
         {
           "name": "has_rotation_speeds",
@@ -220,7 +220,7 @@
           "name": "rotation_speeds",
           "type": "f32",
           "length": "num_vertices",
-          "cond": "has_rotation_speeds && version != 0x14020007"
+          "cond": "has_rotation_speeds && (version != 0x14020007 || bs_version >= 83)"
         },
         {
           "name": "num_added_particles",
@@ -263,6 +263,26 @@
       "inherit": "NiParticles",
       "fields": [
         {
+          "name": "far_begin",
+          "type": "u16",
+          "cond": "bs_version > 34 && bs_version < 130"
+        },
+        {
+          "name": "far_end",
+          "type": "u16",
+          "cond": "bs_version > 34 && bs_version < 130"
+        },
+        {
+          "name": "near_begin",
+          "type": "u16",
+          "cond": "bs_version > 34 && bs_version < 130"
+        },
+        {
+          "name": "near_end",
+          "type": "u16",
+          "cond": "bs_version > 34 && bs_version < 130"
+        },
+        {
           "name": "world_space",
           "type": "bool"
         },
@@ -277,7 +297,7 @@
         }
       ],
       "confidence": "documented",
-      "note": "nif.xml <niobject name=\"NiParticleSystem\">; its Skyrim/SSE/FO76 members do not occur at bs_version <= 34."
+      "note": "nif.xml: Skyrim and Fallout 4 (bs_version > 34) add four fade distance bounds."
     },
     "BSStripParticleSystem": {
       "inherit": "NiParticleSystem",

@@ -1,497 +1,498 @@
 {
- "format": "fnv.nif.schema/1",
- "_comment": "Skyrim Special Edition's own NIF layouts. Not yet measured: the Special Edition's archives are BSA v105 and the editor's VFS reads v104 only, so its meshes are not reachable yet.",
- "blocks": {
-  "bhkCompressedMeshShape": {
-   "inherit": "bhkShape",
-   "fields": [
-    {
-     "name": "target",
-     "type": "ptr"
+  "_comment": "Skyrim Special Edition's own NIF layouts. Not yet measured: the Special Edition's archives are BSA v105 and the editor's VFS reads v104 only, so its meshes are not reachable yet.",
+  "blocks": {
+    "BSDynamicTriShape": {
+      "fields": [
+        {
+          "name": "dynamic_data_size",
+          "type": "u32"
+        },
+        {
+          "length": "dynamic_data_size",
+          "name": "dynamic_vertex_data",
+          "type": "bytes"
+        }
+      ],
+      "inherit": "BSTriShape"
     },
-    {
-     "name": "user_data",
-     "type": "u32"
+    "BSFurnitureMarkerNode": {
+      "fields": [],
+      "inherit": "BSFurnitureMarker",
+      "note": "nifgen's BSFurnitureMarkerNode. It is a furniture marker, not a node: it carries a name and the positions, with no children and no extra-data list."
     },
-    {
-     "name": "radius",
-     "type": "f32"
+    "BSTriShape": {
+      "fields": [
+        {
+          "name": "bounding_sphere",
+          "type": "NiBound"
+        },
+        {
+          "name": "skin",
+          "type": "ref"
+        },
+        {
+          "name": "shader_property",
+          "type": "ref"
+        },
+        {
+          "name": "alpha_property",
+          "type": "ref"
+        },
+        {
+          "name": "vertex_desc",
+          "type": "u64"
+        },
+        {
+          "name": "num_triangles",
+          "type": "u16"
+        },
+        {
+          "name": "num_vertices",
+          "type": "u16"
+        },
+        {
+          "name": "data_size",
+          "type": "u32"
+        },
+        {
+          "cond": "data_size > 0",
+          "length": "data_size - num_triangles * 6",
+          "name": "vertex_data",
+          "type": "bytes"
+        },
+        {
+          "cond": "data_size > 0",
+          "length": "num_triangles",
+          "name": "triangles",
+          "type": "triangle"
+        },
+        {
+          "name": "particle_data_size",
+          "type": "u32"
+        },
+        {
+          "cond": "particle_data_size > 0",
+          "length": "particle_data_size * 2",
+          "name": "particle_data",
+          "type": "bytes"
+        }
+      ],
+      "inherit": "NiAVObject",
+      "note": "nif.xml's BSTriShape: the Special Edition holds its vertices in the shape itself, in a packed format, where the original edition keeps them in a separate NiTriShapeData block. Measured: the data size is the vertex data's bytes plus the triangles' six bytes each, so the vertex data is the data size less the triangles; a word follows the triangles. The vertex description's low nibble is the vertex's size in four-byte words, and its next nibbles are the word offsets of the UV, the normal, the tangent and the colour. The packed vertices themselves are read by the NIF reader, not by the schema: their layout is a function of the description, and the schema language has no way to say 'a field whose size another field decides'."
     },
-    {
-     "name": "unknown_float_1",
-     "type": "f32"
+    "NiAVObject": {
+      "abstract": true,
+      "fields": [
+        {
+          "name": "flags",
+          "type": "u32"
+        },
+        {
+          "name": "translation",
+          "type": "vec3"
+        },
+        {
+          "name": "rotation",
+          "type": "mat33"
+        },
+        {
+          "name": "scale",
+          "type": "f32"
+        },
+        {
+          "name": "collision_object",
+          "type": "ref"
+        }
+      ],
+      "inherit": "NiObjectNET",
+      "note": "The Special Edition's AV object. Like the original edition's, it has no properties array; the two are otherwise the same."
     },
-    {
-     "name": "scale",
-     "type": "vec4"
+    "NiGeometryData": {
+      "abstract": true,
+      "fields": [
+        {
+          "name": "group_id",
+          "type": "i32"
+        },
+        {
+          "exclude": [
+            "NiPSysData"
+          ],
+          "name": "num_vertices",
+          "type": "u16"
+        },
+        {
+          "cond": "bs_version < 34",
+          "name": "num_vertices",
+          "only": [
+            "NiPSysData"
+          ],
+          "type": "u16"
+        },
+        {
+          "cond": "version == 0x14020007 && bs_version >= 34",
+          "name": "bs_max_vertices",
+          "note": "nif.xml: Bethesda 20.2 particle data stores a maximum count here and no per-vertex arrays.",
+          "only": [
+            "NiPSysData"
+          ],
+          "type": "u16"
+        },
+        {
+          "name": "keep_flags",
+          "type": "u8"
+        },
+        {
+          "name": "compress_flags",
+          "type": "u8"
+        },
+        {
+          "name": "has_vertices",
+          "type": "bool"
+        },
+        {
+          "cond": "has_vertices",
+          "length": "num_vertices",
+          "name": "vertices",
+          "type": "vec3"
+        },
+        {
+          "cond": "!(version == 0x14020007 && bs_version > 0)",
+          "name": "data_flags",
+          "note": "nif.xml NiGeometryDataFlags: bits 0-5 UV set count, 12-15 tangent method.",
+          "type": "u16"
+        },
+        {
+          "cond": "version == 0x14020007 && bs_version > 0",
+          "name": "bs_data_flags",
+          "note": "nif.xml BSGeometryDataFlags: bit 0 has UV, bits 6-11 Havok material, bit 12 has tangents.",
+          "type": "u16"
+        },
+        {
+          "cond": "bs_version > 34",
+          "length": "4",
+          "name": "geometry_flags",
+          "note": "Skyrim's four flag bytes after data flags.",
+          "type": "u8"
+        },
+        {
+          "name": "has_normals",
+          "type": "bool"
+        },
+        {
+          "cond": "has_normals",
+          "length": "num_vertices",
+          "name": "normals",
+          "type": "vec3"
+        },
+        {
+          "cond": "has_normals && ((data_flags | bs_data_flags) & 4096) != 0",
+          "length": "num_vertices",
+          "name": "tangents",
+          "type": "vec3"
+        },
+        {
+          "cond": "has_normals && ((data_flags | bs_data_flags) & 4096) != 0",
+          "length": "num_vertices",
+          "name": "bitangents",
+          "type": "vec3"
+        },
+        {
+          "name": "bounding_sphere",
+          "type": "NiBound"
+        },
+        {
+          "name": "has_vertex_colors",
+          "type": "bool"
+        },
+        {
+          "cond": "has_vertex_colors",
+          "length": "num_vertices",
+          "name": "vertex_colors",
+          "note": "Four floats, matching skyrim/core.json.",
+          "type": "color4"
+        },
+        {
+          "length": "(data_flags & 63) | (bs_data_flags & 1)",
+          "name": "uv_sets",
+          "type": "vec2",
+          "width": "num_vertices"
+        },
+        {
+          "name": "consistency_flags",
+          "type": "ConsistencyType"
+        },
+        {
+          "name": "additional_data",
+          "type": "ref"
+        }
+      ],
+      "inherit": "NiObject",
+      "note": "The Special Edition's geometry data. Like the original edition's, but its vertex colours are four bytes rather than four floats."
     },
-    {
-     "name": "radius_copy",
-     "type": "f32"
+    "NiNode": {
+      "fields": [
+        {
+          "name": "num_effects",
+          "type": "u32"
+        },
+        {
+          "length": "num_effects",
+          "name": "effects",
+          "type": "ref"
+        },
+        {
+          "name": "num_children",
+          "type": "u32"
+        },
+        {
+          "length": "num_children",
+          "name": "children",
+          "type": "ref"
+        }
+      ],
+      "inherit": "NiAVObject"
     },
-    {
-     "name": "scale_copy",
-     "type": "vec4"
+    "NiSkinPartition": {
+      "fields": [
+        {
+          "name": "num_partitions",
+          "type": "u32"
+        },
+        {
+          "name": "data_size",
+          "type": "u32"
+        },
+        {
+          "name": "vertex_size",
+          "type": "u32"
+        },
+        {
+          "name": "vertex_desc",
+          "type": "u64"
+        },
+        {
+          "arg": "vertex_desc >> 44",
+          "length": "data_size / vertex_size",
+          "name": "vertex_data",
+          "type": "BSVertexData"
+        },
+        {
+          "length": "num_partitions",
+          "name": "partitions",
+          "type": "SkinPartition"
+        }
+      ],
+      "inherit": "NiObject",
+      "note": "The Special Edition's skin partition. Measured: the vertex data comes first, as the description's packed vertices, and the partitions follow it. The description's low nibble is the vertex's size in four-byte words, and the size field agrees with it."
     },
-    {
-     "name": "data",
-     "type": "ref"
+    "bhkCompressedMeshShape": {
+      "fields": [
+        {
+          "name": "target",
+          "type": "ptr"
+        },
+        {
+          "name": "user_data",
+          "type": "u32"
+        },
+        {
+          "name": "radius",
+          "type": "f32"
+        },
+        {
+          "name": "unknown_float_1",
+          "type": "f32"
+        },
+        {
+          "name": "scale",
+          "type": "vec4"
+        },
+        {
+          "name": "radius_copy",
+          "type": "f32"
+        },
+        {
+          "name": "scale_copy",
+          "type": "vec4"
+        },
+        {
+          "name": "data",
+          "type": "ref"
+        }
+      ],
+      "inherit": "bhkShape"
     }
-   ]
   },
-  "BSDynamicTriShape": {
-   "inherit": "BSTriShape",
-   "fields": [
-    {
-     "name": "dynamic_data_size",
-     "type": "u32"
+  "format": "fnv.nif.schema/1",
+  "structs": {
+    "BSVertexData": {
+      "fields": [
+        {
+          "cond": "(arg & 1) != 0",
+          "name": "vertex",
+          "type": "vec3"
+        },
+        {
+          "cond": "(arg & 17) == 17",
+          "name": "bitangent_x",
+          "type": "f32"
+        },
+        {
+          "cond": "(arg & 17) == 1",
+          "name": "unused_w",
+          "type": "u32"
+        },
+        {
+          "cond": "(arg & 2) != 0",
+          "name": "uv",
+          "type": "half_vec2"
+        },
+        {
+          "cond": "(arg & 8) != 0",
+          "name": "normal",
+          "type": "byte_vec3"
+        },
+        {
+          "cond": "(arg & 8) != 0",
+          "name": "bitangent_y",
+          "type": "normbyte"
+        },
+        {
+          "cond": "(arg & 24) == 24",
+          "name": "tangent",
+          "type": "byte_vec3"
+        },
+        {
+          "cond": "(arg & 24) == 24",
+          "name": "bitangent_z",
+          "type": "normbyte"
+        },
+        {
+          "cond": "(arg & 32) != 0",
+          "name": "vertex_colors",
+          "type": "byte_color4"
+        },
+        {
+          "cond": "(arg & 64) != 0",
+          "length": "4",
+          "name": "bone_weights",
+          "type": "hfloat"
+        },
+        {
+          "cond": "(arg & 64) != 0",
+          "length": "4",
+          "name": "bone_indices",
+          "type": "u8"
+        },
+        {
+          "cond": "(arg & 256) != 0",
+          "name": "eye_data",
+          "type": "f32"
+        }
+      ],
+      "note": "The Special Edition's packed vertex. The argument is the vertex description's attribute flags, which the description's low bits hold. The tangent's second half and the bone indices follow their own part, so they carry its condition too. nifgen's BSVertexDataSSE is the reference for the order and the conditions; the description's low nibble is the vertex's size in four-byte words, which is how the reader checks it."
     },
-    {
-     "name": "dynamic_vertex_data",
-     "type": "bytes",
-     "length": "dynamic_data_size"
+    "SkinPartition": {
+      "fields": [
+        {
+          "name": "num_vertices",
+          "type": "u16"
+        },
+        {
+          "name": "num_triangles",
+          "type": "u16"
+        },
+        {
+          "name": "num_bones",
+          "type": "u16"
+        },
+        {
+          "name": "num_strips",
+          "type": "u16"
+        },
+        {
+          "name": "num_weights_per_vertex",
+          "type": "u16"
+        },
+        {
+          "length": "num_bones",
+          "name": "bones",
+          "type": "u16"
+        },
+        {
+          "name": "has_vertex_map",
+          "type": "bool"
+        },
+        {
+          "cond": "has_vertex_map",
+          "length": "num_vertices",
+          "name": "vertex_map",
+          "type": "u16"
+        },
+        {
+          "name": "has_vertex_weights",
+          "type": "bool"
+        },
+        {
+          "cond": "has_vertex_weights",
+          "length": "num_vertices",
+          "name": "vertex_weights",
+          "type": "f32",
+          "width": "num_weights_per_vertex"
+        },
+        {
+          "length": "num_strips",
+          "name": "strip_lengths",
+          "type": "u16"
+        },
+        {
+          "name": "has_faces",
+          "type": "bool"
+        },
+        {
+          "cond": "has_faces && num_strips != 0",
+          "length": "num_strips",
+          "name": "strips",
+          "type": "u16",
+          "width": "strip_lengths"
+        },
+        {
+          "cond": "has_faces && num_strips == 0",
+          "length": "num_triangles",
+          "name": "triangles",
+          "type": "triangle"
+        },
+        {
+          "name": "has_bone_indices",
+          "type": "bool"
+        },
+        {
+          "cond": "has_bone_indices",
+          "length": "num_vertices",
+          "name": "bone_indices",
+          "type": "u8",
+          "width": "num_weights_per_vertex"
+        },
+        {
+          "name": "lod_level",
+          "type": "u8"
+        },
+        {
+          "name": "global_vb",
+          "type": "bool"
+        },
+        {
+          "name": "vertex_desc",
+          "type": "u64"
+        },
+        {
+          "length": "num_triangles",
+          "name": "triangles_copy",
+          "type": "triangle"
+        }
+      ],
+      "note": "The Special Edition's skin partition. Measured: the counts are the original edition's widths, and the partition ends with a second copy of the triangles, after the LOD level, the global-vertex-buffer flag and its own vertex description."
     }
-   ]
-  },
-  "BSFurnitureMarkerNode": {
-   "inherit": "NiNode",
-   "fields": []
-  },
-  "BSTriShape": {
-   "inherit": "NiAVObject",
-   "fields": [
-    {
-     "name": "bounding_sphere",
-     "type": "NiBound"
-    },
-    {
-     "name": "skin",
-     "type": "ref"
-    },
-    {
-     "name": "shader_property",
-     "type": "ref"
-    },
-    {
-     "name": "alpha_property",
-     "type": "ref"
-    },
-    {
-     "name": "vertex_desc",
-     "type": "u64"
-    },
-    {
-     "name": "num_triangles",
-     "type": "u16"
-    },
-    {
-     "name": "num_vertices",
-     "type": "u16"
-    },
-    {
-     "name": "data_size",
-     "type": "u32"
-    },
-    {
-     "name": "vertex_data",
-     "type": "bytes",
-     "length": "data_size - num_triangles * 6",
-     "cond": "data_size > 0"
-    },
-    {
-     "name": "triangles",
-     "type": "triangle",
-     "length": "num_triangles",
-     "cond": "data_size > 0"
-    },
-    {
-     "name": "particle_data_size",
-     "type": "u32"
-    },
-    {
-     "name": "particle_data",
-     "type": "bytes",
-     "length": "particle_data_size * 2",
-     "cond": "particle_data_size > 0"
-    }
-   ],
-   "note": "nif.xml's BSTriShape: the Special Edition holds its vertices in the shape itself, in a packed format, where the original edition keeps them in a separate NiTriShapeData block. Measured: the data size is the vertex data's bytes plus the triangles' six bytes each, so the vertex data is the data size less the triangles; a word follows the triangles. The vertex description's low nibble is the vertex's size in four-byte words, and its next nibbles are the word offsets of the UV, the normal, the tangent and the colour. The packed vertices themselves are read by the NIF reader, not by the schema: their layout is a function of the description, and the schema language has no way to say 'a field whose size another field decides'."
-  },
-  "NiAVObject": {
-   "inherit": "NiObjectNET",
-   "abstract": true,
-   "fields": [
-    {
-     "name": "flags",
-     "type": "u32"
-    },
-    {
-     "name": "translation",
-     "type": "vec3"
-    },
-    {
-     "name": "rotation",
-     "type": "mat33"
-    },
-    {
-     "name": "scale",
-     "type": "f32"
-    },
-    {
-     "name": "collision_object",
-     "type": "ref"
-    }
-   ],
-   "note": "The Special Edition's AV object. Like the original edition's, it has no properties array; the two are otherwise the same."
-  },
-  "NiNode": {
-   "inherit": "NiAVObject",
-   "fields": [
-    {
-     "name": "num_effects",
-     "type": "u32"
-    },
-    {
-     "name": "effects",
-     "type": "ref",
-     "length": "num_effects"
-    },
-    {
-     "name": "num_children",
-     "type": "u32"
-    },
-    {
-     "name": "children",
-     "type": "ref",
-     "length": "num_children"
-    }
-   ]
-  },
-  "NiGeometryData": {
-   "inherit": "NiObject",
-   "abstract": true,
-   "fields": [
-    {
-     "name": "group_id",
-     "type": "i32"
-    },
-    {
-     "name": "num_vertices",
-     "type": "u16",
-     "exclude": [
-      "NiPSysData"
-     ]
-    },
-    {
-     "name": "num_vertices",
-     "type": "u16",
-     "only": [
-      "NiPSysData"
-     ],
-     "cond": "bs_version < 34"
-    },
-    {
-     "name": "bs_max_vertices",
-     "type": "u16",
-     "only": [
-      "NiPSysData"
-     ],
-     "cond": "version == 0x14020007 && bs_version >= 34",
-     "note": "nif.xml: Bethesda 20.2 particle data stores a maximum count here and no per-vertex arrays."
-    },
-    {
-     "name": "keep_flags",
-     "type": "u8"
-    },
-    {
-     "name": "compress_flags",
-     "type": "u8"
-    },
-    {
-     "name": "has_vertices",
-     "type": "bool"
-    },
-    {
-     "name": "vertices",
-     "type": "vec3",
-     "length": "num_vertices",
-     "cond": "has_vertices"
-    },
-    {
-     "name": "data_flags",
-     "type": "u16",
-     "note": "nif.xml NiGeometryDataFlags: bits 0-5 UV set count, 12-15 tangent method.",
-     "cond": "!(version == 0x14020007 && bs_version > 0)"
-    },
-    {
-     "name": "bs_data_flags",
-     "type": "u16",
-     "note": "nif.xml BSGeometryDataFlags: bit 0 has UV, bits 6-11 Havok material, bit 12 has tangents.",
-     "cond": "version == 0x14020007 && bs_version > 0"
-    },
-    {
-     "name": "geometry_flags",
-     "type": "u8",
-     "length": "4",
-     "cond": "bs_version > 34",
-     "note": "Skyrim's four flag bytes after data flags."
-    },
-    {
-     "name": "has_normals",
-     "type": "bool"
-    },
-    {
-     "name": "normals",
-     "type": "vec3",
-     "length": "num_vertices",
-     "cond": "has_normals"
-    },
-    {
-     "name": "tangents",
-     "type": "vec3",
-     "length": "num_vertices",
-     "cond": "has_normals && ((data_flags | bs_data_flags) & 4096) != 0"
-    },
-    {
-     "name": "bitangents",
-     "type": "vec3",
-     "length": "num_vertices",
-     "cond": "has_normals && ((data_flags | bs_data_flags) & 4096) != 0"
-    },
-    {
-     "name": "bounding_sphere",
-     "type": "NiBound"
-    },
-    {
-     "name": "has_vertex_colors",
-     "type": "bool"
-    },
-    {
-     "name": "vertex_colors",
-     "type": "color4",
-     "length": "num_vertices",
-     "cond": "has_vertex_colors",
-     "note": "Four floats, matching skyrim/core.json."
-    },
-    {
-     "name": "uv_sets",
-     "type": "vec2",
-     "length": "(data_flags & 63) | (bs_data_flags & 1)",
-     "width": "num_vertices"
-    },
-    {
-     "name": "consistency_flags",
-     "type": "ConsistencyType"
-    },
-    {
-     "name": "additional_data",
-     "type": "ref"
-    }
-   ],
-   "note": "The Special Edition's geometry data. Like the original edition's, but its vertex colours are four bytes rather than four floats."
-  },
-  "NiSkinPartition": {
-   "inherit": "NiObject",
-   "fields": [
-    {
-     "name": "num_partitions",
-     "type": "u32"
-    },
-    {
-     "name": "data_size",
-     "type": "u32"
-    },
-    {
-     "name": "vertex_size",
-     "type": "u32"
-    },
-    {
-     "name": "vertex_desc",
-     "type": "u64"
-    },
-    {
-     "name": "vertex_data",
-     "type": "BSVertexData",
-     "length": "data_size / vertex_size",
-     "arg": "vertex_desc >> 44"
-    },
-    {
-     "name": "partitions",
-     "type": "SkinPartition",
-     "length": "num_partitions"
-    }
-   ],
-   "note": "The Special Edition's skin partition. Measured: the vertex data comes first, as the description's packed vertices, and the partitions follow it. The description's low nibble is the vertex's size in four-byte words, and the size field agrees with it."
   }
- },
- "structs": {
-  "BSVertexData": {
-   "fields": [
-    {
-     "name": "vertex",
-     "type": "vec3",
-     "cond": "(arg & 1) != 0"
-    },
-    {
-     "name": "bitangent_x",
-     "type": "f32",
-     "cond": "(arg & 17) == 17"
-    },
-    {
-     "name": "unused_w",
-     "type": "u32",
-     "cond": "(arg & 17) == 1"
-    },
-    {
-     "name": "uv",
-     "type": "half_vec2",
-     "cond": "(arg & 2) != 0"
-    },
-    {
-     "name": "normal",
-     "type": "byte_vec3",
-     "cond": "(arg & 8) != 0"
-    },
-    {
-     "name": "bitangent_y",
-     "type": "normbyte",
-     "cond": "(arg & 8) != 0"
-    },
-    {
-     "name": "tangent",
-     "type": "byte_vec3",
-     "cond": "(arg & 24) == 24"
-    },
-    {
-     "name": "bitangent_z",
-     "type": "normbyte",
-     "cond": "(arg & 24) == 24"
-    },
-    {
-     "name": "vertex_colors",
-     "type": "byte_color4",
-     "cond": "(arg & 32) != 0"
-    },
-    {
-     "name": "bone_weights",
-     "type": "hfloat",
-     "length": "4",
-     "cond": "(arg & 64) != 0"
-    },
-    {
-     "name": "bone_indices",
-     "type": "u8",
-     "length": "4",
-     "cond": "(arg & 64) != 0"
-    },
-    {
-     "name": "eye_data",
-     "type": "f32",
-     "cond": "(arg & 256) != 0"
-    }
-   ],
-   "note": "The Special Edition's packed vertex. The argument is the vertex description's attribute flags, which the description's low bits hold. The tangent's second half and the bone indices follow their own part, so they carry its condition too. nifgen's BSVertexDataSSE is the reference for the order and the conditions; the description's low nibble is the vertex's size in four-byte words, which is how the reader checks it."
-  },
-  "SkinPartition": {
-   "fields": [
-    {
-     "name": "num_vertices",
-     "type": "u16"
-    },
-    {
-     "name": "num_triangles",
-     "type": "u16"
-    },
-    {
-     "name": "num_bones",
-     "type": "u16"
-    },
-    {
-     "name": "num_strips",
-     "type": "u16"
-    },
-    {
-     "name": "num_weights_per_vertex",
-     "type": "u16"
-    },
-    {
-     "name": "bones",
-     "type": "u16",
-     "length": "num_bones"
-    },
-    {
-     "name": "has_vertex_map",
-     "type": "bool"
-    },
-    {
-     "name": "vertex_map",
-     "type": "u16",
-     "length": "num_vertices",
-     "cond": "has_vertex_map"
-    },
-    {
-     "name": "has_vertex_weights",
-     "type": "bool"
-    },
-    {
-     "name": "vertex_weights",
-     "type": "f32",
-     "length": "num_vertices",
-     "width": "num_weights_per_vertex",
-     "cond": "has_vertex_weights"
-    },
-    {
-     "name": "strip_lengths",
-     "type": "u16",
-     "length": "num_strips"
-    },
-    {
-     "name": "has_faces",
-     "type": "bool"
-    },
-    {
-     "name": "strips",
-     "type": "u16",
-     "length": "num_strips",
-     "width": "strip_lengths",
-     "cond": "has_faces && num_strips != 0"
-    },
-    {
-     "name": "triangles",
-     "type": "triangle",
-     "length": "num_triangles",
-     "cond": "has_faces && num_strips == 0"
-    },
-    {
-     "name": "has_bone_indices",
-     "type": "bool"
-    },
-    {
-     "name": "bone_indices",
-     "type": "u8",
-     "length": "num_vertices",
-     "width": "num_weights_per_vertex",
-     "cond": "has_bone_indices"
-    },
-    {
-     "name": "lod_level",
-     "type": "u8"
-    },
-    {
-     "name": "global_vb",
-     "type": "bool"
-    },
-    {
-     "name": "vertex_desc",
-     "type": "u64"
-    },
-    {
-     "name": "triangles_copy",
-     "type": "triangle",
-     "length": "num_triangles"
-    }
-   ],
-   "note": "The Special Edition's skin partition. Measured: the counts are the original edition's widths, and the partition ends with a second copy of the triangles, after the LOD level, the global-vertex-buffer flag and its own vertex description."
-  }
- }
 }

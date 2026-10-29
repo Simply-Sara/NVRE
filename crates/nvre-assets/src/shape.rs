@@ -173,7 +173,13 @@ pub fn shape_props(
         let shader = dec.is_a(p as usize, "BSShaderProperty");
 
         if shader {
-            shader_flags = Some(prop.int("shader_flags").unwrap_or(0));
+            // The flags are named two ways: `shader_flags` on the older
+            // games' shader property, and `shader_flags_1` on Fallout 4's.
+            // Both are read, and the one that is there is the one that is
+            // used.
+            shader_flags = prop
+                .int("shader_flags")
+                .or_else(|| prop.int("shader_flags_1"));
         }
         // The lighting property: glossiness, emissive, alpha.
         //
@@ -184,7 +190,10 @@ pub fn shape_props(
         // each by name rather than branching on the type is what makes one loop
         // cover all five games — a property that has neither is the engine's
         // own default of 1.0, which `unwrap_or` supplies.
-        if let Some(g) = prop.num("glossiness") {
+        //
+        // The glossiness is `glossiness` before Fallout 4 and `smoothness`
+        // from it on.
+        if let Some(g) = prop.num("glossiness").or_else(|| prop.num("smoothness")) {
             props.glossiness = Some(g as f32);
         }
         if let Some(e) = color3(prop, "emissive_color") {

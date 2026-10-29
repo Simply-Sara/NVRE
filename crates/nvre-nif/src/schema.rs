@@ -90,6 +90,10 @@ pub enum Prim {
     HalfVec2,
     /// Three 16-bit floats.
     HalfVec3,
+    /// Four 16-bit floats.
+    HalfVec4,
+    /// Two 32-bit floats: a texture coordinate.
+    TexCoord,
     /// Two 32-bit floats.
     Vec2,
     /// Three 32-bit floats.
@@ -106,6 +110,9 @@ pub enum Prim {
     ByteColor4,
     /// Three bytes: a normal or a tangent.
     ByteVec3,
+    /// Three 16-bit numbers: a vertex's position in a compressed mesh
+    /// shape, which stores its triangle vertices this way.
+    U16Vec3,
     /// A byte holding a value in the range -1 to 1.
     NormByte,
     /// A 2×2 matrix, row-major.
@@ -122,6 +129,8 @@ pub enum Prim {
     String,
     /// A 32-bit length and then that many bytes of Windows-1252.
     SizedString,
+    /// A 16-bit length and then that many bytes of Windows-1252.
+    SizedString16,
     /// Opaque bytes; needs a length.
     Bytes,
     /// Whatever the rest of the block holds, up to the next multiple of the
@@ -155,6 +164,8 @@ impl Prim {
             "hfloat" => Prim::HFloat,
             "halfvec2" => Prim::HalfVec2,
             "halfvec3" => Prim::HalfVec3,
+            "halfvec4" => Prim::HalfVec4,
+            "texcoord" => Prim::TexCoord,
             "vec2" => Prim::Vec2,
             "vec3" => Prim::Vec3,
             "vec4" => Prim::Vec4,
@@ -163,6 +174,7 @@ impl Prim {
             "color4" => Prim::Color4,
             "bytecolor4" => Prim::ByteColor4,
             "bytevec3" => Prim::ByteVec3,
+            "u16vec3" => Prim::U16Vec3,
             "normbyte" => Prim::NormByte,
             "mat22" => Prim::Mat22,
             "mat33" => Prim::Mat33,
@@ -171,6 +183,7 @@ impl Prim {
             "triangle" => Prim::Triangle,
             "string" => Prim::String,
             "sizedstring" => Prim::SizedString,
+            "sizedstring16" => Prim::SizedString16,
             "bytes" => Prim::Bytes,
             "align" => Prim::Align,
             _ => return None,
@@ -194,6 +207,8 @@ impl Prim {
             Prim::HFloat => "hfloat",
             Prim::HalfVec2 => "halfvec2",
             Prim::HalfVec3 => "halfvec3",
+            Prim::HalfVec4 => "halfvec4",
+            Prim::TexCoord => "texcoord",
             Prim::Vec2 => "vec2",
             Prim::Vec3 => "vec3",
             Prim::Vec4 => "vec4",
@@ -202,6 +217,7 @@ impl Prim {
             Prim::Color4 => "color4",
             Prim::ByteColor4 => "bytecolor4",
             Prim::ByteVec3 => "bytevec3",
+            Prim::U16Vec3 => "u16vec3",
             Prim::NormByte => "normbyte",
             Prim::Mat22 => "mat22",
             Prim::Mat33 => "mat33",
@@ -210,6 +226,7 @@ impl Prim {
             Prim::Triangle => "triangle",
             Prim::String => "string",
             Prim::SizedString => "sizedstring",
+            Prim::SizedString16 => "sizedstring16",
             Prim::Bytes => "bytes",
             Prim::Align => "align",
         }
@@ -578,11 +595,23 @@ impl Schema {
     pub fn block_chain(&self, name: &str) -> Vec<&str> {
         let mut out = Vec::new();
         let mut cur = name;
-        while let Some(base) = self.block_bases.get(cur) {
+        while let Some(base) = self.block_bases.get(cur).or_else(|| {
+            if cur.contains("::") {
+                self.block_bases.get(&cur.replace("::", "__"))
+            } else {
+                None
+            }
+        }) {
             out.push(base.as_str());
             cur = base;
         }
         out
+    }
+
+    /// Whether the schema knows about a block type.
+    pub fn contains_block(&self, name: &str) -> bool {
+        self.blocks.contains_key(name)
+            || (name.contains("::") && self.blocks.contains_key(&name.replace("::", "__")))
     }
 
     /// Whether `name` is of type `ty`, or of a type based on it.
@@ -595,10 +624,16 @@ impl Schema {
             return true;
         }
         let cache = self.chains_cache.get_or_init(|| self.resolve_chains());
-        let Some(chain) = cache.get(name) else {
-            return false;
-        };
-        chain.iter().any(|c| c == ty)
+        if let Some(chain) = cache.get(name) {
+            return chain.iter().any(|b| b == ty);
+        }
+        if name.contains("::") {
+            let alt = name.replace("::", "__");
+            if let Some(chain) = cache.get(&alt) {
+                return chain.iter().any(|b| b == ty);
+            }
+        }
+        false
     }
 
     /// Every block type's inheritance chain, nearest base first, built once.
@@ -611,7 +646,10 @@ impl Schema {
                 chain.push(base.clone());
                 cur = base.clone();
             }
-            out.insert(name.clone(), chain);
+            out.insert(name.clone(), chain.clone());
+            if name.contains("__") {
+                out.insert(name.replace("__", "::"), chain);
+            }
         }
         out
     }
@@ -645,7 +683,14 @@ impl Schema {
         let cache = self
             .block_fields_cache
             .get_or_init(|| self.resolve_block_fields());
-        cache.get(name).map(Vec::as_slice)
+        if let Some(f) = cache.get(name) {
+            return Some(f.as_slice());
+        }
+        if name.contains("::") {
+            let alt = name.replace("::", "__");
+            return cache.get(&alt).map(Vec::as_slice);
+        }
+        None
     }
 
     /// The fields of every block type, its bases' first, built once.
@@ -661,7 +706,10 @@ impl Schema {
             if let Some(d) = self.blocks.get(name) {
                 fields.extend(d.fields.iter().cloned());
             }
-            out.insert(name.clone(), fields);
+            out.insert(name.clone(), fields.clone());
+            if name.contains("__") {
+                out.insert(name.replace("__", "::"), fields);
+            }
         }
         out
     }

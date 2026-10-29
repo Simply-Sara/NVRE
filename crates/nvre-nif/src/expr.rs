@@ -421,6 +421,20 @@ impl Parser<'_> {
                     i += 1;
                 }
             }
+            // An exponent: the number may be written in scientific notation,
+            // which is how the format's own constants are written.
+            if i < bytes.len() && (bytes[i] | 0x20) == b'e' {
+                let mut e = i + 1;
+                if e < bytes.len() && (bytes[e] == b'-' || bytes[e] == b'+') {
+                    e += 1;
+                }
+                if e < bytes.len() && (bytes[e] as char).is_ascii_digit() {
+                    while e < bytes.len() && (bytes[e] as char).is_ascii_digit() {
+                        e += 1;
+                    }
+                    i = e;
+                }
+            }
         }
         if i == start {
             return Err(format!("expected a number at offset {start}"));

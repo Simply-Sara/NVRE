@@ -327,8 +327,16 @@ fn write_field(
 
     // A named type: a struct, an enum, or a built-in struct type.
     if let TypeRef::Named(n) = &f.ty {
-        // An enum is written as its storage type.
+        // An enum is written as its storage type. A field with a length is
+        // an array of them, so one is written per element.
         if let Some(e) = schema.enums.get(n) {
+            if let Some(count) = length {
+                let items = v.as_list().unwrap_or(&[]);
+                for item in items.iter().take(count) {
+                    write_prim(e.storage, item, header.version, out)?;
+                }
+                return Ok(());
+            }
             write_prim(e.storage, v, header.version, out)?;
             return Ok(());
         }
@@ -571,17 +579,23 @@ pub fn write_prim(
             let r = v.as_ref().unwrap_or(-1);
             out.extend_from_slice(&r.to_le_bytes());
         }
-        HFloat => out.extend_from_slice(&f32_to_half(num(v)? as f32).to_le_bytes()),
+        HFloat => out.extend_from_slice(&half_bits(v).to_le_bytes()),
         HalfVec2 => {
-            for c in floats(v, 2)? {
-                out.extend_from_slice(&f32_to_half(c).to_le_bytes());
+            for c in half_list(v, 2)? {
+                out.extend_from_slice(&c.to_le_bytes());
             }
         }
         HalfVec3 => {
-            for c in floats(v, 3)? {
-                out.extend_from_slice(&f32_to_half(c).to_le_bytes());
+            for c in half_list(v, 3)? {
+                out.extend_from_slice(&c.to_le_bytes());
             }
         }
+        HalfVec4 => {
+            for c in half_list(v, 4)? {
+                out.extend_from_slice(&c.to_le_bytes());
+            }
+        }
+        TexCoord => write_floats(v, 2, out)?,
         Vec2 => write_floats(v, 2, out)?,
         Vec3 => write_floats(v, 3, out)?,
         Vec4 => write_floats(v, 4, out)?,
@@ -605,14 +619,26 @@ pub fn write_prim(
             }
         }
         ByteVec3 => {
-            for c in bytes(v, 3)? {
-                out.push(c);
+            // Three bytes, each a value in the range -1 to 1: a vertex's
+            // normal or tangent, as the format stores them.
+            for c in floats(v, 3)? {
+                let b = ((c + 1.0) * 127.5).round().clamp(0.0, 255.0) as u8;
+                out.push(b);
+            }
+        }
+        U16Vec3 => {
+            for c in ints(v, 3)? {
+                out.extend_from_slice(&(c as u16).to_le_bytes());
             }
         }
         NormByte => {
+            // The byte is unsigned, and the scale is 127.5 so that the whole
+            // range of the byte maps onto the whole range of -1 to 1. That
+            // is what makes the round trip exact: a value written back from
+            // `b / 127.5 - 1` is the byte it came from.
             let f = num(v)? as f32;
-            let b = (f * 127.0).round().clamp(-128.0, 127.0) as i8;
-            out.push(b as u8);
+            let b = ((f + 1.0) * 127.5).round().clamp(0.0, 255.0) as u8;
+            out.push(b);
         }
         Triangle => {
             // Three 16-bit vertex indices.
@@ -640,6 +666,12 @@ pub fn write_prim(
             out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
             out.extend_from_slice(&bytes);
         }
+        SizedString16 => {
+            let text = v.as_str().unwrap_or("");
+            let bytes = nvre_util::cp1252::encode(text).unwrap_or_default();
+            out.extend_from_slice(&(bytes.len() as u16).to_le_bytes());
+            out.extend_from_slice(&bytes);
+        }
         Bytes => {
             if let Value::Bytes(b) = v {
                 out.extend_from_slice(b);
@@ -664,6 +696,35 @@ fn floats(v: &Value, n: usize) -> Result<Vec<f32>, CodecError> {
     }
     while out.len() < n {
         out.push(0.0);
+    }
+    Ok(out)
+}
+
+/// The half float a value is.
+///
+/// A NaN is written from the payload the reader kept, rather than from a
+/// narrowing: a narrowing of a NaN loses the payload, and a NIF's vertex
+/// data holds NaNs whose payload is the file's own.
+fn half_bits(v: &Value) -> u16 {
+    let Some(n) = v.as_number() else {
+        return 0;
+    };
+    if n.is_nan() {
+        return crate::codec::half_from_nan(n);
+    }
+    f32_to_half(n as f32)
+}
+
+/// The half floats a list holds.
+fn half_list(v: &Value, n: usize) -> Result<Vec<u16>, CodecError> {
+    let mut out = Vec::with_capacity(n);
+    if let Some(l) = v.as_list() {
+        for x in l.iter().take(n) {
+            out.push(half_bits(x));
+        }
+    }
+    while out.len() < n {
+        out.push(0);
     }
     Ok(out)
 }

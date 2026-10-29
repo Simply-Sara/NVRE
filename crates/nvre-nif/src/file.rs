@@ -133,7 +133,7 @@ impl NifFile {
         data: &[u8],
     ) -> (BlockStatus, Option<Struct>) {
         let b = &self.blocks[index];
-        if !schema.blocks.contains_key(&b.type_name) {
+        if !schema.contains_block(&b.type_name) {
             return (BlockStatus::Unknown, None);
         }
         let mut r = Reader::new(&data[b.range.start..b.range.end]);
@@ -367,8 +367,16 @@ fn read_field(
     // A named type: a struct type, an enum, or one of the built-in struct
     // types the schema language has.
     if let TypeRef::Named(n) = &f.ty {
-        // An enum is read as its storage type.
+        // An enum is read as its storage type. A field with a length is an
+        // array of them, so the enum is read once per element.
         if let Some(e) = schema.enums.get(n) {
+            if let Some(count) = length {
+                let mut out = Vec::with_capacity(count.min(4096));
+                for _ in 0..count {
+                    out.push(crate::codec::read_prim(e.storage, r, header.version)?);
+                }
+                return Ok(Some(Value::List(out)));
+            }
             let v = crate::codec::read_prim(e.storage, r, header.version)?;
             return Ok(Some(v));
         }
@@ -376,20 +384,19 @@ fn read_field(
         // length is an array of them — the texture set of a shape names
         // several files.
         if n == "sized_string" {
-            let mut strings = Vec::new();
-            for _ in 0..length.unwrap_or(1) {
+            if length.is_some() {
+                let mut strings = Vec::new();
+                for _ in 0..length.unwrap_or(1) {
+                    let len = r.int(4, false)? as usize;
+                    let b = r.bytes(len)?;
+                    strings.push(Value::Str(nvre_util::cp1252::decode(b)));
+                }
+                return Ok(Some(Value::List(strings)));
+            } else {
                 let len = r.int(4, false)? as usize;
                 let b = r.bytes(len)?;
-                strings.push(Value::Str(nvre_util::cp1252::decode(b)));
+                return Ok(Some(Value::Str(nvre_util::cp1252::decode(b))));
             }
-            return Ok(Some(if strings.len() == 1 {
-                strings
-                    .into_iter()
-                    .next()
-                    .unwrap_or(Value::Str(String::new()))
-            } else {
-                Value::List(strings)
-            }));
         }
         let fields = schema
             .struct_fields_ref(n)

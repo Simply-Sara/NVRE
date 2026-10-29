@@ -316,6 +316,16 @@
     {
      "name": "material_data",
      "type": "MaterialData"
+    },
+    {
+     "name": "shader_property",
+     "type": "ref",
+     "cond": "bs_version > 34"
+    },
+    {
+     "name": "alpha_property",
+     "type": "ref",
+     "cond": "bs_version > 34"
     }
    ]
   },
@@ -390,6 +400,13 @@
      "type": "u16",
      "note": "nif.xml BSGeometryDataFlags: bit 0 has UV, bits 6-11 Havok material, bit 12 has tangents.",
      "cond": "version == 0x14020007 && bs_version > 0"
+    },
+    {
+     "name": "geometry_flags",
+     "type": "u8",
+     "length": "4",
+     "note": "Skyrim and Fallout 4 flag bytes after data flags.",
+     "cond": "bs_version > 34"
     },
     {
      "name": "has_normals",
