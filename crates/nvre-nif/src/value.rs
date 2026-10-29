@@ -7,6 +7,8 @@ use serde_json::{Map, Value as Json};
 pub enum Value {
     /// A number — every integer and float in a NIF is one of these.
     Num(f64),
+    /// A 64-bit integer that exceeds f64's 53-bit mantissa precision.
+    Int64(u64),
     /// Text, in Windows-1252.
     Str(String),
     /// A flag.
@@ -26,6 +28,7 @@ impl Value {
     pub fn as_number(&self) -> Option<f64> {
         match self {
             Value::Num(n) => Some(*n),
+            Value::Int64(n) => Some(*n as f64),
             Value::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
             _ => None,
         }
@@ -33,7 +36,11 @@ impl Value {
 
     /// The value as a whole number, if it is one.
     pub fn as_int(&self) -> Option<i64> {
-        self.as_number().map(|n| n as i64)
+        match self {
+            Value::Num(n) => Some(*n as i64),
+            Value::Int64(n) => Some(*n as i64),
+            _ => self.as_number().map(|n| n as i64),
+        }
     }
 
     /// The value as text, if it is.
@@ -92,6 +99,7 @@ impl Value {
         match self {
             Value::Bool(b) => *b,
             Value::Num(n) => *n != 0.0,
+            Value::Int64(n) => *n != 0,
             Value::Str(s) => !s.is_empty(),
             Value::List(l) => !l.is_empty(),
             Value::Bytes(b) => !b.is_empty(),
@@ -105,12 +113,13 @@ impl Value {
     pub fn to_json(&self) -> Json {
         match self {
             Value::Num(n) => {
-                if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
+                if n.fract() == 0.0 && *n >= (i64::MIN as f64) && *n <= (i64::MAX as f64) {
                     Json::from(*n as i64)
                 } else {
                     Json::from(*n)
                 }
             }
+            Value::Int64(n) => Json::from(*n),
             Value::Str(s) => Json::from(s.clone()),
             Value::Bool(b) => Json::from(*b),
             Value::Ref(r) => Json::from(*r),

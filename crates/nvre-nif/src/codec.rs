@@ -234,7 +234,10 @@ pub fn read_prim(
         Prim::I16 => Value::Num(r.int(2, true)? as f64),
         Prim::U32 => Value::Num(r.int(4, false)? as f64),
         Prim::I32 => Value::Num(r.int(4, true)? as f64),
-        Prim::U64 => Value::Num(r.int(8, false)? as f64),
+        Prim::U64 => {
+            let b = r.bytes(8)?;
+            Value::Int64(u64::from_le_bytes(b.try_into().unwrap()))
+        }
         Prim::F32 => Value::Num(r.f32()? as f64),
         Prim::Bool => {
             // A flag is a byte, and a byte above one is not a flag: the
@@ -360,7 +363,7 @@ pub fn read_prim(
             Value::List(b.iter().map(|&x| Value::Num(x as f64)).collect())
         }
         Prim::NormByte => {
-            // A byte holding a value in the range -1 to 1.
+            // A byte holding a signed value: -128 to 127 mapped to -1.0 to 1.0.
             let b = r.bytes(1)?[0] as i8;
             Value::Num(b as f64 / 127.0)
         }

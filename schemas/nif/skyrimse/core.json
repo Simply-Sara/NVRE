@@ -47,9 +47,9 @@
      "type": "u32"
     },
     {
-     "name": "vertices",
-     "type": "vec4",
-     "length": "dynamic_data_size / 16"
+     "name": "dynamic_vertex_data",
+     "type": "bytes",
+     "length": "dynamic_data_size"
     }
    ]
   },

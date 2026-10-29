@@ -69,7 +69,7 @@ impl<'a> Frames<'a> {
             base: self.base.clone(),
             own: self.own.clone(),
             arg: self.arg.clone(),
-            flat: self.flat.clone(),
+            flat: OnceLock::new(),
         };
         out.own.push(&st.fields);
         out
@@ -94,6 +94,14 @@ impl<'a> Frames<'a> {
         scratch.clear();
         scratch.extend(flat.iter().map(|(k, v)| (k.clone(), v.clone())));
         e.number_in(scratch)
+    }
+
+    /// Whether an expression evaluates to truthy against the frames.
+    fn truthy(&self, e: &crate::expr::Expr, scratch: &mut HashMap<String, Value>) -> bool {
+        let flat = self.flat.get_or_init(|| self.flatten());
+        scratch.clear();
+        scratch.extend(flat.iter().map(|(k, v)| (k.clone(), v.clone())));
+        e.evaluate_in(scratch)
     }
 
     /// Every name in scope, innermost frame first.
@@ -234,12 +242,12 @@ fn encode_fields_in(
         .iter()
         .filter(|f| present(schema, header, lineage, f, &own, scratch).unwrap_or(false))
         .collect();
-    for (i, f) in present_fields.iter().enumerate() {
-        let Some((_, v)) = st.fields.get(i) else {
+    for f in &present_fields {
+        let Some(v) = st.get(&f.name) else {
             // A field the schema says is present, but which the value does
             // not hold: the value is incomplete, and there is nothing to
             // write.
-            break;
+            continue;
         };
         let f = *f;
         let at = out.len();
@@ -285,13 +293,7 @@ fn present(
     }
     match &f.cond {
         None => Ok(true),
-        Some(e) => match scope.number(e, scratch) {
-            Some(x) => Ok(x != 0.0),
-            None => Err(CodecError::Layout(format!(
-                "the condition of {:?} cannot be read",
-                f.name
-            ))),
-        },
+        Some(e) => Ok(scope.truthy(e, scratch)),
     }
 }
 
@@ -552,7 +554,10 @@ pub fn write_prim(
         I16 => out.extend_from_slice(&(num(v)? as i16).to_le_bytes()),
         U32 => out.extend_from_slice(&(num(v)? as u32).to_le_bytes()),
         I32 => out.extend_from_slice(&(num(v)? as i32).to_le_bytes()),
-        U64 => out.extend_from_slice(&(num(v)? as u64).to_le_bytes()),
+        U64 => match v {
+            Value::Int64(n) => out.extend_from_slice(&n.to_le_bytes()),
+            _ => out.extend_from_slice(&(num(v)? as u64).to_le_bytes()),
+        },
         F32 => out.extend_from_slice(&(num(v)? as f32).to_le_bytes()),
         Bool => {
             // A flag is a byte, and a byte above one is not a flag: it is
@@ -606,7 +611,8 @@ pub fn write_prim(
         }
         NormByte => {
             let f = num(v)? as f32;
-            out.push(((f + 1.0) * 127.0).round().clamp(0.0, 255.0) as u8);
+            let b = (f * 127.0).round().clamp(-128.0, 127.0) as i8;
+            out.push(b as u8);
         }
         Triangle => {
             // Three 16-bit vertex indices.

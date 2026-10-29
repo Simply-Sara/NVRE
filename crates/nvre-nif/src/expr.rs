@@ -158,6 +158,11 @@ impl Expr {
         self.eval(&mut Eval { scope }).as_number()
     }
 
+    /// Whether the expression is truthy against a scope the caller fills.
+    pub fn evaluate_in(&self, scope: &mut Scope) -> bool {
+        self.eval(&mut Eval { scope }).truthy()
+    }
+
     fn eval(&self, e: &mut Eval<'_>) -> Value {
         self.root.eval(e)
     }
@@ -244,11 +249,26 @@ impl BinOp {
                     return Value::Bool(false);
                 };
                 match self {
-                    BitOr => Value::Num((x as i64 | y as i64) as f64),
-                    BitAnd => Value::Num((x as i64 & y as i64) as f64),
-                    BitXor => Value::Num((x as i64 ^ y as i64) as f64),
-                    Shl => Value::Num((x as i64).wrapping_shl(y as u32) as f64),
-                    Shr => Value::Num((x as i64).wrapping_shr(y as u32) as f64),
+                    BitOr => match (a.as_int(), b.as_int()) {
+                        (Some(x), Some(y)) => Value::Num((x | y) as f64),
+                        _ => Value::Num((x as i64 | y as i64) as f64),
+                    },
+                    BitAnd => match (a.as_int(), b.as_int()) {
+                        (Some(x), Some(y)) => Value::Num((x & y) as f64),
+                        _ => Value::Num((x as i64 & y as i64) as f64),
+                    },
+                    BitXor => match (a.as_int(), b.as_int()) {
+                        (Some(x), Some(y)) => Value::Num((x ^ y) as f64),
+                        _ => Value::Num((x as i64 ^ y as i64) as f64),
+                    },
+                    Shl => match (a.as_int(), b.as_int()) {
+                        (Some(x), Some(y)) => Value::Num((x as u64).wrapping_shl(y as u32) as f64),
+                        _ => Value::Num((x as i64).wrapping_shl(y as u32) as f64),
+                    },
+                    Shr => match (a.as_int(), b.as_int()) {
+                        (Some(x), Some(y)) => Value::Num((x as u64).wrapping_shr(y as u32) as f64),
+                        _ => Value::Num((x as i64).wrapping_shr(y as u32) as f64),
+                    },
                     Add => Value::Num(x + y),
                     Sub => Value::Num(x - y),
                     Mul => Value::Num(x * y),
