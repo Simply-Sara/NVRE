@@ -58,12 +58,29 @@ fn main() {
         .and_then(|v| v.parse().ok())
         .unwrap_or(usize::MAX);
 
+    // The actor subtree is named differently per family: Fallout keeps its
+    // characters under `meshes\characters`, Skyrim and Fallout 4 under
+    // `meshes\actors`. Both are walked by default, so the count covers the
+    // whole actor corpus of whichever family the game belongs to.
+    let want: Option<Vec<String>> = match std::env::args().nth(3) {
+        Some(s) => Some(vec![s.to_lowercase()]),
+        None => Some(vec!["actor".to_string(), "character".to_string()]),
+    };
     let game = ALL.iter().find(|g| g.id == game_id).expect("a game");
     let data_dir = game.data_dir().expect("a data folder");
     let data = game.open_asset_data(&data_dir).expect("the asset data");
 
     let mut c = Counts::default();
-    for p in data.vfs.paths(|p| p.to_lowercase().ends_with(".nif")) {
+    for p in data
+        .vfs
+        .paths(|p| {
+            let l = p.to_lowercase();
+            l.ends_with(".nif")
+                && want
+                    .as_ref()
+                    .is_none_or(|ws| ws.iter().any(|w| l.contains(w)))
+        })
+    {
         if c.files as usize >= limit {
             break;
         }

@@ -53,12 +53,16 @@ fn main() {
         .and_then(|v| v.parse().ok())
         .unwrap_or(usize::MAX);
 
+    let want = std::env::args().nth(3).map(|s| s.to_lowercase());
     let game = ALL.iter().find(|g| g.id == game_id).expect("a game");
     let data_dir = game.data_dir().expect("a data folder");
     let data = game.open_asset_data(&data_dir).expect("the asset data");
 
     let mut c = Counts::default();
-    for p in data.vfs.paths(|p| p.to_lowercase().ends_with(".nif")) {
+    for p in data
+        .vfs
+        .paths(|p| p.to_lowercase().ends_with(".nif") && want.as_ref().is_none_or(|w| p.to_lowercase().contains(w)))
+    {
         if c.files as usize >= limit {
             break;
         }
