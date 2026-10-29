@@ -64,7 +64,7 @@ pub fn dds_image(bytes: &[u8], srgb: bool, bc_supported: bool) -> Result<Image, 
     let (w, h) = (dds.header.width, dds.header.height);
     let levels = &dds.levels[0];
     let (format, data) = match dds.format {
-        Format::Dxt1 | Format::Dxt3 | Format::Dxt5 => {
+        Format::Dxt1 | Format::Dxt3 | Format::Dxt5 | Format::Bc4 | Format::Bc5 | Format::Bc7 => {
             if !bc_supported {
                 return Err("the device cannot sample block-compressed textures".into());
             }
@@ -78,8 +78,13 @@ pub fn dds_image(bytes: &[u8], srgb: bool, bc_supported: bool) -> Result<Image, 
                 (Format::Dxt1, false) => TextureFormat::Bc1RgbaUnorm,
                 (Format::Dxt3, true) => TextureFormat::Bc2RgbaUnormSrgb,
                 (Format::Dxt3, false) => TextureFormat::Bc2RgbaUnorm,
-                (_, true) => TextureFormat::Bc3RgbaUnormSrgb,
-                (_, false) => TextureFormat::Bc3RgbaUnorm,
+                (Format::Dxt5, true) => TextureFormat::Bc3RgbaUnormSrgb,
+                (Format::Dxt5, false) => TextureFormat::Bc3RgbaUnorm,
+                (Format::Bc4, _) => TextureFormat::Bc4RUnorm,
+                (Format::Bc5, _) => TextureFormat::Bc5RgUnorm,
+                (Format::Bc7, true) => TextureFormat::Bc7RgbaUnormSrgb,
+                (Format::Bc7, false) => TextureFormat::Bc7RgbaUnorm,
+                _ => unreachable!(),
             };
             (f, levels.concat())
         }

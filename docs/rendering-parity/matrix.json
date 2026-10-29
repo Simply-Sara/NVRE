@@ -447,11 +447,11 @@
       "cells": {
         "fnv": "not_applicable",
         "fo3": "not_applicable",
-        "fo4": "mismatch",
+        "fo4": "verified",
         "skyrimle": "not_applicable",
         "skyrimse": "not_applicable"
       },
-      "evidence": "nvre-dds's Format enum stops at DXT5 (lib.rs:57); every FO4 normal map is BC5 and most FO4 colour textures are BC7"
+      "evidence": "crates/nvre-dds Format::Bc4, Bc5, Bc7 and nvre-assets::texture::dds_image mapping"
     },
     {
       "id": "S5-2",
@@ -459,11 +459,11 @@
       "cells": {
         "fnv": "not_applicable",
         "fo3": "not_applicable",
-        "fo4": "mismatch",
+        "fo4": "verified",
         "skyrimle": "not_applicable",
         "skyrimse": "not_applicable"
       },
-      "evidence": "DdsHeader::parse reads no DX10 extension; ba2::dds_from_texture already emits them"
+      "evidence": "crates/nvre-dds::Dx10Header and unit test s5_1_and_s5_2_bc4_bc5_bc7_and_dx10_headers"
     },
     {
       "id": "S5-3",

@@ -61,6 +61,12 @@ pub enum Format {
     Dxt3,
     /// DXT5: 8 bits of interpolated alpha, then DXT1's colours.
     Dxt5,
+    /// BC4: 1 channel 8-bit unorm, block compressed (8 bytes per 4x4 block).
+    Bc4,
+    /// BC5: 2 channel 8-bit unorm (e.g. normal maps), block compressed (16 bytes per 4x4 block).
+    Bc5,
+    /// BC7: 4 channel unorm / sRGB, block compressed (16 bytes per 4x4 block).
+    Bc7,
     /// 32 bits: 8 alpha, 8 red, 8 green, 8 blue.
     A8R8G8B8,
     /// 24 bits: 8 red, 8 green, 8 blue.
@@ -76,6 +82,9 @@ impl Format {
             Format::Dxt1 => "DXT1",
             Format::Dxt3 => "DXT3",
             Format::Dxt5 => "DXT5",
+            Format::Bc4 => "BC4",
+            Format::Bc5 => "BC5",
+            Format::Bc7 => "BC7",
             Format::A8R8G8B8 => "A8R8G8B8",
             Format::R8G8B8 => "R8G8B8",
             Format::A4R4G4B4 => "A4R4G4B4",
@@ -85,8 +94,8 @@ impl Format {
     /// The bytes a 4×4 block takes, for the block formats.
     pub fn block_bytes(self) -> Option<usize> {
         match self {
-            Format::Dxt1 => Some(8),
-            Format::Dxt3 | Format::Dxt5 => Some(16),
+            Format::Dxt1 | Format::Bc4 => Some(8),
+            Format::Dxt3 | Format::Dxt5 | Format::Bc5 | Format::Bc7 => Some(16),
             _ => None,
         }
     }
@@ -127,6 +136,9 @@ impl PixelFormat {
                 b"DXT1" => Ok(Format::Dxt1),
                 b"DXT3" => Ok(Format::Dxt3),
                 b"DXT5" => Ok(Format::Dxt5),
+                b"BC4U" | b"ATI1" | b"BC4S" => Ok(Format::Bc4),
+                b"BC5U" | b"ATI2" | b"BC5S" => Ok(Format::Bc5),
+                b"BC7\0" | b"BC7 " | b"BC7L" => Ok(Format::Bc7),
                 _ => Err(self.describe()),
             };
         }
@@ -159,7 +171,38 @@ impl PixelFormat {
     }
 }
 
-/// The 128-byte DDS header.
+/// The 20-byte DX10 extended header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Dx10Header {
+    /// The DXGI format number.
+    pub dxgi_format: u32,
+    /// The resource dimension (e.g. 3 = Texture2D).
+    pub resource_dimension: u32,
+    /// Misc flags (e.g. 4 = Cubemap).
+    pub misc_flags: u32,
+    /// Array size.
+    pub array_size: u32,
+    /// Misc flags 2 / alpha mode.
+    pub misc_flags2: u32,
+}
+
+impl Dx10Header {
+    /// Convert DXGI format to a [`Format`].
+    pub fn format(&self) -> Result<Format, String> {
+        match self.dxgi_format {
+            28 | 29 => Ok(Format::A8R8G8B8), // DXGI_FORMAT_R8G8B8A8_UNORM / _UNORM_SRGB
+            71 | 72 => Ok(Format::Dxt1),     // DXGI_FORMAT_BC1_UNORM / _UNORM_SRGB
+            74 | 75 => Ok(Format::Dxt3),     // DXGI_FORMAT_BC2_UNORM / _UNORM_SRGB
+            77 | 78 => Ok(Format::Dxt5),     // DXGI_FORMAT_BC3_UNORM / _UNORM_SRGB
+            80 | 81 => Ok(Format::Bc4),      // DXGI_FORMAT_BC4_UNORM / _SNORM
+            83 | 84 => Ok(Format::Bc5),      // DXGI_FORMAT_BC5_UNORM / _SNORM
+            98 | 99 => Ok(Format::Bc7),      // DXGI_FORMAT_BC7_UNORM / _UNORM_SRGB
+            other => Err(format!("unknown DXGI format {other}")),
+        }
+    }
+}
+
+/// The 128-byte DDS header, optionally followed by a 20-byte DX10 extended header.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DdsHeader {
     /// The header flags.
@@ -178,10 +221,14 @@ pub struct DdsHeader {
     pub pixel_format: PixelFormat,
     /// The four capability words.
     pub caps: [u32; 4],
+    /// The DX10 extended header, present when `pixel_format.fourcc == b"DX10"`.
+    pub dx10: Option<Dx10Header>,
 }
 
-/// The length of the header, after the four-byte magic.
+/// The length of the basic header, after the four-byte magic.
 pub const HEADER_LEN: usize = 128;
+/// The length of the DX10 header extension.
+pub const DX10_HEADER_LEN: usize = 20;
 
 fn u32_at(b: &[u8], o: usize) -> u32 {
     u32::from_le_bytes(b[o..o + 4].try_into().unwrap())
@@ -198,6 +245,23 @@ impl DdsHeader {
         }
         // The fields follow the magic, so field `i` is at 4 + 4*i.
         let h = |i: usize| u32_at(data, 4 + 4 * i);
+        let pf_flags = u32_at(data, 80);
+        let fourcc: [u8; 4] = data[84..88].try_into().unwrap();
+        let dx10 = if pf_flags == PF_FOURCC && &fourcc == b"DX10" {
+            if data.len() < HEADER_LEN + DX10_HEADER_LEN {
+                return Err(DdsError::Truncated(data.len()));
+            }
+            Some(Dx10Header {
+                dxgi_format: u32_at(data, HEADER_LEN),
+                resource_dimension: u32_at(data, HEADER_LEN + 4),
+                misc_flags: u32_at(data, HEADER_LEN + 8),
+                array_size: u32_at(data, HEADER_LEN + 12),
+                misc_flags2: u32_at(data, HEADER_LEN + 16),
+            })
+        } else {
+            None
+        };
+
         Ok(DdsHeader {
             flags: h(1),
             height: h(2),
@@ -206,8 +270,8 @@ impl DdsHeader {
             depth: h(5),
             mip_count: h(6),
             pixel_format: PixelFormat {
-                flags: u32_at(data, 80),
-                fourcc: data[84..88].try_into().unwrap(),
+                flags: pf_flags,
+                fourcc,
                 rgb_bits: u32_at(data, 88),
                 masks: [
                     u32_at(data, 92),
@@ -222,7 +286,17 @@ impl DdsHeader {
                 u32_at(data, 116),
                 u32_at(data, 120),
             ],
+            dx10,
         })
+    }
+
+    /// The header length in bytes, including the DX10 extension if present.
+    pub fn header_len(&self) -> usize {
+        if self.dx10.is_some() {
+            HEADER_LEN + DX10_HEADER_LEN
+        } else {
+            HEADER_LEN
+        }
     }
 
     /// The mip levels in the file: the stored count, or one when it is zero.
@@ -277,11 +351,16 @@ impl<'a> Dds<'a> {
     /// Parse a whole texture.
     pub fn parse(data: &'a [u8]) -> Result<Dds<'a>, DdsError> {
         let header = DdsHeader::parse(data)?;
-        let format = header
-            .pixel_format
-            .format()
-            .map_err(DdsError::Unsupported)?;
-        let payload = &data[HEADER_LEN..];
+        let format = if let Some(ref dx10) = header.dx10 {
+            dx10.format().map_err(DdsError::Unsupported)?
+        } else {
+            header
+                .pixel_format
+                .format()
+                .map_err(DdsError::Unsupported)?
+        };
+        let h_len = header.header_len();
+        let payload = &data[h_len..];
         let expected = header.expected_size(format);
         // More than 32 levels is not a real surface, and the size check
         // would be meaningless.
@@ -532,6 +611,59 @@ mod tests {
             to_rgba8(Format::A4R4G4B4, &[0x0F, 0x0F]).unwrap(),
             vec![255, 0, 255, 0]
         );
+    }
+
+    #[test]
+    fn s5_1_and_s5_2_bc4_bc5_bc7_and_dx10_headers() {
+        // Test FourCC codes for BC4, BC5, BC7
+        let check_fourcc = |code: &[u8; 4], want: Format| {
+            let pf = PixelFormat {
+                flags: PF_FOURCC,
+                fourcc: *code,
+                rgb_bits: 0,
+                masks: [0; 4],
+            };
+            assert_eq!(pf.format().unwrap(), want);
+        };
+        check_fourcc(b"ATI1", Format::Bc4);
+        check_fourcc(b"BC4U", Format::Bc4);
+        check_fourcc(b"ATI2", Format::Bc5);
+        check_fourcc(b"BC5U", Format::Bc5);
+        check_fourcc(b"BC7\0", Format::Bc7);
+        check_fourcc(b"BC7 ", Format::Bc7);
+
+        // Test DX10 extension parsing and formats
+        let mut d = vec![0u8; HEADER_LEN + DX10_HEADER_LEN];
+        d[..4].copy_from_slice(b"DDS ");
+        let put = |d: &mut Vec<u8>, o: usize, v: u32| {
+            d[o..o + 4].copy_from_slice(&v.to_le_bytes());
+        };
+        put(&mut d, 4, 124);
+        put(&mut d, 8, 0x1007);
+        put(&mut d, 12, 16); // h
+        put(&mut d, 16, 16); // w
+        put(&mut d, 28, 1);  // 1 mip
+        put(&mut d, 76, 32);
+        put(&mut d, 80, PF_FOURCC);
+        d[84..88].copy_from_slice(b"DX10");
+
+        // Format 83 = BC5_UNORM
+        put(&mut d, HEADER_LEN, 83);
+        put(&mut d, HEADER_LEN + 4, 3); // Texture2D
+        put(&mut d, HEADER_LEN + 12, 1); // array size
+
+        let header = DdsHeader::parse(&d).unwrap();
+        assert_eq!(header.header_len(), 148);
+        assert!(header.dx10.is_some());
+        assert_eq!(header.dx10.unwrap().format().unwrap(), Format::Bc5);
+
+        // Append payload: 16x16 with BC5 (16 bytes per 4x4 block) => 4x4 blocks = 16 blocks * 16 = 256 bytes
+        let expected = header.expected_size(Format::Bc5);
+        assert_eq!(expected, 256);
+        d.extend(std::iter::repeat_n(0xAAu8, expected));
+        let dds = Dds::parse(&d).unwrap();
+        assert_eq!(dds.format, Format::Bc5);
+        assert_eq!(dds.levels[0][0].len(), 256);
     }
 
     #[test]
