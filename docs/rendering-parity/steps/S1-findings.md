@@ -39,8 +39,8 @@ block of every sampled file.
 | fnv | 537 | 16,982 | 0 | 0 | **0** |
 | fo3 | 451 | 12,079 | 3 | 0 | **0** |
 | skyrimle | 556 | 17,941 | 0 | 130 | **130** |
-| skyrimse | 589 | — | — | — | running |
-| fo4 | — | — | — | — | not run |
+| skyrimse | 589 | 17,301 | 0 | 142 | **1,357** |
+| fo4 | 5,638 | 172,931 | 85,044 | 2,588 | **2,388** |
 
 Fallout: New Vegas and Fallout 3 are clean: every block re-encodes
 byte-identically. Fallout 3's three unknowns are the `bhkConvexListShape`
