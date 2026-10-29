@@ -1177,23 +1177,25 @@
       "id": "S15-2",
       "title": "A shape outside its fade range is not drawn",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::scene::LodRange::contains tested in s15_2_and_s15_3_lod_ranges_and_selection"
     },
     {
       "id": "S15-3",
       "title": "NiLODNode level selection",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "crates/nvre-nif::scene::pick_lod_level tested in s15_2_and_s15_3_lod_ranges_and_selection"
     },
     {
       "id": "S16-1",

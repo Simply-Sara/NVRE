@@ -195,6 +195,25 @@ pub struct SceneObject {
     pub children: Vec<usize>,
 }
 
+/// Representation of a distance LOD range [near, far].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LodRange {
+    pub near_extent: f32,
+    pub far_extent: f32,
+}
+
+impl LodRange {
+    /// Whether distance `d` falls within this LOD range [near, far).
+    pub fn contains(&self, d: f32) -> bool {
+        d >= self.near_extent && d < self.far_extent
+    }
+}
+
+/// Choose the LOD level index whose range contains `distance`.
+pub fn pick_lod_level(ranges: &[LodRange], distance: f32) -> Option<usize> {
+    ranges.iter().position(|r| r.contains(distance))
+}
+
 /// The blocks that are a shape.
 pub const SHAPE_TYPES: [&str; 6] = [
     "NiTriShape",
@@ -987,6 +1006,25 @@ mod tests {
         let s_sse = shape_with_packed_vertices(desc_skyrimse, &[vert_sse], 1);
         let md_sse = mesh_data(&s_sse, 100);
         assert_eq!(md_sse.positions, vec![[1.5, 2.5, -3.5]]);
+    }
+
+    #[test]
+    fn s15_2_and_s15_3_lod_ranges_and_selection() {
+        let ranges = vec![
+            LodRange { near_extent: 0.0, far_extent: 1000.0 },     // Level 0: full detail
+            LodRange { near_extent: 1000.0, far_extent: 5000.0 },  // Level 1: medium detail
+            LodRange { near_extent: 5000.0, far_extent: 20000.0 }, // Level 2: low detail
+        ];
+
+        // S15-2 & S15-3: Test selection at various distances
+        assert_eq!(pick_lod_level(&ranges, 500.0), Some(0));
+        assert_eq!(pick_lod_level(&ranges, 1000.0), Some(1));
+        assert_eq!(pick_lod_level(&ranges, 4999.0), Some(1));
+        assert_eq!(pick_lod_level(&ranges, 5000.0), Some(2));
+        assert_eq!(pick_lod_level(&ranges, 15000.0), Some(2));
+
+        // Outside maximum LOD range -> None (culled/not drawn)
+        assert_eq!(pick_lod_level(&ranges, 25000.0), None);
     }
 
     #[test]
