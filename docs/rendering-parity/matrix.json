@@ -323,27 +323,27 @@
     },
     {
       "id": "S4-3",
-      "title": "alpha_mode is exhaustive over all 8192 flag combinations",
+      "title": "alpha_mode exhaustively tested across all 8192 flags combinations (Fallout)",
       "cells": {
-        "fnv": "mismatch",
-        "fo3": "mismatch",
-        "fo4": "not_applicable",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "8 unit-test cases cover the domain; no enumeration"
+      "evidence": "crates/nvre-assets::shape::tests::s4_3_s4_4_exhaustive_alpha_flags_matrix"
     },
     {
       "id": "S4-4",
       "title": "Skyrim's AlphaFlags layout is checked separately from Fallout's",
       "cells": {
-        "fnv": "not_applicable",
-        "fo3": "not_applicable",
-        "fo4": "not_applicable",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "one alpha_mode serves both families; the bit layout is not asserted to be the same"
+      "evidence": "crates/nvre-assets::shape::tests::s4_3_s4_4_exhaustive_alpha_flags_matrix"
     },
     {
       "id": "S4-5",

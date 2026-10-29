@@ -330,9 +330,9 @@ pub fn alpha_mode(flags: i64, threshold: i64) -> AlphaMode {
     let strict = (flags >> 10) & 7 == 4;
     let cutoff = (threshold as f32 + if strict { 0.5 } else { 0.0 }) / 255.0;
     match (blend, test, src, dst) {
-        (true, _, _, 0) => AlphaMode::Blend,
         (false, true, _, _) => AlphaMode::Mask(cutoff),
         (true, true, _, _) if threshold >= BLEND_TEST_CUT => AlphaMode::Mask(cutoff),
+        (true, _, _, 0) => AlphaMode::Blend,
         (true, _, 1 | 4, _) => AlphaMode::Multiply,
         (true, ..) => AlphaMode::Blend,
         _ => AlphaMode::Opaque,
@@ -580,10 +580,59 @@ mod tests {
     }
 
     #[test]
-    fn s4_3_exhaustive_alpha_mode_space() {
+    fn s4_3_s4_4_exhaustive_alpha_flags_matrix() {
+        // Enumerate all 8,192 combinations of the 13 meaningful bits (0..12).
+        // Bits 13-15 (no_sorter, clone_unique, editor_alpha_threshold) do not affect blending.
         for flags in 0..8192 {
-            let _ = alpha_mode(flags, 0);
-            let _ = alpha_mode(flags, 200);
+            let blend = flags & 1 != 0;
+            let src = (flags >> 1) & 0xF;
+            let dst = (flags >> 5) & 0xF;
+            let test = (flags & 0x200) != 0;
+            let strict = ((flags >> 10) & 7) == 4;
+
+            // Test with low threshold (0)
+            let mode_low = alpha_mode(flags, 0);
+            if !blend && !test {
+                assert_eq!(mode_low, AlphaMode::Opaque);
+            } else if !blend && test {
+                let cutoff = if strict { 0.5 / 255.0 } else { 0.0 };
+                assert_eq!(mode_low, AlphaMode::Mask(cutoff));
+            } else if blend && !test {
+                if dst == 0 {
+                    assert_eq!(mode_low, AlphaMode::Blend);
+                } else if src == 1 || src == 4 {
+                    assert_eq!(mode_low, AlphaMode::Multiply);
+                } else {
+                    assert_eq!(mode_low, AlphaMode::Blend);
+                }
+            } else {
+                // blend && test with threshold 0 (< BLEND_TEST_CUT)
+                if dst == 0 {
+                    assert_eq!(mode_low, AlphaMode::Blend);
+                } else if src == 1 || src == 4 {
+                    assert_eq!(mode_low, AlphaMode::Multiply);
+                } else {
+                    assert_eq!(mode_low, AlphaMode::Blend);
+                }
+            }
+
+            // Test with high threshold (200 >= BLEND_TEST_CUT)
+            let mode_high = alpha_mode(flags, 200);
+            if !blend && !test {
+                assert_eq!(mode_high, AlphaMode::Opaque);
+            } else if test {
+                let cutoff = (200.0 + if strict { 0.5 } else { 0.0 }) / 255.0;
+                assert_eq!(mode_high, AlphaMode::Mask(cutoff));
+            } else {
+                // blend alone
+                if dst == 0 {
+                    assert_eq!(mode_high, AlphaMode::Blend);
+                } else if src == 1 || src == 4 {
+                    assert_eq!(mode_high, AlphaMode::Multiply);
+                } else {
+                    assert_eq!(mode_high, AlphaMode::Blend);
+                }
+            }
         }
     }
 
