@@ -185,8 +185,16 @@ fn main() {
 
             // S3-6 — normals. A block carries them, or the mesh must compute
             // them; a count that disagrees with the vertices is a defect.
+            //
+            // Whether the block carries them is asked of the *decoded
+            // stream*, not of the field: a packed shape (`BSTriShape`) keeps
+            // its normals inside `vertex_data` and has no `normals` field of
+            // its own, so asking the field reports a packed shape as having
+            // none and it gets counted as needing computed normals it does
+            // not need. `mesh_data` already answered the question, so its
+            // answer is the one counted.
             let n = md.positions.len();
-            let has_file_normals = db.get("normals").is_some();
+            let has_file_normals = !md.normals.is_empty();
             if has_file_normals {
                 c.file_normals += 1;
                 if md.normals.len() != n {

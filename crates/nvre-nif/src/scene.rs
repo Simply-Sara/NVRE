@@ -588,11 +588,22 @@ pub fn mesh_data(s: &Struct, bs_version: u32) -> MeshData {
     // A shape may carry its geometry in a packed format: a vertex
     // description (flags) followed by the packed bytes. Its layout is a
     // function of the description, so it is unpacked here.
-    if let (Some(desc), Some(data)) = (
-        s.int("vertex_desc"),
-        s.get("vertex_data").and_then(|v| v.as_bytes()),
-    ) {
-        return unpack_sse(desc as u64, data, s, bs_version);
+    //
+    // The packed bytes arrive in one of two shapes, and which one depends on
+    // the schema rather than on the file. A schema that reads `vertex_data`
+    // as a byte blob hands it over as `Value::Bytes`; one that reads it as
+    // an array of `BSVertexData` structs — which is what `schemas/nif` does,
+    // because the struct's fields carry the conditions that decide the
+    // vertex's size — hands it over as a list of structs. Both are the same
+    // bytes; the second is the decoded form of the first, so it is read
+    // straight out of the structs rather than being packed back together.
+    if let Some(desc) = s.int("vertex_desc") {
+        if let Some(data) = s.get("vertex_data").and_then(|v| v.as_bytes()) {
+            return unpack_sse(desc as u64, data, s, bs_version);
+        }
+        if let Some(list) = s.get("vertex_data").and_then(|v| v.as_list()) {
+            return unpack_structs(desc as u64, list, s);
+        }
     }
     let uv_sets = s
         .list("uv_sets")
@@ -615,6 +626,80 @@ pub fn mesh_data(s: &Struct, bs_version: u32) -> MeshData {
         uv_sets,
         triangles: triangle_indices(s),
     }
+}
+
+/// Unpack a `BSTriShape`'s packed vertices, read as structs.
+///
+/// This is the same data [`unpack_sse`] reads, in the form the decoder hands
+/// it over when the schema declares `vertex_data` as an array of
+/// `BSVertexData` structs — which `schemas/nif` does, because the struct's
+/// fields carry the conditions that decide a vertex's size. The decoder has
+/// already applied those conditions, so the fields that are present are the
+/// fields the description asked for, and there is nothing left to work out
+/// from the offsets: read what is there.
+///
+/// The one thing the offsets still decide is the position's width. Fallout 4
+/// (`bs_version` 130 and up) writes `BSVertexData`, whose position is a
+/// `HalfVector3` of three half floats unless the description's
+/// `FULL_PRECISION` flag asks for the wide form; Skyrim SE (`bs_version` 100)
+/// writes `BSVertexDataSSE`, whose position is always a `Vector3`. The
+/// decoder has already decoded whichever one it read into a `vec3`, so the
+/// two arrive the same way here — the version's job was done at the
+/// boundary, which is why the half-precision gating belongs to the schema
+/// rather than to this function.
+fn unpack_structs(desc: u64, list: &[Value], s: &Struct) -> MeshData {
+    let _ = desc;
+    let mut md = MeshData::default();
+    md.uv_sets.push(Vec::with_capacity(list.len()));
+    for v in list {
+        let Some(st) = v.as_struct() else {
+            // A vertex that did not decode: the shape's data block and its
+            // vertex count disagree, and every stream must still line up.
+            md.positions.push([0.0, 0.0, 0.0]);
+            md.normals.push([0.0, 0.0, 1.0]);
+            md.uv_sets[0].push([0.0, 0.0]);
+            continue;
+        };
+        md.positions
+            .push(vec3(st, "vertex").unwrap_or([0.0, 0.0, 0.0]));
+        md.normals
+            .push(vec3(st, "normal").unwrap_or([0.0, 0.0, 1.0]));
+        if let Some(t) = vec3(st, "tangent") {
+            md.tangents.push(t);
+        }
+        // A UV set: one vec2 per vertex.
+        let uv = st
+            .get("uv")
+            .and_then(|v| v.as_list())
+            .map(|l| {
+                [
+                    l.first().and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+                    l.get(1).and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+                ]
+            })
+            .unwrap_or([0.0, 0.0]);
+        md.uv_sets[0].push(uv);
+        if let Some(c) = st.get("vertex_colors").and_then(|v| v.as_list()) {
+            md.colors.push([
+                c.first().and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+                c.get(1).and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+                c.get(2).and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+                c.get(3).and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+            ]);
+        }
+    }
+    md.triangles = triangle_indices(s);
+    md
+}
+
+/// A vertex's three numbers, as a vec3.
+fn vec3(s: &Struct, name: &str) -> Option<[f32; 3]> {
+    let l = s.list(name)?;
+    Some([
+        l.first().and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+        l.get(1).and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+        l.get(2).and_then(|n| n.as_number()).unwrap_or(0.0) as f32,
+    ])
 }
 
 /// Unpack a `BSTriShape`'s packed vertices.
@@ -1145,6 +1230,126 @@ mod tests {
         let s_sse = shape_with_packed_vertices(desc_skyrimse, &[vert_sse], 1);
         let md_sse = mesh_data(&s_sse, 100);
         assert_eq!(md_sse.positions, vec![[1.5, 2.5, -3.5]]);
+    }
+
+    /// A shape whose `vertex_data` the decoder read as structs rather than
+    /// as a byte blob.
+    fn shape_with_struct_vertices(verts: Vec<Struct>, num_triangles: usize) -> Struct {
+        let mut fields = vec![
+            ("vertex_desc".into(), Value::Num(474989027590661.0)),
+            (
+                "vertex_data".into(),
+                Value::List(verts.into_iter().map(Value::Struct).collect()),
+            ),
+        ];
+        if num_triangles > 0 {
+            let tris: Vec<Value> = (0..num_triangles)
+                .map(|t| {
+                    Value::List(vec![
+                        Value::Num(t as f64),
+                        Value::Num((t + 1) as f64),
+                        Value::Num((t + 2) as f64),
+                    ])
+                })
+                .collect();
+            fields.push(("triangles".into(), Value::List(tris)));
+        }
+        Struct { fields }
+    }
+
+    /// One decoded vertex, as the decoder hands it over.
+    fn struct_vertex(pos: [f32; 3], uv: [f32; 2], normal: [f32; 3]) -> Struct {
+        let mut fields = vec![
+            (
+                "vertex".into(),
+                Value::List(pos.iter().map(|&v| Value::Num(v as f64)).collect()),
+            ),
+            (
+                "uv".into(),
+                Value::List(uv.iter().map(|&v| Value::Num(v as f64)).collect()),
+            ),
+            (
+                "normal".into(),
+                Value::List(normal.iter().map(|&v| Value::Num(v as f64)).collect()),
+            ),
+        ];
+        let _ = &mut fields;
+        Struct { fields }
+    }
+
+    #[test]
+    fn s3_3_a_packed_shape_read_as_structs_keeps_every_stream() {
+        // `schemas/nif` declares `vertex_data` as an array of `BSVertexData`
+        // structs, so the decoder hands it over as a list of structs rather
+        // than as a byte blob — and `mesh_data` only knew the byte form.
+        // Every Fallout 4 and Skyrim SE shape therefore read as having no
+        // geometry at all: 640,441 FO4 shapes and 61,886 Skyrim SE shapes,
+        // measured. The struct form is the same bytes already decoded, so it
+        // is read straight out of the structs.
+        let verts = vec![
+            struct_vertex(
+                [-2.5390625, -7.890625, 2.0332031],
+                [0.796875, 0.63427734],
+                [-0.34117648, -0.69411767, -0.64705884],
+            ),
+            struct_vertex(
+                [0.00080251694, -8.0390625, 1.4394531],
+                [0.5, 0.25],
+                [0.0, 0.0, 1.0],
+            ),
+        ];
+        let s = shape_with_struct_vertices(verts, 1);
+        let md = mesh_data(&s, 130);
+
+        assert_eq!(md.positions.len(), 2, "positions must survive");
+        assert_eq!(md.normals.len(), 2, "normals must survive");
+        assert_eq!(md.uv_sets.len(), 1, "a UV set must survive");
+        assert_eq!(md.uv_sets[0].len(), 2);
+        // The values are the ones the decoder read, unchanged.
+        assert_eq!(md.positions[0], [-2.5390625, -7.890625, 2.0332031]);
+        assert_eq!(md.uv_sets[0][0], [0.796875, 0.63427734]);
+        assert_eq!(md.normals[0], [-0.34117648, -0.69411767, -0.64705884]);
+        // And the triangles still come through, so a shape is drawable.
+        assert_eq!(md.triangles, vec![[0, 1, 2]]);
+    }
+
+    #[test]
+    fn s3_3_a_struct_vertex_with_no_normal_falls_back() {
+        // A vertex whose description omits the normal: the decoder leaves
+        // the field out, and the mesh must still get one normal per vertex
+        // or Bevy's pipeline rejects it.
+        let verts = vec![Struct {
+            fields: vec![
+                (
+                    "vertex".into(),
+                    Value::List(vec![Value::Num(1.0), Value::Num(2.0), Value::Num(3.0)]),
+                ),
+                (
+                    "uv".into(),
+                    Value::List(vec![Value::Num(0.5), Value::Num(0.5)]),
+                ),
+            ],
+        }];
+        let s = shape_with_struct_vertices(verts, 0);
+        let md = mesh_data(&s, 130);
+        assert_eq!(md.positions, vec![[1.0, 2.0, 3.0]]);
+        assert_eq!(md.normals, vec![[0.0, 0.0, 1.0]], "a missing normal is +Z");
+        assert_eq!(md.uv_sets[0], vec![[0.5, 0.5]]);
+        assert!(md.triangles.is_empty());
+    }
+
+    #[test]
+    fn s3_3_the_byte_form_still_wins_when_the_schema_uses_it() {
+        // A schema that reads `vertex_data` as a byte blob still goes
+        // through the byte path, so the two forms do not shadow each other.
+        let desc_fo4_half = (1u64 << 44) | 4;
+        let mut vert = vec![0u8; 16];
+        vert[0..2].copy_from_slice(&0x3C00u16.to_le_bytes()); // 1.0
+        vert[2..4].copy_from_slice(&0x4000u16.to_le_bytes()); // 2.0
+        vert[4..6].copy_from_slice(&0xC200u16.to_le_bytes()); // -3.0
+        let s = shape_with_packed_vertices(desc_fo4_half, &[vert], 1);
+        let md = mesh_data(&s, 130);
+        assert_eq!(md.positions, vec![[1.0, 2.0, -3.0]]);
     }
 
     #[test]
