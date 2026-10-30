@@ -2781,6 +2781,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "csg"
+version = "0.1.0"
+dependencies = [
+ "nvre-inflate",
+ "nvre-util",
+ "proptest",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
 name = "ctrlc"
 version = "3.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

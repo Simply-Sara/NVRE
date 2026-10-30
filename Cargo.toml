@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/nvre-edit", "crates/nvre-editor", "crates/nvre-world", "crates/nvre-vfs", "crates/bsa105", "crates/ba2", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-assets", "crates/nvre-schemas"]
+members = ["crates/nvre-edit", "crates/nvre-editor", "crates/nvre-world", "crates/nvre-vfs", "crates/bsa105", "crates/ba2", "crates/csg", "crates/nvre-util", "crates/nvre-inflate", "crates/nvre-dds", "crates/nvre-nif", "crates/nvre-esm", "crates/nvre-assets", "crates/nvre-schemas"]
 
 [workspace.package]
 version = "0.1.0"

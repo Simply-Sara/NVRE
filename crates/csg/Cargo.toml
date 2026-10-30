@@ -1,0 +1,15 @@
+[package]
+name = "csg"
+description = "Reader for Bethesda CSG/PSG precombined shared geometry archives (Fallout 4)"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+nvre-util = { path = "../nvre-util" }
+nvre-inflate = { path = "../nvre-inflate" }
+thiserror = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+proptest = "1"

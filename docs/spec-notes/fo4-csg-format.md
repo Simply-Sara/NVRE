@@ -23,15 +23,20 @@ reference to the geometry via a CSG filename hash and data offset."*
 
 ## The CSG container
 
-`Fallout4 - Geometry.csg` (240 MB) and its five DLC siblings (~480 MB total):
+`<Plugin> - Geometry.csg` (the `.psg` "Previs Shared Geometry" after `CreationKit -CompressPSG`):
 
 ```
 offset 0    "bcsg"
-offset 4    u32 version            0x7e72
-offset 8    u32 chunk_count        6841 for the base game
-offset 12   chunk_count x { u32 compressed_len, u32 compressed_offset }
-            ...then the zlib streams at those offsets
+offset 4    u32 num_objects        (e.g. 32370 in Fallout4 - Geometry.csg)
+offset 8    u32 num_chunks         (e.g. 6841 in Fallout4 - Geometry.csg)
+offset 12   ChunkEntry[num_chunks]       chunk table (8 bytes each: u32 compressed_size, u32 file_offset)
+...         ObjectEntry[num_objects]     object table (20 bytes each, CK-side metadata)
+...         zlib stream[num_chunks]      compressed payload chunks
 ```
+
+The header closes to the byte:
+`12 + num_chunks * 8 + num_objects * 20 == 12 + 6841 * 8 + 32370 * 20 == 702140`,
+which is exactly the byte offset where chunk 0 starts.
 
 Measured on `Fallout4 - Geometry.csg`:
 
