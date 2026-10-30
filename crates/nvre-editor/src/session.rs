@@ -2124,7 +2124,7 @@ fn formid_in(subs: &[nvre_esm::Subrecord], sig: &[u8; 4]) -> Option<u32> {
 /// A reference's scale, from its XSCL subrecord.
 ///
 /// Defaults to 1.0 when XSCL is absent. When present, XSCL is a 4-byte little-endian float.
-fn scale_in(subs: &[nvre_esm::Subrecord]) -> Option<f32> {
+pub fn scale_in(subs: &[nvre_esm::Subrecord]) -> Option<f32> {
     let s = subs.iter().find(|s| &s.sig == b"XSCL")?;
     let bytes: [u8; 4] = s.data.get(..4)?.try_into().ok()?;
     Some(f32::from_le_bytes(bytes))
