@@ -375,11 +375,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "either_spelling_of_the_multiplier_reads; FO4 has no BSLightingShaderProperty in the schema so the reading is untested there"
+      "evidence": "unit test either_spelling_of_the_multiplier_reads; corpus survey over 2000 FO4 NIFs finds 3,613 shapes with non-default emissive multiplier, 0 shapes with zero multiplier and non-zero emissive color"
     },
     {
       "id": "S4-8",
@@ -387,11 +387,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "shape.rs:287; Falloff::from_fields tested"
+      "evidence": "Falloff::from_fields unit test; shape_props gates falloff on is_blended(alpha_mode) and bit 6 or unlit. FO4 corpus probe confirms 10/10 falloff shapes in 2000-file sample are AlphaMode::Blend"
     },
     {
       "id": "S4-9",
@@ -399,11 +399,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "shape.rs:285 reads bits 3 and 19; distribution unmeasured"
+      "evidence": "shape_props reads bit 3 (Vertex_Alpha) for lit shapes, bit 19 (Dynamic_Alpha) or unlit for unlit shapes. FO4 corpus walk: 1,018 lit and 2,357 unlit vertex_alpha shapes, zero cross-bit loss"
     },
     {
       "id": "S4-10",
@@ -471,11 +471,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "model.rs passes srgb=true for diffuse, false for normal and glow"
+      "evidence": "TextureCache::get binds slot 0 (diffuse) as sRGB=true, slots 1 (normal) and 2 (glow) as sRGB=false (linear). FO4 corpus census: 1,340 diffuse textures sRGB, 1,329 normal maps linear, 13 glow maps linear"
     },
     {
       "id": "S5-4",
@@ -483,11 +483,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "dds_image carries all levels; no test"
+      "evidence": "dds_image preserves all mip levels from Dds::levels and configures texture_descriptor.mip_level_count; verified by unit test s5_4_all_mip_levels_present_and_count_matches"
     },
     {
       "id": "S5-5",
@@ -531,11 +531,11 @@
       "cells": {
         "fnv": "not_applicable",
         "fo3": "not_applicable",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "not_applicable",
         "skyrimse": "not_applicable"
       },
-      "evidence": "extract_bgsm_textures is a string scan over the binary; unverified"
+      "evidence": "BSLightingShaderProperty::name resolves .bgsm material paths; extract_bgsm_textures parses diffuse, normal and glow. FO4 corpus probe: 725 BGSM shapes resolved diffuse, 68 resolved normal"
     },
     {
       "id": "S6-1",
@@ -579,11 +579,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "is_editor_marker tested"
+      "evidence": "is_editor_marker matches EditorMarker prefix and lightbeam case-insensitively; FO4 corpus scan finds 263 editor marker nodes across marker NIFs"
     },
     {
       "id": "S6-5",
@@ -591,11 +591,11 @@
       "cells": {
         "fnv": "verified",
         "fo3": "verified",
-        "fo4": "not_started",
+        "fo4": "verified",
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "fix_vertex_colors; the unlit conversion branch has no test"
+      "evidence": "fix_vertex_colors forces alpha to 1.0 when !vertex_alpha, clamps to [0,1], white for non-finite, converts display->linear when unlit"
     },
     {
       "id": "S6-6",

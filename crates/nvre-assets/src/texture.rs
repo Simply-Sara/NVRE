@@ -104,17 +104,17 @@ pub fn dds_image(bytes: &[u8], srgb: bool, bc_supported: bool) -> Result<Image, 
             )
         }
     };
-    let mut img = Image::new(
+    let mut img = Image::new_uninit(
         Extent3d {
             width: w,
             height: h,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        data,
         format,
         RenderAssetUsages::RENDER_WORLD,
     );
+    img.data = Some(data);
     img.texture_descriptor.mip_level_count = levels.len() as u32;
     img.sampler = sampler();
     Ok(img)
@@ -213,6 +213,44 @@ impl TextureCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn s5_4_all_mip_levels_present_and_count_matches() {
+        // Build a synthetic 3-level 16x16 uncompressed RGBA8 DDS file
+        // Level 0: 16x16 = 256 pixels = 1024 bytes
+        // Level 1: 8x8 = 64 pixels = 256 bytes
+        // Level 2: 4x4 = 16 pixels = 64 bytes
+        // Total data = 1344 bytes
+        let mut dds_bytes = vec![0u8; 128 + 1344];
+        dds_bytes[0..4].copy_from_slice(b"DDS ");
+        // Header size 124
+        dds_bytes[4..8].copy_from_slice(&124u32.to_le_bytes());
+        // Flags: CAPS | HEIGHT | WIDTH | PIXELFORMAT | MIPMAPCOUNT
+        dds_bytes[8..12].copy_from_slice(&(0x1 | 0x2 | 0x4 | 0x1000 | 0x20000u32).to_le_bytes());
+        // Height 16
+        dds_bytes[12..16].copy_from_slice(&16u32.to_le_bytes());
+        // Width 16
+        dds_bytes[16..20].copy_from_slice(&16u32.to_le_bytes());
+        // Pitch 64 (16 * 4)
+        dds_bytes[20..24].copy_from_slice(&64u32.to_le_bytes());
+        // Mip count 3
+        dds_bytes[28..32].copy_from_slice(&3u32.to_le_bytes());
+        // Pixel format size 32 at offset 76 (4 + 72)
+        dds_bytes[76..80].copy_from_slice(&32u32.to_le_bytes());
+        // DDPF_RGB | DDPF_ALPHAPIXELS = 0x40 | 0x1 = 0x41
+        dds_bytes[80..84].copy_from_slice(&0x41u32.to_le_bytes());
+        // RGB bit count 32
+        dds_bytes[88..92].copy_from_slice(&32u32.to_le_bytes());
+        // RGBA masks: DirectDraw A8R8G8B8 format has R in high bits, B in low bits
+        dds_bytes[92..96].copy_from_slice(&0x00FF0000u32.to_le_bytes()); // R
+        dds_bytes[96..100].copy_from_slice(&0x0000FF00u32.to_le_bytes()); // G
+        dds_bytes[100..104].copy_from_slice(&0x000000FFu32.to_le_bytes()); // B
+        dds_bytes[104..108].copy_from_slice(&0xFF000000u32.to_le_bytes()); // A
+
+        let img = dds_image(&dds_bytes, true, true).expect("valid multi-mip DDS");
+        assert_eq!(img.texture_descriptor.mip_level_count, 3);
+        assert_eq!(img.data.as_ref().unwrap().len(), 1344);
+    }
 
     #[test]
     fn s5_5_set_anisotropy_clamps_range() {
