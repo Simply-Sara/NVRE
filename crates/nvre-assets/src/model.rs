@@ -187,7 +187,11 @@ impl ModelCtx<'_> {
             };
             let data = if let Some(data_ref) = shape.ref_at("data") {
                 dec.get(data_ref)
-            } else if o.type_name == "BSTriShape" {
+            } else if o.type_name == "BSTriShape" || dec.is_a(o.block, "BSTriShape") {
+                // The Special Edition's and Fallout 4's shape carries its own
+                // geometry. Fallout 4's is `BSSubIndexTriShape`, which derives
+                // from `BSTriShape` — matching the exact name alone skips
+                // every Fallout 4 shape there is.
                 Some(shape)
             } else {
                 None

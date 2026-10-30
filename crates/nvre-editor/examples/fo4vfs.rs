@@ -48,7 +48,7 @@ fn main() {
             };
             let db = if let Some(r) = shape.ref_at("data") {
                 dec.get(r)
-            } else if o.type_name == "BSTriShape" {
+            } else if o.type_name == "BSTriShape" || dec.is_a(o.block, "BSTriShape") {
                 Some(shape)
             } else {
                 None

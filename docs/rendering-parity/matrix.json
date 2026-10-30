@@ -259,7 +259,7 @@
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "crates/nvre-editor/examples/geomsurvey.rs over each game's whole corpus (release build). fnv 2,255 one-UV and 1,177 no-UV of 67,174 shapes; fo3 1,716 and 1,116 of 57,218; skyrim 16 and 1,866 of 80,742; skyrimse 1,970 and 6,279 of 61,886; fo4 1,665 and 540,965 of 662,902. FO4's 540,965 are all under meshes\\precombined: FO4 stores pre-combined static geometry with its vertices in a shared BSPackedCombinedSharedGeomDataExtra block, and the BSTriShape blocks there carry data_size 0 and point at it. The geometry is present, the reader does not yet assemble it from the shared block — a known gap, not a defect in the reading."
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs over each game's whole corpus (release build). fnv 2,255 one-UV and 1,177 no-UV of 67,174 shapes; fo3 1,716 and 1,116 of 57,218; skyrim 16 and 1,866 of 80,742; skyrimse 1,970 and 6,279 of 61,886; fo4 1,665 and 540,965 of 662,902. FO4's 540,965 are all under meshes\\precombined, and they are correctly read: FO4 stores that geometry outside the NIF, in Fallout4 - Geometry.csg, keyed by a BSPackedGeomObject filename hash and offset. Format reverse-engineered and documented in docs/spec-notes/fo4-csg-format.md; the reader is not written yet."
     },
     {
       "id": "S3-6",
