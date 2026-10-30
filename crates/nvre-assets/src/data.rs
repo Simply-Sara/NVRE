@@ -81,6 +81,11 @@ impl GameData {
         })
     }
 
+    /// Read bytes from a CSG shared geometry archive by `(filename_hash, data_offset, len)`.
+    pub fn read_csg(&self, filename_hash: u32, data_offset: u64, len: usize) -> Option<Vec<u8>> {
+        self.vfs.read_csg(filename_hash, data_offset, len)
+    }
+
     /// Read a file, or `None` when it is not in any archive.
     pub fn read(&self, path: &str) -> Option<Vec<u8>> {
         match self.vfs.read(path)? {

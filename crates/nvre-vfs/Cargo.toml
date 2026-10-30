@@ -13,6 +13,8 @@ bsa105 = { path = "../bsa105" }
 # chosen by the file's magic, so a game whose archives are BA2 needs nothing
 # from the caller.
 ba2 = { path = "../ba2" }
+# Fallout 4 precombined shared geometry (.csg) companion archives.
+csg = { path = "../csg" }
 thiserror.workspace = true
 
 [dev-dependencies]

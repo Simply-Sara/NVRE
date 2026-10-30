@@ -7,7 +7,9 @@
 
 use crate::data::GameData;
 use crate::nif_material::{nif_material, NifMaterial, NifSurface};
-use crate::shape::{build_mesh, fix_vertex_colors, shape_props, ShapeProps};
+use crate::shape::{
+    build_mesh, build_mesh_from_data, fix_vertex_colors, shape_props, ShapeProps,
+};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::system::SystemParam;
 use bevy::image::CompressedImageFormatSupport;
@@ -200,7 +202,10 @@ impl ModelCtx<'_> {
                 continue;
             };
             let props = shape_props(&dec, o, &by_block);
-            let Some((mut mesh, tris, dropped)) = build_mesh(data, file.header.bs_version()) else {
+            let mesh_res = build_mesh(data, file.header.bs_version()).or_else(|| {
+                self.try_build_csg_precombined_mesh(&dec, shape, file.header.bs_version())
+            });
+            let Some((mut mesh, tris, dropped)) = mesh_res else {
                 continue;
             };
             // A triangle that named a vertex that is not there is dropped,
@@ -258,6 +263,195 @@ impl ModelCtx<'_> {
         }
         out.elapsed = started.elapsed().as_secs_f32();
         Ok(out)
+    }
+
+    /// Attempt to build a mesh for a precombined shape whose vertex and triangle
+    /// streams live in an external Fallout 4 CSG archive.
+    fn try_build_csg_precombined_mesh(
+        &self,
+        dec: &nvre_nif::scene::Decoded,
+        shape: &nvre_nif::Struct,
+        bs_version: u32,
+    ) -> Option<(Mesh, usize, usize)> {
+        // A precombined shape points to a `BSPackedCombinedSharedGeomDataExtra` in extra_data_list.
+        let ed_list = shape.list("extra_data_list")?;
+        for ed_val in ed_list {
+            let block_idx = match ed_val {
+                nvre_nif::Value::Ref(idx) if *idx >= 0 => *idx as usize,
+                nvre_nif::Value::Num(n) if *n >= 0.0 => *n as usize,
+                _ => continue,
+            };
+            let Some(Ok(pcd)) = dec.blocks.get(block_idx) else {
+                continue;
+            };
+            let Some(objects) = pcd.list("object") else {
+                continue;
+            };
+            let Some(object_data) = pcd.list("object_data") else {
+                continue;
+            };
+
+            let mut combined_positions = Vec::new();
+            let mut combined_normals = Vec::new();
+            let mut combined_uvs = Vec::new();
+            let mut combined_colors = Vec::new();
+            let mut combined_triangles = Vec::new();
+
+            for (obj, od) in objects.iter().zip(object_data.iter()) {
+                let Some(obj_struct) = obj.as_struct() else {
+                    continue;
+                };
+                let Some(od_struct) = od.as_struct() else {
+                    continue;
+                };
+
+                let filename_hash = obj_struct.int("filename_hash")? as u32;
+                let data_offset = obj_struct.int("data_offset")? as u64;
+
+                let num_verts = od_struct.int("num_verts")? as usize;
+                let tri_count_lod0 = od_struct.int("tri_count_lod0")? as usize;
+                let tri_count_lod1 = od_struct.int("tri_count_lod1").unwrap_or(0) as usize;
+                let tri_count_lod2 = od_struct.int("tri_count_lod2").unwrap_or(0) as usize;
+                let total_tris = tri_count_lod0 + tri_count_lod1 + tri_count_lod2;
+
+                let vertex_desc = od_struct.int("vertex_desc")? as u64;
+                let runtime_stride = (vertex_desc & 0x0F) as usize * 4;
+                // On disk positions are always half4 (8 bytes) even with FULL_PRECISION.
+                let psg_stride = runtime_stride.saturating_sub(8).max(20);
+
+                let vert_bytes_len = num_verts * psg_stride;
+                let tri_bytes_len = total_tris * 6; // 3 u16 indices per triangle
+
+                let raw_data = self
+                    .data
+                    .read_csg(filename_hash, data_offset, vert_bytes_len + tri_bytes_len)?;
+                if raw_data.len() < vert_bytes_len + tri_bytes_len {
+                    continue;
+                }
+
+                let vert_slice = &raw_data[..vert_bytes_len];
+                let tri_slice = &raw_data[vert_bytes_len..vert_bytes_len + tri_bytes_len];
+
+                let md = nvre_nif::scene::unpack_bs_vertex_data(
+                    vertex_desc,
+                    vert_slice,
+                    num_verts,
+                    bs_version,
+                );
+
+                // Unpack triangle indices (3 u16 per triangle)
+                let mut tris = Vec::with_capacity(total_tris);
+                for i in 0..total_tris {
+                    let base = i * 6;
+                    let i0 = u16::from_le_bytes([tri_slice[base], tri_slice[base + 1]]) as u32;
+                    let i1 = u16::from_le_bytes([tri_slice[base + 2], tri_slice[base + 3]]) as u32;
+                    let i2 = u16::from_le_bytes([tri_slice[base + 4], tri_slice[base + 5]]) as u32;
+                    tris.push([i0, i1, i2]);
+                }
+
+                // If combined transforms exist, replicate the geometry per instance
+                let combined = od_struct.list("combined");
+                if let Some(instances) = combined {
+                    for inst in instances {
+                        let Some(inst_struct) = inst.as_struct() else {
+                            continue;
+                        };
+                        let t_val = inst_struct.get("transform")?;
+                        let t_struct = t_val.as_struct()?;
+
+                        let trans_val = t_struct.get("translation")?.as_list()?;
+                        let tx = trans_val.first()?.as_number()? as f32;
+                        let ty = trans_val.get(1)?.as_number()? as f32;
+                        let tz = trans_val.get(2)?.as_number()? as f32;
+
+                        let rot_val = t_struct.get("rotation")?.as_list()?;
+                        let r: Vec<f32> = rot_val
+                            .iter()
+                            .filter_map(|v| v.as_number().map(|n| n as f32))
+                            .collect();
+                        let scale = t_struct
+                            .int("scale")
+                            .or_else(|| t_struct.get("scale").and_then(|v| v.as_number()).map(|n| n as i64))
+                            .unwrap_or(1) as f32;
+
+                        let base_vert_idx = combined_positions.len() as u32;
+
+                        // Apply transform to positions and normals
+                        for pos in &md.positions {
+                            let p = if r.len() == 9 {
+                                [
+                                    (r[0] * pos[0] + r[1] * pos[1] + r[2] * pos[2]) * scale + tx,
+                                    (r[3] * pos[0] + r[4] * pos[1] + r[5] * pos[2]) * scale + ty,
+                                    (r[6] * pos[0] + r[7] * pos[1] + r[8] * pos[2]) * scale + tz,
+                                ]
+                            } else {
+                                [pos[0] * scale + tx, pos[1] * scale + ty, pos[2] * scale + tz]
+                            };
+                            combined_positions.push(p);
+                        }
+
+                        for norm in &md.normals {
+                            let n = if r.len() == 9 {
+                                [
+                                    r[0] * norm[0] + r[1] * norm[1] + r[2] * norm[2],
+                                    r[3] * norm[0] + r[4] * norm[1] + r[5] * norm[2],
+                                    r[6] * norm[0] + r[7] * norm[1] + r[8] * norm[2],
+                                ]
+                            } else {
+                                *norm
+                            };
+                            combined_normals.push(n);
+                        }
+
+                        if let Some(uvs) = md.uv_sets.first() {
+                            combined_uvs.extend_from_slice(uvs);
+                        }
+                        combined_colors.extend_from_slice(&md.colors);
+
+                        for tri in &tris {
+                            combined_triangles.push([
+                                tri[0] + base_vert_idx,
+                                tri[1] + base_vert_idx,
+                                tri[2] + base_vert_idx,
+                            ]);
+                        }
+                    }
+                } else {
+                    let base_vert_idx = combined_positions.len() as u32;
+                    combined_positions.extend_from_slice(&md.positions);
+                    combined_normals.extend_from_slice(&md.normals);
+                    if let Some(uvs) = md.uv_sets.first() {
+                        combined_uvs.extend_from_slice(uvs);
+                    }
+                    combined_colors.extend_from_slice(&md.colors);
+                    for tri in &tris {
+                        combined_triangles.push([
+                            tri[0] + base_vert_idx,
+                            tri[1] + base_vert_idx,
+                            tri[2] + base_vert_idx,
+                        ]);
+                    }
+                }
+            }
+
+            if !combined_positions.is_empty() && !combined_triangles.is_empty() {
+                let md = nvre_nif::scene::MeshData {
+                    positions: combined_positions,
+                    normals: combined_normals,
+                    tangents: Vec::new(),
+                    bitangents: Vec::new(),
+                    colors: combined_colors,
+                    uv_sets: if combined_uvs.is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![combined_uvs]
+                    },
+                    triangles: combined_triangles,
+                };
+                return build_mesh_from_data(md);
+            }
+        }
+        None
     }
 
     /// The material a shape is drawn with.

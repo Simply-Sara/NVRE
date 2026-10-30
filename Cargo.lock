@@ -4738,6 +4738,7 @@ version = "0.1.0"
 dependencies = [
  "ba2",
  "bsa105",
+ "csg",
  "nvre-nif",
  "rayon",
  "thiserror 2.0.21",

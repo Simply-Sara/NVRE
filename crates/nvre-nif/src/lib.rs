@@ -37,5 +37,8 @@ pub mod value;
 
 pub use file::{BlockStatus, NifFile, RawBlock};
 pub use header::{Header, NifError};
+pub use scene::{
+    mesh_data, scene_objects, unpack_bs_vertex_data, Decoded, MeshData, SceneObject, SHAPE_TYPES,
+};
 pub use schema::Schema;
 pub use value::{Struct, Value};

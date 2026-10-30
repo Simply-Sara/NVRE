@@ -787,15 +787,38 @@ fn vec3(s: &Struct, name: &str) -> Option<[f32; 3]> {
 /// The bitangent travels packed as two Normbytes (y, z) beside the normal
 /// and the tangent; a Normbyte maps an unsigned byte to -1..1 as
 /// `b / 127.5 - 1`.
+/// Unpack packed vertices from raw bytes according to `desc`.
+pub fn unpack_bs_vertex_data(
+    desc: u64,
+    data: &[u8],
+    num_verts: usize,
+    bs_version: u32,
+) -> MeshData {
+    unpack_sse_raw(desc, data, num_verts, bs_version)
+}
+
 fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
+    let n = s
+        .int("num_vertices")
+        .map(|n| n as usize)
+        .unwrap_or_else(|| {
+            let stride = (desc & 0x0F) as usize * 4;
+            if stride == 0 {
+                0
+            } else {
+                data.len() / stride
+            }
+        });
+    let mut md = unpack_sse_raw(desc, data, n, bs_version);
+    md.triangles = triangle_indices(s);
+    md
+}
+
+fn unpack_sse_raw(desc: u64, data: &[u8], n: usize, bs_version: u32) -> MeshData {
     let stride = (desc & 0x0F) as usize * 4;
     if stride == 0 {
         return MeshData::default();
     }
-    let n = s
-        .int("num_vertices")
-        .map(|n| n as usize)
-        .unwrap_or_else(|| data.len() / stride);
     let mut md = MeshData::default();
     // One UV set for the Special Edition and for Fallout 4.
     md.uv_sets.push(Vec::with_capacity(n));
@@ -908,7 +931,6 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
         // has a place to start from.
         let _ = (skin, eye, has_bones, has_bitangent_x, has_unused_w);
     }
-    md.triangles = triangle_indices(s);
     md
 }
 

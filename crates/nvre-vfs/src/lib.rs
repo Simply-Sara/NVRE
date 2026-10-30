@@ -157,6 +157,8 @@ pub struct Vfs {
     index: HashMap<String, Location>,
     /// Lower-cased loose path → real relative path (for case-sensitive file systems).
     loose: HashMap<String, PathBuf>,
+    /// CSG archives keyed by filename_hash (bscrc32("<stem> - geometry")).
+    csg_archives: HashMap<u32, std::sync::Arc<csg::CsgArchive>>,
 }
 
 impl Vfs {
@@ -231,6 +233,7 @@ impl Vfs {
             ba2_archives: Vec::new(),
             index: HashMap::new(),
             loose: HashMap::new(),
+            csg_archives: HashMap::new(),
         };
         for name in archives {
             let path = data_dir.join(name);
@@ -286,6 +289,25 @@ impl Vfs {
             vfs.index.insert(key.clone(), Location::Loose);
             vfs.loose.insert(key, rel);
         }
+
+        // Discover and index any Fallout 4 .csg companion archives in data_dir.
+        if let Ok(rd) = std::fs::read_dir(data_dir) {
+            for entry in rd.flatten() {
+                let p = entry.path();
+                if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("csg")) {
+                    let filename = entry.file_name().to_string_lossy().into_owned();
+                    let stem = filename
+                        .strip_suffix(".csg")
+                        .or_else(|| filename.strip_suffix(".CSG"))
+                        .unwrap_or(&filename);
+                    let hash = csg::bscrc32(stem);
+                    if let Ok(archive) = csg::CsgArchive::open(&p) {
+                        vfs.csg_archives.insert(hash, std::sync::Arc::new(archive));
+                    }
+                }
+            }
+        }
+
         Ok(vfs)
     }
 
@@ -347,6 +369,12 @@ impl Vfs {
             Location::Loose => Some(self.data_dir.join(&self.loose[&key])),
             Location::Archive { .. } | Location::Ba2 { .. } | Location::Ba2Texture { .. } => None,
         }
+    }
+
+    /// Read bytes from a CSG shared geometry archive by `(filename_hash, data_offset, len)`.
+    pub fn read_csg(&self, filename_hash: u32, data_offset: u64, len: usize) -> Option<Vec<u8>> {
+        let archive = self.csg_archives.get(&filename_hash)?;
+        archive.read_psg(data_offset, len).ok()
     }
 
     /// Decoded contents of `path`, or `None` when no source has it.

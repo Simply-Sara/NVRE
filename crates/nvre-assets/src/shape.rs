@@ -27,7 +27,7 @@
 use bevy::material::AlphaMode;
 use bevy::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
-use nvre_nif::scene::{mesh_data, Decoded, SceneObject};
+use nvre_nif::scene::{mesh_data, Decoded, MeshData, SceneObject};
 use nvre_nif::value::Struct;
 use std::collections::HashMap;
 
@@ -432,18 +432,8 @@ fn texture_set(dec: &Decoded, set: i32) -> (Option<String>, Option<String>, Opti
     (name(0), name(1), name(2))
 }
 
-/// Build a mesh from a shape's data block.
-///
-/// `bs_version` decides which packed vertex format the shape uses; see
-/// `nvre_nif::scene::mesh_data`. `None` when the data holds no geometry.
-///
-/// The second number is the triangles the shape declares, and the third is
-/// how many of them were dropped because they named a vertex that is not
-/// there. A shape that drops any is a shape whose data block and whose
-/// vertex count disagree, and that is worth counting rather than
-/// swallowing: a stray triangle is drawn where the model should be empty.
-pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize, usize)> {
-    let md = mesh_data(data, bs_version);
+/// Build a Bevy mesh from a decoded [`MeshData`].
+pub fn build_mesh_from_data(md: MeshData) -> Option<(Mesh, usize, usize)> {
     if md.positions.is_empty() || md.triangles.is_empty() {
         return None;
     }
@@ -464,8 +454,6 @@ pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize, usize)
     if md.colors.len() == n {
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, md.colors);
     }
-    // A triangle that names a vertex that is not there would draw a stray
-    // triangle, so it is dropped — and counted.
     let max = n as u32;
     let mut dropped = 0usize;
     let mut idx: Vec<u32> = Vec::with_capacity(tris * 3);
@@ -481,6 +469,21 @@ pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize, usize)
         mesh.compute_normals();
     }
     Some((mesh, tris, dropped))
+}
+
+/// Build a mesh from a shape's data block.
+///
+/// `bs_version` decides which packed vertex format the shape uses; see
+/// `nvre_nif::scene::mesh_data`. `None` when the data holds no geometry.
+///
+/// The second number is the triangles the shape declares, and the third is
+/// how many of them were dropped because they named a vertex that is not
+/// there. A shape that drops any is a shape whose data block and whose
+/// vertex count disagree, and that is worth counting rather than
+/// swallowing: a stray triangle is drawn where the model should be empty.
+pub fn build_mesh(data: &Struct, bs_version: u32) -> Option<(Mesh, usize, usize)> {
+    let md = mesh_data(data, bs_version);
+    build_mesh_from_data(md)
 }
 
 /// Clean a shape's vertex colours for the material it is drawn with.
