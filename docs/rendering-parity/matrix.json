@@ -259,7 +259,7 @@
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "crates/nvre-editor/examples/geomsurvey.rs. FNV full corpus: 2,255 shapes with one distinct UV, 1,177 with no UV set, of 67,174 shapes."
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs over each game's whole corpus (release build). fnv 2,255 one-UV and 1,177 no-UV of 67,174 shapes; fo3 1,716 and 1,116 of 57,218; skyrim 16 and 1,866 of 80,742; skyrimse 1,970 and 6,279 of 61,886; fo4 1,665 and 540,965 of 662,902. FO4's 540,965 are all under meshes\\precombined: FO4 stores pre-combined static geometry with its vertices in a shared BSPackedCombinedSharedGeomDataExtra block, and the BSTriShape blocks there carry data_size 0 and point at it. The geometry is present, the reader does not yet assemble it from the shared block — a known gap, not a defect in the reading."
     },
     {
       "id": "S3-6",
@@ -295,7 +295,7 @@
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "crates/nvre-editor/examples/geomsurvey.rs. FNV full corpus: 0 of 67,174 shapes where num_vertices differs from the positions read."
+      "evidence": "crates/nvre-editor/examples/geomsurvey.rs over each game's whole corpus (release build). fnv 0 of 67,174, fo3 0 of 57,218, skyrim 0 of 80,742, skyrimse 0 of 61,886 — the declared num_vertices equals the positions read in every shape of those four games. fo4 reports 8,857 differing, all of them BSTriShape with data_size 0 under meshes\\precombined, the same shared-geometry case as S3-5: num_vertices is declared and the vertices live in the shared block, so the shape itself reads as zero."
     },
     {
       "id": "S4-1",
