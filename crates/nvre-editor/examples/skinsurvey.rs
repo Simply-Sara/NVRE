@@ -35,6 +35,8 @@ struct Counts {
     skin_data_undecoded: u64,
     /// Skinned shapes with a `skin_partition`.
     with_partition: u64,
+    /// The skin instance types present, by count.
+    skin_types: BTreeMap<String, u64>,
     /// Skinned shapes with no skeleton root.
     no_skeleton_root: u64,
     /// Skinned shapes whose skeleton root is not a node in the file.
@@ -155,6 +157,13 @@ fn main() {
             *c.bone_hist.entry(bones.len() as u64).or_insert(0) += 1;
 
             // The skin data: the bone transforms and the vertex weights.
+            //
+            // The block it points at is named differently per family:
+            // `NiSkinData` in the original edition and in Skyrim,
+            // `BSSkin::BoneData` in Fallout 4, whose `BSSkin::Instance`
+            // also carries a `scales` array the other two do not have.
+            // Both are reached through the same `data` reference, so the
+            // disagreement check is over the bone count each one declares.
             match skin.reference("data").and_then(|r| dec.get(r)) {
                 None => c.skin_data_undecoded += 1,
                 Some(sd) => {
@@ -166,15 +175,22 @@ fn main() {
                     }
                 }
             }
-            // The partition: the Special Edition's and Fallout 4's skin
-            // data, one per body part.
-            if skin
-                .reference("skin_partition")
-                .and_then(|r| dec.get(r))
-                .is_some()
-            {
+            // The partition: the Special Edition's skin data, one per body
+            // part. Fallout 4 does not use it — its skins are
+            // `BSDismemberSkinInstance`, whose body parts are a list of
+            // their own rather than a `NiSkinPartition` block — so both
+            // spellings are counted and a game that uses neither is
+            // visible rather than silently zero.
+            if skin.reference("skin_partition").and_then(|r| dec.get(r)).is_some() {
                 c.with_partition += 1;
             }
+            let skin_type = dec
+                .lineage
+                .get(si)
+                .and_then(|l| l.first())
+                .map(String::as_str)
+                .unwrap_or("?");
+            *c.skin_types.entry(skin_type.to_string()).or_insert(0) += 1;
         }
     }
 
@@ -186,6 +202,10 @@ fn main() {
     println!("  skinned shapes: {}", c.skinned);
     println!("  with skin data: {}", c.with_skin_data);
     println!("  with a partition: {}", c.with_partition);
+    println!("  skin instance types:");
+    for (k, v) in c.skin_types.iter() {
+        println!("    {v:8} {k}");
+    }
     println!("  skin block undecoded: {}", c.skin_undecoded);
     println!("  skin data undecoded: {}", c.skin_data_undecoded);
     println!("  no skeleton root: {}", c.no_skeleton_root);

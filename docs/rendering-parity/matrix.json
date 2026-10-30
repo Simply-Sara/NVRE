@@ -1074,7 +1074,7 @@
         "skyrimle": "verified",
         "skyrimse": "verified"
       },
-      "evidence": "crates/nvre-editor/examples/skinsurvey.rs over each game's actor subtree. fnv 70 skinned of 466 shapes, fo3 39 of 331, skyrim 22,536 of 23,222, skyrimse 1,516 of 2,228, fo4 20,304 of 22,033. Every skin instance resolves: skeleton_root is a node in the file, every bone in the list is a node, and num_bones agrees with NiSkinData — 0 unresolved, 0 disagreements in all five games."
+      "evidence": "crates/nvre-editor/examples/skinsurvey.rs over each game's actor subtree. fnv 70 skinned of 466 shapes, fo3 39 of 331, skyrim 22,536 of 23,222, skyrimse 1,516 of 2,228, fo4 20,304 of 22,033. Every skin instance resolves: skeleton_root is a node in the file, every bone in the list is a node, and the bone count agrees with the bone-data block — 0 unresolved, 0 disagreements in all five games. Three skin instance types are present: NiSkinInstance, BSDismemberSkinInstance (FNV 66/70, Skyrim 12,118/22,536, Skyrim SE 841/1,516) and FO4's BSSkin::Instance (20,304), which has no skin_partition and reaches its bone data through the same `data` reference."
     },
     {
       "id": "S12-2",
