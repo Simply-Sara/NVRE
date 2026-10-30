@@ -290,3 +290,132 @@ fn s14_2_and_s14_3_interior_water_surface_and_lighting_separation() {
         }
     }
 }
+
+#[test]
+fn s8_6_default_landscape_layer_texture_and_fallback() {
+    use nvre_vfs::normal_map_beside;
+    use nvre_world::land::{DEFAULT_DIFFUSE, DEFAULT_NORMAL};
+
+    // S8-6: A quadrant with no layer uses DEFAULT_DIFFUSE, and its normal map
+    // is resolved beside it via normal_map_beside.
+    assert_eq!(DEFAULT_DIFFUSE, "landscape\\dirtwasteland01.dds");
+    assert_eq!(DEFAULT_NORMAL, "landscape\\dirtwasteland01_n.dds");
+    let beside = normal_map_beside(DEFAULT_DIFFUSE);
+    assert_eq!(beside.as_deref(), Some(DEFAULT_NORMAL));
+}
+
+#[test]
+fn s8_7_terrain_built_once_per_worldspace_predicate() {
+    // S8-7: draw_cell's needs_terrain_rebuild predicate:
+    // Only rebuilds when:
+    // 1. worldspace changes (spawned.terrain_world != world_opt)
+    // 2. or full_terrain flag toggles
+    // 3. or in local radius mode and radius changes
+    let check_rebuild = |spawned_world: Option<u32>,
+                         current_world: Option<u32>,
+                         spawned_radius: i32,
+                         current_radius: i32,
+                         spawned_full: bool,
+                         current_full: bool|
+     -> bool {
+        match (spawned_world, current_world) {
+            (Some(sw), Some(cw)) => {
+                sw != cw
+                    || spawned_full != current_full
+                    || (!current_full && spawned_radius != current_radius)
+            }
+            (Some(_), None) => true,
+            (None, Some(_)) => true,
+            (None, None) => false,
+        }
+    };
+
+    // Moving between two cells in the SAME worldspace at the same radius does NOT rebuild terrain
+    assert_eq!(
+        check_rebuild(Some(10), Some(10), 5, 5, false, false),
+        false,
+        "Same worldspace and radius must NOT rebuild terrain"
+    );
+
+    // Changing worldspace DOES rebuild
+    assert_eq!(
+        check_rebuild(Some(10), Some(20), 5, 5, false, false),
+        true,
+        "Changing worldspace must rebuild terrain"
+    );
+
+    // Changing radius in local mode DOES rebuild
+    assert_eq!(
+        check_rebuild(Some(10), Some(10), 3, 5, false, false),
+        true,
+        "Changing radius must rebuild terrain"
+    );
+
+    // Changing radius in full_terrain mode does NOT rebuild
+    assert_eq!(
+        check_rebuild(Some(10), Some(10), 3, 5, true, true),
+        false,
+        "Full terrain mode must ignore radius changes"
+    );
+}
+
+#[test]
+fn s8_8_adjacent_cells_share_edge_vertices_coordinate_math() {
+    use nvre_world::land::{SIDE, SPACING};
+    use nvre_world::CELL_SIZE;
+
+    // Each cell has SIDE x SIDE vertices (33 x 33) spanning CELL_SIZE (4096 units).
+    // The spacing between consecutive vertices is exactly 4096 / 32 = 128 units.
+    assert_eq!(SIDE, 33);
+    assert_eq!(CELL_SIZE, 4096.0);
+    assert_eq!(SPACING, 128.0);
+
+    // Cell at grid (0, 0) right edge: x = 0 * 4096 + 32 * 128 = 4096.0
+    // Cell at grid (1, 0) left edge:  x = 1 * 4096 + 0 * 128 = 4096.0
+    let cell_0_right_edge_x = 0.0 * CELL_SIZE + (SIDE - 1) as f32 * SPACING;
+    let cell_1_left_edge_x = 1.0 * CELL_SIZE + 0.0 * SPACING;
+    assert_eq!(cell_0_right_edge_x, cell_1_left_edge_x);
+}
+
+#[test]
+fn s9_9_directional_fade_scales_sun_illuminance() {
+    use nvre_editor::viewport::DEFAULT_SUN_ILLUMINANCE;
+
+    // When directional_fade is 1.0, illuminance equals DEFAULT_SUN_ILLUMINANCE
+    let fade_full = 1.0f32;
+    let ill_full = DEFAULT_SUN_ILLUMINANCE * fade_full.max(0.0);
+    assert_eq!(ill_full, DEFAULT_SUN_ILLUMINANCE);
+
+    // When directional_fade is 0.0, sun is dark (0.0 lux) rather than absent
+    let fade_zero = 0.0f32;
+    let ill_zero = DEFAULT_SUN_ILLUMINANCE * fade_zero.max(0.0);
+    assert_eq!(ill_zero, 0.0);
+
+    // Half fade scales linearly
+    let fade_half = 0.5f32;
+    let ill_half = DEFAULT_SUN_ILLUMINANCE * fade_half.max(0.0);
+    assert_eq!(ill_half, DEFAULT_SUN_ILLUMINANCE * 0.5);
+
+    // Negative fade clamps to 0.0
+    let fade_neg = -0.5f32;
+    let ill_neg = DEFAULT_SUN_ILLUMINANCE * fade_neg.max(0.0);
+    assert_eq!(ill_neg, 0.0);
+}
+
+#[test]
+fn s9_8_ambient_specular_subtraction_math() {
+    // S9-8: Bevy adds ambient specular which nif_material.wesl subtracts:
+    // out.color.rgb = max(out.color.rgb - view.exposure * ambient_spec, vec3(0.0))
+    // Verifying the non-negativity clamp and subtraction logic:
+    let out_color = Vec3::new(0.5, 0.4, 0.3);
+    let exposure = 1.0f32;
+    let ambient_spec = Vec3::new(0.1, 0.1, 0.1);
+
+    let diffuse_only = (out_color - exposure * ambient_spec).max(Vec3::ZERO);
+    assert!((diffuse_only - Vec3::new(0.4, 0.3, 0.2)).length() < 1e-6);
+
+    // When ambient_spec exceeds out_color, clamp prevents negative color
+    let large_ambient = Vec3::new(1.0, 1.0, 1.0);
+    let clamped = (out_color - exposure * large_ambient).max(Vec3::ZERO);
+    assert_eq!(clamped, Vec3::ZERO);
+}

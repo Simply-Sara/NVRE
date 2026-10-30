@@ -346,7 +346,8 @@ const SUN_DISTANCE: f32 = 20_000.0;
 /// The game's directional colour is a display value — it is what the surface
 /// ends up as, not a luminous power — so this is the scale that makes a
 /// `directional_fade` of 1.0 read as daylight rather than as a lamp.
-const DEFAULT_SUN_ILLUMINANCE: f32 = 20_000.0;
+/// Illuminance of the default sun light, in lux.
+pub const DEFAULT_SUN_ILLUMINANCE: f32 = 20_000.0;
 
 /// Keep the camera where the focus says it is.
 ///

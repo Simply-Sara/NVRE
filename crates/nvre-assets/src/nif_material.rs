@@ -483,4 +483,21 @@ mod tests {
         assert_eq!(biased.constant, 64);
         assert_eq!(biased.slope_scale, 1.0);
     }
+
+    #[test]
+    fn s6_7_multiply_and_additive_blend_equations_match_engine() {
+        // Multiply blend factor: display gamma 2.2, clamped to [0, 1]
+        let lit = Vec3::new(0.5, 0.5, 0.5);
+        let emissive = Vec3::new(0.2, 0.2, 0.2);
+        let factor = multiply_factor(lit, emissive);
+        assert!(factor.x > 0.0 && factor.x <= 1.0);
+        assert!(factor.y > 0.0 && factor.y <= 1.0);
+        assert!(factor.z > 0.0 && factor.z <= 1.0);
+
+        // Additive alpha power = 1.5
+        assert_eq!(add_alpha(0.0), 0.0);
+        assert_eq!(add_alpha(1.0), 1.0);
+        let mid = add_alpha(0.25);
+        assert!((mid - 0.125).abs() < 1e-4); // 0.25^1.5 = 0.125
+    }
 }

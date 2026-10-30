@@ -781,6 +781,38 @@ mod tests {
     }
 
     #[test]
+    fn s4_5_ni_stencil_property_draw_mode_per_version() {
+        use nvre_nif::Value;
+
+        // Pre-20.1.0.3 uses direct draw_mode field: 3 is DRAW_BOTH (double-sided)
+        let mut pre_ver = Struct::new();
+        pre_ver.set("draw_mode", Value::Num(3.0));
+        let mode_pre = pre_ver
+            .int("draw_mode")
+            .or_else(|| pre_ver.int("flags").map(|f| (f >> 10) & 3))
+            .unwrap_or(0);
+        assert_eq!(mode_pre, 3);
+
+        // 20.1.0.3+ packs draw mode into flags at bits 10..11: (3 << 10) = 0x0C00 = 3072
+        let mut post_ver = Struct::new();
+        post_ver.set("flags", Value::Num(3072.0));
+        let mode_post = post_ver
+            .int("draw_mode")
+            .or_else(|| post_ver.int("flags").map(|f| (f >> 10) & 3))
+            .unwrap_or(0);
+        assert_eq!(mode_post, 3);
+
+        // Draw mode 0 (DRAW_CCW) or 1 (DRAW_CW) is not double-sided
+        let mut single = Struct::new();
+        single.set("flags", Value::Num(0.0));
+        let mode_single = single
+            .int("draw_mode")
+            .or_else(|| single.int("flags").map(|f| (f >> 10) & 3))
+            .unwrap_or(0);
+        assert_ne!(mode_single, 3);
+    }
+
+    #[test]
     fn s3_1_build_mesh_drops_and_counts_out_of_range_triangles() {
         use nvre_nif::Value;
         let mut s = Struct::new();

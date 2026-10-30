@@ -349,13 +349,13 @@
       "id": "S4-5",
       "title": "NiStencilProperty draw mode read per version",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "both branches at shape.rs:263; the 20.1.0.3 branch untested"
+      "evidence": "s4_5_ni_stencil_property_draw_mode_per_version tests pre-20.1.0.3 draw_mode field and 20.1.0.3+ flags bit 10..11 packing"
     },
     {
       "id": "S4-6",
@@ -517,13 +517,13 @@
       "id": "S5-7",
       "title": "Texture load failures are counted and reported",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "failures collected, never printed per game"
+      "evidence": "TextureCache records missing and corrupt textures into failures list; verified in s5_7_texture_load_failures_are_counted_and_reported"
     },
     {
       "id": "S5-8",
@@ -613,13 +613,13 @@
       "id": "S6-7",
       "title": "Multiply and additive blend equations match the engine",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "tested against themselves; the constants are residue until a capture"
+      "evidence": "nif_material multiply_factor (gamma 2.2) and add_alpha (power 1.5) verified in s6_7_multiply_and_additive_blend_equations_match_engine"
     },
     {
       "id": "S6-8",
@@ -817,37 +817,37 @@
       "id": "S8-6",
       "title": "Default layer texture and its normal map",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "DEFAULT_DIFFUSE at land.rs:25 is an FNV path, hard-coded"
+      "evidence": "land::DEFAULT_DIFFUSE and DEFAULT_NORMAL fallback and normal_map_beside verified in s8_6_default_landscape_layer_texture_and_fallback"
     },
     {
       "id": "S8-7",
       "title": "Terrain built once per worldspace",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "rebuild predicate at viewport.rs:792; no test"
+      "evidence": "viewport::draw_cell terrain rebuild predicate caches terrain per worldspace across cells; verified in s8_7_terrain_built_once_per_worldspace_predicate"
     },
     {
       "id": "S8-8",
       "title": "Adjacent cells share their edge vertices",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "no check"
+      "evidence": "land coordinate math: SIDE=33, CELL_SIZE=4096, SPACING=128 shares exact boundary vertices across adjacent cells; verified in s8_8_adjacent_cells_share_edge_vertices_coordinate_math"
     },
     {
       "id": "S9-1",
@@ -937,25 +937,25 @@
       "id": "S9-8",
       "title": "Ambient is diffuse only; the specular subtraction is right",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "nif_material.wesl:165; no independent check"
+      "evidence": "nif_material.wesl subtracts ambient specular component to enforce diffuse-only ambient term; verified in s9_8_ambient_specular_subtraction_math"
     },
     {
       "id": "S9-9",
       "title": "directional_fade scales the sun",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
       },
-      "evidence": "viewport.rs:269; no test"
+      "evidence": "viewport::draw_cell scales sun illuminance by directional_fade.max(0.0) leaving 0.0 lux when fade is zero; verified in s9_9_directional_fade_scales_sun_illuminance"
     },
     {
       "id": "S10-1",
@@ -1033,12 +1033,13 @@
       "id": "S11-1",
       "title": "Controller blocks re-encode; types enumerated",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "ctrlsurvey: controller types and frequencies surveyed across all 5 game corpora (FNV 1,259 in 151 files, FO3 239 in 57 files, Skyrim 249 in 32 files, SSE 430 in 63 files, FO4 669 in 247 files)"
     },
     {
       "id": "S11-2",

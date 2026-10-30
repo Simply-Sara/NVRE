@@ -263,6 +263,33 @@ mod tests {
         set_anisotropy(8); // restore default
         assert_eq!(ANISOTROPY.load(Ordering::Relaxed), 8);
     }
+
+    #[test]
+    fn s5_7_texture_load_failures_are_counted_and_reported() {
+        let mut cache = TextureCache::default();
+        assert_eq!(cache.failures().len(), 0);
+
+        // Missing texture should record a failure entry rather than panic
+        let dummy_data = GameData {
+            vfs: std::sync::Arc::new(
+                nvre_vfs::Vfs::open_default(std::path::Path::new(".")).unwrap_or_else(|_| {
+                    nvre_vfs::Vfs::open(std::path::Path::new("."), &[]).unwrap()
+                }),
+            ),
+            schema: std::sync::Arc::new(nvre_nif::Schema::default()),
+        };
+        let mut images = Assets::<Image>::default();
+        let res = cache.get(
+            "textures/nonexistent_dummy_tex.dds",
+            true,
+            &dummy_data,
+            &mut images,
+            None,
+        );
+        assert!(res.is_none());
+        assert_eq!(cache.failures().len(), 1);
+        assert!(cache.failures()[0].contains("nonexistent_dummy_tex.dds"));
+    }
 }
 
 /// Extract texture paths from a Fallout 4 .bgsm binary.
