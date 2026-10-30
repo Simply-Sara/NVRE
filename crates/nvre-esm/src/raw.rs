@@ -877,13 +877,13 @@ pub mod group_type {
     pub const EXTERIOR_CELL_SUBBLOCK: i32 = 5;
     /// A cell's persistent children.
     pub const CELL_CHILDREN: i32 = 6;
-    /// A topic's children.
+    /// A topic's or quest's children (group type 10 in FO4 is topic/quest children).
     pub const TOPIC_CHILDREN: i32 = 7;
     /// A cell's persistent children.
     pub const CELL_PERSISTENT_CHILDREN: i32 = 8;
     /// A cell's temporary children.
     pub const CELL_TEMPORARY_CHILDREN: i32 = 9;
-    /// A cell's visible distant children.
+    /// A cell's visible distant children (TES4/FO3/FNV) or quest/dialogue children (FO4/Skyrim).
     pub const CELL_VISIBLE_DISTANT_CHILDREN: i32 = 10;
 
     /// The name of a group type.

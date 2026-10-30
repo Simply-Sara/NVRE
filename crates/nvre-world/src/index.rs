@@ -149,12 +149,18 @@ impl WorldIndex {
                     b"CELL" => ix.add_cell(lo, schema, pi, r, fid, stack),
                     sig => {
                         let Some(g) = stack.iter().rev().find(|g| {
-                            matches!(
-                                g.group_type,
+                            // Check if this is a cell child group.
+                            // In older engines, group 10 was CELL_VISIBLE_DISTANT_CHILDREN under CELL_CHILDREN.
+                            // In Skyrim/FO4, group 10 is quest/dialogue children under QUST/DIAL.
+                            // Ensure the group actually sits under a CELL_CHILDREN (group type 6) or matches persistent/temporary.
+                            match g.group_type {
                                 group_type::CELL_PERSISTENT_CHILDREN
-                                    | group_type::CELL_TEMPORARY_CHILDREN
-                                    | group_type::CELL_VISIBLE_DISTANT_CHILDREN
-                            )
+                                | group_type::CELL_TEMPORARY_CHILDREN => true,
+                                group_type::CELL_VISIBLE_DISTANT_CHILDREN => {
+                                    stack.iter().any(|p| p.group_type == group_type::CELL_CHILDREN)
+                                }
+                                _ => false,
+                            }
                         }) else {
                             return;
                         };
