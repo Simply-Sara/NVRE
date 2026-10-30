@@ -468,6 +468,19 @@ mod tests {
         let default_bias = DepthBiasState::default();
         let biased = decal_bias(default_bias);
         assert_eq!(biased.constant, default_bias.constant + DECAL_BIAS);
-        assert_eq!(biased.slope_scale, default_bias.slope_scale + DECAL_SLOPE_BIAS);
+        assert_eq!(
+            biased.slope_scale,
+            default_bias.slope_scale + DECAL_SLOPE_BIAS
+        );
+    }
+
+    #[test]
+    fn s16_3_decal_bias_slope_and_constant_win_against_coplanar_surfaces() {
+        let base_bias = DepthBiasState::default();
+        let biased = decal_bias(base_bias);
+        assert!(biased.constant > base_bias.constant);
+        assert!(biased.slope_scale > base_bias.slope_scale);
+        assert_eq!(biased.constant, 64);
+        assert_eq!(biased.slope_scale, 1.0);
     }
 }

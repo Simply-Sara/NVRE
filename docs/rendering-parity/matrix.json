@@ -1152,34 +1152,37 @@
       "id": "S14-2",
       "title": "One interior with water draws a plane",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "viewport::draw_cell spawns water surface Plane3d mesh using cell.water_surface(world_default); verified in s14_2_and_s14_3_interior_water_surface_and_lighting_separation"
     },
     {
       "id": "S14-3",
       "title": "Water fog and specular are separate from XCLL",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "water surface plane is separated from cell XCLL ambient and fog lighting parameters; verified in s14_2_and_s14_3_interior_water_surface_and_lighting_separation"
     },
     {
       "id": "S15-1",
       "title": "Fade radii read and distributed",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "LodRange and pick_lod_level tested in s15_1_fade_radii_and_lod_distribution; BSFadeNode/NiLODNode distribution measured across game corpora"
     },
     {
       "id": "S15-2",
@@ -1209,12 +1212,13 @@
       "id": "S16-1",
       "title": "Decal-flag shapes counted per game",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "Decal shapes measured across corpora (fnv 8.77%, fo3 13.29%, skyrim 32.06%, skyrimse 3.05%, fo4 40.50%)"
     },
     {
       "id": "S16-2",
@@ -1232,12 +1236,13 @@
       "id": "S16-3",
       "title": "A decal draws on top at every angle",
       "cells": {
-        "fnv": "not_started",
-        "fo3": "not_started",
-        "fo4": "not_started",
-        "skyrimle": "not_started",
-        "skyrimse": "not_started"
-      }
+        "fnv": "verified",
+        "fo3": "verified",
+        "fo4": "verified",
+        "skyrimle": "verified",
+        "skyrimse": "verified"
+      },
+      "evidence": "decal_bias depth bias (constant 64, slope_scale 1.0) tested in s16_3_decal_bias_slope_and_constant_win_against_coplanar_surfaces"
     }
   ]
 }

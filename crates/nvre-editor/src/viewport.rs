@@ -172,6 +172,8 @@ pub struct Spawned {
     pub light_radius: i32,
     /// The cell the ambient, the sun and the fog were last written for.
     pub lighting_cell: Option<u32>,
+    /// The water surface plane entity, when the active cell has water.
+    pub water_plane: Option<Entity>,
 }
 
 /// Spawn the viewport's ambient light.
@@ -748,6 +750,9 @@ pub fn draw_cell(
         for (_, e) in spawned.refs.drain() {
             commands.entity(e).despawn();
         }
+        if let Some(w) = spawned.water_plane.take() {
+            commands.entity(w).despawn();
+        }
         spawned.failed.clear();
         spawned.model_paths.clear();
         spawned.bases_resolved = false;
@@ -818,6 +823,40 @@ pub fn draw_cell(
             );
         }
     }
+    // Spawn or update water plane if the cell has a water surface
+    if spawned.water_plane.is_none() {
+        if let Some(cell_entry) = session.index.cells.get(&cell) {
+            let world_default = world_opt
+                .and_then(|wid| session.index.worldspaces.get(&wid))
+                .and_then(|w| w.default_water_height);
+            if let Some(water_z) = cell_entry.water_surface(world_default) {
+                // Bevy coordinates: game Z is Bevy Y. Game X is Bevy X, Game Y is Bevy -Z.
+                let (cx, cz) = if let Some((gx, gy)) = grid_opt {
+                    (gx as f32 * 4096.0 + 2048.0, -(gy as f32 * 4096.0 + 2048.0))
+                } else {
+                    (0.0, 0.0)
+                };
+                let plane_size = if is_exterior { 4096.0 * 5.0 } else { 4096.0 };
+                let mesh_handle = models.meshes.add(Plane3d::default().mesh().size(plane_size, plane_size));
+                let mat_handle = models.materials.add(nvre_assets::nif_material(StandardMaterial {
+                    base_color: Color::srgba(0.1, 0.25, 0.35, 0.7),
+                    alpha_mode: AlphaMode::Blend,
+                    perceptual_roughness: 0.1,
+                    metallic: 0.1,
+                    ..default()
+                }));
+                let e = commands
+                    .spawn((
+                        Mesh3d(mesh_handle),
+                        MeshMaterial3d(mat_handle),
+                        Transform::from_xyz(cx, water_z, cz),
+                    ))
+                    .id();
+                spawned.water_plane = Some(e);
+            }
+        }
+    }
+
     let mut counts = SkipCounts::default();
     // Models are loaded in batches up to the frame budget.
     let frame_budget = if radius < 0 {

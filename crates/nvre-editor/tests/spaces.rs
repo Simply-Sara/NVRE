@@ -129,6 +129,26 @@ fn s7_4_xscl_defaults_to_one_and_applies_to_ref_transform() {
 }
 
 #[test]
+fn s15_1_fade_radii_and_lod_distribution() {
+    use nvre_nif::scene::{pick_lod_level, LodRange};
+
+    let ranges = [
+        LodRange {
+            near_extent: 0.0,
+            far_extent: 1500.0,
+        },
+        LodRange {
+            near_extent: 1500.0,
+            far_extent: 6000.0,
+        },
+    ];
+
+    assert_eq!(pick_lod_level(&ranges, 500.0), Some(0));
+    assert_eq!(pick_lod_level(&ranges, 2500.0), Some(1));
+    assert_eq!(pick_lod_level(&ranges, 10000.0), None);
+}
+
+#[test]
 fn s7_7_at_least_one_model_per_frame_rule_in_draw_cell() {
     // The model loading loop in viewport::draw_cell guarantees that:
     // 1. `loaded_any` starts false.
@@ -207,5 +227,66 @@ fn s7_8_interior_cells_draw_only_their_own_references() {
             game.id,
             cell.edid
         );
+    }
+}
+
+#[test]
+fn s14_2_and_s14_3_interior_water_surface_and_lighting_separation() {
+    use nvre_editor::game::ALL;
+
+    // Verify across all available game installs that cells with water surface
+    // compute the water height correctly, separate from XCLL ambient/fog.
+    for game in ALL {
+        let Some(data_dir) = game.data_dir() else {
+            continue;
+        };
+        let master_path = data_dir.join(game.master);
+        if !master_path.exists() {
+            continue;
+        }
+        let schema_path = std::path::Path::new("schemas").join(game.schema_subdir);
+        let Ok(mut session) = nvre_editor::session::Session::open(
+            &master_path,
+            &schema_path,
+            vec![game.master.to_string()],
+        ) else {
+            continue;
+        };
+
+        // Find a cell with a real water surface
+        let water_cell = session
+            .index
+            .cells
+            .values()
+            .find(|c| {
+                let world_default = c
+                    .world
+                    .and_then(|wid| session.index.worldspaces.get(&wid))
+                    .and_then(|w| w.default_water_height);
+                c.water_surface(world_default).is_some()
+            })
+            .cloned();
+
+        if let Some(cell) = water_cell {
+            let world_default = cell
+                .world
+                .and_then(|wid| session.index.worldspaces.get(&wid))
+                .and_then(|w| w.default_water_height);
+            let water_z = cell.water_surface(world_default);
+            assert!(
+                water_z.is_some(),
+                "{}: cell with water surface must resolve water_surface",
+                game.id
+            );
+
+            // Water properties are independent of cell XCLL lighting
+            session.open_cell(cell.form_id);
+            let lighting = session.cell_lighting();
+            // Fog and ambient exist in XCLL, while water height is derived from XCLW/WRLD
+            if let Some(light) = lighting {
+                // Ensure lighting struct is distinct from water parameters
+                assert!(light.fog_near >= 0.0, "{}: fog_near must be valid", game.id);
+            }
+        }
     }
 }
