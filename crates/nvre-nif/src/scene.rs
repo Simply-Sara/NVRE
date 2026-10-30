@@ -27,17 +27,37 @@ impl Decoded {
     /// `name` is what tells the scene graph and the shape list what a
     /// node is.
     pub fn new(file: &NifFile, data: &[u8], schema: &Schema) -> Decoded {
+        Self::with_filter(file, data, schema, |_| true)
+    }
+
+    /// Decode only the blocks `keep` accepts, leaving the rest `Err`.
+    ///
+    /// A whole-file decode reads every block, and a NIF is mostly not
+    /// geometry: the material properties, the texture sets, the collision
+    /// shapes and the controllers are all blocks too, and a survey that only
+    /// asks about vertices and triangles pays for all of them. Measured over
+    /// Fallout: New Vegas's mesh archive, decoding a file is the whole cost
+    /// of walking it — the archive read is under one percent — so skipping
+    /// the blocks a caller does not ask about is the difference between a
+    /// corpus sweep that finishes and one that does not.
+    ///
+    /// A block that is not decoded is `Err`, which every reader already
+    /// treats as "not there": `Decoded::get` returns `None` for it, exactly
+    /// as it does for a block the schema cannot explain. The lineage is
+    /// still built for every block, because `is_a` is what tells a caller
+    /// whether a block is one it wants — a node, a shape, a data block —
+    /// and that has to be answerable before anything is decoded.
+    pub fn with_filter(
+        file: &NifFile,
+        data: &[u8],
+        schema: &Schema,
+        keep: impl Fn(&str) -> bool,
+    ) -> Decoded {
         let mut blocks = Vec::with_capacity(file.blocks.len());
         let mut lineage = Vec::with_capacity(file.blocks.len());
         for (i, b) in file.blocks.iter().enumerate() {
-            let (status, decoded) = file.decode_block_status(i, schema, data);
-            blocks.push(decoded.ok_or(status).map(|mut s| {
-                let names = string_fields(schema, &b.type_name);
-                resolve_strings(&mut s, file, &names);
-                s
-            }));
-            // The lineage is the type itself, then the types it derives
-            // from, nearest first.
+            // The lineage first: it decides whether the block is wanted, and
+            // `is_a` is answered from it rather than from the decode.
             lineage.push(
                 std::iter::once(b.type_name.clone())
                     .chain(
@@ -48,8 +68,48 @@ impl Decoded {
                     )
                     .collect(),
             );
+            if !keep(&b.type_name) {
+                blocks.push(Err(BlockStatus::Unknown));
+                continue;
+            }
+            let (status, decoded) = file.decode_block_status(i, schema, data);
+            blocks.push(decoded.ok_or(status).map(|mut s| {
+                let names = string_fields(schema, &b.type_name);
+                resolve_strings(&mut s, file, &names);
+                s
+            }));
         }
         Decoded { blocks, lineage }
+    }
+
+    /// Decode only the blocks a geometry survey needs.
+    ///
+    /// The scene graph's nodes, the shapes, the blocks that carry their
+    /// geometry, and the property blocks a shape points at. Everything else —
+    /// collision shapes, controllers, extra data — is a block a survey about
+    /// vertices and triangles never reads, and decoding it is most of the
+    /// cost of walking a corpus. See [`Decoded::with_filter`].
+    ///
+    /// The properties have to be kept even by a survey that does not ask
+    /// about them: a shape's `normal_texture` comes out of its shader
+    /// property, so a survey that skipped them would report every shape as
+    /// having no normal map — which is what happened first time round, and
+    /// the number it produced was zero.
+    pub fn geometry_only(file: &NifFile, data: &[u8], schema: &Schema) -> Decoded {
+        // The lineage is built first for every block, so this is decided by
+        // type rather than by a list that would have to name every node type
+        // the games ship: a node is anything deriving from `NiNode`, a shape
+        // is one of `SHAPE_TYPES`, and its data is one of
+        // `SHAPE_DATA_TYPES`. The predicate is asked of the type name alone,
+        // so the chain has to be walked here rather than read off the
+        // `Decoded` that does not exist yet.
+        Self::with_filter(file, data, schema, |ty| {
+            SHAPE_TYPES.contains(&ty)
+                || SHAPE_DATA_TYPES.contains(&ty)
+                || ty.ends_with("Property")
+                || ty.ends_with("TextureSet")
+                || schema.block_chain(ty).iter().any(|t| *t == "NiNode")
+        })
     }
 
     /// Whether the block at `i` is of type `ty`, or of a type that derives
@@ -1579,5 +1639,66 @@ mod tests {
         resolve_strings(&mut ok, &file, &["name".to_string()]);
         assert_eq!(ok.text("name"), Some("RealName"));
         assert_eq!(st.num("other"), Some(1.0));
+    }
+
+    #[test]
+    fn with_filter_skips_a_block_but_keeps_its_lineage() {
+        // A block the filter rejects is `Err`, so `Decoded::get` returns
+        // `None` for it — exactly as it does for a block the schema cannot
+        // explain. The lineage is still built, because `is_a` is what tells a
+        // caller whether a block is one it wants, and that has to be
+        // answerable before anything is decoded.
+        let f = NifFile {
+            header: crate::header::Header {
+                header_string: Vec::new(),
+                version: 0x14020007,
+                endian: 1,
+                user_version: 0,
+                num_blocks: 2,
+                bs: None,
+                block_types: vec![
+                    crate::header::RawString(b"NiNode".to_vec()),
+                    crate::header::RawString(b"NiTriShape".to_vec()),
+                ],
+                block_type_index: vec![0, 1],
+                block_sizes: Some(vec![0, 0]),
+                max_string_length: None,
+                strings: None,
+                groups: Vec::new(),
+                header_len: 0,
+            },
+            blocks: vec![
+                crate::file::RawBlock {
+                    type_name: "NiNode".into(),
+                    range: 0..0,
+                },
+                crate::file::RawBlock {
+                    type_name: "NiTriShape".into(),
+                    range: 0..0,
+                },
+            ],
+            trailing: 0,
+        };
+        // A minimal schema: `NiTriShape` derives from `NiTriBasedGeom`, so
+        // the lineage is more than the type itself.
+        let j: serde_json::Value = serde_json::from_str(
+            r#"{"blocks":{
+                "NiTriBasedGeom":{"abstract":true,"inherit":"NiGeometry"},
+                "NiGeometry":{"abstract":true,"inherit":"NiAVObject"},
+                "NiAVObject":{"abstract":true,"inherit":"NiObjectNET"},
+                "NiObjectNET":{"abstract":true,"inherit":"NiObject"},
+                "NiNode":{"inherit":"NiAVObject"},
+                "NiTriShape":{"inherit":"NiTriBasedGeom"}}}"#,
+        )
+        .unwrap();
+        let mut schema = crate::schema::Schema::new();
+        schema.merge(&j).expect("the schema");
+
+        // Keep only the node: the shape is not decoded.
+        let dec = Decoded::with_filter(&f, &[], &schema, |ty| ty == "NiNode");
+        assert!(dec.get(1).is_none(), "the rejected block reads as absent");
+        // But the lineage is there for both, so `is_a` still answers.
+        assert!(dec.is_a(0, "NiNode"));
+        assert!(dec.is_a(1, "NiTriBasedGeom"), "lineage survives the filter");
     }
 }

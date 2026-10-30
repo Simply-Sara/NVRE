@@ -4661,6 +4661,7 @@ dependencies = [
  "nvre-util",
  "nvre-vfs",
  "nvre-world",
+ "rayon",
  "rfd",
  "serde",
  "serde_json",

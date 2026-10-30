@@ -32,6 +32,11 @@ tracing.workspace = true
 bevy.workspace = true
 bevy_egui.workspace = true
 egui_extras.workspace = true
+# The corpus checks (`geomsurvey`, `corpusresolve`, `skinsurvey`,
+# `particlesurvey`) are per-file and independent, so they run in parallel: a
+# whole game's meshes is 20k-225k files and one core at a time is the
+# difference between a minute and half an hour.
+rayon = "1"
 # The launcher's Browse button: the OS's own folder picker.
 rfd.workspace = true
 time.workspace = true
