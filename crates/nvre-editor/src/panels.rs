@@ -1334,6 +1334,18 @@ pub fn place(
                         ui.label(&row.name);
                     });
                     let resp = row_ui.response();
+                    // Right-clicking a row opens its context menu, the one
+                    // action in it being what double-clicking does. The row
+                    // is selected first, so the menu acts on the row it was
+                    // opened on rather than on whatever the last click left
+                    // selected.
+                    resp.context_menu(|ui| {
+                        select_fid = Some(row.fid);
+                        if ui.button("Edit").clicked() {
+                            open_obj = Some((row.fid, cur_group.sig));
+                            ui.close();
+                        }
+                    });
                     if resp.double_clicked() {
                         open_obj = Some((row.fid, cur_group.sig));
                     } else if resp.clicked() {
