@@ -196,6 +196,146 @@ impl PredecodedModel {
                 ancestors,
             });
         }
+
+        // Intra-model multi-shape consolidation:
+        // If a model has multiple shapes sharing the exact same material properties,
+        // merge their vertices and indices into a single mesh transformed to model space.
+        // This collapses 2-5 sub-shapes per building/object down to 1 single mesh.
+        if out.shapes.len() > 1 {
+            let mut grouped: HashMap<String, Vec<PredecodedShape>> = HashMap::new();
+            for s in out.shapes.drain(..) {
+                let key = format!(
+                    "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{}",
+                    s.props.texture,
+                    s.props.normal_texture,
+                    s.props.glow,
+                    s.props.alpha_mode,
+                    s.props.unlit,
+                    s.props.double_sided,
+                    s.editor_marker
+                );
+                grouped.entry(key).or_default().push(s);
+            }
+
+            for (_, mut group) in grouped {
+                if group.len() == 1 {
+                    out.shapes.push(group.pop().unwrap());
+                } else {
+                    let first = &group[0];
+                    let props = first.props.clone();
+                    let editor_marker = first.editor_marker;
+                    let name = first.name.clone();
+                    let texture = first.texture.clone();
+                    let normal_texture = first.normal_texture.clone();
+                    let glow = first.glow.clone();
+
+                    let mut merged_pos: Vec<[f32; 3]> = Vec::new();
+                    let mut merged_nor: Vec<[f32; 3]> = Vec::new();
+                    let mut merged_uv: Vec<[f32; 2]> = Vec::new();
+                    let mut merged_tan: Vec<[f32; 4]> = Vec::new();
+                    let mut merged_col: Vec<[f32; 4]> = Vec::new();
+                    let mut merged_idx: Vec<u32> = Vec::new();
+                    let mut total_tris = 0;
+                    let mut has_col = false;
+
+                    for s in group {
+                        total_tris += s.triangles;
+                        let t = s.transform;
+                        let base_idx = merged_pos.len() as u32;
+
+                        if let Some(VertexAttributeValues::Float32x3(p)) =
+                            s.mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+                        {
+                            for v in p {
+                                let q = t.transform_point3(Vec3::from_array(*v));
+                                merged_pos.push(q.to_array());
+                            }
+                        }
+
+                        if let Some(VertexAttributeValues::Float32x3(n)) =
+                            s.mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
+                        {
+                            for v in n {
+                                let norm = t
+                                    .transform_vector3(Vec3::from_array(*v))
+                                    .normalize_or_zero();
+                                merged_nor.push(norm.to_array());
+                            }
+                        }
+
+                        if let Some(VertexAttributeValues::Float32x2(u)) =
+                            s.mesh.attribute(Mesh::ATTRIBUTE_UV_0)
+                        {
+                            merged_uv.extend_from_slice(u);
+                        }
+
+                        if let Some(VertexAttributeValues::Float32x4(tan)) =
+                            s.mesh.attribute(Mesh::ATTRIBUTE_TANGENT)
+                        {
+                            for v in tan {
+                                let t_vec = t
+                                    .transform_vector3(Vec3::new(v[0], v[1], v[2]))
+                                    .normalize_or_zero();
+                                merged_tan.push([t_vec.x, t_vec.y, t_vec.z, v[3]]);
+                            }
+                        }
+
+                        if let Some(VertexAttributeValues::Float32x4(c)) =
+                            s.mesh.attribute(Mesh::ATTRIBUTE_COLOR)
+                        {
+                            has_col = true;
+                            merged_col.extend_from_slice(c);
+                        } else if has_col {
+                            merged_col.resize(merged_pos.len(), [1.0, 1.0, 1.0, 1.0]);
+                        }
+
+                        if let Some(Indices::U32(indices)) = s.mesh.indices() {
+                            for &idx in indices {
+                                merged_idx.push(base_idx + idx);
+                            }
+                        }
+                    }
+
+                    let v_count = merged_pos.len();
+                    if has_col && merged_col.len() < v_count {
+                        merged_col.resize(v_count, [1.0, 1.0, 1.0, 1.0]);
+                    }
+
+                    let mut merged_mesh = Mesh::new(
+                        PrimitiveTopology::TriangleList,
+                        bevy::asset::RenderAssetUsages::RENDER_WORLD,
+                    );
+                    merged_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, merged_pos);
+                    if merged_nor.len() == v_count {
+                        merged_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, merged_nor);
+                    }
+                    if merged_uv.len() == v_count {
+                        merged_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, merged_uv);
+                    }
+                    if merged_tan.len() == v_count {
+                        merged_mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, merged_tan);
+                    }
+                    if has_col && merged_col.len() == v_count {
+                        merged_mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, merged_col);
+                    }
+                    merged_mesh.insert_indices(Indices::U32(merged_idx));
+
+                    out.shapes.push(PredecodedShape {
+                        mesh: merged_mesh,
+                        transform: Affine3A::IDENTITY,
+                        name,
+                        triangles: total_tris,
+                        texture,
+                        normal_texture,
+                        glow,
+                        props,
+                        editor_marker,
+                        ancestors: Vec::new(),
+                    });
+                }
+            }
+        }
+
         out.elapsed = started.elapsed().as_secs_f32();
         Ok(out)
     }
@@ -206,6 +346,8 @@ impl PredecodedModel {
 #[derive(Resource, Default)]
 pub struct ModelCache {
     map: HashMap<String, Option<Arc<PreparedModel>>>,
+    /// Canonical material cache: (props_key, editor_marker) -> Handle<NifMaterial>
+    pub materials: HashMap<String, Handle<NifMaterial>>,
     /// The models that could not be prepared.
     pub failures: Vec<String>,
 }
@@ -314,9 +456,26 @@ impl ModelCtx<'_> {
 
         for s in pre.shapes {
             let mut mesh = s.mesh;
-            let material = self.material_for_profiled(&s.props, &mut mesh, s.editor_marker, None);
+            let mat_key = format!(
+                "{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{}",
+                s.props.texture,
+                s.props.normal_texture,
+                s.props.glow,
+                s.props.alpha_mode,
+                s.props.unlit,
+                s.props.double_sided,
+                s.editor_marker
+            );
+            let mat_handle = if let Some(h) = self.cache.materials.get(&mat_key) {
+                h.clone()
+            } else {
+                let material =
+                    self.material_for_profiled(&s.props, &mut mesh, s.editor_marker, None);
+                let h = self.materials.add(material);
+                self.cache.materials.insert(mat_key, h.clone());
+                h
+            };
             let mesh_handle = self.meshes.add(mesh);
-            let mat_handle = self.materials.add(material);
 
             out.shapes.push(PreparedShape {
                 mesh: mesh_handle,

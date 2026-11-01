@@ -36,6 +36,21 @@ struct BenchConfig {
     sample_frames: usize,
 }
 
+#[derive(Resource, Default)]
+struct PerFrameTimings {
+    frame_start: Option<Instant>,
+    update_start: Option<Instant>,
+    update_dur: f64,
+    samples: Vec<FrameTimeBreakdown>,
+}
+
+#[derive(Clone, Copy, Default, Debug)]
+struct FrameTimeBreakdown {
+    total_ms: f64,
+    update_ecs_ms: f64,
+    render_gpu_wait_ms: f64,
+}
+
 #[derive(Resource)]
 struct BenchState {
     phase: BenchPhase,
@@ -44,6 +59,7 @@ struct BenchState {
     warmup_count: usize,
     frame_samples: Vec<f64>, // frame delta in ms
     last_frame_instant: Option<Instant>,
+    breakdown_samples: Vec<FrameTimeBreakdown>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -157,7 +173,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         warmup_count: 0,
         frame_samples: Vec::with_capacity(sample_frames * 2),
         last_frame_instant: None,
+        breakdown_samples: Vec::with_capacity(sample_frames * 2),
     });
+    app.init_resource::<PerFrameTimings>();
 
     app.insert_resource(assets);
     app.init_resource::<nvre_assets::texture::TextureCache>();
@@ -175,12 +193,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initial setup
     app.add_systems(Startup, setup_bench_scene);
 
+    app.add_systems(PreUpdate, frame_start_system);
+
     // Main viewport driving & benchmark loop
     app.add_systems(
         Update,
         (
             viewport::apply_cell_lighting,
             viewport::draw_cell,
+            viewport::coarse_cell_culling,
             viewport::draw_cell_lights,
             viewport::apply_frame_requests,
             viewport::sync_focus,
@@ -189,9 +210,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .chain(),
     );
 
+    app.add_systems(PostUpdate, frame_end_system);
+
     app.run();
 
     Ok(())
+}
+
+fn frame_start_system(mut timings: ResMut<PerFrameTimings>) {
+    let now = Instant::now();
+    if let Some(prev) = timings.frame_start {
+        let total = prev.elapsed().as_secs_f64() * 1000.0;
+        let update = timings.update_dur;
+        let gpu_wait = (total - update).max(0.0);
+        timings.samples.push(FrameTimeBreakdown {
+            total_ms: total,
+            update_ecs_ms: update,
+            render_gpu_wait_ms: gpu_wait,
+        });
+    }
+    timings.frame_start = Some(now);
+    timings.update_start = Some(now);
+}
+
+fn frame_end_system(mut timings: ResMut<PerFrameTimings>) {
+    if let Some(start) = timings.update_start {
+        timings.update_dur = start.elapsed().as_secs_f64() * 1000.0;
+    }
 }
 
 fn setup_bench_scene(mut commands: Commands, primary_window: Query<Entity, With<PrimaryWindow>>) {
@@ -228,6 +273,7 @@ fn benchmark_step(
     spawned: Res<Spawned>,
     mut focus: ResMut<ViewportFocus>,
     timings: Res<LoadTimings>,
+    mut per_frame: ResMut<PerFrameTimings>,
     time: Res<Time>,
     meshes_query: Query<(), With<Mesh3d>>,
     lights_query: Query<(), Or<(With<PointLight>, With<SpotLight>, With<DirectionalLight>)>>,
@@ -361,6 +407,7 @@ fn benchmark_step(
 
                 state.phase = BenchPhase::Warmup;
                 state.warmup_count = 0;
+                per_frame.samples.clear();
             }
         }
         BenchPhase::Warmup => {
@@ -369,14 +416,20 @@ fn benchmark_step(
                 println!("Warmup complete. Measuring TEST 1: Full World View (Facing Horizon)...");
                 state.phase = BenchPhase::MeasuringWorld;
                 state.frame_samples.clear();
+                state.breakdown_samples.clear();
+                per_frame.samples.clear();
             }
         }
         BenchPhase::MeasuringWorld => {
             state.frame_samples.push(dt_ms);
+            while let Some(sample) = per_frame.samples.pop() {
+                state.breakdown_samples.push(sample);
+            }
             if state.frame_samples.len() >= config.sample_frames {
                 print_stats(
                     "TEST 1: FULL HORIZON VIEW (High Overdraw & Meshes)",
                     &state.frame_samples,
+                    &state.breakdown_samples,
                     meshes_query.iter().count(),
                     lights_query.iter().count(),
                 );
@@ -397,14 +450,20 @@ fn benchmark_step(
                 );
                 state.phase = BenchPhase::MeasuringSky;
                 state.frame_samples.clear();
+                state.breakdown_samples.clear();
+                per_frame.samples.clear();
             }
         }
         BenchPhase::MeasuringSky => {
             state.frame_samples.push(dt_ms);
+            while let Some(sample) = per_frame.samples.pop() {
+                state.breakdown_samples.push(sample);
+            }
             if state.frame_samples.len() >= config.sample_frames {
                 print_stats(
                     "TEST 2: SKY / OFF-FRUSTUM VIEW (Camera Pitched Up)",
                     &state.frame_samples,
+                    &state.breakdown_samples,
                     meshes_query.iter().count(),
                     lights_query.iter().count(),
                 );
@@ -420,7 +479,13 @@ fn benchmark_step(
     }
 }
 
-fn print_stats(title: &str, samples: &[f64], mesh_count: usize, light_count: usize) {
+fn print_stats(
+    title: &str,
+    samples: &[f64],
+    breakdowns: &[FrameTimeBreakdown],
+    mesh_count: usize,
+    light_count: usize,
+) {
     if samples.is_empty() {
         return;
     }
@@ -450,5 +515,38 @@ fn print_stats(title: &str, samples: &[f64], mesh_count: usize, light_count: usi
     println!(" 1% Low FPS:  {low_1pct_fps:6.1} FPS  ({p99_ms:5.2} ms)");
     println!(" Min/Max FPS: {min_fps:6.1} / {max_fps:6.1} FPS");
     println!(" Frame time percentiles: p50={p50_ms:5.2}ms, p95={p95_ms:5.2}ms, p99={p99_ms:5.2}ms");
+
+    if !breakdowns.is_empty() {
+        let b_count = breakdowns.len() as f64;
+        let avg_ecs: f64 = breakdowns.iter().map(|b| b.update_ecs_ms).sum::<f64>() / b_count;
+        let avg_gpu: f64 = breakdowns.iter().map(|b| b.render_gpu_wait_ms).sum::<f64>() / b_count;
+        println!(" FRAME TIME BREAKDOWN (Average):");
+        println!(
+            "   - CPU ECS & Update Schedule:   {:>6.2} ms ({:>4.1}%)",
+            avg_ecs,
+            (avg_ecs / mean_ms) * 100.0
+        );
+        println!(
+            "   - GPU Render & Driver Sync:    {:>6.2} ms ({:>4.1}%)",
+            avg_gpu,
+            (avg_gpu / mean_ms) * 100.0
+        );
+
+        // Find the worst frame (spike frame) breakdown
+        if let Some(worst) = breakdowns
+            .iter()
+            .max_by(|a, b| a.total_ms.partial_cmp(&b.total_ms).unwrap())
+        {
+            println!(" WORST FRAME SPIKE BREAKDOWN ({:.2} ms):", worst.total_ms);
+            println!(
+                "   - CPU ECS & Update Schedule:   {:>6.2} ms",
+                worst.update_ecs_ms
+            );
+            println!(
+                "   - GPU Render & Driver Sync:    {:>6.2} ms",
+                worst.render_gpu_wait_ms
+            );
+        }
+    }
     println!("------------------------------------------------------------");
 }

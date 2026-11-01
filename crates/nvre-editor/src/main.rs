@@ -430,6 +430,7 @@ fn main() {
                 // drawn with them.
                 viewport::apply_cell_lighting,
                 viewport::draw_cell,
+                viewport::coarse_cell_culling,
                 // The game's own lights, spawned from the same references and the
                 // same cell. After the models so a light is never one frame ahead
                 // of the thing it lights.
