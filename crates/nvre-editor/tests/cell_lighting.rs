@@ -51,14 +51,52 @@ fn a_short_subrecord_reads_as_nothing() {
     assert!(cell_lighting(&cistern_a()).is_some());
 }
 
-/// The layout is a 40-byte prefix every game shares, so a longer subrecord
-/// reads the same and its extra bytes are ignored.
+/// A longer subrecord (>= 92 bytes) decodes directional ambient fields.
 #[test]
-fn a_longer_subrecord_reads_the_same_prefix() {
+fn a_longer_subrecord_reads_directional_ambient() {
     let mut long = cistern_a();
-    // Skyrim's and Fallout 4's `XCLL` is 92 bytes.
-    long.extend_from_slice(&[0xAA; 52]);
-    assert_eq!(cell_lighting(&long), cell_lighting(&cistern_a()));
+    // 52 additional bytes: 6x4B directional colors, 4B specular, 4B scale, 20B remaining
+    let mut extra = vec![0u8; 52];
+    extra[0..3].copy_from_slice(&[10, 11, 12]); // X+
+    extra[4..7].copy_from_slice(&[20, 21, 22]); // X-
+    extra[8..11].copy_from_slice(&[30, 31, 32]); // Y+
+    extra[12..15].copy_from_slice(&[40, 41, 42]); // Y-
+    extra[16..19].copy_from_slice(&[50, 51, 52]); // Z+
+    extra[20..23].copy_from_slice(&[60, 61, 62]); // Z-
+    extra[24..27].copy_from_slice(&[70, 71, 72]); // specular
+    extra[28..32].copy_from_slice(&1.5f32.to_le_bytes()); // scale
+    long.extend_from_slice(&extra);
+
+    let l = cell_lighting(&long).expect("92 bytes parses");
+    assert_eq!(l.ambient, [30, 46, 62]);
+    assert_eq!(
+        l.directional_ambient,
+        Some([
+            [10, 11, 12],
+            [20, 21, 22],
+            [30, 31, 32],
+            [40, 41, 42],
+            [50, 51, 52],
+            [60, 61, 62]
+        ])
+    );
+    assert_eq!(l.specular, Some([70, 71, 72]));
+    assert_eq!(l.directional_scale, Some(1.5));
+
+    // ambient_color averages the base ambient with the 6 directional axes
+    let c = l.ambient_color();
+    // Base: [30, 46, 62]
+    // Axes sum * 1.5:
+    // r: (10+20+30+40+50+60)*1.5 = 210*1.5 = 315. Total r = 30 + 315 = 345. 345/7 = 49.28 -> 49
+    // g: (11+21+31+41+51+61)*1.5 = 216*1.5 = 324. Total g = 46 + 324 = 370. 370/7 = 52.85 -> 52
+    // b: (12+22+32+42+52+62)*1.5 = 222*1.5 = 333. Total b = 62 + 333 = 395. 395/7 = 56.42 -> 56
+    let expected = bevy::color::Color::LinearRgba(bevy::color::LinearRgba::new(
+        49.0 / 255.0,
+        52.0 / 255.0,
+        56.0 / 255.0,
+        1.0,
+    ));
+    assert_eq!(c, expected);
 }
 
 /// A cell with no fog stores a `fog_far` of zero, and the viewport must draw
@@ -80,17 +118,15 @@ fn a_degenerate_fog_is_no_fog() {
     assert!(!l.has_fog(), "equal near and far is no range");
 }
 
-/// The colours are bytes scaled to the 0-1 range Bevy wants, and decoded the
-/// way the rest of the pipeline expects: `srgb` takes display values and
-/// `to_linear` reads them back as the linear ones the shaders work in.
+/// The colours are bytes scaled to the 0-1 range Bevy wants, and passed as
+/// linear RGB directly without double-gamma darkening.
 #[test]
 fn the_colours_scale_to_bevys_range() {
     let l = cell_lighting(&cistern_a()).expect("40 bytes is enough");
     let [r, g, b, a] = l.ambient_color().to_linear().to_f32_array();
-    // A byte of 30 in sRGB is ~0.01298 in linear, not 30/255.
-    assert!((r - 0.01298).abs() < 1e-4, "red was {r}");
-    assert!((g - 0.02732).abs() < 1e-4, "green was {g}");
-    assert!((b - 0.04817).abs() < 1e-4, "blue was {b}");
+    assert!((r - 30.0 / 255.0).abs() < 1e-4, "red was {r}");
+    assert!((g - 46.0 / 255.0).abs() < 1e-4, "green was {g}");
+    assert!((b - 62.0 / 255.0).abs() < 1e-4, "blue was {b}");
     assert_eq!(a, 1.0, "the alpha is one");
 }
 
@@ -231,8 +267,8 @@ fn s9_6_sun_transform_heading_and_elevation() {
     let mut l = cell_lighting(&cistern_a()).expect("valid cell lighting");
     // cistern_a has rotation_xy = 120, rotation_z = 270
     let tr = nvre_editor::viewport::sun_transform(l);
-    // At rotation_z = 270 deg (pitch = 3*PI/2 = -PI/2), pitch.sin() = -1.0, cos() = 0.0
-    // Sun direction vector = [0, -1, 0] * 20000.0
+    // At rotation_z = 270 deg (pitch = 3*PI/2), pitch.sin() = -1.0, cos() = 0.0
+    // game_dir = [0, 0, -1]. game_to_bevy maps game Z to bevy Y: [0, -1, 0] * 20000.0
     assert!((tr.translation.y - (-20000.0)).abs() < 1.0);
     assert!(tr.translation.x.abs() < 1.0);
     assert!(tr.translation.z.abs() < 1.0);
@@ -244,6 +280,24 @@ fn s9_6_sun_transform_heading_and_elevation() {
     assert!((tr_up.translation.y - 20000.0).abs() < 1.0);
     assert!(tr_up.translation.x.abs() < 1.0);
     assert!(tr_up.translation.z.abs() < 1.0);
+
+    // Test East sun: rotation_xy = 0 (heading +X), rotation_z = 0 (elevation 0)
+    // game_dir = [1, 0, 0]. game_to_bevy maps game +X to bevy +X: [20000, 0, 0]
+    l.rotation_xy = 0;
+    l.rotation_z = 0;
+    let tr_east = nvre_editor::viewport::sun_transform(l);
+    assert!((tr_east.translation.x - 20000.0).abs() < 1.0);
+    assert!(tr_east.translation.y.abs() < 1.0);
+    assert!(tr_east.translation.z.abs() < 1.0);
+
+    // Test North sun: rotation_xy = 90 (heading +Y), rotation_z = 0 (elevation 0)
+    // game_dir = [0, 1, 0]. game_to_bevy maps game +Y to bevy -Z: [0, 0, -20000]
+    l.rotation_xy = 90;
+    l.rotation_z = 0;
+    let tr_north = nvre_editor::viewport::sun_transform(l);
+    assert!(tr_north.translation.x.abs() < 1.0);
+    assert!(tr_north.translation.y.abs() < 1.0);
+    assert!((tr_north.translation.z - (-20000.0)).abs() < 1.0);
 }
 
 #[test]

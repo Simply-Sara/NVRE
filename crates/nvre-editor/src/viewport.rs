@@ -320,19 +320,25 @@ pub fn apply_cell_lighting(
 ///
 /// The two angles are the sun's heading (XY) and elevation (Z) in degrees,
 /// matching GECK's lighting dialog and fopdoc XCLL directional rotation specs.
-/// The sun sits at elevation `rotation_z` and rotates about the vertical axis with
-/// `rotation_xy`.
+/// The game coordinate system is +X East, +Y North, +Z Up.
+/// In game space:
+///   game_dir = (cos(yaw)*cos(pitch), sin(yaw)*cos(pitch), sin(pitch))
+/// Transforming by `game_to_bevy()` maps:
+///   x_bevy = x_game = cos(yaw)*cos(pitch)
+///   y_bevy = z_game = sin(pitch)
+///   z_bevy = -y_game = -sin(yaw)*cos(pitch)
+/// The directional light entity is placed at `bevy_pos = bevy_dir * SUN_DISTANCE`
+/// looking at the cell center (`Vec3::ZERO`), shining inwards along its local -Z.
 pub fn sun_transform(l: crate::session::CellLighting) -> Transform {
     let yaw = (l.rotation_xy as f32).to_radians();
     let pitch = (l.rotation_z as f32).to_radians();
-    // The light *shines towards* the direction it is rotated to face, so it is
-    // placed opposite where the light comes from.
-    let dir = Vec3::new(
+    let game_dir = Vec3::new(
         yaw.cos() * pitch.cos(),
-        pitch.sin(),
         yaw.sin() * pitch.cos(),
+        pitch.sin(),
     );
-    Transform::from_translation(dir * SUN_DISTANCE).looking_at(Vec3::ZERO, Vec3::Y)
+    let bevy_dir = game_to_bevy().rotation * game_dir;
+    Transform::from_translation(bevy_dir * SUN_DISTANCE).looking_at(Vec3::ZERO, Vec3::Y)
 }
 
 /// How far from the cell's centre the sun stands, in game units.

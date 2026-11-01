@@ -485,12 +485,190 @@ impl Session {
     /// The open cell's own lighting, if it has any.
     ///
     /// The cell's `XCLL` is the ambient colour, the sun's colour and the fog
-    /// the renderer draws with. An exterior cell has none — it takes its
-    /// lighting from the weather system — so this answers `None` outdoors, and
-    /// the viewport keeps its own ambient there instead of going black.
+    /// the renderer draws with. If a cell has a Light Template (`LTMP`) and
+    /// inherit flags (`LNAM`), inherited fields are populated from the template's
+    /// `LGTM` record (`DATA` and optional `DALC`).
+    ///
+    /// An exterior cell carries no `XCLL` of its own — it resolves its lighting
+    /// from the active Weather (`WTHR`) via Climate (`CLMT`) / Worldspace (`WRLD`),
+    /// sampling daylight ambient, directional sunlight, and fog.
     pub fn cell_lighting(&mut self) -> Option<CellLighting> {
         let cell = self.cell?;
-        cell_lighting(&self.cell_sub(cell, b"XCLL")?)
+        let xcll_bytes = self.cell_sub(cell, b"XCLL");
+        let ltmp_fid = self.cell_sub(cell, b"LTMP").and_then(|b| {
+            if b.len() >= 4 {
+                Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            } else {
+                None
+            }
+        });
+        let lnam_flags = self
+            .cell_sub(cell, b"LNAM")
+            .and_then(|b| {
+                if b.len() >= 4 {
+                    Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0);
+
+        // If we have an LTMP template, read its LGTM DATA & DALC
+        let template_lighting = if let Some(fid) = ltmp_fid {
+            let lgtm_data = self.record_sub(fid, b"DATA");
+            let mut l = lgtm_data.as_deref().and_then(cell_lighting);
+            if let Some(ref mut tl) = l {
+                // If Skyrim/FO4 LGTM has a separate DALC subrecord:
+                if tl.directional_ambient.is_none() {
+                    if let Some(dalc_bytes) = self.record_sub(fid, b"DALC") {
+                        if dalc_bytes.len() >= 24 {
+                            let mut dalc = [[0u8; 3]; 6];
+                            for i in 0..6 {
+                                dalc[i] = [
+                                    dalc_bytes[i * 3],
+                                    dalc_bytes[i * 3 + 1],
+                                    dalc_bytes[i * 3 + 2],
+                                ];
+                            }
+                            tl.directional_ambient = Some(dalc);
+                        }
+                    }
+                }
+            }
+            l
+        } else {
+            None
+        };
+
+        match (
+            xcll_bytes.as_deref().and_then(cell_lighting),
+            template_lighting,
+        ) {
+            (Some(mut cell_l), Some(tmpl_l)) => {
+                // Apply LNAM inheritance flags:
+                // Bit 0: Ambient Color
+                if (lnam_flags & (1 << 0)) != 0 {
+                    cell_l.ambient = tmpl_l.ambient;
+                    if tmpl_l.directional_ambient.is_some() {
+                        cell_l.directional_ambient = tmpl_l.directional_ambient;
+                        cell_l.directional_scale = tmpl_l.directional_scale;
+                        cell_l.specular = tmpl_l.specular;
+                    }
+                }
+                // Bit 1: Directional Color
+                if (lnam_flags & (1 << 1)) != 0 {
+                    cell_l.directional = tmpl_l.directional;
+                }
+                // Bit 2: Fog Color
+                if (lnam_flags & (1 << 2)) != 0 {
+                    cell_l.fog = tmpl_l.fog;
+                }
+                // Bit 3: Fog Near
+                if (lnam_flags & (1 << 3)) != 0 {
+                    cell_l.fog_near = tmpl_l.fog_near;
+                }
+                // Bit 4: Fog Far
+                if (lnam_flags & (1 << 4)) != 0 {
+                    cell_l.fog_far = tmpl_l.fog_far;
+                }
+                // Bit 5: Directional Rotation
+                if (lnam_flags & (1 << 5)) != 0 {
+                    cell_l.rotation_xy = tmpl_l.rotation_xy;
+                    cell_l.rotation_z = tmpl_l.rotation_z;
+                }
+                // Bit 6: Directional Fade
+                if (lnam_flags & (1 << 6)) != 0 {
+                    cell_l.directional_fade = tmpl_l.directional_fade;
+                }
+                // Bit 7: Clip Distance
+                if (lnam_flags & (1 << 7)) != 0 {
+                    cell_l.fog_clip_dist = tmpl_l.fog_clip_dist;
+                }
+                // Bit 8: Fog Power
+                if (lnam_flags & (1 << 8)) != 0 {
+                    cell_l.fog_power = tmpl_l.fog_power;
+                }
+                Some(cell_l)
+            }
+            (Some(cell_l), None) => Some(cell_l),
+            (None, Some(tmpl_l)) => Some(tmpl_l),
+            (None, None) => {
+                // If this is an exterior cell, attempt to resolve daylight lighting from Weather (WTHR)
+                self.exterior_weather_lighting(cell)
+            }
+        }
+    }
+
+    /// Resolve lighting for an exterior cell from the active Weather (WTHR) record.
+    fn exterior_weather_lighting(&mut self, cell: u32) -> Option<CellLighting> {
+        let is_interior = self
+            .index
+            .cells
+            .get(&cell)
+            .map_or(false, |c| c.is_interior());
+        if is_interior {
+            return None;
+        }
+
+        // Find a representative WTHR record in the load order
+        let weathers = self.records_by_sig(*b"WTHR");
+        let wthr_fid = weathers.first()?.0;
+        let nam0 = self.record_sub(wthr_fid, b"NAM0")?;
+
+        // NAM0 holds 10 color types. Each color type has times_of_day colors (4 bytes per color: RGB + pad).
+        // times_of_day is typically 6 (Sunrise, Day, Sunset, Night, High Noon, Midnight) or 4.
+        let times = if nam0.len() % 240 == 0 {
+            6
+        } else if nam0.len() % 160 == 0 {
+            4
+        } else {
+            return None;
+        };
+        let type_stride = times * 4;
+        if nam0.len() < type_stride * 10 {
+            return None;
+        }
+
+        // Index 1 = Day (time of day index 1)
+        let day_idx = 1.min(times - 1);
+        let color_at = |type_idx: usize| -> [u8; 3] {
+            let offset = type_idx * type_stride + day_idx * 4;
+            [nam0[offset], nam0[offset + 1], nam0[offset + 2]]
+        };
+
+        // Color types: 1 = Fog, 3 = Ambient, 4 = Sunlight
+        let fog = color_at(1);
+        let ambient = color_at(3);
+        let sunlight = color_at(4);
+
+        // Optional FNAM fog distances (6x f32: day near, day far, night near, night far, etc.)
+        let (fog_near, fog_far) = if let Some(fnam) = self.record_sub(wthr_fid, b"FNAM") {
+            if fnam.len() >= 8 {
+                let near = f32::from_le_bytes([fnam[0], fnam[1], fnam[2], fnam[3]]);
+                let far = f32::from_le_bytes([fnam[4], fnam[5], fnam[6], fnam[7]]);
+                (near, far)
+            } else {
+                (0.0, 0.0)
+            }
+        } else {
+            (0.0, 0.0)
+        };
+
+        Some(CellLighting {
+            ambient,
+            directional: sunlight,
+            fog,
+            fog_near,
+            fog_far,
+            rotation_xy: 45, // default pleasant daylight sun angle
+            rotation_z: 60,
+            directional_fade: 1.0,
+            fog_clip_dist: 0.0,
+            fog_power: 1.0,
+            directional_ambient: None,
+            specular: None,
+            directional_scale: None,
+        })
     }
 
     /// The object palette, grouped into the schema's categories.
@@ -1611,9 +1789,9 @@ impl CellScope {
 /// | FNV, FO3 | 40 B — exactly this struct |
 /// | Skyrim LE, Skyrim SE, FO4 | 92 B — this struct, then 52 more bytes |
 ///
-/// The 40-byte prefix is the same in all five, so one reader covers every game
-/// and the extra bytes are simply left unread. `fopdoc` documents the layout
-/// for the Fallout family; UESP documents it for Skyrim.
+/// The 40-byte prefix is the same in all five. Skyrim LE/SE and FO4 store
+/// 52 additional bytes: a 6-axis directional ambient cube (X+, X-, Y+, Y-, Z+, Z-),
+/// specular colour, directional scale, fog far colour, fog max, and light fade distances.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CellLighting {
     /// The ambient colour, as 0-255 bytes.
@@ -1636,6 +1814,13 @@ pub struct CellLighting {
     pub fog_clip_dist: f32,
     /// The fog's power: how sharply it thickens with distance.
     pub fog_power: f32,
+    /// 6-axis directional ambient colors (Skyrim LE/SE, FO4 92-byte XCLL or LGTM DALC):
+    /// [X+, X-, Y+, Y-, Z+, Z-], each 3 bytes.
+    pub directional_ambient: Option<[[u8; 3]; 6]>,
+    /// Specular color for directional ambient (Skyrim LE/SE, FO4).
+    pub specular: Option<[u8; 3]>,
+    /// Directional ambient scale multiplier (Skyrim LE/SE, FO4).
+    pub directional_scale: Option<f32>,
 }
 
 impl CellLighting {
@@ -1648,36 +1833,64 @@ impl CellLighting {
         self.fog_far > 0.0 && self.fog_far > self.fog_near
     }
 
-    /// The ambient colour as a Bevy colour, bytes scaled to 0-1.
+    /// The ambient colour as a Bevy colour, bytes scaled linearly to 0-1.
+    ///
+    /// In Bethesda engines (Gamebryo and pre-FO4 PBR Creation Engine), ambient
+    /// and directional lights are direct un-curved linear multipliers on diffuse textures.
+    /// `Color::LinearRgba` avoids double-gamma darkening in the PBR lighting pass.
     pub fn ambient_color(&self) -> bevy::color::Color {
-        bytes_color(self.ambient)
+        if let (Some(dalc), scale_opt) = (self.directional_ambient, self.directional_scale) {
+            let scale = scale_opt.unwrap_or(1.0).max(0.0);
+            let mut sum_r = f32::from(self.ambient[0]);
+            let mut sum_g = f32::from(self.ambient[1]);
+            let mut sum_b = f32::from(self.ambient[2]);
+            for axis in &dalc {
+                sum_r += f32::from(axis[0]) * scale;
+                sum_g += f32::from(axis[1]) * scale;
+                sum_b += f32::from(axis[2]) * scale;
+            }
+            // 1 base ambient + 6 directional axes = 7 components
+            let avg = [
+                ((sum_r / 7.0).clamp(0.0, 255.0)) as u8,
+                ((sum_g / 7.0).clamp(0.0, 255.0)) as u8,
+                ((sum_b / 7.0).clamp(0.0, 255.0)) as u8,
+            ];
+            bytes_color(avg)
+        } else {
+            bytes_color(self.ambient)
+        }
     }
 
-    /// The directional colour as a Bevy colour, bytes scaled to 0-1.
+    /// The directional colour as a Bevy colour, bytes scaled linearly to 0-1.
     pub fn directional_color(&self) -> bevy::color::Color {
         bytes_color(self.directional)
     }
 
     /// The fog colour as a Bevy colour, bytes scaled to 0-1.
     pub fn fog_color(&self) -> bevy::color::Color {
-        bytes_color(self.fog)
+        // DistanceFog in Bevy works as an sRGB display color
+        bevy::color::Color::srgb(
+            f32::from(self.fog[0]) / 255.0,
+            f32::from(self.fog[1]) / 255.0,
+            f32::from(self.fog[2]) / 255.0,
+        )
     }
 }
 
-/// A byte triple as a Bevy colour in sRGB.
+/// A byte triple as a Bevy linear color without double-gamma darkening.
 fn bytes_color(b: [u8; 3]) -> bevy::color::Color {
-    bevy::color::Color::srgb(
+    bevy::color::Color::LinearRgba(bevy::color::LinearRgba::new(
         f32::from(b[0]) / 255.0,
         f32::from(b[1]) / 255.0,
         f32::from(b[2]) / 255.0,
-    )
+        1.0,
+    ))
 }
 
 /// Read a cell's `XCLL` bytes into [`CellLighting`].
 ///
-/// `None` unless the subrecord is at least the 40 bytes the layout needs. A
-/// longer subrecord is fine: the trailing bytes are Skyrim's and Fallout 4's
-/// own extra fields, which the viewport does not draw with.
+/// `None` unless the subrecord is at least the 40 bytes the layout needs.
+/// If 92 bytes or more are present, also decodes the Skyrim/FO4 directional ambient cube.
 pub fn cell_lighting(bytes: &[u8]) -> Option<CellLighting> {
     if bytes.len() < 40 {
         return None;
@@ -1686,6 +1899,26 @@ pub fn cell_lighting(bytes: &[u8]) -> Option<CellLighting> {
         |o: usize| f32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
     let i32_at =
         |o: usize| i32::from_le_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]]);
+
+    let (directional_ambient, specular, directional_scale) = if bytes.len() >= 92 {
+        // Bytes 40..64: 6 directional ambient colours (X+, X-, Y+, Y-, Z+, Z-), 4 bytes each (RGB + 1 unused pad byte)
+        let dalc = [
+            [bytes[40], bytes[41], bytes[42]],
+            [bytes[44], bytes[45], bytes[46]],
+            [bytes[48], bytes[49], bytes[50]],
+            [bytes[52], bytes[53], bytes[54]],
+            [bytes[56], bytes[57], bytes[58]],
+            [bytes[60], bytes[61], bytes[62]],
+        ];
+        // Bytes 64..68: specular RGB + 1 pad byte
+        let spec = [bytes[64], bytes[65], bytes[66]];
+        // Bytes 68..72: scale (f32)
+        let scale = f32_at(68);
+        (Some(dalc), Some(spec), Some(scale))
+    } else {
+        (None, None, None)
+    };
+
     Some(CellLighting {
         ambient: [bytes[0], bytes[1], bytes[2]],
         directional: [bytes[4], bytes[5], bytes[6]],
@@ -1697,6 +1930,9 @@ pub fn cell_lighting(bytes: &[u8]) -> Option<CellLighting> {
         directional_fade: f32_at(28),
         fog_clip_dist: f32_at(32),
         fog_power: f32_at(36),
+        directional_ambient,
+        specular,
+        directional_scale,
     })
 }
 
