@@ -4625,6 +4625,13 @@ impl CstySimpleData {
 
 impl ObjectEditorState {
     /// Load record data from session.
+    ///
+    /// The record is read through [`crate::session::Session::resolved_record`],
+    /// which is the one answer that covers all three sources: a record staged
+    /// this session (a duplicate, which no plugin on disk holds), a record the
+    /// plugin being edited defines, and a record overridden from a master with
+    /// this session's edits applied. Reading the plugin and the load order
+    /// directly is what left a duplicate opening an empty editor.
     pub fn load_from_session(
         &mut self,
         session: &crate::session::Session,
@@ -4637,28 +4644,44 @@ impl ObjectEditorState {
         self.tab = EditorTab::Main;
         self.status = format!("Loaded {} {:08X}", nvre_util::tag_str(&sig), form_id);
 
-        let (raw_subs, flags, found, source) = if let Some(rec) = session.doc.record(form_id) {
-            (
-                rec.subrecords().unwrap_or_default(),
-                rec.header.flags,
-                true,
-                Some((session.doc.name().to_string(), session.doc.is_localized())),
-            )
-        } else if let Ok(lo) = session.load_order() {
-            if let Some((pi, orig)) = nvre_world::fields::winner(lo, form_id) {
-                let plugin = &lo.plugins[pi];
-                (
-                    orig.subrecords().unwrap_or_default(),
-                    orig.header.flags,
-                    true,
-                    Some((plugin.name.clone(), plugin.header.is_localized())),
-                )
-            } else {
-                (Vec::new(), 0, false, None)
-            }
+        // The plugin whose strings a localized name is resolved through: the
+        // plugin being edited for its own records, and the defining plugin for
+        // one inherited from a master. A staged duplicate names the plugin
+        // being edited, which is where it will be written.
+        let source_name = if session.doc.record(form_id).is_some() {
+            Some(session.doc.name().to_string())
         } else {
-            (Vec::new(), 0, false, None)
+            session
+                .load_order()
+                .ok()
+                .and_then(|lo| {
+                    nvre_world::fields::winner(lo, form_id)
+                        .map(|(pi, _)| lo.plugins[pi].name.clone())
+                })
+                .or_else(|| Some(session.doc.name().to_string()))
         };
+        let (raw_subs, flags, found, source) =
+            match (session.resolved_record(form_id), source_name.as_deref()) {
+                (Some(rec), Some(name)) => {
+                    let localized = session
+                        .load_order()
+                        .ok()
+                        .and_then(|lo| {
+                            lo.plugins
+                                .iter()
+                                .find(|p| p.name.eq_ignore_ascii_case(name))
+                                .map(|p| p.header.is_localized())
+                        })
+                        .unwrap_or_else(|| session.doc.is_localized());
+                    (
+                        rec.subrecords().unwrap_or_default(),
+                        rec.header.flags,
+                        true,
+                        Some((name.to_string(), localized)),
+                    )
+                }
+                _ => (Vec::new(), 0, false, None),
+            };
 
         if !found {
             return;

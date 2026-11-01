@@ -1514,19 +1514,22 @@ impl Session {
     /// applied to a copy; the callers are panels reading a handful of records,
     /// not the load-order walk that has to stay borrow-only.
     pub fn resolved_record(&self, form_id: u32) -> Option<nvre_esm::raw::Record> {
-        // A staged duplicate: the record the session created, which is in no
-        // plugin on disk.
+        let edits = self.doc.edits_for(form_id).unwrap_or(&[]);
+        // A staged duplicate: a record this session created, which no plugin
+        // on disk holds. Its own bytes, with the edits queued on it applied —
+        // an edit made in the object editor after the duplicate was created is
+        // keyed by the FormID the session handed out, and applying it here is
+        // what makes it visible before the save.
         if let Some(p) = self
             .doc
             .inserted_top()
             .iter()
             .find(|p| p.record.header.form_id == form_id)
         {
-            return Some(p.record.clone());
+            return Some(nvre_edit::document::resolved_record(&p.record, edits));
         }
         // The plugin being edited, or a master's record it overrides — either
         // way with the queued edits applied on top.
-        let edits = self.doc.edits_for(form_id).unwrap_or(&[]);
         if let Some(r) = self.doc.record(form_id) {
             return Some(nvre_edit::document::resolved_record(r, edits));
         }

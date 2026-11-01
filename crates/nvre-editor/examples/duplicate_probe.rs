@@ -45,10 +45,64 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "duplicating STAT {:08X} (edid {:?}, name {:?})",
         stat.fid, stat.edid, stat.name
     );
+    // How many subrecords the original has, so the copy can be checked against
+    // it: a duplicate is a copy, so the count must survive.
+    let stat_sub_count = s
+        .resolved_record(stat.fid)
+        .expect("the original resolves")
+        .subrecords()
+        .map(|subs| subs.len())
+        .unwrap_or(0);
 
     let new = s.duplicate_object(stat.fid, *b"STAT", "NvreDuplicateProbe")?;
     println!("staged as {new:08X}");
     println!("staged top-level records: {}", s.doc.inserted_top().len());
+
+    // The editor opens the duplicate: this is what right-click > Edit does
+    // after a duplicate. The record exists in no plugin on disk, so the only
+    // way the editor can fill its grid is through the resolver.
+    let opened = s.resolved_record(new).expect("the duplicate resolves");
+    let opened_subs = opened.subrecords().unwrap_or_default();
+    println!(
+        "editor opens it: {} subrecords, sig {}",
+        opened_subs.len(),
+        opened.sig_str()
+    );
+    assert_eq!(
+        opened_subs.len(),
+        stat_sub_count,
+        "the duplicate opens with the same subrecords it was copied with"
+    );
+    let edid_in_record = opened_subs
+        .iter()
+        .find(|x| &x.sig == b"EDID")
+        .map(|x| nvre_util::cp1252::decode_z(&x.data))
+        .unwrap_or_default();
+    assert_eq!(
+        edid_in_record, "NvreDuplicateProbe",
+        "the record carries the Editor ID it was given"
+    );
+
+    // Then an edit is queued on it, the way Apply Changes does — and the
+    // resolver has to show the edit, and the save has to write it.
+    s.selected = Some(new);
+    s.edit_selected(
+        b"MODL",
+        nvre_edit::document::encode_zstring("clutter\\nvreprobe\\edited.nif"),
+    );
+    let after = s.resolved_record(new).expect("still resolves");
+    let modl = after
+        .subrecords()
+        .unwrap_or_default()
+        .into_iter()
+        .find(|x| &x.sig == b"MODL")
+        .map(|x| nvre_util::cp1252::decode_z(&x.data))
+        .unwrap_or_default();
+    println!("MODL after the edit: {modl}");
+    assert_eq!(
+        modl, "clutter\\nvreprobe\\edited.nif",
+        "the resolver shows the edit that was queued"
+    );
 
     let out = std::env::temp_dir().join("NvreDuplicateProbe.esp");
     let report = s.save(&out)?;
@@ -107,9 +161,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ids.len() == ids.iter().collect::<std::collections::HashSet<_>>().len()
     );
 
-    // The copy must be the original record with its EDID swapped and its
-    // FormID-bearing words remapped — nothing else changed. Compare
-    // subrecord by subrecord, skipping the EDID on both sides.
+    // The copy must be the original record with its EDID swapped, its edit
+    // applied, and its FormID-bearing words remapped — nothing else changed.
+    // So the MODL is compared against the edit rather than against the
+    // original's bytes, and everything else against the original's.
     let (copy_subs, copy_sig) = subrecords_of(&saved.nodes, fid);
     let (orig_subs, orig_sig) = subrecords_of(&orig_plugin.nodes, stat.fid);
     println!(
@@ -127,14 +182,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  MISMATCH sig {a_sig} vs {b_sig}");
             continue;
         }
-        if a_data == b_data {
+        // The one subrecord this test edited, compared against the edit.
+        let expected: Option<Vec<u8>> = if a_sig == "MODL" {
+            Some(nvre_edit::document::encode_zstring(
+                "clutter\\nvreprobe\\edited.nif",
+            ))
+        } else if a_data == b_data {
             println!("  {a_sig}: byte-identical ({} bytes)", a_data.len());
+            continue;
         } else if a_data.len() == b_data.len() {
-            // A same-width difference is the FormID remap. The words are not
-            // at fixed offsets — MODT and MODS carry variable-length strings —
-            // so the check that holds everywhere is the one below: the save's
-            // own remap, run on the original's subrecord, must produce
-            // exactly these bytes.
             println!(
                 "  {a_sig}: {} of {} bytes changed (checked against the save's remap below)",
                 a_data
@@ -144,6 +200,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .count(),
                 a_data.len()
             );
+            continue;
         } else {
             all_match = false;
             println!(
@@ -151,9 +208,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 a_data.len(),
                 b_data.len()
             );
-        }
+            continue;
+        };
+        let ok = expected.as_deref() == Some(b_data.as_slice());
+        all_match &= ok;
+        println!("  {a_sig}: carries the edit: {ok}");
     }
-    println!("the copy is the original with its EDID swapped: {all_match}");
+    println!("the copy is the original with its EDID swapped and its edit applied: {all_match}");
 
     // And each subrecord's payload is exactly what the save's own remap
     // produces from the original's: the copy must not have been re-encoded
@@ -161,6 +222,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let schema = nvre_esm::Schema::load_dir(&schema_dir)?;
     let map: std::collections::HashMap<u32, u32> = [(0u32, own)].into_iter().collect();
     for (sig, data) in a.iter() {
+        // The MODL was edited, so it is not the original's bytes remapped —
+        // it is checked against the edit above.
+        if sig == "MODL" {
+            continue;
+        }
         let sub = nvre_esm::raw::Subrecord {
             sig: sig4(sig),
             data: data.clone(),
@@ -182,6 +248,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  {sig}: matches the save's remap: {ok}");
     }
     println!("the duplicate round-trips exactly: {all_match}");
+
+    // And the edit queued after the duplicate was created is in the saved
+    // file: an edit applied to a staged record was queued and then dropped by
+    // the save, which lost the change with nothing saying so.
+    let saved_modl = copy_subs
+        .iter()
+        .find(|(s, _)| s == "MODL")
+        .map(|(_, d)| nvre_util::cp1252::decode_z(d))
+        .unwrap_or_default();
+    println!("saved MODL: {saved_modl}");
+    let edit_survived = saved_modl == "clutter\\nvreprobe\\edited.nif";
+    println!("the edit queued after the duplicate was saved: {edit_survived}");
+
+    println!(
+        "\nVERDICT: opens with data={} round-trips={} edit saved={}",
+        opened_subs.len() == stat_sub_count,
+        all_match,
+        edit_survived
+    );
     std::fs::remove_file(&out).ok();
     Ok(())
 }

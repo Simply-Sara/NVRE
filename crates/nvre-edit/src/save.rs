@@ -373,12 +373,25 @@ pub fn write_plugin_with_load_order(
     }
     // The top-level inserts: a duplicate of a base object, which belongs in its
     // own signature's `TOP` group rather than in a cell's children.
+    //
+    // Edits queued against a staged duplicate are keyed by the FormID the
+    // session handed it out, which is the same one it is written with — so
+    // they are applied here, the way a placeholder's are applied to a cell
+    // insert below. Without it, an edit made in the object editor after the
+    // duplicate was created is queued and then dropped.
     for (next_id, p) in (allocate_base(doc, new_self)..)
         .zip(doc.inserted_top())
         .skip(doc.inserted().len())
     {
         let mut rec = p.record.clone();
+        let staged_fid = rec.header.form_id;
         rec.header.form_id = next_id;
+        // An edit on the staged FormID, not on the one it is written with: the
+        // session keys it by what it handed out, and the save moves that into
+        // the plugin's own numbering.
+        if let Some(edits) = doc.edits_for(staged_fid) {
+            crate::document::apply_edits_pub(&mut rec, edits);
+        }
         remap_record(&mut rec, schema, &map, &mut report, &mut problems);
         override_record(&mut nodes, lo, schema, &map, None, &rec);
         report.records += 1;

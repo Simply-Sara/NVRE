@@ -199,7 +199,118 @@ fn a_deleted_record_leaves_the_list() {
 }
 
 /// The overlay covers only the FormIDs the document touches, so an untouched
-/// record's row is the load order's own answer.
+/// A duplicate opens in the editor with the data it was copied with.
+///
+/// The record is in no plugin on disk, so an editor that reads the plugin and
+/// the load order finds nothing and shows an empty grid. Reading through the
+/// resolver is what fills it.
+#[test]
+fn a_duplicate_opens_in_the_editor_with_its_data() {
+    let Some(mut s) = session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let original_subs = s
+        .resolved_record(stat.fid)
+        .expect("the original resolves")
+        .subrecords()
+        .expect("the original's subrecords parse");
+
+    let new = s
+        .duplicate_object(stat.fid, *b"STAT", "NvreOpensWithData")
+        .expect("the duplicate is staged");
+
+    // What the object editor reads when it opens the record.
+    let rec = s
+        .resolved_record(new)
+        .unwrap_or_else(|| panic!("the duplicate {new:08X} resolves for the editor"));
+    let subs = rec.subrecords().expect("the duplicate's subrecords parse");
+    assert_eq!(
+        subs.len(),
+        original_subs.len(),
+        "the duplicate opens with every subrecord it was copied with"
+    );
+    assert_eq!(rec.header.sig, *b"STAT", "it keeps the record type");
+    assert_eq!(
+        nvre_util::cp1252::decode_z(
+            subs.iter()
+                .find(|x| &x.sig == b"EDID")
+                .map(|x| x.data.as_slice())
+                .unwrap_or_default()
+        ),
+        "NvreOpensWithData",
+        "it opens under the Editor ID it was given"
+    );
+}
+
+/// An edit queued on a fresh duplicate is visible and survives the save.
+///
+/// Two halves, both of which were broken: the resolver returned the staged
+/// record without applying the edits queued on it, so the editor showed the
+/// old value; and the save wrote the staged record without applying them
+/// either, so the edit was queued and then silently dropped.
+#[test]
+fn an_edit_to_a_duplicate_is_shown_and_saved() {
+    let Some(mut s) = session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let new = s
+        .duplicate_object(stat.fid, *b"STAT", "NvreEditAfterDuplicate")
+        .expect("the duplicate is staged");
+
+    // What the object editor's Apply Changes queues.
+    s.selected = Some(new);
+    s.edit_selected(
+        b"MODL",
+        nvre_edit::document::encode_zstring("clutter\\nvetest\\edited.nif"),
+    );
+
+    // Shown: the resolver applies the edit to the staged record.
+    let shown = s.resolved_record(new).expect("still resolves");
+    let modl = shown
+        .subrecords()
+        .expect("subrecords parse")
+        .into_iter()
+        .find(|x| &x.sig == b"MODL")
+        .map(|x| nvre_util::cp1252::decode_z(&x.data))
+        .unwrap_or_default();
+    assert_eq!(
+        modl, "clutter\\nvetest\\edited.nif",
+        "the resolver shows the edit queued after the duplicate was created"
+    );
+
+    // Saved: the staged record is written with the edit applied.
+    let out = std::env::temp_dir().join("NvreDuplicateEdit.esp");
+    s.save(&out).expect("the save works");
+    let saved = nvre_esm::Plugin::open(&out).expect("the saved file parses");
+    let mut written: Vec<u8> = Vec::new();
+    nvre_esm::raw::visit_nodes(&saved.nodes, &mut |r, _| {
+        if r.header.form_id >> 24 == saved.masters().len() as u32 {
+            if let Ok(subs) = r.subrecords() {
+                if let Some(edid) = subs.iter().find(|x| &x.sig == b"EDID") {
+                    if nvre_util::cp1252::decode_z(&edid.data) == "NvreEditAfterDuplicate" {
+                        written = subs
+                            .iter()
+                            .find(|x| &x.sig == b"MODL")
+                            .map(|x| x.data.clone())
+                            .unwrap_or_default();
+                    }
+                }
+            }
+        }
+    });
+    assert_eq!(
+        nvre_util::cp1252::decode_z(&written),
+        "clutter\\nvetest\\edited.nif",
+        "the saved copy carries the edit, not the original's model"
+    );
+    std::fs::remove_file(&out).ok();
+}
+
+/// An untouched record's row is the load order's own answer.
 ///
 /// The performance property that makes the overlay affordable: 44,550 objects
 /// are listed, and a handful are touched, so the cost is a hash lookup per
