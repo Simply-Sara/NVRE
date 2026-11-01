@@ -46,6 +46,7 @@ use nvre_world::land::{
 };
 use nvre_world::transform::ref_rotation;
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 /// Marks the viewport's free camera.
 #[derive(Component)]
@@ -150,6 +151,16 @@ pub struct LoadTimings {
     pub base_model_paths_resolve: std::time::Duration,
     /// Time spent reading, decoding, and caching NIF models.
     pub nif_models_load: std::time::Duration,
+    /// Sub-breakdown: BSA archive reading (raw NIF bytes).
+    pub nif_bsa_read: std::time::Duration,
+    /// Sub-breakdown: NIF schema parsing & AST building.
+    pub nif_parse_ast: std::time::Duration,
+    /// Sub-breakdown: Scene graph & Mesh construction (vertex/index extraction).
+    pub nif_mesh_build: std::time::Duration,
+    /// Sub-breakdown: Texture loading (BSA read + DDS decoding).
+    pub texture_load: std::time::Duration,
+    /// Sub-breakdown: Material & GPU handle registration.
+    pub material_build: std::time::Duration,
     /// Time spent spawning reference entities into the Bevy ECS.
     pub ref_entities_spawn: std::time::Duration,
     /// Time spent generating and spawning terrain quadrant meshes.
@@ -158,6 +169,32 @@ pub struct LoadTimings {
     pub lights_spawn: std::time::Duration,
     /// Total frames taken from start to fully loaded.
     pub total_loading_frames: usize,
+}
+
+pub struct AsyncTextureChannel {
+    pub tx: crossbeam_channel::Sender<(String, bool, Result<Image, String>)>,
+    pub rx: crossbeam_channel::Receiver<(String, bool, Result<Image, String>)>,
+}
+
+impl Default for AsyncTextureChannel {
+    fn default() -> Self {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        Self { tx, rx }
+    }
+}
+
+pub struct AsyncModelChannel {
+    pub tx:
+        crossbeam_channel::Sender<Result<nvre_assets::model::PredecodedModel, (String, String)>>,
+    pub rx:
+        crossbeam_channel::Receiver<Result<nvre_assets::model::PredecodedModel, (String, String)>>,
+}
+
+impl Default for AsyncModelChannel {
+    fn default() -> Self {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        Self { tx, rx }
+    }
 }
 
 /// Which models and terrain have been spawned, so a frame does not respawn them.
@@ -197,6 +234,16 @@ pub struct Spawned {
     pub models_finished: bool,
     /// Whether all lights for the current cell/radius have finished spawning.
     pub lights_finished: bool,
+    /// Channel for async background model decoding tasks.
+    pub model_channel: AsyncModelChannel,
+    /// Channel for async background texture decoding tasks.
+    pub texture_channel: AsyncTextureChannel,
+    /// Models currently in flight on the threadpool.
+    pub in_flight_models: HashSet<String>,
+    /// Textures currently in flight on the threadpool.
+    pub in_flight_textures: HashSet<(String, bool)>,
+    /// References waiting for a specific model key to finish loading: model_key -> list of ref indices/rows.
+    pub pending_refs_by_model: HashMap<String, Vec<crate::session::RefRow>>,
 }
 
 /// Spawn the viewport's ambient light.
@@ -786,6 +833,9 @@ pub fn draw_cell(
         }
         spawned.failed.clear();
         spawned.model_paths.clear();
+        spawned.in_flight_models.clear();
+        spawned.in_flight_textures.clear();
+        spawned.pending_refs_by_model.clear();
         spawned.bases_resolved = false;
         spawned.models_finished = false;
         spawned.lights_finished = false;
@@ -905,7 +955,7 @@ pub fn draw_cell(
     }
     // Models are loaded in batches up to the frame budget.
     let frame_budget = if radius < 0 {
-        std::time::Duration::from_millis(250)
+        std::time::Duration::from_millis(500)
     } else {
         std::time::Duration::from_millis(100)
     };
@@ -987,54 +1037,159 @@ pub fn draw_cell(
         len
     };
     if !spawned.bases_resolved {
-        // Multithreaded prefetch: kick off background tasks on AsyncComputeTaskPool
-        // across all CPU worker threads to decompress archives in parallel.
-        let to_prefetch: Vec<String> = spawned
+        // Multithreaded decode: kick off background tasks on AsyncComputeTaskPool
+        // across all CPU worker threads to decompress archives and parse NIFs in parallel.
+        let to_decode: Vec<String> = spawned
             .model_paths
             .values()
             .flatten()
-            .filter(|p| !spawned.loaded_models.contains(&nvre_vfs::normalize(p)))
+            .filter(|p| {
+                let key = nvre_vfs::normalize(p);
+                !spawned.loaded_models.contains(&key) && !spawned.in_flight_models.contains(&key)
+            })
             .cloned()
             .collect();
-        if !to_prefetch.is_empty() {
+        if !to_decode.is_empty() {
             let pool = AsyncComputeTaskPool::get();
-            let chunk_size = (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
-            for chunk in to_prefetch.chunks(chunk_size) {
+            let seen_textures = Arc::new(Mutex::new(HashSet::<(String, bool)>::new()));
+            let chunk_size = (to_decode.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
+            for chunk in to_decode.chunks(chunk_size) {
                 let chunk = chunk.to_vec();
                 let game_data = models.data.clone();
+                let tx = spawned.model_channel.tx.clone();
+                let tx_tex = spawned.texture_channel.tx.clone();
+                let seen_tex = seen_textures.clone();
+                let bc_supported = models
+                    .formats
+                    .as_ref()
+                    .map(|f| f.0.contains(bevy::image::CompressedImageFormats::BC))
+                    .unwrap_or(true);
                 pool.spawn(async move {
                     for p in chunk {
-                        let _ = game_data.read(&p);
+                        if let Some(bytes) = game_data.read(&p) {
+                            match nvre_assets::model::PredecodedModel::decode(
+                                &p, &bytes, &game_data,
+                            ) {
+                                Ok(m) => {
+                                    // Trigger background decoding for any textures this model uses (deduped across workers)
+                                    for s in &m.shapes {
+                                        for (tex_opt, srgb) in [
+                                            (&s.texture, true),
+                                            (&s.normal_texture, false),
+                                            (&s.glow, false),
+                                        ] {
+                                            if let Some(tex_name) = tex_opt {
+                                                let is_new = {
+                                                    let mut guard = seen_tex.lock().unwrap();
+                                                    guard.insert((tex_name.clone(), srgb))
+                                                };
+                                                if is_new {
+                                                    let rel = nvre_vfs::texture_path(tex_name);
+                                                    if let Some(tex_bytes) = game_data.read(&rel) {
+                                                        let img_res =
+                                                            nvre_assets::texture::dds_image(
+                                                                &tex_bytes,
+                                                                srgb,
+                                                                bc_supported,
+                                                            );
+                                                        let _ = tx_tex.send((
+                                                            tex_name.clone(),
+                                                            srgb,
+                                                            img_res,
+                                                        ));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    let _ = tx.send(Ok(m));
+                                }
+                                Err(e) => {
+                                    let _ = tx.send(Err((p, e)));
+                                }
+                            }
+                        } else {
+                            let _ = tx.send(Err((p, "not in any archive".into())));
+                        }
                     }
                 })
                 .detach();
+            }
+            for p in &to_decode {
+                spawned.in_flight_models.insert(nvre_vfs::normalize(p));
             }
         }
         spawned.bases_resolved = true;
     }
 
-    // Identify unique models that still need to be loaded into ModelCache.
-    // Query directly from unique model_paths with O(1) set check instead of scanning all refs.
+    // Drain completed async textures into TextureCache / Assets<Image>
+    while let Ok((tex_path, srgb, res)) = spawned.texture_channel.rx.try_recv() {
+        spawned.in_flight_textures.remove(&(tex_path.clone(), srgb));
+        match res {
+            Ok(img) => {
+                let h = models.images.add(img);
+                models.textures.insert(tex_path, srgb, Some(h));
+            }
+            Err(e) => {
+                models.textures.insert(tex_path, srgb, None);
+                models.textures.failures.push(e);
+            }
+        }
+    }
+
+    // Drain completed predecoded models from the background channel within frame budget.
+    let t_models = std::time::Instant::now();
+    let mut loaded_any = false;
+    let mut newly_loaded: HashSet<String> = HashSet::new();
+    let mut model_profile = nvre_assets::model::ModelProfile::default();
+    while let Ok(msg) = spawned.model_channel.rx.try_recv() {
+        match msg {
+            Ok(pre) => {
+                let key = nvre_vfs::normalize(&pre.path);
+                spawned.in_flight_models.remove(&key);
+                let _ = models.assemble(pre);
+                spawned.loaded_models.insert(key.clone());
+                newly_loaded.insert(key);
+            }
+            Err((path, err)) => {
+                let key = nvre_vfs::normalize(&path);
+                spawned.in_flight_models.remove(&key);
+                spawned.loaded_models.insert(key);
+                models.cache.failures.push(format!("{path}: {err}"));
+            }
+        }
+        loaded_any = true;
+        if t_models.elapsed() >= frame_budget {
+            break;
+        }
+    }
+
+    // Identify unique models that still need to be loaded into ModelCache (fallback).
     let mut missing_models: Vec<String> = Vec::new();
     let mut seen_models: HashSet<&str> = HashSet::new();
     for path in spawned.model_paths.values().flatten() {
         let key = nvre_vfs::normalize(path);
-        if !spawned.loaded_models.contains(&key) && seen_models.insert(path.as_str()) {
+        if !spawned.loaded_models.contains(&key)
+            && !spawned.in_flight_models.contains(&key)
+            && seen_models.insert(path.as_str())
+        {
             missing_models.push(path.clone());
         }
     }
 
-    // Load models in batches up to the frame budget. Always load at least 1 model per frame.
-    let t_models = std::time::Instant::now();
-    let mut loaded_any = false;
+    let had_missing = !missing_models.is_empty();
     for path in missing_models {
         if loaded_any && t_models.elapsed() >= frame_budget {
             break;
         }
         let key = nvre_vfs::normalize(&path);
         let t_model = std::time::Instant::now();
-        if models.model(&path).is_some() {
-            spawned.loaded_models.insert(key);
+        if models
+            .model_profiled(&path, Some(&mut model_profile))
+            .is_some()
+        {
+            spawned.loaded_models.insert(key.clone());
+            newly_loaded.insert(key);
             if trace {
                 bevy::log::info!("draw_cell: loaded {} in {:?}", path, t_model.elapsed());
             }
@@ -1046,120 +1201,118 @@ pub fn draw_cell(
     }
     if let Some(ref mut tm) = timings {
         tm.nif_models_load += t_models.elapsed();
+        tm.nif_bsa_read += model_profile.bsa_read;
+        tm.nif_parse_ast += model_profile.nif_parse;
+        tm.nif_mesh_build += model_profile.mesh_build;
+        tm.texture_load += model_profile.texture_load;
+        tm.material_build += model_profile.material_build;
     }
 
-    // Spawn all references whose model is now in cache.
+    // Spawn references whose model is newly loaded this frame.
+    // When newly_loaded is empty, no new models arrived so we skip the linear scan.
     let t_spawn_refs = std::time::Instant::now();
-    let refs = if is_exterior && radius != 0 {
-        session.exterior_grid_refs(radius)
-    } else {
-        session.cell_refs()
-    };
-    for r in refs {
-        if spawned.refs.contains_key(&r.form_id) {
-            continue;
-        }
-        // A reference that failed once is not retried every frame: the model is
-        // missing, and re-resolving it per frame is pure waste. Clearing the
-        // spawned list for a cell starts over, which is what opening a new cell
-        // does.
-        if spawned.failed.contains(&r.form_id) {
-            continue;
-        }
-        let Some(position) = r.position else {
-            counts.no_position += 1;
-            spawned.failed.insert(r.form_id);
-            continue;
-        };
-        // The base object decides the model.
-        let Some(base) = r.base.as_deref() else {
-            counts.no_base += 1;
-            spawned.failed.insert(r.form_id);
-            continue;
-        };
-        let Some(base_fid) = parse_formid(base) else {
-            counts.bad_fid += 1;
-            spawned.failed.insert(r.form_id);
-            continue;
-        };
-        let Some(Some(model_path)) = spawned.model_paths.get(&base_fid).cloned() else {
-            counts.no_model += 1;
-            spawned.failed.insert(r.form_id);
-            continue;
-        };
-
-        let key = nvre_vfs::normalize(&model_path);
-        // Only spawn if the model has already been loaded into ModelCache.
-        if !spawned.loaded_models.contains(&key) {
-            continue;
-        }
-
-        let Some(model) = models.model(&model_path) else {
-            counts.no_model += 1;
-            spawned.failed.insert(r.form_id);
-            continue;
-        };
-
-        spawned_now += 1;
-
-        // Composed with the game's own Z-up to Y-up rotation, the way the game's
-        // viewer places a reference under its world root. The reference's own
-        // rotation goes in too: a door or a road is not axis-aligned in the file,
-        // and drawing it as if it were is most of "positioned wrong".
-        let rotation = r.rotation.unwrap_or([0.0, 0.0, 0.0]);
-        let scale = r.scale.unwrap_or(1.0);
-        let tr = game_to_bevy() * ref_transform(position, rotation, scale);
-        let root = if model.shapes.len() == 1 {
-            let s = &model.shapes[0];
-            let m = Mat4::from(s.transform);
-            let combined_tr = Transform::from_matrix(tr.to_matrix() * m);
-            commands
-                .spawn((
-                    Name::new(
-                        r.edid
-                            .clone()
-                            .unwrap_or_else(|| format!("{:08X}", r.form_id)),
-                    ),
-                    RefEntity {
-                        form_id: r.form_id,
-                        bounds: model.bounds,
-                    },
-                    combined_tr,
-                    Mesh3d(s.mesh.clone()),
-                    MeshMaterial3d(s.material.clone()),
-                    Visibility::default(),
-                ))
-                .id()
+    if !newly_loaded.is_empty() {
+        let refs = if is_exterior && radius != 0 {
+            session.exterior_grid_refs(radius)
         } else {
-            let parent = commands
-                .spawn((
-                    Name::new(
-                        r.edid
-                            .clone()
-                            .unwrap_or_else(|| format!("{:08X}", r.form_id)),
-                    ),
-                    RefEntity {
-                        form_id: r.form_id,
-                        bounds: model.bounds,
-                    },
-                    tr,
-                    Visibility::default(),
-                ))
-                .id();
-
-            for s in &model.shapes {
-                let m = Mat4::from(s.transform);
-                commands.entity(parent).with_child((
-                    Mesh3d(s.mesh.clone()),
-                    MeshMaterial3d(s.material.clone()),
-                    Transform::from_matrix(m),
-                    Visibility::default(),
-                ));
-            }
-            parent
+            session.cell_refs()
         };
+        for r in refs {
+            if spawned.refs.contains_key(&r.form_id) {
+                continue;
+            }
+            if spawned.failed.contains(&r.form_id) {
+                continue;
+            }
+            let Some(position) = r.position else {
+                counts.no_position += 1;
+                spawned.failed.insert(r.form_id);
+                continue;
+            };
+            let Some(base) = r.base.as_deref() else {
+                counts.no_base += 1;
+                spawned.failed.insert(r.form_id);
+                continue;
+            };
+            let Some(base_fid) = parse_formid(base) else {
+                counts.bad_fid += 1;
+                spawned.failed.insert(r.form_id);
+                continue;
+            };
+            let Some(Some(model_path)) = spawned.model_paths.get(&base_fid).cloned() else {
+                counts.no_model += 1;
+                spawned.failed.insert(r.form_id);
+                continue;
+            };
 
-        spawned.refs.insert(r.form_id, root);
+            let key = nvre_vfs::normalize(&model_path);
+            if !newly_loaded.contains(&key) && !spawned.loaded_models.contains(&key) {
+                continue;
+            }
+
+            let Some(model) = models.model(&model_path) else {
+                counts.no_model += 1;
+                spawned.failed.insert(r.form_id);
+                continue;
+            };
+
+            spawned_now += 1;
+
+            let rotation = r.rotation.unwrap_or([0.0, 0.0, 0.0]);
+            let scale = r.scale.unwrap_or(1.0);
+            let tr = game_to_bevy() * ref_transform(position, rotation, scale);
+            let root = if model.shapes.len() == 1 {
+                let s = &model.shapes[0];
+                let m = Mat4::from(s.transform);
+                let combined_tr = Transform::from_matrix(tr.to_matrix() * m);
+                commands
+                    .spawn((
+                        Name::new(
+                            r.edid
+                                .clone()
+                                .unwrap_or_else(|| format!("{:08X}", r.form_id)),
+                        ),
+                        RefEntity {
+                            form_id: r.form_id,
+                            bounds: model.bounds,
+                        },
+                        combined_tr,
+                        Mesh3d(s.mesh.clone()),
+                        MeshMaterial3d(s.material.clone()),
+                        Visibility::default(),
+                    ))
+                    .id()
+            } else {
+                let parent = commands
+                    .spawn((
+                        Name::new(
+                            r.edid
+                                .clone()
+                                .unwrap_or_else(|| format!("{:08X}", r.form_id)),
+                        ),
+                        RefEntity {
+                            form_id: r.form_id,
+                            bounds: model.bounds,
+                        },
+                        tr,
+                        Visibility::default(),
+                    ))
+                    .id();
+
+                for s in &model.shapes {
+                    let m = Mat4::from(s.transform);
+                    commands.entity(parent).with_child((
+                        Mesh3d(s.mesh.clone()),
+                        MeshMaterial3d(s.material.clone()),
+                        Transform::from_matrix(m),
+                        Visibility::default(),
+                    ));
+                }
+                parent
+            };
+
+            spawned.refs.insert(r.form_id, root);
+        }
     }
     // How long a frame spends loading models, and how many it managed. A frame
     // that loads a model takes as long as the archive read and mesh build take,
@@ -1184,7 +1337,11 @@ pub fn draw_cell(
         tm.total_loading_frames += 1;
     }
 
-    if spawned.refs.len() + spawned.failed.len() >= refs_len {
+    if spawned.refs.len() + spawned.failed.len() >= refs_len
+        || (spawned.in_flight_models.is_empty()
+            && !had_missing
+            && spawned.model_channel.rx.is_empty())
+    {
         spawned.models_finished = true;
     }
 }

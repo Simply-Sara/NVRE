@@ -245,10 +245,11 @@ fn benchmark_step(
             if state.last_log.elapsed() >= Duration::from_secs(2) {
                 state.last_log = now;
                 println!(
-                    "  [Loading...] Spawned refs: {} | Failed: {} | Models loaded: {} | Models done: {} | Lights done: {}",
+                    "  [Loading...] Spawned refs: {} | Failed: {} | Models loaded: {} | In-flight: {} | Models done: {} | Lights done: {}",
                     spawned.refs.len(),
                     spawned.failed.len(),
                     spawned.loaded_models.len(),
+                    spawned.in_flight_models.len(),
                     spawned.models_finished,
                     spawned.lights_finished
                 );
@@ -281,6 +282,32 @@ fn benchmark_step(
                     "   - NIF Read/Decode/Material Load:{:>8.2?} ({:>5.1}%)",
                     timings.nif_models_load,
                     (timings.nif_models_load.as_secs_f64() / load_duration.as_secs_f64()) * 100.0
+                );
+                let nif_load_sec = timings.nif_models_load.as_secs_f64().max(0.0001);
+                println!(
+                    "       * BSA Archive Decompression: {:>8.2?} ({:>5.1}% of NIF load)",
+                    timings.nif_bsa_read,
+                    (timings.nif_bsa_read.as_secs_f64() / nif_load_sec) * 100.0
+                );
+                println!(
+                    "       * NIF Schema / AST Parsing:  {:>8.2?} ({:>5.1}% of NIF load)",
+                    timings.nif_parse_ast,
+                    (timings.nif_parse_ast.as_secs_f64() / nif_load_sec) * 100.0
+                );
+                println!(
+                    "       * Mesh & Tangents Gen:       {:>8.2?} ({:>5.1}% of NIF load)",
+                    timings.nif_mesh_build,
+                    (timings.nif_mesh_build.as_secs_f64() / nif_load_sec) * 100.0
+                );
+                println!(
+                    "       * Texture BSA Read & DDS:    {:>8.2?} ({:>5.1}% of NIF load)",
+                    timings.texture_load,
+                    (timings.texture_load.as_secs_f64() / nif_load_sec) * 100.0
+                );
+                println!(
+                    "       * Material & Asset Creation: {:>8.2?} ({:>5.1}% of NIF load)",
+                    timings.material_build,
+                    (timings.material_build.as_secs_f64() / nif_load_sec) * 100.0
                 );
                 println!(
                     "   - Reference Entity Spawn:       {:>8.2?} ({:>5.1}%)",

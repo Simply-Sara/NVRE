@@ -4625,6 +4625,7 @@ dependencies = [
  "nvre-dds",
  "nvre-nif",
  "nvre-vfs",
+ "rayon",
  "tracing",
 ]
 
@@ -4661,6 +4662,7 @@ dependencies = [
  "bsa105",
  "bytes",
  "clap",
+ "crossbeam-channel",
  "egui_extras",
  "egui_tiles",
  "nvre-assets",

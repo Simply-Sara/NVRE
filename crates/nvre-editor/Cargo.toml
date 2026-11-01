@@ -37,6 +37,7 @@ egui_extras.workspace = true
 # whole game's meshes is 20k-225k files and one core at a time is the
 # difference between a minute and half an hour.
 rayon = "1"
+crossbeam-channel = "0.5"
 # The launcher's Browse button: the OS's own folder picker.
 rfd.workspace = true
 time.workspace = true

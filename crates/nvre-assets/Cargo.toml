@@ -11,6 +11,7 @@ nvre-nif = { path = "../nvre-nif" }
 nvre-dds = { path = "../nvre-dds" }
 nvre-vfs = { path = "../nvre-vfs" }
 tracing = "0.1"
+rayon = "1"
 
 [dev-dependencies]
 crossbeam-channel = "0.5"

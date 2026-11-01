@@ -7,9 +7,7 @@
 
 use crate::data::GameData;
 use crate::nif_material::{nif_material, NifMaterial, NifSurface};
-use crate::shape::{
-    build_mesh, build_mesh_from_data, fix_vertex_colors, shape_props, ShapeProps,
-};
+use crate::shape::{build_mesh, build_mesh_from_data, fix_vertex_colors, shape_props, ShapeProps};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::system::SystemParam;
 use bevy::image::CompressedImageFormatSupport;
@@ -87,6 +85,122 @@ pub struct PreparedModel {
     pub shapes_with_dropped_triangles: u64,
 }
 
+/// A shape decoded on a background thread, ready to be registered into Bevy assets.
+pub struct PredecodedShape {
+    pub mesh: Mesh,
+    pub transform: Affine3A,
+    pub name: Option<String>,
+    pub triangles: usize,
+    pub texture: Option<String>,
+    pub normal_texture: Option<String>,
+    pub glow: Option<String>,
+    pub props: ShapeProps,
+    pub editor_marker: bool,
+    pub ancestors: Vec<Affine3A>,
+}
+
+/// A model whose NIF and meshes have been decoded off the main thread.
+pub struct PredecodedModel {
+    pub path: String,
+    pub nodes: Vec<ModelNode>,
+    pub shapes: Vec<PredecodedShape>,
+    pub root: Affine3A,
+    pub bounds: Option<(Vec3, Vec3)>,
+    pub elapsed: f32,
+    pub dropped_triangles: u64,
+    pub shapes_with_dropped_triangles: u64,
+}
+
+impl PredecodedModel {
+    /// Decode a NIF from raw bytes on a background thread (no Bevy Assets mutation).
+    pub fn decode(path: &str, bytes: &[u8], data: &GameData) -> Result<PredecodedModel, String> {
+        let started = Instant::now();
+        let schema = data.schema.clone();
+        let file = NifFile::parse(bytes, Some(&schema)).map_err(|e| e.to_string())?;
+        let dec = Decoded::new(&file, bytes, &schema);
+        let objects = scene_objects(&file, &dec);
+        let by_block: HashMap<usize, &SceneObject> = objects.iter().map(|o| (o.block, o)).collect();
+
+        let mut out = PredecodedModel {
+            path: path.to_string(),
+            nodes: Vec::new(),
+            shapes: Vec::new(),
+            root: Affine3A::IDENTITY,
+            bounds: None,
+            elapsed: 0.0,
+            dropped_triangles: 0,
+            shapes_with_dropped_triangles: 0,
+        };
+
+        let (nodes, _node_index) = model_nodes(&objects);
+        out.nodes = nodes;
+        if let Some(root) = objects.iter().find(|o| o.is_node && o.parent.is_none()) {
+            out.root = affine(&root.transform);
+        }
+
+        for o in objects.iter().filter(|o| !o.is_node) {
+            let (t, ancestors) = world_transform(&by_block, o);
+            let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
+                continue;
+            };
+            let data_block = if let Some(data_ref) = shape.ref_at("data") {
+                dec.get(data_ref)
+            } else if o.type_name == "BSTriShape" || dec.is_a(o.block, "BSTriShape") {
+                Some(shape)
+            } else {
+                None
+            };
+            let Some(data_block) = data_block else {
+                continue;
+            };
+
+            let props = shape_props(&dec, o, &by_block);
+            let mesh_res = build_mesh(data_block, file.header.bs_version());
+            let Some((mut mesh, tris, dropped)) = mesh_res else {
+                continue;
+            };
+            if dropped > 0 {
+                out.dropped_triangles += dropped as u64;
+                out.shapes_with_dropped_triangles += 1;
+            }
+            let editor_marker = is_editor_marker(o.name.as_deref());
+            fix_vertex_colors(
+                &mut mesh,
+                props.vertex_alpha,
+                props.vertex_colors,
+                props.unlit,
+            );
+
+            if let Some(VertexAttributeValues::Float32x3(p)) =
+                mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+            {
+                for v in p {
+                    let q = t.transform_point3(Vec3::from_array(*v));
+                    out.bounds = Some(match out.bounds {
+                        Some((lo, hi)) => (lo.min(q), hi.max(q)),
+                        None => (q, q),
+                    });
+                }
+            }
+
+            out.shapes.push(PredecodedShape {
+                mesh,
+                transform: t,
+                name: o.name.clone(),
+                triangles: tris,
+                texture: props.texture.clone(),
+                normal_texture: props.normal_texture.clone(),
+                glow: props.glow.clone(),
+                props,
+                editor_marker,
+                ancestors,
+            });
+        }
+        out.elapsed = started.elapsed().as_secs_f32();
+        Ok(out)
+    }
+}
+
 /// The prepared models, by their path. A `None` remembers a failure, so a
 /// model that will not load is not looked for twice.
 #[derive(Resource, Default)]
@@ -97,6 +211,18 @@ pub struct ModelCache {
 }
 
 impl ModelCache {
+    /// Check whether a model is already cached (or recorded as failure).
+    pub fn contains(&self, path: &str) -> bool {
+        let key = nvre_vfs::normalize(path);
+        self.map.contains_key(&key)
+    }
+
+    /// Insert an already prepared model into the cache.
+    pub fn insert(&mut self, path: &str, model: Option<Arc<PreparedModel>>) {
+        let key = nvre_vfs::normalize(path);
+        self.map.insert(key, model);
+    }
+
     /// The models that are held.
     pub fn held(&self) -> usize {
         self.map.values().filter(|m| m.is_some()).count()
@@ -133,17 +259,36 @@ pub struct ModelCtx<'w> {
     pub formats: Option<Res<'w, CompressedImageFormatSupport>>,
 }
 
+/// Fine-grained microsecond profile timings for model preparation.
+#[derive(Clone, Copy, Default, Debug)]
+pub struct ModelProfile {
+    pub bsa_read: std::time::Duration,
+    pub nif_parse: std::time::Duration,
+    pub mesh_build: std::time::Duration,
+    pub texture_load: std::time::Duration,
+    pub material_build: std::time::Duration,
+}
+
 impl ModelCtx<'_> {
     /// The model at `path`, prepared if it is not prepared yet.
     ///
     /// The model is held for as long as anything holds it, so a model
     /// referenced by many places is read once.
     pub fn model(&mut self, path: &str) -> Option<Arc<PreparedModel>> {
+        self.model_profiled(path, None)
+    }
+
+    /// Prepare model at `path` while accumulating sub-stage timings into `profile`.
+    pub fn model_profiled(
+        &mut self,
+        path: &str,
+        mut profile: Option<&mut ModelProfile>,
+    ) -> Option<Arc<PreparedModel>> {
         let key = nvre_vfs::normalize(path);
         if let Some(m) = self.cache.map.get(&key) {
             return m.clone();
         }
-        let m = match self.prepare(&key) {
+        let m = match self.prepare(&key, profile.as_deref_mut()) {
             Ok(m) => Some(Arc::new(m)),
             Err(e) => {
                 self.cache.failures.push(format!("{key}: {e}"));
@@ -154,17 +299,68 @@ impl ModelCtx<'_> {
         m
     }
 
+    /// Assemble a background-decoded model into Bevy Assets and insert it into ModelCache.
+    pub fn assemble(&mut self, pre: PredecodedModel) -> Arc<PreparedModel> {
+        let key = nvre_vfs::normalize(&pre.path);
+        let mut out = PreparedModel {
+            nodes: pre.nodes,
+            shapes: Vec::with_capacity(pre.shapes.len()),
+            root: pre.root,
+            bounds: pre.bounds,
+            elapsed: pre.elapsed,
+            dropped_triangles: pre.dropped_triangles,
+            shapes_with_dropped_triangles: pre.shapes_with_dropped_triangles,
+        };
+
+        for s in pre.shapes {
+            let mut mesh = s.mesh;
+            let material = self.material_for_profiled(&s.props, &mut mesh, s.editor_marker, None);
+            let mesh_handle = self.meshes.add(mesh);
+            let mat_handle = self.materials.add(material);
+
+            out.shapes.push(PreparedShape {
+                mesh: mesh_handle,
+                material: mat_handle,
+                transform: s.transform,
+                name: s.name,
+                triangles: s.triangles,
+                texture: s.texture,
+                editor_marker: s.editor_marker,
+                ancestors: s.ancestors,
+            });
+        }
+
+        let arc = Arc::new(out);
+        self.cache.insert(&key, Some(arc.clone()));
+        arc
+    }
+
     /// Prepare a model from its file.
-    fn prepare(&mut self, path: &str) -> Result<PreparedModel, String> {
+    fn prepare(
+        &mut self,
+        path: &str,
+        mut profile: Option<&mut ModelProfile>,
+    ) -> Result<PreparedModel, String> {
         let started = Instant::now();
+        let t_read = Instant::now();
         let Some(bytes) = self.data.read(path) else {
             return Err("not in any archive".into());
         };
+        let dur_read = t_read.elapsed();
+        if let Some(ref mut p) = profile {
+            p.bsa_read += dur_read;
+        }
+
         let schema = self.data.schema.clone();
+        let t_parse = Instant::now();
         let file = NifFile::parse(&bytes, Some(&schema)).map_err(|e| e.to_string())?;
         let dec = Decoded::new(&file, &bytes, &schema);
         let objects = scene_objects(&file, &dec);
         let by_block: HashMap<usize, &SceneObject> = objects.iter().map(|o| (o.block, o)).collect();
+        let dur_parse = t_parse.elapsed();
+        if let Some(ref mut p) = profile {
+            p.nif_parse += dur_parse;
+        }
 
         let mut out = PreparedModel::default();
         // The nodes, and which shape hangs under each.
@@ -201,6 +397,8 @@ impl ModelCtx<'_> {
             let Some(data) = data else {
                 continue;
             };
+
+            let t_mesh = Instant::now();
             let props = shape_props(&dec, o, &by_block);
             let mesh_res = build_mesh(data, file.header.bs_version()).or_else(|| {
                 self.try_build_csg_precombined_mesh(&dec, shape, file.header.bs_version())
@@ -208,30 +406,34 @@ impl ModelCtx<'_> {
             let Some((mut mesh, tris, dropped)) = mesh_res else {
                 continue;
             };
-            // A triangle that named a vertex that is not there is dropped,
-            // and the count is kept: a shape that drops any is a shape
-            // whose data block and its vertex count disagree.
             if dropped > 0 {
                 out.dropped_triangles += dropped as u64;
                 out.shapes_with_dropped_triangles += 1;
             }
-            // The vertex colours are part of the material: a shape whose
-            // shader does not take the vertex alpha must not keep it, and an
-            // unlit shape's colour is a display value.
             let editor_marker = is_editor_marker(o.name.as_deref());
-            fix_vertex_colors(&mut mesh, props.vertex_alpha, props.vertex_colors, props.unlit);
-            // The shape's own report: what it is, and what it is drawn
-            // with.
-            info!(
-                "shape {}: {} triangles, texture {:?}, {:?}{}{}",
-                o.type_name,
-                tris,
-                props.texture,
-                props.alpha_mode,
-                if props.unlit { ", unlit" } else { "" },
-                if editor_marker { ", editor marker" } else { "" }
+            fix_vertex_colors(
+                &mut mesh,
+                props.vertex_alpha,
+                props.vertex_colors,
+                props.unlit,
             );
-            let material = self.material_for(&props, &mut mesh, editor_marker);
+            let dur_mesh = t_mesh.elapsed();
+            if let Some(ref mut p) = profile {
+                p.mesh_build += dur_mesh;
+            }
+
+            // Profile material and texture loading
+            let t_mat = Instant::now();
+            let material = self.material_for_profiled(
+                &props,
+                &mut mesh,
+                editor_marker,
+                profile.as_deref_mut(),
+            );
+            let dur_mat = t_mat.elapsed();
+            if let Some(ref mut p) = profile {
+                p.material_build += dur_mat;
+            }
             // The model's bounds, from the mesh's own positions.
             //
             // The shape's transform already carries the whole chain of
@@ -322,9 +524,11 @@ impl ModelCtx<'_> {
                 let vert_bytes_len = num_verts * psg_stride;
                 let tri_bytes_len = total_tris * 6; // 3 u16 indices per triangle
 
-                let raw_data = self
-                    .data
-                    .read_csg(filename_hash, data_offset, vert_bytes_len + tri_bytes_len)?;
+                let raw_data = self.data.read_csg(
+                    filename_hash,
+                    data_offset,
+                    vert_bytes_len + tri_bytes_len,
+                )?;
                 if raw_data.len() < vert_bytes_len + tri_bytes_len {
                     continue;
                 }
@@ -371,7 +575,12 @@ impl ModelCtx<'_> {
                             .collect();
                         let scale = t_struct
                             .int("scale")
-                            .or_else(|| t_struct.get("scale").and_then(|v| v.as_number()).map(|n| n as i64))
+                            .or_else(|| {
+                                t_struct
+                                    .get("scale")
+                                    .and_then(|v| v.as_number())
+                                    .map(|n| n as i64)
+                            })
                             .unwrap_or(1) as f32;
 
                         let base_vert_idx = combined_positions.len() as u32;
@@ -385,7 +594,11 @@ impl ModelCtx<'_> {
                                     (r[6] * pos[0] + r[7] * pos[1] + r[8] * pos[2]) * scale + tz,
                                 ]
                             } else {
-                                [pos[0] * scale + tx, pos[1] * scale + ty, pos[2] * scale + tz]
+                                [
+                                    pos[0] * scale + tx,
+                                    pos[1] * scale + ty,
+                                    pos[2] * scale + tz,
+                                ]
                             };
                             combined_positions.push(p);
                         }
@@ -460,11 +673,22 @@ impl ModelCtx<'_> {
     /// grey shell — rather than as the file describes it. The file gives it no
     /// texture and an emissive grey, which as a lit surface is a white blob;
     /// the marker is a placement aid, and it has to read as one.
+    #[allow(dead_code)]
     fn material_for(
         &mut self,
         props: &ShapeProps,
         mesh: &mut Mesh,
         editor_marker: bool,
+    ) -> NifMaterial {
+        self.material_for_profiled(props, mesh, editor_marker, None)
+    }
+
+    fn material_for_profiled(
+        &mut self,
+        props: &ShapeProps,
+        mesh: &mut Mesh,
+        editor_marker: bool,
+        mut profile: Option<&mut ModelProfile>,
     ) -> NifMaterial {
         if editor_marker {
             return nif_material(StandardMaterial {
@@ -495,6 +719,7 @@ impl ModelCtx<'_> {
             }
         };
 
+        let t_tex = Instant::now();
         let base = props.texture.as_ref().and_then(|t| {
             let path = resolve_tex(t, false)?;
             self.textures.get(
@@ -534,6 +759,10 @@ impl ModelCtx<'_> {
                 self.formats.as_deref(),
             )
         });
+        let dur_tex = t_tex.elapsed();
+        if let Some(ref mut p) = profile {
+            p.texture_load += dur_tex;
+        }
         let glow = glow.filter(|_| has_uv);
 
         let standard = StandardMaterial {

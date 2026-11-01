@@ -121,6 +121,16 @@ pub fn dds_image(bytes: &[u8], srgb: bool, bc_supported: bool) -> Result<Image, 
 }
 
 impl TextureCache {
+    /// Check whether a texture is already cached (or cached failure).
+    pub fn contains(&self, path: &str, srgb: bool) -> bool {
+        self.map.contains_key(&(path.to_string(), srgb))
+    }
+
+    /// Insert an already loaded texture image handle into the cache.
+    pub fn insert(&mut self, path: String, srgb: bool, handle: Option<Handle<Image>>) {
+        self.map.insert((path, srgb), handle);
+    }
+
     /// The texture at `path`, loaded if it is not loaded yet.
     ///
     /// `srgb` decides whether the texture's colours are read as sRGB, and
