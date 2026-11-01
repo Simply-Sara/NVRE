@@ -54,6 +54,9 @@ pub struct Document {
     removed: Vec<u32>,
     /// Records to add: (group path to insert into, record).
     added: Vec<PendingRecord>,
+    /// Records to add that hang from their own top-level group rather than a
+    /// cell's children — a duplicate of a base object (`STAT`, `WEAP`, …).
+    added_top: Vec<PendingTopRecord>,
     /// Cells staged for creation, with the group tree they need.
     added_cells: Vec<PendingCell>,
     /// Worldspaces staged for creation.
@@ -75,6 +78,17 @@ type RecordPath = Vec<usize>;
 pub struct PendingRecord {
     /// The CELL FormID whose temporary-children group receives this record.
     pub cell: u32,
+    pub record: Record,
+}
+
+/// A record to insert under its own top-level group.
+///
+/// A base object — `STAT`, `WEAP`, `ARMO` — is not in a cell: it lives in the
+/// plugin's one `TOP: STAT` group. Duplicating one is the only thing that
+/// needs this shape, and it cannot go through [`PendingRecord`], which puts
+/// every record in a cell's children.
+#[derive(Debug, Clone)]
+pub struct PendingTopRecord {
     pub record: Record,
 }
 
@@ -112,6 +126,7 @@ impl Document {
             edits: HashMap::new(),
             removed: Vec::new(),
             added: Vec::new(),
+            added_top: Vec::new(),
             added_cells: Vec::new(),
             added_worlds: Vec::new(),
             index,
@@ -126,6 +141,7 @@ impl Document {
             edits: HashMap::new(),
             removed: Vec::new(),
             added: Vec::new(),
+            added_top: Vec::new(),
             added_cells: Vec::new(),
             added_worlds: Vec::new(),
             index,
@@ -360,6 +376,20 @@ impl Document {
         &self.added
     }
 
+    /// Queue a record into its own top-level group.
+    ///
+    /// What duplicating a base object needs: the copy keeps the record's own
+    /// signature, so it lands in that signature's `TOP` group rather than in a
+    /// cell's children, which is where the original already lives.
+    pub fn insert_top(&mut self, pending: PendingTopRecord) {
+        self.added_top.push(pending);
+    }
+
+    /// The records queued for top-level insertion this session.
+    pub fn inserted_top(&self) -> &[PendingTopRecord] {
+        &self.added_top
+    }
+
     /// Stage a new cell.
     ///
     /// `global_form_id` is the FormID the cell will have in the load order —
@@ -420,11 +450,17 @@ impl Document {
 
     /// Whether anything is queued.
     pub fn dirty(&self) -> bool {
-        !self.edits.is_empty() || !self.removed.is_empty() || !self.added.is_empty()
+        !self.edits.is_empty()
+            || !self.removed.is_empty()
+            || !self.added.is_empty()
+            || !self.added_top.is_empty()
     }
 
     pub fn edit_count(&self) -> usize {
-        self.edits.values().map(Vec::len).sum::<usize>() + self.removed.len() + self.added.len()
+        self.edits.values().map(Vec::len).sum::<usize>()
+            + self.removed.len()
+            + self.added.len()
+            + self.added_top.len()
     }
 
     /// Apply every queued edit to a copy of the node tree and return the bytes.
@@ -451,9 +487,11 @@ impl Document {
             visit_mut(n, &mut walk);
         }
         insert_pending(&mut nodes, &self.added);
+        insert_pending_top(&mut nodes, &self.added_top);
         tracing::debug!(
             records = applied,
             added = self.added.len(),
+            added_top = self.added_top.len(),
             "document encoded"
         );
         let mut out = Vec::new();
@@ -630,6 +668,51 @@ fn insert_pending(nodes: &mut [Node], pending: &[PendingRecord]) {
         for r in recs {
             temp.children.push(Node::Record(r.clone()));
         }
+    }
+}
+
+/// Insert every pending top-level record into its signature's `TOP` group.
+///
+/// The group is created when the plugin has none: a plugin adding a `STAT` of
+/// its own has no `TOP: STAT` group until it writes one.
+fn insert_pending_top(nodes: &mut Vec<Node>, pending: &[PendingTopRecord]) {
+    for p in pending {
+        let sig = p.record.header.sig;
+        let pos = match nodes.iter().position(|n| match n {
+            Node::Group(g) => {
+                g.header.group_type == nvre_esm::raw::group_type::TOP && g.header.label == sig
+            }
+            _ => false,
+        }) {
+            Some(i) => i,
+            None => {
+                nodes.push(Node::Group(nvre_esm::raw::Group {
+                    header: nvre_esm::raw::GroupHeader {
+                        size: 0,
+                        label: sig,
+                        group_type: nvre_esm::raw::group_type::TOP,
+                        stamp: 0,
+                        unknown1: 0,
+                        version: 0,
+                        unknown2: 0,
+                    },
+                    children: Vec::new(),
+                    offset: 0,
+                }));
+                nodes.len() - 1
+            }
+        };
+        let Some(Node::Group(g)) = nodes.get_mut(pos) else {
+            unreachable!("just found or created a group")
+        };
+        // Before the sub-groups, after the records: the plugin's own order,
+        // which is what the engine walks.
+        let at = g
+            .children
+            .iter()
+            .position(|c| matches!(c, Node::Group(_)))
+            .unwrap_or(g.children.len());
+        g.children.insert(at, Node::Record(p.record.clone()));
     }
 }
 

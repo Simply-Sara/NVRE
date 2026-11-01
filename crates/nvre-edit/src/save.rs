@@ -341,7 +341,7 @@ pub fn write_plugin_with_load_order(
     }
 
     // The session's inserts, with FormIDs allocated above the masters' range.
-    report.inserted = doc.inserted().len();
+    report.inserted = doc.inserted().len() + doc.inserted_top().len();
     report.deleted = doc.deleted().len();
 
     // The session's new cells and worldspaces. Each needs the group tree the
@@ -369,6 +369,18 @@ pub fn write_plugin_with_load_order(
         rec.header.form_id = next_id;
         remap_record(&mut rec, schema, &map, &mut report, &mut problems);
         insert_into_cell(&mut nodes, lo, schema, &map, p.cell, rec);
+        report.records += 1;
+    }
+    // The top-level inserts: a duplicate of a base object, which belongs in its
+    // own signature's `TOP` group rather than in a cell's children.
+    for (next_id, p) in (allocate_base(doc, new_self)..)
+        .zip(doc.inserted_top())
+        .skip(doc.inserted().len())
+    {
+        let mut rec = p.record.clone();
+        rec.header.form_id = next_id;
+        remap_record(&mut rec, schema, &map, &mut report, &mut problems);
+        override_record(&mut nodes, lo, schema, &map, None, &rec);
         report.records += 1;
     }
     // The header advertises where the next record goes, so it must name the ID
@@ -898,6 +910,9 @@ fn allocate_base(doc: &crate::Document, new_self: u32) -> u32 {
     for p in doc.inserted() {
         // A staged placeholder is 0; anything else was handed out by a caller
         // that knows the numbering, and is left above.
+        take(p.record.header.form_id);
+    }
+    for p in doc.inserted_top() {
         take(p.record.header.form_id);
     }
     for c in doc.added_cells() {

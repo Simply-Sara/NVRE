@@ -1494,6 +1494,90 @@ impl Session {
         Ok(())
     }
 
+    /// Duplicate an object record under a new Editor ID.
+    ///
+    /// A duplicate is a **new record**, not an edit of the old one: the copy
+    /// keeps every subrecord, and the `EDID` is replaced with the name the user
+    /// typed. It is staged rather than written, so the save assigns it a
+    /// FormID from the new plugin's own range and the copy's own subrecord
+    /// FormIDs are remapped into the new plugin's numbering — a copy that kept
+    /// the master's numbering would point at the master's records rather than
+    /// at its own.
+    ///
+    /// Only a base object can be duplicated: a reference is placed in a cell
+    /// and duplicated by placing it again.
+    pub fn duplicate_object(
+        &mut self,
+        form_id: u32,
+        sig: [u8; 4],
+        edid: &str,
+    ) -> Result<u32, String> {
+        let edid = edid.trim();
+        if edid.is_empty() {
+            return Err("a duplicate needs an Editor ID".into());
+        }
+        let lo = self.load_order()?;
+        let (_, orig) = nvre_world::fields::winner(lo, form_id)
+            .ok_or_else(|| format!("{form_id:08X} is not in the load order"))?;
+        if orig.header.sig != sig {
+            return Err(format!(
+                "{form_id:08X} is a {}, not a {}",
+                orig.sig_str(),
+                nvre_util::tag_str(&sig)
+            ));
+        }
+        let mut subs = orig
+            .subrecords()
+            .map_err(|e| format!("{form_id:08X} will not parse: {e}"))?;
+        // Replace the EDID, or add one where the record has none: a duplicate
+        // is named by what the user typed, and an unnamed copy of a named
+        // record is the one case that would collide.
+        let encoded = nvre_edit::document::encode_zstring(edid);
+        match subs.iter_mut().find(|s| &s.sig == b"EDID") {
+            Some(s) => s.data = encoded,
+            None => subs.insert(
+                0,
+                nvre_esm::raw::Subrecord {
+                    sig: *b"EDID",
+                    data: encoded,
+                    extended: false,
+                },
+            ),
+        }
+        let payload = nvre_esm::raw::write_subrecords(&subs);
+        let rec = nvre_esm::raw::Record {
+            header: nvre_esm::raw::RecordHeader {
+                sig,
+                data_size: payload.len() as u32,
+                flags: orig.header.flags,
+                // 0 is the placeholder: the save assigns the real one from the
+                // new plugin's own range.
+                form_id: 0,
+                vc_info: 0,
+                form_version: orig.header.form_version,
+                vc_info2: 0,
+            },
+            raw: payload,
+            subrecords: Vec::new(),
+            offset: 0,
+        };
+        let new = self.next_local_form_id();
+        self.doc.insert_top(nvre_edit::document::PendingTopRecord {
+            record: nvre_esm::raw::Record {
+                header: nvre_esm::raw::RecordHeader {
+                    // Staged with the session's own numbering, which the save
+                    // moves into the plugin's; 0 would collide with every other
+                    // staged record that has no ID yet.
+                    form_id: new,
+                    ..rec.header
+                },
+                ..rec
+            },
+        });
+        self.status = format!("duplicated {form_id:08X} as {edid} ({new:08X})");
+        Ok(new)
+    }
+
     /// Queue the selected reference for deletion.
     pub fn delete_selected(&mut self) {
         if let Some(fid) = self.selected.take() {

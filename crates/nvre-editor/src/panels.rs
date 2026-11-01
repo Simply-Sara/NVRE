@@ -70,6 +70,24 @@ pub struct Filters {
     pub new_world_water: f32,
     /// Whether the "new worldspace" form is showing.
     pub new_world_open: bool,
+    /// The duplicate prompt: the record being copied and the name typed for it.
+    pub duplicate: Option<DuplicatePrompt>,
+}
+
+/// The prompt the object window's "Duplicate" opens: what is being copied,
+/// and the Editor ID the copy will carry.
+///
+/// The prefill is the original's Editor ID with `COPY` on it, so the common
+/// case — one copy, right now — is a single keystroke. It is state because the
+/// field has to survive the frames while the user types into it.
+#[derive(Debug, Clone)]
+pub struct DuplicatePrompt {
+    /// The record being copied.
+    pub fid: u32,
+    /// Its signature, which the copy keeps.
+    pub sig: [u8; 4],
+    /// The Editor ID the copy will be written with, pre-filled and editable.
+    pub edid: String,
 }
 
 /// The Editor ID of a cell the user is creating.
@@ -106,6 +124,7 @@ impl Default for Filters {
             new_world_land: -2500.0,
             new_world_water: -2300.0,
             new_world_open: false,
+            duplicate: None,
         }
     }
 }
@@ -1212,6 +1231,10 @@ pub fn place(
         let cur_group = &groups[*chosen];
         let mut open_obj: Option<(u32, [u8; 4])> = None;
         let mut select_fid: Option<u32> = None;
+        // The row the Duplicate prompt is opened on, kept across the frame:
+        // the prompt is a modal drawn after this list, and it needs the row's
+        // Editor ID to prefill the copy's name.
+        let mut ask_duplicate: Option<(u32, [u8; 4], String)> = None;
 
         // The two halves of GECK's Object Window: a category list down the LEFT
         // side, the chosen category's objects on the right.
@@ -1334,15 +1357,17 @@ pub fn place(
                         ui.label(&row.name);
                     });
                     let resp = row_ui.response();
-                    // Right-clicking a row opens its context menu, the one
-                    // action in it being what double-clicking does. The row
-                    // is selected first, so the menu acts on the row it was
-                    // opened on rather than on whatever the last click left
-                    // selected.
+                    // Right-clicking a row opens its context menu. Edit is
+                    // what double-clicking does; Duplicate asks for a name
+                    // first, prefilled with this row's Editor ID plus COPY.
                     resp.context_menu(|ui| {
                         select_fid = Some(row.fid);
                         if ui.button("Edit").clicked() {
                             open_obj = Some((row.fid, cur_group.sig));
+                            ui.close();
+                        }
+                        if ui.button("Duplicate").clicked() {
+                            ask_duplicate = Some((row.fid, cur_group.sig, row.edid.clone()));
                             ui.close();
                         }
                     });
@@ -1387,7 +1412,86 @@ pub fn place(
             session.select(fid);
             session.status = format!("selected {fid:08X}");
         }
+        // The Duplicate prompt, opened on the row the menu was opened on. It
+        // is a modal rather than another inline form: a name has to be typed
+        // before anything is written, and the backdrop keeps the click that
+        // opened it from reaching the table behind.
+        if let Some((fid, sig, edid)) = ask_duplicate {
+            filters.duplicate = Some(DuplicatePrompt {
+                fid,
+                sig,
+                // The prefill is the row's own Editor ID with COPY on it, so
+                // the common case is one keystroke. A row with no Editor ID
+                // still gets a usable name: an empty one would be refused.
+                edid: format!("{edid}COPY"),
+            });
+        }
+        duplicate_prompt(ui.ctx(), &mut session, &mut filters);
     });
+}
+
+/// The prompt Duplicate opens: the copy's Editor ID, prefilled and editable.
+///
+/// `session` and `filters` are separate because the prompt writes to both —
+/// the duplicate is queued through the session, and the prompt's own field
+/// lives in the filters, the same place the new-cell and new-worldspace forms
+/// keep theirs. Returning `filters.duplicate` to `None` is how the prompt
+/// closes, and it happens on both paths: confirming writes the duplicate, and
+/// cancelling leaves the session untouched.
+fn duplicate_prompt(
+    ctx: &egui::Context,
+    session: &mut crate::session::Session,
+    filters: &mut Filters,
+) {
+    let Some(prompt) = filters.duplicate.as_mut() else {
+        return;
+    };
+    let fid = prompt.fid;
+    let sig = prompt.sig;
+    let mut done = false;
+    egui::Modal::new(egui::Id::new("duplicate_prompt")).show(ctx, |ui| {
+        ui.heading("Duplicate");
+        ui.label(format!(
+            "A copy of {fid:08X}, written with the Editor ID below. \
+             Save to write it into the plugin."
+        ));
+        ui.horizontal(|ui| {
+            ui.label("Editor ID");
+            // The field has to be focused for the prefill to be replaced by
+            // typing: without focus the first keystroke goes nowhere, and the
+            // user watches a name they did not type.
+            let field = ui.text_edit_singleline(&mut prompt.edid);
+            if field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                match session.duplicate_object(fid, sig, &prompt.edid) {
+                    Ok(new) => {
+                        session.status =
+                            format!("duplicated {fid:08X} as {new:08X}; save to write it");
+                        done = true;
+                    }
+                    Err(e) => session.status = e,
+                }
+            }
+            field.request_focus();
+        });
+        ui.horizontal(|ui| {
+            if ui.button("Duplicate").clicked() {
+                match session.duplicate_object(fid, sig, &prompt.edid) {
+                    Ok(new) => {
+                        session.status =
+                            format!("duplicated {fid:08X} as {new:08X}; save to write it");
+                        done = true;
+                    }
+                    Err(e) => session.status = e,
+                }
+            }
+            if ui.button("Cancel").clicked() {
+                done = true;
+            }
+        });
+    });
+    if done {
+        filters.duplicate = None;
+    }
 }
 
 /// The status line: what the last action did, and how much is unsaved.

@@ -23,7 +23,7 @@ pub mod formid;
 pub mod save;
 
 pub use cell::{NewCell, NewWorldspace};
-pub use document::{Document, Edit, PendingRecord, RecordRow};
+pub use document::{Document, Edit, PendingRecord, PendingTopRecord, RecordRow};
 pub use formid::{count_formids, formid_fields, remap_sub};
 pub use save::{
     empty_header, formid_map_for, write_plugin, write_plugin_scoped, write_plugin_with_load_order,
