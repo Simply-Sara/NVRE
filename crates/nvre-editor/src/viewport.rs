@@ -1683,92 +1683,143 @@ fn spawn_worldspace_terrain(
         list
     };
 
-    for (coord, land_id) in cells_to_load {
-        spawn_single_cell_terrain(
-            lo,
-            &session.schema,
-            commands,
-            models,
-            spawned,
-            &mut mat_cache,
-            land_id,
-            coord,
+    // Material resolver helper
+    let get_mat_handle = |models: &mut ModelCtx,
+                          mat_cache: &mut HashMap<
+        String,
+        Handle<nvre_assets::nif_material::NifMaterial>,
+    >,
+                          tex_file: &str|
+     -> Handle<nvre_assets::nif_material::NifMaterial> {
+        if let Some(h) = mat_cache.get(tex_file) {
+            return h.clone();
+        }
+        let img_handle = models.textures.get(
+            tex_file,
+            true,
+            &models.data,
+            &mut models.images,
+            models.formats.as_deref(),
         );
+        let mat = StandardMaterial {
+            base_color: if img_handle.is_some() {
+                Color::WHITE
+            } else {
+                Color::srgb(0.55, 0.50, 0.42)
+            },
+            base_color_texture: img_handle,
+            perceptual_roughness: 0.95,
+            reflectance: 0.2,
+            cull_mode: None,
+            ..default()
+        };
+        let h = models.materials.add(nvre_assets::nif_material(mat));
+        mat_cache.insert(tex_file.to_string(), h.clone());
+        h
+    };
+
+    struct CellQuadrantBatch {
+        pos: Vec<[f32; 3]>,
+        nor: Vec<[f32; 3]>,
+        uv: Vec<[f32; 2]>,
+        tan: Vec<[f32; 4]>,
+        col: Vec<[f32; 4]>,
+        idx: Vec<u32>,
+        has_col: bool,
     }
-}
 
-/// Spawn the 4 terrain quadrant meshes for a single exterior cell using a shared material cache.
-#[allow(clippy::too_many_arguments)]
-fn spawn_single_cell_terrain(
-    lo: &nvre_esm::LoadOrder,
-    schema: &nvre_esm::schema::Schema,
-    commands: &mut Commands,
-    models: &mut ModelCtx,
-    spawned: &mut Spawned,
-    mat_cache: &mut HashMap<String, Handle<nvre_assets::nif_material::NifMaterial>>,
-    land_id: u32,
-    grid: (i32, i32),
-) {
-    let Some(land) = load_land(lo, schema, land_id, LandParts::ALL) else {
-        return;
-    };
-    let Some(heights) = land.heights.as_ref() else {
-        return;
-    };
-
-    let cell_origin = Vec2::new(
-        grid.0 as f32 * nvre_world::CELL_SIZE,
-        grid.1 as f32 * nvre_world::CELL_SIZE,
-    );
-
-    for q in 0..4u8 {
-        let base_layer = land.layers.iter().rev().find(|l| l.base && l.quadrant == q);
-        let tex_path = base_layer
-            .and_then(|l| l.texture)
-            .and_then(|t| land_texture(lo, schema, t))
-            .and_then(|t| t.diffuse)
-            .unwrap_or_else(|| DEFAULT_DIFFUSE.to_string());
-
-        let tex_rel = tex_path.replace('/', "\\").to_ascii_lowercase();
-        let tex_file = if tex_rel.starts_with("textures\\") {
-            tex_rel
-        } else {
-            format!("textures\\{tex_rel}")
+    for (coord, land_id) in cells_to_load {
+        let Some(land) = load_land(lo, &session.schema, land_id, LandParts::ALL) else {
+            continue;
+        };
+        let Some(heights) = land.heights.as_ref() else {
+            continue;
         };
 
-        let mat_handle = match mat_cache.get(&tex_file) {
-            Some(h) => h.clone(),
-            None => {
-                let img_handle = models.textures.get(
-                    &tex_file,
-                    true,
-                    &models.data,
-                    &mut models.images,
-                    models.formats.as_deref(),
-                );
-                let mat = StandardMaterial {
-                    base_color: if img_handle.is_some() {
-                        Color::WHITE
-                    } else {
-                        Color::srgb(0.55, 0.50, 0.42)
-                    },
-                    base_color_texture: img_handle,
-                    perceptual_roughness: 0.95,
-                    reflectance: 0.2,
-                    cull_mode: None,
-                    ..default()
-                };
-                let h = models.materials.add(nvre_assets::nif_material(mat));
-                mat_cache.insert(tex_file, h.clone());
-                h
+        let cell_origin = Vec2::new(
+            coord.0 as f32 * nvre_world::CELL_SIZE,
+            coord.1 as f32 * nvre_world::CELL_SIZE,
+        );
+
+        // Group quadrants within THIS single cell by texture file.
+        // If all 4 quadrants share the same texture, this produces 1 single mesh for the cell.
+        // Crucially, the bounding box remains tightly bounded to this single cell so Bevy's
+        // frustum culling can cull cells outside the camera view.
+        let mut cell_batches: HashMap<String, CellQuadrantBatch> = HashMap::with_capacity(4);
+
+        for q in 0..4u8 {
+            let base_layer = land.layers.iter().rev().find(|l| l.base && l.quadrant == q);
+            let tex_path = base_layer
+                .and_then(|l| l.texture)
+                .and_then(|t| land_texture(lo, &session.schema, t))
+                .and_then(|t| t.diffuse)
+                .unwrap_or_else(|| DEFAULT_DIFFUSE.to_string());
+
+            let tex_rel = tex_path.replace('/', "\\").to_ascii_lowercase();
+            let tex_file = if tex_rel.starts_with("textures\\") {
+                tex_rel
+            } else {
+                format!("textures\\{tex_rel}")
+            };
+
+            let Some((q_pos, q_nor, q_uv, q_tan, q_col)) =
+                extract_terrain_quadrant_geometry(&land, heights, q, cell_origin)
+            else {
+                continue;
+            };
+
+            let batch = cell_batches.entry(tex_file).or_insert_with(|| CellQuadrantBatch {
+                pos: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                nor: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                uv: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                tan: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                col: Vec::new(),
+                idx: Vec::with_capacity((QUAD_SIDE - 1) * (QUAD_SIDE - 1) * 6 * 4),
+                has_col: q_col.is_some(),
+            });
+
+            let base_index = batch.pos.len() as u32;
+            batch.pos.extend(q_pos);
+            batch.nor.extend(q_nor);
+            batch.uv.extend(q_uv);
+            batch.tan.extend(q_tan);
+            if let Some(colors) = q_col {
+                batch.col.extend(colors);
             }
-        };
 
-        if let Some(mesh) = terrain_quadrant_mesh(&land, heights, q, cell_origin) {
+            for r in 0..QUAD_SIDE - 1 {
+                for c in 0..QUAD_SIDE - 1 {
+                    let i = base_index + (r * QUAD_SIDE + c) as u32;
+                    let (e, nn, ne) = (i + 1, i + QUAD_SIDE as u32, i + QUAD_SIDE as u32 + 1);
+                    batch.idx.extend_from_slice(&[i, e, ne, i, ne, nn]);
+                }
+            }
+        }
+
+        for (tex_file, batch) in cell_batches {
+            if batch.pos.is_empty() {
+                continue;
+            }
+
+            let mat_handle = get_mat_handle(models, &mut mat_cache, &tex_file);
+
+            let mut mesh = Mesh::new(
+                PrimitiveTopology::TriangleList,
+                RenderAssetUsages::default(),
+            );
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, batch.pos);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, batch.nor);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, batch.uv);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, batch.tan);
+            if batch.has_col && !batch.col.is_empty() {
+                mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, batch.col);
+            }
+            mesh.insert_indices(Indices::U32(batch.idx));
+
             let mesh_handle = models.meshes.add(mesh);
             let e = commands
                 .spawn((
-                    Name::new(format!("Terrain Q{q}")),
+                    Name::new(format!("Cell ({}, {}) Terrain ({tex_file})", coord.0, coord.1)),
                     Mesh3d(mesh_handle),
                     MeshMaterial3d(mat_handle),
                     Transform::IDENTITY,
@@ -1780,8 +1831,20 @@ fn spawn_single_cell_terrain(
     }
 }
 
-/// Generate a Bevy mesh for one 17x17 terrain quadrant.
-fn terrain_quadrant_mesh(land: &Land, heights: &[f32], q: u8, cell_origin: Vec2) -> Option<Mesh> {
+/// Extract vertex attributes for one 17x17 terrain quadrant without creating a Bevy mesh directly.
+#[allow(clippy::type_complexity)]
+fn extract_terrain_quadrant_geometry(
+    land: &Land,
+    heights: &[f32],
+    q: u8,
+    cell_origin: Vec2,
+) -> Option<(
+    Vec<[f32; 3]>,
+    Vec<[f32; 3]>,
+    Vec<[f32; 2]>,
+    Vec<[f32; 4]>,
+    Option<Vec<[f32; 4]>>,
+)> {
     let qx = (q % 2) as usize * (QUAD_SIDE - 1);
     let qy = (q / 2) as usize * (QUAD_SIDE - 1);
     let n = QUAD_SIDE * QUAD_SIDE;
@@ -1826,25 +1889,7 @@ fn terrain_quadrant_mesh(land: &Land, heights: &[f32], q: u8, cell_origin: Vec2)
         }
     }
 
-    let mut idx = Vec::with_capacity((QUAD_SIDE - 1) * (QUAD_SIDE - 1) * 6);
-    for r in 0..QUAD_SIDE - 1 {
-        for c in 0..QUAD_SIDE - 1 {
-            let i = (r * QUAD_SIDE + c) as u32;
-            let (e, nn, ne) = (i + 1, i + QUAD_SIDE as u32, i + QUAD_SIDE as u32 + 1);
-            idx.extend_from_slice(&[i, e, ne, i, ne, nn]);
-        }
-    }
-
-    let mut mesh = Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
-    );
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, nor);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tan);
-
-    if let Some(colors) = &land.colors {
+    let col = land.colors.as_ref().map(|colors| {
         let mut col = Vec::with_capacity(n);
         for r in 0..QUAD_SIDE {
             for c in 0..QUAD_SIDE {
@@ -1858,9 +1903,8 @@ fn terrain_quadrant_mesh(land: &Land, heights: &[f32], q: u8, cell_origin: Vec2)
                 ]);
             }
         }
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, col);
-    }
+        col
+    });
 
-    mesh.insert_indices(Indices::U32(idx));
-    Some(mesh)
+    Some((pos, nor, uv, tan, col))
 }
