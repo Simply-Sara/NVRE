@@ -174,6 +174,10 @@ pub struct Spawned {
     pub lighting_cell: Option<u32>,
     /// The water surface plane entity, when the active cell has water.
     pub water_plane: Option<Entity>,
+    /// Whether all references for the current cell/radius have finished spawning or failing.
+    pub models_finished: bool,
+    /// Whether all lights for the current cell/radius have finished spawning.
+    pub lights_finished: bool,
 }
 
 /// Spawn the viewport's ambient light.
@@ -763,6 +767,8 @@ pub fn draw_cell(
         spawned.failed.clear();
         spawned.model_paths.clear();
         spawned.bases_resolved = false;
+        spawned.models_finished = false;
+        spawned.lights_finished = false;
         spawned.cell = Some(cell);
         spawned.radius = radius;
         // And look at the new cell: the camera's target stays where it was, so
@@ -865,6 +871,9 @@ pub fn draw_cell(
     }
 
     let mut counts = SkipCounts::default();
+    if spawned.models_finished {
+        return;
+    }
     // Models are loaded in batches up to the frame budget.
     let frame_budget = if radius < 0 {
         std::time::Duration::from_millis(250)
@@ -874,23 +883,24 @@ pub fn draw_cell(
     let t = std::time::Instant::now();
     let mut spawned_now = 0usize;
     let trace = std::env::var("NVRE_TRACE").is_ok();
-    let refs = if is_exterior && radius != 0 {
-        session.exterior_grid_refs(radius).to_vec()
-    } else {
-        session.cell_refs().to_vec()
-    };
-    // Resolve missing base objects' model paths in one batch.
-    // Cached in `spawned.model_paths` so subsequent frames don't re-resolve them.
-    if !spawned.bases_resolved {
-        let mut missing_bases: Vec<u32> = refs
-            .iter()
-            .filter(|r| r.position.is_some())
-            .filter_map(|r| r.base.as_deref().and_then(parse_formid))
-            .filter(|base| !spawned.model_paths.contains_key(base))
-            .collect();
-        missing_bases.sort_unstable();
-        missing_bases.dedup();
-
+    let refs_len = if is_exterior && radius != 0 {
+        let (missing_bases, len) = {
+            let refs = session.exterior_grid_refs(radius);
+            let missing: Vec<u32> = if !spawned.bases_resolved {
+                let mut b: Vec<u32> = refs
+                    .iter()
+                    .filter(|r| r.position.is_some())
+                    .filter_map(|r| r.base.as_deref().and_then(parse_formid))
+                    .filter(|base| !spawned.model_paths.contains_key(base))
+                    .collect();
+                b.sort_unstable();
+                b.dedup();
+                b
+            } else {
+                Vec::new()
+            };
+            (missing, refs.len())
+        };
         if !missing_bases.is_empty() {
             let t_paths = std::time::Instant::now();
             let paths = session.model_paths_for(&missing_bases);
@@ -904,30 +914,65 @@ pub fn draw_cell(
             for (base, path) in missing_bases.iter().zip(paths) {
                 spawned.model_paths.insert(*base, path);
             }
-
-            // Multithreaded prefetch: kick off background tasks on AsyncComputeTaskPool
-            // across all CPU worker threads to decompress archives in parallel.
-            let to_prefetch: Vec<String> = spawned
-                .model_paths
-                .values()
-                .flatten()
-                .filter(|p| !spawned.loaded_models.contains(&nvre_vfs::normalize(p)))
-                .cloned()
-                .collect();
-            if !to_prefetch.is_empty() {
-                let pool = AsyncComputeTaskPool::get();
-                let chunk_size =
-                    (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
-                for chunk in to_prefetch.chunks(chunk_size) {
-                    let chunk = chunk.to_vec();
-                    let game_data = models.data.clone();
-                    pool.spawn(async move {
-                        for p in chunk {
-                            let _ = game_data.read(&p);
-                        }
-                    })
-                    .detach();
-                }
+        }
+        len
+    } else {
+        let (missing_bases, len) = {
+            let refs = session.cell_refs();
+            let missing: Vec<u32> = if !spawned.bases_resolved {
+                let mut b: Vec<u32> = refs
+                    .iter()
+                    .filter(|r| r.position.is_some())
+                    .filter_map(|r| r.base.as_deref().and_then(parse_formid))
+                    .filter(|base| !spawned.model_paths.contains_key(base))
+                    .collect();
+                b.sort_unstable();
+                b.dedup();
+                b
+            } else {
+                Vec::new()
+            };
+            (missing, refs.len())
+        };
+        if !missing_bases.is_empty() {
+            let t_paths = std::time::Instant::now();
+            let paths = session.model_paths_for(&missing_bases);
+            if trace {
+                bevy::log::info!(
+                    "draw_cell: resolved {} unique base model paths in {:?}",
+                    missing_bases.len(),
+                    t_paths.elapsed()
+                );
+            }
+            for (base, path) in missing_bases.iter().zip(paths) {
+                spawned.model_paths.insert(*base, path);
+            }
+        }
+        len
+    };
+    if !spawned.bases_resolved {
+        // Multithreaded prefetch: kick off background tasks on AsyncComputeTaskPool
+        // across all CPU worker threads to decompress archives in parallel.
+        let to_prefetch: Vec<String> = spawned
+            .model_paths
+            .values()
+            .flatten()
+            .filter(|p| !spawned.loaded_models.contains(&nvre_vfs::normalize(p)))
+            .cloned()
+            .collect();
+        if !to_prefetch.is_empty() {
+            let pool = AsyncComputeTaskPool::get();
+            let chunk_size =
+                (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
+            for chunk in to_prefetch.chunks(chunk_size) {
+                let chunk = chunk.to_vec();
+                let game_data = models.data.clone();
+                pool.spawn(async move {
+                    for p in chunk {
+                        let _ = game_data.read(&p);
+                    }
+                })
+                .detach();
             }
         }
         spawned.bases_resolved = true;
@@ -966,7 +1011,12 @@ pub fn draw_cell(
     }
 
     // Spawn all references whose model is now in cache.
-    for r in &refs {
+    let refs = if is_exterior && radius != 0 {
+        session.exterior_grid_refs(radius)
+    } else {
+        session.cell_refs()
+    };
+    for r in refs {
         if spawned.refs.contains_key(&r.form_id) {
             continue;
         }
@@ -1020,31 +1070,55 @@ pub fn draw_cell(
         let rotation = r.rotation.unwrap_or([0.0, 0.0, 0.0]);
         let scale = r.scale.unwrap_or(1.0);
         let tr = game_to_bevy() * ref_transform(position, rotation, scale);
-        let root = commands
-            .spawn((
-                Name::new(
-                    r.edid
-                        .clone()
-                        .unwrap_or_else(|| format!("{:08X}", r.form_id)),
-                ),
-                RefEntity {
-                    form_id: r.form_id,
-                    bounds: model.bounds,
-                },
-                tr,
-                Visibility::default(),
-            ))
-            .id();
-
-        for s in &model.shapes {
+        let root = if model.shapes.len() == 1 {
+            let s = &model.shapes[0];
             let m = Mat4::from(s.transform);
-            commands.entity(root).with_child((
-                Mesh3d(s.mesh.clone()),
-                MeshMaterial3d(s.material.clone()),
-                Transform::from_matrix(m),
-                Visibility::default(),
-            ));
-        }
+            let combined_tr = Transform::from_matrix(tr.to_matrix() * m);
+            commands
+                .spawn((
+                    Name::new(
+                        r.edid
+                            .clone()
+                            .unwrap_or_else(|| format!("{:08X}", r.form_id)),
+                    ),
+                    RefEntity {
+                        form_id: r.form_id,
+                        bounds: model.bounds,
+                    },
+                    combined_tr,
+                    Mesh3d(s.mesh.clone()),
+                    MeshMaterial3d(s.material.clone()),
+                    Visibility::default(),
+                ))
+                .id()
+        } else {
+            let parent = commands
+                .spawn((
+                    Name::new(
+                        r.edid
+                            .clone()
+                            .unwrap_or_else(|| format!("{:08X}", r.form_id)),
+                    ),
+                    RefEntity {
+                        form_id: r.form_id,
+                        bounds: model.bounds,
+                    },
+                    tr,
+                    Visibility::default(),
+                ))
+                .id();
+
+            for s in &model.shapes {
+                let m = Mat4::from(s.transform);
+                commands.entity(parent).with_child((
+                    Mesh3d(s.mesh.clone()),
+                    MeshMaterial3d(s.material.clone()),
+                    Transform::from_matrix(m),
+                    Visibility::default(),
+                ));
+            }
+            parent
+        };
 
         spawned.refs.insert(r.form_id, root);
     }
@@ -1064,6 +1138,10 @@ pub fn draw_cell(
     // what distinguishes "nothing to draw" from "drawing failed".
     if spawned.refs.is_empty() && counts.any() {
         bevy::log::warn!("draw_cell: no models spawned; {counts:?}");
+    }
+
+    if spawned.refs.len() + spawned.failed.len() >= refs_len {
+        spawned.models_finished = true;
     }
 }
 
@@ -1087,16 +1165,10 @@ pub fn draw_cell_lights(
     let Some(cell) = session.cell else {
         return;
     };
-    // The same references the models come from, so a light is drawn for exactly
-    // the cells a model is.
-    let (refs, radius) = if spawned.radius != 0 {
-        (
-            session.exterior_grid_refs(spawned.radius).to_vec(),
-            spawned.radius,
-        )
-    } else {
-        (session.cell_refs().to_vec(), 0)
-    };
+    if spawned.lights_finished && spawned.light_cell == Some(cell) && spawned.light_radius == spawned.radius {
+        return;
+    }
+    let radius = spawned.radius;
     // A different cell: drop the lights with the models.
     if spawned.light_cell != Some(cell) || spawned.light_radius != radius {
         for (_, e) in spawned.lights.drain() {
@@ -1106,25 +1178,38 @@ pub fn draw_cell_lights(
         spawned.light_radius = radius;
     }
     // Resolve the base objects' light data in one batch, as the model paths are.
-    let bases: Vec<u32> = refs
-        .iter()
-        .filter(|r| r.position.is_some())
-        .filter_map(|r| r.base.as_deref().and_then(parse_formid))
-        .collect();
-    let mut missing: Vec<u32> = bases
-        .iter()
-        .copied()
-        .filter(|b| !spawned.light_paths.contains_key(b))
-        .collect();
-    missing.sort_unstable();
-    missing.dedup();
+    let missing = {
+        let refs = if radius != 0 {
+            session.exterior_grid_refs(radius)
+        } else {
+            session.cell_refs()
+        };
+        let bases: Vec<u32> = refs
+            .iter()
+            .filter(|r| r.position.is_some())
+            .filter_map(|r| r.base.as_deref().and_then(parse_formid))
+            .collect();
+        let mut missing: Vec<u32> = bases
+            .iter()
+            .copied()
+            .filter(|b| !spawned.light_paths.contains_key(b))
+            .collect();
+        missing.sort_unstable();
+        missing.dedup();
+        missing
+    };
     if !missing.is_empty() {
         let found = session.light_paths_for(&missing);
         for (base, light) in missing.iter().zip(found) {
             spawned.light_paths.insert(*base, light);
         }
     }
-    for r in &refs {
+    let refs = if radius != 0 {
+        session.exterior_grid_refs(radius)
+    } else {
+        session.cell_refs()
+    };
+    for r in refs {
         if spawned.lights.contains_key(&r.form_id) {
             continue;
         }
@@ -1164,6 +1249,7 @@ pub fn draw_cell_lights(
         };
         spawned.lights.insert(r.form_id, entity);
     }
+    spawned.lights_finished = true;
     if std::env::var("NVRE_TRACE").is_ok() {
         bevy::log::info!(
             "draw_cell_lights: cell {:08X} radius {} -> {} lights of {} refs",
