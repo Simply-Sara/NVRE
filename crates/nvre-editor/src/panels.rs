@@ -1170,11 +1170,25 @@ pub struct FieldEdit {
     error: Option<String>,
 }
 
+/// How a usage count is shown in the object window's Count and Users columns.
+///
+/// A zero is an em dash rather than a `0`: the columns answer "is this object
+/// used at all" before they answer "how much", and a column of dashes reads as
+/// unused at a glance where a column of zeros reads as a number to compare.
+/// The dash is dimmed, so the number beside it is the one the eye lands on.
+fn count_cell(n: usize) -> egui::RichText {
+    if n == 0 {
+        egui::RichText::new("—").weak()
+    } else {
+        egui::RichText::new(n.to_string())
+    }
+}
+
 /// How wide the object palette's category column is, in points.
 ///
 /// GECK's Object Window fixes its category pane at about this much, which is
-/// enough for "Non-Player Character" and the object count without swallowing the
-/// pane a modder actually picks from.
+/// enough for "Non-Player Character" and the object count without swallowing
+/// the pane a modder actually picks from.
 const CATEGORY_WIDTH: f32 = 180.0;
 
 /// The gap between the palette's two columns, wide enough for a separator.
@@ -1290,6 +1304,13 @@ pub fn place(
         // reach the list on the same frame.
         let sources = session.object_source_flags().to_vec();
         let source_count = sources.iter().filter(|f| **f).count();
+        // The two usage columns, read before the list is borrowed. Both walks
+        // cost seconds — the references table for the copies, every record's
+        // fields for the users — and they are cached on the session, so this
+        // is a hash lookup per row rather than a walk per frame. The first
+        // frame that draws a column pays for it, which is why the columns are
+        // built here rather than lazily inside the row closure.
+        let usage = session.usage().clone();
         if session.object_groups(&filters.place, &sources).is_empty() {
             // Which plugins were asked for, so the empty state can say what
             // would fill it. "This plugin only" is the common case: a mod with
@@ -1418,6 +1439,14 @@ pub fn place(
                     .clip(true),
             )
             .column(egui_extras::Column::initial(90.0).at_least(80.0))
+            // Count and Users: two narrow, right-aligned number columns. They
+            // are narrow because the numbers are small, and they are fixed
+            // rather than remainders so the Name column keeps the slack. A
+            // `0` is shown as an em dash, the way the reference tables do: a
+            // modder scanning for an object the game never places reads a dash
+            // faster than a zero.
+            .column(egui_extras::Column::initial(64.0).at_least(48.0))
+            .column(egui_extras::Column::initial(64.0).at_least(48.0))
             .column(egui_extras::Column::remainder().resizable(false).clip(true))
             .header(18.0, |mut header| {
                 header.col(|ui| {
@@ -1425,6 +1454,14 @@ pub fn place(
                 });
                 header.col(|ui| {
                     ui.strong("FormID");
+                });
+                header.col(|ui| {
+                    ui.strong("Count")
+                        .on_hover_text("copies of this object placed in the game's cells");
+                });
+                header.col(|ui| {
+                    ui.strong("Users")
+                        .on_hover_text("records and scripts that reference this object");
                 });
                 header.col(|ui| {
                     ui.strong("Name");
@@ -1445,6 +1482,12 @@ pub fn place(
                     });
                     row_ui.col(|ui| {
                         ui.label(egui::RichText::new(format!("{:08X}", row.fid)).monospace());
+                    });
+                    row_ui.col(|ui| {
+                        ui.label(count_cell(usage.copies(row.fid)));
+                    });
+                    row_ui.col(|ui| {
+                        ui.label(count_cell(usage.users(row.fid)));
                     });
                     row_ui.col(|ui| {
                         ui.label(&row.name);

@@ -769,3 +769,103 @@ fn hiding_a_master_is_undoable() {
         "everything hidden is still there, none of it lost"
     );
 }
+
+/// The two usage columns count different things about the same object.
+///
+/// Count is the world: how many placed references carry this base. Users is
+/// the data: how many records name this FormID in one of their fields. The
+/// object that separates them is one the game names without placing — a
+/// terrain texture set, which every exterior cell's LAND references and
+/// nothing places.
+#[test]
+fn count_and_users_are_different_questions() {
+    let Some(mut s) = session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    // A widely-placed static: it has copies, and its own references are its
+    // only users, so the two numbers happen to agree. That is the right answer
+    // for a raw terrain-scatter static, not a bug — nothing else names it.
+    let shrub = s
+        .object_groups("", &flags(&s, true))
+        .iter()
+        .flat_map(|g| g.objects.iter())
+        .find(|r| r.edid == "WastelandShrub01")
+        .cloned()
+        .expect("WastelandShrub01 is in the load order");
+    let usage = s.usage();
+    let copies = usage.copies(shrub.fid);
+    let users = usage.users(shrub.fid);
+    println!("WastelandShrub01: {copies} copies, {users} users");
+    assert!(copies > 0, "the most-placed static has copies: {copies}");
+    assert!(users > 0, "and it is named by its own references: {users}");
+
+    // The terrain texture set: named by every exterior cell's LAND and placed
+    // by nothing. This is the object that separates the two columns — a
+    // modder looking for it in the world finds no copies, and looking for it
+    // in the data finds thousands of users.
+    let texture = s
+        .object_groups("", &flags(&s, true))
+        .iter()
+        .flat_map(|g| g.objects.iter())
+        .find(|r| r.edid == "ExtDesertDefault")
+        .cloned()
+        .expect("ExtDesertDefault is in the load order");
+    let usage = s.usage();
+    let texture_copies = usage.copies(texture.fid);
+    let texture_users = usage.users(texture.fid);
+    println!("ExtDesertDefault: {texture_copies} copies, {texture_users} users");
+    assert_eq!(
+        texture_copies, 0,
+        "a terrain texture set is placed by nothing"
+    );
+    assert!(
+        texture_users > 1000,
+        "and named by thousands of records: {texture_users}"
+    );
+    // An object nothing uses has a dash in both columns, not a zero.
+    assert_eq!(usage.copies(0), 0, "the null FormID has no copies");
+    assert_eq!(usage.users(0), 0, "and no users");
+}
+
+/// A duplicate is a copy, so its own counts start at zero.
+///
+/// A new record has no copies placed and nothing naming it yet, which is what
+/// makes the columns useful for spotting an unused record: the duplicate is
+/// listed with dashes beside it rather than with the original's numbers.
+#[test]
+fn a_duplicate_starts_with_no_usage() {
+    let Some(mut s) = session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let shrub = s
+        .object_groups("", &flags(&s, true))
+        .iter()
+        .find(|g| g.category == "Static")
+        .and_then(|g| g.objects.first())
+        .cloned()
+        .expect("a Static in the load order");
+    let before = s.usage().copies(shrub.fid);
+
+    let new = s
+        .duplicate_object(shrub.fid, *b"STAT", "NvreUnusedCopy")
+        .expect("the duplicate is staged");
+
+    // The counts are rebuilt, because a duplicate is a new record the walk
+    // has never seen — and it is a copy, so the original's copies do not
+    // transfer to it.
+    let usage = s.usage();
+    assert_eq!(
+        usage.copies(new),
+        0,
+        "the copy has no placed copies of its own"
+    );
+    assert_eq!(usage.users(new), 0, "and nothing names it in a field yet");
+    // The original keeps its own count: duplicating does not move it.
+    assert_eq!(
+        usage.copies(shrub.fid),
+        before,
+        "the original's count is unchanged"
+    );
+}
