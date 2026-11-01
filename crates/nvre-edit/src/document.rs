@@ -512,6 +512,20 @@ pub fn apply_edits_pub(r: &mut Record, edits: &[Edit]) {
     apply_edits(r, edits);
 }
 
+/// A record as the mod will actually carry it: the source record with every
+/// queued edit applied.
+///
+/// The one operation every "what is this record now" question needs. Reading
+/// the load order answers what the *masters* say; reading the document's
+/// plugin answers what it says; neither answers what the file being written
+/// will contain. This does — which is what makes an edit visible before the
+/// save rather than only after it.
+pub fn resolved_record(r: &Record, edits: &[Edit]) -> Record {
+    let mut rec = r.clone();
+    apply_edits(&mut rec, edits);
+    rec
+}
+
 /// Depth-first walk over a node and its children, mutating records in place.
 fn visit_mut<F: FnMut(&mut Node)>(node: &mut Node, f: &mut F) {
     f(node);

@@ -9529,6 +9529,10 @@ impl ObjectEditorState {
             nvre_util::tag_str(&self.sig),
             fid
         );
+        // The object window's list and this grid both cache what they read, so
+        // an EDID or a name changed here has to invalidate them: without this
+        // the list keeps the row as it was until the filter changes.
+        session.stale = true;
     }
 
     fn save_weap(&self, session: &mut crate::session::Session) {
@@ -15481,8 +15485,14 @@ pub fn ui(
     };
     let ctx = ctx.get_mut();
 
-    if state.loaded_target != Some((fid, sig)) {
+    // Reload on a new target *or* when the document has changed since the last
+    // read. The target alone is what this used to check, which left the grid
+    // showing the record as it was: an EDID typed into the header and applied
+    // wrote through to the document without re-reading it, so the editor and
+    // the object window's list both went stale.
+    if state.loaded_target != Some((fid, sig)) || session.stale {
         state.load_from_session(&session, fid, sig);
+        session.stale = false;
     }
 
     egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "object_editor"), |ui| {

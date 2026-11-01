@@ -112,6 +112,14 @@ pub struct Session {
     deleted: Vec<u32>,
     /// Status line for the UI.
     pub status: String,
+    /// Whether the document has changed since the panels last read it.
+    ///
+    /// The object window's list and the object editor's grid both cache what
+    /// they read, and the cache key is the filter — so an edit to a record
+    /// leaves both showing the record as it was. This flag is the cache key
+    /// they were missing: set by every write to the document, cleared by
+    /// every read that honours it.
+    pub stale: bool,
     persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>>,
     /// Any object record currently open in the editor window: (FormID, Record Sig).
     pub editing_object: Option<(u32, [u8; 4])>,
@@ -211,6 +219,7 @@ impl Session {
             palette_filter: String::new(),
             deleted: Vec::new(),
             status: String::new(),
+            stale: false,
             persistent_by_grid,
             editing_object: None,
             records_cache: RwLock::new(HashMap::new()),
@@ -294,6 +303,7 @@ impl Session {
             palette_filter: String::new(),
             deleted: Vec::new(),
             status: format!("created new plugin {name}"),
+            stale: false,
             persistent_by_grid,
             editing_object: None,
             records_cache: RwLock::new(HashMap::new()),
@@ -686,8 +696,18 @@ impl Session {
     /// The query walks the load order, so it is worth hundreds of milliseconds;
     /// the panel asks for it every frame otherwise, and the result is cached
     /// until the filter changes.
+    ///
+    /// The walk is the load order's, but what it lists is the *mod's*: a
+    /// record this session has edited is shown with the edit applied, and a
+    /// duplicate this session has created is shown at all. Both are overlaid
+    /// after the walk, and only for the FormIDs the document actually touches
+    /// — a handful, against the 44,550 the walk returns — so the cost is a
+    /// hash lookup per row rather than a subrecord parse per row.
     pub fn object_groups(&mut self, filter: &str) -> &[ObjectGroup] {
-        if self.palette_filter != filter || self.palette_groups.is_empty() {
+        // `stale` is the cache key the filter alone was missing: an edit
+        // changes what a row says without changing what it matches, so the
+        // list has to be rebuilt even when the filter has not moved.
+        if self.palette_filter != filter || self.palette_groups.is_empty() || self.stale {
             let found = (|| {
                 let lo = self.load_order().ok()?;
                 // Only signatures the table names and does not hide are
@@ -702,7 +722,72 @@ impl Session {
                     .filter(|(_, c)| !c.hidden)
                     .filter_map(|(sig, _)| sig.as_bytes().try_into().ok())
                     .collect();
-                let objects = load_order_objects(lo, &self.strings, filter, &visible);
+                let mut objects = load_order_objects(lo, &self.strings, filter, &visible);
+                // The FormIDs the document has something to say about: an edit
+                // queued on a record, or a duplicate staged this session. Only
+                // these rows are re-read, which is what keeps the overlay off
+                // the load-order walk's cost.
+                let touched: HashSet<u32> = self
+                    .doc
+                    .edits()
+                    .map(|(fid, _)| *fid)
+                    .chain(self.doc.deleted().iter().copied())
+                    .chain(
+                        self.doc
+                            .inserted_top()
+                            .iter()
+                            .map(|p| p.record.header.form_id),
+                    )
+                    .collect();
+                for (_fid, _sig, row) in objects.iter_mut() {
+                    if !touched.contains(&row.fid) {
+                        continue;
+                    }
+                    // A record queued for deletion is not in the list at all:
+                    // the game will not have it, so the window should not
+                    // either.
+                    if self.doc.deleted().contains(&row.fid) {
+                        row.edid = String::new();
+                        row.name = String::new();
+                        continue;
+                    }
+                    if let Some(resolved) = self.resolved_object_row(row.fid) {
+                        *row = resolved;
+                    }
+                }
+                objects.retain(|(fid, _, _)| !self.doc.deleted().contains(fid));
+                // A staged duplicate is a row no plugin on disk holds, so the
+                // walk never saw it. It is appended here, under its own
+                // signature's category, which is the same category the record
+                // it was copied from is filed under.
+                let staged: Vec<(u32, [u8; 4], ObjectRow)> = self
+                    .doc
+                    .inserted_top()
+                    .iter()
+                    .filter(|p| {
+                        p.record.header.sig != *b"TES4" && visible.contains(&p.record.header.sig)
+                    })
+                    .filter_map(|p| {
+                        let row = self.resolved_object_row(p.record.header.form_id)?;
+                        Some((row.fid, p.record.header.sig, row))
+                    })
+                    .collect();
+                // The filter applies to the staged rows too: a duplicate is
+                // listed like any other object, not shown regardless of what
+                // was typed.
+                let filter_lower = filter.to_lowercase();
+                let staged: Vec<(u32, [u8; 4], ObjectRow)> = if filter_lower.is_empty() {
+                    staged
+                } else {
+                    staged
+                        .into_iter()
+                        .filter(|(fid, _, row)| {
+                            row.label().to_lowercase().contains(&filter_lower)
+                                || format!("{fid:08X}").contains(&filter_lower)
+                        })
+                        .collect()
+                };
+                objects.extend(staged);
                 // Grouped by the record type, which is the category. One
                 // load-order lookup per distinct type rather than per object.
                 //
@@ -770,6 +855,7 @@ impl Session {
             .unwrap_or_default();
             self.palette_groups = found;
             self.palette_filter = filter.to_string();
+            self.stale = false;
         }
         &self.palette_groups
     }
@@ -1407,6 +1493,72 @@ impl Session {
         Some(StagedRecord::Saved(r))
     }
 
+    /// A record as the mod will carry it, for any FormID.
+    ///
+    /// The single answer to "what is this record *now*", which is what every
+    /// panel that shows a record should read. Three sources, in the order the
+    /// mod itself resolves them:
+    ///
+    /// 1. A staged duplicate — a new record this session created, which no
+    ///    plugin on disk holds yet.
+    /// 2. The plugin being edited, with this session's edits applied — what a
+    ///    record the mod defines itself will be written as.
+    /// 3. The load order's winner, with the edits applied — what an override
+    ///    of a master's record will be written as.
+    ///
+    /// The load order alone answers what the *masters* say, which is why the
+    /// object window's list went stale the moment an edit was queued: it was
+    /// reading source 3 and ignoring 1 and 2.
+    ///
+    /// Returns a clone rather than a borrow because the edits have to be
+    /// applied to a copy; the callers are panels reading a handful of records,
+    /// not the load-order walk that has to stay borrow-only.
+    pub fn resolved_record(&self, form_id: u32) -> Option<nvre_esm::raw::Record> {
+        // A staged duplicate: the record the session created, which is in no
+        // plugin on disk.
+        if let Some(p) = self
+            .doc
+            .inserted_top()
+            .iter()
+            .find(|p| p.record.header.form_id == form_id)
+        {
+            return Some(p.record.clone());
+        }
+        // The plugin being edited, or a master's record it overrides — either
+        // way with the queued edits applied on top.
+        let edits = self.doc.edits_for(form_id).unwrap_or(&[]);
+        if let Some(r) = self.doc.record(form_id) {
+            return Some(nvre_edit::document::resolved_record(r, edits));
+        }
+        let lo = self.load_order().ok()?;
+        let (_, r) = nvre_world::fields::winner(lo, form_id)?;
+        Some(nvre_edit::document::resolved_record(r, edits))
+    }
+
+    /// The row the object window's list shows for a FormID, resolved.
+    ///
+    /// [`Self::resolved_record`] answers with a record; this answers with the
+    /// three fields the table's columns are, resolved through the plugin's own
+    /// string tables when it is localized. A `FULL` that is a string ID
+    /// resolves to the name the player sees rather than to decoded ID bytes.
+    pub fn resolved_object_row(&self, form_id: u32) -> Option<ObjectRow> {
+        let rec = self.resolved_record(form_id)?;
+        let localized = self
+            .lo
+            .plugins
+            .iter()
+            .find(|p| p.name.eq_ignore_ascii_case(&self.doc.name()))
+            .map(|p| p.header.is_localized())
+            .unwrap_or(false);
+        let strings = self.strings.for_plugin(&self.doc.name(), localized);
+        let (edid, name) = nvre_esm::inventory::names(&rec, strings).unwrap_or((None, None));
+        Some(ObjectRow {
+            fid: form_id,
+            edid: edid.unwrap_or_default(),
+            name: name.unwrap_or_default(),
+        })
+    }
+
     /// The signature of a record by FormID.
     pub fn record_sig(&self, form_id: u32) -> Option<[u8; 4]> {
         if let Some(r) = self.doc.record(form_id) {
@@ -1423,6 +1575,11 @@ impl Session {
             // A staged record has FormID 0 until the save; the edit has to reach
             // the staged copy, which is addressed by that same placeholder.
             self.doc.set_sub(fid, sig, data);
+            // Every read that shows a record has to be re-read: the object
+            // window's list, the object editor's grid and the property grid
+            // all answer "what is this record" from a snapshot taken before
+            // this edit was queued.
+            self.stale = true;
             self.status = format!("queued an edit on {fid:08X}");
         }
     }
@@ -1490,6 +1647,7 @@ impl Session {
         // A staged record has FormID 0 until the save; the edit has to reach the
         // staged copy, which is addressed by that same placeholder.
         self.doc.set_sub(fid, sig, bytes);
+        self.stale = true;
         self.status = format!("set {}.{} on {fid:08X}", nvre_util::tag_str(sig), path);
         Ok(())
     }
@@ -1575,6 +1733,9 @@ impl Session {
             },
         });
         self.status = format!("duplicated {form_id:08X} as {edid} ({new:08X})");
+        // The list has to show the copy: it is a row that no plugin on disk
+        // holds, so the only way it appears is through the resolver.
+        self.stale = true;
         Ok(new)
     }
 
@@ -1585,6 +1746,9 @@ impl Session {
                 self.deleted.push(fid);
             }
             self.doc.delete_record(fid);
+            // The object window's list shows the record as it was, which is a
+            // row you can open and edit but will never see in-game.
+            self.stale = true;
             self.status = format!("queued {fid:08X} for deletion");
             self.refs_cell = None;
             self.exterior_refs_key = None;
