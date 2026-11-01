@@ -108,6 +108,10 @@ pub struct Session {
     /// per second while a cell was open.
     palette_groups: Vec<ObjectGroup>,
     palette_filter: String,
+    /// Whether the object window's list is narrowed to the plugin being
+    /// edited. Part of the cache key beside the filter, and a button in the
+    /// window's toolbar.
+    palette_own_only: bool,
     /// Records the session has queued for deletion, in the order asked.
     deleted: Vec<u32>,
     /// Status line for the UI.
@@ -217,6 +221,7 @@ impl Session {
             details_cell: None,
             palette_groups: Vec::new(),
             palette_filter: String::new(),
+            palette_own_only: false,
             deleted: Vec::new(),
             status: String::new(),
             stale: false,
@@ -301,6 +306,7 @@ impl Session {
             details_cell: None,
             palette_groups: Vec::new(),
             palette_filter: String::new(),
+            palette_own_only: false,
             deleted: Vec::new(),
             status: format!("created new plugin {name}"),
             stale: false,
@@ -703,11 +709,22 @@ impl Session {
     /// after the walk, and only for the FormIDs the document actually touches
     /// — a handful, against the 44,550 the walk returns — so the cost is a
     /// hash lookup per row rather than a subrecord parse per row.
-    pub fn object_groups(&mut self, filter: &str) -> &[ObjectGroup] {
+    ///
+    /// `own_only` narrows the list to what the plugin being edited carries:
+    /// its own records on disk, plus every record this session has touched,
+    /// because an edit to a master's record is a record the mod now defines
+    /// even though no plugin on disk holds it yet.
+    pub fn object_groups(&mut self, filter: &str, own_only: bool) -> &[ObjectGroup] {
         // `stale` is the cache key the filter alone was missing: an edit
         // changes what a row says without changing what it matches, so the
-        // list has to be rebuilt even when the filter has not moved.
-        if self.palette_filter != filter || self.palette_groups.is_empty() || self.stale {
+        // list has to be rebuilt even when the filter has not moved. The
+        // toggle is the same kind of key: it changes which rows are listed
+        // without changing what any of them say.
+        if self.palette_filter != filter
+            || self.palette_groups.is_empty()
+            || self.stale
+            || self.palette_own_only != own_only
+        {
             let found = (|| {
                 let lo = self.load_order().ok()?;
                 // Only signatures the table names and does not hide are
@@ -722,7 +739,12 @@ impl Session {
                     .filter(|(_, c)| !c.hidden)
                     .filter_map(|(sig, _)| sig.as_bytes().try_into().ok())
                     .collect();
-                let mut objects = load_order_objects(lo, &self.strings, filter, &visible);
+                let own_name = if own_only {
+                    Some(self.doc.name())
+                } else {
+                    None
+                };
+                let mut objects = load_order_objects(lo, &self.strings, filter, &visible, own_name);
                 // The FormIDs the document has something to say about: an edit
                 // queued on a record, or a duplicate staged this session. Only
                 // these rows are re-read, which is what keeps the overlay off
@@ -781,13 +803,40 @@ impl Session {
                 } else {
                     staged
                         .into_iter()
-                        .filter(|(fid, _, row)| {
-                            row.label().to_lowercase().contains(&filter_lower)
-                                || format!("{fid:08X}").contains(&filter_lower)
-                        })
+                        .filter(|(fid, _, row)| matches_text(&filter_lower, *fid, row))
                         .collect()
                 };
                 objects.extend(staged);
+                // Narrowed to the mod's own records, an edited master record is
+                // a row the walk never produced: the record lives in the master,
+                // and what makes it the mod's is the edit queued on it, which
+                // the walk does not read. It is added here, under the category
+                // the record's own signature names — the same one an edit to a
+                // record the mod already defines would have landed in.
+                if own_only {
+                    let existing: HashSet<u32> = objects.iter().map(|(fid, _, _)| *fid).collect();
+                    let edited: Vec<u32> = self
+                        .doc
+                        .edits()
+                        .filter(|(fid, _)| !existing.contains(*fid))
+                        .map(|(fid, _)| *fid)
+                        .collect();
+                    for fid in edited {
+                        let Some(row) = self.resolved_object_row(fid) else {
+                            continue;
+                        };
+                        let sig = self
+                            .resolved_record(fid)
+                            .map(|r| r.header.sig)
+                            .unwrap_or(*b"????");
+                        if !visible.contains(&sig)
+                            || !matches_text(filter_lower.as_str(), fid, &row)
+                        {
+                            continue;
+                        }
+                        objects.push((fid, sig, row));
+                    }
+                }
                 // Grouped by the record type, which is the category. One
                 // load-order lookup per distinct type rather than per object.
                 //
@@ -855,6 +904,7 @@ impl Session {
             .unwrap_or_default();
             self.palette_groups = found;
             self.palette_filter = filter.to_string();
+            self.palette_own_only = own_only;
             self.stale = false;
         }
         &self.palette_groups
@@ -2681,6 +2731,18 @@ impl ObjectRow {
     }
 }
 
+/// Whether a row matches the text typed into the object window's filter.
+///
+/// The filter matches the name or the Editor ID, and the FormID as text, the
+/// way GECK's Object Window does: a modder looking for one record may have any
+/// of the three to hand. `filter` is already lowercased by the caller.
+fn matches_text(filter: &str, fid: u32, row: &ObjectRow) -> bool {
+    filter.is_empty()
+        || row.label().to_lowercase().contains(filter)
+        || row.edid.to_lowercase().contains(filter)
+        || format!("{fid:08X}").contains(filter)
+}
+
 /// Where a top-level group sits in GECK's Object Window.
 ///
 /// The order is the schema's, because it is a per-game fact: GECK's eight and
@@ -2746,11 +2808,26 @@ pub fn load_order_objects(
     strings: &nvre_esm::strings::StringTables,
     filter: &str,
     visible: &HashSet<[u8; 4]>,
+    only_plugin: Option<&str>,
 ) -> Vec<(u32, [u8; 4], ObjectRow)> {
     let filter = filter.to_lowercase();
     let mut out: Vec<(u32, [u8; 4], ObjectRow)> = Vec::new();
     let mut seen: HashMap<u32, usize> = HashMap::new();
+    // The plugin being edited, when the list is filtered to it. A name, not
+    // an index: the plugin being edited is the last in the load order when it
+    // is a mod, and is a master's own index when it is one of them, so the
+    // name is the one answer that covers both.
+    let own = only_plugin.map(|n| n.to_ascii_lowercase());
     for (pi, plugin) in lo.plugins.iter().enumerate() {
+        let is_own = own
+            .as_deref()
+            .is_some_and(|n| plugin.name.eq_ignore_ascii_case(n));
+        // Filtered to the plugin being edited, the walk stops reading at
+        // every other plugin's records: a master's 44,550 objects are what
+        // the walk spends its time on, and none of them are this mod's.
+        if own.is_some() && !is_own {
+            continue;
+        }
         let plugin_strings = strings.for_plugin(&plugin.name, plugin.header.is_localized());
         for r in &lo.records[pi] {
             if !visible.contains(&r.header.sig) {

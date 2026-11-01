@@ -272,7 +272,7 @@ fn a_melee_only_style_reports_its_weapon_restriction() {
     // Find a style that actually restricts weapons, so the enum is exercised
     // against a value other than None.
     let fids: Vec<u32> = s
-        .object_groups("")
+        .object_groups("", false)
         .iter()
         .filter(|g| g.sig == *b"CSTY")
         .flat_map(|g| g.objects.iter().map(|r| r.fid))
@@ -318,7 +318,7 @@ fn the_unused_bytes_the_game_fills_are_preserved() {
     // means: it copies the bytes through unchanged. Find such a record and
     // check an edit does not disturb them.
     let fids: Vec<u32> = s
-        .object_groups("")
+        .object_groups("", false)
         .iter()
         .filter(|g| g.sig == *b"CSTY")
         .flat_map(|g| g.objects.iter().map(|r| r.fid))
@@ -458,7 +458,7 @@ fn an_unnamed_csty_flag_bit_survives_an_edit() {
     // Find a style with a flag bit the spec does not name set (bit 3 is `??`),
     // then edit a documented bit and check the undocumented one is untouched.
     let fids: Vec<u32> = s
-        .object_groups("")
+        .object_groups("", false)
         .iter()
         .filter(|g| g.sig == *b"CSTY")
         .flat_map(|g| g.objects.iter().map(|r| r.fid))

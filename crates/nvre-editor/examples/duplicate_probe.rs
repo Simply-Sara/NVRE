@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // A STAT that is certainly in the master: the first Static in the palette.
     let stat = s
-        .object_groups("")
+        .object_groups("", false)
         .iter()
         .find(|g| g.sig == *b"STAT")
         .and_then(|g| g.objects.first())

@@ -27,6 +27,40 @@ fn session() -> Option<Session> {
     Session::open(&plugin, &schema_dir(), vec!["FalloutNV.esm".to_string()]).ok()
 }
 
+/// A session whose plugin being edited is a **mod**, not the master.
+///
+/// The "this plugin only" filter is about a mod's own records, and a session
+/// opened on `FalloutNV.esm` has the master itself as its plugin — where
+/// every one of the 44,550 objects is legitimately the plugin's own. So the
+/// tests that say what the filter *excludes* need a plugin that is a small
+/// mod with a master behind it, which is the case the feature exists for.
+///
+/// The mod is written into the scratch directory, not the Data folder: the
+/// editor's session has to be able to save there, and a stray `.esp` in the
+/// Data folder would show up in the game's own load order.
+fn mod_session() -> Option<Session> {
+    let data = data_dir()?;
+    let dir = std::path::Path::new(&data);
+    let scratch = std::env::temp_dir().join("nvre-object-window-live");
+    std::fs::create_dir_all(&scratch).ok()?;
+    let path = scratch.join("NvreLiveTest.esp");
+    // A blank mod that depends on the master, the same way the editor's own
+    // "new plugin" makes one.
+    Session::create(
+        "NvreLiveTest.esp",
+        false,
+        dir,
+        &schema_dir(),
+        vec!["FalloutNV.esm".to_string()],
+        None,
+        None,
+    )
+    .ok()?;
+    let s = Session::open(&path, &schema_dir(), vec!["FalloutNV.esm".to_string()]).ok()?;
+    s.save(&path).ok()?;
+    Some(s)
+}
+
 /// The first object of a category, for a test to act on.
 fn first_row(groups: &[nvre_editor::session::ObjectGroup], category: &str) -> ObjectRow {
     groups
@@ -49,9 +83,9 @@ fn a_duplicate_is_listed_immediately() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
     let before: usize = s
-        .object_groups("")
+        .object_groups("", false)
         .iter()
         .find(|g| g.category == "Static")
         .map(|g| g.objects.len())
@@ -63,7 +97,7 @@ fn a_duplicate_is_listed_immediately() {
 
     // No save, and the filter has not changed: the same call the panel makes
     // every frame has to return the new row.
-    let groups = s.object_groups("").to_vec();
+    let groups = s.object_groups("", false).to_vec();
     let statics = groups
         .iter()
         .find(|g| g.category == "Static")
@@ -97,11 +131,11 @@ fn a_duplicate_is_filtered_like_any_other_object() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
     s.duplicate_object(stat.fid, *b"STAT", "NvreFilteredDuplicate")
         .expect("the duplicate is staged");
 
-    let matching = s.object_groups("NvreFilteredDuplicate").to_vec();
+    let matching = s.object_groups("NvreFilteredDuplicate", false).to_vec();
     let shown: Vec<&ObjectRow> = matching
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -112,7 +146,7 @@ fn a_duplicate_is_filtered_like_any_other_object() {
 
     // And a filter it does not match leaves it out, rather than showing it
     // regardless.
-    let other = s.object_groups("dumpster").to_vec();
+    let other = s.object_groups("dumpster", false).to_vec();
     assert!(
         other
             .iter()
@@ -133,7 +167,7 @@ fn an_edid_edit_is_listed_immediately() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
     let original = stat.edid.clone();
 
     // What the object editor's Apply does, through the session's own field
@@ -142,7 +176,7 @@ fn an_edid_edit_is_listed_immediately() {
     s.selected = Some(stat.fid);
     s.edit_selected(b"EDID", bytes);
 
-    let groups = s.object_groups("").to_vec();
+    let groups = s.object_groups("", false).to_vec();
     let row = groups
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -176,9 +210,9 @@ fn a_deleted_record_leaves_the_list() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
     assert!(
-        s.object_groups("")
+        s.object_groups("", false)
             .iter()
             .flat_map(|g| g.objects.iter())
             .any(|r| r.fid == stat.fid),
@@ -188,7 +222,7 @@ fn a_deleted_record_leaves_the_list() {
     s.select(stat.fid);
     s.delete_selected();
 
-    let groups = s.object_groups("").to_vec();
+    let groups = s.object_groups("", false).to_vec();
     assert!(
         groups
             .iter()
@@ -210,7 +244,7 @@ fn a_duplicate_opens_in_the_editor_with_its_data() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
     let original_subs = s
         .resolved_record(stat.fid)
         .expect("the original resolves")
@@ -256,7 +290,7 @@ fn an_edit_to_a_duplicate_is_shown_and_saved() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("").to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
     let new = s
         .duplicate_object(stat.fid, *b"STAT", "NvreEditAfterDuplicate")
         .expect("the duplicate is staged");
@@ -321,8 +355,8 @@ fn an_untouched_record_is_listed_from_the_load_order() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("").to_vec(), "Static");
-    let before = s.object_groups("").to_vec();
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let before = s.object_groups("", false).to_vec();
     let before_row = before
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -335,7 +369,7 @@ fn an_untouched_record_is_listed_from_the_load_order() {
     s.selected = Some(other.fid);
     s.edit_selected(b"EDID", nvre_edit::document::encode_zstring("NvreOther"));
 
-    let after = s.object_groups("").to_vec();
+    let after = s.object_groups("", false).to_vec();
     let row = after
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -346,5 +380,157 @@ fn an_untouched_record_is_listed_from_the_load_order() {
         (row.edid, row.name),
         (before_row.edid.clone(), before_row.name.clone()),
         "an untouched record's row is unchanged"
+    );
+}
+
+/// "This plugin only" lists a master record the session has edited.
+///
+/// This is the whole reason the filter cannot just narrow the walk to the
+/// plugin's own records: an edit to a master's record is a record the mod
+/// now defines, but the record is still physically in the master, so the
+/// walk of the plugin's own records never sees it. Without the overlay, a
+/// modder who edited a master's weapon would not find it under the filter
+/// that is supposed to show exactly what they changed.
+#[test]
+fn this_plugin_only_lists_an_edited_master_record() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    // A record from the master, which the mod does not define on disk.
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    assert!(
+        stat.fid >> 24 == 0,
+        "the record is the master's own, with the master in the top byte"
+    );
+
+    s.selected = Some(stat.fid);
+    s.edit_selected(b"EDID", nvre_edit::document::encode_zstring("NvreOwnOnly"));
+
+    let groups = s.object_groups("", true).to_vec();
+    let found = groups
+        .iter()
+        .flat_map(|g| g.objects.iter())
+        .find(|r| r.fid == stat.fid);
+    assert!(
+        found.is_some(),
+        "an edited master record is listed under \"this plugin only\""
+    );
+    assert_eq!(
+        found.map(|r| r.edid.as_str()),
+        Some("NvreOwnOnly"),
+        "and it carries the edit, not the master's Editor ID"
+    );
+}
+
+/// "This plugin only" lists a duplicate, which is in no plugin on disk.
+///
+/// A duplicate is the mod's most obviously: it exists only because the
+/// session made it. If the filter dropped it, the button would hide the one
+/// kind of record a modder creates most often.
+#[test]
+fn this_plugin_only_lists_a_duplicate() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let new = s
+        .duplicate_object(stat.fid, *b"STAT", "NvreOwnOnlyDuplicate")
+        .expect("the duplicate is staged");
+
+    let groups = s.object_groups("", true).to_vec();
+    let row = groups
+        .iter()
+        .flat_map(|g| g.objects.iter())
+        .find(|r| r.fid == new);
+    assert!(
+        row.is_some(),
+        "a staged duplicate is listed under \"this plugin only\""
+    );
+}
+
+/// "This plugin only" lists far fewer objects than the whole load order.
+///
+/// The point of the button, stated as a number: a master carries 44,550
+/// objects and a mod carries a handful, so a list that is not dramatically
+/// shorter is not filtering.
+#[test]
+fn this_plugin_only_lists_fewer_objects_than_the_whole_load_order() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    s.selected = Some(stat.fid);
+    s.edit_selected(b"EDID", nvre_edit::document::encode_zstring("NvreCounted"));
+
+    let all: usize = s
+        .object_groups("", false)
+        .iter()
+        .map(|g| g.objects.len())
+        .sum();
+    let own: usize = s
+        .object_groups("", true)
+        .iter()
+        .map(|g| g.objects.len())
+        .sum();
+    assert!(own > 0, "the plugin's own list has the edited record in it");
+    assert!(
+        own < all,
+        "the plugin's own list is shorter: {own} against {all}"
+    );
+}
+
+/// The filter and the toggle are independent: the toggle narrows the list,
+/// the text narrows within it.
+///
+/// Both are keys to the same cache, so a bug that drops one leaves the other
+/// showing the wrong list until something else happens to invalidate it.
+#[test]
+fn the_toggle_and_the_filter_are_independent() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    s.selected = Some(stat.fid);
+    s.edit_selected(
+        b"EDID",
+        nvre_edit::document::encode_zstring("NvreIndependent"),
+    );
+
+    // The text filter alone, across every plugin.
+    let by_text = s.object_groups("NvreIndependent", false).to_vec();
+    assert!(
+        by_text
+            .iter()
+            .flat_map(|g| g.objects.iter())
+            .any(|r| r.edid == "NvreIndependent"),
+        "the text filter finds the edit across every plugin"
+    );
+    // The toggle alone, with no text.
+    let by_toggle = s.object_groups("", true).to_vec();
+    assert!(
+        by_toggle
+            .iter()
+            .flat_map(|g| g.objects.iter())
+            .any(|r| r.edid == "NvreIndependent"),
+        "the toggle finds the edit with no text typed"
+    );
+    // Both at once.
+    let both = s.object_groups("NvreIndependent", true).to_vec();
+    assert_eq!(
+        both.iter().flat_map(|g| g.objects.iter()).count(),
+        1,
+        "both together find exactly the one record"
+    );
+    // And back to every plugin, where the record is listed once — the master's
+    // copy is still on disk, but the walk lists the winner, which is the edit.
+    let all_again = s.object_groups("NvreIndependent", false).to_vec();
+    assert_eq!(
+        all_again.iter().flat_map(|g| g.objects.iter()).count(),
+        1,
+        "the record is listed once across every plugin, showing the edit"
     );
 }
