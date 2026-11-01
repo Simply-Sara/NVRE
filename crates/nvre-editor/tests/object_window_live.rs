@@ -598,13 +598,16 @@ fn one_master_can_be_hidden_while_the_others_stay_shown() {
     );
 }
 
-/// The plugin being edited cannot be hidden.
+/// The plugin being edited can be hidden like any other.
 ///
-/// The window exists to edit that plugin's records, so a list that cannot show
-/// them is not a narrower choice but a broken one. The request is refused with
-/// a reason rather than silently ignored.
+/// It used to be refused, on the grounds that the window exists to edit that
+/// plugin's records. But a modder narrowing the list to a master has said
+/// they want the master's objects, and their own plugin's rows are the one
+/// thing they can already see everywhere else — so hiding it is a narrower
+/// list, not a broken one, and the empty state says so rather than a category
+/// that silently refills.
 #[test]
-fn the_plugin_being_edited_cannot_be_hidden() {
+fn the_plugin_being_edited_can_be_hidden() {
     let Some(mut s) = mod_session() else {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
@@ -614,26 +617,112 @@ fn the_plugin_being_edited_cannot_be_hidden() {
         .iter()
         .position(|(_, n)| n.eq_ignore_ascii_case(s.doc.name()))
         .expect("the plugin being edited is in the load order");
-    let err = s.set_object_source(own, false);
+    s.set_object_source(own, false)
+        .expect("the plugin being edited hides like any other");
     assert!(
-        err.is_err(),
-        "hiding the plugin being edited is refused: {err:?}"
+        !s.object_source_flags()[own],
+        "its flag is off, so the list stops showing its records"
     );
+    // And it comes back: the flag is the only thing standing between the two
+    // lists, so turning it back on restores them.
+    s.set_object_source(own, true).expect("it shows again");
     assert!(
         s.object_source_flags()[own],
-        "and its flag is left alone, so the list still shows its records"
+        "turning it back on restores its records"
     );
-    // And the two ends of the range: "all plugins" and "this plugin" both
-    // leave it shown.
+    // "this plugin" still ends at the plugin being edited, which is the one
+    // end of the range that cannot mean an empty list.
     s.set_object_sources_all(false);
     assert!(
         s.object_source_flags()[own],
-        "\"this plugin\" leaves the plugin being edited shown"
+        "\"this plugin\" shows the plugin being edited"
     );
     s.set_object_sources_all(true);
     assert!(
         s.object_source_flags().iter().all(|f| *f),
         "\"all plugins\" shows every plugin"
+    );
+}
+
+/// Hiding a plugin removes its objects from the list.
+///
+/// The flags were both the live state and the cache key, so a write compared
+/// equal to itself on the next frame and the list was never rebuilt:
+/// unchecking a plugin changed nothing on screen. The key is now what the
+/// last rebuild actually used, so a plugin unchecked in the dropdown is gone
+/// from the list on the same frame.
+#[test]
+fn hiding_a_plugin_removes_its_objects_from_the_list() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let master = s
+        .object_sources()
+        .iter()
+        .position(|(_, n)| n.ends_with(".esm"))
+        .expect("the master is in the load order");
+    let with_master = s.object_groups("", &flags(&s, true)).to_vec();
+    let total: usize = with_master.iter().map(|g| g.objects.len()).sum();
+
+    // Uncheck it, exactly as the dropdown's checkbox does.
+    s.set_object_source(master, false)
+        .expect("the master hides");
+
+    // The very next read — the one the panel makes every frame — has to be the
+    // narrower list, without a save and without the filter changing.
+    let without = s
+        .object_groups("", &s.object_source_flags().to_vec())
+        .to_vec();
+    let fewer: usize = without.iter().map(|g| g.objects.len()).sum();
+    assert!(
+        fewer < total,
+        "the master's objects are gone from the list: {fewer} against {total}"
+    );
+}
+
+/// A duplicate belongs to the plugin being edited, so hiding it hides them.
+///
+/// A staged duplicate is in no plugin on disk — the mod's record and nothing
+/// else's — so it follows the mod's flag rather than the master's.
+#[test]
+fn a_duplicate_follows_the_plugin_being_edited() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let new = s
+        .duplicate_object(stat.fid, *b"STAT", "NvreFollowsOwn")
+        .expect("the duplicate is staged");
+    let own = s
+        .object_sources()
+        .iter()
+        .position(|(_, n)| n.eq_ignore_ascii_case(s.doc.name()))
+        .expect("the plugin being edited is in the load order");
+
+    // Shown while the mod is shown.
+    let shown = s.object_groups("", &flags(&s, false)).to_vec();
+    assert!(
+        shown
+            .iter()
+            .flat_map(|g| g.objects.iter())
+            .any(|r| r.fid == new),
+        "the duplicate is listed with the mod"
+    );
+
+    // And gone when the mod is hidden, even though the master is still shown:
+    // the copy is the mod's record, not the master's.
+    s.set_object_source(own, false).expect("the mod hides");
+    let master_only = s
+        .object_groups("", &s.object_source_flags().to_vec())
+        .to_vec();
+    assert!(
+        master_only
+            .iter()
+            .flat_map(|g| g.objects.iter())
+            .all(|r| r.fid != new),
+        "the duplicate is not listed against the master"
     );
 }
 
@@ -653,14 +742,16 @@ fn hiding_a_master_is_undoable() {
         .iter()
         .position(|(_, n)| n.ends_with(".esm"))
         .expect("the master is in the load order");
-    s.set_object_source(master, false).expect("the master hides");
+    s.set_object_source(master, false)
+        .expect("the master hides");
     let hidden: Vec<u32> = s
         .object_groups("", &s.object_source_flags().to_vec())
         .iter()
         .flat_map(|g| g.objects.iter())
         .map(|r| r.fid)
         .collect();
-    s.set_object_source(master, true).expect("the master shows again");
+    s.set_object_source(master, true)
+        .expect("the master shows again");
     let shown: Vec<u32> = s
         .object_groups("", &s.object_source_flags().to_vec())
         .iter()

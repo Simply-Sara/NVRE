@@ -1220,14 +1220,22 @@ pub fn place(
             let flags = session.object_source_flags().to_vec();
             let shown = flags.iter().filter(|f| **f).count();
             let total = flags.len();
-            let own_name = session.doc.name().to_string();
+            // The one plugin still shown, when there is only one. Named rather
+            // than assumed to be the plugin being edited: that one can be
+            // hidden now, so "only" has to say which plugin it is.
+            let only_one = if shown == 1 {
+                session
+                    .object_sources()
+                    .into_iter()
+                    .find(|(pi, _)| flags.get(*pi).copied().unwrap_or(false))
+                    .map(|(_, n)| n.to_string())
+            } else {
+                None
+            };
             let summary = if shown == total {
                 "all plugins".to_string()
-            } else if shown == 1 {
-                // The one plugin left is the plugin being edited, which
-                // cannot be turned off — so this is "this plugin only" in
-                // every case that can reach it.
-                format!("{own_name} only")
+            } else if let Some(name) = &only_one {
+                format!("{name} only")
             } else {
                 format!("{shown} of {total} plugins")
             };
@@ -1255,20 +1263,18 @@ pub fn place(
                     });
                     ui.separator();
                     for (pi, name) in names.into_iter().enumerate() {
-                        // The plugin being edited is drawn checked and
-                        // disabled: it cannot be turned off, and a checkbox
-                        // that appears to accept a click and then does not is
-                        // worse than one that says so.
-                        let is_own = name.eq_ignore_ascii_case(&own_name);
+                        // Every plugin is a plain checkbox, the plugin being
+                        // edited included: a modder narrowing the list to a
+                        // master has said they want the master's objects, and
+                        // their own plugin's rows are the one thing they can
+                        // already see everywhere else. Hiding it leaves the
+                        // masters' objects and nothing else, which the window
+                        // says rather than quietly refilling.
                         let mut on = flags.get(pi).copied().unwrap_or(true);
-                        let resp = ui.add_enabled(!is_own, egui::Checkbox::new(&mut on, &name));
-                        if resp.clicked() && !is_own {
+                        if ui.checkbox(&mut on, &name).clicked() {
                             if let Err(e) = session.set_object_source(pi, on) {
                                 session.status = e;
                             }
-                        }
-                        if is_own {
-                            resp.on_hover_text("the plugin being edited is always listed");
                         }
                     }
                 });
@@ -1278,17 +1284,27 @@ pub fn place(
         // query walks the load order, which costs hundreds of milliseconds, and
         // the panel draws every frame. Borrowed rather than cloned.
         let selected_fid = session.selected;
-        // The plugin being edited, read before the list is borrowed: the
-        // footer says which list it counted, and `groups` holds the session
-        // from here down.
-        let own_name = session.doc.name().to_string();
+        // The flags the list is built from, read fresh here rather than held
+        // from the dropdown above: that one drew its checkboxes from a copy
+        // taken before it opened, and a plugin unchecked inside it has to
+        // reach the list on the same frame.
         let sources = session.object_source_flags().to_vec();
         let source_count = sources.iter().filter(|f| **f).count();
         if session.object_groups(&filters.place, &sources).is_empty() {
-            ui.label(if source_count == 1 {
-                format!("{own_name} adds or changes no objects that match")
-            } else {
-                "no objects match".to_string()
+            // Which plugins were asked for, so the empty state can say what
+            // would fill it. "This plugin only" is the common case: a mod with
+            // no records of its own yet is empty, and saying so is better than
+            // "no objects match", which reads as though the game has none.
+            let asked = session
+                .object_sources()
+                .into_iter()
+                .filter(|(pi, _)| sources.get(*pi).copied().unwrap_or(false))
+                .map(|(_, n)| n.to_string())
+                .collect::<Vec<_>>();
+            ui.label(match asked.as_slice() {
+                [] => "every plugin is hidden — show one from the dropdown".to_string(),
+                [name] => format!("{name} has no objects that match"),
+                _ => "no objects match".to_string(),
             });
             return;
         }
@@ -1473,8 +1489,6 @@ pub fn place(
             // a modder cannot tell from the rows themselves.
             if source_count < sources.len() {
                 ui.label(format!("from {source_count} of {} plugins", sources.len()));
-            } else if source_count == 1 {
-                ui.label(format!("from {own_name}"));
             }
             // The per-row Edit button became one Edit for the selected row,
             // now that the list is a table. It is enabled only for a row of

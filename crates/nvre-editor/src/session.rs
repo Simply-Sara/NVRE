@@ -108,20 +108,29 @@ pub struct Session {
     /// per second while a cell was open.
     palette_groups: Vec<ObjectGroup>,
     palette_filter: String,
-    /// Which of the load order's plugins the object window lists, one flag per
-    /// plugin in load order, parallel to [`Session::lo`]'s plugins.
+    /// Which plugins the object window lists, one flag per plugin in load
+    /// order, parallel to [`Session::lo`]'s plugins.
     ///
     /// All of them are shown to begin with, which is GECK's own behaviour: its
     /// Object Window lists every plugin's objects. The flags are what the
-    /// window's source dropdown writes, and they are part of the cache key
-    /// beside the filter — narrowing the list changes which rows are listed
-    /// without changing what any of them say.
+    /// window's source dropdown writes, and they are what the list is built
+    /// from — including the plugin being edited, which can be hidden like any
+    /// other, because a modder narrowing the list to a master has said they
+    /// want the master's objects, not their own plugin's rows.
     ///
     /// It lives here rather than in the panel's filters because it is the
     /// session's own load order, indexed by it: a panel that kept its own copy
     /// would have to be told every time a session was opened, and would drift
     /// the moment a session with more plugins was opened next.
     palette_sources: Vec<bool>,
+    /// The flags the current `palette_groups` was built from.
+    ///
+    /// Separate from [`Session::palette_sources`] because that one is the live
+    /// state: the dropdown writes it, and if it were also the cache key the
+    /// write would compare equal to itself next frame and never rebuild the
+    /// list. This is what the last rebuild actually used, so the next one
+    /// knows whether the sources moved.
+    palette_sources_built: Vec<bool>,
     /// Records the session has queued for deletion, in the order asked.
     deleted: Vec<u32>,
     /// Status line for the UI.
@@ -235,6 +244,7 @@ impl Session {
             palette_groups: Vec::new(),
             palette_filter: String::new(),
             palette_sources: vec![true; source_count],
+            palette_sources_built: Vec::new(),
             deleted: Vec::new(),
             status: String::new(),
             stale: false,
@@ -323,6 +333,7 @@ impl Session {
             palette_groups: Vec::new(),
             palette_filter: String::new(),
             palette_sources: vec![true; source_count],
+            palette_sources_built: Vec::new(),
             deleted: Vec::new(),
             status: format!("created new plugin {name}"),
             stale: false,
@@ -735,17 +746,24 @@ impl Session {
     /// a plugin whose flag is off has its records skipped, which is how a
     /// modder hides the masters they do not care about while still seeing the
     /// game's base objects. All flags on is the whole load order, which is
-    /// what the window opens with.
+    /// what the window opens with — and a plugin with no records left in it
+    /// simply has no rows, the same as any other empty category.
     pub fn object_groups(&mut self, filter: &str, sources: &[bool]) -> &[ObjectGroup] {
         // `stale` is the cache key the filter alone was missing: an edit
         // changes what a row says without changing what it matches, so the
         // list has to be rebuilt even when the filter has not moved. The
         // sources are the same kind of key: they change which rows are listed
         // without changing what any of them say.
+        //
+        // The comparison is against `palette_sources_built`, not against
+        // `palette_sources`: that one is the live state the dropdown writes,
+        // and comparing the caller's flags against it would compare a value
+        // against itself the frame after a write — equal, so the list would
+        // never be rebuilt and unchecking a plugin would change nothing.
         if self.palette_filter != filter
             || self.palette_groups.is_empty()
             || self.stale
-            || self.palette_sources != sources
+            || self.palette_sources_built != sources
         {
             let found = (|| {
                 let lo = self.load_order().ok()?;
@@ -765,20 +783,25 @@ impl Session {
                 // plugin, defaulting to shown for a plugin the caller did not
                 // name, so a shorter list than the load order is a narrower
                 // choice rather than an empty window.
-                let mut shown: Vec<bool> = (0..lo.plugins.len())
+                //
+                // Every flag is honoured as given, the plugin being edited
+                // included: a modder who narrows the list to a master has said
+                // they want the master's objects, and their own plugin's rows
+                // are the one thing they can already see everywhere else.
+                let shown: Vec<bool> = (0..lo.plugins.len())
                     .map(|pi| sources.get(pi).copied().unwrap_or(true))
                     .collect();
-                // The plugin being edited is always among them, whatever its
-                // flag: a modder who narrows the list to find a master's
-                // object has not said they want their own plugin hidden, and
-                // without this the overlay below has nothing to overlay onto.
-                let own_pi = lo
+                // Whether the plugin being edited is among them. Its own
+                // records — a staged duplicate, an edit queued on a master's
+                // record — are the mod's, so they follow its flag rather than
+                // the master's: hiding the mod hides them, and showing only a
+                // master shows none of them.
+                let own_shown = lo
                     .plugins
                     .iter()
-                    .position(|p| p.name.eq_ignore_ascii_case(self.doc.name()));
-                if let Some(pi) = own_pi {
-                    shown[pi] = true;
-                }
+                    .position(|p| p.name.eq_ignore_ascii_case(self.doc.name()))
+                    .and_then(|pi| shown.get(pi).copied())
+                    .unwrap_or(true);
                 let mut objects = load_order_objects(lo, &self.strings, filter, &visible, &shown);
                 // The FormIDs the document has something to say about: an edit
                 // queued on a record, or a duplicate staged this session. Only
@@ -816,19 +839,25 @@ impl Session {
                 // A staged duplicate is a row no plugin on disk holds, so the
                 // walk never saw it. It is appended here, under its own
                 // signature's category, which is the same category the record
-                // it was copied from is filed under.
-                let staged: Vec<(u32, [u8; 4], ObjectRow)> = self
-                    .doc
-                    .inserted_top()
-                    .iter()
-                    .filter(|p| {
-                        p.record.header.sig != *b"TES4" && visible.contains(&p.record.header.sig)
-                    })
-                    .filter_map(|p| {
-                        let row = self.resolved_object_row(p.record.header.form_id)?;
-                        Some((row.fid, p.record.header.sig, row))
-                    })
-                    .collect();
+                // it was copied from is filed under — but only while the plugin
+                // being edited is shown, because a duplicate is that plugin's
+                // record and nothing else's.
+                let staged: Vec<(u32, [u8; 4], ObjectRow)> = if own_shown {
+                    self.doc
+                        .inserted_top()
+                        .iter()
+                        .filter(|p| {
+                            p.record.header.sig != *b"TES4"
+                                && visible.contains(&p.record.header.sig)
+                        })
+                        .filter_map(|p| {
+                            let row = self.resolved_object_row(p.record.header.form_id)?;
+                            Some((row.fid, p.record.header.sig, row))
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                };
                 // The filter applies to the staged rows too: a duplicate is
                 // listed like any other object, not shown regardless of what
                 // was typed.
@@ -845,12 +874,13 @@ impl Session {
                 // An edited master record is a row the walk never produced: the
                 // record lives in the master, and what makes it the mod's is
                 // the edit queued on it, which the walk does not read. It is
-                // added here whenever the plugin being edited is shown — which
-                // it always is — under the category the record's own signature
-                // names. Without it, a modder who edited a master's weapon and
-                // then narrowed the list to their own plugin would not find the
-                // one thing they changed.
-                {
+                // added here whenever the plugin being edited is shown, under
+                // the category the record's own signature names. Without it, a
+                // modder who edited a master's weapon and then narrowed the
+                // list to their own plugin would not find the one thing they
+                // changed — and with the plugin hidden, it is hidden with it,
+                // because it is the mod's record and not the master's.
+                if own_shown {
                     let existing: HashSet<u32> = objects.iter().map(|(fid, _, _)| *fid).collect();
                     let edited: Vec<u32> = self
                         .doc
@@ -941,7 +971,7 @@ impl Session {
             .unwrap_or_default();
             self.palette_groups = found;
             self.palette_filter = filter.to_string();
-            self.palette_sources = sources.to_vec();
+            self.palette_sources_built = sources.to_vec();
             self.stale = false;
         }
         &self.palette_groups
@@ -973,23 +1003,15 @@ impl Session {
 
     /// Turn one plugin's contribution to the object window on or off.
     ///
-    /// The plugin being edited cannot be turned off: the window exists to edit
-    /// that plugin's records, and a list that cannot show them is not a
-    /// narrower choice but a broken one. The request is refused rather than
-    /// silently ignored, so the caller can say why.
+    /// Any plugin, the plugin being edited included: a modder narrowing the
+    /// list to a master has said they want the master's objects, and their own
+    /// plugin's rows are the one thing they can already see everywhere else.
+    /// Hiding it leaves the window showing the masters' objects and nothing
+    /// else, which is a narrower list rather than a broken one — the empty
+    /// state says so, rather than a category that silently refills.
     pub fn set_object_source(&mut self, index: usize, shown: bool) -> Result<(), String> {
         if index >= self.palette_sources.len() {
             return Err(format!("no plugin {index} in the load order"));
-        }
-        if !shown
-            && self.lo.plugins[index]
-                .name
-                .eq_ignore_ascii_case(self.doc.name())
-        {
-            return Err(format!(
-                "{} is the plugin being edited",
-                self.lo.plugins[index].name
-            ));
         }
         self.palette_sources[index] = shown;
         Ok(())
