@@ -10,6 +10,12 @@
 
 use nvre_editor::session::Session;
 
+/// Every plugin in the load order shown, which is what the object window
+/// opens with and what this probe wants.
+fn all_plugins(session: &Session) -> Vec<bool> {
+    session.object_source_flags().to_vec()
+}
+
 /// Every subrecord of the record with `form_id`, as `(sig, data)`, with the
 /// record's own signature.
 fn subrecords_of(nodes: &[nvre_esm::raw::Node], form_id: u32) -> (Vec<(String, Vec<u8>)>, [u8; 4]) {
@@ -35,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // A STAT that is certainly in the master: the first Static in the palette.
     let stat = s
-        .object_groups("", false)
+        .object_groups("", &all_plugins(&s))
         .iter()
         .find(|g| g.sig == *b"STAT")
         .and_then(|g| g.objects.first())

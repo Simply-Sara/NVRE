@@ -26,6 +26,15 @@
 use nvre_editor::game::GameProfile;
 use nvre_editor::session::Session;
 
+/// The source flags a test wants, as the panel's dropdown writes them.
+fn flags(session: &Session, all: bool) -> Vec<bool> {
+    session
+        .object_sources()
+        .iter()
+        .map(|(_, name)| all || name.eq_ignore_ascii_case(session.doc.name()))
+        .collect()
+}
+
 /// What the shipped master holds, and how it must be presented.
 struct Expect {
     /// The game's id, as [`GameProfile::id`] spells it.
@@ -109,7 +118,7 @@ fn open(game: &'static GameProfile) -> Option<Session> {
 /// Everything wrong with one game's palette, as a list of lines.
 fn problems(game: &'static GameProfile, want: &Expect, s: &mut Session) -> Vec<String> {
     let mut out = Vec::new();
-    let groups = s.object_groups("", false).to_vec();
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
     let total: usize = groups.iter().map(|g| g.objects.len()).sum();
 
     // The window shows the game's objects. A grouping change that loses
@@ -266,7 +275,7 @@ fn localized_games_resolve_names_from_their_string_tables() {
             continue;
         };
         checked += 1;
-        let groups = s.object_groups("", false).to_vec();
+        let groups = s.object_groups("", &flags(&s, true)).to_vec();
         let rows: Vec<_> = groups
             .iter()
             .flat_map(|g| &g.objects)
@@ -325,7 +334,7 @@ fn an_unlocalized_game_still_reads_its_names_as_text() {
         eprintln!("skipped fnv: its master is not installed");
         return;
     };
-    let groups = s.object_groups("", false).to_vec();
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
     let named = groups
         .iter()
         .flat_map(|g| &g.objects)

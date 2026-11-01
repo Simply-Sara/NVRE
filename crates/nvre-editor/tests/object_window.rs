@@ -8,6 +8,15 @@
 
 use nvre_editor::session::Session;
 
+/// The source flags a test wants, as the panel's dropdown writes them.
+fn flags(session: &Session, all: bool) -> Vec<bool> {
+    session
+        .object_sources()
+        .iter()
+        .map(|(_, name)| all || name.eq_ignore_ascii_case(session.doc.name()))
+        .collect()
+}
+
 fn data_dir() -> Option<String> {
     std::env::var("NVRE_DATA").ok()
 }
@@ -28,7 +37,7 @@ fn the_palette_is_grouped_into_gecks_categories() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let groups = s.object_groups("", false).to_vec();
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
     // The load order's placeable objects, all of them: the panel used to show
     // 200 of 11,483 and say so, which made everything past the first 200
     // alphabetically unreachable.
@@ -122,8 +131,8 @@ fn a_filter_narrows_both_halves_of_the_window() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let all = s.object_groups("", false).to_vec();
-    let filtered = s.object_groups("dumpster", false).to_vec();
+    let all = s.object_groups("", &flags(&s, true)).to_vec();
+    let filtered = s.object_groups("dumpster", &flags(&s, true)).to_vec();
 
     // Every match is still there, in the category its base object belongs to —
     // the filter narrows the list, it does not merge the categories.
@@ -170,7 +179,9 @@ fn a_filter_that_matches_nothing_leaves_an_empty_palette() {
         return;
     };
     // The panel says "no objects match" rather than showing an empty category.
-    let groups = s.object_groups("zzzznotanobject", false).to_vec();
+    let groups = s
+        .object_groups("zzzznotanobject", &flags(&s, true))
+        .to_vec();
     assert!(groups.is_empty(), "nothing matches, so there are no groups");
 }
 
@@ -189,7 +200,7 @@ fn placing_objects_and_actors_creates_correct_record_types() {
         .expect("Goodsprings");
     s.open_cell(cell);
 
-    let groups = s.object_groups("", false).to_vec();
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
 
     // Place a weapon (WEAP) -> should insert a REFR
     let weapons = groups

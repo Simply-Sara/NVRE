@@ -12,6 +12,12 @@
 use nvre_editor::game;
 use nvre_editor::session::Session;
 
+/// Every plugin in the load order shown, which is what the object window
+/// opens with.
+fn all_plugins(session: &Session) -> Vec<bool> {
+    session.object_source_flags().to_vec()
+}
+
 fn main() {
     for game in [
         &game::FNV,
@@ -33,7 +39,7 @@ fn main() {
             }
         };
         println!("\n=== {} ({})", game.name, master.display());
-        let groups = session.object_groups("").to_vec();
+        let groups = session.object_groups("", &all_plugins(&session)).to_vec();
         let total: usize = groups.iter().map(|g| g.objects.len()).sum();
         let with_name = groups
             .iter()

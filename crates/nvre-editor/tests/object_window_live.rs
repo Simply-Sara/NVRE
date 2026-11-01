@@ -61,6 +61,18 @@ fn mod_session() -> Option<Session> {
     Some(s)
 }
 
+/// The source flags a test wants, as the panel's dropdown writes them.
+///
+/// `all` is every plugin shown; otherwise only the plugin being edited is,
+/// which is the narrowest list the window allows.
+fn flags(session: &Session, all: bool) -> Vec<bool> {
+    session
+        .object_sources()
+        .iter()
+        .map(|(_, name)| all || name.eq_ignore_ascii_case(session.doc.name()))
+        .collect()
+}
+
 /// The first object of a category, for a test to act on.
 fn first_row(groups: &[nvre_editor::session::ObjectGroup], category: &str) -> ObjectRow {
     groups
@@ -83,9 +95,9 @@ fn a_duplicate_is_listed_immediately() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     let before: usize = s
-        .object_groups("", false)
+        .object_groups("", &flags(&s, true))
         .iter()
         .find(|g| g.category == "Static")
         .map(|g| g.objects.len())
@@ -97,7 +109,7 @@ fn a_duplicate_is_listed_immediately() {
 
     // No save, and the filter has not changed: the same call the panel makes
     // every frame has to return the new row.
-    let groups = s.object_groups("", false).to_vec();
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
     let statics = groups
         .iter()
         .find(|g| g.category == "Static")
@@ -131,11 +143,13 @@ fn a_duplicate_is_filtered_like_any_other_object() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     s.duplicate_object(stat.fid, *b"STAT", "NvreFilteredDuplicate")
         .expect("the duplicate is staged");
 
-    let matching = s.object_groups("NvreFilteredDuplicate", false).to_vec();
+    let matching = s
+        .object_groups("NvreFilteredDuplicate", &flags(&s, true))
+        .to_vec();
     let shown: Vec<&ObjectRow> = matching
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -146,7 +160,7 @@ fn a_duplicate_is_filtered_like_any_other_object() {
 
     // And a filter it does not match leaves it out, rather than showing it
     // regardless.
-    let other = s.object_groups("dumpster", false).to_vec();
+    let other = s.object_groups("dumpster", &flags(&s, true)).to_vec();
     assert!(
         other
             .iter()
@@ -167,7 +181,7 @@ fn an_edid_edit_is_listed_immediately() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     let original = stat.edid.clone();
 
     // What the object editor's Apply does, through the session's own field
@@ -176,7 +190,7 @@ fn an_edid_edit_is_listed_immediately() {
     s.selected = Some(stat.fid);
     s.edit_selected(b"EDID", bytes);
 
-    let groups = s.object_groups("", false).to_vec();
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
     let row = groups
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -210,9 +224,9 @@ fn a_deleted_record_leaves_the_list() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     assert!(
-        s.object_groups("", false)
+        s.object_groups("", &flags(&s, true))
             .iter()
             .flat_map(|g| g.objects.iter())
             .any(|r| r.fid == stat.fid),
@@ -222,7 +236,7 @@ fn a_deleted_record_leaves_the_list() {
     s.select(stat.fid);
     s.delete_selected();
 
-    let groups = s.object_groups("", false).to_vec();
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
     assert!(
         groups
             .iter()
@@ -244,7 +258,7 @@ fn a_duplicate_opens_in_the_editor_with_its_data() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     let original_subs = s
         .resolved_record(stat.fid)
         .expect("the original resolves")
@@ -290,7 +304,7 @@ fn an_edit_to_a_duplicate_is_shown_and_saved() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     let new = s
         .duplicate_object(stat.fid, *b"STAT", "NvreEditAfterDuplicate")
         .expect("the duplicate is staged");
@@ -355,8 +369,8 @@ fn an_untouched_record_is_listed_from_the_load_order() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
-    let before = s.object_groups("", false).to_vec();
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let before = s.object_groups("", &flags(&s, true)).to_vec();
     let before_row = before
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -369,7 +383,7 @@ fn an_untouched_record_is_listed_from_the_load_order() {
     s.selected = Some(other.fid);
     s.edit_selected(b"EDID", nvre_edit::document::encode_zstring("NvreOther"));
 
-    let after = s.object_groups("", false).to_vec();
+    let after = s.object_groups("", &flags(&s, true)).to_vec();
     let row = after
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -398,7 +412,7 @@ fn this_plugin_only_lists_an_edited_master_record() {
         return;
     };
     // A record from the master, which the mod does not define on disk.
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     assert!(
         stat.fid >> 24 == 0,
         "the record is the master's own, with the master in the top byte"
@@ -407,7 +421,7 @@ fn this_plugin_only_lists_an_edited_master_record() {
     s.selected = Some(stat.fid);
     s.edit_selected(b"EDID", nvre_edit::document::encode_zstring("NvreOwnOnly"));
 
-    let groups = s.object_groups("", true).to_vec();
+    let groups = s.object_groups("", &flags(&s, false)).to_vec();
     let found = groups
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -434,12 +448,12 @@ fn this_plugin_only_lists_a_duplicate() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     let new = s
         .duplicate_object(stat.fid, *b"STAT", "NvreOwnOnlyDuplicate")
         .expect("the duplicate is staged");
 
-    let groups = s.object_groups("", true).to_vec();
+    let groups = s.object_groups("", &flags(&s, false)).to_vec();
     let row = groups
         .iter()
         .flat_map(|g| g.objects.iter())
@@ -461,17 +475,17 @@ fn this_plugin_only_lists_fewer_objects_than_the_whole_load_order() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     s.selected = Some(stat.fid);
     s.edit_selected(b"EDID", nvre_edit::document::encode_zstring("NvreCounted"));
 
     let all: usize = s
-        .object_groups("", false)
+        .object_groups("", &flags(&s, true))
         .iter()
         .map(|g| g.objects.len())
         .sum();
     let own: usize = s
-        .object_groups("", true)
+        .object_groups("", &flags(&s, false))
         .iter()
         .map(|g| g.objects.len())
         .sum();
@@ -493,7 +507,7 @@ fn the_toggle_and_the_filter_are_independent() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", false).to_vec(), "Static");
+    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
     s.selected = Some(stat.fid);
     s.edit_selected(
         b"EDID",
@@ -501,7 +515,9 @@ fn the_toggle_and_the_filter_are_independent() {
     );
 
     // The text filter alone, across every plugin.
-    let by_text = s.object_groups("NvreIndependent", false).to_vec();
+    let by_text = s
+        .object_groups("NvreIndependent", &flags(&s, true))
+        .to_vec();
     assert!(
         by_text
             .iter()
@@ -510,7 +526,7 @@ fn the_toggle_and_the_filter_are_independent() {
         "the text filter finds the edit across every plugin"
     );
     // The toggle alone, with no text.
-    let by_toggle = s.object_groups("", true).to_vec();
+    let by_toggle = s.object_groups("", &flags(&s, false)).to_vec();
     assert!(
         by_toggle
             .iter()
@@ -519,7 +535,9 @@ fn the_toggle_and_the_filter_are_independent() {
         "the toggle finds the edit with no text typed"
     );
     // Both at once.
-    let both = s.object_groups("NvreIndependent", true).to_vec();
+    let both = s
+        .object_groups("NvreIndependent", &flags(&s, false))
+        .to_vec();
     assert_eq!(
         both.iter().flat_map(|g| g.objects.iter()).count(),
         1,
@@ -527,10 +545,136 @@ fn the_toggle_and_the_filter_are_independent() {
     );
     // And back to every plugin, where the record is listed once — the master's
     // copy is still on disk, but the walk lists the winner, which is the edit.
-    let all_again = s.object_groups("NvreIndependent", false).to_vec();
+    let all_again = s
+        .object_groups("NvreIndependent", &flags(&s, true))
+        .to_vec();
     assert_eq!(
         all_again.iter().flat_map(|g| g.objects.iter()).count(),
         1,
         "the record is listed once across every plugin, showing the edit"
+    );
+}
+
+/// One master can be hidden while the others stay shown.
+///
+/// A load order is a stack of plugins, and which of them a modder wants to
+/// see is not one question: hiding the masters they are not working with while
+/// still seeing the game's base objects is the common case, and neither "all
+/// plugins" nor "this plugin only" is it.
+#[test]
+fn one_master_can_be_hidden_while_the_others_stay_shown() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    // Every plugin shown is the whole load order.
+    let all: usize = s
+        .object_groups("", &flags(&s, true))
+        .iter()
+        .map(|g| g.objects.len())
+        .sum();
+    // Hide the master, leaving only the plugin being edited.
+    let master = s
+        .object_sources()
+        .iter()
+        .position(|(_, n)| n.ends_with(".esm"))
+        .expect("the master is in the load order");
+    s.set_object_source(master, false)
+        .expect("the master hides");
+
+    let hidden: usize = s
+        .object_groups("", &s.object_source_flags().to_vec())
+        .iter()
+        .map(|g| g.objects.len())
+        .sum();
+    assert!(
+        hidden < all,
+        "hiding the master lists fewer: {hidden} against {all}"
+    );
+    // The plugin being edited is still shown, whatever else was hidden.
+    assert!(
+        s.object_source_flags().last().copied().unwrap_or(false),
+        "the plugin being edited stays shown"
+    );
+}
+
+/// The plugin being edited cannot be hidden.
+///
+/// The window exists to edit that plugin's records, so a list that cannot show
+/// them is not a narrower choice but a broken one. The request is refused with
+/// a reason rather than silently ignored.
+#[test]
+fn the_plugin_being_edited_cannot_be_hidden() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let own = s
+        .object_sources()
+        .iter()
+        .position(|(_, n)| n.eq_ignore_ascii_case(s.doc.name()))
+        .expect("the plugin being edited is in the load order");
+    let err = s.set_object_source(own, false);
+    assert!(
+        err.is_err(),
+        "hiding the plugin being edited is refused: {err:?}"
+    );
+    assert!(
+        s.object_source_flags()[own],
+        "and its flag is left alone, so the list still shows its records"
+    );
+    // And the two ends of the range: "all plugins" and "this plugin" both
+    // leave it shown.
+    s.set_object_sources_all(false);
+    assert!(
+        s.object_source_flags()[own],
+        "\"this plugin\" leaves the plugin being edited shown"
+    );
+    s.set_object_sources_all(true);
+    assert!(
+        s.object_source_flags().iter().all(|f| *f),
+        "\"all plugins\" shows every plugin"
+    );
+}
+
+/// A hidden master's objects are gone, and come back when it is shown again.
+///
+/// The flags are the cache key beside the filter, so a bug that drops them
+/// leaves the window showing the wrong list until something else happens to
+/// invalidate it.
+#[test]
+fn hiding_a_master_is_undoable() {
+    let Some(mut s) = mod_session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let master = s
+        .object_sources()
+        .iter()
+        .position(|(_, n)| n.ends_with(".esm"))
+        .expect("the master is in the load order");
+    s.set_object_source(master, false).expect("the master hides");
+    let hidden: Vec<u32> = s
+        .object_groups("", &s.object_source_flags().to_vec())
+        .iter()
+        .flat_map(|g| g.objects.iter())
+        .map(|r| r.fid)
+        .collect();
+    s.set_object_source(master, true).expect("the master shows again");
+    let shown: Vec<u32> = s
+        .object_groups("", &s.object_source_flags().to_vec())
+        .iter()
+        .flat_map(|g| g.objects.iter())
+        .map(|r| r.fid)
+        .collect();
+    assert!(
+        shown.len() > hidden.len(),
+        "showing the master again lists more: {} against {}",
+        shown.len(),
+        hidden.len()
+    );
+    assert!(
+        hidden.iter().all(|fid| shown.contains(fid)),
+        "everything hidden is still there, none of it lost"
     );
 }

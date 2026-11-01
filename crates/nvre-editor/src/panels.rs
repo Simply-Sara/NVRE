@@ -30,14 +30,6 @@ use nvre_edit::encode::sub_views;
 pub struct Filters {
     pub cell: String,
     pub place: String,
-    /// Whether the object window's list is narrowed to the plugin being
-    /// edited: its own records on disk, plus everything this session has
-    /// touched.
-    ///
-    /// The button's own state, the way the new-cell and new-worldspace forms
-    /// keep theirs: a checkbox built from a local bool is discarded unread, so
-    /// the toggle would flip back as soon as the pointer moved off it.
-    pub place_own_only: bool,
     /// Text the references table matches against a row's Editor ID, FormID,
     /// base object and owner.
     pub reference: String,
@@ -115,7 +107,6 @@ impl Default for Filters {
         Self {
             cell: String::new(),
             place: String::new(),
-            place_own_only: false,
             reference: String::new(),
             reference_type: None,
             cell_scope: CellScope::default(),
@@ -1212,32 +1203,75 @@ pub fn place(
             ui.add(
                 egui::TextEdit::singleline(&mut filters.place)
                     .hint_text("name or Editor ID")
-                    .desired_width((ui.available_width() - 220.0).max(60.0)),
+                    .desired_width((ui.available_width() - 260.0).max(60.0)),
             );
-            // The plugin being edited, and nothing else. What it shows is its
-            // own records on disk plus everything this session has touched,
-            // because an edit to a master's record is a record the mod now
-            // defines — the master's copy is still on disk, but what the game
-            // will read is the mod's.
+            // Which plugins the list draws from. A dropdown rather than a
+            // single toggle because a load order is a stack of masters and a
+            // mod, and which of them a modder wants to see is not one
+            // question: hiding the masters they are not working with while
+            // still seeing the game's base objects is the common case, and
+            // neither "all plugins" nor "this plugin only" is it.
             //
-            // A toggle rather than a separate mode: the list, the categories
-            // and the rows are the same, so it is the one thing the window
-            // narrows rather than a second window to keep in step.
-            let label = if filters.place_own_only {
-                "this plugin only"
+            // The checkboxes are inside the popup rather than a list of
+            // mutually-exclusive options, so every combination is reachable
+            // and the list shows what is currently on. The two buttons at the
+            // top are the ends of the range, so the common cases are one click
+            // rather than a click per master.
+            let flags = session.object_source_flags().to_vec();
+            let shown = flags.iter().filter(|f| **f).count();
+            let total = flags.len();
+            let own_name = session.doc.name().to_string();
+            let summary = if shown == total {
+                "all plugins".to_string()
+            } else if shown == 1 {
+                // The one plugin left is the plugin being edited, which
+                // cannot be turned off — so this is "this plugin only" in
+                // every case that can reach it.
+                format!("{own_name} only")
             } else {
-                "all plugins"
+                format!("{shown} of {total} plugins")
             };
-            if ui
-                .selectable_label(filters.place_own_only, label)
-                .on_hover_text(format!(
-                    "show only what {} adds or changes",
-                    session.doc.name()
-                ))
-                .clicked()
-            {
-                filters.place_own_only = !filters.place_own_only;
-            }
+            // The names, out of the session: the popup below writes to the
+            // session through its setters, which needs the borrow the list
+            // itself was holding.
+            let names: Vec<String> = session
+                .object_sources()
+                .into_iter()
+                .map(|(_, n)| n.to_string())
+                .collect();
+            egui::ComboBox::from_id_salt("object_sources")
+                .selected_text(summary)
+                .width(170.0)
+                .show_ui(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button("all").clicked() {
+                            session.set_object_sources_all(true);
+                            ui.close();
+                        }
+                        if ui.button("this plugin").clicked() {
+                            session.set_object_sources_all(false);
+                            ui.close();
+                        }
+                    });
+                    ui.separator();
+                    for (pi, name) in names.into_iter().enumerate() {
+                        // The plugin being edited is drawn checked and
+                        // disabled: it cannot be turned off, and a checkbox
+                        // that appears to accept a click and then does not is
+                        // worse than one that says so.
+                        let is_own = name.eq_ignore_ascii_case(&own_name);
+                        let mut on = flags.get(pi).copied().unwrap_or(true);
+                        let resp = ui.add_enabled(!is_own, egui::Checkbox::new(&mut on, &name));
+                        if resp.clicked() && !is_own {
+                            if let Err(e) = session.set_object_source(pi, on) {
+                                session.status = e;
+                            }
+                        }
+                        if is_own {
+                            resp.on_hover_text("the plugin being edited is always listed");
+                        }
+                    }
+                });
         });
         ui.separator();
         // Cached in the session and rebuilt only when the filter changes: the
@@ -1248,18 +1282,17 @@ pub fn place(
         // footer says which list it counted, and `groups` holds the session
         // from here down.
         let own_name = session.doc.name().to_string();
-        if session
-            .object_groups(&filters.place, filters.place_own_only)
-            .is_empty()
-        {
-            ui.label(if filters.place_own_only {
-                "this plugin adds or changes no objects that match"
+        let sources = session.object_source_flags().to_vec();
+        let source_count = sources.iter().filter(|f| **f).count();
+        if session.object_groups(&filters.place, &sources).is_empty() {
+            ui.label(if source_count == 1 {
+                format!("{own_name} adds or changes no objects that match")
             } else {
-                "no objects match"
+                "no objects match".to_string()
             });
             return;
         }
-        let groups = session.object_groups(&filters.place, filters.place_own_only);
+        let groups = session.object_groups(&filters.place, &sources);
         // Clamp the selection into range. A filter that narrows to one category
         // selects it, so typing a name does not leave the right half of the
         // window empty behind a category the filter emptied out. A filter that
@@ -1434,12 +1467,14 @@ pub fn place(
                     format!(" ({empty} empty)")
                 }
             ));
-            // Which list those objects came from. The same count reads
-            // differently against the plugin's own records than against
-            // every plugin's, and a footer that does not say which is the
-            // one thing a modder cannot tell from the rows themselves.
-            if filters.place_own_only {
-                ui.label(format!("in {own_name}"));
+            // Which plugins those objects came from. The same count reads
+            // differently against the plugin's own records than against every
+            // plugin's, and a footer that does not say which is the one thing
+            // a modder cannot tell from the rows themselves.
+            if source_count < sources.len() {
+                ui.label(format!("from {source_count} of {} plugins", sources.len()));
+            } else if source_count == 1 {
+                ui.label(format!("from {own_name}"));
             }
             // The per-row Edit button became one Edit for the selected row,
             // now that the list is a table. It is enabled only for a row of
