@@ -13,6 +13,7 @@
 
 use crate::fields::{formid_of, global, num, Fields};
 use nvre_esm::raw::{group_type, visit_records};
+use nvre_esm::strings::StringTables;
 use nvre_esm::{GroupHeader, LoadOrder, Record, Schema};
 use std::collections::{BTreeMap, HashMap};
 
@@ -135,18 +136,28 @@ pub struct WorldIndex {
 const NOT_REFS: [&[u8; 4]; 2] = [b"LAND", b"NAVM"];
 
 impl WorldIndex {
-    /// Build the index over a load order.
+    /// Build the index over a load order without localized string tables.
     pub fn build(lo: &LoadOrder, schema: &Schema) -> WorldIndex {
+        Self::build_with_strings(lo, schema, None)
+    }
+
+    /// Build the index over a load order with optional localized string tables.
+    pub fn build_with_strings(
+        lo: &LoadOrder,
+        schema: &Schema,
+        strings: Option<&StringTables>,
+    ) -> WorldIndex {
         let mut ix = WorldIndex::default();
         let mut lands: HashMap<u32, u32> = HashMap::new();
         for (pi, p) in lo.plugins.iter().enumerate() {
+            let plugin_strings = strings.and_then(|st| st.for_plugin(&p.name, p.header.is_localized()));
             visit_records(&p.groups, &mut |r, stack: &[&GroupHeader]| {
                 let Some(fid) = lo.to_global(pi, r.header.form_id) else {
                     return;
                 };
                 match &r.header.sig {
-                    b"WRLD" => ix.add_world(lo, schema, pi, r, fid),
-                    b"CELL" => ix.add_cell(lo, schema, pi, r, fid, stack),
+                    b"WRLD" => ix.add_world(lo, schema, pi, r, fid, plugin_strings),
+                    b"CELL" => ix.add_cell(lo, schema, pi, r, fid, stack, plugin_strings),
                     sig => {
                         let Some(g) = stack.iter().rev().find(|g| {
                             // Check if this is a cell child group.
@@ -225,15 +236,24 @@ impl WorldIndex {
     }
 
     /// Add a worldspace.
-    fn add_world(&mut self, lo: &LoadOrder, schema: &Schema, pi: usize, r: &Record, fid: u32) {
+    fn add_world(
+        &mut self,
+        lo: &LoadOrder,
+        schema: &Schema,
+        pi: usize,
+        r: &Record,
+        fid: u32,
+        strings: Option<&nvre_esm::strings::StringTable>,
+    ) {
         let f = match Fields::new(r, pi, schema) {
             Ok(f) => f,
             Err(e) => return self.errors.push((fid, e.to_string())),
         };
+        let (edid, full) = nvre_esm::inventory::names(r, strings).unwrap_or((None, None));
         let w = self.worldspaces.entry(fid).or_default();
         w.form_id = fid;
-        w.edid = f.string(b"EDID");
-        w.name = f.string(b"FULL");
+        w.edid = edid.or_else(|| f.string(b"EDID"));
+        w.name = full.or_else(|| f.string(b"FULL"));
         w.parent = f.formid(b"WNAM", lo);
         w.climate = f.formid(b"CNAM", lo);
         w.water = f.formid(b"NAM2", lo);
@@ -256,11 +276,13 @@ impl WorldIndex {
         r: &Record,
         fid: u32,
         stack: &[&GroupHeader],
+        strings: Option<&nvre_esm::strings::StringTable>,
     ) {
         let f = match Fields::new(r, pi, schema) {
             Ok(f) => f,
             Err(e) => return self.errors.push((fid, e.to_string())),
         };
+        let (edid, full) = nvre_esm::inventory::names(r, strings).unwrap_or((None, None));
         let world_group = stack
             .iter()
             .rev()
@@ -268,8 +290,8 @@ impl WorldIndex {
         let world = world_group.and_then(|g| lo.to_global(pi, label_u32(&g.label)));
         let c = self.cells.entry(fid).or_default();
         c.form_id = fid;
-        c.edid = f.string(b"EDID");
-        c.name = f.string(b"FULL");
+        c.edid = edid.or_else(|| f.string(b"EDID"));
+        c.name = full.or_else(|| f.string(b"FULL"));
         c.world = world;
         c.plugin = pi;
         c.data_flags = f

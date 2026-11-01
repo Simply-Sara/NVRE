@@ -158,7 +158,7 @@ impl Session {
         let leaked_plugins: &'static [nvre_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
         let strings = crate::strings::load(game, dir, leaked_plugins);
-        let index = nvre_world::WorldIndex::build(&lo, &schema);
+        let index = nvre_world::WorldIndex::build_with_strings(&lo, &schema, Some(&strings));
 
         let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
         for (&w_fid, ws) in &index.worldspaces {
@@ -244,7 +244,7 @@ impl Session {
         let leaked_plugins: &'static [nvre_esm::Plugin] = Box::leak(plugins.into_boxed_slice());
         let lo = LoadOrder::new(leaked_plugins).map_err(|e| e.to_string())?;
         let strings = crate::strings::load(game, data_dir, leaked_plugins);
-        let index = nvre_world::WorldIndex::build(&lo, &schema);
+        let index = nvre_world::WorldIndex::build_with_strings(&lo, &schema, Some(&strings));
 
         let mut persistent_by_grid: HashMap<(u32, (i32, i32)), Vec<u32>> = HashMap::new();
         for (&w_fid, ws) in &index.worldspaces {

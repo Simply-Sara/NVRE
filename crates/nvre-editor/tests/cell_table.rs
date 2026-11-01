@@ -99,3 +99,40 @@ fn the_editor_id_column_falls_back_to_the_form_id() {
     // FormID rather than an empty cell.
     assert_eq!(no_edid.editor_id(), format!("{:08X}", no_edid.form_id));
 }
+
+#[test]
+fn localized_cells_resolve_names_without_control_noise() {
+    use nvre_editor::game::GameProfile;
+    let Some(game) = GameProfile::by_id("fo4") else {
+        return;
+    };
+    let Some(data) = game.data_dir() else {
+        eprintln!("skipped fo4: Fallout 4 data dir not found");
+        return;
+    };
+    let master = data.join(game.master);
+    if !master.exists() {
+        eprintln!("skipped fo4: Fallout4.esm not found");
+        return;
+    }
+    let Ok(session) = Session::open(
+        &master,
+        &game.schema_dirs().0,
+        vec![game.master.to_string()],
+    ) else {
+        eprintln!("skipped fo4: could not open session");
+        return;
+    };
+
+    let interiors = session.cells(CellScope::Interiors);
+    let named_cells: Vec<_> = interiors.iter().filter_map(|c| c.name.as_deref()).collect();
+    assert!(!named_cells.is_empty(), "Fallout 4 must have named interior cells");
+
+    // Localized string IDs should be resolved properly; none should have unprintable control characters.
+    for name in &named_cells {
+        assert!(
+            !name.chars().any(|c| c.is_control()),
+            "cell name {name:?} contains control characters (unresolved string ID)"
+        );
+    }
+}
