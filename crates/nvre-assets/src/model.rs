@@ -477,8 +477,10 @@ impl ModelCtx<'_> {
             });
         }
         let resolve_tex = |t: &str, is_normal: bool| -> Option<String> {
-            if t.to_lowercase().ends_with(".bgsm") {
-                if let Some(bytes) = self.data.read(t) {
+            let lower = t.to_lowercase();
+            if lower.ends_with(".bgsm") || lower.ends_with(".bgem") {
+                let m_path = nvre_vfs::material_path(t);
+                if let Some(bytes) = self.data.read(&m_path) {
                     let (diffuse, normal, _glow) = crate::texture::extract_bgsm_textures(&bytes);
                     if is_normal {
                         normal

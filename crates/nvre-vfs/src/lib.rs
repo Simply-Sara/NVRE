@@ -96,6 +96,20 @@ pub fn normalize(path: &str) -> String {
     s
 }
 
+/// Map a material path as written in a NIF to a VFS path: NIFs mostly store
+/// `materials\...`, but some carry a leading `data\` or an absolute Windows path
+/// like `c:\projects\fallout4\build\pc\data\materials\...`.
+pub fn material_path(raw: &str) -> String {
+    let p = normalize(raw);
+    if p.starts_with("materials\\") {
+        return p;
+    }
+    if let Some(i) = p.find("\\materials\\") {
+        return p[i + 1..].to_string();
+    }
+    format!("materials\\{p}")
+}
+
 /// Map a texture path as written in a NIF to a VFS path: NIFs mostly store
 /// `textures\...`, but some carry a leading `data\` or an absolute path that contains
 /// `\textures\` [hypothesis: the engine strips everything before `textures\`].
@@ -448,6 +462,18 @@ mod tests {
         assert_eq!(
             texture_path("Textures/Clutter/a.dds"),
             "textures\\clutter\\a.dds"
+        );
+        assert_eq!(
+            material_path("c:\\projects\\fallout4\\build\\pc\\data\\materials\\interiors\\wall.bgsm"),
+            "materials\\interiors\\wall.bgsm"
+        );
+        assert_eq!(
+            material_path("materials\\setdressing\\door.bgsm"),
+            "materials\\setdressing\\door.bgsm"
+        );
+        assert_eq!(
+            material_path("setdressing\\door.bgsm"),
+            "materials\\setdressing\\door.bgsm"
         );
         assert_eq!(texture_path("data\\textures\\a.dds"), "textures\\a.dds");
         assert_eq!(

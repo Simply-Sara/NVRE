@@ -290,9 +290,10 @@ pub fn shape_props(
                         props.vertex_colors = true;
                     }
                 }
-                // Fallout 4 names its material file (.bgsm) in the property's `name`
+                // Fallout 4 names its material file (.bgsm / .bgem) in the property's `name`
                 if let Some(n) = prop.text("name") {
-                    if n.to_lowercase().ends_with(".bgsm") {
+                    let lower = n.to_lowercase();
+                    if lower.ends_with(".bgsm") || lower.ends_with(".bgem") {
                         props.texture = Some(n.to_string());
                     }
                 }
