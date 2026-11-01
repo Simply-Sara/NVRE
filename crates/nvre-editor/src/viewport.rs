@@ -158,7 +158,7 @@ pub struct Spawned {
     /// Models that have been loaded into ModelCtx.
     pub loaded_models: HashSet<String>,
     /// References that could not be drawn, so they are not retried every frame.
-    failed: HashSet<u32>,
+    pub failed: HashSet<u32>,
     /// The lights the cell's references emitted, by their reference's FormID.
     ///
     /// Separate from `refs` because a light is a real Bevy light rather than a

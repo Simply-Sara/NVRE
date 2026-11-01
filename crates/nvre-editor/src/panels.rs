@@ -1455,8 +1455,75 @@ pub fn debug(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<5>>>,
     mut focus: ResMut<crate::viewport::ViewportFocus>,
     camera: Query<&Transform, With<crate::viewport::ViewportCamera>>,
+    time: Res<Time>,
+    spawned: Option<Res<crate::viewport::Spawned>>,
+    meshes_query: Query<(), With<Mesh3d>>,
+    lights_query: Query<(), Or<(With<PointLight>, With<SpotLight>, With<DirectionalLight>)>>,
+    mut smoothed_fps: Local<f32>,
 ) {
     egui::CentralPanel::default().show(&mut root_ui(ctx.get_mut(), "debug"), |ui| {
+        ui.heading("Performance");
+        let dt = time.delta_secs();
+        let instant_fps = if dt > 0.0 { 1.0 / dt } else { 0.0 };
+        if *smoothed_fps == 0.0 {
+            *smoothed_fps = instant_fps;
+        } else {
+            *smoothed_fps = *smoothed_fps * 0.9 + instant_fps * 0.1;
+        }
+        let fps = *smoothed_fps;
+        let frame_ms = if fps > 0.0 { 1000.0 / fps } else { 0.0 };
+        let fps_color = if fps >= 55.0 {
+            egui::Color32::from_rgb(100, 220, 100)
+        } else if fps >= 30.0 {
+            egui::Color32::from_rgb(220, 200, 80)
+        } else {
+            egui::Color32::from_rgb(240, 80, 80)
+        };
+        ui.horizontal(|ui| {
+            ui.label(
+                egui::RichText::new(format!("{fps:5.1} FPS ({frame_ms:5.1} ms)"))
+                    .color(fps_color)
+                    .strong(),
+            );
+        });
+
+        ui.add_space(2.0);
+        egui::Grid::new("perf_stats").num_columns(2).show(ui, |ui| {
+            let mesh_count = meshes_query.iter().count();
+            ui.label("Active 3D Meshes:");
+            ui.label(format!("{mesh_count}"));
+            ui.end_row();
+
+            let light_count = lights_query.iter().count();
+            ui.label("Active Lights:");
+            ui.label(format!("{light_count}"));
+            ui.end_row();
+
+            if let Some(ref sp) = spawned {
+                ui.label("Spawned Refs:");
+                ui.label(format!("{}", sp.refs.len()));
+                ui.end_row();
+
+                ui.label("Failed/Skipped Refs:");
+                ui.label(format!("{}", sp.failed.len()));
+                ui.end_row();
+
+                ui.label("Models In Cache:");
+                ui.label(format!("{}", sp.loaded_models.len()));
+                ui.end_row();
+
+                ui.label("Loading Status:");
+                let status_str = match (sp.models_finished, sp.lights_finished) {
+                    (true, true) => "Idle (All Loaded)",
+                    (false, _) => "Loading Models...",
+                    (_, false) => "Spawning Lights...",
+                };
+                ui.label(status_str);
+                ui.end_row();
+            }
+        });
+
+        ui.separator();
         ui.heading("Camera");
 
         // Where the camera is and what it is looking along, as it actually is.

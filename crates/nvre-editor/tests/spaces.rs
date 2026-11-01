@@ -199,12 +199,12 @@ fn s7_8_interior_cells_draw_only_their_own_references() {
             continue;
         };
 
-        // Find an interior cell
+        // Find an interior cell that has placed references
         let interior = session
             .index
             .cells
             .values()
-            .find(|c| c.grid.is_none() && c.world.is_none() && c.edid.is_some())
+            .find(|c| c.grid.is_none() && c.world.is_none() && c.edid.is_some() && !c.refs.is_empty())
             .cloned();
 
         let Some(cell) = interior else {
