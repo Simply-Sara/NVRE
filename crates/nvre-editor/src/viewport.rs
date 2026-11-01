@@ -141,6 +141,25 @@ pub struct ViewPose {
     pub yaw: Option<f32>,
 }
 
+/// Breakdown of time spent loading the cell and worldspace.
+#[derive(Resource, Default, Debug, Clone)]
+pub struct LoadTimings {
+    /// Time spent querying exterior grid refs / worldspace refs.
+    pub exterior_refs_query: std::time::Duration,
+    /// Time spent resolving base FormIDs to NIF model paths.
+    pub base_model_paths_resolve: std::time::Duration,
+    /// Time spent reading, decoding, and caching NIF models.
+    pub nif_models_load: std::time::Duration,
+    /// Time spent spawning reference entities into the Bevy ECS.
+    pub ref_entities_spawn: std::time::Duration,
+    /// Time spent generating and spawning terrain quadrant meshes.
+    pub terrain_spawn: std::time::Duration,
+    /// Time spent resolving and spawning lights.
+    pub lights_spawn: std::time::Duration,
+    /// Total frames taken from start to fully loaded.
+    pub total_loading_frames: usize,
+}
+
 /// Which models and terrain have been spawned, so a frame does not respawn them.
 #[derive(Resource, Default)]
 pub struct Spawned {
@@ -736,6 +755,7 @@ pub fn draw_cell(
     mut models: ModelCtx,
     filters: Res<crate::panels::Filters>,
     mut focus: ResMut<ViewportFocus>,
+    mut timings: Option<ResMut<LoadTimings>>,
 ) {
     let Some(cell) = session.cell else { return };
     let (is_exterior, world_opt, grid_opt) = {
@@ -824,6 +844,7 @@ pub fn draw_cell(
         spawned.full_terrain = filters.full_terrain;
 
         if let Some(w) = world_opt {
+            let t_terrain = std::time::Instant::now();
             spawn_worldspace_terrain(
                 &session,
                 &mut commands,
@@ -834,6 +855,9 @@ pub fn draw_cell(
                 filters.full_terrain,
                 radius,
             );
+            if let Some(ref mut tm) = timings {
+                tm.terrain_spawn += t_terrain.elapsed();
+            }
         }
     }
     // Spawn or update water plane if the cell has a water surface
@@ -850,14 +874,19 @@ pub fn draw_cell(
                     (0.0, 0.0)
                 };
                 let plane_size = if is_exterior { 4096.0 * 5.0 } else { 4096.0 };
-                let mesh_handle = models.meshes.add(Plane3d::default().mesh().size(plane_size, plane_size));
-                let mat_handle = models.materials.add(nvre_assets::nif_material(StandardMaterial {
-                    base_color: Color::srgba(0.1, 0.25, 0.35, 0.7),
-                    alpha_mode: AlphaMode::Blend,
-                    perceptual_roughness: 0.1,
-                    metallic: 0.1,
-                    ..default()
-                }));
+                let mesh_handle = models
+                    .meshes
+                    .add(Plane3d::default().mesh().size(plane_size, plane_size));
+                let mat_handle =
+                    models
+                        .materials
+                        .add(nvre_assets::nif_material(StandardMaterial {
+                            base_color: Color::srgba(0.1, 0.25, 0.35, 0.7),
+                            alpha_mode: AlphaMode::Blend,
+                            perceptual_roughness: 0.1,
+                            metallic: 0.1,
+                            ..default()
+                        }));
                 let e = commands
                     .spawn((
                         Mesh3d(mesh_handle),
@@ -885,7 +914,11 @@ pub fn draw_cell(
     let trace = std::env::var("NVRE_TRACE").is_ok();
     let refs_len = if is_exterior && radius != 0 {
         let (missing_bases, len) = {
+            let t_q = std::time::Instant::now();
             let refs = session.exterior_grid_refs(radius);
+            if let Some(ref mut tm) = timings {
+                tm.exterior_refs_query += t_q.elapsed();
+            }
             let missing: Vec<u32> = if !spawned.bases_resolved {
                 let mut b: Vec<u32> = refs
                     .iter()
@@ -904,6 +937,9 @@ pub fn draw_cell(
         if !missing_bases.is_empty() {
             let t_paths = std::time::Instant::now();
             let paths = session.model_paths_for(&missing_bases);
+            if let Some(ref mut tm) = timings {
+                tm.base_model_paths_resolve += t_paths.elapsed();
+            }
             if trace {
                 bevy::log::info!(
                     "draw_cell: resolved {} unique base model paths in {:?}",
@@ -962,8 +998,7 @@ pub fn draw_cell(
             .collect();
         if !to_prefetch.is_empty() {
             let pool = AsyncComputeTaskPool::get();
-            let chunk_size =
-                (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
+            let chunk_size = (to_prefetch.len() + pool.thread_num() - 1) / pool.thread_num().max(1);
             for chunk in to_prefetch.chunks(chunk_size) {
                 let chunk = chunk.to_vec();
                 let game_data = models.data.clone();
@@ -1009,8 +1044,12 @@ pub fn draw_cell(
         }
         loaded_any = true;
     }
+    if let Some(ref mut tm) = timings {
+        tm.nif_models_load += t_models.elapsed();
+    }
 
     // Spawn all references whose model is now in cache.
+    let t_spawn_refs = std::time::Instant::now();
     let refs = if is_exterior && radius != 0 {
         session.exterior_grid_refs(radius)
     } else {
@@ -1140,6 +1179,11 @@ pub fn draw_cell(
         bevy::log::warn!("draw_cell: no models spawned; {counts:?}");
     }
 
+    if let Some(ref mut tm) = timings {
+        tm.ref_entities_spawn += t_spawn_refs.elapsed();
+        tm.total_loading_frames += 1;
+    }
+
     if spawned.refs.len() + spawned.failed.len() >= refs_len {
         spawned.models_finished = true;
     }
@@ -1161,11 +1205,16 @@ pub fn draw_cell_lights(
     mut commands: Commands,
     mut session: ResMut<crate::session::Session>,
     mut spawned: ResMut<Spawned>,
+    mut timings: Option<ResMut<LoadTimings>>,
 ) {
+    let t_start = std::time::Instant::now();
     let Some(cell) = session.cell else {
         return;
     };
-    if spawned.lights_finished && spawned.light_cell == Some(cell) && spawned.light_radius == spawned.radius {
+    if spawned.lights_finished
+        && spawned.light_cell == Some(cell)
+        && spawned.light_radius == spawned.radius
+    {
         return;
     }
     let radius = spawned.radius;
@@ -1250,6 +1299,9 @@ pub fn draw_cell_lights(
         spawned.lights.insert(r.form_id, entity);
     }
     spawned.lights_finished = true;
+    if let Some(ref mut tm) = timings {
+        tm.lights_spawn += t_start.elapsed();
+    }
     if std::env::var("NVRE_TRACE").is_ok() {
         bevy::log::info!(
             "draw_cell_lights: cell {:08X} radius {} -> {} lights of {} refs",
@@ -1684,39 +1736,37 @@ fn spawn_worldspace_terrain(
     };
 
     // Material resolver helper
-    let get_mat_handle = |models: &mut ModelCtx,
-                          mat_cache: &mut HashMap<
-        String,
-        Handle<nvre_assets::nif_material::NifMaterial>,
-    >,
-                          tex_file: &str|
-     -> Handle<nvre_assets::nif_material::NifMaterial> {
-        if let Some(h) = mat_cache.get(tex_file) {
-            return h.clone();
-        }
-        let img_handle = models.textures.get(
-            tex_file,
-            true,
-            &models.data,
-            &mut models.images,
-            models.formats.as_deref(),
-        );
-        let mat = StandardMaterial {
-            base_color: if img_handle.is_some() {
-                Color::WHITE
-            } else {
-                Color::srgb(0.55, 0.50, 0.42)
-            },
-            base_color_texture: img_handle,
-            perceptual_roughness: 0.95,
-            reflectance: 0.2,
-            cull_mode: None,
-            ..default()
+    let get_mat_handle =
+        |models: &mut ModelCtx,
+         mat_cache: &mut HashMap<String, Handle<nvre_assets::nif_material::NifMaterial>>,
+         tex_file: &str|
+         -> Handle<nvre_assets::nif_material::NifMaterial> {
+            if let Some(h) = mat_cache.get(tex_file) {
+                return h.clone();
+            }
+            let img_handle = models.textures.get(
+                tex_file,
+                true,
+                &models.data,
+                &mut models.images,
+                models.formats.as_deref(),
+            );
+            let mat = StandardMaterial {
+                base_color: if img_handle.is_some() {
+                    Color::WHITE
+                } else {
+                    Color::srgb(0.55, 0.50, 0.42)
+                },
+                base_color_texture: img_handle,
+                perceptual_roughness: 0.95,
+                reflectance: 0.2,
+                cull_mode: None,
+                ..default()
+            };
+            let h = models.materials.add(nvre_assets::nif_material(mat));
+            mat_cache.insert(tex_file.to_string(), h.clone());
+            h
         };
-        let h = models.materials.add(nvre_assets::nif_material(mat));
-        mat_cache.insert(tex_file.to_string(), h.clone());
-        h
-    };
 
     struct CellQuadrantBatch {
         pos: Vec<[f32; 3]>,
@@ -1768,15 +1818,17 @@ fn spawn_worldspace_terrain(
                 continue;
             };
 
-            let batch = cell_batches.entry(tex_file).or_insert_with(|| CellQuadrantBatch {
-                pos: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
-                nor: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
-                uv: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
-                tan: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
-                col: Vec::new(),
-                idx: Vec::with_capacity((QUAD_SIDE - 1) * (QUAD_SIDE - 1) * 6 * 4),
-                has_col: q_col.is_some(),
-            });
+            let batch = cell_batches
+                .entry(tex_file)
+                .or_insert_with(|| CellQuadrantBatch {
+                    pos: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                    nor: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                    uv: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                    tan: Vec::with_capacity(QUAD_SIDE * QUAD_SIDE * 4),
+                    col: Vec::new(),
+                    idx: Vec::with_capacity((QUAD_SIDE - 1) * (QUAD_SIDE - 1) * 6 * 4),
+                    has_col: q_col.is_some(),
+                });
 
             let base_index = batch.pos.len() as u32;
             batch.pos.extend(q_pos);
@@ -1819,7 +1871,10 @@ fn spawn_worldspace_terrain(
             let mesh_handle = models.meshes.add(mesh);
             let e = commands
                 .spawn((
-                    Name::new(format!("Cell ({}, {}) Terrain ({tex_file})", coord.0, coord.1)),
+                    Name::new(format!(
+                        "Cell ({}, {}) Terrain ({tex_file})",
+                        coord.0, coord.1
+                    )),
                     Mesh3d(mesh_handle),
                     MeshMaterial3d(mat_handle),
                     Transform::IDENTITY,

@@ -311,6 +311,7 @@ fn main() {
             ..default()
         })
         .init_resource::<viewport::Spawned>()
+        .init_resource::<viewport::LoadTimings>()
         .init_resource::<windows::ViewportHotbar>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
