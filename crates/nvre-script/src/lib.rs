@@ -38,6 +38,7 @@ pub mod parse;
 pub mod value;
 
 pub use compile::{compile, compile_with_refs};
+pub use parse::{Decl, DeclKind, Script, Stmt, VarEntry};
 
 /// The crate's own error type.
 #[derive(Debug, thiserror::Error)]

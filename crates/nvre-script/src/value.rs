@@ -125,13 +125,14 @@ pub fn encode_assigned(value: &Value) -> Vec<u8> {
 /// Read `tokens` as a value, or say why it cannot be one.
 ///
 /// A single number is a literal. A single word is a variable of this script,
-/// which is resolved through `locals` by name — the emitter has the record's
-/// variable list, so the index is the declaration's position, not a guess.
+/// which is resolved through the record's own variable table — the emitter
+/// has the record's `SLSD` IDs, so the index is the table's, not a position
+/// the source could have invented.
 ///
 /// Anything else is refused: an expression this encoder does not understand is
 /// a wrong encoding rather than a missing one, and the game runs a wrong
 /// encoding.
-pub fn read_value(tokens: &[Token], locals: &[crate::parse::Decl]) -> Result<Value, crate::Error> {
+pub fn read_value(tokens: &[Token], script: &crate::parse::Script) -> Result<Value, crate::Error> {
     // The value's own tokens, with the whitespace dropped: a value is the
     // words and numbers, and the spaces between them are not part of it.
     let words: Vec<&Token> = tokens
@@ -143,21 +144,20 @@ pub fn read_value(tokens: &[Token], locals: &[crate::parse::Decl]) -> Result<Val
         let t = words[0];
         return match t.kind {
             Kind::Number => Ok(Value::Literal(literal_bytes(&t.text))),
-            // A word on its own is a variable of this script. The index is the
-            // declaration's 1-based position, so an undeclared name is an
-            // error rather than an index that would assign to the wrong
-            // variable.
-            // A word on its own is a variable of this script, and the tag is
-            // the one its declaration says: an `int` is `s` and a `float` or
-            // `ref` is `f`. Both are measurable, and writing the wrong one is
-            // an assignment to a variable of the wrong type.
+            // A word on its own is a variable of this script. The index is
+            // the record's SLSD ID for that name, and the tag follows the
+            // variable's declared type — both measurable, and writing either
+            // wrong is an assignment the game reads as a different value.
             Kind::Word => {
-                if let Ok((index, is_int)) = local_index(&t.text, locals) {
+                if let Ok((index, is_int)) = resolve_var(&t.text, script) {
                     return Ok(if is_int {
                         Value::LocalVar(index)
                     } else {
                         Value::FloatVar(index)
                     });
+                }
+                if let Ok(idx) = resolve_ref_index(&t.text, script) {
+                    return Ok(Value::Ref(idx));
                 }
                 if let Some(cmd) = crate::opcodes::command_called(&t.text) {
                     if !cmd.args.is_empty() {
@@ -279,27 +279,8 @@ pub fn encode_expr(
         if i + 2 < filtered.len() && filtered[i + 1].text == "." {
             let target = filtered[i].text.as_str();
             let member = filtered[i + 2].text.as_str();
-            // Resolve ref index:
-            // Find in declared ref vars or external refs
-            let mut ref_idx = None;
-            let mut r_count = 0u16;
-            for d in &script.decls {
-                if !d.is_int {
-                    r_count += 1;
-                    if d.name.eq_ignore_ascii_case(target) {
-                        ref_idx = Some(r_count);
-                        break;
-                    }
-                }
-            }
-            if ref_idx.is_none() {
-                for (ridx, r) in script.refs.iter().enumerate() {
-                    if r.eq_ignore_ascii_case(target) {
-                        ref_idx = Some(r_count + 1 + ridx as u16);
-                        break;
-                    }
-                }
-            }
+            // Resolve ref index: declared ref variables, then SCRO refs.
+            let ref_idx = resolve_ref_index(target, script).ok();
 
             if let Some(ridx) = ref_idx {
                 // If member is a command on that ref:
@@ -329,36 +310,15 @@ pub fn encode_expr(
                                 continue;
                             }
                         }
-                        if let Some(pos) = script
-                            .decls
-                            .iter()
-                            .position(|d| d.name.eq_ignore_ascii_case(&atok.text))
-                        {
-                            let tag = if script.decls[pos].is_int { 0x73 } else { 0x66 };
-                            arg_bytes.push(tag);
-                            arg_bytes.extend_from_slice(&((pos as u16 + 1).to_le_bytes()));
+                        // A declared variable of this script: its SLSD ID and
+                        // its type's tag.
+                        if let Ok((idx, is_int)) = resolve_var(&atok.text, script) {
+                            arg_bytes.push(var_tag(is_int));
+                            arg_bytes.extend_from_slice(&idx.to_le_bytes());
                             continue;
                         }
-                        let mut a_ref = None;
-                        let mut arc = 0u16;
-                        for d in &script.decls {
-                            if !d.is_int {
-                                arc += 1;
-                                if d.name.eq_ignore_ascii_case(&atok.text) {
-                                    a_ref = Some(arc);
-                                    break;
-                                }
-                            }
-                        }
-                        if a_ref.is_none() {
-                            for (ridx2, r2) in script.refs.iter().enumerate() {
-                                if r2.eq_ignore_ascii_case(&atok.text) {
-                                    a_ref = Some(arc + 1 + ridx2 as u16);
-                                    break;
-                                }
-                            }
-                        }
-                        if let Some(ar) = a_ref {
+                        // One of the record's references.
+                        if let Ok(ar) = resolve_ref_index(&atok.text, script) {
                             arg_bytes.push(0x72);
                             arg_bytes.extend_from_slice(&ar.to_le_bytes());
                             continue;
@@ -438,37 +398,14 @@ pub fn encode_expr(
                         }
                     }
                     // Variable or Reference
-                    if let Some(pos) = script
-                        .decls
-                        .iter()
-                        .position(|d| d.name.eq_ignore_ascii_case(&atok.text))
-                    {
-                        let tag = if script.decls[pos].is_int { 0x73 } else { 0x66 };
-                        arg_bytes.push(tag);
-                        arg_bytes.extend_from_slice(&((pos as u16 + 1).to_le_bytes()));
+                    if let Ok((idx, is_int)) = resolve_var(&atok.text, script) {
+                        arg_bytes.push(var_tag(is_int));
+                        arg_bytes.extend_from_slice(&idx.to_le_bytes());
                         continue;
                     }
-                    // SCRO Reference
-                    let mut ref_idx = None;
-                    let mut r_count = 0u16;
-                    for d in &script.decls {
-                        if !d.is_int {
-                            r_count += 1;
-                            if d.name.eq_ignore_ascii_case(&atok.text) {
-                                ref_idx = Some(r_count);
-                                break;
-                            }
-                        }
-                    }
-                    if ref_idx.is_none() {
-                        for (ridx, r) in script.refs.iter().enumerate() {
-                            if r.eq_ignore_ascii_case(&atok.text) {
-                                ref_idx = Some(r_count + 1 + ridx as u16);
-                                break;
-                            }
-                        }
-                    }
-                    if let Some(ridx) = ref_idx {
+                    // One of the record's references: declared ref variables,
+                    // then SCRO entries.
+                    if let Ok(ridx) = resolve_ref_index(&atok.text, script) {
                         arg_bytes.push(0x72);
                         arg_bytes.extend_from_slice(&ridx.to_le_bytes());
                         continue;
@@ -500,39 +437,24 @@ pub fn encode_expr(
         }
 
         // Standalone reference or global variable in expression
-        let mut standalone_ref = None;
-        let mut r_count = 0u16;
-        for d in &script.decls {
-            if !d.is_int {
-                r_count += 1;
-                if d.name.eq_ignore_ascii_case(&t.text) {
-                    standalone_ref = Some((0x5A, r_count));
-                    break;
-                }
-            }
-        }
-        if standalone_ref.is_none() {
-            for (ridx, r) in script.refs.iter().enumerate() {
-                if r.eq_ignore_ascii_case(&t.text) {
-                    // Check if it starts with Game or matches common global patterns,
-                    // or if it's a global variable reference.
-                    // In Fallout NV, standalone references in arithmetic expressions are globals (`0x47` 'G').
-                    let tag = if r.eq_ignore_ascii_case("GameHour")
-                        || r.eq_ignore_ascii_case("GameDaysPassed")
-                        || r.eq_ignore_ascii_case("GameDay")
-                        || r.eq_ignore_ascii_case("GameMonth")
-                        || r.eq_ignore_ascii_case("GameYear")
-                        || r.starts_with("VStoryState")
-                    {
-                        0x47 // 'G'
-                    } else {
-                        0x5A // 'Z'
-                    };
-                    standalone_ref = Some((tag, r_count + 1 + ridx as u16));
-                    break;
-                }
-            }
-        }
+        let standalone_ref = resolve_ref_index(&t.text, script).ok().map(|idx| {
+            // In Fallout NV, a standalone reference in an arithmetic
+            // expression is usually a global variable (`0x47` 'G') when the
+            // name is one of the known globals, and a plain reference
+            // (`0x5A` 'Z') otherwise.
+            let tag = if t.text.eq_ignore_ascii_case("GameHour")
+                || t.text.eq_ignore_ascii_case("GameDaysPassed")
+                || t.text.eq_ignore_ascii_case("GameDay")
+                || t.text.eq_ignore_ascii_case("GameMonth")
+                || t.text.eq_ignore_ascii_case("GameYear")
+                || t.text.to_ascii_lowercase().starts_with("vstorystate")
+            {
+                0x47 // 'G'
+            } else {
+                0x5A // 'Z'
+            };
+            (tag, idx)
+        });
         if let Some((tag, sref)) = standalone_ref {
             let mut b = vec![tag];
             b.extend_from_slice(&sref.to_le_bytes());
@@ -542,7 +464,7 @@ pub fn encode_expr(
         }
 
         // It is an operand: a literal, a declared variable, or a command value
-        let val = read_value(std::slice::from_ref(t), &script.decls)?;
+        let val = read_value(std::slice::from_ref(t), script)?;
         output.push(encode(&val));
         i += 1;
     }
@@ -579,17 +501,96 @@ fn literal_bytes(text: &str) -> Vec<u8> {
     text.as_bytes().to_vec()
 }
 
-/// The 1-based index of the local variable called `name`, and whether it is
-/// an integer.
+/// Resolve a local variable's bytecode index and tag, by name.
 ///
-/// The index is the declaration's position, which is the record's own
-/// variable list — a guessed index would assign to the wrong variable.
-fn local_index(name: &str, locals: &[crate::parse::Decl]) -> Result<(u16, bool), crate::Error> {
-    locals
+/// The index is the variable's `SLSD` ID, taken from the record's own
+/// variable table — measured over all 4,902 tagged variable references in
+/// `FalloutNV.esm`'s `If`/`ElseIf` conditions: every index equals some
+/// `SLSD`'s first word (the ID the GECK assigned), and only 58% equal the
+/// variable's position in the table, because the GECK's IDs have gaps. The
+/// ID cannot be derived from the source, so it is read from the record: a
+/// name the table does not carry is a variable the record's writer has not
+/// given an ID yet, and that is refused rather than guessed — a guessed ID
+/// is an assignment to the wrong variable that the game silently runs.
+pub fn resolve_var(name: &str, script: &crate::parse::Script) -> Result<(u16, bool), crate::Error> {
+    if let Some(v) = script
+        .vars
+        .iter()
+        .find(|v| v.name.eq_ignore_ascii_case(name))
+    {
+        return Ok((v.id, v.is_int));
+    }
+    // A declaration the record's table does not carry is a new variable. Its
+    // ID is assigned here — one past every ID the record already uses, in
+    // declaration order — because the bytecode needs one and the record's
+    // writer persists the SLSD list the compiler used. A name that is
+    // neither in the table nor a declaration is an error, not a guess.
+    if let Some(at) = script
+        .decls
         .iter()
         .position(|d| d.name.eq_ignore_ascii_case(name))
-        .map(|at| (at as u16 + 1, locals[at].is_int))
-        .ok_or_else(|| crate::Error::Parse(format!("`{name}` is not a declared variable")))
+    {
+        let mut next = script
+            .vars
+            .iter()
+            .map(|v| v.id)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        // Earlier new declarations each took an ID; count them.
+        for d in &script.decls[..at] {
+            if !script
+                .vars
+                .iter()
+                .any(|v| v.name.eq_ignore_ascii_case(&d.name))
+            {
+                next += 1;
+            }
+        }
+        let is_int = script.decls[at].kind == crate::parse::DeclKind::Int;
+        return Ok((next, is_int));
+    }
+    Err(crate::Error::Parse(format!(
+        "`{name}` is not a declared variable"
+    )))
+}
+
+/// The tag a variable of this script is written with: `s` for an int, `f`
+/// for a float or a ref.
+fn var_tag(is_int: bool) -> u8 {
+    if is_int {
+        0x73
+    } else {
+        0x66
+    }
+}
+
+/// Resolve one of the record's references by name, to its 1-based index.
+///
+/// The index space is measured: the declared `ref` variables come first, in
+/// source declaration order, then the record's `SCRO` FormIDs —
+/// `vCCCrucifiedSlaveSCRIPT` has `ref userref` at index 1, its first SCRO
+/// entry at 2, its second at 3, and 967 of 973 corpus scripts agree. A
+/// `float` declaration is NOT in this space: it is a variable, not a
+/// reference, and counting it here would shift every SCRO index after it.
+pub fn resolve_ref_index(name: &str, script: &crate::parse::Script) -> Result<u16, crate::Error> {
+    let mut ref_var_idx = 0u16;
+    for d in &script.decls {
+        if d.kind == crate::parse::DeclKind::Ref {
+            ref_var_idx += 1;
+            if d.name.eq_ignore_ascii_case(name) {
+                return Ok(ref_var_idx);
+            }
+        }
+    }
+    for (i, r) in script.refs.iter().enumerate() {
+        if r.eq_ignore_ascii_case(name) {
+            return Ok(ref_var_idx + 1 + i as u16);
+        }
+    }
+    Err(crate::Error::Parse(format!(
+        "`{name}` names a reference, which the emitter cannot resolve yet"
+    )))
 }
 
 #[cfg(test)]
@@ -597,34 +598,92 @@ mod tests {
     use super::*;
     use crate::lex::lex;
 
-    fn value_of(source: &str, locals: &[crate::parse::Decl]) -> Result<Value, crate::Error> {
+    fn value_of(source: &str, script: &crate::parse::Script) -> Result<Value, crate::Error> {
         let tokens = lex(source);
-        read_value(&tokens, locals)
+        read_value(&tokens, script)
     }
 
-    fn decl(name: &str) -> crate::parse::Decl {
-        crate::parse::Decl {
-            name: name.to_string(),
-            is_int: true,
-            line: 0,
+    fn script_with(
+        vars: &[(&str, u16, bool)],
+        decls: &[(&str, crate::parse::DeclKind)],
+    ) -> crate::parse::Script {
+        crate::parse::Script {
+            decls: decls
+                .iter()
+                .map(|(name, kind)| crate::parse::Decl {
+                    name: (*name).to_string(),
+                    kind: *kind,
+                    line: 0,
+                })
+                .collect(),
+            vars: vars
+                .iter()
+                .map(|(name, id, is_int)| crate::parse::VarEntry {
+                    name: (*name).to_string(),
+                    id: *id,
+                    is_int: *is_int,
+                })
+                .collect(),
+            ..Default::default()
         }
     }
 
     #[test]
-    fn a_local_variable_is_its_one_based_index() {
-        // Measured: a script whose first declaration is `int PickedUp` and
-        // which sets `PickedUp` writes `73 01 00` — index 1, not 0.
-        let locals = vec![decl("PickedUp"), decl("Second")];
-        assert_eq!(value_of("PickedUp", &locals).unwrap(), Value::LocalVar(1));
-        assert_eq!(value_of("Second", &locals).unwrap(), Value::LocalVar(2));
+    fn a_variables_index_is_the_records_slsd_id() {
+        // Measured over all 4,902 tagged variable references in
+        // FalloutNV.esm's If/ElseIf conditions: the index is the SLSD ID,
+        // not the position in the table — the GECK's IDs have gaps, so a
+        // variable can sit at position 30 and carry ID 13.
+        let s = script_with(
+            &[("bNoSquad", 13, true), ("iSquadState", 19, true)],
+            &[("bNoSquad", crate::parse::DeclKind::Int)],
+        );
+        assert_eq!(value_of("bNoSquad", &s).unwrap(), Value::LocalVar(13));
+        assert_eq!(value_of("iSquadState", &s).unwrap(), Value::LocalVar(19));
+        // And the bytes carry the ID, not the position.
+        assert_eq!(encode(&Value::LocalVar(13)), vec![0x73, 0x0D, 0x00]);
+    }
+
+    #[test]
+    fn a_new_variable_gets_an_id_past_the_records_own() {
+        // A declaration the record's table does not carry: the compiler
+        // assigns the next ID past every ID the record already uses, because
+        // the bytecode needs one and the record's writer persists the SLSD
+        // list the compiler used.
+        let s = script_with(
+            &[("Existing", 13, true)],
+            &[("NewVar", crate::parse::DeclKind::Int)],
+        );
+        assert_eq!(value_of("NewVar", &s).unwrap(), Value::LocalVar(14));
+        // And two new declarations get consecutive IDs.
+        let s = script_with(
+            &[],
+            &[
+                ("First", crate::parse::DeclKind::Int),
+                ("Second", crate::parse::DeclKind::Int),
+            ],
+        );
+        assert_eq!(value_of("First", &s).unwrap(), Value::LocalVar(1));
+        assert_eq!(value_of("Second", &s).unwrap(), Value::LocalVar(2));
+    }
+
+    #[test]
+    fn a_variable_the_records_table_does_not_carry_is_refused() {
+        // A name that is neither in the record's table nor a declaration is
+        // an error rather than a guessed index.
+        let err = value_of("NoSuchVar", &script_with(&[], &[])).unwrap_err();
+        assert!(
+            err.to_string().contains("NoSuchVar"),
+            "the error names it: {err}"
+        );
     }
 
     #[test]
     fn a_variables_index_is_case_insensitive() {
         // The game's own compiler treats `set pickedup` and `set PickedUp` as
         // the same variable, and so does this.
-        let locals = vec![decl("PickedUp")];
-        assert_eq!(value_of("pickedup", &locals).unwrap(), Value::LocalVar(1));
+        let s = script_with(&[("PickedUp", 1, true)], &[]);
+        assert_eq!(value_of("pickedup", &s).unwrap(), Value::LocalVar(1));
     }
 
     #[test]
@@ -633,22 +692,15 @@ mod tests {
         // with `73 01 00` and `Ref rBox01` assigns with `66 01 00`. The tag
         // follows the variable's declared type, not its index — writing the
         // wrong one is an assignment to a variable of the wrong type.
-        let _ = decl("unused");
-        // The second declaration is a ref, so it is not an int.
-        let locals = vec![
-            crate::parse::Decl {
-                name: "PickedUp".into(),
-                is_int: true,
-                line: 0,
-            },
-            crate::parse::Decl {
-                name: "rBox01".into(),
-                is_int: false,
-                line: 1,
-            },
-        ];
-        assert_eq!(value_of("PickedUp", &locals).unwrap(), Value::LocalVar(1));
-        assert_eq!(value_of("rBox01", &locals).unwrap(), Value::FloatVar(2));
+        let s = script_with(
+            &[("PickedUp", 1, true), ("rBox01", 2, false)],
+            &[
+                ("PickedUp", crate::parse::DeclKind::Int),
+                ("rBox01", crate::parse::DeclKind::Ref),
+            ],
+        );
+        assert_eq!(value_of("PickedUp", &s).unwrap(), Value::LocalVar(1));
+        assert_eq!(value_of("rBox01", &s).unwrap(), Value::FloatVar(2));
         // And their bytes are the `s` and `f` tags respectively.
         assert_eq!(encode(&Value::LocalVar(1)), vec![0x73, 0x01, 0x00]);
         assert_eq!(encode(&Value::FloatVar(2)), vec![0x66, 0x02, 0x00]);
@@ -658,7 +710,7 @@ mod tests {
     fn an_undeclared_name_is_an_error_not_a_wrong_index() {
         // An index that would assign to the wrong variable is worse than no
         // assignment at all.
-        let err = value_of("NoSuchVar", &[]).unwrap_err();
+        let err = value_of("NoSuchVar", &script_with(&[], &[])).unwrap_err();
         assert!(err.to_string().contains("NoSuchVar"), "{err}");
     }
 
@@ -666,10 +718,13 @@ mod tests {
     fn an_integer_literal_is_its_own_ascii_digits() {
         // Measured: `set PickedUp to 1` writes `02 00 20 31`, where 0x31 is
         // the ASCII `1` — not the binary integer 1.
-        assert_eq!(value_of("1", &[]).unwrap(), Value::Literal(vec![0x31]));
+        assert_eq!(
+            value_of("1", &script_with(&[], &[])).unwrap(),
+            Value::Literal(vec![0x31])
+        );
         // And `to 40` writes `03 00 20 34 30`.
         assert_eq!(
-            value_of("40", &[]).unwrap(),
+            value_of("40", &script_with(&[], &[])).unwrap(),
             Value::Literal(vec![0x34, 0x30])
         );
     }
@@ -706,7 +761,7 @@ mod tests {
     fn an_expression_this_encoder_does_not_understand_is_refused() {
         // An arithmetic expression is a wrong encoding rather than a missing
         // one, and the game runs a wrong encoding.
-        let err = value_of("1 + 2", &[]).unwrap_err();
+        let err = value_of("1 + 2", &script_with(&[], &[])).unwrap_err();
         assert!(err.to_string().contains("1 + 2"), "{err}");
     }
 }

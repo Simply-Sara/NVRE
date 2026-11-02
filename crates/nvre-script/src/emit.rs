@@ -239,6 +239,13 @@ pub fn emit(script: &Script) -> Result<Vec<u8>, crate::Error> {
                 i = after_block(script, i);
             }
 
+            // A declaration outside any block emits nothing, as it does
+            // inside one. It is carried as a statement for the jumpOps
+            // count, not for any bytes of its own.
+            Stmt::Decl => {
+                i += 1;
+            }
+
             Stmt::End => {
                 // An `End` with no open block. The game's own compiler refuses
                 // this, so this does too rather than writing a stray `End`.
@@ -358,6 +365,50 @@ fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Er
     })
 }
 
+/// A declaration's weight in the `jumpOps` count.
+///
+/// Measured: the game's `jumpOps` counts a branch's **source statements**,
+/// not its emitted instructions — a `ref` declared inside an `if` body emits
+/// no bytecode, but the game still counts it as one operation to skip. Six
+/// corpus branches disagree with the instruction count by exactly one, and
+/// all six declare a variable in the branch body (`CrNightkin`'s
+/// `ref mytarget`, `REPCONDavison`'s `ref refvar`, `VNovacChupacabra`'s
+/// `ref targetREF`); across all 13,163 branches in `FalloutNV.esm`,
+/// `jumpOps == instructions_in_span − SetCurrentRef prefixes + declarations`
+/// with no exception.
+const DECL_JUMP_WEIGHT: usize = 1;
+
+/// Count the `jumpOps` of a branch whose emitted body is `bytes` with
+/// `decls` declarations among its source statements.
+///
+/// The instruction count is not the operation count for two measured
+/// reasons. A `0x1C` SetCurrentRef prefix is framing for the command that
+/// follows it, not an operation of its own (measured: 99% of the corpus's
+/// branches over-count without subtracting them). And a declaration emits
+/// no bytes but is still one source statement the game counts.
+fn jump_ops(bytes: &[u8], decls: usize) -> u16 {
+    let mut set_current_refs = 0usize;
+    let mut instructions = 0usize;
+    for ins in read_instructions(bytes) {
+        if ins.opcode == 0x001C {
+            set_current_refs += 1;
+        }
+        instructions += 1;
+    }
+    (instructions + decls * DECL_JUMP_WEIGHT - set_current_refs) as u16
+}
+
+/// How many of `stmts` are declarations.
+///
+/// A declaration emits no bytecode but is one of the source statements the
+/// game's `jumpOps` counts — see [`jump_ops`].
+fn count_decls(stmts: &[crate::parse::Stmt]) -> usize {
+    stmts
+        .iter()
+        .filter(|s| matches!(s, crate::parse::Stmt::Decl))
+        .count()
+}
+
 /// Emit an `If` statement chain: the `If`, any `ElseIf`s, optional `Else`, and closing `EndIf`.
 fn emit_if_chain(
     script: &Script,
@@ -390,14 +441,15 @@ fn emit_if_chain(
         Ok(out)
     }
 
-    let if_body = emit_stmts(script, chain.if_body_range)?;
-    let if_ops = read_instructions(&if_body).len() as u16;
+    let if_body = emit_stmts(script, chain.if_body_range.clone())?;
+    let if_decls = count_decls(&script.stmts[chain.if_body_range.clone()]);
+    let if_ops = jump_ops(&if_body, if_decls);
 
     let mut elseifs_bytes = Vec::new();
     let mut elseif_ops_list = Vec::new();
     for (c, r) in &chain.elseifs {
         let b = emit_stmts(script, r.clone())?;
-        let ops = read_instructions(&b).len() as u16;
+        let ops = jump_ops(&b, count_decls(&script.stmts[r.clone()]));
         elseifs_bytes.push((c, b));
         elseif_ops_list.push(ops);
     }
@@ -407,11 +459,22 @@ fn emit_if_chain(
     } else {
         None
     };
+    let else_ops = else_body
+        .as_ref()
+        .map(|b| {
+            jump_ops(
+                b,
+                count_decls(&script.stmts[chain.else_body_range.clone().unwrap()]),
+            )
+        })
+        .unwrap_or(0);
 
     let mut out = Vec::new();
 
     // 1. Emit If (0x0016)
-    // jumpOps is the number of instructions to skip if false.
+    // jumpOps is the number of operations to skip if false — the branch's
+    // source statements, declarations included, with a 0x1C prefix not
+    // counting as one of them. See `jump_ops` for the measurement.
     let if_cond_bytes = crate::value::encode_expr(cond, script)?;
     let mut if_args = Vec::with_capacity(4 + if_cond_bytes.len());
     if_args.extend_from_slice(&if_ops.to_le_bytes());
@@ -436,7 +499,6 @@ fn emit_if_chain(
 
     // 3. Emit Else
     if let Some(eb) = else_body {
-        let else_ops = read_instructions(&eb).len() as u16;
         out.extend(frame(StmtOp::Else.opcode(), &else_ops.to_le_bytes()));
         out.extend(eb);
     }
@@ -477,6 +539,7 @@ fn describe(stmt: &Stmt) -> &'static str {
         Stmt::Else => "else",
         Stmt::ElseIf(_) => "elseif",
         Stmt::EndIf => "endif",
+        Stmt::Decl => "a declaration",
         Stmt::Return => "return",
         Stmt::Call { .. } => "a command call",
         Stmt::Unknown { .. } => "an unreadable line",
@@ -617,6 +680,9 @@ fn emit_statement(script: &Script, stmt: &Stmt) -> Result<Vec<u8>, crate::Error>
         Stmt::End => Ok(frame(StmtOp::End.opcode(), &[])),
         Stmt::EndIf => Ok(frame(StmtOp::EndIf.opcode(), &[])),
         Stmt::Return => Ok(frame(StmtOp::Return.opcode(), &[])),
+        // A declaration emits nothing of its own — but see `jump_ops`: it is
+        // still a statement the game counts.
+        Stmt::Decl => Ok(vec![]),
         // `ScriptName` inside a block is the same marker as outside one.
         Stmt::ScriptName(_) => Ok(frame(StmtOp::ScriptName.opcode(), &[])),
         Stmt::Set { on, target, expr } => emit_set(script, on, target, expr),
@@ -664,9 +730,9 @@ fn emit_set(
         b.extend_from_slice(&1u16.to_le_bytes());
         b
     } else {
-        if let Ok(dest) = crate::value::read_value(std::slice::from_ref(target), &script.decls) {
+        if let Ok(dest) = crate::value::read_value(std::slice::from_ref(target), script) {
             crate::value::encode(&dest)
-        } else if let Ok(ref_idx) = resolve_ref(&target.text, script) {
+        } else if let Ok(ref_idx) = crate::value::resolve_ref_index(&target.text, script) {
             // Global variable assignment destination: 0x47 'G' [refIdx: u16]
             let mut b = vec![0x47];
             b.extend_from_slice(&ref_idx.to_le_bytes());
@@ -1090,33 +1156,13 @@ mod param_count_tests {
 /// the record's references. A reference name is not resolvable here — the
 /// record's own reference list is — so a call naming one is refused rather
 /// than given a made-up index.
-/// Resolve a reference name to its 1-based index in `[declared ref variables] + [SCRO refs]`.
+/// Resolve a reference name to its 1-based index in `[declared ref
+/// variables] + [SCRO refs]`.
+///
+/// Delegated to [`crate::value::resolve_ref_index`], where the measured rule
+/// lives: declared `ref` variables first, then the record's SCRO FormIDs.
 fn resolve_ref(name: &str, script: &Script) -> Result<u16, crate::Error> {
-    // 1. Declared `ref` variables in the script
-    let mut ref_var_idx = 0u16;
-    for d in &script.decls {
-        if !d.is_int {
-            // is_int = false for float and ref
-            ref_var_idx += 1;
-            if d.name.eq_ignore_ascii_case(name) {
-                return Ok(ref_var_idx);
-            }
-        }
-    }
-
-    // Total declared ref/float variables
-    let declared_refs_count = ref_var_idx;
-
-    // 2. SCRO external references
-    for (i, r) in script.refs.iter().enumerate() {
-        if r.eq_ignore_ascii_case(name) {
-            return Ok(declared_refs_count + 1 + i as u16);
-        }
-    }
-
-    Err(crate::Error::Parse(format!(
-        "`{name}` names a reference, which the emitter cannot resolve yet"
-    )))
+    crate::value::resolve_ref_index(name, script)
 }
 
 fn emit_call(
@@ -1368,16 +1414,15 @@ fn emit_arg(
                 return Ok((ag as u16).to_le_bytes().to_vec());
             }
 
-            // First check if it's a declared variable
-            if let Some(pos) = script
-                .decls
-                .iter()
-                .position(|d| d.name.eq_ignore_ascii_case(&t.text))
-            {
-                let d = &script.decls[pos];
-                let tag = if d.is_int { 0x73 } else { 0x66 };
+            // First check if it's a declared variable of the record's table:
+            // its SLSD ID and its type's tag. A variable the table does not
+            // carry is a new one, whose ID the record's writer assigns —
+            // refused rather than given a position the game would read as a
+            // different variable.
+            if let Ok((idx, is_int)) = crate::value::resolve_var(&t.text, script) {
+                let tag = if is_int { 0x73 } else { 0x66 };
                 let mut out = vec![tag];
-                out.extend_from_slice(&((pos as u16 + 1).to_le_bytes()));
+                out.extend_from_slice(&idx.to_le_bytes());
                 return Ok(out);
             }
             // Next check if it's a known reference name

@@ -66,6 +66,11 @@ pub enum Stmt {
     ElseIf(Vec<Token>),
     /// `endif` — the end of a conditional chain.
     EndIf,
+    /// A variable declaration: `short x`, `float x`, `ref x`. Emits no
+    /// instruction of its own — the variable lives in the record's `SLSD`/
+    /// `SCVR` list — but it is still a statement in the source, and the
+    /// game's `jumpOps` counts it as one.
+    Decl,
     /// `return`
     Return,
     /// A command call: `[Ref.]Command args…`.
@@ -93,10 +98,45 @@ pub enum Stmt {
 pub struct Decl {
     /// The variable's name, as the source spells it.
     pub name: String,
-    /// Whether it is an integer (`short`/`long`) or a float or reference.
-    pub is_int: bool,
+    /// What the declaration says it is.
+    pub kind: DeclKind,
     /// The line the declaration was on.
     pub line: usize,
+}
+
+/// The kind of a declared variable.
+///
+/// The `s`/`f` tag follows it, and the reference-index rule counts a `ref`
+/// but not a `float` — so the two must be distinguishable rather than folded
+/// into one "not an int".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeclKind {
+    /// `short`/`long`/`int`
+    Int,
+    /// `float`
+    Float,
+    /// `ref`/`reference`
+    Ref,
+}
+
+/// One variable of the record's own table: its name and the ID its `SLSD`
+/// carries.
+///
+/// The bytecode's variable index is this ID, not the variable's position in
+/// the table — measured over all 4,902 tagged variable references in
+/// `FalloutNV.esm`'s `If`/`ElseIf` conditions: every index equals some
+/// `SLSD`'s first word, and only 58% equal the table position. The GECK
+/// assigns IDs with gaps (a variable added, removed and re-added keeps its
+/// old ID), so the ID is only recoverable from the record, which is why the
+/// compiler takes the table rather than inventing indices.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VarEntry {
+    /// The variable's name, as the source and the `SCVR` spell it.
+    pub name: String,
+    /// The `SLSD` ID — the index the bytecode's `s`/`f` tags carry.
+    pub id: u16,
+    /// Whether it is an integer (`short`/`long`/`int`) or a float/ref.
+    pub is_int: bool,
 }
 
 /// A parsed script: its declarations, external references, and its statements.
@@ -106,6 +146,10 @@ pub struct Script {
     pub decls: Vec<Decl>,
     /// External reference names (from SCRO / plugin context), in 1-based order.
     pub refs: Vec<String>,
+    /// The record's own variable table, when the caller has it. Names here
+    /// resolve to their `SLSD` IDs; a declared name absent from the table is
+    /// a new variable, which the record's writer assigns an ID for.
+    pub vars: Vec<VarEntry>,
     /// The statements, in source order.
     pub stmts: Vec<Stmt>,
 }
@@ -141,11 +185,12 @@ const KEYWORDS: &[&str] = &[
     "goto",
 ];
 
-/// The declaration keywords, and whether each declares an integer.
-fn decl_kind(word: &str) -> Option<bool> {
+/// The declaration keywords, and what each declares.
+fn decl_kind(word: &str) -> Option<DeclKind> {
     match word.to_ascii_lowercase().as_str() {
-        "short" | "long" | "int" => Some(true),
-        "float" | "ref" | "reference" => Some(false),
+        "short" | "long" | "int" => Some(DeclKind::Int),
+        "float" => Some(DeclKind::Float),
+        "ref" | "reference" => Some(DeclKind::Ref),
         _ => None,
     }
 }
@@ -169,7 +214,7 @@ pub fn parse(source: &str) -> Script {
                     if name.kind == Kind::Word {
                         decls.push(Decl {
                             name: name.text.clone(),
-                            is_int,
+                            kind: is_int,
                             line: *line,
                         });
                     }
@@ -187,6 +232,7 @@ pub fn parse(source: &str) -> Script {
     Script {
         decls,
         refs: Vec::new(),
+        vars: Vec::new(),
         stmts,
     }
 }
@@ -240,10 +286,12 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
         return vec![Stmt::ScriptName(name)];
     }
 
-    // A declaration: no statement of its own, the variable is already in the
-    // script's table.
+    // A declaration: no instruction of its own, the variable is in the
+    // record's SLSD/SCVR list. Carried as its own statement, because the
+    // game's jumpOps count includes it — a branch's skip count is the count
+    // of its source statements, not of its emitted instructions.
     if decl_kind(&first.text).is_some() {
-        return Vec::new();
+        return vec![Stmt::Decl];
     }
 
     // `Begin <event> [args]` and `End`.

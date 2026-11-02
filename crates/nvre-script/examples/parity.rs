@@ -50,7 +50,13 @@ fn main() {
     // Player reference FormID 0x14
     formid_to_edid.insert(0x00000014, "Player".to_string());
 
-    let mut units: Vec<(u32, String, Vec<u8>, Vec<String>)> = Vec::new();
+    let mut units: Vec<(
+        u32,
+        String,
+        Vec<u8>,
+        Vec<String>,
+        Vec<nvre_script::VarEntry>,
+    )> = Vec::new();
     visit_nodes(&plugin.nodes, &mut |rec, _| {
         if rec.header.sig != *b"SCPT" {
             return;
@@ -79,7 +85,33 @@ fn main() {
                         .unwrap_or_else(|| format!("__form_{fid:08X}"))
                 })
                 .collect();
-            units.push((rec.header.form_id, source, compiled, scro_names));
+            // The record's own variable table: SCVR names paired positionally
+            // with SLSD entries, whose first word is the ID the bytecode
+            // indexes by. SLSD byte 16 is the type: 0 float/ref, 1 integer.
+            let names: Vec<String> = subs
+                .iter()
+                .filter(|x| x.sig == *b"SCVR")
+                .map(|x| {
+                    String::from_utf8_lossy(&x.data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                })
+                .collect();
+            let slcds: Vec<&[u8]> = subs
+                .iter()
+                .filter(|x| x.sig == *b"SLSD" && x.data.len() >= 20)
+                .map(|x| x.data.as_slice())
+                .collect();
+            let vars: Vec<nvre_script::VarEntry> = names
+                .iter()
+                .zip(slcds.iter())
+                .map(|(name, d)| nvre_script::VarEntry {
+                    name: name.clone(),
+                    id: u16::from_le_bytes([d[0], d[1]]),
+                    is_int: d[16] == 1,
+                })
+                .collect();
+            units.push((rec.header.form_id, source, compiled, scro_names, vars));
         }
     });
 
@@ -90,11 +122,18 @@ fn main() {
     let mut differs = 0usize;
     let mut first_differs: Vec<(u32, String)> = Vec::new();
     let mut reasons: Vec<String> = Vec::new();
-    let mut differing: Vec<&(u32, String, Vec<u8>, Vec<String>)> = Vec::new();
+    let mut differing: Vec<&(
+        u32,
+        String,
+        Vec<u8>,
+        Vec<String>,
+        Vec<nvre_script::VarEntry>,
+    )> = Vec::new();
 
     for unit in &units {
-        let (fid, source, expected, scro_names) = (unit.0, &unit.1, &unit.2, &unit.3);
-        match nvre_script::compile_with_refs(source.as_str(), scro_names) {
+        let (fid, source, expected, scro_names, vars) =
+            (unit.0, &unit.1, &unit.2, &unit.3, &unit.4);
+        match nvre_script::compile_with_refs(source.as_str(), scro_names, vars) {
             Ok(got) => {
                 if got.as_slice() == expected.as_slice() {
                     equal += 1;
@@ -152,7 +191,7 @@ fn main() {
     println!("the units that compile but differ in length:");
     let mut length_diffs = 0;
     for u in &differing {
-        let Ok(got) = nvre_script::compile_with_refs(&u.1, &u.3) else {
+        let Ok(got) = nvre_script::compile_with_refs(&u.1, &u.3, &u.4) else {
             continue;
         };
         if got.len() != u.2.len() {
@@ -174,7 +213,7 @@ fn main() {
         if shown >= 6 {
             break;
         }
-        let Err(e) = nvre_script::compile_with_refs(&u.1, &u.3) else {
+        let Err(e) = nvre_script::compile_with_refs(&u.1, &u.3, &u.4) else {
             continue;
         };
         if !e.to_string().contains("is not a declared variable") {

@@ -7,7 +7,7 @@
 //! the dot.
 
 use nvre_script::lex::{lex, Kind, Token};
-use nvre_script::parse::{parse, Decl, Script, Stmt};
+use nvre_script::parse::{parse, Decl, DeclKind, Script, Stmt};
 
 /// Zero a token's position.
 ///
@@ -73,20 +73,24 @@ fn end_closes_the_block() {
 }
 
 #[test]
-fn a_declaration_emits_no_statement_but_declares_the_variable() {
+fn a_declaration_is_a_statement_that_emits_nothing() {
+    // A declaration emits no bytecode of its own — the variable lives in the
+    // record's SLSD/SCVR list — but it IS a statement: the game's jumpOps
+    // counts a branch's source statements, declarations included. See
+    // `jump_ops` in emit.rs for the measurement that settled it.
     let s = parse("short iCount\nref rDoor");
-    assert!(s.stmts.is_empty(), "a declaration is not a statement");
+    assert_eq!(s.stmts.len(), 2, "a declaration is a statement");
     assert_eq!(
         s.decls,
         vec![
             Decl {
                 name: "iCount".to_string(),
-                is_int: true,
+                kind: DeclKind::Int,
                 line: 0,
             },
             Decl {
                 name: "rDoor".to_string(),
-                is_int: false,
+                kind: DeclKind::Ref,
                 line: 1,
             },
         ]
@@ -106,12 +110,9 @@ fn a_declaration_inside_a_block_is_known_everywhere() {
     );
     assert_eq!(s.decls[0].name, "iInside");
     // And the statement after it is still read, so the two passes do not
-    // consume each other.
-    assert_eq!(
-        s.stmts.len(),
-        3,
-        "Begin, the set, and End — the declaration is not a statement"
-    );
+    // consume each other. The declaration is a statement of its own, one
+    // that emits nothing.
+    assert_eq!(s.stmts.len(), 4, "Begin, the declaration, the set, and End");
 }
 
 #[test]
