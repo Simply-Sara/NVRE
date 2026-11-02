@@ -108,7 +108,7 @@ impl Decoded {
                 || SHAPE_DATA_TYPES.contains(&ty)
                 || ty.ends_with("Property")
                 || ty.ends_with("TextureSet")
-                || schema.block_chain(ty).iter().any(|t| *t == "NiNode")
+                || schema.block_chain(ty).contains(&"NiNode")
         })
     }
 
@@ -802,12 +802,9 @@ fn unpack_sse(desc: u64, data: &[u8], s: &Struct, bs_version: u32) -> MeshData {
         .int("num_vertices")
         .map(|n| n as usize)
         .unwrap_or_else(|| {
+            // A stride of zero means no vertex data, so no vertices.
             let stride = (desc & 0x0F) as usize * 4;
-            if stride == 0 {
-                0
-            } else {
-                data.len() / stride
-            }
+            data.len().checked_div(stride).unwrap_or(0)
         });
     let mut md = unpack_sse_raw(desc, data, n, bs_version);
     md.triangles = triangle_indices(s);

@@ -73,7 +73,7 @@ fn main() {
 
     // The sample: every 40th of each stratum, or `cap` of it if that is fewer.
     let mut sample: Vec<String> = Vec::new();
-    for (_, paths) in &strata {
+    for paths in strata.values() {
         let take = if cap > 0 {
             cap.min(paths.len())
         } else {

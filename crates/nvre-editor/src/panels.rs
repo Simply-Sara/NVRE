@@ -1710,6 +1710,7 @@ pub fn status(
 /// pivot to keep it aimed at: it is the eye pushed out along the heading by the
 /// distance, so it follows the camera rather than the other way round. It can be
 /// dialled in here — that is a request like any other — and the distance with it.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn debug(
     mut ctx: Single<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<5>>>,
     mut focus: ResMut<crate::viewport::ViewportFocus>,

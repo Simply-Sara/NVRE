@@ -10,7 +10,6 @@
 //! Usage: `fieldcensus [game_id]`
 
 use nvre_editor::game::ALL;
-use nvre_nif::scene::{scene_objects, Decoded};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// The fields accessed in `shape_props` and its helper functions

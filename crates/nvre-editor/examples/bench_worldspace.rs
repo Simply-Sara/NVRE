@@ -266,6 +266,7 @@ fn setup_bench_scene(mut commands: Commands, primary_window: Query<Entity, With<
     }
 }
 
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn benchmark_step(
     mut exit: MessageWriter<AppExit>,
     mut state: ResMut<BenchState>,

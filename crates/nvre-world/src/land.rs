@@ -275,16 +275,16 @@ mod tests {
         // Row 0 start step +5
         steps[0] = 5;
         // Step each vertex in row 0 by +1
-        for c in 1..SIDE {
-            steps[c] = 1;
+        for c in steps.iter_mut().take(SIDE).skip(1) {
+            *c = 1;
         }
         // Step each subsequent row's starting vertex by +2 relative to previous row's first vertex
         for r in 1..SIDE {
             steps[r * SIDE] = 2;
         }
         // At the bottom-right corner (last row, last col), step each col by +3
-        for c in 1..SIDE {
-            steps[(SIDE - 1) * SIDE + c] = 3;
+        for c in steps.iter_mut().skip((SIDE - 1) * SIDE + 1).take(SIDE - 1) {
+            *c = 3;
         }
 
         let offset = 100.0;

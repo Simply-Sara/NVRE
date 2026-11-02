@@ -666,11 +666,7 @@ impl Session {
 
     /// Resolve lighting for an exterior cell from the active Weather (WTHR) record.
     fn exterior_weather_lighting(&mut self, cell: u32) -> Option<CellLighting> {
-        let is_interior = self
-            .index
-            .cells
-            .get(&cell)
-            .map_or(false, |c| c.is_interior());
+        let is_interior = self.index.cells.get(&cell).is_some_and(|c| c.is_interior());
         if is_interior {
             return None;
         }
@@ -1741,10 +1737,10 @@ impl Session {
             .lo
             .plugins
             .iter()
-            .find(|p| p.name.eq_ignore_ascii_case(&self.doc.name()))
+            .find(|p| p.name.eq_ignore_ascii_case(self.doc.name()))
             .map(|p| p.header.is_localized())
             .unwrap_or(false);
-        let strings = self.strings.for_plugin(&self.doc.name(), localized);
+        let strings = self.strings.for_plugin(self.doc.name(), localized);
         let (edid, name) = nvre_esm::inventory::names(&rec, strings).unwrap_or((None, None));
         Some(ObjectRow {
             fid: form_id,

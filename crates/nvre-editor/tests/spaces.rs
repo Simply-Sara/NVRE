@@ -333,30 +333,26 @@ fn s8_7_terrain_built_once_per_worldspace_predicate() {
     };
 
     // Moving between two cells in the SAME worldspace at the same radius does NOT rebuild terrain
-    assert_eq!(
-        check_rebuild(Some(10), Some(10), 5, 5, false, false),
-        false,
+    assert!(
+        !check_rebuild(Some(10), Some(10), 5, 5, false, false),
         "Same worldspace and radius must NOT rebuild terrain"
     );
 
     // Changing worldspace DOES rebuild
-    assert_eq!(
+    assert!(
         check_rebuild(Some(10), Some(20), 5, 5, false, false),
-        true,
         "Changing worldspace must rebuild terrain"
     );
 
     // Changing radius in local mode DOES rebuild
-    assert_eq!(
+    assert!(
         check_rebuild(Some(10), Some(10), 3, 5, false, false),
-        true,
         "Changing radius must rebuild terrain"
     );
 
     // Changing radius in full_terrain mode does NOT rebuild
-    assert_eq!(
-        check_rebuild(Some(10), Some(10), 3, 5, true, true),
-        false,
+    assert!(
+        !check_rebuild(Some(10), Some(10), 3, 5, true, true),
         "Full terrain mode must ignore radius changes"
     );
 }

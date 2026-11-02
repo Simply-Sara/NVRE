@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn s11_2_text_keys_representation() {
-        let keys = vec![
+        let keys = [
             TextKey {
                 time: 0.0,
                 value: "start".into(),

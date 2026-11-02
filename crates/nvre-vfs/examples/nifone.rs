@@ -34,8 +34,7 @@ fn main() {
         let decode = t.elapsed();
         let reencoded = decoded
             .as_ref()
-            .map(|st| f.reencode_decoded(&schema, &data, i, st).ok())
-            .flatten();
+            .and_then(|st| f.reencode_decoded(&schema, &data, i, st).ok());
         let total = t.elapsed();
         if total.as_millis() > 50 {
             println!(

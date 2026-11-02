@@ -55,7 +55,7 @@ fn main() {
             }
         }
     }
-    rows.sort_by(|a, b| b.1.cmp(&a.1));
+    rows.sort_by_key(|(_, n, _)| std::cmp::Reverse(*n));
     println!("{} cells hold lights; the top ten:", rows.len());
     for (name, lights, resolved) in rows.iter().take(10) {
         println!("  {name:<44} {lights} lights, {resolved} resolved");

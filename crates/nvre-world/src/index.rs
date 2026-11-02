@@ -269,6 +269,7 @@ impl WorldIndex {
     }
 
     /// Add a cell.
+    #[allow(clippy::too_many_arguments)]
     fn add_cell(
         &mut self,
         lo: &LoadOrder,

@@ -84,7 +84,7 @@ fn main() {
         for (k, v) in by_type.iter().rev() {
             println!("    {v:8} {k}");
         }
-        worst.sort_by(|a, b| b.0.cmp(&a.0));
+        worst.sort_by_key(|(n, _)| std::cmp::Reverse(*n));
         println!("  the worst:");
         for (n, what) in worst.iter().take(5) {
             println!("    {n:6} {what}");

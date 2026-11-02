@@ -95,7 +95,7 @@ fn a_duplicate_is_listed_immediately() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     let before: usize = s
         .object_groups("", &flags(&s, true))
         .iter()
@@ -143,7 +143,7 @@ fn a_duplicate_is_filtered_like_any_other_object() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     s.duplicate_object(stat.fid, *b"STAT", "NvreFilteredDuplicate")
         .expect("the duplicate is staged");
 
@@ -181,7 +181,7 @@ fn an_edid_edit_is_listed_immediately() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     let original = stat.edid.clone();
 
     // What the object editor's Apply does, through the session's own field
@@ -224,7 +224,7 @@ fn a_deleted_record_leaves_the_list() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     assert!(
         s.object_groups("", &flags(&s, true))
             .iter()
@@ -258,7 +258,7 @@ fn a_duplicate_opens_in_the_editor_with_its_data() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     let original_subs = s
         .resolved_record(stat.fid)
         .expect("the original resolves")
@@ -304,7 +304,7 @@ fn an_edit_to_a_duplicate_is_shown_and_saved() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     let new = s
         .duplicate_object(stat.fid, *b"STAT", "NvreEditAfterDuplicate")
         .expect("the duplicate is staged");
@@ -369,7 +369,7 @@ fn an_untouched_record_is_listed_from_the_load_order() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     let before = s.object_groups("", &flags(&s, true)).to_vec();
     let before_row = before
         .iter()
@@ -412,7 +412,7 @@ fn this_plugin_only_lists_an_edited_master_record() {
         return;
     };
     // A record from the master, which the mod does not define on disk.
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     assert!(
         stat.fid >> 24 == 0,
         "the record is the master's own, with the master in the top byte"
@@ -448,7 +448,7 @@ fn this_plugin_only_lists_a_duplicate() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     let new = s
         .duplicate_object(stat.fid, *b"STAT", "NvreOwnOnlyDuplicate")
         .expect("the duplicate is staged");
@@ -475,7 +475,7 @@ fn this_plugin_only_lists_fewer_objects_than_the_whole_load_order() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     s.selected = Some(stat.fid);
     s.edit_selected(b"EDID", nvre_edit::document::encode_zstring("NvreCounted"));
 
@@ -507,7 +507,7 @@ fn the_toggle_and_the_filter_are_independent() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     s.selected = Some(stat.fid);
     s.edit_selected(
         b"EDID",
@@ -582,8 +582,9 @@ fn one_master_can_be_hidden_while_the_others_stay_shown() {
     s.set_object_source(master, false)
         .expect("the master hides");
 
+    let flags = s.object_source_flags().to_vec();
     let hidden: usize = s
-        .object_groups("", &s.object_source_flags().to_vec())
+        .object_groups("", &flags)
         .iter()
         .map(|g| g.objects.len())
         .sum();
@@ -671,9 +672,8 @@ fn hiding_a_plugin_removes_its_objects_from_the_list() {
 
     // The very next read — the one the panel makes every frame — has to be the
     // narrower list, without a save and without the filter changing.
-    let without = s
-        .object_groups("", &s.object_source_flags().to_vec())
-        .to_vec();
+    let flags = s.object_source_flags().to_vec();
+    let without = s.object_groups("", &flags).to_vec();
     let fewer: usize = without.iter().map(|g| g.objects.len()).sum();
     assert!(
         fewer < total,
@@ -691,7 +691,7 @@ fn a_duplicate_follows_the_plugin_being_edited() {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let stat = first_row(&s.object_groups("", &flags(&s, true)).to_vec(), "Static");
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
     let new = s
         .duplicate_object(stat.fid, *b"STAT", "NvreFollowsOwn")
         .expect("the duplicate is staged");
@@ -714,9 +714,8 @@ fn a_duplicate_follows_the_plugin_being_edited() {
     // And gone when the mod is hidden, even though the master is still shown:
     // the copy is the mod's record, not the master's.
     s.set_object_source(own, false).expect("the mod hides");
-    let master_only = s
-        .object_groups("", &s.object_source_flags().to_vec())
-        .to_vec();
+    let flags = s.object_source_flags().to_vec();
+    let master_only = s.object_groups("", &flags).to_vec();
     assert!(
         master_only
             .iter()
@@ -744,16 +743,18 @@ fn hiding_a_master_is_undoable() {
         .expect("the master is in the load order");
     s.set_object_source(master, false)
         .expect("the master hides");
+    let flags = s.object_source_flags().to_vec();
     let hidden: Vec<u32> = s
-        .object_groups("", &s.object_source_flags().to_vec())
+        .object_groups("", &flags)
         .iter()
         .flat_map(|g| g.objects.iter())
         .map(|r| r.fid)
         .collect();
     s.set_object_source(master, true)
         .expect("the master shows again");
+    let flags = s.object_source_flags().to_vec();
     let shown: Vec<u32> = s
-        .object_groups("", &s.object_source_flags().to_vec())
+        .object_groups("", &flags)
         .iter()
         .flat_map(|g| g.objects.iter())
         .map(|r| r.fid)

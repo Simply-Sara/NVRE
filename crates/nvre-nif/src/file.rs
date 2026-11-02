@@ -198,7 +198,7 @@ impl NifFile {
                 .map(str::to_string),
         );
         let mut out = Vec::with_capacity(b.range.len());
-        crate::encode::encode_fields(schema, &self.header, &lineage, &fields, st, None, &mut out)?;
+        crate::encode::encode_fields(schema, &self.header, &lineage, fields, st, None, &mut out)?;
         Ok(out == data[b.range.clone()])
     }
 }
@@ -232,7 +232,7 @@ pub fn decode_block(
         type_name: type_name.to_string(),
         version: header.version,
     };
-    read_fields(schema, header, &fields, &mut scope, &mut out, r, None, &ctx)?;
+    read_fields(schema, header, fields, &mut scope, &mut out, r, None, &ctx)?;
     Ok(out)
 }
 
@@ -425,7 +425,7 @@ fn read_field(
                 read_fields(
                     schema,
                     header,
-                    &fields,
+                    fields,
                     &mut sub_scope,
                     &mut sub,
                     r,
@@ -444,7 +444,7 @@ fn read_field(
         read_fields(
             schema,
             header,
-            &fields,
+            fields,
             &mut sub_scope,
             &mut sub,
             r,
@@ -474,7 +474,7 @@ fn read_field(
         read_fields(
             schema,
             header,
-            &fields,
+            fields,
             &mut sub_scope,
             &mut sub,
             r,
@@ -520,7 +520,7 @@ fn read_field(
                     read_fields(
                         schema,
                         header,
-                        &sub_fields,
+                        sub_fields,
                         &mut sub_scope,
                         &mut sub,
                         r,

@@ -424,13 +424,13 @@ impl ModelCtx<'_> {
     pub fn model_profiled(
         &mut self,
         path: &str,
-        mut profile: Option<&mut ModelProfile>,
+        profile: Option<&mut ModelProfile>,
     ) -> Option<Arc<PreparedModel>> {
         let key = nvre_vfs::normalize(path);
         if let Some(m) = self.cache.map.get(&key) {
             return m.clone();
         }
-        let m = match self.prepare(&key, profile.as_deref_mut()) {
+        let m = match self.prepare(&key, profile) {
             Ok(m) => Some(Arc::new(m)),
             Err(e) => {
                 self.cache.failures.push(format!("{key}: {e}"));
@@ -1198,7 +1198,7 @@ mod tests {
             is_node: false,
             children: Vec::new(),
         };
-        let objects = vec![root, mid, shape];
+        let objects = [root, mid, shape];
         let by_block: HashMap<usize, &SceneObject> = objects.iter().map(|o| (o.block, o)).collect();
         let (t, ancestors) = world_transform(&by_block, &objects[2]);
         let x = t.transform_point3(Vec3::ZERO).x;
@@ -1230,7 +1230,7 @@ mod tests {
             is_node: false,
             children: Vec::new(),
         };
-        let objects = vec![shape];
+        let objects = [shape];
         let by_block: HashMap<usize, &SceneObject> = objects.iter().map(|o| (o.block, o)).collect();
         let (t, ancestors) = world_transform(&by_block, &objects[0]);
         assert!(ancestors.is_empty());

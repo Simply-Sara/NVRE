@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let schema_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv");
 
     let t0 = std::time::Instant::now();
-    let mut s = Session::open(&master, &schema_dir, vec!["FalloutNV.esm".to_string()])?;
+    let s = Session::open(&master, &schema_dir, vec!["FalloutNV.esm".to_string()])?;
     let open_ms = t0.elapsed().as_millis();
     println!("session open: {open_ms} ms");
 
@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let top: Vec<_> = {
         let mut v: Vec<(u32, usize)> = counts.iter().map(|(&k, &v)| (k, v)).collect();
-        v.sort_by(|a, b| b.1.cmp(&a.1));
+        v.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
         v.truncate(5);
         v
     };
@@ -113,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let top: Vec<_> = {
         let mut v: Vec<(u32, usize)> = users.iter().map(|(&k, &v)| (k, v)).collect();
-        v.sort_by(|a, b| b.1.cmp(&a.1));
+        v.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
         v.truncate(5);
         v
     };
@@ -175,6 +175,7 @@ fn typedef_has_formid(schema: &nvre_esm::Schema, ty: &nvre_esm::schema::TypeDef)
 }
 
 /// Decode one subrecord against its record's schema.
+#[allow(dead_code)]
 fn decode(
     schema: &nvre_esm::Schema,
     rec: &nvre_esm::Record,

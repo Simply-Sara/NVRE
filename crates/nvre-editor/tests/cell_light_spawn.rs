@@ -68,7 +68,7 @@ fn spawn(cell: u32, data: &str, schema_dir: &str, master: &str) -> Vec<(f32, f32
     let world = app.world_mut();
     let mut out = Vec::new();
     let mut q = world.query::<(Option<&PointLight>, Option<&SpotLight>)>();
-    for (p, s) in q.iter(&world) {
+    for (p, s) in q.iter(world) {
         if let Some(l) = p {
             out.push((l.intensity, l.range, false));
         } else if let Some(l) = s {

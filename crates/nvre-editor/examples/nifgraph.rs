@@ -97,7 +97,7 @@ fn main() {
             }
         }
 
-        for (_block, times) in &listed_by {
+        for times in listed_by.values() {
             if *times > 1 {
                 counts.blocks_with_two_parents += 1;
             }
