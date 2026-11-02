@@ -33,8 +33,8 @@ tracing = "0.1"
 # pbr_specular_textures is what the asset layer needs (normal-map alpha as the
 # specular mask). pan_orbit_camera is Bevy's own camera controller, which the
 # viewport uses instead of hand-rolling an orbit camera.
-bevy = { version = "=0.20.0", features = ["pbr_specular_textures", "pan_orbit_camera"] }
-bevy_egui = "=0.43.0"
+bevy = { version = "=0.20.1", features = ["pbr_specular_textures", "pan_orbit_camera"] }
+bevy_egui = "=0.43.1"
 # egui's table widget. Since egui 0.32 `TableBuilder`/`Column` live here
 # rather than in egui core, and this is the same version line as the egui
 # bevy_egui pins, so the two share one egui.
@@ -44,7 +44,7 @@ egui_extras = "0.36"
 # dialog is the desktop's own and the app needs no GTK), and the OS dialog on
 # Windows and macOS. Default features are kept — `xdg-portal` is the Linux
 # backend, and dropping it would leave Linux with no picker at all.
-rfd = "0.15"
+rfd = "0.17"
 # Dates, in the local time zone: a file's mtime is something a person reads in
 # their own zone, and `SystemTime` alone is a duration since 1970. The
 # `local-offset` feature is what makes the offset resolvable at runtime.

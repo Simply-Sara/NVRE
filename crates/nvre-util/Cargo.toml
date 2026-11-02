@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 encoding_rs = "0.8"
 hex = "0.4"
-sha2 = "0.10"
+sha2 = "0.11"
 thiserror = "2"
 
 [dev-dependencies]
