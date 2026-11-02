@@ -11,6 +11,8 @@
 //! - [`lex`]: source text to tokens, never failing.
 //! - [`opcodes`]: the statement and command opcode tables, and the event
 //!   codes a `Begin` block opens with.
+//! - [`emit`]: the instruction framing — `[opcode:u16][argLen:u16][args]` —
+//!   and the reader that takes one apart again.
 //! - [`compile`]: source text to compiled bytecode, the whole point of the
 //!   crate.
 //!
@@ -29,6 +31,7 @@
 //! own bytes.
 
 pub mod compile;
+pub mod emit;
 pub mod lex;
 pub mod opcodes;
 pub mod parse;

@@ -33,6 +33,20 @@
 /// When the source holds something this compiler does not understand. The
 /// message names the line, because a script that will not compile is one the
 /// user has to fix, and "line 14" is where they look.
-pub fn compile(_source: &str) -> Result<Vec<u8>, crate::Error> {
-    Err(crate::Error::Parse("not implemented yet".to_string()))
+pub fn compile(source: &str) -> Result<Vec<u8>, crate::Error> {
+    let script = crate::parse::parse(source);
+
+    // An unreadable line is a compile error rather than something to skip: a
+    // body shorter than the source asked for would be a silent bug, and the
+    // game would run a script missing a statement the user wrote.
+    for stmt in &script.stmts {
+        if let crate::parse::Stmt::Unknown { line, text } = stmt {
+            return Err(crate::Error::Parse(format!(
+                "line {}: cannot read `{text}`",
+                line + 1
+            )));
+        }
+    }
+
+    crate::emit::emit(&script)
 }

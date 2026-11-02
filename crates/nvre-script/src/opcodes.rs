@@ -508,6 +508,12 @@ impl Event {
             "oncombatend" => OnCombatEnd,
             "onpackagestart" => OnPackageStart,
             "onpackagedone" => OnPackageDone,
+            // The GECK's own blocktype table names this one `OnPackageEnd`,
+            // and the corpus spells it both ways: 12 units write
+            // `OnPackageEnd` and 4 write `OnPackageDone`, and both compile to
+            // 0x0010. So the name is an alias of the same event rather than a
+            // separate one.
+            "onpackageend" => OnPackageDone,
             "scripteffectstart" => ScriptEffectStart,
             "scripteffectfinish" => ScriptEffectFinish,
             "scripteffectupdate" => ScriptEffectUpdate,
