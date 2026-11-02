@@ -101,6 +101,159 @@ fn main() {
         }
     }
 
+    // A parameterless Begin's argument length, across the whole corpus. Two
+    // readings of the frame are possible and the corpus decides between them:
+    // 6 bytes means no parameter count at all, 8 means a count of zero is
+    // always written.
+    let mut empty_arg_lens: std::collections::BTreeMap<usize, usize> =
+        std::collections::BTreeMap::new();
+    let mut with_param: Vec<(String, Vec<u8>)> = Vec::new();
+    for u in &units {
+        for ins in read_instructions(&u.compiled) {
+            if ins.opcode != 0x10 || ins.args.len() < 6 {
+                continue;
+            }
+            // A Begin with a parameter writes one after the block length.
+            if ins.args.len() > 8 {
+                if with_param.len() < 5 {
+                    with_param.push((u.edid.clone(), ins.args.clone()));
+                }
+            } else {
+                *empty_arg_lens.entry(ins.args.len()).or_insert(0) += 1;
+            }
+        }
+    }
+    println!();
+    println!("=== parameterless Begin argument lengths ===");
+    for (len, count) in &empty_arg_lens {
+        println!("  {len} bytes: {count} units");
+    }
+    println!("=== Begins with parameters (the tail after blockLen) ===");
+    for (edid, args) in &with_param {
+        println!("  {edid:<28} {:02X?}", args);
+    }
+
+    // What separates a 6-byte parameterless Begin from an 8-byte one. Both
+    // forms exist in the corpus, so something decides which — the event code,
+    // the script type, or something else. Print the event code of each.
+    let mut six: Vec<u16> = Vec::new();
+    let mut eight: Vec<u16> = Vec::new();
+    let mut six_units: Vec<&str> = Vec::new();
+    let mut eight_units: Vec<&str> = Vec::new();
+    for u in &units {
+        for ins in read_instructions(&u.compiled) {
+            if ins.opcode != 0x10 || ins.args.len() < 6 {
+                continue;
+            }
+            let event = u16::from_le_bytes([ins.args[0], ins.args[1]]);
+            if ins.args.len() == 6 {
+                six.push(event);
+                if six_units.len() < 8 {
+                    six_units.push(&u.edid);
+                }
+            } else if ins.args.len() == 8 {
+                eight.push(event);
+                if eight_units.len() < 8 {
+                    eight_units.push(&u.edid);
+                }
+            }
+        }
+    }
+    let events_of = |v: &[u16]| -> String {
+        let mut c: std::collections::BTreeMap<u16, usize> = std::collections::BTreeMap::new();
+        for e in v {
+            *c.entry(*e).or_insert(0) += 1;
+        }
+        c.iter()
+            .map(|(e, n)| format!("0x{e:04X}:{n}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    // The name the corpus spells for each event code. This is the authority:
+    // the pairing is positional, so the nth source `Begin` is the nth bytecode
+    // `Begin`, and the spelling is the writer's own.
+    println!();
+    println!("=== the name the corpus spells for each event code ===");
+    let mut names_by_code: std::collections::BTreeMap<
+        u16,
+        std::collections::BTreeMap<String, usize>,
+    > = std::collections::BTreeMap::new();
+    let mut skipped = 0usize;
+    for u in &units {
+        let src_names: Vec<&str> = u
+            .source
+            .lines()
+            .filter_map(|line| {
+                let mut words = line.split_whitespace();
+                let first = words.next()?;
+                if !first.eq_ignore_ascii_case("begin") {
+                    return None;
+                }
+                words.next()
+            })
+            .collect();
+        let codes: Vec<u16> = read_instructions(&u.compiled)
+            .into_iter()
+            .filter(|i| i.opcode == 0x10 && i.args.len() >= 6)
+            .map(|i| u16::from_le_bytes([i.args[0], i.args[1]]))
+            .collect();
+        if src_names.len() != codes.len() {
+            skipped += 1;
+            continue;
+        }
+        for (name, code) in src_names.iter().zip(codes.iter()) {
+            *names_by_code
+                .entry(*code)
+                .or_default()
+                .entry((*name).to_string())
+                .or_default() += 1;
+        }
+    }
+    for (code, names) in &names_by_code {
+        let top: Vec<String> = {
+            let mut v: Vec<(&String, &usize)> = names.iter().collect();
+            v.sort_by(|a, b| b.1.cmp(a.1));
+            v.iter().take(3).map(|(n, c)| format!("{n}({c})")).collect()
+        };
+        println!("  0x{code:04X}  {}", top.join(", "));
+    }
+    println!("({skipped} units skipped)");
+
+    println!();
+    println!("=== 6-byte vs 8-byte parameterless Begins, by event ===");
+    println!("  6 bytes: {}", events_of(&six));
+    println!("  8 bytes: {}", events_of(&eight));
+    println!("  (6-byte units: {six_units:?})");
+    println!("  (8-byte units: {eight_units:?})");
+
+    // A named unit's bytes, so a specific block can be measured exactly.
+    for want in ["NCRCFScramblerScript", "vHDNCROutsideOliverScript"] {
+        if let Some(u) = units.iter().find(|u| u.edid.eq_ignore_ascii_case(want)) {
+            println!();
+            println!(
+                "--- {} ({:08X}) : {} bytes ---",
+                u.edid,
+                u.fid,
+                u.compiled.len()
+            );
+            for line in u.source.lines() {
+                if !line.trim().is_empty() {
+                    println!("  | {line}");
+                }
+            }
+            println!("  full body: {:02X?}", u.compiled);
+            for ins in read_instructions(&u.compiled) {
+                println!(
+                    "    @{:<4} 0x{:04X} args[{}] = {:02X?}",
+                    ins.at,
+                    ins.opcode,
+                    ins.args.len(),
+                    ins.args
+                );
+            }
+        }
+    }
+
     // Every Begin's argument shape across the corpus: how many arguments the
     // event takes, and what the block length is. This is the table the emitter
     // needs, and it is the game's own answer rather than a spec's.

@@ -288,22 +288,27 @@ fn emit_block(script: &Script, start: usize) -> Result<Vec<u8>, crate::Error> {
     // the depth counter tracks which `End` closes which `Begin`.
     let mut body = Vec::new();
     let mut closed = false;
-    let mut depth = 0usize;
-    for (offset, stmt) in script.stmts[start + 1..].iter().enumerate() {
+    let mut i = start + 1;
+    while i < script.stmts.len() {
+        let stmt = &script.stmts[i];
         match stmt {
+            // A nested block, emitted whole: its `Begin`, its body and its
+            // `End`. The recursion owns that `End`, so the walk resumes past
+            // it rather than reaching it a second time — otherwise the inner
+            // block's `End` is written twice, and the outer block's length is
+            // four bytes longer than the game's own.
             Stmt::Begin { .. } => {
-                depth += 1;
-                body.extend(emit_block(script, start + 1 + offset)?);
+                body.extend(emit_block(script, i)?);
+                i = after_block(script, i);
             }
-            Stmt::End if depth == 0 => {
+            Stmt::End => {
                 closed = true;
                 break;
             }
-            Stmt::End => {
-                depth -= 1;
-                body.extend(frame(StmtOp::End.opcode(), &[]));
+            other => {
+                body.extend(emit_statement(script, other)?);
+                i += 1;
             }
-            other => body.extend(emit_statement(other)?),
         }
     }
     if !closed {
@@ -332,8 +337,15 @@ fn emit_block(script: &Script, start: usize) -> Result<Vec<u8>, crate::Error> {
     // `Begin`'s arguments through the `End` inclusive — not the body alone.
     let block_len = body.len() + 4;
     begin_args.extend_from_slice(&(block_len as u32).to_le_bytes());
-    if !params.is_empty() {
-        begin_args.extend_from_slice(&1u16.to_le_bytes());
+    // The parameter count, and only for the events that can take one.
+    //
+    // This is the detail that is easiest to get wrong, because both forms
+    // exist: `Begin GameMode` writes six argument bytes with no count at all,
+    // and `Begin OnDeath` writes eight with a count of zero — even when
+    // nothing is passed to it. The corpus splits 1,132 to 1,033 between the
+    // two, and the split is exactly `Event::takes_argument`.
+    if code.takes_argument() {
+        begin_args.extend_from_slice(&(params.len() as u16 / 3).to_le_bytes());
         begin_args.extend_from_slice(&params);
     }
 
@@ -362,12 +374,13 @@ fn emit_begin_params(script: &Script, start: usize) -> Result<Vec<u8>, crate::Er
 }
 
 /// Emit one statement that is not a block.
-fn emit_statement(stmt: &Stmt) -> Result<Vec<u8>, crate::Error> {
+fn emit_statement(script: &Script, stmt: &Stmt) -> Result<Vec<u8>, crate::Error> {
     match stmt {
         Stmt::End => Ok(frame(StmtOp::End.opcode(), &[])),
         Stmt::Return => Ok(frame(StmtOp::Return.opcode(), &[])),
         // `ScriptName` inside a block is the same marker as outside one.
         Stmt::ScriptName(_) => Ok(frame(StmtOp::ScriptName.opcode(), &[])),
+        Stmt::Set { target, expr } => emit_set(script, target, expr),
         // A declaration emits nothing: the variable is in the record's
         // `SLSD`/`SCVR` list, which is the writer's job rather than the
         // bytecode's.
@@ -376,6 +389,41 @@ fn emit_statement(stmt: &Stmt) -> Result<Vec<u8>, crate::Error> {
             describe(stmt)
         ))),
     }
+}
+
+/// Emit `set <target> to <expr>`.
+///
+/// Measured, and the shape is not the obvious one:
+///
+/// ```text
+/// 15 00 [argLen] [destination] [len:u16] 0x20 [the literal's own bytes]
+/// ```
+///
+/// The destination is a tagged value — `73 01 00` for a variable of this
+/// script, `72 01 00` for one of the record's references — and the length
+/// that precedes the value counts the `0x20` tag along with the literal's
+/// bytes. So `set PickedUp to 1` is
+///
+/// ```text
+/// 15 00 07 00 | 73 01 00 | 02 00 | 20 31
+/// ```
+///
+/// where `02 00` is the length of `20 31` and `31` is the ASCII `1`.
+fn emit_set(
+    script: &Script,
+    target: &crate::lex::Token,
+    expr: &[crate::lex::Token],
+) -> Result<Vec<u8>, crate::Error> {
+    // The destination. A bare name is a variable of this script, resolved
+    // through the declarations — the record's own variable list is the only
+    // correct index, and a guessed one would assign to the wrong variable.
+    let dest = crate::value::read_value(std::slice::from_ref(target), &script.decls)?;
+    let value = crate::value::read_value(expr, &script.decls)?;
+
+    let mut args = crate::value::encode(&dest);
+    args.extend(crate::value::encode_assigned(&value));
+
+    Ok(frame(StmtOp::Set.opcode(), &args))
 }
 
 #[cfg(test)]
@@ -479,9 +527,11 @@ mod emit_tests {
         let got = compile("scn S\nBegin GameMode\n  Begin MenuMode\n  End\nEnd").unwrap();
         // The outer Begin's blockLen is at offset 8, for the same reason.
         let outer_len = u32::from_le_bytes([got[10], got[11], got[12], got[13]]);
-        // The inner block is its own Begin(14) + End(4) = 18 bytes, and the
-        // outer block's length counts its own End as well — so 22.
-        assert_eq!(outer_len, 22, "the inner block and the outer End");
+        // The inner block is its own Begin(4 + 8 argument bytes = 12) + End(4)
+        // = 16 bytes, and the outer block's length counts its own End as well —
+        // so 20. `MenuMode` can take a parameter, so its parameterless form
+        // writes the count of zero rather than omitting the field.
+        assert_eq!(outer_len, 20, "the inner block and the outer End");
     }
 
     #[test]
@@ -507,5 +557,148 @@ mod emit_tests {
     fn a_command_call_is_refused_until_the_opcode_table_covers_it() {
         let err = compile("scn S\nBegin GameMode\n  SetAV Player 5 10\nEnd").unwrap_err();
         assert!(err.to_string().contains("not emitted yet"), "{err}");
+    }
+}
+
+#[cfg(test)]
+mod set_tests {
+    use super::*;
+    use crate::parse::parse;
+
+    fn compile(source: &str) -> Result<Vec<u8>, crate::Error> {
+        emit(&parse(source))
+    }
+
+    #[test]
+    fn setting_a_local_to_one_is_the_games_own_bytes() {
+        // Measured against BMToyCarScript, whose `int PickedUp` is the first
+        // declaration and which does `set PickedUp to 1`:
+        //
+        //   15 00 07 00 | 73 01 00 | 02 00 | 20 31
+        //
+        // The destination is `s` + the 1-based index, the length counts the
+        // `0x20` tag and the digit together, and `31` is the ASCII `1`.
+        //
+        // `OnAdd` can take a parameter, so its parameterless form writes the
+        // count of zero — eight argument bytes, not six. Measured against
+        // BMToyCarScript's own `Begin OnAdd`.
+        assert_eq!(
+            compile("scn S\nint PickedUp\nBegin OnAdd\n  set PickedUp to 1\nEnd").unwrap(),
+            vec![
+                0x1D, 0x00, 0x00, 0x00, // ScriptName
+                0x10, 0x00, 0x08, 0x00, // Begin, argLen 8
+                0x03, 0x00, // event OnAdd
+                // blockLen 15: the set's 11 bytes plus the End's 4.
+                0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, // paramCount 0
+                0x15, 0x00, 0x07, 0x00, // Set, argLen 7
+                0x73, 0x01, 0x00, // `s`, variable 1
+                0x02, 0x00, // the value's length: the tag plus the digit
+                0x20, 0x31, // the literal `1`
+                0x11, 0x00, 0x00, 0x00, // End
+            ]
+        );
+    }
+
+    #[test]
+    fn a_two_digit_number_is_two_ascii_digits() {
+        // Measured: `to 40` writes `03 00 20 34 30` — the length is 3 because
+        // it counts the tag and both digits.
+        let got = compile("scn S\nint V\nBegin OnAdd\n  set V to 40\nEnd").unwrap();
+        assert!(
+            got.windows(5).any(|w| w == [0x03, 0x00, 0x20, 0x34, 0x30]),
+            "the two-digit literal, as its own ASCII: {:02X?}",
+            got
+        );
+    }
+
+    #[test]
+    fn setting_an_undeclared_variable_is_refused() {
+        // A guessed index would assign to the wrong variable.
+        let err = compile("scn S\nBegin OnAdd\n  set NoSuchVar to 1\nEnd").unwrap_err();
+        assert!(err.to_string().contains("NoSuchVar"), "{err}");
+    }
+
+    #[test]
+    fn a_variable_can_be_assigned_to_another_variable() {
+        // The destination and the source are both tagged values, so `set A to
+        // B` is two variable references with no literal at all.
+        let got = compile("scn S\nint A\nint B\nBegin OnAdd\n  set A to B\nEnd").unwrap();
+        // Set's arguments: `s`+1 (A), then `s`+2 (B) as the assigned value.
+        assert!(
+            got.windows(3).any(|w| w == [0x73, 0x01, 0x00]),
+            "A is variable 1: {:02X?}",
+            got
+        );
+        assert!(
+            got.windows(3).any(|w| w == [0x73, 0x02, 0x00]),
+            "B is variable 2: {:02X?}",
+            got
+        );
+    }
+
+    #[test]
+    fn an_expression_this_emitter_does_not_understand_is_refused() {
+        // Arithmetic is a wrong encoding rather than a missing one.
+        let err = compile("scn S\nint V\nBegin OnAdd\n  set V to 1 + 2\nEnd").unwrap_err();
+        assert!(err.to_string().contains("1 + 2"), "{err}");
+    }
+}
+
+#[cfg(test)]
+mod param_count_tests {
+    use super::*;
+    use crate::parse::parse;
+
+    fn compile(source: &str) -> Result<Vec<u8>, crate::Error> {
+        emit(&parse(source))
+    }
+
+    #[test]
+    fn an_event_that_cannot_take_an_argument_writes_no_count() {
+        // `GameMode` is six argument bytes with no count at all. Measured over
+        // 584 parameterless `GameMode` blocks in the corpus.
+        assert_eq!(
+            compile("scn S\nBegin GameMode\nEnd").unwrap(),
+            vec![
+                0x1D, 0x00, 0x00, 0x00, // ScriptName
+                0x10, 0x00, 0x06, 0x00, // Begin, argLen 6
+                0x00, 0x00, // event GameMode
+                0x04, 0x00, 0x00, 0x00, // blockLen 4
+                0x11, 0x00, 0x00, 0x00, // End
+            ]
+        );
+    }
+
+    #[test]
+    fn an_event_that_can_take_an_argument_writes_a_count_of_zero() {
+        // `OnDeath` is eight argument bytes with a count of zero, even with
+        // nothing passed to it. Measured over 305 parameterless `OnDeath`
+        // blocks — and the 1,132-to-1,033 split between the two forms across
+        // the corpus is exactly this rule.
+        assert_eq!(
+            compile("scn S\nBegin OnDeath\nEnd").unwrap(),
+            vec![
+                0x1D, 0x00, 0x00, 0x00, // ScriptName
+                0x10, 0x00, 0x08, 0x00, // Begin, argLen 8
+                0x0A, 0x00, // event OnDeath
+                0x04, 0x00, 0x00, 0x00, // blockLen 4
+                0x00, 0x00, // paramCount 0
+                0x11, 0x00, 0x00, 0x00, // End
+            ]
+        );
+    }
+
+    #[test]
+    fn the_two_forms_are_both_real_and_the_corpus_splits_between_them() {
+        // The rule stated as a table, so a future edit that gets it wrong has
+        // a test to fail. These are the corpus's own counts.
+        assert!(!Event::GameMode.takes_argument());
+        assert!(!Event::OnLoad.takes_argument());
+        assert!(!Event::OnReset.takes_argument());
+        assert!(!Event::ScriptEffectStart.takes_argument());
+        assert!(Event::OnActivate.takes_argument());
+        assert!(Event::OnDeath.takes_argument());
+        assert!(Event::OnTriggerEnter.takes_argument());
+        assert!(Event::OnTrigger.takes_argument());
     }
 }

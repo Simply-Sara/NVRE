@@ -63,26 +63,50 @@ fn main() {
     let mut equal = 0usize;
     let mut differs = 0usize;
     let mut first_differs: Vec<(u32, String)> = Vec::new();
+    let mut reasons: Vec<String> = Vec::new();
+    let mut differing: Vec<&(u32, String, Vec<u8>)> = Vec::new();
 
-    for (fid, source, expected) in &units {
+    for unit in &units {
+        let (fid, source, expected) = (unit.0, &unit.1, &unit.2);
         match compile(source.as_str()) {
             Ok(got) => {
                 if got.as_slice() == expected.as_slice() {
                     equal += 1;
                 } else {
+                    reasons.push(describe(&got, expected));
                     differs += 1;
+                    differing.push(unit);
                     if first_differs.len() < 20 {
-                        first_differs.push((*fid, describe(&got, expected)));
+                        first_differs.push((fid, describe(&got, expected)));
                     }
                 }
             }
             Err(e) => {
                 differs += 1;
+                reasons.push(format!("compile error: {e}"));
+                differing.push(unit);
                 if first_differs.len() < 20 {
-                    first_differs.push((*fid, format!("compile error: {e}")));
+                    first_differs.push((fid, format!("compile error: {e}")));
                 }
             }
         }
+    }
+
+    // Why each unit failed, grouped. A count per reason says what to emit next,
+    // rather than whatever unit happens to sort first.
+    let mut counted: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for r in &reasons {
+        // The message's leading shape, so the same kind of failure groups
+        // together even when the names in it differ.
+        // The whole message, so a specific reason is visible rather than
+        // everything collapsing into `compile error`.
+        *counted.entry(r.clone()).or_insert(0) += 1;
+    }
+    println!("why they differ:");
+    let mut sorted: Vec<(&String, &usize)> = counted.iter().collect();
+    sorted.sort_by(|a, b| b.1.cmp(a.1));
+    for (reason, count) in sorted.iter().take(20) {
+        println!("  {count:>5}  {reason}");
     }
 
     let total = equal + differs;
@@ -93,6 +117,51 @@ fn main() {
     };
     println!("byte-equal: {equal} / {total}  ({pct:.2}%)");
     println!("differs:    {differs}");
+    // A few source lines behind the most common reasons, so the failure can be
+    // read rather than guessed from its message alone.
+    println!();
+    // The units that compile but differ only by a couple of bytes: those are
+    // a real encoding bug rather than a missing statement type, and they are
+    // worth reading because a length mismatch localises the fault.
+    println!("the units that compile but differ in length:");
+    let mut length_diffs = 0;
+    for u in &differing {
+        let Ok(got) = compile(&u.1) else { continue };
+        if got.len() != u.2.len() {
+            if length_diffs < 5 {
+                println!("  {:08X}  {} bytes vs {}", u.0, got.len(), u.2.len());
+                for line in u.1.lines().filter(|l| !l.trim().is_empty()).take(10) {
+                    println!("      | {line}");
+                }
+            }
+            length_diffs += 1;
+        }
+    }
+    println!("  ({length_diffs} units compile but have the wrong length)");
+
+    println!();
+    println!("a few failing source lines:");
+    let mut shown = 0;
+    for u in &differing {
+        if shown >= 6 {
+            break;
+        }
+        // Only the "not a declared variable" class: that one is a parser or
+        // emitter bug rather than a missing statement type, so it is the
+        // interesting thing to read.
+        let Err(e) = compile(&u.1) else { continue };
+        if !e.to_string().contains("is not a declared variable") {
+            continue;
+        }
+        // The line the message names, when it names one.
+        println!("  {e}");
+        for line in u.1.lines().filter(|l| !l.trim().is_empty()).take(14) {
+            println!("      | {line}");
+        }
+        shown += 1;
+        println!();
+    }
+
     println!();
     if !first_differs.is_empty() {
         println!("the first {} that differ:", first_differs.len());

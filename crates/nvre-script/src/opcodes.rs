@@ -363,6 +363,32 @@ pub enum Event {
 
 impl Event {
     /// The event this code is, if it is one.
+    /// Whether this event's block can take a parameter.
+    ///
+    /// The game writes a `paramCount` field in a `Begin`'s arguments only for
+    /// the events that can receive one, and the corpus decides which without
+    /// ambiguity: 1,132 parameterless `Begin`s of the no-argument events write
+    /// six argument bytes with no count at all, and 1,033 of the others write
+    /// eight with a count of zero. `GameMode` is six; `OnActivate` is eight
+    /// even when nothing is passed to it.
+    pub fn takes_argument(self) -> bool {
+        !matches!(
+            self,
+            Self::GameMode
+                | Self::OnCombatEnd
+                | Self::ScriptEffectStart
+                | Self::ScriptEffectFinish
+                | Self::ScriptEffectUpdate
+                | Self::OnLoad
+                | Self::OnReset
+                | Self::OnOpen
+                | Self::OnClose
+                | Self::OnGrab
+                | Self::OnRelease
+                | Self::OnFire
+        )
+    }
+
     pub fn from_code(code: u16) -> Option<Self> {
         use Event::*;
         Some(match code {

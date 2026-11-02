@@ -35,6 +35,7 @@ pub mod emit;
 pub mod lex;
 pub mod opcodes;
 pub mod parse;
+pub mod value;
 
 /// The crate's own error type.
 #[derive(Debug, thiserror::Error)]
