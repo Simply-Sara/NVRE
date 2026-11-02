@@ -1,0 +1,15 @@
+[package]
+name = "nvre-script"
+description = "NVRE's obscript toolchain: lexer, parser, bytecode emitter and the compiler that turns source into a SCPT record's SCDA"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+nvre-util.workspace = true
+nvre-esm = { path = "../nvre-esm" }
+bytes.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest = "1"

@@ -4592,6 +4592,17 @@ name = "nvre-schemas"
 version = "0.1.0"
 
 [[package]]
+name = "nvre-script"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "nvre-esm",
+ "nvre-util",
+ "proptest",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "nvre-util"
 version = "0.1.0"
 dependencies = [

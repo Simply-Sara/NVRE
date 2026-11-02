@@ -4011,15 +4011,25 @@ pub struct PackageScript {
 }
 
 /// The `SCHR` header of a script, from the shared Script collection.
+///
+/// The layout is measured against every script in `FalloutNV.esm` and matches
+/// `schemas/base/shared.json`'s own `ScriptHeader`: four unused bytes, the
+/// reference count, the compiled size, the variable count, the type at 0x10 and
+/// the flags at 0x12. There is **no version field** — what an earlier reader
+/// took for one at 16..20 is the type and the flags together.
 #[derive(Debug, Clone, Default)]
 pub struct ScriptHeader {
     /// `SCHR` Type — the uint16: Object, Quest or Effect.
     pub script_type: u32,
     /// `SCHR` Flags — the uint16: Enabled.
     pub flags: u16,
-    /// `SCHR` Version — the uint32.
-    pub version: u32,
-    /// `SCHR` — the int32 unknown the spec names.
+    /// `SCHR` Compiled Size — the uint32, the length of the `SCDA` that
+    /// follows. Held rather than written, because a save that changes nothing
+    /// must reproduce the record's own bytes; the editor does not compile, so
+    /// the size is the game's to own.
+    pub compiled_size: u32,
+    /// `SCHR` — the four unused bytes the spec names, kept so a save that
+    /// changes nothing reproduces them.
     pub unknown: i32,
 }
 
@@ -7762,11 +7772,19 @@ impl ObjectEditorState {
         for sub in raw_subs {
             match &sub.sig {
                 b"SCHR" if sub.data.len() >= 20 => {
+                    // The measured layout: four unused bytes, then the
+                    // reference count, the compiled size, the variable count,
+                    // the type at 0x10 and the flags at 0x12. Reading the type
+                    // from 12..14 instead — as this did — reads the variable
+                    // count, and reading a "version" from 16..20 reads the
+                    // type and the flags: there is no version field in a
+                    // `SCHR`. `schemas/base/shared.json`'s `ScriptHeader` names
+                    // the same five fields.
                     let b = &sub.data;
-                    self.scpt_header.script_type = u16::from_le_bytes([b[12], b[13]]) as u32;
-                    self.scpt_header.flags = u16::from_le_bytes([b[14], b[15]]);
-                    self.scpt_header.version = u32::from_le_bytes([b[16], b[17], b[18], b[19]]);
-                    self.scpt_header.unknown = i32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+                    self.scpt_header.unknown = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+                    self.scpt_header.compiled_size = u32::from_le_bytes([b[8], b[9], b[10], b[11]]);
+                    self.scpt_header.script_type = u16::from_le_bytes([b[16], b[17]]) as u32;
+                    self.scpt_header.flags = u16::from_le_bytes([b[18], b[19]]);
                 }
                 b"SCDA" => self.scpt_compiled = sub.data.clone(),
                 b"SCTX" => self.scpt_source = String::from_utf8_lossy(&sub.data).into_owned(),
@@ -7921,19 +7939,19 @@ impl ObjectEditorState {
                 b"XIBS" => self.pmis_ignored_by_sandbox = true,
                 b"SCHR" if sub.data.len() >= 20 => {
                     self.pmis_script = Some(ScriptHeader {
-                        script_type: u16::from_le_bytes([sub.data[12], sub.data[13]]) as u32,
-                        flags: u16::from_le_bytes([sub.data[14], sub.data[15]]),
-                        version: u32::from_le_bytes([
-                            sub.data[16],
-                            sub.data[17],
-                            sub.data[18],
-                            sub.data[19],
-                        ]),
-                        unknown: i32::from_le_bytes([
+                        script_type: u16::from_le_bytes([sub.data[16], sub.data[17]]) as u32,
+                        flags: u16::from_le_bytes([sub.data[18], sub.data[19]]),
+                        compiled_size: u32::from_le_bytes([
                             sub.data[8],
                             sub.data[9],
                             sub.data[10],
                             sub.data[11],
+                        ]),
+                        unknown: i32::from_le_bytes([
+                            sub.data[0],
+                            sub.data[1],
+                            sub.data[2],
+                            sub.data[3],
                         ]),
                     });
                 }
@@ -8446,10 +8464,10 @@ impl ObjectEditorState {
                 b"SCHR" if sub.data.len() >= 20 => {
                     let b = &sub.data;
                     let header = ScriptHeader {
-                        script_type: u16::from_le_bytes([b[12], b[13]]) as u32,
-                        flags: u16::from_le_bytes([b[14], b[15]]),
-                        version: u32::from_le_bytes([b[16], b[17], b[18], b[19]]),
-                        unknown: i32::from_le_bytes([b[8], b[9], b[10], b[11]]),
+                        script_type: u16::from_le_bytes([b[16], b[17]]) as u32,
+                        flags: u16::from_le_bytes([b[18], b[19]]),
+                        compiled_size: u32::from_le_bytes([b[8], b[9], b[10], b[11]]),
+                        unknown: i32::from_le_bytes([b[0], b[1], b[2], b[3]]),
                     };
                     let header_raw = sub.data.clone();
                     if let Some(script) = cur.as_mut() {
@@ -12911,14 +12929,16 @@ impl ObjectEditorState {
     fn save_scpt(&self, session: &mut crate::session::Session) {
         let fid = self.form_id;
         // SCHR is twenty bytes: the four unnamed bytes, the reference count,
-        // the compiled size, the variable count, the type and the flags.
+        // the compiled size, the variable count, the type at 0x10 and the flags
+        // at 0x12. Written over the record's own bytes, so the fields the spec
+        // does not name — and the counts the editor does not compute — survive.
         let original = self.raw_subs.get(b"SCHR").cloned();
         let mut schr = original.unwrap_or_else(|| vec![0u8; 20]);
         schr.resize(20, 0);
-        schr[8..12].copy_from_slice(&self.scpt_header.unknown.to_le_bytes());
-        schr[12..14].copy_from_slice(&(self.scpt_header.script_type as u16).to_le_bytes());
-        schr[14..16].copy_from_slice(&self.scpt_header.flags.to_le_bytes());
-        schr[16..20].copy_from_slice(&self.scpt_header.version.to_le_bytes());
+        schr[0..4].copy_from_slice(&self.scpt_header.unknown.to_le_bytes());
+        schr[8..12].copy_from_slice(&self.scpt_header.compiled_size.to_le_bytes());
+        schr[16..18].copy_from_slice(&(self.scpt_header.script_type as u16).to_le_bytes());
+        schr[18..20].copy_from_slice(&self.scpt_header.flags.to_le_bytes());
         session.doc.set_sub(fid, b"SCHR", schr);
 
         // SCDA and SCTX are optional: a record the modder emptied does not
@@ -13030,10 +13050,10 @@ impl ObjectEditorState {
         if let Some(header) = &self.pmis_script {
             if self.raw_subs.contains_key(b"SCHR") {
                 let mut schr = vec![0u8; 20];
-                schr[8..12].copy_from_slice(&header.unknown.to_le_bytes());
-                schr[12..14].copy_from_slice(&(header.script_type as u16).to_le_bytes());
-                schr[14..16].copy_from_slice(&header.flags.to_le_bytes());
-                schr[16..20].copy_from_slice(&header.version.to_le_bytes());
+                schr[0..4].copy_from_slice(&header.unknown.to_le_bytes());
+                schr[8..12].copy_from_slice(&header.compiled_size.to_le_bytes());
+                schr[16..18].copy_from_slice(&(header.script_type as u16).to_le_bytes());
+                schr[18..20].copy_from_slice(&header.flags.to_le_bytes());
                 session.doc.set_sub(fid, b"SCHR", schr);
             }
         }
@@ -13624,10 +13644,10 @@ impl ObjectEditorState {
             // the spec does not name survive.
             let mut schr = script.header_raw.clone();
             schr.resize(20, 0);
-            schr[8..12].copy_from_slice(&script.header.unknown.to_le_bytes());
-            schr[12..14].copy_from_slice(&(script.header.script_type as u16).to_le_bytes());
-            schr[14..16].copy_from_slice(&script.header.flags.to_le_bytes());
-            schr[16..20].copy_from_slice(&script.header.version.to_le_bytes());
+            schr[0..4].copy_from_slice(&script.header.unknown.to_le_bytes());
+            schr[8..12].copy_from_slice(&script.header.compiled_size.to_le_bytes());
+            schr[16..18].copy_from_slice(&(script.header.script_type as u16).to_le_bytes());
+            schr[18..20].copy_from_slice(&script.header.flags.to_le_bytes());
             seq.push((*b"SCHR", schr));
             if !script.compiled.is_empty() {
                 seq.push((*b"SCDA", script.compiled.clone()));
@@ -23960,8 +23980,9 @@ fn draw_pack_ui(
                         egui::DragValue::new(&mut script.header.script_type).range(0..=u32::MAX),
                     );
                     ui.separator();
-                    ui.label("Version:");
-                    ui.add(egui::DragValue::new(&mut script.header.version).range(0..=u32::MAX));
+                    // The compiled size is the length of this script's own
+                    // `SCDA`, which the game wrote. Shown, not edited.
+                    ui.label(format!("Compiled size: {}", script.header.compiled_size));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Source:");
@@ -24119,8 +24140,13 @@ fn draw_scpt_ui(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
                     }
                 });
             ui.separator();
-            ui.label("Version:");
-            ui.add(egui::DragValue::new(&mut state.scpt_header.version).range(0..=1000));
+            // The compiled size is the length of the `SCDA` that follows, which
+            // the game wrote. It is shown rather than edited: the editor does
+            // not compile, so a value typed here would be a lie the game reads.
+            ui.label(format!(
+                "Compiled size: {} byte(s)",
+                state.scpt_header.compiled_size
+            ));
         });
         ui.label(format!(
             "Compiled script: {} byte(s)",

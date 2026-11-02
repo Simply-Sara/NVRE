@@ -231,8 +231,16 @@ fn every_field_of_a_real_script_is_loaded() {
     assert_eq!(state.edid, "VMS18CompanionFreezerExitSCRIPT");
 
     // --- SCHR ---
-    assert_eq!(state.scpt_header.script_type, 1, "SCHR: Type (Object)");
-    assert_eq!(state.scpt_header.version, 0, "SCHR: Version");
+    // The measured layout: type at 0x10, flags at 0x12, the compiled size at
+    // 0x08. There is no version field — the earlier reader took the type and
+    // the flags together for one. `schemas/base/shared.json`'s `ScriptHeader`
+    // names the same five fields.
+    assert_eq!(state.scpt_header.script_type, 0, "SCHR: Type (Object)");
+    assert_eq!(state.scpt_header.flags, 1, "SCHR: Flags (compiled)");
+    assert_eq!(
+        state.scpt_header.compiled_size, 156,
+        "SCHR: Compiled Size, the length of the SCDA that follows"
+    );
 
     // --- SCDA and SCTX ---
     assert_eq!(state.scpt_compiled.len(), 156, "SCDA: the compiled script");
