@@ -173,9 +173,6 @@ pub struct CellEditorState {
     /// `XCCM` climate.
     pub climate: Option<u32>,
 
-    /// The record's header flags, for the Quest Item and Persistent checkboxes.
-    pub record_flags: u32,
-
     /// The loaded subrecords, one per signature. A signature that appears
     /// twice keeps its last value here — a `CELL` record carries each at most
     /// once, so that is not a loss for this type.
@@ -240,7 +237,6 @@ impl CellEditorState {
         self.image_space = None;
         self.music_type = None;
         self.climate = None;
-        self.record_flags = 0;
         self.raw_subs.clear();
         self.raw_xclr.clear();
 
@@ -253,7 +249,6 @@ impl CellEditorState {
             self.status = format!("cell {cell:08X} has no readable subrecords");
             return;
         };
-        self.record_flags = rec.header.flags;
 
         // The plugin whose strings a localized name resolves through.
         let localized = session.doc.record(cell).is_some() && session.doc.is_localized();
@@ -368,13 +363,11 @@ impl CellEditorState {
         if self.raw_subs.contains_key(b"DATA") {
             session.doc.set_sub(fid, b"DATA", vec![self.data_flags]);
         }
-        // The header's own flags, written whenever the record had a flag word
-        // to begin with: a cell with none does not gain one. The word is
-        // written whole rather than rebuilt from the bits the editor models,
-        // so a bit it does not name survives.
-        if self.record_flags != 0 {
-            session.doc.set_flags(fid, self.record_flags);
-        }
+        // The header's own flags are not written. The window no longer edits
+        // them, so an apply has nothing to say about them, and writing the
+        // word unchanged would still mark the record as touched — which is
+        // what puts it in the mod's ONAM array as an override it did not ask
+        // for. They stay editable on the reference's own record.
 
         // XCLC: the grid's own bytes with the two int32s and the hide byte
         // overwritten. An interior has none, and writing one would give it a
@@ -680,7 +673,14 @@ pub fn ui(
     });
 }
 
-/// Editor ID, name, and the header's own flags.
+/// Editor ID and name.
+///
+/// The header's own flags are not shown here. `Quest Item` and `Persistent`
+/// are per-reference concerns in a cell — a cell's own references carry them,
+/// and a `CELL` record setting them is not something the game's cells do — so
+/// a checkbox for them on the cell would be a control with no meaning. They
+/// stay editable where they belong, on the reference's own record in the
+/// Object Editor.
 fn header_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
     ui.group(|ui| {
         ui.horizontal(|ui| {
@@ -695,24 +695,6 @@ fn header_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
                 egui::TextEdit::singleline(&mut state.full_name)
                     .desired_width(ui.available_width() - 20.0),
             );
-        });
-        ui.horizontal(|ui| {
-            let mut quest = (state.record_flags & (1 << 10)) != 0;
-            if ui.checkbox(&mut quest, "Quest Item").changed() {
-                if quest {
-                    state.record_flags |= 1 << 10;
-                } else {
-                    state.record_flags &= !(1 << 10);
-                }
-            }
-            let mut persistent = (state.record_flags & 0x0000_0400) != 0;
-            if ui.checkbox(&mut persistent, "Persistent").changed() {
-                if persistent {
-                    state.record_flags |= 0x0000_0400;
-                } else {
-                    state.record_flags &= !0x0000_0400;
-                }
-            }
         });
     });
 }

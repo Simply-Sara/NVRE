@@ -362,13 +362,15 @@ fn a_grid_without_the_optional_bytes_stays_short() {
     );
 }
 
-/// The header's own flags round-trip, and a changed one lands.
+/// An apply does not touch the record's header flags.
 ///
-/// `Quest Item` is bit 10 and `Persistent` is bit 0x400 of the record header,
-/// not of any subrecord. A window that shows them but never writes them is a
-/// checkbox that does nothing — which is what this pins against.
+/// The window no longer edits them, so a save has nothing to say about them.
+/// Writing the word unchanged would still mark the record as touched, which is
+/// what puts it in the mod's `ONAM` array as an override the modder never
+/// asked for — a cell edited only for its water should not be listed as
+/// overriding its own header.
 #[test]
-fn the_headers_flags_round_trip() {
+fn an_apply_does_not_touch_the_header_flags() {
     let Some(mut s) = session() else {
         eprintln!("NVRE_DATA not set; skipping");
         return;
@@ -378,20 +380,16 @@ fn the_headers_flags_round_trip() {
 
     let mut state = CellEditorState::default();
     state.load_from_session(&s, fid);
-    assert_eq!(
-        state.record_flags, before_flags,
-        "the header's flags are read as the record stores them"
-    );
-
-    // Setting Quest Item and saving writes the header word.
-    state.record_flags |= 1 << 10;
+    // The only edit is a water height, which is a subrecord change.
+    state.water_height = 1234.0;
     state.save_to_session(&mut s);
 
-    let path = std::env::temp_dir().join("nvre_cell_editor_flags.esp");
+    let path = std::env::temp_dir().join("nvre_cell_editor_noheader.esp");
     s.save(&path).expect("save");
     let bytes = std::fs::read(&path).expect("read back");
-    let plugin = nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "flags.esp".to_string())
-        .expect("parse");
+    let plugin =
+        nvre_esm::Plugin::parse_bytes(bytes::Bytes::from(bytes), "noheader.esp".to_string())
+            .expect("parse");
     let _ = std::fs::remove_file(&path);
     let mut written = None;
     nvre_esm::raw::visit_nodes(&plugin.nodes, &mut |r, _| {
@@ -399,18 +397,10 @@ fn the_headers_flags_round_trip() {
             written = Some(r.header.flags);
         }
     });
-    let written = written.expect("the record survives the save");
-    assert_ne!(
-        written & (1 << 10),
-        0,
-        "Quest Item is set in the written header"
-    );
-    // The other bits are the record's own: the word is written whole, so
-    // clearing one does not clear the rest.
     assert_eq!(
-        written & !(1 << 10),
-        before_flags & !(1 << 10),
-        "the flags the editor did not touch are unchanged"
+        written.expect("the record survives the save"),
+        before_flags,
+        "the header's flag word is the record's own"
     );
 }
 
