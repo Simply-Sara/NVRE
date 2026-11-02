@@ -106,7 +106,7 @@ fn main() {
             })
             .collect();
 
-        let got = match nvre_script::compile_with_refs(&source, &scro_names, &vars) {
+        let got = match nvre_script::compile_with_refs(&source, &[], &vars, &[]) {
             Ok(g) => g,
             Err(e) => {
                 println!("compile error: {e}");

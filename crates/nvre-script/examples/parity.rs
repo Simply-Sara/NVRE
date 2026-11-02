@@ -2,7 +2,7 @@
 //!
 //! This is the acceptance test for the compiler, and the reason it is built
 //! before the compiler. Every `SCPT` in `FalloutNV.esm` carries both its
-//! source (`SCTX`) and its compiled body (`SCDA`), so each one is a
+//! source (`SCTX`) and its compiled bytes (`SCDA`), so each one is a
 //! source→bytecode pair the compiler can be checked against. Compiling the
 //! source and comparing with the bytes the game wrote for it is a test that
 //! cannot be satisfied by a spec written from memory: either the bytes match
@@ -20,6 +20,16 @@ use bytes::Bytes;
 use nvre_esm::raw::visit_nodes;
 use nvre_esm::Plugin;
 
+/// One unit: its FormID, source, the game's bytes, its SCRO FormIDs, and
+/// its own variable table.
+struct Unit {
+    fid: u32,
+    source: String,
+    expected: Vec<u8>,
+    scro_fids: Vec<u32>,
+    vars: Vec<nvre_script::VarEntry>,
+}
+
 fn main() {
     let Ok(data) = std::env::var("NVRE_DATA") else {
         eprintln!("set NVRE_DATA to the game's Data folder");
@@ -35,28 +45,97 @@ fn main() {
         return;
     };
 
-    // Collect FormID -> EDID map from plugin for SCRO resolution
-    let mut formid_to_edid: std::collections::HashMap<u32, String> =
-        std::collections::HashMap::new();
+    // Pass one, over every record: the FormID -> EDID and FormID ->
+    // signature maps the per-unit resolution needs, the SCRI chain (a
+    // record's script), and every script's own variable table.
+    //
+    // The SCRI chain is what maps a source's remote name to the script
+    // whose variable table the bytecode reads: `VNPCFollowers.bBooneHired`
+    // names the quest, the quest's SCRI points at its script, and the
+    // script's SCPT holds the table. Measured on the corpus; see the
+    // obscript-compiler skill.
+    let mut edid_of: std::collections::HashMap<u32, String> = Default::default();
+    let mut sig_of: std::collections::HashMap<u32, String> = Default::default();
+    let mut scri: std::collections::HashMap<u32, u32> = Default::default();
+    // A placed reference's base object (ACHR/REFR/ACRE NAME), whose own
+    // SCRI names the script the reference runs.
+    let mut base_of: std::collections::HashMap<u32, u32> = Default::default();
+    let mut script_tables: std::collections::HashMap<String, Vec<nvre_script::VarEntry>> =
+        Default::default();
     visit_nodes(&plugin.nodes, &mut |rec, _| {
         let Ok(subs) = rec.subrecords() else { return };
-        if let Some(edid_sub) = subs.iter().find(|x| x.sig == *b"EDID") {
-            let edid = String::from_utf8_lossy(&edid_sub.data)
-                .trim_end_matches('\0')
-                .to_string();
-            formid_to_edid.insert(rec.header.form_id, edid);
+        let sig = String::from_utf8_lossy(&rec.header.sig).into_owned();
+        sig_of.insert(rec.header.form_id, sig.clone());
+        let edid = subs
+            .iter()
+            .find(|x| x.sig == *b"EDID")
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
+            .unwrap_or_default();
+        edid_of.insert(rec.header.form_id, edid.clone());
+        if let Some(s) = subs.iter().find(|x| x.sig == *b"SCRI") {
+            if s.data.len() == 4 {
+                scri.insert(
+                    rec.header.form_id,
+                    u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]),
+                );
+            }
         }
+        if matches!(sig.as_str(), "ACHR" | "REFR" | "ACRE") {
+            if let Some(name) = subs.iter().find(|x| x.sig == *b"NAME") {
+                if name.data.len() == 4 {
+                    base_of.insert(
+                        rec.header.form_id,
+                        u32::from_le_bytes([
+                            name.data[0],
+                            name.data[1],
+                            name.data[2],
+                            name.data[3],
+                        ]),
+                    );
+                }
+            }
+        }
+        if rec.header.sig != *b"SCPT" {
+            return;
+        }
+        let names: Vec<String> = subs
+            .iter()
+            .filter(|x| x.sig == *b"SCVR")
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
+            .collect();
+        let slcds: Vec<&[u8]> = subs
+            .iter()
+            .filter(|x| x.sig == *b"SLSD" && x.data.len() >= 20)
+            .map(|x| x.data.as_slice())
+            .collect();
+        if names.len() != slcds.len() || names.is_empty() {
+            return;
+        }
+        let table: Vec<nvre_script::VarEntry> = names
+            .iter()
+            .zip(slcds.iter())
+            .map(|(n, d)| nvre_script::VarEntry {
+                name: n.clone(),
+                id: u16::from_le_bytes([d[0], d[1]]),
+                is_int: d[16] == 1,
+            })
+            .collect();
+        script_tables.insert(edid, table);
     });
     // Player reference FormID 0x14
-    formid_to_edid.insert(0x00000014, "Player".to_string());
+    edid_of.insert(0x00000014, "Player".to_string());
+    sig_of.insert(0x00000014, "ACHR".to_string());
 
-    let mut units: Vec<(
-        u32,
-        String,
-        Vec<u8>,
-        Vec<String>,
-        Vec<nvre_script::VarEntry>,
-    )> = Vec::new();
+    // Pass two: the units.
+    let mut units: Vec<Unit> = Vec::new();
     visit_nodes(&plugin.nodes, &mut |rec, _| {
         if rec.header.sig != *b"SCPT" {
             return;
@@ -72,77 +151,123 @@ fn main() {
             .find(|x| x.sig == *b"SCTX")
             .map(|x| String::from_utf8_lossy(&x.data).into_owned())
             .unwrap_or_default();
-        if !compiled.is_empty() && !source.is_empty() {
-            // Collect SCRO FormIDs and map to EDIDs
-            let scro_names: Vec<String> = subs
-                .iter()
-                .filter(|x| x.sig == *b"SCRO" && x.data.len() == 4)
-                .map(|x| {
-                    let fid = u32::from_le_bytes([x.data[0], x.data[1], x.data[2], x.data[3]]);
-                    formid_to_edid
-                        .get(&fid)
-                        .cloned()
-                        .unwrap_or_else(|| format!("__form_{fid:08X}"))
-                })
-                .collect();
-            // The record's own variable table: SCVR names paired positionally
-            // with SLSD entries, whose first word is the ID the bytecode
-            // indexes by. SLSD byte 16 is the type: 0 float/ref, 1 integer.
-            let names: Vec<String> = subs
-                .iter()
-                .filter(|x| x.sig == *b"SCVR")
-                .map(|x| {
-                    String::from_utf8_lossy(&x.data)
-                        .trim_end_matches('\0')
-                        .to_string()
-                })
-                .collect();
-            let slcds: Vec<&[u8]> = subs
-                .iter()
-                .filter(|x| x.sig == *b"SLSD" && x.data.len() >= 20)
-                .map(|x| x.data.as_slice())
-                .collect();
-            let vars: Vec<nvre_script::VarEntry> = names
-                .iter()
-                .zip(slcds.iter())
-                .map(|(name, d)| nvre_script::VarEntry {
-                    name: name.clone(),
-                    id: u16::from_le_bytes([d[0], d[1]]),
-                    is_int: d[16] == 1,
-                })
-                .collect();
-            units.push((rec.header.form_id, source, compiled, scro_names, vars));
+        if compiled.is_empty() || source.is_empty() {
+            return;
         }
+        let scro_fids: Vec<u32> = subs
+            .iter()
+            .filter(|x| x.sig == *b"SCRO" && x.data.len() == 4)
+            .map(|x| u32::from_le_bytes([x.data[0], x.data[1], x.data[2], x.data[3]]))
+            .collect();
+        let names: Vec<String> = subs
+            .iter()
+            .filter(|x| x.sig == *b"SCVR")
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
+            .collect();
+        let slcds: Vec<&[u8]> = subs
+            .iter()
+            .filter(|x| x.sig == *b"SLSD" && x.data.len() >= 20)
+            .map(|x| x.data.as_slice())
+            .collect();
+        let vars: Vec<nvre_script::VarEntry> = names
+            .iter()
+            .zip(slcds.iter())
+            .map(|(n, d)| nvre_script::VarEntry {
+                name: n.clone(),
+                id: u16::from_le_bytes([d[0], d[1]]),
+                is_int: d[16] == 1,
+            })
+            .collect();
+        units.push(Unit {
+            fid: rec.header.form_id,
+            source,
+            expected: compiled,
+            scro_fids,
+            vars,
+        });
     });
 
     println!("{} units with both source and bytes", units.len());
+    println!("{} script variable tables", script_tables.len());
     println!();
 
     let mut equal = 0usize;
     let mut differs = 0usize;
     let mut first_differs: Vec<(u32, String)> = Vec::new();
     let mut reasons: Vec<String> = Vec::new();
-    let mut differing: Vec<&(
-        u32,
-        String,
-        Vec<u8>,
-        Vec<String>,
-        Vec<nvre_script::VarEntry>,
-    )> = Vec::new();
+    let mut differing: Vec<&Unit> = Vec::new();
+
+    // The reference entries and remote tables a unit compiles against, so
+    // the main loop and both diagnostic sections resolve names identically.
+    let context_for = |unit: &Unit| {
+        // This unit's reference entries: name from the SCRO FormID's EDID,
+        // kind from what the FormID's record is (GLOB -> Global).
+        let refs: Vec<nvre_script::RefEntry> = unit
+            .scro_fids
+            .iter()
+            .map(|fid| {
+                let name = edid_of
+                    .get(fid)
+                    .cloned()
+                    .unwrap_or_else(|| format!("__form_{fid:08X}"));
+                let kind = match sig_of.get(fid).map(|s| s.as_str()) {
+                    Some("GLOB") => nvre_script::RefKind::Global,
+                    _ => nvre_script::RefKind::Reference,
+                };
+                nvre_script::RefEntry { name, kind }
+            })
+            .collect();
+        // The remote tables: each SCRO entry whose record runs a script
+        // contributes that script's table, keyed by the SCRO entry's name —
+        // the name the source spells. The chain is measured: a quest runs
+        // its script through SCRI; a placed reference (ACHR/REFR/ACRE) has
+        // none, and its script is on its base object (the NAME FormID),
+        // which runs it through SCRI of its own. `VFSOrrisThug01REF` ->
+        // NPC_ `VFSOrrisThug01` -> SCRI -> `VFSOrrisThugScript`.
+        let mut remotes: Vec<nvre_script::RemoteScript> = Vec::new();
+        for scro_fid in &unit.scro_fids {
+            let remote_name = edid_of
+                .get(scro_fid)
+                .cloned()
+                .unwrap_or_else(|| format!("__form_{scro_fid:08X}"));
+            // The script FormID: the record's own SCRI, or its base's.
+            let script_fid = scri
+                .get(scro_fid)
+                .copied()
+                .or_else(|| base_of.get(scro_fid).and_then(|b| scri.get(b).copied()));
+            let Some(script_fid) = script_fid else {
+                continue;
+            };
+            let Some(script_edid) = edid_of.get(&script_fid).cloned() else {
+                continue;
+            };
+            let Some(table) = script_tables.get(&script_edid).cloned() else {
+                continue;
+            };
+            remotes.push(nvre_script::RemoteScript {
+                name: remote_name,
+                vars: table,
+            });
+        }
+        (refs, remotes)
+    };
 
     for unit in &units {
-        let (fid, source, expected, scro_names, vars) =
-            (unit.0, &unit.1, &unit.2, &unit.3, &unit.4);
-        match nvre_script::compile_with_refs(source.as_str(), scro_names, vars) {
+        let (refs, remotes) = context_for(unit);
+        match nvre_script::compile_with_refs(&unit.source, &refs, &unit.vars, &remotes) {
             Ok(got) => {
-                if got.as_slice() == expected.as_slice() {
+                if got.as_slice() == unit.expected.as_slice() {
                     equal += 1;
                 } else {
-                    reasons.push(describe(&got, expected));
+                    reasons.push(describe(&got, &unit.expected));
                     differs += 1;
                     differing.push(unit);
                     if first_differs.len() < 20 {
-                        first_differs.push((fid, describe(&got, expected)));
+                        first_differs.push((unit.fid, describe(&got, &unit.expected)));
                     }
                 }
             }
@@ -151,7 +276,7 @@ fn main() {
                 reasons.push(format!("compile error: {e}"));
                 differing.push(unit);
                 if first_differs.len() < 20 {
-                    first_differs.push((fid, format!("compile error: {e}")));
+                    first_differs.push((unit.fid, format!("compile error: {e}")));
                 }
             }
         }
@@ -191,13 +316,19 @@ fn main() {
     println!("the units that compile but differ in length:");
     let mut length_diffs = 0;
     for u in &differing {
-        let Ok(got) = nvre_script::compile_with_refs(&u.1, &u.3, &u.4) else {
+        let (refs, remotes) = context_for(u);
+        let Ok(got) = nvre_script::compile_with_refs(&u.source, &refs, &u.vars, &remotes) else {
             continue;
         };
-        if got.len() != u.2.len() {
+        if got.len() != u.expected.len() {
             if length_diffs < 5 {
-                println!("  {:08X}  {} bytes vs {}", u.0, got.len(), u.2.len());
-                for line in u.1.lines().filter(|l| !l.trim().is_empty()).take(10) {
+                println!(
+                    "  {:08X}  {} bytes vs {}",
+                    u.fid,
+                    got.len(),
+                    u.expected.len()
+                );
+                for line in u.source.lines().filter(|l| !l.trim().is_empty()).take(10) {
                     println!("      | {line}");
                 }
             }
@@ -213,7 +344,8 @@ fn main() {
         if shown >= 6 {
             break;
         }
-        let Err(e) = nvre_script::compile_with_refs(&u.1, &u.3, &u.4) else {
+        let (refs, remotes) = context_for(u);
+        let Err(e) = nvre_script::compile_with_refs(&u.source, &refs, &u.vars, &remotes) else {
             continue;
         };
         if !e.to_string().contains("is not a declared variable") {
@@ -221,7 +353,7 @@ fn main() {
         }
         // The line the message names, when it names one.
         println!("  {e}");
-        for line in u.1.lines().filter(|l| !l.trim().is_empty()).take(14) {
+        for line in u.source.lines().filter(|l| !l.trim().is_empty()).take(14) {
             println!("      | {line}");
         }
         shown += 1;

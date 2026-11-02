@@ -723,20 +723,57 @@ fn emit_set(
 ) -> Result<Vec<u8>, crate::Error> {
     let dest_bytes = if let Some(ref_name) = on {
         let ridx = resolve_ref(ref_name, script)?;
-        // Dotted variable assignment target: 0x72 [refIdx: u16] 0x73 0x01 0x00
-        let mut b = vec![0x72];
-        b.extend_from_slice(&ridx.to_le_bytes());
-        b.push(0x73);
-        b.extend_from_slice(&1u16.to_le_bytes());
-        b
-    } else {
-        if let Ok(dest) = crate::value::read_value(std::slice::from_ref(target), script) {
-            crate::value::encode(&dest)
-        } else if let Ok(ref_idx) = crate::value::resolve_ref_index(&target.text, script) {
-            // Global variable assignment destination: 0x47 'G' [refIdx: u16]
-            let mut b = vec![0x47];
-            b.extend_from_slice(&ref_idx.to_le_bytes());
+        // A dotted assignment destination is either a variable of this
+        // script reached through a reference (`Ref.var`, the `1C`-style
+        // destination the corpus measures as `72 <refIdx> 73 01 00` when
+        // the var is this script's own) or a remote script's variable
+        // (`Script.var`, measured as `72 <refIdx> <tag> <the var's SLSD ID
+        // in the remote table>`). The two are distinguished by whether the
+        // target names a remote script the caller supplied.
+        if let Ok((tag, id)) = crate::value::resolve_remote_var(ref_name, &target.text, script) {
+            let mut b = vec![0x72];
+            b.extend_from_slice(&ridx.to_le_bytes());
+            b.push(tag);
+            b.extend_from_slice(&id.to_le_bytes());
             b
+        } else {
+            // Dotted variable assignment target: 0x72 [refIdx: u16] 0x73 0x01 0x00
+            let mut b = vec![0x72];
+            b.extend_from_slice(&ridx.to_le_bytes());
+            b.push(0x73);
+            b.extend_from_slice(&1u16.to_le_bytes());
+            b
+        }
+    } else {
+        // A bare destination name: a variable of this script, or one of the
+        // record's references. A reference that names a global variable
+        // (a GLOB record) is a global destination — 0x47 'G' + its index —
+        // which is a different encoding from a local variable's, and a
+        // placed reference cannot be a destination at all. The kind comes
+        // from the record, which the caller supplies; the name alone does
+        // not decide it. Measured: `Set VNight to 1` writes
+        // `15 00 07 00 47 01 00 ...`.
+        if let Some(entry) = script
+            .refs
+            .iter()
+            .find(|r| r.name.eq_ignore_ascii_case(&target.text))
+        {
+            match entry.kind {
+                crate::parse::RefKind::Global => {
+                    let ref_idx = crate::value::resolve_ref_index(&target.text, script)?;
+                    let mut b = vec![0x47];
+                    b.extend_from_slice(&ref_idx.to_le_bytes());
+                    b
+                }
+                crate::parse::RefKind::Reference => {
+                    return Err(crate::Error::Parse(format!(
+                        "`{}` names a placed reference, which cannot be a set destination",
+                        target.text
+                    )));
+                }
+            }
+        } else if let Ok(dest) = crate::value::read_value(std::slice::from_ref(target), script) {
+            crate::value::encode(&dest)
         } else {
             return Err(crate::Error::Parse(format!(
                 "`{}` is not a declared variable",
@@ -1386,7 +1423,7 @@ pub fn actor_value_code(name: &str) -> Option<u16> {
     None
 }
 
-fn anim_group_code(name: &str) -> Option<u16> {
+pub fn anim_group_code(name: &str) -> Option<u16> {
     const ANIM_GROUPS: &[(&str, u16)] = &[
         ("Idle", 0),
         ("SpecialIdle", 2),
@@ -1475,16 +1512,31 @@ fn emit_arg(
                 return Ok((ag as u16).to_le_bytes().to_vec());
             }
 
-            // First check if it's a declared variable of the record's table:
-            // its SLSD ID and its type's tag. A variable the table does not
-            // carry is a new one, whose ID the record's writer assigns —
-            // refused rather than given a position the game would read as a
-            // different variable.
-            if let Ok((idx, is_int)) = crate::value::resolve_var(&t.text, script) {
-                let tag = if is_int { 0x73 } else { 0x66 };
-                let mut out = vec![tag];
-                out.extend_from_slice(&idx.to_le_bytes());
-                return Ok(out);
+            // A declared variable of the record's table. In a command
+            // argument position a `ref` variable is a reference — the game
+            // writes `72` + its index in the reference space (declared
+            // refs first, then SCRO), the same space a placed reference
+            // name resolves through — while an int or float variable keeps
+            // its tagged variable form. Measured: the corpus writes
+            // `72 01 00` for a declared ref passed as an argument where an
+            // int var at the same position writes `73 <id>`.
+            if let Some(d) = script
+                .decls
+                .iter()
+                .find(|d| d.name.eq_ignore_ascii_case(&t.text))
+            {
+                if d.kind == crate::parse::DeclKind::Ref {
+                    let ref_idx = crate::value::resolve_ref_index(&t.text, script)?;
+                    let mut out = vec![0x72];
+                    out.extend_from_slice(&ref_idx.to_le_bytes());
+                    return Ok(out);
+                }
+                if let Ok((idx, is_int)) = crate::value::resolve_var(&t.text, script) {
+                    let tag = if is_int { 0x73 } else { 0x66 };
+                    let mut out = vec![tag];
+                    out.extend_from_slice(&idx.to_le_bytes());
+                    return Ok(out);
+                }
             }
             // Next check if it's a known reference name
             if let Ok(ref_idx) = resolve_ref(&t.text, script) {

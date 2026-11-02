@@ -139,17 +139,66 @@ pub struct VarEntry {
     pub is_int: bool,
 }
 
+/// A script this record's bytecode names but does not own: its variable
+/// table, so a `Script.var` reference resolves to the var's own `SLSD` ID.
+///
+/// Measured: `VFactionSquad.bSquadChosen` compiles to
+/// `72 <this record's ref index of VFactionSquad> 73 <bSquadChosen's ID in
+/// VFactionSquad's SLSD>` — the ID is cross-record data the compiling record
+/// does not carry, so the caller supplies the table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteScript {
+    /// The script's name, as the source spells it and as the SCRO entry
+    /// names it.
+    pub name: String,
+    /// Its variables, with their `SLSD` IDs.
+    pub vars: Vec<VarEntry>,
+}
+
+/// What an `SCRO` entry names, which decides the tag a standalone operand
+/// writes for it.
+///
+/// Measured corpus-wide: a `20 47 <idx>` Global operand names a `GLOB`
+/// record 360 of 365 times; a `20 5A <idx>` reference operand names a
+/// placed form (`REFR`/`ACHR`/`ACRE`). The tag follows the entry's record
+/// type, not its name — the six hardcoded global names the emitter used to
+/// special-case were a guess, and `VStoryState`-style globals that the GECK
+/// spells differently compiled with the wrong tag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefKind {
+    /// A placed reference (REFR/ACHR/ACRE/...): `5A` as a standalone
+    /// operand, `72` as a command argument.
+    Reference,
+    /// A global variable (GLOB): `47` as a standalone operand and as a
+    /// `set` destination.
+    Global,
+}
+
+/// One of the record's `SCRO` entries: the name the source spells and what
+/// it names.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RefEntry {
+    /// The name, as the source and the SCRO resolution spell it.
+    pub name: String,
+    /// What the entry names.
+    pub kind: RefKind,
+}
+
 /// A parsed script: its declarations, external references, and its statements.
 #[derive(Debug, Clone, Default)]
 pub struct Script {
     /// The local variables, in declaration order.
     pub decls: Vec<Decl>,
-    /// External reference names (from SCRO / plugin context), in 1-based order.
-    pub refs: Vec<String>,
+    /// External references (from SCRO / plugin context), in 1-based order,
+    /// with what each names — a placed reference or a global — which decides
+    /// the tag a standalone operand writes for it.
+    pub refs: Vec<RefEntry>,
     /// The record's own variable table, when the caller has it. Names here
     /// resolve to their `SLSD` IDs; a declared name absent from the table is
     /// a new variable, which the record's writer assigns an ID for.
     pub vars: Vec<VarEntry>,
+    /// The scripts whose variables this record's bytecode names.
+    pub remotes: Vec<RemoteScript>,
     /// The statements, in source order.
     pub stmts: Vec<Stmt>,
 }
@@ -233,6 +282,7 @@ pub fn parse(source: &str) -> Script {
         decls,
         refs: Vec::new(),
         vars: Vec::new(),
+        remotes: Vec::new(),
         stmts,
     }
 }

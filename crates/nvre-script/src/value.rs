@@ -227,6 +227,7 @@ pub fn encode_expr(
             "-" => Some(("-", 5)),
             "*" => Some(("*", 6)),
             "/" => Some(("/", 6)),
+            "%" => Some(("%", 6)),
             _ => None,
         }
     }
@@ -327,6 +328,10 @@ pub fn encode_expr(
                             arg_bytes.extend_from_slice(&(av as u16).to_le_bytes());
                             continue;
                         }
+                        if let Some(ag) = crate::emit::anim_group_code(&atok.text) {
+                            arg_bytes.extend_from_slice(&(ag as u16).to_le_bytes());
+                            continue;
+                        }
                         return Err(crate::Error::Parse(format!(
                             "cannot resolve argument `{}` for dotted command `{}.{}`",
                             atok.text, target, member
@@ -355,13 +360,17 @@ pub fn encode_expr(
                     i = j;
                     continue;
                 } else {
-                    // Not a command: remote quest/script variable access!
-                    // Encoding: 0x72 [refIdx: u16] [tag: u8] [varIdx: u16]
+                    // Not a command: a remote script variable,
+                    // `Script.var`. Measured: `72 [refIdx: u16] [tag: u8]
+                    // [varId: u16]`, where refIdx is the target's index in
+                    // this record's reference space and varId is the
+                    // variable's SLSD ID in the target script's own table —
+                    // cross-record data the caller supplies.
+                    let (tag, id) = resolve_remote_var(target, member, script)?;
                     let mut b = vec![0x72];
                     b.extend_from_slice(&ridx.to_le_bytes());
-                    // Default to int variable index 1 for remote script variable
-                    b.push(0x73);
-                    b.extend_from_slice(&1u16.to_le_bytes());
+                    b.push(tag);
+                    b.extend_from_slice(&id.to_le_bytes());
                     output.push(b);
                     i += 3;
                     continue;
@@ -421,6 +430,10 @@ pub fn encode_expr(
                         arg_bytes.extend_from_slice(&(av as u16).to_le_bytes());
                         continue;
                     }
+                    if let Some(ag) = crate::emit::anim_group_code(&atok.text) {
+                        arg_bytes.extend_from_slice(&(ag as u16).to_le_bytes());
+                        continue;
+                    }
 
                     return Err(crate::Error::Parse(format!(
                         "cannot resolve argument `{}` for command `{}` in expression",
@@ -462,27 +475,26 @@ pub fn encode_expr(
             i += 1;
             continue;
         }
-        let standalone_ref = resolve_ref_index(&t.text, script).ok().map(|idx| {
-            // In Fallout NV, a standalone reference in an arithmetic
-            // expression is usually a global variable (`0x47` 'G') when the
-            // name is one of the known globals, and a plain reference
-            // (`0x5A` 'Z') otherwise.
-            let tag = if t.text.eq_ignore_ascii_case("GameHour")
-                || t.text.eq_ignore_ascii_case("GameDaysPassed")
-                || t.text.eq_ignore_ascii_case("GameDay")
-                || t.text.eq_ignore_ascii_case("GameMonth")
-                || t.text.eq_ignore_ascii_case("GameYear")
-                || t.text.to_ascii_lowercase().starts_with("vstorystate")
-            {
-                0x47 // 'G'
-            } else {
-                0x5A // 'Z'
+        // A standalone SCRO name: the tag follows what the entry names —
+        // a global variable (GLOB) writes `47` 'G', a placed reference
+        // writes `5A` 'Z'. Measured corpus-wide: 360 of 365 `47` operands
+        // name a GLOB record; the `5A` operands name REFR/ACHR/ACRE forms.
+        // The entry's kind comes from the record, which the caller
+        // supplies — a name the ref list does not carry is refused, not
+        // guessed.
+        if let Ok(idx) = resolve_ref_index(&t.text, script) {
+            let kind = script
+                .refs
+                .iter()
+                .find(|r| r.name.eq_ignore_ascii_case(&t.text))
+                .map(|r| r.kind)
+                .unwrap_or(crate::parse::RefKind::Reference);
+            let tag = match kind {
+                crate::parse::RefKind::Global => 0x47,
+                crate::parse::RefKind::Reference => 0x5A,
             };
-            (tag, idx)
-        });
-        if let Some((tag, sref)) = standalone_ref {
             let mut b = vec![tag];
-            b.extend_from_slice(&sref.to_le_bytes());
+            b.extend_from_slice(&idx.to_le_bytes());
             output.push(b);
             i += 1;
             continue;
@@ -490,7 +502,24 @@ pub fn encode_expr(
 
         // It is an operand: a literal, a declared variable, or a command value
         let val = read_value(std::slice::from_ref(t), script)?;
-        output.push(encode(&val));
+        if let Value::Literal(bytes) = &val {
+            // A negative literal is its digits plus the postfix negate
+            // operator `~` (0x7E) — measured: `== -5` writes
+            // `20 35 20 7E` (the literal "5", then `~`), never a signed
+            // ASCII literal, and `Set iSceneState to -1` writes the value
+            // `20 31 20 7E`. The lexer folds the sign into the Number
+            // token; the encoder splits it back out here.
+            if bytes.first() == Some(&b'-') {
+                // Postfix: the operand's digits first, then the negate
+                // operator — `20 35 20 7E`, not the reverse.
+                output.push(bytes[1..].to_vec());
+                output.push(vec![b'~']);
+            } else {
+                output.push(bytes.clone());
+            }
+        } else {
+            output.push(encode(&val));
+        }
         i += 1;
     }
 
@@ -590,7 +619,43 @@ fn var_tag(is_int: bool) -> u8 {
     }
 }
 
-/// Resolve one of the record's references by name, to its 1-based index.
+/// Resolve a remote script variable's tag and ID.
+///
+/// `SomeScript.varName` in an expression or a `set` destination writes
+/// `72 <refIdx> <tag> <varId>`: the target's index in this record's
+/// reference space, then the variable's own tag and `SLSD` ID **in the
+/// target script's table**. Both halves are data the compiling record does
+/// not carry — the caller supplies the remote tables — so a name that
+/// resolves nowhere is refused rather than given the wrong ID, which the
+/// game would run as a read of a different variable.
+pub fn resolve_remote_var(
+    target: &str,
+    member: &str,
+    script: &crate::parse::Script,
+) -> Result<(u8, u16), crate::Error> {
+    let remote = script
+        .remotes
+        .iter()
+        .find(|r| r.name.eq_ignore_ascii_case(target))
+        .ok_or_else(|| {
+            crate::Error::Parse(format!(
+                "`{target}` names a remote script whose variable table the compiler does not have"
+            ))
+        })?;
+    let var = remote
+        .vars
+        .iter()
+        .find(|v| v.name.eq_ignore_ascii_case(member))
+        .ok_or_else(|| {
+            crate::Error::Parse(format!(
+                "`{member}` is not a variable of remote script `{target}`"
+            ))
+        })?;
+    Ok((if var.is_int { 0x73 } else { 0x66 }, var.id))
+}
+
+/// Resolve a reference name to its 1-based index in `[declared ref
+/// variables] + [SCRO refs]`.
 ///
 /// The index space is measured: the declared `ref` variables come first, in
 /// source declaration order, then the record's `SCRO` FormIDs —
@@ -609,7 +674,7 @@ pub fn resolve_ref_index(name: &str, script: &crate::parse::Script) -> Result<u1
         }
     }
     for (i, r) in script.refs.iter().enumerate() {
-        if r.eq_ignore_ascii_case(name) {
+        if r.name.eq_ignore_ascii_case(name) {
             return Ok(ref_var_idx + 1 + i as u16);
         }
     }
