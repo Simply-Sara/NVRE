@@ -154,8 +154,14 @@ mod tests {
         let c3 = mul(&mul(&mz_neg, &my_neg), &mx_neg);
 
         // Assert that the chosen convention is uniquely distinguished from candidates
-        assert!(max_diff(&c1, &c2) > 0.5, "candidate 2 should differ significantly");
-        assert!(max_diff(&c1, &c3) > 0.5, "candidate 3 should differ significantly");
+        assert!(
+            max_diff(&c1, &c2) > 0.5,
+            "candidate 2 should differ significantly"
+        );
+        assert!(
+            max_diff(&c1, &c3) > 0.5,
+            "candidate 3 should differ significantly"
+        );
 
         // Verify that ref_rotation matches exact matrix elements of Rx(-x) * Ry(-y) * Rz(-z)
         let manual = mul(&mul(&mx_neg, &my_neg), &mz_neg);

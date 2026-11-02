@@ -4,7 +4,7 @@
 //! , which is what  calls — so a shape the
 //! pipeline silently drops is a shape that is not drawn.
 //!
-//! Usage: 
+//! Usage:
 use nvre_assets::shape::build_mesh;
 use nvre_editor::game::ALL;
 use nvre_nif::scene::{scene_objects, Decoded, SHAPE_TYPES};
@@ -27,14 +27,18 @@ fn main() {
             break;
         }
         let Some(bytes) = data.read(&p) else { continue };
-        let Ok(f) = nvre_nif::NifFile::parse(&bytes, Some(&data.schema)) else { continue };
+        let Ok(f) = nvre_nif::NifFile::parse(&bytes, Some(&data.schema)) else {
+            continue;
+        };
         files += 1;
         let dec = Decoded::new(&f, &bytes, &data.schema);
         for o in scene_objects(&f, &dec) {
             if o.is_node || !SHAPE_TYPES.contains(&o.type_name.as_str()) {
                 continue;
             }
-            let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else { continue };
+            let Some(shape) = dec.blocks.get(o.block).and_then(|s| s.as_ref().ok()) else {
+                continue;
+            };
             let data_block = if let Some(r) = shape.ref_at("data") {
                 dec.get(r)
             } else {

@@ -73,16 +73,13 @@ fn main() {
     let data = game.open_asset_data(&data_dir).expect("the asset data");
 
     let mut c = Counts::default();
-    for p in data
-        .vfs
-        .paths(|p| {
-            let l = p.to_lowercase();
-            l.ends_with(".nif")
-                && want
-                    .as_ref()
-                    .is_none_or(|ws| ws.iter().any(|w| l.contains(w)))
-        })
-    {
+    for p in data.vfs.paths(|p| {
+        let l = p.to_lowercase();
+        l.ends_with(".nif")
+            && want
+                .as_ref()
+                .is_none_or(|ws| ws.iter().any(|w| l.contains(w)))
+    }) {
         if c.files as usize >= limit {
             break;
         }
@@ -181,7 +178,11 @@ fn main() {
             // their own rather than a `NiSkinPartition` block — so both
             // spellings are counted and a game that uses neither is
             // visible rather than silently zero.
-            if skin.reference("skin_partition").and_then(|r| dec.get(r)).is_some() {
+            if skin
+                .reference("skin_partition")
+                .and_then(|r| dec.get(r))
+                .is_some()
+            {
                 c.with_partition += 1;
             }
             let skin_type = dec

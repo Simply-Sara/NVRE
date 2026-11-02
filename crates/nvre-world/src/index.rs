@@ -150,7 +150,8 @@ impl WorldIndex {
         let mut ix = WorldIndex::default();
         let mut lands: HashMap<u32, u32> = HashMap::new();
         for (pi, p) in lo.plugins.iter().enumerate() {
-            let plugin_strings = strings.and_then(|st| st.for_plugin(&p.name, p.header.is_localized()));
+            let plugin_strings =
+                strings.and_then(|st| st.for_plugin(&p.name, p.header.is_localized()));
             visit_records(&p.groups, &mut |r, stack: &[&GroupHeader]| {
                 let Some(fid) = lo.to_global(pi, r.header.form_id) else {
                     return;
@@ -167,9 +168,9 @@ impl WorldIndex {
                             match g.group_type {
                                 group_type::CELL_PERSISTENT_CHILDREN
                                 | group_type::CELL_TEMPORARY_CHILDREN => true,
-                                group_type::CELL_VISIBLE_DISTANT_CHILDREN => {
-                                    stack.iter().any(|p| p.group_type == group_type::CELL_CHILDREN)
-                                }
+                                group_type::CELL_VISIBLE_DISTANT_CHILDREN => stack
+                                    .iter()
+                                    .any(|p| p.group_type == group_type::CELL_CHILDREN),
                                 _ => false,
                             }
                         }) else {

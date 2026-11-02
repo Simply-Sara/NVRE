@@ -125,7 +125,8 @@ fn s10_3_slide_pixels_units_per_pixel_derivation() {
         ..Default::default()
     });
     let screenspace = Vec2::new(50.0, 100.0);
-    let world_delta = slide_pixels(&proj, screenspace, 1000.0, 1000.0).expect("perspective projection");
+    let world_delta =
+        slide_pixels(&proj, screenspace, 1000.0, 1000.0).expect("perspective projection");
     assert!((world_delta.x - 100.0).abs() < 1e-4);
     assert!((world_delta.y - 200.0).abs() < 1e-4);
 }

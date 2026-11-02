@@ -53,9 +53,18 @@ mod tests {
     #[test]
     fn s11_2_text_keys_representation() {
         let keys = vec![
-            TextKey { time: 0.0, value: "start".into() },
-            TextKey { time: 0.5, value: ":hit".into() },
-            TextKey { time: 1.0, value: "end".into() },
+            TextKey {
+                time: 0.0,
+                value: "start".into(),
+            },
+            TextKey {
+                time: 0.5,
+                value: ":hit".into(),
+            },
+            TextKey {
+                time: 1.0,
+                value: "end".into(),
+            },
         ];
         assert_eq!(keys.len(), 3);
         assert_eq!(keys[1].time, 0.5);
@@ -65,13 +74,25 @@ mod tests {
     #[test]
     fn s11_3_animation_sample_translation_track_interpolation() {
         let track = vec![
-            TranslationKey { time: 0.0, translation: [0.0, 0.0, 0.0] },
-            TranslationKey { time: 1.0, translation: [10.0, 20.0, -30.0] },
-            TranslationKey { time: 2.0, translation: [20.0, 20.0, 0.0] },
+            TranslationKey {
+                time: 0.0,
+                translation: [0.0, 0.0, 0.0],
+            },
+            TranslationKey {
+                time: 1.0,
+                translation: [10.0, 20.0, -30.0],
+            },
+            TranslationKey {
+                time: 2.0,
+                translation: [20.0, 20.0, 0.0],
+            },
         ];
 
         // Before start -> clamps to first
-        assert_eq!(sample_translation_track(&track, -0.5), Some([0.0, 0.0, 0.0]));
+        assert_eq!(
+            sample_translation_track(&track, -0.5),
+            Some([0.0, 0.0, 0.0])
+        );
         // Midpoint of segment 0..1 (t = 0.5)
         let mid = sample_translation_track(&track, 0.5).unwrap();
         assert!((mid[0] - 5.0).abs() < 1e-5);
@@ -85,6 +106,9 @@ mod tests {
         assert!((mid2[2] - (-15.0)).abs() < 1e-5);
 
         // After end -> clamps to last
-        assert_eq!(sample_translation_track(&track, 3.0), Some([20.0, 20.0, 0.0]));
+        assert_eq!(
+            sample_translation_track(&track, 3.0),
+            Some([20.0, 20.0, 0.0])
+        );
     }
 }

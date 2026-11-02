@@ -841,9 +841,16 @@ mod tests {
         assert!(res.is_some());
         let (mesh, tris, dropped) = res.unwrap();
         assert_eq!(tris, 2, "declared triangles should be 2");
-        assert_eq!(dropped, 1, "out of bounds triangle must be dropped and counted");
+        assert_eq!(
+            dropped, 1,
+            "out of bounds triangle must be dropped and counted"
+        );
         if let Some(Indices::U32(indices)) = mesh.indices() {
-            assert_eq!(indices, &[0, 1, 2], "only valid triangle indices should remain");
+            assert_eq!(
+                indices,
+                &[0, 1, 2],
+                "only valid triangle indices should remain"
+            );
         } else {
             panic!("expected U32 indices");
         }

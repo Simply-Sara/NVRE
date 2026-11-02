@@ -464,7 +464,9 @@ mod tests {
             "textures\\clutter\\a.dds"
         );
         assert_eq!(
-            material_path("c:\\projects\\fallout4\\build\\pc\\data\\materials\\interiors\\wall.bgsm"),
+            material_path(
+                "c:\\projects\\fallout4\\build\\pc\\data\\materials\\interiors\\wall.bgsm"
+            ),
             "materials\\interiors\\wall.bgsm"
         );
         assert_eq!(

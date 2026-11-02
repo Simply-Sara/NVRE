@@ -260,8 +260,6 @@ fn tally(bytes: &[u8], schema: &nvre_nif::Schema) -> Counts {
     c
 }
 
-
-
 fn main() {
     let game_id = std::env::args().nth(1).expect("a game id");
     let limit: usize = std::env::args()
@@ -309,46 +307,46 @@ fn main() {
         (c.files as f32 / secs) as u64,
     );
     println!("S3-2 strips");
-println!("  strip shapes: {}", c.strip_shapes);
-println!("  unrolled count equals declared: {}", c.strip_count_agrees);
-println!(
-    "  unrolled count differs: {} kinds",
-    c.strip_count_differs.len()
-);
-for (k, v) in c.strip_count_differs.iter().take(12) {
-    println!("    {v:7} {k}");
-}
-println!(
-    "  triangles dropped as degenerate joins: {}",
-    c.strip_degenerate
-);
-println!("S3-5 UV sets");
-println!("  one distinct UV: {}", c.one_uv);
-println!("  no UV set: {}", c.no_uv);
-println!("S3-6 normals");
-println!("  file normals: {}", c.file_normals);
-println!("  normals must be computed: {}", c.computed_normals);
-println!(
-    "  normal count != vertex count: {}",
-    c.normal_count_mismatch
-);
-println!("S3-7 tangents");
-println!("  shapes with a normal map: {}", c.with_normal_map);
-println!("  file tangents: {}", c.file_tangents);
-println!(
-    "  normal map, no tangents (must generate): {}",
-    c.normal_map_no_tangents
-);
-println!(
-    "  tangents, no normal map (discarded): {}",
-    c.tangents_no_normal_map
-);
-println!("S3-8 declared vertex count");
-println!(
-    "  shapes where it differs: {} kinds",
-    c.vertex_count_differs.len()
-);
-for (k, v) in c.vertex_count_differs.iter().take(12) {
-    println!("    {v:7} {k}");
-}
+    println!("  strip shapes: {}", c.strip_shapes);
+    println!("  unrolled count equals declared: {}", c.strip_count_agrees);
+    println!(
+        "  unrolled count differs: {} kinds",
+        c.strip_count_differs.len()
+    );
+    for (k, v) in c.strip_count_differs.iter().take(12) {
+        println!("    {v:7} {k}");
+    }
+    println!(
+        "  triangles dropped as degenerate joins: {}",
+        c.strip_degenerate
+    );
+    println!("S3-5 UV sets");
+    println!("  one distinct UV: {}", c.one_uv);
+    println!("  no UV set: {}", c.no_uv);
+    println!("S3-6 normals");
+    println!("  file normals: {}", c.file_normals);
+    println!("  normals must be computed: {}", c.computed_normals);
+    println!(
+        "  normal count != vertex count: {}",
+        c.normal_count_mismatch
+    );
+    println!("S3-7 tangents");
+    println!("  shapes with a normal map: {}", c.with_normal_map);
+    println!("  file tangents: {}", c.file_tangents);
+    println!(
+        "  normal map, no tangents (must generate): {}",
+        c.normal_map_no_tangents
+    );
+    println!(
+        "  tangents, no normal map (discarded): {}",
+        c.tangents_no_normal_map
+    );
+    println!("S3-8 declared vertex count");
+    println!(
+        "  shapes where it differs: {} kinds",
+        c.vertex_count_differs.len()
+    );
+    for (k, v) in c.vertex_count_differs.iter().take(12) {
+        println!("    {v:7} {k}");
+    }
 }

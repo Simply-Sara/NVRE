@@ -642,7 +642,7 @@ mod tests {
         put(&mut d, 8, 0x1007);
         put(&mut d, 12, 16); // h
         put(&mut d, 16, 16); // w
-        put(&mut d, 28, 1);  // 1 mip
+        put(&mut d, 28, 1); // 1 mip
         put(&mut d, 76, 32);
         put(&mut d, 80, PF_FOURCC);
         d[84..88].copy_from_slice(b"DX10");

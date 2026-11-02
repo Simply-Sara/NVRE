@@ -59,10 +59,10 @@ fn main() {
     let data = game.open_asset_data(&data_dir).expect("the asset data");
 
     let mut c = Counts::default();
-    for p in data
-        .vfs
-        .paths(|p| p.to_lowercase().ends_with(".nif") && want.as_ref().is_none_or(|w| p.to_lowercase().contains(w)))
-    {
+    for p in data.vfs.paths(|p| {
+        p.to_lowercase().ends_with(".nif")
+            && want.as_ref().is_none_or(|w| p.to_lowercase().contains(w))
+    }) {
         if c.files as usize >= limit {
             break;
         }

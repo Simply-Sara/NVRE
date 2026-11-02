@@ -204,7 +204,9 @@ fn s7_8_interior_cells_draw_only_their_own_references() {
             .index
             .cells
             .values()
-            .find(|c| c.grid.is_none() && c.world.is_none() && c.edid.is_some() && !c.refs.is_empty())
+            .find(|c| {
+                c.grid.is_none() && c.world.is_none() && c.edid.is_some() && !c.refs.is_empty()
+            })
             .cloned();
 
         let Some(cell) = interior else {

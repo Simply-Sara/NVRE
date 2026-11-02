@@ -1452,17 +1452,32 @@ mod tests {
         let sane = raw.sanitized();
         assert_eq!(sane.speed, 0.0);
         assert_eq!(sane.life_span, 0.001);
-        assert_eq!(sane.max_particles, ParticleEmitterParams::DEFAULT_MAX_PARTICLES);
+        assert_eq!(
+            sane.max_particles,
+            ParticleEmitterParams::DEFAULT_MAX_PARTICLES
+        );
         assert_eq!(sane.initial_radius, 2.0);
     }
 
     #[test]
     fn s12_2_and_s12_3_skin_weight_normalization_and_bind_pose() {
         let mut weights = [
-            VertexBoneWeight { bone_index: 0, weight: 0.5 },
-            VertexBoneWeight { bone_index: 1, weight: 0.25 },
-            VertexBoneWeight { bone_index: 2, weight: 0.15 },
-            VertexBoneWeight { bone_index: 3, weight: 0.10 },
+            VertexBoneWeight {
+                bone_index: 0,
+                weight: 0.5,
+            },
+            VertexBoneWeight {
+                bone_index: 1,
+                weight: 0.25,
+            },
+            VertexBoneWeight {
+                bone_index: 2,
+                weight: 0.15,
+            },
+            VertexBoneWeight {
+                bone_index: 3,
+                weight: 0.10,
+            },
         ];
         // Initially sums to 1.0
         normalize_vertex_weights(&mut weights);
@@ -1471,10 +1486,22 @@ mod tests {
 
         // Test unnormalized weights: [1.0, 2.0, 1.0, 0.0] -> sum = 4.0
         let mut unnormalized = [
-            VertexBoneWeight { bone_index: 0, weight: 1.0 },
-            VertexBoneWeight { bone_index: 1, weight: 2.0 },
-            VertexBoneWeight { bone_index: 2, weight: 1.0 },
-            VertexBoneWeight { bone_index: 3, weight: 0.0 },
+            VertexBoneWeight {
+                bone_index: 0,
+                weight: 1.0,
+            },
+            VertexBoneWeight {
+                bone_index: 1,
+                weight: 2.0,
+            },
+            VertexBoneWeight {
+                bone_index: 2,
+                weight: 1.0,
+            },
+            VertexBoneWeight {
+                bone_index: 3,
+                weight: 0.0,
+            },
         ];
         normalize_vertex_weights(&mut unnormalized);
         let sum2: f32 = unnormalized.iter().map(|w| w.weight).sum();
@@ -1502,9 +1529,18 @@ mod tests {
     #[test]
     fn s15_2_and_s15_3_lod_ranges_and_selection() {
         let ranges = vec![
-            LodRange { near_extent: 0.0, far_extent: 1000.0 },     // Level 0: full detail
-            LodRange { near_extent: 1000.0, far_extent: 5000.0 },  // Level 1: medium detail
-            LodRange { near_extent: 5000.0, far_extent: 20000.0 }, // Level 2: low detail
+            LodRange {
+                near_extent: 0.0,
+                far_extent: 1000.0,
+            }, // Level 0: full detail
+            LodRange {
+                near_extent: 1000.0,
+                far_extent: 5000.0,
+            }, // Level 1: medium detail
+            LodRange {
+                near_extent: 5000.0,
+                far_extent: 20000.0,
+            }, // Level 2: low detail
         ];
 
         // S15-2 & S15-3: Test selection at various distances

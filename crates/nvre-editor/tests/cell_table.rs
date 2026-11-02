@@ -126,7 +126,10 @@ fn localized_cells_resolve_names_without_control_noise() {
 
     let interiors = session.cells(CellScope::Interiors);
     let named_cells: Vec<_> = interiors.iter().filter_map(|c| c.name.as_deref()).collect();
-    assert!(!named_cells.is_empty(), "Fallout 4 must have named interior cells");
+    assert!(
+        !named_cells.is_empty(),
+        "Fallout 4 must have named interior cells"
+    );
 
     // Localized string IDs should be resolved properly; none should have unprintable control characters.
     for name in &named_cells {

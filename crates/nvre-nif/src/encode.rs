@@ -653,8 +653,7 @@ pub fn write_prim(
             } else {
                 // Before that it is the text itself, with its length in
                 // front of it.
-                let bytes = nvre_util::cp1252::encode(v.as_str().unwrap_or(""))
-                    .unwrap_or_default();
+                let bytes = nvre_util::cp1252::encode(v.as_str().unwrap_or("")).unwrap_or_default();
                 out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
                 out.extend_from_slice(&bytes);
             }
