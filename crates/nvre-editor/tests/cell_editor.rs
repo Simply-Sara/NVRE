@@ -470,9 +470,8 @@ fn the_editor_opens_without_moving_the_viewport() {
 
 /// A new cell opens on the Common Data tab.
 ///
-/// GECK's dialog does, and keeping the previous cell's tab would land the user
-/// on Directional Ambient Lighting for a cell whose lighting has no ambient
-/// cube — a tab that then says nothing about the cell in front of them.
+/// GECK's dialog does, rather than leaving the user on whichever tab the
+/// previous cell was being edited on.
 #[test]
 fn a_new_cell_opens_on_common_data() {
     let Some(s) = session() else {
@@ -482,7 +481,7 @@ fn a_new_cell_opens_on_common_data() {
     let fid = hoover_dam(&s);
     // Start somewhere else, so the reset is what is being tested.
     let mut state = CellEditorState {
-        tab: nvre_editor::cell_editor::CellEditorTab::DirectionalAmbient,
+        tab: nvre_editor::cell_editor::CellEditorTab::InteriorData,
         ..Default::default()
     };
     state.load_from_session(&s, fid);
@@ -494,20 +493,20 @@ fn a_new_cell_opens_on_common_data() {
     );
 }
 
-/// The four tabs are GECK's four, in GECK's order.
+/// The tabs are GECK's, in GECK's order, with the ambient cube folded in.
+///
+/// GECK's own dialog has a fourth tab, Directional Ambient Lighting. It is not
+/// here: the cube is part of the same `XCLL` subrecord as the colours above
+/// it, and a tab per subrecord-section separates one subrecord's fields across
+/// two screens.
 #[test]
-fn the_tabs_are_gecks_four() {
+fn the_tabs_are_gecks_three() {
     use nvre_editor::cell_editor::CellEditorTab;
     let labels: Vec<&str> = CellEditorTab::ALL.iter().map(|t| t.label()).collect();
     assert_eq!(
         labels,
-        vec![
-            "Common Data",
-            "Lighting",
-            "Interior Data",
-            "Directional Ambient Lighting"
-        ],
-        "GECK's own cell edit dialog is these four, in this order"
+        vec!["Common Data", "Lighting", "Interior Data"],
+        "GECK's own cell edit dialog, with its fourth tab folded into Lighting"
     );
 }
 

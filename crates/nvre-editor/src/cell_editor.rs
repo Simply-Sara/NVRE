@@ -19,16 +19,19 @@
 //!
 //! # The tabs
 //!
-//! GECK's cell edit dialog is four tabs, and this is the same four, in the
-//! same order: **Common Data**, **Lighting**, **Interior Data** and
-//! **Directional Ambient Lighting**.
+//! GECK's cell edit dialog is four tabs. This is three: **Common Data**,
+//! **Lighting** and **Interior Data**, in GECK's order, with GECK's fourth —
+//! **Directional Ambient Lighting** — folded into Lighting.
 //!
 //! The split is GECK's own, and it is worth keeping even where it does not
 //! match the subrecords. `Has Water` is a `DATA` bit and `Height` is `XCLW`,
 //! but they sit together under Common Data because that is where a modder
-//! looks for them. The six-axis ambient cube is part of `XCLL`, and GECK gives
-//! it a tab of its own anyway, because it is a thing you set once rather than
-//! part of the cell's own lighting.
+//! looks for them.
+//!
+//! The one place this departs from GECK is the ambient cube. It is part of the
+//! same `XCLL` subrecord as the colours above it, so a tab of its own separates
+//! one subrecord's fields across two screens — and a modder setting the cube is
+//! looking at the cell's lighting anyway, one scroll away.
 //!
 //! A field is edited in exactly one place. The four `DATA` bits Common Data
 //! offers are not repeated in the Interior Data tab, and the water height and
@@ -194,12 +197,13 @@ pub struct CellEditorState {
     pub status: String,
 }
 
-/// GECK's four cell-edit tabs.
+/// GECK's cell-edit tabs.
 ///
-/// The names are GECK's own. The interior data and the directional ambient
-/// lighting are separated from the lighting and common data the way GECK
-/// separates them, because that is where a modder looks for them: the ambient
-/// cube is a six-axis thing you set once, not part of the cell's own lighting.
+/// The names are GECK's own. GECK's own dialog has a fourth, Directional
+/// Ambient Lighting, and it is folded into Lighting here instead: the cube is
+/// part of the same `XCLL` subrecord as the colours above it, and splitting it
+/// onto its own tab separates one subrecord's fields across two screens for no
+/// gain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CellEditorTab {
     /// The water, the flags that say what a cell is, and the three reference
@@ -210,17 +214,14 @@ pub enum CellEditorTab {
     Lighting,
     /// Interior Data: the ownership and the encounter zone.
     InteriorData,
-    /// The six-axis directional ambient cube.
-    DirectionalAmbient,
 }
 
 impl CellEditorTab {
     /// The tab strip's labels, in GECK's own order.
-    pub const ALL: [CellEditorTab; 4] = [
+    pub const ALL: [CellEditorTab; 3] = [
         CellEditorTab::CommonData,
         CellEditorTab::Lighting,
         CellEditorTab::InteriorData,
-        CellEditorTab::DirectionalAmbient,
     ];
 
     /// The button's label.
@@ -229,7 +230,6 @@ impl CellEditorTab {
             CellEditorTab::CommonData => "Common Data",
             CellEditorTab::Lighting => "Lighting",
             CellEditorTab::InteriorData => "Interior Data",
-            CellEditorTab::DirectionalAmbient => "Directional Ambient Lighting",
         }
     }
 
@@ -244,9 +244,6 @@ impl CellEditorTab {
             }
             CellEditorTab::InteriorData => {
                 "the cell's ownership, encounter zone and climate"
-            }
-            CellEditorTab::DirectionalAmbient => {
-                "the six-axis directional ambient cube, one colour per axis"
             }
         }
     }
@@ -280,8 +277,8 @@ impl CellEditorState {
         self.loaded_target = Some(cell);
         self.form_id = cell;
         // Back to the first tab for a new cell, the way GECK's dialog opens on
-        // Common Data. Keeping the previous cell's tab would put the user on
-        // Directional Ambient Lighting for a cell that has no ambient cube.
+        // Common Data, rather than leaving the user on whichever tab the
+        // previous cell was being edited on.
         self.tab = CellEditorTab::CommonData;
         self.status = format!("Loaded cell {cell:08X}");
 
@@ -706,6 +703,7 @@ pub fn ui(
             CellEditorTab::CommonData => common_data_group(ui, &mut session, &mut state),
             CellEditorTab::Lighting => {
                 lighting_group(ui, &mut state);
+                directional_ambient_group(ui, &mut state);
                 template_group(ui, &mut session, &mut state);
             }
             CellEditorTab::InteriorData => {
@@ -714,7 +712,6 @@ pub fn ui(
                 water_noise_group(ui, &mut state);
                 interior_data_group(ui, &mut session, &mut state);
             }
-            CellEditorTab::DirectionalAmbient => directional_ambient_group(ui, &mut state),
         });
 
         ui.separator();
@@ -837,11 +834,15 @@ fn interior_data_group(
     ownership_group(ui, session, state);
 }
 
-/// **Directional Ambient Lighting** — GECK's fourth tab.
+/// The six-axis directional ambient cube, under the Lighting tab.
 ///
-/// The six-axis directional ambient cube: X+, X-, Y+, Y-, Z+ and Z-, each a
-/// colour. Only Skyrim's and Fallout 4's `XCLL` carries one, so a Fallout cell
-/// says so rather than showing six empty colour rows.
+/// X+, X-, Y+, Y-, Z+ and Z-, each a colour. GECK gives it a tab of its own;
+/// it is folded in here instead, because it is the same `XCLL` subrecord as
+/// the colours above it and a tab per subrecord-section separates one
+/// subrecord's fields across two screens.
+///
+/// Only Skyrim's and Fallout 4's `XCLL` carries a cube, so a Fallout cell says
+/// so rather than showing six empty colour rows.
 ///
 /// GECK also offers "Set From Ambient", which copies the cell's own ambient
 /// colour into all six axes — a one-click starting point for a cube you then
