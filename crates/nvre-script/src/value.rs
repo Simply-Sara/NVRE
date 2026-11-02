@@ -52,6 +52,11 @@ pub enum Value {
     Ref(u16),
     /// A literal: the bytes the source spelled it with, tag included.
     Literal(Vec<u8>),
+    /// A command called with no arguments, used as a value.
+    ///
+    /// The `X` (0x58) token, the command's opcode, and a zero parameter
+    /// length. This is how `set userref to getactionref` compiles.
+    Command(u16),
 }
 
 /// Encode `value` as its tagged bytes.
@@ -79,6 +84,15 @@ pub fn encode(value: &Value) -> Vec<u8> {
         }
         // The literal's own bytes, already tagged.
         Value::Literal(bytes) => bytes.clone(),
+        // `X` + the opcode + a zero parameter length. The separator that
+        // precedes every expression token is written by the expression, not by
+        // the value.
+        Value::Command(opcode) => {
+            let mut out = vec![0x58];
+            out.extend_from_slice(&opcode.to_le_bytes());
+            out.extend_from_slice(&0u16.to_le_bytes());
+            out
+        }
     }
 }
 
@@ -86,8 +100,14 @@ pub fn encode(value: &Value) -> Vec<u8> {
 ///
 /// The length counts the tag and the literal's bytes together, which is what
 /// the game writes — so a one-digit number is length 2.
+///
+/// The leading `0x20` is the **separator** that precedes every expression
+/// token, not part of the value: an expression is a run of `0x20`-tagged
+/// tokens with no per-token length, and `set PickedUp to 1` is
+/// `02 00 20 31` — length 2 covering the separator and the digit.
 pub fn encode_assigned(value: &Value) -> Vec<u8> {
-    let tagged = encode(value);
+    let mut tagged = vec![LITERAL_TAG];
+    tagged.extend(encode(value));
     let mut out = Vec::with_capacity(2 + tagged.len());
     out.extend_from_slice(&(tagged.len() as u16).to_le_bytes());
     out.extend_from_slice(&tagged);
@@ -124,12 +144,26 @@ pub fn read_value(tokens: &[Token], locals: &[crate::parse::Decl]) -> Result<Val
             // `ref` is `f`. Both are measurable, and writing the wrong one is
             // an assignment to a variable of the wrong type.
             Kind::Word => {
-                let (index, is_int) = local_index(&t.text, locals)?;
-                if is_int {
-                    Ok(Value::LocalVar(index))
-                } else {
-                    Ok(Value::FloatVar(index))
+                if let Ok((index, is_int)) = local_index(&t.text, locals) {
+                    return Ok(if is_int {
+                        Value::LocalVar(index)
+                    } else {
+                        Value::FloatVar(index)
+                    });
                 }
+                if let Some(cmd) = crate::opcodes::command_called(&t.text) {
+                    if !cmd.args.is_empty() {
+                        return Err(crate::Error::Parse(format!(
+                            "`{}` takes arguments, so it cannot be used as a value yet",
+                            t.text
+                        )));
+                    }
+                    return Ok(Value::Command(cmd.opcode));
+                }
+                Err(crate::Error::Parse(format!(
+                    "`{}` is not a declared variable",
+                    t.text
+                )))
             }
             _ => Err(crate::Error::Parse(format!(
                 "cannot encode `{}` as a value",
@@ -149,15 +183,136 @@ pub fn read_value(tokens: &[Token], locals: &[crate::parse::Decl]) -> Result<Val
     )))
 }
 
+/// Encode an expression (e.g. for an `if` or `elseif` condition) into its
+/// compiled bytecode bytes: a sequence of 0x20-separated tokens in postfix (RPN) order.
+pub fn encode_expr(
+    tokens: &[Token],
+    locals: &[crate::parse::Decl],
+) -> Result<Vec<u8>, crate::Error> {
+    // 1. Filter out whitespace and comments
+    let filtered: Vec<&Token> = tokens
+        .iter()
+        .filter(|t| t.kind != Kind::Space && t.kind != Kind::Comment)
+        .collect();
+
+    if filtered.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    #[derive(Debug, Clone)]
+    enum Item {
+        Op(&'static str, u8), // symbol, precedence
+        LParen,
+    }
+
+    fn op_info(tok: &Token) -> Option<(&'static str, u8)> {
+        match tok.text.as_str() {
+            "||" => Some(("||", 1)),
+            "&&" => Some(("&&", 2)),
+            "==" => Some(("==", 3)),
+            "!=" => Some(("!=", 3)),
+            "<" => Some(("<", 4)),
+            "<=" => Some(("<=", 4)),
+            ">" => Some((">", 4)),
+            ">=" => Some((">=", 4)),
+            "+" => Some(("+", 5)),
+            "-" => Some(("-", 5)),
+            "*" => Some(("*", 6)),
+            "/" => Some(("/", 6)),
+            _ => None,
+        }
+    }
+
+    let mut output: Vec<Vec<u8>> = Vec::new();
+    let mut op_stack: Vec<Item> = Vec::new();
+
+    let mut i = 0;
+    while i < filtered.len() {
+        let t = filtered[i];
+
+        if t.text == "(" {
+            op_stack.push(Item::LParen);
+            i += 1;
+            continue;
+        }
+
+        if t.text == ")" {
+            while let Some(top) = op_stack.pop() {
+                match top {
+                    Item::LParen => break,
+                    Item::Op(sym, _) => output.push(sym.as_bytes().to_vec()),
+                }
+            }
+            i += 1;
+            continue;
+        }
+
+        if let Some((sym, prec)) = op_info(t) {
+            while let Some(top) = op_stack.last() {
+                match top {
+                    Item::Op(_, top_prec) => {
+                        if *top_prec >= prec {
+                            if let Some(Item::Op(top_sym, _)) = op_stack.pop() {
+                                output.push(top_sym.as_bytes().to_vec());
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    _ => break,
+                }
+            }
+            op_stack.push(Item::Op(sym, prec));
+            i += 1;
+            continue;
+        }
+
+        // Check for dotted reference access or command call: e.g. ref.var or ref.Command
+        if i + 2 < filtered.len() && filtered[i + 1].text == "." {
+            let _target = filtered[i].text.as_str();
+            let _member = filtered[i + 2].text.as_str();
+            return Err(crate::Error::Parse(format!(
+                "dotted references in expressions are not emitted yet: `{}`",
+                t.text
+            )));
+        }
+
+        // It is an operand: a literal, a declared variable, or a command value
+        let val = read_value(std::slice::from_ref(t), locals)?;
+        output.push(encode(&val));
+        i += 1;
+    }
+
+    while let Some(top) = op_stack.pop() {
+        match top {
+            Item::LParen => {
+                return Err(crate::Error::Parse(
+                    "unmatched `(` in expression".to_string(),
+                ));
+            }
+            Item::Op(sym, _) => output.push(sym.as_bytes().to_vec()),
+        }
+    }
+
+    // Now format into 0x20-prefixed sequence
+    let mut result = Vec::new();
+    for token_bytes in output {
+        result.push(LITERAL_TAG); // 0x20
+        result.extend(token_bytes);
+    }
+
+    Ok(result)
+}
+
 /// The tagged bytes for a numeric literal.
 ///
 /// An integer is stored as its ASCII digits — `1` is the single byte `0x31`
 /// and `40` is `34 30` — which is measurable over the corpus and is the
 /// opposite of what a compiler would naturally write.
 fn literal_bytes(text: &str) -> Vec<u8> {
-    let mut out = vec![LITERAL_TAG];
-    out.extend_from_slice(text.as_bytes());
-    out
+    // The separator is written by `encode_assigned`, once per expression token,
+    // so a literal carries only its own digits.
+    text.as_bytes().to_vec()
 }
 
 /// The 1-based index of the local variable called `name`, and whether it is
@@ -247,14 +402,11 @@ mod tests {
     fn an_integer_literal_is_its_own_ascii_digits() {
         // Measured: `set PickedUp to 1` writes `02 00 20 31`, where 0x31 is
         // the ASCII `1` — not the binary integer 1.
-        assert_eq!(
-            value_of("1", &[]).unwrap(),
-            Value::Literal(vec![0x20, 0x31])
-        );
+        assert_eq!(value_of("1", &[]).unwrap(), Value::Literal(vec![0x31]));
         // And `to 40` writes `03 00 20 34 30`.
         assert_eq!(
             value_of("40", &[]).unwrap(),
-            Value::Literal(vec![0x20, 0x34, 0x30])
+            Value::Literal(vec![0x34, 0x30])
         );
     }
 
@@ -263,11 +415,11 @@ mod tests {
         // The length is 2 for a one-digit number: the tag plus the digit.
         // Getting this wrong by one shifts every byte after it.
         assert_eq!(
-            encode_assigned(&Value::Literal(vec![0x20, 0x31])),
+            encode_assigned(&Value::Literal(vec![0x31])),
             vec![0x02, 0x00, 0x20, 0x31]
         );
         assert_eq!(
-            encode_assigned(&Value::Literal(vec![0x20, 0x34, 0x30])),
+            encode_assigned(&Value::Literal(vec![0x34, 0x30])),
             vec![0x03, 0x00, 0x20, 0x34, 0x30]
         );
     }

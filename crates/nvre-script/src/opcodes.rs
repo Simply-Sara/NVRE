@@ -170,6 +170,143 @@ pub struct Command {
 /// because a guessed opcode is a call to the wrong function.
 pub const COMMANDS: &[Command] = &[
     Command {
+        // Measured from the corpus: `set userref to getactionref` in
+        // vCCCrucifiedSlaveSCRIPT compiles to `20 58 CD 10 00 00`, so the `X`
+        // token, opcode 0x10CD, and a zero parameter length.
+        name: "GetActionRef",
+        opcode: 0x10CD,
+        args: &[],
+    },
+    Command {
+        name: "Activate",
+        opcode: 0x100D,
+        args: &["ObjectRefID", "Flag"],
+    },
+    Command {
+        name: "AddAchievement",
+        opcode: 0x114A,
+        args: &["Achievement"],
+    },
+    Command {
+        name: "AddItem",
+        opcode: 0x1002,
+        args: &["ObjectID", "Count", "Flag"],
+    },
+    Command {
+        name: "AddPerk",
+        opcode: 0x1176,
+        args: &["Perk"],
+    },
+    Command {
+        name: "AddReputation",
+        opcode: 0x1239,
+        args: &["Reputation", "Value"],
+    },
+    Command {
+        name: "AddScriptPackage",
+        opcode: 0x1097,
+        args: &["Package"],
+    },
+    Command {
+        name: "AddSpell",
+        opcode: 0x101C,
+        args: &["Spell"],
+    },
+    Command {
+        name: "ApplyImageSpaceModifier",
+        opcode: 0x1191,
+        args: &["ImageSpaceModifier", "Flag"],
+    },
+    Command {
+        name: "AttachAshPile",
+        opcode: 0x1211,
+        args: &[],
+    },
+    Command {
+        name: "BWaitersServeWine",
+        opcode: 0x11C8,
+        args: &[],
+    },
+    Command {
+        name: "ClearFactionPlayerEnemyFlag",
+        opcode: 0x11C9,
+        args: &["Faction"],
+    },
+    Command {
+        name: "CompleteQuest",
+        opcode: 0x1071,
+        args: &["Quest"],
+    },
+    Command {
+        name: "DamageAV",
+        opcode: 0x1181,
+        args: &["ActorValue", "Amount"],
+    },
+    Command {
+        name: "Dispel",
+        opcode: 0x1142,
+        args: &[],
+    },
+    Command {
+        name: "DropMe",
+        opcode: 0x10A6,
+        args: &[],
+    },
+    Command {
+        name: "EnableFastTravel",
+        opcode: 0x1111,
+        args: &["Flag"],
+    },
+    Command {
+        name: "EnableNavMesh",
+        opcode: 0x11C0,
+        args: &["Flag"],
+    },
+    Command {
+        name: "GetAV",
+        opcode: 0x11CD,
+        args: &["ActorValue"],
+    },
+    Command {
+        // `Kill` is the same command under a shorter name: the corpus spells
+        // it both ways (`Kill;`, `KillActor`, `killActor Opp 1 2`) and both
+        // compile to 0x108B. One entry, because two rows with one opcode is a
+        // table that cannot be looked up.
+        name: "KillActor",
+        opcode: 0x108B,
+        args: &["Target", "Flag"],
+    },
+    Command {
+        name: "PlaceAtMe",
+        opcode: 0x1025,
+        args: &["ObjectID", "Count", "Distance", "Direction"],
+    },
+    Command {
+        name: "RemoveSpell",
+        opcode: 0x101D,
+        args: &["Spell"],
+    },
+    Command {
+        name: "RestoreAV",
+        opcode: 0x1182,
+        args: &["ActorValue", "Amount"],
+    },
+    Command {
+        name: "SetAngle",
+        opcode: 0x1009,
+        args: &["Axis", "Angle"],
+    },
+    Command {
+        name: "SetAV",
+        opcode: 0x100F,
+        args: &["ActorValue", "Value"],
+    },
+    Command {
+        name: "ShowMessage",
+        opcode: 0x1059,
+        args: &["Message"],
+    },
+    Command {
         // Parameterless: the game writes no argument bytes at all for it.
         name: "TrapUpdate",
         opcode: 0x110C,
@@ -424,136 +561,9 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "Unlock",
         opcode: 0x1073,
-        args: &[],
-    },
-    Command {
-        name: "Activate",
-        opcode: 0x100D,
-        args: &["ObjectRefID", "Flag"],
-    },
-    Command {
-        name: "AddAchievement",
-        opcode: 0x114A,
-        args: &["Achievement"],
-    },
-    Command {
-        name: "AddItem",
-        opcode: 0x1002,
-        args: &["ObjectID", "Count", "Flag"],
-    },
-    Command {
-        name: "AddPerk",
-        opcode: 0x1176,
-        args: &["Perk"],
-    },
-    Command {
-        name: "AddReputation",
-        opcode: 0x1239,
-        args: &["Reputation", "Value"],
-    },
-    Command {
-        name: "AddScriptPackage",
-        opcode: 0x1097,
-        args: &["Package"],
-    },
-    Command {
-        name: "AddSpell",
-        opcode: 0x101C,
-        args: &["Spell"],
-    },
-    Command {
-        name: "ApplyImageSpaceModifier",
-        opcode: 0x1191,
-        args: &["ImageSpaceModifier", "Flag"],
-    },
-    Command {
-        name: "AttachAshPile",
-        opcode: 0x1211,
-        args: &[],
-    },
-    Command {
-        name: "BWaitersServeWine",
-        opcode: 0x11C8,
-        args: &[],
-    },
-    Command {
-        name: "ClearFactionPlayerEnemyFlag",
-        opcode: 0x11C9,
-        args: &["Faction"],
-    },
-    Command {
-        name: "CompleteQuest",
-        opcode: 0x1071,
-        args: &["Quest"],
-    },
-    Command {
-        name: "DamageAV",
-        opcode: 0x1181,
-        args: &["ActorValue", "Amount"],
-    },
-    Command {
-        name: "Dispel",
-        opcode: 0x1142,
-        args: &[],
-    },
-    Command {
-        name: "DropMe",
-        opcode: 0x10A6,
-        args: &[],
-    },
-    Command {
-        name: "EnableFastTravel",
-        opcode: 0x1111,
-        args: &["Flag"],
-    },
-    Command {
-        name: "EnableNavMesh",
-        opcode: 0x11C0,
-        args: &["Flag"],
-    },
-    Command {
-        name: "GetAV",
-        opcode: 0x11CD,
-        args: &["ActorValue"],
-    },
-    Command {
-        // `Kill` is the same command under a shorter name: the corpus spells
-        // it both ways (`Kill;`, `KillActor`, `killActor Opp 1 2`) and both
-        // compile to 0x108B. One entry, because two rows with one opcode is a
-        // table that cannot be looked up.
-        name: "KillActor",
-        opcode: 0x108B,
-        args: &["Target", "Flag"],
-    },
-    Command {
-        name: "PlaceAtMe",
-        opcode: 0x1025,
-        args: &["ObjectID", "Count", "Distance", "Direction"],
-    },
-    Command {
-        name: "RemoveSpell",
-        opcode: 0x101D,
-        args: &["Spell"],
-    },
-    Command {
-        name: "RestoreAV",
-        opcode: 0x1182,
-        args: &["ActorValue", "Amount"],
-    },
-    Command {
-        name: "SetAngle",
-        opcode: 0x1009,
-        args: &["Axis", "Angle"],
-    },
-    Command {
-        name: "SetAV",
-        opcode: 0x100F,
-        args: &["ActorValue", "Value"],
-    },
-    Command {
-        name: "ShowMessage",
-        opcode: 0x1059,
-        args: &["Message"],
+        // The game's command definition declares an optional parameter, so
+        // calling it without parameters emits a 2-byte count of 0 (00 00).
+        args: &["Optional"],
     },
 ];
 

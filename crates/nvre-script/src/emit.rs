@@ -66,6 +66,18 @@ pub fn read_instructions(body: &[u8]) -> Vec<Instruction> {
     let mut i = 0usize;
     while i + 4 <= body.len() {
         let opcode = u16::from_le_bytes([body[i], body[i + 1]]);
+        // 0x1C SetCurrentRef framing in compiled obscript bytecode:
+        // [1C 00] [refIdx: u16] followed immediately by the target instruction.
+        if opcode == 0x001C {
+            let ref_idx = u16::from_le_bytes([body[i + 2], body[i + 3]]);
+            out.push(Instruction {
+                at: i,
+                opcode,
+                args: ref_idx.to_le_bytes().to_vec(),
+            });
+            i += 4;
+            continue;
+        }
         let len = u16::from_le_bytes([body[i + 2], body[i + 3]]) as usize;
         let args_start = i + 4;
         let Some(args_end) = args_start.checked_add(len) else {
@@ -90,6 +102,25 @@ use crate::parse::{Script, Stmt};
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_if_statement_emits_jump_ops_and_matching_endif() {
+        let source = "scn TestScript\nshort bDoOnce\nbegin GameMode\nif bDoOnce == 0\nset bDoOnce to 1\nendif\nend\n";
+        let compiled = crate::compile::compile(source).unwrap();
+        let ins = read_instructions(&compiled);
+        // ScriptName, Begin, If, Set, EndIf, End
+        assert_eq!(ins.len(), 6);
+        assert_eq!(ins[0].opcode, StmtOp::ScriptName.opcode());
+        assert_eq!(ins[1].opcode, StmtOp::Begin.opcode());
+        assert_eq!(ins[2].opcode, StmtOp::If.opcode());
+        // jumpOps = 1 (skipping Set)
+        assert_eq!(&ins[2].args[0..2], &1u16.to_le_bytes());
+        // exprLen = 9 (0x20 's' 0x01 0x00 0x20 '0' 0x20 '==' )
+        assert_eq!(&ins[2].args[2..4], &9u16.to_le_bytes());
+        assert_eq!(ins[3].opcode, StmtOp::Set.opcode());
+        assert_eq!(ins[4].opcode, StmtOp::EndIf.opcode());
+        assert_eq!(ins[5].opcode, StmtOp::End.opcode());
+    }
 
     #[test]
     fn an_instructions_length_does_not_count_itself() {
@@ -230,6 +261,190 @@ pub fn emit(script: &Script) -> Result<Vec<u8>, crate::Error> {
     Ok(out)
 }
 
+/// Information about the branches of an `If` statement chain.
+struct IfChain {
+    /// Statements in the `if` body (and its start index).
+    if_body_range: std::ops::Range<usize>,
+    /// Any `elseif` branches: (condition tokens, body range).
+    elseifs: Vec<(Vec<crate::lex::Token>, std::ops::Range<usize>)>,
+    /// The `else` body range, if present.
+    else_body_range: Option<std::ops::Range<usize>>,
+    /// The index just after the `EndIf`.
+    after_endif: usize,
+}
+
+/// Analyze an `If` statement starting at `if_idx` and find all its branches.
+fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Error> {
+    let mut depth = 0usize;
+    let mut current_start = if_idx + 1;
+    let mut if_body_range = None;
+    let mut elseifs = Vec::new();
+    let mut else_body_range = None;
+    let mut after_endif = None;
+
+    let mut i = if_idx + 1;
+    while i < script.stmts.len() {
+        match &script.stmts[i] {
+            Stmt::If(_) => {
+                depth += 1;
+                i += 1;
+            }
+            Stmt::ElseIf(cond) if depth == 0 => {
+                if if_body_range.is_none() {
+                    if_body_range = Some(current_start..i);
+                } else {
+                    // Previous was an elseif
+                    if let Some(last) = elseifs.last_mut() {
+                        let (c, _): &mut (Vec<crate::lex::Token>, std::ops::Range<usize>) = last;
+                        *last = (c.clone(), current_start..i);
+                    }
+                }
+                elseifs.push((cond.clone(), 0..0)); // range will be populated on next branch/endif
+                current_start = i + 1;
+                i += 1;
+            }
+            Stmt::Else if depth == 0 => {
+                if if_body_range.is_none() {
+                    if_body_range = Some(current_start..i);
+                } else if let Some(last) = elseifs.last_mut() {
+                    let (c, _) = last;
+                    *last = (c.clone(), current_start..i);
+                }
+                current_start = i + 1;
+                i += 1;
+            }
+            Stmt::EndIf => {
+                if depth == 0 {
+                    if else_body_range.is_none() {
+                        if if_body_range.is_none() {
+                            if_body_range = Some(current_start..i);
+                        } else if !elseifs.is_empty() && elseifs.last().unwrap().1.is_empty() {
+                            let (c, _) = elseifs.last().unwrap();
+                            let c = c.clone();
+                            elseifs.pop();
+                            elseifs.push((c, current_start..i));
+                        } else {
+                            else_body_range = Some(current_start..i);
+                        }
+                    } else {
+                        else_body_range = Some(current_start..i);
+                    }
+                    after_endif = Some(i + 1);
+                    break;
+                } else {
+                    depth -= 1;
+                    i += 1;
+                }
+            }
+            _ => {
+                i += 1;
+            }
+        }
+    }
+
+    let Some(after) = after_endif else {
+        return Err(crate::Error::Parse(
+            "`if` statement has no matching `endif`".to_string(),
+        ));
+    };
+
+    Ok(IfChain {
+        if_body_range: if_body_range.unwrap_or(current_start..current_start),
+        elseifs,
+        else_body_range,
+        after_endif: after,
+    })
+}
+
+/// Emit an `If` statement chain: the `If`, any `ElseIf`s, optional `Else`, and closing `EndIf`.
+fn emit_if_chain(
+    script: &Script,
+    if_idx: usize,
+    cond: &[crate::lex::Token],
+) -> Result<(Vec<u8>, usize), crate::Error> {
+    let chain = analyze_if_chain(script, if_idx)?;
+
+    // Helper to emit a slice of statements
+    fn emit_stmts(script: &Script, range: std::ops::Range<usize>) -> Result<Vec<u8>, crate::Error> {
+        let mut out = Vec::new();
+        let mut idx = range.start;
+        while idx < range.end {
+            match &script.stmts[idx] {
+                Stmt::Begin { .. } => {
+                    out.extend(emit_block(script, idx)?);
+                    idx = after_block(script, idx);
+                }
+                Stmt::If(c) => {
+                    let (bytes, next_idx) = emit_if_chain(script, idx, c)?;
+                    out.extend(bytes);
+                    idx = next_idx;
+                }
+                other => {
+                    out.extend(emit_statement(script, other)?);
+                    idx += 1;
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    let if_body = emit_stmts(script, chain.if_body_range)?;
+    let if_ops = read_instructions(&if_body).len() as u16;
+
+    let mut elseifs_bytes = Vec::new();
+    let mut elseif_ops_list = Vec::new();
+    for (c, r) in &chain.elseifs {
+        let b = emit_stmts(script, r.clone())?;
+        let ops = read_instructions(&b).len() as u16;
+        elseifs_bytes.push((c, b));
+        elseif_ops_list.push(ops);
+    }
+
+    let else_body = if let Some(r) = &chain.else_body_range {
+        Some(emit_stmts(script, r.clone())?)
+    } else {
+        None
+    };
+
+    let mut out = Vec::new();
+
+    // 1. Emit If (0x0016)
+    // jumpOps is the number of instructions to skip if false.
+    let if_cond_bytes = crate::value::encode_expr(cond, &script.decls)?;
+    let mut if_args = Vec::with_capacity(4 + if_cond_bytes.len());
+    if_args.extend_from_slice(&if_ops.to_le_bytes());
+    if_args.extend_from_slice(&(if_cond_bytes.len() as u16).to_le_bytes());
+    if_args.extend_from_slice(&if_cond_bytes);
+    out.extend(frame(StmtOp::If.opcode(), &if_args));
+
+    // If body
+    out.extend(if_body);
+
+    // 2. Emit ElseIfs
+    for (i, (c, b)) in elseifs_bytes.into_iter().enumerate() {
+        let c_bytes = crate::value::encode_expr(c, &script.decls)?;
+        let ops = elseif_ops_list[i];
+        let mut elseif_args = Vec::with_capacity(4 + c_bytes.len());
+        elseif_args.extend_from_slice(&ops.to_le_bytes());
+        elseif_args.extend_from_slice(&(c_bytes.len() as u16).to_le_bytes());
+        elseif_args.extend_from_slice(&c_bytes);
+        out.extend(frame(StmtOp::ElseIf.opcode(), &elseif_args));
+        out.extend(b);
+    }
+
+    // 3. Emit Else
+    if let Some(eb) = else_body {
+        let else_ops = read_instructions(&eb).len() as u16;
+        out.extend(frame(StmtOp::Else.opcode(), &else_ops.to_le_bytes()));
+        out.extend(eb);
+    }
+
+    // 4. Emit EndIf (0x0019)
+    out.extend(frame(StmtOp::EndIf.opcode(), &[]));
+
+    Ok((out, chain.after_endif))
+}
+
 /// The index just past the `End` that closes the block starting at `start`.
 ///
 /// The same depth count `emit_block` uses, so the two agree about which `End`
@@ -300,6 +515,11 @@ fn emit_block(script: &Script, start: usize) -> Result<Vec<u8>, crate::Error> {
             Stmt::Begin { .. } => {
                 body.extend(emit_block(script, i)?);
                 i = after_block(script, i);
+            }
+            Stmt::If(cond) => {
+                let (bytes, next_i) = emit_if_chain(script, i, cond)?;
+                body.extend(bytes);
+                i = next_i;
             }
             Stmt::End => {
                 closed = true;
