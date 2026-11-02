@@ -170,6 +170,263 @@ pub struct Command {
 /// because a guessed opcode is a call to the wrong function.
 pub const COMMANDS: &[Command] = &[
     Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "TrapUpdate",
+        opcode: 0x110C,
+        args: &[],
+    },
+    Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "SCAOnActor",
+        opcode: 0x1101,
+        args: &[],
+    },
+    Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "EVP",
+        opcode: 0x105E,
+        args: &[],
+    },
+    Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "PurgeCellBuffers",
+        opcode: 0x1189,
+        args: &[],
+    },
+    Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "MarkForDelete",
+        opcode: 0x11BB,
+        args: &[],
+    },
+    Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "ExitGame",
+        opcode: 0x11B5,
+        args: &[],
+    },
+    Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "ReleaseWeatherOverride",
+        opcode: 0x1158,
+        args: &[],
+    },
+    Command {
+        // Parameterless: the game writes no argument bytes at all for it.
+        name: "ResetHealth",
+        opcode: 0x1150,
+        args: &[],
+    },
+    Command {
+        name: "AddTopic",
+        opcode: 0x1058,
+        args: &["Topic"],
+    },
+    Command {
+        // Declares a parameter, even though `Disable` is normally called with
+        // none: the game writes `22 10 02 00 00 00` for it, a count of zero
+        // rather than no argument bytes at all. Measured against
+        // vLegionaryFactionRewardNPCScript.
+        name: "Disable",
+        opcode: 0x1022,
+        args: &["Flag"],
+    },
+    Command {
+        name: "Enable",
+        opcode: 0x1021,
+        args: &["Flag"],
+    },
+    Command {
+        name: "EquipItem",
+        opcode: 0x10EE,
+        args: &["ObjectID", "Flag"],
+    },
+    Command {
+        name: "IgnoreCrime",
+        opcode: 0x10AB,
+        args: &["Flag"],
+    },
+    Command {
+        name: "Lock",
+        opcode: 0x1072,
+        args: &["LockLevel"],
+    },
+    Command {
+        name: "Look",
+        opcode: 0x105C,
+        args: &["Target"],
+    },
+    Command {
+        name: "ModActorValue",
+        opcode: 0x1010,
+        args: &["ActorValue", "Amount"],
+    },
+    Command {
+        name: "MoveTo",
+        opcode: 0x109E,
+        args: &["Marker"],
+    },
+    Command {
+        name: "PMS",
+        opcode: 0x1123,
+        args: &["Shader"],
+    },
+    Command {
+        name: "PickIdle",
+        opcode: 0x1064,
+        args: &[],
+    },
+    Command {
+        name: "PlayGroup",
+        opcode: 0x1013,
+        args: &["AnimGroup", "Flag"],
+    },
+    Command {
+        name: "PlaySound",
+        opcode: 0x1026,
+        args: &["Sound"],
+    },
+    Command {
+        name: "PlaySound3D",
+        opcode: 0x10B2,
+        args: &["Sound"],
+    },
+    Command {
+        name: "RemoveAllItems",
+        opcode: 0x10AD,
+        args: &["Target", "Flag"],
+    },
+    Command {
+        name: "RemoveItem",
+        opcode: 0x1052,
+        args: &["ObjectID", "Count"],
+    },
+    Command {
+        // Declares a parameter, even though `RemoveMe` is normally called
+        // with none: the game writes `A5 10 02 00 00 00` for it, which is a
+        // count of zero rather than no argument bytes at all. Measured against
+        // L38upgradeDisplaycase02SCRIPT.
+        name: "RemoveMe",
+        opcode: 0x10A5,
+        args: &["Flag"],
+    },
+    Command {
+        // Declares a parameter: `Resurrect` is `8C 10 02 00 00 00`.
+        name: "Resurrect",
+        opcode: 0x108C,
+        args: &["Flag"],
+    },
+    Command {
+        name: "RewardXP",
+        opcode: 0x1149,
+        args: &["XP"],
+    },
+    Command {
+        name: "SMS",
+        opcode: 0x1125,
+        args: &["Shader"],
+    },
+    Command {
+        name: "Say",
+        opcode: 0x1033,
+        args: &["Topic", "Flag"],
+    },
+    Command {
+        name: "SayTo",
+        opcode: 0x1034,
+        args: &["Actor", "Topic"],
+    },
+    Command {
+        name: "SetAlly",
+        opcode: 0x1079,
+        args: &["Faction1", "Faction2", "Flag"],
+    },
+    Command {
+        name: "SetCombatStyle",
+        opcode: 0x10B1,
+        args: &["CombatStyle"],
+    },
+    Command {
+        name: "SetCriticalStage",
+        opcode: 0x1148,
+        args: &["Stage"],
+    },
+    Command {
+        name: "SetDestroyed",
+        opcode: 0x10CC,
+        args: &["Flag"],
+    },
+    Command {
+        name: "SetEnemy",
+        opcode: 0x1078,
+        args: &["Faction1", "Faction2"],
+    },
+    Command {
+        name: "SetGhost",
+        opcode: 0x10EC,
+        args: &["Flag"],
+    },
+    Command {
+        name: "SetOpenState",
+        opcode: 0x10DD,
+        args: &["OpenState"],
+    },
+    Command {
+        name: "SetRestrained",
+        opcode: 0x10F3,
+        args: &["Flag"],
+    },
+    Command {
+        name: "SetStage",
+        opcode: 0x1039,
+        args: &["Quest", "Stage"],
+    },
+    Command {
+        name: "SetUnconscious",
+        opcode: 0x10F1,
+        args: &["Flag"],
+    },
+    Command {
+        name: "SetWeather",
+        opcode: 0x1104,
+        args: &["Weather", "Flag"],
+    },
+    Command {
+        name: "StartCombat",
+        opcode: 0x1016,
+        args: &["Target"],
+    },
+    Command {
+        name: "StartConversation",
+        opcode: 0x1056,
+        args: &["Actor", "Topic"],
+    },
+    Command {
+        name: "StartQuest",
+        opcode: 0x1036,
+        args: &["Quest"],
+    },
+    Command {
+        name: "StopCombat",
+        opcode: 0x1017,
+        args: &[],
+    },
+    Command {
+        name: "StopQuest",
+        opcode: 0x1037,
+        args: &["Quest"],
+    },
+    Command {
+        name: "UnequipItem",
+        opcode: 0x10EF,
+        args: &["ObjectID", "Flag"],
+    },
+    Command {
+        name: "Unlock",
+        opcode: 0x1073,
+        args: &[],
+    },
+    Command {
         name: "Activate",
         opcode: 0x100D,
         args: &["ObjectRefID", "Flag"],
@@ -260,9 +517,13 @@ pub const COMMANDS: &[Command] = &[
         args: &["ActorValue"],
     },
     Command {
+        // `Kill` is the same command under a shorter name: the corpus spells
+        // it both ways (`Kill;`, `KillActor`, `killActor Opp 1 2`) and both
+        // compile to 0x108B. One entry, because two rows with one opcode is a
+        // table that cannot be looked up.
         name: "KillActor",
         opcode: 0x108B,
-        args: &["Flag", "Flag"],
+        args: &["Target", "Flag"],
     },
     Command {
         name: "PlaceAtMe",
@@ -299,6 +560,27 @@ pub const COMMANDS: &[Command] = &[
 /// The command with this name, case-insensitively.
 pub fn command_named(name: &str) -> Option<&'static Command> {
     COMMANDS.iter().find(|c| c.name.eq_ignore_ascii_case(name))
+}
+
+/// The aliases the corpus spells a command under.
+///
+/// A name the writers use for a command whose table entry is called something
+/// else. These are recorded rather than added as second rows with the same
+/// opcode, because two rows sharing an opcode is a table that cannot be
+/// looked up — and the corpus spells `Kill` and `KillActor` for the same
+/// 0x108B.
+const ALIASES: &[(&str, &str)] = &[("Kill", "KillActor"), ("SetActorValue", "SetAV")];
+
+/// The command called `name`, resolving an alias first.
+pub fn command_called(name: &str) -> Option<&'static Command> {
+    if let Some(c) = command_named(name) {
+        return Some(c);
+    }
+    let canonical = ALIASES
+        .iter()
+        .find(|(alias, _)| alias.eq_ignore_ascii_case(name))
+        .map(|(_, canonical)| *canonical)?;
+    command_named(canonical)
 }
 
 /// The command with this opcode.

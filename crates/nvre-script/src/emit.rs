@@ -381,6 +381,7 @@ fn emit_statement(script: &Script, stmt: &Stmt) -> Result<Vec<u8>, crate::Error>
         // `ScriptName` inside a block is the same marker as outside one.
         Stmt::ScriptName(_) => Ok(frame(StmtOp::ScriptName.opcode(), &[])),
         Stmt::Set { target, expr } => emit_set(script, target, expr),
+        Stmt::Call { on, command, args } => emit_call(script, on, command, args),
         // A declaration emits nothing: the variable is in the record's
         // `SLSD`/`SCVR` list, which is the writer's job rather than the
         // bytecode's.
@@ -552,11 +553,105 @@ mod emit_tests {
             compile("scn S\nBegin GameMode\nEnd").unwrap()
         );
     }
+}
+
+#[cfg(test)]
+mod call_tests {
+    use super::*;
+    use crate::parse::parse;
+
+    fn compile(source: &str) -> Result<Vec<u8>, crate::Error> {
+        emit(&parse(source))
+    }
 
     #[test]
-    fn a_command_call_is_refused_until_the_opcode_table_covers_it() {
-        let err = compile("scn S\nBegin GameMode\n  SetAV Player 5 10\nEnd").unwrap_err();
-        assert!(err.to_string().contains("not emitted yet"), "{err}");
+    fn a_command_with_no_parameters_writes_no_argument_bytes() {
+        // Measured: `StopCombat` and `PickIdle` are `argLen` 0 with nothing
+        // after the header. There is no argument count at all.
+        let got = compile("scn S\nBegin GameMode\n  StopCombat\nEnd").unwrap();
+        assert!(
+            got.windows(4).any(|w| w == [0x17, 0x10, 0x00, 0x00]),
+            "StopCombat is opcode 0x1017 with argLen 0: {:02X?}",
+            got
+        );
+    }
+
+    #[test]
+    fn a_command_with_parameters_writes_a_count_of_zero_when_given_none() {
+        // Measured: `activate` is `100D 00 02 00 00 00` — the count of zero is
+        // written even though nothing is passed, because the command declares
+        // parameters. This is the distinction from the form above.
+        let got = compile("scn S\nBegin GameMode\n  activate\nEnd").unwrap();
+        assert!(
+            got.windows(6)
+                .any(|w| w == [0x0D, 0x10, 0x02, 0x00, 0x00, 0x00]),
+            "activate is opcode 0x100D, argLen 2, count 0: {:02X?}",
+            got
+        );
+    }
+
+    #[test]
+    fn a_numeric_argument_is_the_n_tag_and_an_i32() {
+        // Measured: `setrestrained 0` writes `01 00 6E 00 00 00 00` — the
+        // count, then `0x6E` `n` and a four-byte integer. `RewardXP 350`
+        // writes `6E 5E 01 00 00`, where 0x015E is 350.
+        let got = compile("scn S\nBegin GameMode\n  setRestrained 1\nEnd").unwrap();
+        assert!(
+            got.windows(7)
+                .any(|w| w == [0x01, 0x00, 0x6E, 0x01, 0x00, 0x00, 0x00]),
+            "the count, the n tag, and the i32: {:02X?}",
+            got
+        );
+    }
+
+    #[test]
+    fn a_command_argument_is_not_encoded_the_way_a_set_value_is() {
+        // The two encodings are genuinely different: a `set` value stores an
+        // integer as its ASCII digits behind a `0x20` tag, and a command
+        // argument stores it as an `i32` behind a `0x6E` tag. Writing one the
+        // way the other is written produces a body the game reads as a
+        // different number.
+        let set = compile("scn S\nint V\nBegin GameMode\n  set V to 350\nEnd").unwrap();
+        let call = compile("scn S\nBegin GameMode\n  RewardXP 350\nEnd").unwrap();
+        // The set carries the ASCII `350`; the call carries the binary 350.
+        assert!(
+            set.windows(3).any(|w| w == [0x20, 0x33, 0x35]),
+            "{set:02X?}"
+        );
+        assert!(
+            call.windows(5).any(|w| w == [0x6E, 0x5E, 0x01, 0x00, 0x00]),
+            "{call:02X?}"
+        );
+    }
+
+    #[test]
+    fn an_unknown_command_is_refused() {
+        // A guessed opcode is a call to the wrong function.
+        let err = compile("scn S\nBegin GameMode\n  NotARealCommand 1\nEnd").unwrap_err();
+        assert!(err.to_string().contains("NotARealCommand"), "{err}");
+    }
+
+    #[test]
+    fn a_command_given_arguments_it_does_not_take_is_refused() {
+        let err = compile("scn S\nBegin GameMode\n  StopCombat 1\nEnd").unwrap_err();
+        assert!(err.to_string().contains("takes no arguments"), "{err}");
+    }
+
+    #[test]
+    fn a_dotted_call_is_refused_rather_than_given_a_made_up_index() {
+        // `rDoor.Activate` names one of the record's references, and this
+        // emitter has no reference list — so a made-up index would be a call
+        // on the wrong reference.
+        let err = compile("scn S\nBegin GameMode\n  rDoor.Activate\nEnd").unwrap_err();
+        assert!(err.to_string().contains("reference"), "{err}");
+    }
+
+    #[test]
+    fn a_reference_argument_is_refused_rather_than_guessed() {
+        // `StartCombat player` names the player, which is a reference the
+        // record's list resolves.
+        let err = compile("scn S\nBegin GameMode\n  StartCombat player\nEnd").unwrap_err();
+        assert!(err.to_string().contains("reference"), "{err}");
     }
 }
 
@@ -700,5 +795,136 @@ mod param_count_tests {
         assert!(Event::OnDeath.takes_argument());
         assert!(Event::OnTriggerEnter.takes_argument());
         assert!(Event::OnTrigger.takes_argument());
+    }
+}
+
+/// Emit a command call.
+///
+/// Measured, and the shape depends on whether the command declares any
+/// parameters at all:
+///
+/// ```text
+/// [opcode:u16][argLen:u16]                       — a command with no parameters
+/// [opcode:u16][argLen:u16] [argCount:u16] [args…] — a command that has some
+/// ```
+///
+/// `StopCombat` and `PickIdle` are the first form: their `argLen` is 0 and
+/// there is nothing after the header. `activate`, `Disable` and `unlock` are
+/// the second, and they write a count of zero even when called with no
+/// arguments — so `activate` is `100D 00 02 00 00 00`, four bytes of header
+/// and a count of 0.
+///
+/// The rule holds across every one of the 53 command opcodes measured in the
+/// corpus: `argLen` 0 exactly when the command declares no parameters.
+///
+/// The arguments themselves are tagged values, and the tag set is measured:
+/// `0x6E` `n` + an `i32` for a number, `0x72` `r` + a `u16` index for one of
+/// the record's references. A reference name is not resolvable here — the
+/// record's own reference list is — so a call naming one is refused rather
+/// than given a made-up index.
+fn emit_call(
+    script: &Script,
+    on: &Option<String>,
+    command: &str,
+    args: &[crate::lex::Token],
+) -> Result<Vec<u8>, crate::Error> {
+    let Some(cmd) = crate::opcodes::command_called(command) else {
+        return Err(crate::Error::Parse(format!(
+            "`{command}` is not a known command"
+        )));
+    };
+
+    // A dotted call is `Ref.Command`, and the reference is an argument the
+    // command's own signature does not name: the game passes the reference
+    // the call is made on as an implicit first argument. That argument names
+    // one of the record's references, which this emitter cannot resolve — so
+    // a dotted call is refused rather than emitted with a made-up index.
+    if on.is_some() {
+        return Err(crate::Error::Parse(format!(
+            "`{}.{}` names a reference, which the emitter cannot resolve yet",
+            on.as_deref().unwrap_or(""),
+            command
+        )));
+    }
+
+    // The arguments, as the values the source spells. A name that is not a
+    // number and not a declared variable is a reference or a form the emitter
+    // does not understand yet, and it is refused rather than guessed.
+    //
+    // The count is of arguments, not of bytes: one `n`-tagged argument is five
+    // bytes, and writing its byte length as the count is a call with five
+    // arguments where the source asked for one.
+    let mut encoded: Vec<Vec<u8>> = Vec::new();
+    for t in args {
+        if t.kind == crate::lex::Kind::Space || t.kind == crate::lex::Kind::Comment {
+            continue;
+        }
+        encoded.push(emit_arg(t, script)?);
+    }
+
+    // A command with no declared parameters writes no argument bytes at all.
+    // One that has them writes the count, even when nothing is passed.
+    if cmd.args.is_empty() {
+        if !encoded.is_empty() {
+            return Err(crate::Error::Parse(format!(
+                "`{command}` takes no arguments, but {} were given",
+                encoded.len()
+            )));
+        }
+        return Ok(frame(cmd.opcode, &[]));
+    }
+
+    let flat: Vec<u8> = encoded.concat();
+    let mut body = Vec::with_capacity(2 + flat.len());
+    body.extend_from_slice(&(encoded.len() as u16).to_le_bytes());
+    body.extend(flat);
+    Ok(frame(cmd.opcode, &body))
+}
+
+/// One command argument, as its tagged bytes.
+///
+/// The tags are measured: `0x6E` `n` + an `i32` for a number, `0x72` `r` + a
+/// `u16` index for a reference. This is a different encoding from `set`'s
+/// value, which stores an integer as its ASCII digits behind a `0x20` tag —
+/// the two are not interchangeable, and writing a command's argument the way
+/// `set` writes its value produces a body the game reads as a different
+/// number.
+fn emit_arg(t: &crate::lex::Token, script: &Script) -> Result<Vec<u8>, crate::Error> {
+    match t.kind {
+        crate::lex::Kind::Number => {
+            let Ok(n) = t.text.parse::<i32>() else {
+                return Err(crate::Error::Parse(format!(
+                    "`{}` is not a number this emitter can encode",
+                    t.text
+                )));
+            };
+            let mut out = vec![0x6E];
+            out.extend_from_slice(&n.to_le_bytes());
+            Ok(out)
+        }
+        // A bare name is a reference or a variable of this script. The
+        // variable case is resolvable through the declarations; anything else
+        // names one of the record's references, which this emitter cannot
+        // index correctly — so it is refused rather than guessed.
+        crate::lex::Kind::Word => {
+            if script
+                .decls
+                .iter()
+                .any(|d| d.name.eq_ignore_ascii_case(&t.text))
+            {
+                return Err(crate::Error::Parse(format!(
+                    "passing the variable `{}` to a command is not emitted yet",
+                    t.text
+                )));
+            }
+            Err(crate::Error::Parse(format!(
+                "`{}` names a reference, which the emitter cannot resolve yet",
+                t.text
+            )))
+        }
+        _ => Err(crate::Error::Parse(format!(
+            "cannot encode `{}` as a command argument",
+            t.text
+        ))),
     }
 }
