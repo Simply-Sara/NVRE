@@ -2002,22 +2002,33 @@ impl Session {
         Ok(new)
     }
 
+    /// Queue a record for deletion by FormID.
+    ///
+    /// A row in the object window can be deleted straight from its context
+    /// menu, which names the record rather than the selection — so the
+    /// FormID comes in as an argument instead of being read off `selected`.
+    /// Queuing a record that is already queued is a no-op, the way selecting
+    /// an already-selected record is.
+    pub fn delete_object(&mut self, form_id: u32) {
+        if !self.deleted.contains(&form_id) {
+            self.deleted.push(form_id);
+        }
+        self.doc.delete_record(form_id);
+        // The object window's list shows the record as it was, which is a
+        // row you can open and edit but will never see in-game. The usage
+        // counts follow: a deleted record's copies and its users are gone
+        // from the game, so the columns should not keep counting them.
+        self.stale = true;
+        self.usage_stale = true;
+        self.status = format!("queued {form_id:08X} for deletion");
+        self.refs_cell = None;
+        self.exterior_refs_key = None;
+    }
+
     /// Queue the selected reference for deletion.
     pub fn delete_selected(&mut self) {
         if let Some(fid) = self.selected.take() {
-            if !self.deleted.contains(&fid) {
-                self.deleted.push(fid);
-            }
-            self.doc.delete_record(fid);
-            // The object window's list shows the record as it was, which is a
-            // row you can open and edit but will never see in-game. The usage
-            // counts follow: a deleted record's copies and its users are gone
-            // from the game, so the columns should not keep counting them.
-            self.stale = true;
-            self.usage_stale = true;
-            self.status = format!("queued {fid:08X} for deletion");
-            self.refs_cell = None;
-            self.exterior_refs_key = None;
+            self.delete_object(fid);
         }
     }
 

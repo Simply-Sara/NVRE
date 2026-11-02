@@ -1349,6 +1349,10 @@ pub fn place(
         // the prompt is a modal drawn after this list, and it needs the row's
         // Editor ID to prefill the copy's name.
         let mut ask_duplicate: Option<(u32, [u8; 4], String)> = None;
+        // The row Delete was chosen on. The menu runs inside the row's
+        // closure, which cannot take the session while the list borrows it,
+        // so the FormID is carried out and acted on below.
+        let mut delete_fid: Option<u32> = None;
 
         // The two halves of GECK's Object Window: a category list down the LEFT
         // side, the chosen category's objects on the right.
@@ -1506,6 +1510,18 @@ pub fn place(
                             ask_duplicate = Some((row.fid, cur_group.sig, row.edid.clone()));
                             ui.close();
                         }
+                        // Delete is the same action the References window's
+                        // button makes, on the row the menu was opened on
+                        // rather than on the selection: right-clicking a row
+                        // already points at it. Nothing is written until the
+                        // save, and the status line says which record was
+                        // queued — the row leaves the list immediately, because
+                        // a record the game will not have is not one the
+                        // window should list.
+                        if ui.button("Delete").clicked() {
+                            delete_fid = Some(row.fid);
+                            ui.close();
+                        }
                     });
                     if resp.double_clicked() {
                         open_obj = Some((row.fid, cur_group.sig));
@@ -1549,7 +1565,13 @@ pub fn place(
             }
         });
         // The actions, after every piece of UI that can choose one.
-        if let Some((fid, sig)) = open_obj {
+        //
+        // Delete before the others: it is the one that takes the row out of
+        // the list, and a row that has just left the list should not also be
+        // selected or opened.
+        if let Some(fid) = delete_fid {
+            session.delete_object(fid);
+        } else if let Some((fid, sig)) = open_obj {
             session.open_object(fid, sig);
         } else if let Some(fid) = select_fid {
             session.select(fid);

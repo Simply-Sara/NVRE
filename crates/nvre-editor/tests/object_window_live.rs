@@ -725,6 +725,52 @@ fn a_duplicate_follows_the_plugin_being_edited() {
     );
 }
 
+/// A record can be deleted by FormID, not only through the selection.
+///
+/// The object window's context menu names the row it was opened on, so the
+/// FormID has to reach the deletion as an argument. Queuing a record that is
+/// already queued is a no-op: the second call neither re-writes the document
+/// nor reports a different count.
+#[test]
+fn a_record_can_be_deleted_by_form_id() {
+    let Some(mut s) = session() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    let stat = first_row(s.object_groups("", &flags(&s, true)), "Static");
+    assert!(
+        s.object_groups("", &flags(&s, true))
+            .iter()
+            .flat_map(|g| g.objects.iter())
+            .any(|r| r.fid == stat.fid),
+        "the record is listed before it is deleted"
+    );
+
+    s.delete_object(stat.fid);
+
+    let groups = s.object_groups("", &flags(&s, true)).to_vec();
+    assert!(
+        groups
+            .iter()
+            .flat_map(|g| g.objects.iter())
+            .all(|r| r.fid != stat.fid),
+        "the named record is not listed"
+    );
+    assert_eq!(
+        s.deleted(),
+        &[stat.fid],
+        "it is queued once, however often it was asked"
+    );
+
+    // Deleting it again leaves it queued once.
+    s.delete_object(stat.fid);
+    assert_eq!(
+        s.deleted(),
+        &[stat.fid],
+        "a second delete does not queue it twice"
+    );
+}
+
 /// A hidden master's objects are gone, and come back when it is shown again.
 ///
 /// The flags are the cache key beside the filter, so a bug that drops them
