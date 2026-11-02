@@ -1077,14 +1077,23 @@ fn grid_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
     });
 }
 
-/// A colour's three bytes, as three drag values.
+/// A colour's three bytes: egui's colour picker, and the three raw bytes.
 ///
-/// A byte is what the record stores, so the widgets edit bytes; a float 0-1
-/// slider would have to round, and rounding is how a colour stops matching the
-/// bytes the game wrote.
+/// The picker is `color_edit_button_srgb`, which takes and returns the same
+/// `[u8; 3]` the record stores — no conversion, no rounding. A float 0-1 slider
+/// would have to round, and rounding is how a colour stops matching the bytes
+/// the game wrote.
+///
+/// The three drag values stay beside it, for two reasons. The picker's HSV
+/// space cannot reach every sRGB byte triple exactly, so a value the game wrote
+/// that the picker cannot express would become uneditable without them; and
+/// typing a byte is faster than dragging a hue wheel when you know the number
+/// you want.
 fn color_row(ui: &mut egui::Ui, label: &str, rgb: &mut [u8; 3]) {
     ui.horizontal(|ui| {
         ui.label(label);
+        ui.color_edit_button_srgb(rgb);
+        ui.separator();
         for c in rgb.iter_mut() {
             ui.add(egui::DragValue::new(c).range(0..=255));
         }
