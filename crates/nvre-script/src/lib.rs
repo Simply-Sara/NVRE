@@ -11,6 +11,8 @@
 //! - [`lex`]: source text to tokens, never failing.
 //! - [`opcodes`]: the statement and command opcode tables, and the event
 //!   codes a `Begin` block opens with.
+//! - [`compile`]: source text to compiled bytecode, the whole point of the
+//!   crate.
 //!
 //! # How this is validated
 //!
@@ -26,8 +28,10 @@
 //! `docs/obscript-bytecode.md`, which is NVRE's own, derived from the game's
 //! own bytes.
 
+pub mod compile;
 pub mod lex;
 pub mod opcodes;
+pub mod parse;
 
 /// The crate's own error type.
 #[derive(Debug, thiserror::Error)]
