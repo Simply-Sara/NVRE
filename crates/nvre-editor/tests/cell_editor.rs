@@ -468,6 +468,49 @@ fn the_editor_opens_without_moving_the_viewport() {
     assert_eq!(s.editing_cell, None, "the window is closed");
 }
 
+/// A new cell opens on the Common Data tab.
+///
+/// GECK's dialog does, and keeping the previous cell's tab would land the user
+/// on Directional Ambient Lighting for a cell whose lighting has no ambient
+/// cube — a tab that then says nothing about the cell in front of them.
+#[test]
+fn a_new_cell_opens_on_common_data() {
+    let Some(s) = session() else {
+        eprintln!("NVRE_DATA not set; skipping");
+        return;
+    };
+    let fid = hoover_dam(&s);
+    // Start somewhere else, so the reset is what is being tested.
+    let mut state = CellEditorState {
+        tab: nvre_editor::cell_editor::CellEditorTab::DirectionalAmbient,
+        ..Default::default()
+    };
+    state.load_from_session(&s, fid);
+
+    assert_eq!(
+        state.tab,
+        nvre_editor::cell_editor::CellEditorTab::CommonData,
+        "the window opens on GECK's first tab"
+    );
+}
+
+/// The four tabs are GECK's four, in GECK's order.
+#[test]
+fn the_tabs_are_gecks_four() {
+    use nvre_editor::cell_editor::CellEditorTab;
+    let labels: Vec<&str> = CellEditorTab::ALL.iter().map(|t| t.label()).collect();
+    assert_eq!(
+        labels,
+        vec![
+            "Common Data",
+            "Lighting",
+            "Interior Data",
+            "Directional Ambient Lighting"
+        ],
+        "GECK's own cell edit dialog is these four, in this order"
+    );
+}
+
 /// A cell the load order does not have cannot be opened.
 ///
 /// The window's `manage_window` refuses to spawn for a cell that resolves to

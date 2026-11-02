@@ -17,21 +17,23 @@
 //! [`crate::session::Session::editing_cell`], so it is only mapped while it is
 //! wanted and never leaves a frame behind when it closes.
 //!
-//! # How the sections are laid out
+//! # The tabs
 //!
-//! GECK's own cell edit dialog leads with a **Common Data** tab, and so does
-//! this: the three reference dropdowns, the water, and the four flags that say
-//! what a cell *is*. Those fields live in several different subrecords
-//! (`XCAS`, `XCMO`, `XCIM`, `XCLW`, `XCWT` and four bits of `DATA`), and GECK
-//! gathers them anyway, because a modder opening a cell is thinking about its
-//! water or whether the player can fast-travel out of it — not about which
-//! subrecord holds it. The sections after it are organised by subrecord, which
-//! is what the rest of the record needs.
+//! GECK's cell edit dialog is four tabs, and this is the same four, in the
+//! same order: **Common Data**, **Lighting**, **Interior Data** and
+//! **Directional Ambient Lighting**.
+//!
+//! The split is GECK's own, and it is worth keeping even where it does not
+//! match the subrecords. `Has Water` is a `DATA` bit and `Height` is `XCLW`,
+//! but they sit together under Common Data because that is where a modder
+//! looks for them. The six-axis ambient cube is part of `XCLL`, and GECK gives
+//! it a tab of its own anyway, because it is a thing you set once rather than
+//! part of the cell's own lighting.
 //!
 //! A field is edited in exactly one place. The four `DATA` bits Common Data
-//! offers are not repeated in the flags section below, and the water height and
-//! type are not repeated in the water section: one value with two editors is a
-//! value that can be shown twice and mean two things.
+//! offers are not repeated in the Interior Data tab, and the water height and
+//! type are not repeated in the water noise section: one value with two
+//! editors is a value that can be shown twice and mean two things.
 //!
 //! # Byte preservation
 //!
@@ -180,8 +182,74 @@ pub struct CellEditorState {
     /// Every `XCLR` payload in file order, so the list is rewritten whole.
     pub raw_xclr: Vec<Vec<u8>>,
 
+    /// Which tab is showing.
+    ///
+    /// GECK's cell edit dialog is four tabs, and this is the same four. A tab
+    /// is state rather than a local because it has to survive the frames: an
+    /// egui widget built from a local is discarded unread, so the tab would
+    /// revert the moment the pointer left the button.
+    pub tab: CellEditorTab,
+
     /// The window's own status line, under the buttons.
     pub status: String,
+}
+
+/// GECK's four cell-edit tabs.
+///
+/// The names are GECK's own. The interior data and the directional ambient
+/// lighting are separated from the lighting and common data the way GECK
+/// separates them, because that is where a modder looks for them: the ambient
+/// cube is a six-axis thing you set once, not part of the cell's own lighting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CellEditorTab {
+    /// The water, the flags that say what a cell is, and the three reference
+    /// dropdowns.
+    #[default]
+    CommonData,
+    /// `XCLL` and the light template it can inherit from.
+    Lighting,
+    /// Interior Data: the ownership and the encounter zone.
+    InteriorData,
+    /// The six-axis directional ambient cube.
+    DirectionalAmbient,
+}
+
+impl CellEditorTab {
+    /// The tab strip's labels, in GECK's own order.
+    pub const ALL: [CellEditorTab; 4] = [
+        CellEditorTab::CommonData,
+        CellEditorTab::Lighting,
+        CellEditorTab::InteriorData,
+        CellEditorTab::DirectionalAmbient,
+    ];
+
+    /// The button's label.
+    pub fn label(self) -> &'static str {
+        match self {
+            CellEditorTab::CommonData => "Common Data",
+            CellEditorTab::Lighting => "Lighting",
+            CellEditorTab::InteriorData => "Interior Data",
+            CellEditorTab::DirectionalAmbient => "Directional Ambient Lighting",
+        }
+    }
+
+    /// GECK's own note on what the tab is for, shown as the tab's hover text.
+    pub fn hint(self) -> &'static str {
+        match self {
+            CellEditorTab::CommonData => {
+                "the water, the flags that say what the cell is, and its default acoustic, music and image space"
+            }
+            CellEditorTab::Lighting => {
+                "the cell's own ambient, directional and fog colours, and the template it can inherit them from"
+            }
+            CellEditorTab::InteriorData => {
+                "the cell's ownership, encounter zone and climate"
+            }
+            CellEditorTab::DirectionalAmbient => {
+                "the six-axis directional ambient cube, one colour per axis"
+            }
+        }
+    }
 }
 
 /// Read a `u32` FormID payload, or `None` for a short one or an all-zero one.
@@ -211,6 +279,10 @@ impl CellEditorState {
     pub fn load_from_session(&mut self, session: &crate::session::Session, cell: u32) {
         self.loaded_target = Some(cell);
         self.form_id = cell;
+        // Back to the first tab for a new cell, the way GECK's dialog opens on
+        // Common Data. Keeping the previous cell's tab would put the user on
+        // Directional Ambient Lighting for a cell that has no ambient cube.
+        self.tab = CellEditorTab::CommonData;
         self.status = format!("Loaded cell {cell:08X}");
 
         self.edid.clear();
@@ -623,19 +695,26 @@ pub fn ui(
     }
 
     egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "cell_editor"), |ui| {
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            header_group(ui, &mut state);
-            // First, because it is GECK's own first tab and it holds the
-            // fields a modder opens a cell to change: the water, the flags
-            // that say what the cell is, and the four hide-land quads.
-            common_data_group(ui, &mut session, &mut state);
-            flags_group(ui, &mut state);
-            grid_group(ui, &mut state);
-            lighting_group(ui, &mut state);
-            template_group(ui, &mut session, &mut state);
-            water_noise_group(ui, &mut state);
-            references_group(ui, &mut session, &mut state);
-            ownership_group(ui, &mut session, &mut state);
+        header_group(ui, &mut state);
+        ui.add_space(4.0);
+        tab_strip(ui, &mut state);
+
+        // The body scrolls, the tab strip does not: GECK's own dialog keeps
+        // the tabs pinned above the fields, and a strip that scrolled away
+        // would leave the user unable to say which tab they are on.
+        egui::ScrollArea::vertical().show(ui, |ui| match state.tab {
+            CellEditorTab::CommonData => common_data_group(ui, &mut session, &mut state),
+            CellEditorTab::Lighting => {
+                lighting_group(ui, &mut state);
+                template_group(ui, &mut session, &mut state);
+            }
+            CellEditorTab::InteriorData => {
+                flags_group(ui, &mut state);
+                grid_group(ui, &mut state);
+                water_noise_group(ui, &mut state);
+                interior_data_group(ui, &mut session, &mut state);
+            }
+            CellEditorTab::DirectionalAmbient => directional_ambient_group(ui, &mut state),
         });
 
         ui.separator();
@@ -713,6 +792,113 @@ fn header_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
 /// section's own name is not a signature: `Has Water` is a `DATA` bit and
 /// `Height` is `XCLW`, and they sit together because GECK puts them together.
 ///
+/// The tab strip, above the body.
+///
+/// A strip of selectable buttons rather than egui's dockable tab panels: these
+/// are not dockable, and a button strip is the lighter thing. The chosen tab is
+/// `state.tab`, which is what makes the choice survive the frames while the
+/// pointer is elsewhere.
+fn tab_strip(ui: &mut egui::Ui, state: &mut CellEditorState) {
+    ui.horizontal(|ui| {
+        for tab in CellEditorTab::ALL {
+            if ui
+                .selectable_label(state.tab == tab, egui::RichText::new(tab.label()).strong())
+                .on_hover_text(tab.hint())
+                .clicked()
+            {
+                state.tab = tab;
+            }
+        }
+    });
+    ui.separator();
+}
+
+/// **Interior Data** — GECK's third tab.
+///
+/// What is left of the record once the water, the lighting and the ambient
+/// cube have their own tabs: the flags that say what the cell is, the grid it
+/// sits in, the water noise texture, the regions it belongs to, and the
+/// ownership.
+///
+/// GECK's own Interior Data tab is the interior-only half of this — the
+/// encounter zone, the owner and the public-area flag — and the rest is what
+/// the `CELL` record still carries with nowhere better to go. They are one tab
+/// here because GECK's split leaves an exterior cell with only Common Data and
+/// Lighting, and an exterior still has a grid, regions and flags.
+fn interior_data_group(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    state: &mut CellEditorState,
+) {
+    flags_group(ui, state);
+    grid_group(ui, state);
+    water_noise_group(ui, state);
+    references_group(ui, session, state);
+    ownership_group(ui, session, state);
+}
+
+/// **Directional Ambient Lighting** — GECK's fourth tab.
+///
+/// The six-axis directional ambient cube: X+, X-, Y+, Y-, Z+ and Z-, each a
+/// colour. Only Skyrim's and Fallout 4's `XCLL` carries one, so a Fallout cell
+/// says so rather than showing six empty colour rows.
+///
+/// GECK also offers "Set From Ambient", which copies the cell's own ambient
+/// colour into all six axes — a one-click starting point for a cube you then
+/// adjust. That is what the button here does.
+fn directional_ambient_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Directional Ambient Lighting");
+        ui.add_space(4.0);
+        let Some(l) = state.lighting.as_mut() else {
+            ui.weak("this cell carries no XCLL lighting to take an ambient cube from");
+            return;
+        };
+        let Some(dalc) = l.directional_ambient.as_mut() else {
+            ui.weak(
+                "this cell's XCLL is the 40-byte Fallout layout, which has no directional ambient cube",
+            );
+            return;
+        };
+        if ui
+            .button("Set From Ambient")
+            .on_hover_text(
+                "copy the cell's own ambient colour into all six axes, then adjust from there",
+            )
+            .clicked()
+        {
+            let ambient = l.ambient;
+            for axis in dalc.iter_mut() {
+                *axis = ambient;
+            }
+        }
+        ui.add_space(4.0);
+        // The six axes in GECK's order, named as GECK names them.
+        const AXES: [(&str, usize); 6] = [
+            ("X +", 0),
+            ("X -", 1),
+            ("Y +", 2),
+            ("Y -", 3),
+            ("Z +", 4),
+            ("Z -", 5),
+        ];
+        for (name, i) in AXES {
+            color_row(ui, &format!("{name}:"), &mut dalc[i]);
+        }
+        if let Some(spec) = l.specular.as_mut() {
+            ui.add_space(4.0);
+            color_row(ui, "Specular:", spec);
+        }
+        if let Some(scale) = l.directional_scale.as_mut() {
+            ui.horizontal(|ui| {
+                ui.label("Scale:");
+                ui.add(egui::DragValue::new(scale).speed(0.1));
+            });
+        }
+    });
+}
+
 /// GECK's notes on which fields apply are kept as the row's own hint: Has
 /// Water and Height are interior-only, and Force Hide Land is exterior-only.
 fn common_data_group(
@@ -950,24 +1136,9 @@ fn lighting_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
             ui.label("Fog power:");
             ui.add(egui::DragValue::new(&mut l.fog_power).speed(0.1));
         });
-        // Skyrim's and Fallout 4's extra fifty-two bytes: shown, because
-        // editing an FNV cell does not mean they cannot be there.
-        if let Some(dalc) = l.directional_ambient.as_mut() {
-            ui.separator();
-            ui.strong("Directional ambient (6-axis)");
-            for (i, axis) in dalc.iter_mut().enumerate() {
-                color_row(ui, &format!("axis {i}:"), axis);
-            }
-            if let Some(spec) = l.specular.as_mut() {
-                color_row(ui, "Specular:", spec);
-            }
-            if let Some(scale) = l.directional_scale.as_mut() {
-                ui.horizontal(|ui| {
-                    ui.label("Scale:");
-                    ui.add(egui::DragValue::new(scale).speed(0.1));
-                });
-            }
-        }
+        // The six-axis directional ambient cube has its own tab, the way
+        // GECK's dialog separates it: it is a thing you set once, not part of
+        // the cell's own lighting.
     });
 }
 
