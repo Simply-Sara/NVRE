@@ -131,6 +131,15 @@ pub struct Session {
     /// list. This is what the last rebuild actually used, so the next one
     /// knows whether the sources moved.
     palette_sources_built: Vec<bool>,
+    /// Any cell currently open in the Cell Editor window.
+    ///
+    /// The same pattern the object editor uses: the window is spawned and
+    /// despawned every frame by its own `manage_window` on the strength of this
+    /// `Option`, so a closed window never leaves a mapped frame behind. It is
+    /// separate from [`Session::cell`], which is the cell the viewport draws:
+    /// the editor can be opened on any cell from the browser without moving
+    /// the camera.
+    pub editing_cell: Option<u32>,
     /// Records the session has queued for deletion, in the order asked.
     deleted: Vec<u32>,
     /// How many copies of each base object are placed in the game's cells,
@@ -263,6 +272,7 @@ impl Session {
             palette_filter: String::new(),
             palette_sources: vec![true; source_count],
             palette_sources_built: Vec::new(),
+            editing_cell: None,
             deleted: Vec::new(),
             usage: None,
             usage_stale: false,
@@ -354,6 +364,7 @@ impl Session {
             palette_filter: String::new(),
             palette_sources: vec![true; source_count],
             palette_sources_built: Vec::new(),
+            editing_cell: None,
             deleted: Vec::new(),
             usage: None,
             usage_stale: false,
@@ -1087,6 +1098,17 @@ impl Session {
         self.records_by_sig(*b"FLST")
     }
 
+    /// The cell editor's reference dropdowns, by the record type they name.
+    ///
+    /// A cell's subrecords point at one record type each — an `ECZN` for its
+    /// encounter zone, a `WATR` for its water — and a dropdown is only usable
+    /// if it lists that type. Each is its own cache key, so the same
+    /// [`Session::records_by_sig`] lookup the object editor uses serves all of
+    /// them; nothing here is specific to cells.
+    pub fn records_of(&self, sig: [u8; 4]) -> Arc<[(u32, String)]> {
+        self.records_by_sig(sig)
+    }
+
     /// Return all Spells and Enchantments across the load order, sorted by Editor ID (cached).
     pub fn spells_and_enchantments(&self) -> Arc<[(u32, String)]> {
         if let Ok(cache) = self.spells_cache.read() {
@@ -1649,6 +1671,28 @@ impl Session {
     /// Close the object editor window.
     pub fn close_object_editor(&mut self) {
         self.editing_object = None;
+    }
+
+    /// Open a cell by FormID in the Cell Editor window.
+    ///
+    /// The cell browser's right-click menu calls this on the row it was opened
+    /// on. It does not open the cell in the viewport — that is
+    /// [`Session::open_cell`], and a modder editing a cell's flags usually
+    /// wants the camera left where it is.
+    pub fn open_cell_editor(&mut self, cell: u32) {
+        self.editing_cell = Some(cell);
+        let name = self
+            .index
+            .cells
+            .get(&cell)
+            .and_then(|c| c.edid.clone())
+            .unwrap_or_else(|| format!("{cell:08X}"));
+        self.status = format!("opened cell {name} in editor window");
+    }
+
+    /// Close the Cell Editor window.
+    pub fn close_cell_editor(&mut self) {
+        self.editing_cell = None;
     }
 
     /// Open a creature by FormID in the Creature Editor window.

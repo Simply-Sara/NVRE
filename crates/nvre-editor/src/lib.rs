@@ -5,6 +5,7 @@
 
 use bevy::prelude::*;
 
+pub mod cell_editor;
 pub mod file_details;
 pub mod file_details_window;
 pub mod game;

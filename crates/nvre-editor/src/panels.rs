@@ -263,6 +263,10 @@ pub fn cells(
             cells.iter().filter(|c| row_matches(c, &filter)).collect();
         let shown = cells.len();
         let matched = rows.len();
+        // What the row context menus chose. Both run after the table, because
+        // the table borrows the session and the actions take it.
+        let mut edit_cell: Option<u32> = None;
+        let mut open_cell: Option<u32> = None;
         // A header row, then one row per cell, in a table whose columns have
         // a width policy each — the Editor ID clips, the Name takes what is
         // left — so one long name cannot stretch the whole list. Clicking a
@@ -314,6 +318,21 @@ pub fn cells(
                     if resp.clicked() {
                         session.open_cell(c.form_id);
                     }
+                    // Right-clicking a row opens its context menu. Edit is
+                    // what opens the Cell Editor window on this cell; the
+                    // menu is also where the row is opened in the viewport
+                    // without a left click, which is what GECK's own Cell
+                    // View offers.
+                    resp.context_menu(|ui| {
+                        if ui.button("Edit").clicked() {
+                            edit_cell = Some(c.form_id);
+                            ui.close();
+                        }
+                        if ui.button("Open in viewport").clicked() {
+                            open_cell = Some(c.form_id);
+                            ui.close();
+                        }
+                    });
                     // The fixed-width columns are monospace, so the Form IDs
                     // and the grid coordinates line up down the column.
                     row_ui.col(|ui| {
@@ -327,6 +346,17 @@ pub fn cells(
                     });
                 });
             });
+        // The menu's actions, after the table that chose them.
+        //
+        // Open before edit: a row that is opened in the viewport is also the
+        // one whose properties are worth editing, and the two are separate
+        // choices — the menu offers them separately.
+        if let Some(fid) = open_cell {
+            session.open_cell(fid);
+        }
+        if let Some(fid) = edit_cell {
+            session.open_cell_editor(fid);
+        }
         ui.separator();
         ui.label(format!(
             "{shown} cells in {}{}",

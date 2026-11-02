@@ -13,8 +13,8 @@
 //! main window is the primary one and the viewport names its own render target.
 
 use nvre_editor::{
-    file_details_window, game, gizmo, launcher, object_editor, panels, session, size_info_window,
-    viewport, windows,
+    cell_editor, file_details_window, game, gizmo, launcher, object_editor, panels, session,
+    size_info_window, viewport, windows,
 };
 
 use bevy::prelude::*;
@@ -315,6 +315,7 @@ fn main() {
         .init_resource::<windows::ViewportHotbar>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
+        .init_resource::<cell_editor::CellEditorState>()
         .init_resource::<file_details_window::FileDetailsState>()
         .init_resource::<size_info_window::SizeInfoState>()
         // The camera: the viewport's own plugin registers its input systems. There
@@ -411,6 +412,9 @@ fn main() {
             file_details_window::ui,
         )
         .add_systems(size_info_window::SizeInfoSchedule, size_info_window::ui)
+        // The Cell Editor window, spawned on demand from the Cells window's
+        // right-click menu and despawned when it is closed.
+        .add_systems(cell_editor::CellEditorSchedule, cell_editor::ui)
         // The File Details window is opened from the launcher, which is
         // `Launching`, so its systems run in both states. A state gate here was
         // the bug that made the Details button do nothing.
@@ -444,6 +448,7 @@ fn main() {
                 viewport::pick,
                 viewport::flat_material_diagnostic,
                 object_editor::manage_window,
+                cell_editor::manage_window,
                 handle_window_close,
                 // Last, because everything above can ask for a view — a cell
                 // opening, a frame request, `F`, a double-click in `pick` — and
@@ -627,6 +632,8 @@ fn spawn_session() {}
 struct CloseTargets<'w, 's> {
     /// The object editor's window, if it is open.
     object: Query<'w, 's, Entity, With<object_editor::ObjectEditorWindow>>,
+    /// The Cell Editor window, if it is open.
+    cell: Query<'w, 's, Entity, With<cell_editor::CellEditorWindow>>,
     /// The File Details window, if it is open.
     details: Query<'w, 's, Entity, With<file_details_window::FileDetailsWindow>>,
     /// The Size Info window, if it is open.
@@ -649,6 +656,7 @@ fn handle_window_close(
 ) {
     let primary_ent = primary.iter().next();
     let obj_ent = targets.object.iter().next();
+    let cell_ent = targets.cell.iter().next();
     let details_ent = targets.details.iter().next();
     let size_info_ent = targets.size_info.iter().next();
 
@@ -667,6 +675,12 @@ fn handle_window_close(
         } else if Some(ev.window) == obj_ent {
             if let Some(s) = &mut session {
                 s.close_object_editor();
+            }
+        } else if Some(ev.window) == cell_ent {
+            // Clearing the state is what stops `manage_window` respawning it,
+            // the same as the object editor's window above.
+            if let Some(s) = &mut session {
+                s.close_cell_editor();
             }
         } else {
             commands.entity(ev.window).despawn();
