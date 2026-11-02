@@ -70,7 +70,7 @@ impl fmt::Display for Token {
 ///
 /// Order matters within a pair only in that both characters are consumed
 /// together: `==` is one token, never `=` `=`.
-const TWO_CHAR_OPS: [&str; 5] = ["==", "!=", "<=", ">=", "&&"];
+const TWO_CHAR_OPS: [&str; 6] = ["==", "!=", "<=", ">=", "&&", "||"];
 
 /// Lex `source` into tokens.
 ///
@@ -167,15 +167,31 @@ pub fn lex(source: &str) -> Vec<Token> {
         }
 
         // --- number -------------------------------------------------------
-        // A sign is part of the literal only where a sign can begin one, which
-        // keeps `x-1` two tokens rather than an identifier and a negative one.
-        let starts_number = c.is_ascii_digit()
-            || ((c == '-' || c == '+' || c == '.')
-                && i + 1 < chars.len()
-                && (chars[i + 1].is_ascii_digit()
-                    || (chars[i + 1] == '.'
-                        && i + 2 < chars.len()
-                        && chars[i + 2].is_ascii_digit())));
+        // A sign is part of a literal only at the beginning of an expression or
+        // after an operator/comma/open-paren.
+        // If the preceding non-whitespace token is an operand (Word, Number, `)` or `]`),
+        // `+` or `-` is an infix operator!
+        let last_non_space = out
+            .iter()
+            .rev()
+            .find(|t| t.kind != Kind::Space && t.kind != Kind::Comment);
+        let preceded_by_operand = match last_non_space {
+            Some(t) => {
+                t.kind == Kind::Word || t.kind == Kind::Number || t.text == ")" || t.text == "]"
+            }
+            None => false,
+        };
+
+        let is_sign_operator = (c == '-' || c == '+') && preceded_by_operand;
+
+        let starts_number = !is_sign_operator
+            && (c.is_ascii_digit()
+                || ((c == '-' || c == '+' || c == '.')
+                    && i + 1 < chars.len()
+                    && (chars[i + 1].is_ascii_digit()
+                        || (chars[i + 1] == '.'
+                            && i + 2 < chars.len()
+                            && chars[i + 2].is_ascii_digit()))));
         if starts_number {
             let mut text = String::new();
             // The sign, taken once at the front.

@@ -19,7 +19,6 @@
 use bytes::Bytes;
 use nvre_esm::raw::visit_nodes;
 use nvre_esm::Plugin;
-use nvre_script::compile::compile;
 
 fn main() {
     let Ok(data) = std::env::var("NVRE_DATA") else {
@@ -36,7 +35,22 @@ fn main() {
         return;
     };
 
-    let mut units: Vec<(u32, String, Vec<u8>)> = Vec::new();
+    // Collect FormID -> EDID map from plugin for SCRO resolution
+    let mut formid_to_edid: std::collections::HashMap<u32, String> =
+        std::collections::HashMap::new();
+    visit_nodes(&plugin.nodes, &mut |rec, _| {
+        let Ok(subs) = rec.subrecords() else { return };
+        if let Some(edid_sub) = subs.iter().find(|x| x.sig == *b"EDID") {
+            let edid = String::from_utf8_lossy(&edid_sub.data)
+                .trim_end_matches('\0')
+                .to_string();
+            formid_to_edid.insert(rec.header.form_id, edid);
+        }
+    });
+    // Player reference FormID 0x14
+    formid_to_edid.insert(0x00000014, "Player".to_string());
+
+    let mut units: Vec<(u32, String, Vec<u8>, Vec<String>)> = Vec::new();
     visit_nodes(&plugin.nodes, &mut |rec, _| {
         if rec.header.sig != *b"SCPT" {
             return;
@@ -53,7 +67,19 @@ fn main() {
             .map(|x| String::from_utf8_lossy(&x.data).into_owned())
             .unwrap_or_default();
         if !compiled.is_empty() && !source.is_empty() {
-            units.push((rec.header.form_id, source, compiled));
+            // Collect SCRO FormIDs and map to EDIDs
+            let scro_names: Vec<String> = subs
+                .iter()
+                .filter(|x| x.sig == *b"SCRO" && x.data.len() == 4)
+                .map(|x| {
+                    let fid = u32::from_le_bytes([x.data[0], x.data[1], x.data[2], x.data[3]]);
+                    formid_to_edid
+                        .get(&fid)
+                        .cloned()
+                        .unwrap_or_else(|| format!("__form_{fid:08X}"))
+                })
+                .collect();
+            units.push((rec.header.form_id, source, compiled, scro_names));
         }
     });
 
@@ -64,11 +90,11 @@ fn main() {
     let mut differs = 0usize;
     let mut first_differs: Vec<(u32, String)> = Vec::new();
     let mut reasons: Vec<String> = Vec::new();
-    let mut differing: Vec<&(u32, String, Vec<u8>)> = Vec::new();
+    let mut differing: Vec<&(u32, String, Vec<u8>, Vec<String>)> = Vec::new();
 
     for unit in &units {
-        let (fid, source, expected) = (unit.0, &unit.1, &unit.2);
-        match compile(source.as_str()) {
+        let (fid, source, expected, scro_names) = (unit.0, &unit.1, &unit.2, &unit.3);
+        match nvre_script::compile_with_refs(source.as_str(), scro_names) {
             Ok(got) => {
                 if got.as_slice() == expected.as_slice() {
                     equal += 1;
@@ -126,7 +152,9 @@ fn main() {
     println!("the units that compile but differ in length:");
     let mut length_diffs = 0;
     for u in &differing {
-        let Ok(got) = compile(&u.1) else { continue };
+        let Ok(got) = nvre_script::compile_with_refs(&u.1, &u.3) else {
+            continue;
+        };
         if got.len() != u.2.len() {
             if length_diffs < 5 {
                 println!("  {:08X}  {} bytes vs {}", u.0, got.len(), u.2.len());
@@ -146,10 +174,9 @@ fn main() {
         if shown >= 6 {
             break;
         }
-        // Only the "not a declared variable" class: that one is a parser or
-        // emitter bug rather than a missing statement type, so it is the
-        // interesting thing to read.
-        let Err(e) = compile(&u.1) else { continue };
+        let Err(e) = nvre_script::compile_with_refs(&u.1, &u.3) else {
+            continue;
+        };
         if !e.to_string().contains("is not a declared variable") {
             continue;
         }

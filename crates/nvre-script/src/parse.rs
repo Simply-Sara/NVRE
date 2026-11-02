@@ -51,6 +51,8 @@ pub enum Stmt {
     End,
     /// `set <target> to <expr>`
     Set {
+        /// The reference target it is assigned on (when `Ref.var`), if any.
+        on: Option<String>,
         /// The variable being assigned to, as its token.
         target: Token,
         /// The expression, as its token run.
@@ -97,11 +99,13 @@ pub struct Decl {
     pub line: usize,
 }
 
-/// A parsed script: its declarations and its statements.
+/// A parsed script: its declarations, external references, and its statements.
 #[derive(Debug, Clone, Default)]
 pub struct Script {
     /// The local variables, in declaration order.
     pub decls: Vec<Decl>,
+    /// External reference names (from SCRO / plugin context), in 1-based order.
+    pub refs: Vec<String>,
     /// The statements, in source order.
     pub stmts: Vec<Stmt>,
 }
@@ -180,7 +184,11 @@ pub fn parse(source: &str) -> Script {
         stmts.extend(parse_line(*line, toks));
     }
 
-    Script { decls, stmts }
+    Script {
+        decls,
+        refs: Vec::new(),
+        stmts,
+    }
 }
 
 /// Group tokens by the line they start on.
@@ -250,23 +258,24 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
 
     // Control flow.
     if first.is_word("set") || first.is_word("let") {
-        // `set <target> to <expr>`: the target is the word after `set`, `to`
-        // ends it, and the rest is the expression.
-        let Some(target) = words.get(1) else {
+        let after_set = &words[1..];
+        let to_pos = after_set.iter().position(|t| t.is_word("to"));
+        let Some(to_at) = to_pos else {
             return vec![unknown(line, toks)];
         };
-        let rest = &words[2..];
-        // The `to` that separates the target from the expression.
-        let after_to = rest
-            .iter()
-            .position(|t| t.is_word("to"))
-            .map(|at| &rest[at + 1..])
-            .unwrap_or(&[]);
-        let expr = rest_of(after_to, 0);
-        return vec![Stmt::Set {
-            target: bare(target),
-            expr,
-        }];
+        let target_slice = &after_set[..to_at];
+        let expr = rest_of(&after_set[to_at + 1..], 0);
+
+        if target_slice.len() == 3 && target_slice[1].text == "." {
+            let on = Some(target_slice[0].text.clone());
+            let target = bare(target_slice[2]);
+            return vec![Stmt::Set { on, target, expr }];
+        } else if let Some(target) = target_slice.first() {
+            let on = None;
+            let target = bare(target);
+            return vec![Stmt::Set { on, target, expr }];
+        }
+        return vec![unknown(line, toks)];
     }
     if first.is_word("if") {
         return vec![Stmt::If(rest_of(&words, 1))];

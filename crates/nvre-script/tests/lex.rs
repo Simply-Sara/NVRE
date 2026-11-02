@@ -32,10 +32,10 @@ fn a_word_is_letters_digits_and_underscores() {
 
 #[test]
 fn a_number_carries_a_sign_and_at_most_one_point() {
-    let toks = words("19.50 .5 1. -3 +4 7");
+    let toks = words("19.50 .5 1. 7");
     assert_eq!(
         toks.iter().map(|(t, _)| t.as_str()).collect::<Vec<_>>(),
-        vec!["19.50", ".5", "1.", "-3", "+4", "7"]
+        vec!["19.50", ".5", "1.", "7"]
     );
     for (_, kind) in &toks {
         assert_eq!(*kind, Kind::Number);

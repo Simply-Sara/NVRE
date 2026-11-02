@@ -120,6 +120,7 @@ fn a_set_statement_separates_the_target_at_the_to() {
     assert_eq!(
         s.stmts,
         vec![Stmt::Set {
+            on: None,
             target: words("iCount").into_iter().next().unwrap(),
             expr: words("5"),
         }]

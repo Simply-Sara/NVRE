@@ -306,9 +306,11 @@ fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Er
             Stmt::Else if depth == 0 => {
                 if if_body_range.is_none() {
                     if_body_range = Some(current_start..i);
-                } else if let Some(last) = elseifs.last_mut() {
-                    let (c, _) = last;
-                    *last = (c.clone(), current_start..i);
+                } else if !elseifs.is_empty() && elseifs.last().unwrap().1.is_empty() {
+                    let (c, _) = elseifs.last().unwrap();
+                    let c = c.clone();
+                    elseifs.pop();
+                    elseifs.push((c, current_start..i));
                 }
                 current_start = i + 1;
                 i += 1;
@@ -410,7 +412,7 @@ fn emit_if_chain(
 
     // 1. Emit If (0x0016)
     // jumpOps is the number of instructions to skip if false.
-    let if_cond_bytes = crate::value::encode_expr(cond, &script.decls)?;
+    let if_cond_bytes = crate::value::encode_expr(cond, script)?;
     let mut if_args = Vec::with_capacity(4 + if_cond_bytes.len());
     if_args.extend_from_slice(&if_ops.to_le_bytes());
     if_args.extend_from_slice(&(if_cond_bytes.len() as u16).to_le_bytes());
@@ -422,7 +424,7 @@ fn emit_if_chain(
 
     // 2. Emit ElseIfs
     for (i, (c, b)) in elseifs_bytes.into_iter().enumerate() {
-        let c_bytes = crate::value::encode_expr(c, &script.decls)?;
+        let c_bytes = crate::value::encode_expr(c, script)?;
         let ops = elseif_ops_list[i];
         let mut elseif_args = Vec::with_capacity(4 + c_bytes.len());
         elseif_args.extend_from_slice(&ops.to_le_bytes());
@@ -588,19 +590,36 @@ fn emit_begin_params(script: &Script, start: usize) -> Result<Vec<u8>, crate::Er
     if args.is_empty() {
         return Ok(Vec::new());
     }
-    Err(crate::Error::Parse(
-        "a Begin block with arguments is not emitted yet".to_string(),
-    ))
+
+    let mut out = Vec::new();
+    for t in args {
+        if t.kind == crate::lex::Kind::Space || t.kind == crate::lex::Kind::Comment {
+            continue;
+        }
+        if t.kind == crate::lex::Kind::Number {
+            if let Ok(n) = t.text.parse::<i32>() {
+                out.push(0x6E);
+                out.extend_from_slice(&n.to_le_bytes());
+                continue;
+            }
+        }
+        // Reference argument
+        let ref_idx = resolve_ref(&t.text, script)?;
+        out.push(0x72);
+        out.extend_from_slice(&ref_idx.to_le_bytes());
+    }
+    Ok(out)
 }
 
 /// Emit one statement that is not a block.
 fn emit_statement(script: &Script, stmt: &Stmt) -> Result<Vec<u8>, crate::Error> {
     match stmt {
         Stmt::End => Ok(frame(StmtOp::End.opcode(), &[])),
+        Stmt::EndIf => Ok(frame(StmtOp::EndIf.opcode(), &[])),
         Stmt::Return => Ok(frame(StmtOp::Return.opcode(), &[])),
         // `ScriptName` inside a block is the same marker as outside one.
         Stmt::ScriptName(_) => Ok(frame(StmtOp::ScriptName.opcode(), &[])),
-        Stmt::Set { target, expr } => emit_set(script, target, expr),
+        Stmt::Set { on, target, expr } => emit_set(script, on, target, expr),
         Stmt::Call { on, command, args } => emit_call(script, on, command, args),
         // A declaration emits nothing: the variable is in the record's
         // `SLSD`/`SCVR` list, which is the writer's job rather than the
@@ -632,17 +651,39 @@ fn emit_statement(script: &Script, stmt: &Stmt) -> Result<Vec<u8>, crate::Error>
 /// where `02 00` is the length of `20 31` and `31` is the ASCII `1`.
 fn emit_set(
     script: &Script,
+    on: &Option<String>,
     target: &crate::lex::Token,
     expr: &[crate::lex::Token],
 ) -> Result<Vec<u8>, crate::Error> {
-    // The destination. A bare name is a variable of this script, resolved
-    // through the declarations — the record's own variable list is the only
-    // correct index, and a guessed one would assign to the wrong variable.
-    let dest = crate::value::read_value(std::slice::from_ref(target), &script.decls)?;
-    let value = crate::value::read_value(expr, &script.decls)?;
+    let dest_bytes = if let Some(ref_name) = on {
+        let ridx = resolve_ref(ref_name, script)?;
+        // Dotted variable assignment target: 0x72 [refIdx: u16] 0x73 0x01 0x00
+        let mut b = vec![0x72];
+        b.extend_from_slice(&ridx.to_le_bytes());
+        b.push(0x73);
+        b.extend_from_slice(&1u16.to_le_bytes());
+        b
+    } else {
+        if let Ok(dest) = crate::value::read_value(std::slice::from_ref(target), &script.decls) {
+            crate::value::encode(&dest)
+        } else if let Ok(ref_idx) = resolve_ref(&target.text, script) {
+            // Global variable assignment destination: 0x47 'G' [refIdx: u16]
+            let mut b = vec![0x47];
+            b.extend_from_slice(&ref_idx.to_le_bytes());
+            b
+        } else {
+            return Err(crate::Error::Parse(format!(
+                "`{}` is not a declared variable",
+                target.text
+            )));
+        }
+    };
 
-    let mut args = crate::value::encode(&dest);
-    args.extend(crate::value::encode_assigned(&value));
+    let expr_bytes = crate::value::encode_expr(expr, script)?;
+
+    let mut args = dest_bytes;
+    args.extend_from_slice(&(expr_bytes.len() as u16).to_le_bytes());
+    args.extend_from_slice(&expr_bytes);
 
     Ok(frame(StmtOp::Set.opcode(), &args))
 }
@@ -761,7 +802,7 @@ mod emit_tests {
         // this emitter has no reference list — so it refuses rather than
         // writing a made-up index the game would run.
         let err = compile("scn S\nBegin OnAdd player\nEnd").unwrap_err();
-        assert!(err.to_string().contains("arguments"), "{err}");
+        assert!(err.to_string().contains("reference"), "{err}");
     }
 
     #[test]
@@ -786,12 +827,11 @@ mod call_tests {
 
     #[test]
     fn a_command_with_no_parameters_writes_no_argument_bytes() {
-        // Measured: `StopCombat` and `PickIdle` are `argLen` 0 with nothing
-        // after the header. There is no argument count at all.
-        let got = compile("scn S\nBegin GameMode\n  StopCombat\nEnd").unwrap();
+        // Measured: `PickIdle` is `argLen` 0 with nothing after the header.
+        let got = compile("scn S\nBegin GameMode\n  PickIdle\nEnd").unwrap();
         assert!(
-            got.windows(4).any(|w| w == [0x17, 0x10, 0x00, 0x00]),
-            "StopCombat is opcode 0x1017 with argLen 0: {:02X?}",
+            got.windows(4).any(|w| w == [0x64, 0x10, 0x00, 0x00]),
+            "PickIdle is opcode 0x1064 with argLen 0: {:02X?}",
             got
         );
     }
@@ -853,17 +893,22 @@ mod call_tests {
 
     #[test]
     fn a_command_given_arguments_it_does_not_take_is_refused() {
-        let err = compile("scn S\nBegin GameMode\n  StopCombat 1\nEnd").unwrap_err();
+        let err = compile("scn S\nBegin GameMode\n  PurgeCellBuffers 1\nEnd").unwrap_err();
         assert!(err.to_string().contains("takes no arguments"), "{err}");
     }
 
     #[test]
-    fn a_dotted_call_is_refused_rather_than_given_a_made_up_index() {
-        // `rDoor.Activate` names one of the record's references, and this
-        // emitter has no reference list — so a made-up index would be a call
-        // on the wrong reference.
-        let err = compile("scn S\nBegin GameMode\n  rDoor.Activate\nEnd").unwrap_err();
-        assert!(err.to_string().contains("reference"), "{err}");
+    fn a_dotted_call_with_known_ref_is_emitted() {
+        let source = "scn S\nref rDoor\nBegin GameMode\n  rDoor.Disable\nEnd";
+        let compiled = crate::compile::compile(source).unwrap();
+        let ins = read_instructions(&compiled);
+        // ScriptName, Begin, SetCurrentRef, Disable, End
+        assert_eq!(ins[2].opcode, 0x001C);
+        assert_eq!(ins[2].args, 1u16.to_le_bytes());
+        assert_eq!(
+            ins[3].opcode,
+            crate::opcodes::command_called("Disable").unwrap().opcode
+        );
     }
 
     #[test]
@@ -952,10 +997,13 @@ mod set_tests {
     }
 
     #[test]
-    fn an_expression_this_emitter_does_not_understand_is_refused() {
-        // Arithmetic is a wrong encoding rather than a missing one.
-        let err = compile("scn S\nint V\nBegin OnAdd\n  set V to 1 + 2\nEnd").unwrap_err();
-        assert!(err.to_string().contains("1 + 2"), "{err}");
+    fn an_arithmetic_expression_in_set_is_emitted() {
+        // `set V to 1 + 2` is emitted as postfix: 1 2 +
+        let got = compile("scn S\nint V\nBegin OnAdd\n  set V to 1 + 2\nEnd").unwrap();
+        // 0x20 '1' 0x20 '2' 0x20 '+'
+        assert!(got
+            .windows(6)
+            .any(|w| w == [0x20, 0x31, 0x20, 0x32, 0x20, 0x2B]));
     }
 }
 
@@ -1042,6 +1090,35 @@ mod param_count_tests {
 /// the record's references. A reference name is not resolvable here — the
 /// record's own reference list is — so a call naming one is refused rather
 /// than given a made-up index.
+/// Resolve a reference name to its 1-based index in `[declared ref variables] + [SCRO refs]`.
+fn resolve_ref(name: &str, script: &Script) -> Result<u16, crate::Error> {
+    // 1. Declared `ref` variables in the script
+    let mut ref_var_idx = 0u16;
+    for d in &script.decls {
+        if !d.is_int {
+            // is_int = false for float and ref
+            ref_var_idx += 1;
+            if d.name.eq_ignore_ascii_case(name) {
+                return Ok(ref_var_idx);
+            }
+        }
+    }
+
+    // Total declared ref/float variables
+    let declared_refs_count = ref_var_idx;
+
+    // 2. SCRO external references
+    for (i, r) in script.refs.iter().enumerate() {
+        if r.eq_ignore_ascii_case(name) {
+            return Ok(declared_refs_count + 1 + i as u16);
+        }
+    }
+
+    Err(crate::Error::Parse(format!(
+        "`{name}` names a reference, which the emitter cannot resolve yet"
+    )))
+}
+
 fn emit_call(
     script: &Script,
     on: &Option<String>,
@@ -1054,17 +1131,12 @@ fn emit_call(
         )));
     };
 
-    // A dotted call is `Ref.Command`, and the reference is an argument the
-    // command's own signature does not name: the game passes the reference
-    // the call is made on as an implicit first argument. That argument names
-    // one of the record's references, which this emitter cannot resolve — so
-    // a dotted call is refused rather than emitted with a made-up index.
-    if on.is_some() {
-        return Err(crate::Error::Parse(format!(
-            "`{}.{}` names a reference, which the emitter cannot resolve yet",
-            on.as_deref().unwrap_or(""),
-            command
-        )));
+    let mut prefix_bytes = Vec::new();
+    if let Some(ref_name) = on {
+        let ref_idx = resolve_ref(ref_name, script)?;
+        // 0x1C SetCurrentRef framing: [1C 00] [refIdx: u16]
+        prefix_bytes.extend_from_slice(&0x001Cu16.to_le_bytes());
+        prefix_bytes.extend_from_slice(&ref_idx.to_le_bytes());
     }
 
     // The arguments, as the values the source spells. A name that is not a
@@ -1075,11 +1147,30 @@ fn emit_call(
     // bytes, and writing its byte length as the count is a call with five
     // arguments where the source asked for one.
     let mut encoded: Vec<Vec<u8>> = Vec::new();
-    for t in args {
-        if t.kind == crate::lex::Kind::Space || t.kind == crate::lex::Kind::Comment {
+    let mut param_idx = 0;
+    let mut ai = 0;
+    while ai < args.len() {
+        let t = &args[ai];
+        if t.kind == crate::lex::Kind::Space || t.kind == crate::lex::Kind::Comment || t.text == ","
+        {
+            ai += 1;
             continue;
         }
-        encoded.push(emit_arg(t, script)?);
+        // Handle negative number passed as `-` followed by `number`
+        if t.text == "-" && ai + 1 < args.len() && args[ai + 1].kind == crate::lex::Kind::Number {
+            let num_tok = &args[ai + 1];
+            let mut combined = num_tok.clone();
+            combined.text = format!("-{}", num_tok.text);
+            let expected_type = cmd.args.get(param_idx).copied();
+            encoded.push(emit_arg(&combined, script, expected_type)?);
+            param_idx += 1;
+            ai += 2;
+            continue;
+        }
+        let expected_type = cmd.args.get(param_idx).copied();
+        encoded.push(emit_arg(t, script, expected_type)?);
+        param_idx += 1;
+        ai += 1;
     }
 
     // A command with no declared parameters writes no argument bytes at all.
@@ -1091,14 +1182,18 @@ fn emit_call(
                 encoded.len()
             )));
         }
-        return Ok(frame(cmd.opcode, &[]));
+        let mut out = prefix_bytes;
+        out.extend(frame(cmd.opcode, &[]));
+        return Ok(out);
     }
 
     let flat: Vec<u8> = encoded.concat();
     let mut body = Vec::with_capacity(2 + flat.len());
     body.extend_from_slice(&(encoded.len() as u16).to_le_bytes());
     body.extend(flat);
-    Ok(frame(cmd.opcode, &body))
+    let mut out = prefix_bytes;
+    out.extend(frame(cmd.opcode, &body));
+    Ok(out)
 }
 
 /// One command argument, as its tagged bytes.
@@ -1109,9 +1204,136 @@ fn emit_call(
 /// the two are not interchangeable, and writing a command's argument the way
 /// `set` writes its value produces a body the game reads as a different
 /// number.
-fn emit_arg(t: &crate::lex::Token, script: &Script) -> Result<Vec<u8>, crate::Error> {
+pub fn actor_value_code(name: &str) -> Option<u16> {
+    const AV_NAMES: &[(&str, u16)] = &[
+        ("Aggression", 0),
+        ("Confidence", 1),
+        ("Energy", 2),
+        ("Responsibility", 3),
+        ("Mood", 4),
+        ("Strength", 5),
+        ("Perception", 6),
+        ("Endurance", 7),
+        ("Charisma", 8),
+        ("Intelligence", 9),
+        ("Agility", 10),
+        ("Luck", 11),
+        ("ActionPoints", 12),
+        ("CarryWeight", 13),
+        ("CritChance", 14),
+        ("HealRate", 15),
+        ("Health", 16),
+        ("MeleeDamage", 17),
+        ("DamageResistance", 18),
+        ("PoisonResistance", 19),
+        ("RadResistance", 20),
+        ("SpeedMult", 21),
+        ("Fatigue", 22),
+        ("Karma", 23),
+        ("XP", 24),
+        ("PerceptionCondition", 25),
+        ("EnduranceCondition", 26),
+        ("LeftAttackCondition", 27),
+        ("RightAttackCondition", 28),
+        ("LeftMobilityCondition", 29),
+        ("RightMobilityCondition", 30),
+        ("BrainCondition", 31),
+        ("Barter", 32),
+        ("BigGuns", 33),
+        ("EnergyWeapons", 34),
+        ("Explosives", 35),
+        ("Lockpick", 36),
+        ("Medicine", 37),
+        ("MeleeWeapons", 38),
+        ("Repair", 39),
+        ("Science", 40),
+        ("Guns", 41),
+        ("Sneak", 42),
+        ("Speech", 43),
+        ("Survival", 44),
+        ("Unarmed", 45),
+        ("InventoryWeight", 46),
+        ("Paralysis", 47),
+        ("Invisibility", 48),
+        ("Chameleon", 49),
+        ("NightEye", 50),
+        ("Turbo", 51),
+        ("FireResistance", 52),
+        ("WaterBreathing", 53),
+        ("RadLevel", 54),
+        ("BloodyMess", 55),
+        ("UnarmedDamage", 56),
+        ("Assistance", 57),
+        ("ElectricResistance", 58),
+        ("FrostResistance", 59),
+        ("EnergyResistance", 60),
+        ("EMPResistance", 61),
+        ("Variable01", 62),
+        ("Variable02", 63),
+        ("Variable03", 64),
+        ("Variable04", 65),
+        ("Variable05", 66),
+        ("Variable06", 67),
+        ("Variable07", 68),
+        ("Variable08", 69),
+        ("Variable09", 70),
+        ("Variable10", 71),
+        ("IgnoreCrippledLimbs", 72),
+        ("Dehydration", 73),
+    ];
+    for (n, c) in AV_NAMES {
+        if n.eq_ignore_ascii_case(name) {
+            return Some(*c);
+        }
+    }
+    None
+}
+
+fn anim_group_code(name: &str) -> Option<u16> {
+    const ANIM_GROUPS: &[(&str, u16)] = &[
+        ("Idle", 0),
+        ("SpecialIdle", 2),
+        ("Forward", 3),
+        ("Backward", 4),
+        ("Left", 5),
+        ("Right", 6),
+        ("FastForward", 7),
+        ("FastBackward", 8),
+        ("FastLeft", 9),
+        ("FastRight", 10),
+        ("TurnLeft", 15),
+        ("Equip", 24),
+        ("Unequip", 25),
+    ];
+    for (n, c) in ANIM_GROUPS {
+        if n.eq_ignore_ascii_case(name) {
+            return Some(*c);
+        }
+    }
+    None
+}
+
+fn emit_arg(
+    t: &crate::lex::Token,
+    script: &Script,
+    expected_type: Option<&str>,
+) -> Result<Vec<u8>, crate::Error> {
     match t.kind {
         crate::lex::Kind::Number => {
+            // Check if expected parameter type is Float
+            if let Some(exp) = expected_type {
+                if exp.eq_ignore_ascii_case("Float") {
+                    let Ok(f) = t.text.parse::<f64>() else {
+                        return Err(crate::Error::Parse(format!(
+                            "`{}` is not a float this emitter can encode",
+                            t.text
+                        )));
+                    };
+                    let mut out = vec![0x7A];
+                    out.extend_from_slice(&f.to_le_bytes());
+                    return Ok(out);
+                }
+            }
             let Ok(n) = t.text.parse::<i32>() else {
                 return Err(crate::Error::Parse(format!(
                     "`{}` is not a number this emitter can encode",
@@ -1127,15 +1349,42 @@ fn emit_arg(t: &crate::lex::Token, script: &Script) -> Result<Vec<u8>, crate::Er
         // names one of the record's references, which this emitter cannot
         // index correctly — so it is refused rather than guessed.
         crate::lex::Kind::Word => {
-            if script
+            // Check for expected ActorValue or AnimGroup
+            if let Some(exp) = expected_type {
+                if exp.eq_ignore_ascii_case("ActorValue") {
+                    if let Some(av) = actor_value_code(&t.text) {
+                        return Ok((av as u16).to_le_bytes().to_vec());
+                    }
+                } else if exp.eq_ignore_ascii_case("AnimGroup") {
+                    if let Some(ag) = anim_group_code(&t.text) {
+                        return Ok((ag as u16).to_le_bytes().to_vec());
+                    }
+                }
+            }
+            if let Some(av) = actor_value_code(&t.text) {
+                return Ok((av as u16).to_le_bytes().to_vec());
+            }
+            if let Some(ag) = anim_group_code(&t.text) {
+                return Ok((ag as u16).to_le_bytes().to_vec());
+            }
+
+            // First check if it's a declared variable
+            if let Some(pos) = script
                 .decls
                 .iter()
-                .any(|d| d.name.eq_ignore_ascii_case(&t.text))
+                .position(|d| d.name.eq_ignore_ascii_case(&t.text))
             {
-                return Err(crate::Error::Parse(format!(
-                    "passing the variable `{}` to a command is not emitted yet",
-                    t.text
-                )));
+                let d = &script.decls[pos];
+                let tag = if d.is_int { 0x73 } else { 0x66 };
+                let mut out = vec![tag];
+                out.extend_from_slice(&((pos as u16 + 1).to_le_bytes()));
+                return Ok(out);
+            }
+            // Next check if it's a known reference name
+            if let Ok(ref_idx) = resolve_ref(&t.text, script) {
+                let mut out = vec![0x72];
+                out.extend_from_slice(&ref_idx.to_le_bytes());
+                return Ok(out);
             }
             Err(crate::Error::Parse(format!(
                 "`{}` names a reference, which the emitter cannot resolve yet",

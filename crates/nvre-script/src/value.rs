@@ -50,6 +50,8 @@ pub enum Value {
     FloatVar(u16),
     /// One of the record's references, by its 1-based index.
     Ref(u16),
+    /// A global variable, by its 1-based index in the SCRO reference list.
+    Global(u16),
     /// A literal: the bytes the source spelled it with, tag included.
     Literal(Vec<u8>),
     /// A command called with no arguments, used as a value.
@@ -79,6 +81,12 @@ pub fn encode(value: &Value) -> Vec<u8> {
         // `r` + a 1-based index into the record's reference list.
         Value::Ref(i) => {
             let mut out = vec![0x72];
+            out.extend_from_slice(&i.to_le_bytes());
+            out
+        }
+        // `G` (0x47) + a 1-based index into the record's reference list for globals.
+        Value::Global(i) => {
+            let mut out = vec![0x47];
             out.extend_from_slice(&i.to_le_bytes());
             out
         }
@@ -187,7 +195,7 @@ pub fn read_value(tokens: &[Token], locals: &[crate::parse::Decl]) -> Result<Val
 /// compiled bytecode bytes: a sequence of 0x20-separated tokens in postfix (RPN) order.
 pub fn encode_expr(
     tokens: &[Token],
-    locals: &[crate::parse::Decl],
+    script: &crate::parse::Script,
 ) -> Result<Vec<u8>, crate::Error> {
     // 1. Filter out whitespace and comments
     let filtered: Vec<&Token> = tokens
@@ -269,16 +277,272 @@ pub fn encode_expr(
 
         // Check for dotted reference access or command call: e.g. ref.var or ref.Command
         if i + 2 < filtered.len() && filtered[i + 1].text == "." {
-            let _target = filtered[i].text.as_str();
-            let _member = filtered[i + 2].text.as_str();
+            let target = filtered[i].text.as_str();
+            let member = filtered[i + 2].text.as_str();
+            // Resolve ref index:
+            // Find in declared ref vars or external refs
+            let mut ref_idx = None;
+            let mut r_count = 0u16;
+            for d in &script.decls {
+                if !d.is_int {
+                    r_count += 1;
+                    if d.name.eq_ignore_ascii_case(target) {
+                        ref_idx = Some(r_count);
+                        break;
+                    }
+                }
+            }
+            if ref_idx.is_none() {
+                for (ridx, r) in script.refs.iter().enumerate() {
+                    if r.eq_ignore_ascii_case(target) {
+                        ref_idx = Some(r_count + 1 + ridx as u16);
+                        break;
+                    }
+                }
+            }
+
+            if let Some(ridx) = ref_idx {
+                // If member is a command on that ref:
+                if let Some(cmd) = crate::opcodes::command_called(member) {
+                    // Check if command takes arguments
+                    let mut arg_tokens = Vec::new();
+                    let mut j = i + 3;
+                    while j < filtered.len() {
+                        let next = filtered[j];
+                        if op_info(next).is_some() || next.text == ")" || next.text == "(" {
+                            break;
+                        }
+                        arg_tokens.push(next);
+                        j += 1;
+                        if arg_tokens.len() == cmd.args.len() {
+                            break;
+                        }
+                    }
+
+                    let mut arg_bytes = Vec::new();
+                    let count = arg_tokens.len() as u16;
+                    for atok in &arg_tokens {
+                        if atok.kind == Kind::Number {
+                            if let Ok(n) = atok.text.parse::<i32>() {
+                                arg_bytes.push(0x6E);
+                                arg_bytes.extend_from_slice(&n.to_le_bytes());
+                                continue;
+                            }
+                        }
+                        if let Some(pos) = script
+                            .decls
+                            .iter()
+                            .position(|d| d.name.eq_ignore_ascii_case(&atok.text))
+                        {
+                            let tag = if script.decls[pos].is_int { 0x73 } else { 0x66 };
+                            arg_bytes.push(tag);
+                            arg_bytes.extend_from_slice(&((pos as u16 + 1).to_le_bytes()));
+                            continue;
+                        }
+                        let mut a_ref = None;
+                        let mut arc = 0u16;
+                        for d in &script.decls {
+                            if !d.is_int {
+                                arc += 1;
+                                if d.name.eq_ignore_ascii_case(&atok.text) {
+                                    a_ref = Some(arc);
+                                    break;
+                                }
+                            }
+                        }
+                        if a_ref.is_none() {
+                            for (ridx2, r2) in script.refs.iter().enumerate() {
+                                if r2.eq_ignore_ascii_case(&atok.text) {
+                                    a_ref = Some(arc + 1 + ridx2 as u16);
+                                    break;
+                                }
+                            }
+                        }
+                        if let Some(ar) = a_ref {
+                            arg_bytes.push(0x72);
+                            arg_bytes.extend_from_slice(&ar.to_le_bytes());
+                            continue;
+                        }
+                        if let Some(av) = crate::emit::actor_value_code(&atok.text) {
+                            arg_bytes.extend_from_slice(&(av as u16).to_le_bytes());
+                            continue;
+                        }
+                        return Err(crate::Error::Parse(format!(
+                            "cannot resolve argument `{}` for dotted command `{}.{}`",
+                            atok.text, target, member
+                        )));
+                    }
+
+                    let mut b = vec![0x72];
+                    b.extend_from_slice(&ridx.to_le_bytes());
+                    b.push(0x58); // 'X'
+                    b.extend_from_slice(&cmd.opcode.to_le_bytes());
+                    if cmd.args.is_empty() && count == 0 {
+                        b.extend_from_slice(&0u16.to_le_bytes());
+                    } else {
+                        let param_bytes = (2 + arg_bytes.len()) as u16;
+                        b.extend_from_slice(&param_bytes.to_le_bytes());
+                        b.extend_from_slice(&count.to_le_bytes());
+                        b.extend(arg_bytes);
+                    }
+                    output.push(b);
+                    i = j;
+                    continue;
+                } else {
+                    // Not a command: remote quest/script variable access!
+                    // Encoding: 0x72 [refIdx: u16] [tag: u8] [varIdx: u16]
+                    let mut b = vec![0x72];
+                    b.extend_from_slice(&ridx.to_le_bytes());
+                    // Default to int variable index 1 for remote script variable
+                    b.push(0x73);
+                    b.extend_from_slice(&1u16.to_le_bytes());
+                    output.push(b);
+                    i += 3;
+                    continue;
+                }
+            }
+
             return Err(crate::Error::Parse(format!(
                 "dotted references in expressions are not emitted yet: `{}`",
                 t.text
             )));
         }
 
+        // Function call with arguments inside expression (e.g. IsActionRef Player, GetDistance Player, etc.)
+        if let Some(cmd) = crate::opcodes::command_called(&t.text) {
+            if !cmd.args.is_empty() {
+                // Consume command arguments from filtered tokens
+                let mut arg_tokens = Vec::new();
+                let mut j = i + 1;
+                while j < filtered.len() {
+                    let next = filtered[j];
+                    if op_info(next).is_some() || next.text == ")" || next.text == "(" {
+                        break;
+                    }
+                    arg_tokens.push(next);
+                    j += 1;
+                    if arg_tokens.len() == cmd.args.len() {
+                        break;
+                    }
+                }
+
+                // Encode arguments for function call
+                let mut arg_bytes = Vec::new();
+                let count = arg_tokens.len() as u16;
+                for (_p_idx, atok) in arg_tokens.iter().enumerate() {
+                    if atok.kind == Kind::Number {
+                        if let Ok(n) = atok.text.parse::<i32>() {
+                            arg_bytes.push(0x6E);
+                            arg_bytes.extend_from_slice(&n.to_le_bytes());
+                            continue;
+                        }
+                    }
+                    // Variable or Reference
+                    if let Some(pos) = script
+                        .decls
+                        .iter()
+                        .position(|d| d.name.eq_ignore_ascii_case(&atok.text))
+                    {
+                        let tag = if script.decls[pos].is_int { 0x73 } else { 0x66 };
+                        arg_bytes.push(tag);
+                        arg_bytes.extend_from_slice(&((pos as u16 + 1).to_le_bytes()));
+                        continue;
+                    }
+                    // SCRO Reference
+                    let mut ref_idx = None;
+                    let mut r_count = 0u16;
+                    for d in &script.decls {
+                        if !d.is_int {
+                            r_count += 1;
+                            if d.name.eq_ignore_ascii_case(&atok.text) {
+                                ref_idx = Some(r_count);
+                                break;
+                            }
+                        }
+                    }
+                    if ref_idx.is_none() {
+                        for (ridx, r) in script.refs.iter().enumerate() {
+                            if r.eq_ignore_ascii_case(&atok.text) {
+                                ref_idx = Some(r_count + 1 + ridx as u16);
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(ridx) = ref_idx {
+                        arg_bytes.push(0x72);
+                        arg_bytes.extend_from_slice(&ridx.to_le_bytes());
+                        continue;
+                    }
+
+                    if let Some(av) = crate::emit::actor_value_code(&atok.text) {
+                        arg_bytes.extend_from_slice(&(av as u16).to_le_bytes());
+                        continue;
+                    }
+
+                    return Err(crate::Error::Parse(format!(
+                        "cannot resolve argument `{}` for command `{}` in expression",
+                        atok.text, cmd.name
+                    )));
+                }
+
+                let mut b = vec![0x58]; // 'X'
+                b.extend_from_slice(&cmd.opcode.to_le_bytes());
+                // paramBytes = 2 (for count) + arg_bytes.len()
+                let param_bytes = (2 + arg_bytes.len()) as u16;
+                b.extend_from_slice(&param_bytes.to_le_bytes());
+                b.extend_from_slice(&count.to_le_bytes());
+                b.extend(arg_bytes);
+
+                output.push(b);
+                i = j;
+                continue;
+            }
+        }
+
+        // Standalone reference or global variable in expression
+        let mut standalone_ref = None;
+        let mut r_count = 0u16;
+        for d in &script.decls {
+            if !d.is_int {
+                r_count += 1;
+                if d.name.eq_ignore_ascii_case(&t.text) {
+                    standalone_ref = Some((0x5A, r_count));
+                    break;
+                }
+            }
+        }
+        if standalone_ref.is_none() {
+            for (ridx, r) in script.refs.iter().enumerate() {
+                if r.eq_ignore_ascii_case(&t.text) {
+                    // Check if it starts with Game or matches common global patterns,
+                    // or if it's a global variable reference.
+                    // In Fallout NV, standalone references in arithmetic expressions are globals (`0x47` 'G').
+                    let tag = if r.eq_ignore_ascii_case("GameHour")
+                        || r.eq_ignore_ascii_case("GameDaysPassed")
+                        || r.eq_ignore_ascii_case("GameDay")
+                        || r.eq_ignore_ascii_case("GameMonth")
+                        || r.eq_ignore_ascii_case("GameYear")
+                        || r.starts_with("VStoryState")
+                    {
+                        0x47 // 'G'
+                    } else {
+                        0x5A // 'Z'
+                    };
+                    standalone_ref = Some((tag, r_count + 1 + ridx as u16));
+                    break;
+                }
+            }
+        }
+        if let Some((tag, sref)) = standalone_ref {
+            let mut b = vec![tag];
+            b.extend_from_slice(&sref.to_le_bytes());
+            output.push(b);
+            i += 1;
+            continue;
+        }
+
         // It is an operand: a literal, a declared variable, or a command value
-        let val = read_value(std::slice::from_ref(t), locals)?;
+        let val = read_value(std::slice::from_ref(t), &script.decls)?;
         output.push(encode(&val));
         i += 1;
     }

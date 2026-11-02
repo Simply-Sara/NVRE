@@ -34,7 +34,13 @@
 /// message names the line, because a script that will not compile is one the
 /// user has to fix, and "line 14" is where they look.
 pub fn compile(source: &str) -> Result<Vec<u8>, crate::Error> {
-    let script = crate::parse::parse(source);
+    compile_with_refs(source, &[])
+}
+
+/// Compile `source` with a list of external reference names (from SCRO / plugin records).
+pub fn compile_with_refs(source: &str, refs: &[String]) -> Result<Vec<u8>, crate::Error> {
+    let mut script = crate::parse::parse(source);
+    script.refs = refs.to_vec();
 
     // An unreadable line is a compile error rather than something to skip: a
     // body shorter than the source asked for would be a silent bug, and the
