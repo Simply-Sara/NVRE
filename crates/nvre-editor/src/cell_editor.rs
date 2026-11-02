@@ -565,7 +565,10 @@ pub fn manage_window(
                 .spawn((
                     Window {
                         title,
-                        resolution: (860, 820).into(),
+                        // Wider than it was before the reference rows gained
+                        // labels: a label plus a 220px dropdown plus the hex
+                        // field does not fit in 860.
+                        resolution: (940, 820).into(),
                         position: WindowPosition::new(IVec2::new(400, 40)),
                         ..default()
                     },
@@ -740,13 +743,32 @@ fn common_data_group(
         ui.strong("Common Data");
         ui.add_space(4.0);
 
-        // The three references GECK leads with.
+        // The three references GECK leads with. The labels are GECK's own
+        // names for them, not the subrecord signatures.
         let aspc = session.records_of(*b"ASPC");
-        record_field(ui, "default_acoustic", &aspc, &mut state.acoustic_space);
+        record_field(
+            ui,
+            "default_acoustic",
+            "Default Acoustic:",
+            &aspc,
+            &mut state.acoustic_space,
+        );
         let musc = session.records_of(*b"MUSC");
-        record_field(ui, "music_type", &musc, &mut state.music_type);
+        record_field(
+            ui,
+            "music_type",
+            "Music type:",
+            &musc,
+            &mut state.music_type,
+        );
         let imgs = session.records_of(*b"IMGS");
-        record_field(ui, "image_space", &imgs, &mut state.image_space);
+        record_field(
+            ui,
+            "image_space",
+            "ImageSpace:",
+            &imgs,
+            &mut state.image_space,
+        );
 
         ui.separator();
         ui.strong("Water");
@@ -773,7 +795,7 @@ fn common_data_group(
             ui.weak("this cell carries no XCLW subrecord — the height is not saved");
         }
         let waters = session.records_of(*b"WATR");
-        record_field(ui, "water", &waters, &mut state.water);
+        record_field(ui, "water", "Water:", &waters, &mut state.water);
 
         ui.separator();
         ui.strong("Force Hide Land");
@@ -981,7 +1003,13 @@ fn template_group(
         ui.strong("Light Template (LTMP / LNAM)");
         ui.add_space(4.0);
         let templates = session.records_of(*b"LGTM");
-        record_field(ui, "template", &templates, &mut state.light_template);
+        record_field(
+            ui,
+            "template",
+            "Template:",
+            &templates,
+            &mut state.light_template,
+        );
         ui.separator();
         ui.label("Inherit from template:");
         ui.horizontal_wrapped(|ui| {
@@ -1049,7 +1077,7 @@ fn references_group(
                 // field is an `Option` only for the widget's NONE case, which
                 // the row turns back into the first region.
                 let mut chosen = Some(*r);
-                record_field(ui, &format!("region_{i}"), &regions, &mut chosen);
+                record_field(ui, &format!("region_{i}"), "Region:", &regions, &mut chosen);
                 if let Some(f) = chosen {
                     *r = f;
                 }
@@ -1090,9 +1118,15 @@ fn ownership_group(
         ui.strong("References");
         ui.add_space(4.0);
         let eczn = session.records_of(*b"ECZN");
-        record_field(ui, "encounter zone", &eczn, &mut state.encounter_zone);
+        record_field(
+            ui,
+            "encounter_zone",
+            "Encounter zone:",
+            &eczn,
+            &mut state.encounter_zone,
+        );
         let climate = session.records_of(*b"CLMT");
-        record_field(ui, "climate", &climate, &mut state.climate);
+        record_field(ui, "climate", "Climate:", &climate, &mut state.climate);
     });
 
     ui.add_space(6.0);
@@ -1106,7 +1140,7 @@ fn ownership_group(
         owners.extend(session.records_of(*b"CREA").iter().cloned());
         owners.extend(session.records_of(*b"ACHR").iter().cloned());
         owners.sort_by_key(|a| a.1.to_lowercase());
-        record_field(ui, "owner", &owners, &mut state.owner);
+        record_field(ui, "owner", "Owner:", &owners, &mut state.owner);
         if state.owner.is_some() {
             ui.horizontal(|ui| {
                 ui.label("Faction rank:");
@@ -1117,13 +1151,24 @@ fn ownership_group(
     });
 }
 
-/// One optional record reference: a dropdown of that type's records, and a hex
-/// field beside it for a FormID the list does not name.
+/// One optional record reference: a labelled row, a dropdown of that type's
+/// records, and a hex field beside it for a FormID the list does not name.
 ///
-/// The pairing is what keeps an out-of-range value editable rather than
-/// silently clamped: a cell that points at a record from a plugin the session
-/// has hidden is still the cell's real value.
-fn record_field(ui: &mut egui::Ui, id: &str, items: &[(u32, String)], opt: &mut Option<u32>) {
+/// The label is GECK's own name for the field — "Default Acoustic", "Music
+/// type", "ImageSpace" — rather than the subrecord's signature: a row with no
+/// text on it is a row the user has to guess at, and the signature is not what
+/// they are looking for.
+///
+/// The hex field beside the dropdown is what keeps an out-of-range value
+/// editable rather than silently clamped: a cell that points at a record from
+/// a plugin the session has hidden is still the cell's real value.
+fn record_field(
+    ui: &mut egui::Ui,
+    id: &str,
+    label: &str,
+    items: &[(u32, String)],
+    opt: &mut Option<u32>,
+) {
     let cur = match opt {
         Some(fid) => items
             .iter()
@@ -1133,6 +1178,7 @@ fn record_field(ui: &mut egui::Ui, id: &str, items: &[(u32, String)], opt: &mut 
         None => "NONE".to_string(),
     };
     ui.horizontal(|ui| {
+        ui.label(label);
         egui::ComboBox::from_id_salt(id)
             .selected_text(cur)
             .width(220.0)
