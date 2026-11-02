@@ -414,6 +414,49 @@ fn the_headers_flags_round_trip() {
     );
 }
 
+/// The Common Data section's flags land on the `DATA` byte.
+///
+/// `Has Water`, `No LOD Water`, `Can't Travel From Here` and `Hand Changed`
+/// are the four bits GECK's Common Data tab edits, and they are four bits of
+/// the one `DATA` flag word — not a subrecord of their own. The section's
+/// checkboxes and the flags section's are therefore one editor, and this pins
+/// that a change through either lands on the same byte.
+#[test]
+fn the_common_data_flags_land_on_the_data_byte() {
+    let Some(mut s) = session() else {
+        eprintln!("NVRE_DATA not set; skipping");
+        return;
+    };
+    let fid = hoover_dam(&s);
+    // The fixture's own byte: interior, has water, public place.
+    let before = payload(&subs(&s, fid), b"DATA");
+    assert_eq!(before, vec![0x23], "the fixture's own DATA byte");
+
+    let mut state = CellEditorState::default();
+    state.load_from_session(&s, fid);
+    // The four Common Data bits, as the section's checkboxes would set them.
+    state.data_flags = 0x23 | 0x04 | 0x08 | 0x40;
+    state.save_to_session(&mut s);
+
+    let after = payload(&saved_subs(&s, fid, "cell_editor_common"), b"DATA");
+    assert_eq!(
+        after,
+        vec![0x6F],
+        "Can't Travel, No LOD Water and Hand Changed are set on the same byte"
+    );
+    // The bits the section does not offer are the record's own.
+    assert_eq!(
+        after[0] & 0x01,
+        0x01,
+        "Is Interior Cell survives, because nothing cleared it"
+    );
+    assert_eq!(
+        after[0] & 0x20,
+        0x20,
+        "Public Place survives, because nothing cleared it"
+    );
+}
+
 /// The window opens and closes on the session's state, and nothing else.
 ///
 /// `open_cell_editor` is what the Cells window's right-click menu calls; it

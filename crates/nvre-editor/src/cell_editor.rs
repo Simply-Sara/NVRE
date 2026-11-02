@@ -17,17 +17,21 @@
 //! [`crate::session::Session::editing_cell`], so it is only mapped while it is
 //! wanted and never leaves a frame behind when it closes.
 //!
-//! # What is editable
+//! # How the sections are laid out
 //!
-//! Everything the `CELL` record carries, per fopdoc's
-//! [CELL page](https://tes5edit.github.io/fopdoc/FalloutNV/Records/CELL.html):
-//! `EDID`, `FULL`, `DATA` flags, `XCLC` grid, `XCLL` lighting, the light
-//! template (`LTMP`/`LNAM`), water (`XCLW`/`XNAM`/`XCWT`), the regions
-//! (`XCLR`), the encounter zone (`XEZN`), ownership (`XOWN`/`XRNK`), the
-//! acoustic space (`XCAS`), the image space (`XCIM`), the music type (`XCMO`),
-//! and the climate (`XCCM`). Nothing is written until **Apply Changes to
-//! Mod**: each field queues a subrecord edit on the document, the same way the
-//! Object Editor's Apply button does.
+//! GECK's own cell edit dialog leads with a **Common Data** tab, and so does
+//! this: the three reference dropdowns, the water, and the four flags that say
+//! what a cell *is*. Those fields live in several different subrecords
+//! (`XCAS`, `XCMO`, `XCIM`, `XCLW`, `XCWT` and four bits of `DATA`), and GECK
+//! gathers them anyway, because a modder opening a cell is thinking about its
+//! water or whether the player can fast-travel out of it — not about which
+//! subrecord holds it. The sections after it are organised by subrecord, which
+//! is what the rest of the record needs.
+//!
+//! A field is edited in exactly one place. The four `DATA` bits Common Data
+//! offers are not repeated in the flags section below, and the water height and
+//! type are not repeated in the water section: one value with two editors is a
+//! value that can be shown twice and mean two things.
 //!
 //! # Byte preservation
 //!
@@ -625,11 +629,15 @@ pub fn ui(
     egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "cell_editor"), |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
             header_group(ui, &mut state);
+            // First, because it is GECK's own first tab and it holds the
+            // fields a modder opens a cell to change: the water, the flags
+            // that say what the cell is, and the four hide-land quads.
+            common_data_group(ui, &mut session, &mut state);
             flags_group(ui, &mut state);
             grid_group(ui, &mut state);
             lighting_group(ui, &mut state);
             template_group(ui, &mut session, &mut state);
-            water_group(ui, &mut session, &mut state);
+            water_noise_group(ui, &mut state);
             references_group(ui, &mut session, &mut state);
             ownership_group(ui, &mut session, &mut state);
         });
@@ -706,11 +714,126 @@ fn header_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
     });
 }
 
+/// **Common Data** — GECK's own first tab in the cell edit dialog.
+///
+/// GECK's [Common Data page](https://ck.uesp.net/wiki/Common_Data) leads with
+/// the three reference dropdowns, then the water, then the four flags that say
+/// what a cell *is*, and this is the same order. They are pulled out of the
+/// per-subrecord groups below and put here because that is how a modder meets
+/// them: the tab is where you open a cell to change its water or to stop the
+/// player fast-travelling out of it, and the subrecord each field lives in is
+/// not what they are thinking about.
+///
+/// The fields are grouped by what they do rather than by subrecord, so the
+/// section's own name is not a signature: `Has Water` is a `DATA` bit and
+/// `Height` is `XCLW`, and they sit together because GECK puts them together.
+///
+/// GECK's notes on which fields apply are kept as the row's own hint: Has
+/// Water and Height are interior-only, and Force Hide Land is exterior-only.
+fn common_data_group(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    state: &mut CellEditorState,
+) {
+    ui.add_space(6.0);
+    ui.group(|ui| {
+        ui.strong("Common Data");
+        ui.add_space(4.0);
+
+        // The three references GECK leads with.
+        let aspc = session.records_of(*b"ASPC");
+        record_field(ui, "default_acoustic", &aspc, &mut state.acoustic_space);
+        let musc = session.records_of(*b"MUSC");
+        record_field(ui, "music_type", &musc, &mut state.music_type);
+        let imgs = session.records_of(*b"IMGS");
+        record_field(ui, "image_space", &imgs, &mut state.image_space);
+
+        ui.separator();
+        ui.strong("Water");
+        ui.add_space(2.0);
+        // Has Water is a DATA bit, so the checkbox writes into the same byte
+        // the flags section shows — the two are one value, and a save that
+        // let them disagree would write whichever was applied last.
+        let mut has_water = state.data_flags & 0x02 != 0;
+        if ui.checkbox(&mut has_water, "Has Water").changed() {
+            if has_water {
+                state.data_flags |= 0x02;
+            } else {
+                state.data_flags &= !0x02;
+            }
+        }
+        ui.horizontal(|ui| {
+            ui.label("Height:");
+            ui.add_enabled(
+                state.has_water_height,
+                egui::DragValue::new(&mut state.water_height).speed(1.0),
+            );
+        });
+        if !state.has_water_height {
+            ui.weak("this cell carries no XCLW subrecord — the height is not saved");
+        }
+        let waters = session.records_of(*b"WATR");
+        record_field(ui, "water", &waters, &mut state.water);
+
+        ui.separator();
+        ui.strong("Force Hide Land");
+        ui.add_space(2.0);
+        ui.horizontal_wrapped(|ui| {
+            for &(bit, name) in CELL_LAND_FLAGS {
+                let mut on = state.land_flags & bit != 0;
+                if ui.checkbox(&mut on, name).changed() {
+                    if on {
+                        state.land_flags |= bit;
+                    } else {
+                        state.land_flags &= !bit;
+                    }
+                }
+            }
+        });
+        ui.weak("exterior cells only; the collision remains even when the land is hidden");
+
+        ui.separator();
+        // The three flags that are not about the water or the land. They are
+        // DATA bits, written into the same byte as the flags section below.
+        let mut no_lod = state.data_flags & 0x08 != 0;
+        if ui.checkbox(&mut no_lod, "No LOD Water").changed() {
+            if no_lod {
+                state.data_flags |= 0x08;
+            } else {
+                state.data_flags &= !0x08;
+            }
+        }
+        let mut no_travel = state.data_flags & 0x04 != 0;
+        if ui
+            .checkbox(&mut no_travel, "Can't Travel From Here")
+            .changed()
+        {
+            if no_travel {
+                state.data_flags |= 0x04;
+            } else {
+                state.data_flags &= !0x04;
+            }
+        }
+        let mut hand_changed = state.data_flags & 0x40 != 0;
+        if ui.checkbox(&mut hand_changed, "Hand Changed").changed() {
+            if hand_changed {
+                state.data_flags |= 0x40;
+            } else {
+                state.data_flags &= !0x40;
+            }
+        }
+    });
+}
+
 /// `DATA` — the cell's flags, one checkbox per named bit.
 ///
 /// The raw byte is what the checkboxes write into, so a bit the spec does not
 /// name survives: clearing bit 0x10 because the spec calls it unknown is not
 /// something a checkbox should do.
+///
+/// The four flags the Common Data section already offers are not repeated
+/// here: one value with two editors is a value that can be shown twice and
+/// mean two things. This is the whole word, for the bits that are left.
 fn flags_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
     ui.add_space(6.0);
     ui.group(|ui| {
@@ -718,6 +841,10 @@ fn flags_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
         ui.add_space(4.0);
         ui.horizontal_wrapped(|ui| {
             for &(bit, name) in CELL_DATA_FLAGS {
+                // The four Common Data edits, offered there and not twice.
+                if COMMON_DATA_FLAG_BITS.contains(&bit) {
+                    continue;
+                }
                 let mut on = state.data_flags & bit != 0;
                 if ui.checkbox(&mut on, name).changed() {
                     if on {
@@ -734,7 +861,14 @@ fn flags_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
     });
 }
 
-/// `XCLC` — the grid square and the Force Hide Land flags.
+/// The `DATA` bits Common Data edits, so the flags section does not show them
+/// twice. One value, one editor.
+const COMMON_DATA_FLAG_BITS: &[u8] = &[0x02, 0x04, 0x08, 0x40];
+
+/// `XCLC` — the grid square, without the Force Hide Land flags.
+///
+/// The quads moved to Common Data, where GECK puts them, so what is left is
+/// the coordinate itself.
 fn grid_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
     if !state.has_grid {
         return;
@@ -748,17 +882,6 @@ fn grid_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
             ui.add(egui::DragValue::new(&mut state.grid_x));
             ui.label("Y:");
             ui.add(egui::DragValue::new(&mut state.grid_y));
-            ui.separator();
-            for &(bit, name) in CELL_LAND_FLAGS {
-                let mut on = state.land_flags & bit != 0;
-                if ui.checkbox(&mut on, name).changed() {
-                    if on {
-                        state.land_flags |= bit;
-                    } else {
-                        state.land_flags &= !bit;
-                    }
-                }
-            }
         });
         ui.weak("the game reads an exterior cell's grid to place it in the world");
     });
@@ -876,33 +999,26 @@ fn template_group(
     });
 }
 
-/// `XCLW` / `XNAM` / `XCWT` — the cell's water.
-fn water_group(
-    ui: &mut egui::Ui,
-    session: &mut crate::session::Session,
-    state: &mut CellEditorState,
-) {
-    if !state.has_water_height && !state.raw_subs.contains_key(b"XNAM") {
+/// `XCLW` / `XNAM` / `XCWT` — the cell's water noise texture.
+///
+/// The height and the water type moved to Common Data, where GECK puts them,
+/// so what is left is the noise texture — the one water field that is not a
+/// number or a reference.
+fn water_noise_group(ui: &mut egui::Ui, state: &mut CellEditorState) {
+    if !state.raw_subs.contains_key(b"XNAM") {
         return;
     }
     ui.add_space(6.0);
     ui.group(|ui| {
-        ui.strong("Water (XCLW / XNAM / XCWT)");
+        ui.strong("Water Noise Texture (XNAM)");
         ui.add_space(4.0);
-        if state.has_water_height {
-            ui.horizontal(|ui| {
-                ui.label("Water height:");
-                ui.add(egui::DragValue::new(&mut state.water_height).speed(1.0));
-            });
-        }
-        if state.raw_subs.contains_key(b"XNAM") {
-            ui.horizontal(|ui| {
-                ui.label("Noise texture:");
-                ui.add(egui::TextEdit::singleline(&mut state.water_noise).desired_width(240.0));
-            });
-        }
-        let waters = session.records_of(*b"WATR");
-        record_field(ui, "water type", &waters, &mut state.water);
+        ui.horizontal(|ui| {
+            ui.label("Noise texture:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.water_noise)
+                    .desired_width(ui.available_width() - 20.0),
+            );
+        });
     });
 }
 
@@ -960,7 +1076,10 @@ fn references_group(
     });
 }
 
-/// `XEZN`, `XCAS`, `XCIM`, `XCMO`, `XCCM` — the cell's remaining references.
+/// `XEZN` and `XCCM` — the cell's remaining references.
+///
+/// The acoustic space, the image space and the music type moved to Common
+/// Data, where GECK puts them.
 fn ownership_group(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
@@ -974,12 +1093,6 @@ fn ownership_group(
         record_field(ui, "encounter zone", &eczn, &mut state.encounter_zone);
         let climate = session.records_of(*b"CLMT");
         record_field(ui, "climate", &climate, &mut state.climate);
-        let aspc = session.records_of(*b"ASPC");
-        record_field(ui, "acoustic space", &aspc, &mut state.acoustic_space);
-        let imgs = session.records_of(*b"IMGS");
-        record_field(ui, "image space", &imgs, &mut state.image_space);
-        let musc = session.records_of(*b"MUSC");
-        record_field(ui, "music type", &musc, &mut state.music_type);
     });
 
     ui.add_space(6.0);
