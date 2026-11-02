@@ -1222,6 +1222,21 @@ fn emit_call(
     // A command with no declared parameters writes no argument bytes at all.
     // One that has them writes the count, even when nothing is passed.
     if cmd.args.is_empty() {
+        // The two exceptions the corpus settles: `StopCombat` and
+        // `RemoveScriptPackage` are called in shipped scripts with an
+        // explicit target (`Fighter02.StopCombat Player`,
+        // `VFSOrrisThug01REF.RemoveScriptPackage SomePackage`) and the game
+        // compiles them to argLen 0 — the argument is dropped, because for
+        // these two the target is the reference the call is dotted on (or
+        // the script's own actor when bare). Measured: 164 such calls across
+        // the corpus, every one argLen 0, dotted and bare alike. One
+        // dropped argument is accepted on that evidence; two is a call this
+        // emitter does not understand.
+        if encoded.len() == 1 && (cmd.opcode == 0x1017 || cmd.opcode == 0x1098) {
+            let mut out = prefix_bytes;
+            out.extend(frame(cmd.opcode, &[]));
+            return Ok(out);
+        }
         if !encoded.is_empty() {
             return Err(crate::Error::Parse(format!(
                 "`{command}` takes no arguments, but {} were given",
@@ -1230,6 +1245,42 @@ fn emit_call(
         }
         let mut out = prefix_bytes;
         out.extend(frame(cmd.opcode, &[]));
+        return Ok(out);
+    }
+
+    // ShowMessage's compiled form is its own shape, measured across the
+    // corpus: the count word counts the message alone, then come the
+    // format-value count, the format values themselves, and a u32 zero the
+    // game always writes.
+    //
+    //   showmessage WildWastelandMessage
+    //     → 01 00 | 72 04 00 | 00 00 | 00 00 00 00
+    //   showmessage ChallengeMessageBugStomper rank
+    //     → 01 00 | 72 03 00 | 01 00 | 73 01 00 | 00 00 00 00
+    //   ShowMessage TrapLowSkillRepairMsg NQlvl.TRAPPlateSkillReq
+    //     → 01 00 | 72 05 00 | 01 00 | 72 02 00 73 1B 00 | 00 00 00 00
+    //
+    // The first argument is the message (a reference); every argument after
+    // it is a printf-style format value, counted by their own u16. A dotted
+    // remote variable as a format value is the 5-byte compound
+    // `72 <refIdx> <tag> <varId>`.
+    if cmd.opcode == 0x1059 {
+        if encoded.is_empty() {
+            return Err(crate::Error::Parse(
+                "`ShowMessage` needs its message argument".to_string(),
+            ));
+        }
+        let message = encoded.remove(0);
+        let mut body = Vec::new();
+        body.extend_from_slice(&1u16.to_le_bytes());
+        body.extend(message);
+        body.extend_from_slice(&(encoded.len() as u16).to_le_bytes());
+        for e in &encoded {
+            body.extend(e);
+        }
+        body.extend_from_slice(&0u32.to_le_bytes());
+        let mut out = prefix_bytes;
+        out.extend(frame(cmd.opcode, &body));
         return Ok(out);
     }
 
@@ -1395,7 +1446,7 @@ fn emit_arg(
         // names one of the record's references, which this emitter cannot
         // index correctly — so it is refused rather than guessed.
         crate::lex::Kind::Word => {
-            // Check for expected ActorValue or AnimGroup
+            // Check for expected ActorValue, AnimGroup or Axis
             if let Some(exp) = expected_type {
                 if exp.eq_ignore_ascii_case("ActorValue") {
                     if let Some(av) = actor_value_code(&t.text) {
@@ -1404,6 +1455,16 @@ fn emit_arg(
                 } else if exp.eq_ignore_ascii_case("AnimGroup") {
                     if let Some(ag) = anim_group_code(&t.text) {
                         return Ok((ag as u16).to_le_bytes().to_vec());
+                    }
+                } else if exp.eq_ignore_ascii_case("Axis") {
+                    // Measured: `SetAngle X 0` writes the axis as its own
+                    // ASCII letter — `58 7A ...` for X, `59` for Y, `5A` for
+                    // Z — not a tagged value and not a raw u16.
+                    match t.text.to_ascii_uppercase().as_str() {
+                        "X" => return Ok(vec![b'X']),
+                        "Y" => return Ok(vec![b'Y']),
+                        "Z" => return Ok(vec![b'Z']),
+                        _ => {}
                     }
                 }
             }

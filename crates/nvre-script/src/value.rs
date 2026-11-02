@@ -436,7 +436,20 @@ pub fn encode_expr(
             }
         }
 
-        // Standalone reference or global variable in expression
+        // Standalone reference or global variable in expression.
+        // A declared variable comes first in every form — including a
+        // declared `ref` variable, which is the `66 <SLSD id>` form here
+        // and only becomes the `72`/`5A` reference-index form when it is
+        // NOT a variable (a placed reference or SCRO entry). Measured:
+        // `if (rUser == Player)` in NVEcvDoorBG01SCRIPT writes
+        // `66 01 00` for the declared `ref rUser`, not `5A 01`.
+        if let Ok((idx, is_int)) = resolve_var(&t.text, script) {
+            let mut b = vec![var_tag(is_int)];
+            b.extend_from_slice(&idx.to_le_bytes());
+            output.push(b);
+            i += 1;
+            continue;
+        }
         let standalone_ref = resolve_ref_index(&t.text, script).ok().map(|idx| {
             // In Fallout NV, a standalone reference in an arithmetic
             // expression is usually a global variable (`0x47` 'G') when the

@@ -240,7 +240,7 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "DamageAV",
         opcode: 0x1181,
-        args: &["ActorValue", "Amount"],
+        args: &["ActorValue", "Float"],
     },
     Command {
         name: "Dispel",
@@ -289,12 +289,12 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "RestoreAV",
         opcode: 0x1182,
-        args: &["ActorValue", "Amount"],
+        args: &["ActorValue", "Float"],
     },
     Command {
         name: "SetAngle",
         opcode: 0x1009,
-        args: &["Axis", "Angle"],
+        args: &["Axis", "Float"],
     },
     Command {
         name: "SetAV",
@@ -396,7 +396,7 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "ModActorValue",
         opcode: 0x1010,
-        args: &["ActorValue", "Amount"],
+        args: &["ActorValue", "Float"],
     },
     Command {
         name: "MoveTo",
@@ -546,7 +546,7 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "StopCombat",
         opcode: 0x1017,
-        args: &["Actor"],
+        args: &[],
     },
     Command {
         name: "StopQuest",
@@ -1159,7 +1159,7 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "RemoveScriptPackage",
         opcode: 0x1098,
-        args: &["Package"],
+        args: &[],
     },
     Command {
         name: "CanHaveFlames",
@@ -2384,7 +2384,7 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "AddItemHealthPercent",
         opcode: 0x11BC,
-        args: &["ObjectID", "Count", "Health Percent", "Flag"],
+        args: &["ObjectID", "Count", "Float", "Flag"],
     },
     Command {
         name: "PlaceAtMeHealthPercent",
