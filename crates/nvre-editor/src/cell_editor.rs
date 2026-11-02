@@ -706,11 +706,15 @@ pub fn ui(
                 directional_ambient_group(ui, &mut state);
                 template_group(ui, &mut session, &mut state);
             }
+            // The groups in GECK's Interior Data order: the flags that say
+            // what the cell is, where it sits, the water noise, the regions it
+            // belongs to, and the ownership.
             CellEditorTab::InteriorData => {
                 flags_group(ui, &mut state);
                 grid_group(ui, &mut state);
                 water_noise_group(ui, &mut state);
-                interior_data_group(ui, &mut session, &mut state);
+                references_group(ui, &mut session, &mut state);
+                ownership_group(ui, &mut session, &mut state);
             }
         });
 
@@ -808,30 +812,6 @@ fn tab_strip(ui: &mut egui::Ui, state: &mut CellEditorState) {
         }
     });
     ui.separator();
-}
-
-/// **Interior Data** — GECK's third tab.
-///
-/// What is left of the record once the water, the lighting and the ambient
-/// cube have their own tabs: the flags that say what the cell is, the grid it
-/// sits in, the water noise texture, the regions it belongs to, and the
-/// ownership.
-///
-/// GECK's own Interior Data tab is the interior-only half of this — the
-/// encounter zone, the owner and the public-area flag — and the rest is what
-/// the `CELL` record still carries with nowhere better to go. They are one tab
-/// here because GECK's split leaves an exterior cell with only Common Data and
-/// Lighting, and an exterior still has a grid, regions and flags.
-fn interior_data_group(
-    ui: &mut egui::Ui,
-    session: &mut crate::session::Session,
-    state: &mut CellEditorState,
-) {
-    flags_group(ui, state);
-    grid_group(ui, state);
-    water_noise_group(ui, state);
-    references_group(ui, session, state);
-    ownership_group(ui, session, state);
 }
 
 /// The six-axis directional ambient cube, under the Lighting tab.
