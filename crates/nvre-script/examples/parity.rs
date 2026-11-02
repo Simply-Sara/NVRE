@@ -20,12 +20,23 @@ use bytes::Bytes;
 use nvre_esm::raw::visit_nodes;
 use nvre_esm::Plugin;
 
-/// One unit: its FormID, source, the game's bytes, its SCRO FormIDs, and
-/// its own variable table.
+/// One entry of a unit's reference list, in the order the record writes its
+/// `SCRO` and `SCRV` subrecords.
+enum RefListEntry {
+    /// An `SCRO` subrecord: the FormID it names.
+    Scro(u32),
+    /// An `SCRV` subrecord: the SLSD ID of the declared `ref` variable it
+    /// binds.
+    Scrv(u16),
+}
+
+/// One unit: its FormID, source, the game's bytes, its ordered reference
+/// list, and its own variable table.
 struct Unit {
     fid: u32,
     source: String,
     expected: Vec<u8>,
+    ref_list: Vec<RefListEntry>,
     scro_fids: Vec<u32>,
     vars: Vec<nvre_script::VarEntry>,
 }
@@ -154,11 +165,21 @@ fn main() {
         if compiled.is_empty() || source.is_empty() {
             return;
         }
-        let scro_fids: Vec<u32> = subs
-            .iter()
-            .filter(|x| x.sig == *b"SCRO" && x.data.len() == 4)
-            .map(|x| u32::from_le_bytes([x.data[0], x.data[1], x.data[2], x.data[3]]))
-            .collect();
+        // The reference list, record order: SCRO and SCRV interleaved as
+        // the record writes them. An SCRV payload is the SLSD ID of the
+        // declared `ref` variable it binds.
+        let mut ref_list: Vec<RefListEntry> = Vec::new();
+        let mut scro_fids: Vec<u32> = Vec::new();
+        for s in subs.iter() {
+            if s.sig == *b"SCRO" && s.data.len() == 4 {
+                let fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
+                scro_fids.push(fid);
+                ref_list.push(RefListEntry::Scro(fid));
+            } else if s.sig == *b"SCRV" && s.data.len() == 4 {
+                let var_id = u16::from_le_bytes([s.data[0], s.data[1]]);
+                ref_list.push(RefListEntry::Scrv(var_id));
+            }
+        }
         let names: Vec<String> = subs
             .iter()
             .filter(|x| x.sig == *b"SCVR")
@@ -186,6 +207,7 @@ fn main() {
             fid: rec.header.form_id,
             source,
             expected: compiled,
+            ref_list,
             scro_fids,
             vars,
         });
@@ -201,33 +223,60 @@ fn main() {
     let mut reasons: Vec<String> = Vec::new();
     let mut differing: Vec<&Unit> = Vec::new();
 
-    // The reference entries and remote tables a unit compiles against, so
-    // the main loop and both diagnostic sections resolve names identically.
+    // The reference entries a unit compiles against: the record's own
+    // reference list, in the order the record writes its SCRO and SCRV
+    // subrecords. An SCRO slot names a form (its EDID; a GLOB writes the
+    // global tag); an SCRV slot names a declared `ref` variable — its
+    // payload is that variable's SLSD ID, which is how the slot is matched
+    // to the source's declaration.
     let context_for = |unit: &Unit| {
-        // This unit's reference entries: name from the SCRO FormID's EDID,
-        // kind from what the FormID's record is (GLOB -> Global).
-        let refs: Vec<nvre_script::RefEntry> = unit
-            .scro_fids
-            .iter()
-            .map(|fid| {
-                let name = edid_of
-                    .get(fid)
-                    .cloned()
-                    .unwrap_or_else(|| format!("__form_{fid:08X}"));
-                let kind = match sig_of.get(fid).map(|s| s.as_str()) {
-                    Some("GLOB") => nvre_script::RefKind::Global,
-                    _ => nvre_script::RefKind::Reference,
-                };
-                nvre_script::RefEntry { name, kind }
-            })
-            .collect();
-        // The remote tables: each SCRO entry whose record runs a script
-        // contributes that script's table, keyed by the SCRO entry's name —
-        // the name the source spells. The chain is measured: a quest runs
-        // its script through SCRI; a placed reference (ACHR/REFR/ACRE) has
-        // none, and its script is on its base object (the NAME FormID),
-        // which runs it through SCRI of its own. `VFSOrrisThug01REF` ->
-        // NPC_ `VFSOrrisThug01` -> SCRI -> `VFSOrrisThugScript`.
+        let mut refs: Vec<nvre_script::RefEntry> = Vec::new();
+        for entry in &unit.ref_list {
+            match entry {
+                RefListEntry::Scro(fid) => {
+                    let name = edid_of
+                        .get(fid)
+                        .cloned()
+                        .unwrap_or_else(|| format!("__form_{fid:08X}"));
+                    let kind = match sig_of.get(fid).map(|s| s.as_str()) {
+                        Some("GLOB") => nvre_script::RefKind::Global,
+                        _ => nvre_script::RefKind::Reference,
+                    };
+                    refs.push(nvre_script::RefEntry {
+                        name,
+                        slot: nvre_script::RefSlot::Form,
+                        kind,
+                    });
+                }
+                RefListEntry::Scrv(var_id) => {
+                    // The declared ref variable whose SLSD ID the SCRV
+                    // payload carries.
+                    let name = unit
+                        .vars
+                        .iter()
+                        .find(|v| v.id == *var_id)
+                        .map(|v| v.name.clone())
+                        .unwrap_or_else(|| format!("__var_{var_id}"));
+                    refs.push(nvre_script::RefEntry {
+                        name,
+                        slot: nvre_script::RefSlot::Var,
+                        kind: nvre_script::RefKind::Reference,
+                    });
+                }
+            }
+        }
+        refs
+    };
+
+    // The remote tables a unit compiles against: each SCRO entry whose
+    // record runs a script contributes that script's table, keyed by the
+    // SCRO entry's name — the name the source spells. The chain is
+    // measured: a quest runs its script through SCRI; a placed reference
+    // (ACHR/REFR/ACRE) has none, and its script is on its base object (the
+    // NAME FormID), which runs it through SCRI of its own.
+    // `VFSOrrisThug01REF` -> NPC_ `VFSOrrisThug01` -> SCRI ->
+    // `VFSOrrisThugScript`.
+    let remotes_for = |unit: &Unit| {
         let mut remotes: Vec<nvre_script::RemoteScript> = Vec::new();
         for scro_fid in &unit.scro_fids {
             let remote_name = edid_of
@@ -253,11 +302,12 @@ fn main() {
                 vars: table,
             });
         }
-        (refs, remotes)
+        remotes
     };
 
     for unit in &units {
-        let (refs, remotes) = context_for(unit);
+        let refs = context_for(unit);
+        let remotes = remotes_for(unit);
         match nvre_script::compile_with_refs(&unit.source, &refs, &unit.vars, &remotes) {
             Ok(got) => {
                 if got.as_slice() == unit.expected.as_slice() {
@@ -316,7 +366,8 @@ fn main() {
     println!("the units that compile but differ in length:");
     let mut length_diffs = 0;
     for u in &differing {
-        let (refs, remotes) = context_for(u);
+        let refs = context_for(u);
+        let remotes = remotes_for(u);
         let Ok(got) = nvre_script::compile_with_refs(&u.source, &refs, &u.vars, &remotes) else {
             continue;
         };
@@ -344,7 +395,8 @@ fn main() {
         if shown >= 6 {
             break;
         }
-        let (refs, remotes) = context_for(u);
+        let refs = context_for(u);
+        let remotes = remotes_for(u);
         let Err(e) = nvre_script::compile_with_refs(&u.source, &refs, &u.vars, &remotes) else {
             continue;
         };

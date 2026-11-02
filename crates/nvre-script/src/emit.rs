@@ -745,15 +745,22 @@ fn emit_set(
             b
         }
     } else {
-        // A bare destination name: a variable of this script, or one of the
-        // record's references. A reference that names a global variable
-        // (a GLOB record) is a global destination — 0x47 'G' + its index —
-        // which is a different encoding from a local variable's, and a
-        // placed reference cannot be a destination at all. The kind comes
-        // from the record, which the caller supplies; the name alone does
-        // not decide it. Measured: `Set VNight to 1` writes
-        // `15 00 07 00 47 01 00 ...`.
-        if let Some(entry) = script
+        // A bare destination name. The variable case comes first — a
+        // declared `ref` variable is a variable, not a reference slot
+        // (`Set rLink to GetLinkedRef` writes the `f` tag and the
+        // variable's SLSD ID). Then a global: an SCRO entry that names a
+        // GLOB record writes `47` 'G' + its index. A placed reference
+        // cannot be a destination at all, and is refused rather than
+        // written as a variable or a bare reference index, which the game
+        // reads as a different destination.
+        if script
+            .decls
+            .iter()
+            .any(|d| d.name.eq_ignore_ascii_case(&target.text))
+        {
+            let dest = crate::value::read_value(std::slice::from_ref(target), script)?;
+            crate::value::encode(&dest)
+        } else if let Some(entry) = script
             .refs
             .iter()
             .find(|r| r.name.eq_ignore_ascii_case(&target.text))
@@ -772,8 +779,6 @@ fn emit_set(
                     )));
                 }
             }
-        } else if let Ok(dest) = crate::value::read_value(std::slice::from_ref(target), script) {
-            crate::value::encode(&dest)
         } else {
             return Err(crate::Error::Parse(format!(
                 "`{}` is not a declared variable",

@@ -215,8 +215,16 @@ pub fn encode_expr(
 
     fn op_info(tok: &Token) -> Option<(&'static str, u8)> {
         match tok.text.as_str() {
-            "||" => Some(("||", 1)),
-            "&&" => Some(("&&", 2)),
+            // The GECK's compiler binds `||` TIGHTER than `&&` — the
+            // opposite of every textbook. Measured on unparenthesized
+            // corpus conditions: `A || B && C` compiles to the RPN
+            // `A B || C &&` (VMS19NCRFightSCRIPT), and
+            // `A && B && C && D || E` to `A B && C && D E || &&`
+            // (VFSSilverRushGuardEscapeScript) — both are `||` grouping
+            // first. Parenthesized conditions cannot discriminate and were
+            // excluded.
+            "||" => Some(("||", 2)),
+            "&&" => Some(("&&", 1)),
             "==" => Some(("==", 3)),
             "!=" => Some(("!=", 3)),
             "<" => Some(("<", 4)),
@@ -654,28 +662,39 @@ pub fn resolve_remote_var(
     Ok((if var.is_int { 0x73 } else { 0x66 }, var.id))
 }
 
-/// Resolve a reference name to its 1-based index in `[declared ref
-/// variables] + [SCRO refs]`.
+/// Resolve a reference name to its 1-based index in the record's reference
+/// list.
 ///
-/// The index space is measured: the declared `ref` variables come first, in
-/// source declaration order, then the record's `SCRO` FormIDs —
-/// `vCCCrucifiedSlaveSCRIPT` has `ref userref` at index 1, its first SCRO
-/// entry at 2, its second at 3, and 967 of 973 corpus scripts agree. A
-/// `float` declaration is NOT in this space: it is a variable, not a
-/// reference, and counting it here would shift every SCRO index after it.
+/// The list is data, not derived: the record writes its `SCRO` and `SCRV`
+/// subrecords interleaved, in the order the GECK wrote them, and every
+/// reference index the bytecode carries reads that one list, 1-based. See
+/// [`crate::parse::RefEntry`] for the measurement — a declared-refs-first
+/// model fits only the records whose `SCRV` entries happen to be written
+/// before their `SCRO` entries.
 pub fn resolve_ref_index(name: &str, script: &crate::parse::Script) -> Result<u16, crate::Error> {
-    let mut ref_var_idx = 0u16;
-    for d in &script.decls {
-        if d.kind == crate::parse::DeclKind::Ref {
-            ref_var_idx += 1;
-            if d.name.eq_ignore_ascii_case(name) {
-                return Ok(ref_var_idx);
-            }
-        }
+    if let Some(at) = script
+        .refs
+        .iter()
+        .position(|r| r.name.eq_ignore_ascii_case(name))
+    {
+        return Ok(at as u16 + 1);
     }
-    for (i, r) in script.refs.iter().enumerate() {
-        if r.name.eq_ignore_ascii_case(name) {
-            return Ok(ref_var_idx + 1 + i as u16);
+    // No supplied list carries the name. The one case that still resolves
+    // is a declared `ref` variable when the caller supplied no list at all
+    // — its position among the declarations, which is what the record-order
+    // list holds when the record writes its SCRV entries before any SCRO
+    // (the common shape, and the only shape a caller with no list can
+    // know). A placed reference name with no list is refused: its slot is
+    // data the caller has to supply.
+    if script.refs.is_empty() {
+        let mut ref_var_idx = 0u16;
+        for d in &script.decls {
+            if d.kind == crate::parse::DeclKind::Ref {
+                ref_var_idx += 1;
+                if d.name.eq_ignore_ascii_case(name) {
+                    return Ok(ref_var_idx);
+                }
+            }
         }
     }
     Err(crate::Error::Parse(format!(

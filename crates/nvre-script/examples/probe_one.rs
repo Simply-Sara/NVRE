@@ -155,22 +155,40 @@ fn main() {
             })
             .collect();
 
-        // Reference entries with their kinds, and the SCRI-chained remote
-        // tables — the same resolution the parity harness performs.
-        let refs: Vec<nvre_script::RefEntry> = scro_fids
-            .iter()
-            .map(|fid| {
+        // The reference list, record order: SCRO and SCRV interleaved
+        // as the record writes them. An SCRV payload is the SLSD ID of
+        // the declared `ref` variable it binds.
+        let mut refs: Vec<nvre_script::RefEntry> = Vec::new();
+        for s in subs.iter() {
+            if s.sig == *b"SCRO" && s.data.len() == 4 {
+                let fid = u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]);
                 let name = formid_to_edid
-                    .get(fid)
+                    .get(&fid)
                     .cloned()
                     .unwrap_or_else(|| format!("__form_{fid:08X}"));
-                let kind = match sig_of.get(fid).map(|s| s.as_str()) {
+                let kind = match sig_of.get(&fid).map(|x| x.as_str()) {
                     Some("GLOB") => nvre_script::RefKind::Global,
                     _ => nvre_script::RefKind::Reference,
                 };
-                nvre_script::RefEntry { name, kind }
-            })
-            .collect();
+                refs.push(nvre_script::RefEntry {
+                    name,
+                    slot: nvre_script::RefSlot::Form,
+                    kind,
+                });
+            } else if s.sig == *b"SCRV" && s.data.len() == 4 {
+                let var_id = u16::from_le_bytes([s.data[0], s.data[1]]);
+                let name = vars
+                    .iter()
+                    .find(|v| v.id == var_id)
+                    .map(|v| v.name.clone())
+                    .unwrap_or_else(|| format!("__var_{var_id}"));
+                refs.push(nvre_script::RefEntry {
+                    name,
+                    slot: nvre_script::RefSlot::Var,
+                    kind: nvre_script::RefKind::Reference,
+                });
+            }
+        }
         let mut remotes: Vec<nvre_script::RemoteScript> = Vec::new();
         for scro_fid in &scro_fids {
             let Some(script_fid) = scri.get(scro_fid).copied() else {

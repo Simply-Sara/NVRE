@@ -155,6 +155,41 @@ pub struct RemoteScript {
     pub vars: Vec<VarEntry>,
 }
 
+/// One slot of the record's reference list, in the order the record writes
+/// its `SCRO` and `SCRV` subrecords.
+///
+/// The bytecode's reference index is the slot's 1-based position in that
+/// list — measured, and the reason the list is data rather than derived:
+/// the record writes `SCRO` (a named form) and `SCRV` (a declared `ref`
+/// variable, bound to a placed form) subrecords interleaved, in the order
+/// the GECK wrote them, and every reference index the bytecode carries —
+/// `1C` prefixes, `72` expression prefixes, `5A`/`47` operands, command
+/// arguments, `Begin` parameters — reads that one list. A model that counts
+/// declared refs first and `SCRO` after fits only the records whose `SCRV`
+/// entries happen to be written first (967 of 973 units; the other six,
+/// and every unit the model mis-indexes, write `SCRO` before `SCRV`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RefEntry {
+    /// The name the source spells: the form's EDID for an `SCRO` slot, the
+    /// declared variable's name for an `SCRV` slot.
+    pub name: String,
+    /// What the slot names: a placed form or global (`SCRO`), or a
+    /// declared `ref` variable (`SCRV`).
+    pub slot: RefSlot,
+    /// For an `SCRO` slot, what the form is — a global variable (GLOB)
+    /// writes `47` 'G' where a placed reference writes `5A` 'Z'.
+    pub kind: RefKind,
+}
+
+/// Which subrecord a reference-list slot came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefSlot {
+    /// An `SCRO` entry: a named form (placed reference, quest, global).
+    Form,
+    /// An `SCRV` entry: a declared `ref` variable, bound to a placed form.
+    Var,
+}
+
 /// What an `SCRO` entry names, which decides the tag a standalone operand
 /// writes for it.
 ///
@@ -162,8 +197,8 @@ pub struct RemoteScript {
 /// record 360 of 365 times; a `20 5A <idx>` reference operand names a
 /// placed form (`REFR`/`ACHR`/`ACRE`). The tag follows the entry's record
 /// type, not its name — the six hardcoded global names the emitter used to
-/// special-case were a guess, and `VStoryState`-style globals that the GECK
-/// spells differently compiled with the wrong tag.
+/// special-case were a guess, and globals the GECK spells differently
+/// compiled with the wrong tag.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefKind {
     /// A placed reference (REFR/ACHR/ACRE/...): `5A` as a standalone
@@ -174,30 +209,19 @@ pub enum RefKind {
     Global,
 }
 
-/// One of the record's `SCRO` entries: the name the source spells and what
-/// it names.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RefEntry {
-    /// The name, as the source and the SCRO resolution spell it.
-    pub name: String,
-    /// What the entry names.
-    pub kind: RefKind,
-}
-
 /// A parsed script: its declarations, external references, and its statements.
 #[derive(Debug, Clone, Default)]
 pub struct Script {
     /// The local variables, in declaration order.
     pub decls: Vec<Decl>,
-    /// External references (from SCRO / plugin context), in 1-based order,
-    /// with what each names — a placed reference or a global — which decides
-    /// the tag a standalone operand writes for it.
+    /// The record's reference list, in the order the record writes its
+    /// `SCRO` and `SCRV` subrecords. See [`RefEntry`].
     pub refs: Vec<RefEntry>,
     /// The record's own variable table, when the caller has it. Names here
     /// resolve to their `SLSD` IDs; a declared name absent from the table is
     /// a new variable, which the record's writer assigns an ID for.
     pub vars: Vec<VarEntry>,
-    /// The scripts whose variables this record's bytecode names.
+    /// The scripts whose variables this record's bytecode names remotely.
     pub remotes: Vec<RemoteScript>,
     /// The statements, in source order.
     pub stmts: Vec<Stmt>,
