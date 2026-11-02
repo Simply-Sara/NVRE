@@ -285,6 +285,134 @@ fn main() {
         }
     }
 
+    // Dotted calls and reference arguments, with the record's reference
+    // declarations beside them. The index the game writes is one of the
+    // record's own references, and this is what pairs the name with it.
+    println!("=== reference arguments, with the record's ref declarations ===");
+    let mut shown = 0;
+    for u in &units {
+        if shown >= 8 {
+            break;
+        }
+        // The record's reference declarations, in source order.
+        let refs: Vec<String> = u
+            .source
+            .lines()
+            .filter_map(|l| {
+                let t = l.trim();
+                let first = t.split_whitespace().next()?;
+                if !first.eq_ignore_ascii_case("ref") {
+                    return None;
+                }
+                t.split_whitespace()
+                    .nth(1)
+                    .map(|n| n.trim_end_matches(';').trim_end_matches(',').to_string())
+            })
+            .collect();
+        if refs.is_empty() {
+            continue;
+        }
+        let all_ins = read_instructions(&u.compiled);
+        // Instructions carrying a reference argument.
+        let has_ref_arg = all_ins.iter().any(|i| {
+            i.opcode >= 0x1000 && i.args.len() > 2 && i.args[2..].iter().any(|b| *b == 0x72)
+        });
+        if !has_ref_arg {
+            continue;
+        }
+        println!();
+        println!("--- {} ---", u.edid);
+        println!("  refs ({}): {:?}", refs.len(), refs);
+        for ins in all_ins
+            .iter()
+            .filter(|i| i.opcode >= 0x1000 && i.args.len() > 2)
+        {
+            let tail: Vec<u8> = ins.args[2..].to_vec();
+            if tail.contains(&0x72) {
+                println!("  0x{:04X} args {:02X?}", ins.opcode, ins.args);
+            }
+        }
+        // The source lines that name one of those refs.
+        for l in u.source.lines() {
+            let t = l.trim();
+            if refs.iter().any(|r| t.contains(r.as_str()))
+                && !t.to_ascii_lowercase().starts_with("ref")
+            {
+                println!("  | {t}");
+            }
+        }
+        shown += 1;
+    }
+
+    // The simplest reference-argument case: one call, one reference argument,
+    // and the source spells which reference it is. This is what settles what
+    // the index in a `72 <u16>` argument counts.
+    println!("=== the simplest reference arguments ===");
+    let mut shown = 0;
+    for u in &units {
+        if shown >= 10 {
+            break;
+        }
+        let all_ins = read_instructions(&u.compiled);
+        // Exactly one call instruction, with exactly one `r`-tagged argument.
+        let calls: Vec<&Instruction> = all_ins.iter().filter(|i| i.opcode >= 0x1000).collect();
+        if calls.len() != 1 {
+            continue;
+        }
+        let ins = calls[0];
+        if ins.args.len() < 3 {
+            continue;
+        }
+        let tail = &ins.args[2..];
+        // One argument, and it starts with the `r` tag.
+        if tail.len() != 3 || tail[0] != 0x72 {
+            continue;
+        }
+        let idx = u16::from_le_bytes([tail[1], tail[2]]);
+        let call_line = u
+            .source
+            .lines()
+            .find(|l| {
+                let t = l.trim();
+                !t.is_empty()
+                    && !t.starts_with(';')
+                    && !t.split_whitespace().next().is_some_and(|w| {
+                        w.eq_ignore_ascii_case("scn")
+                            || w.eq_ignore_ascii_case("scriptname")
+                            || w.eq_ignore_ascii_case("begin")
+                            || w.eq_ignore_ascii_case("end")
+                            || w.eq_ignore_ascii_case("set")
+                            || w.eq_ignore_ascii_case("if")
+                            || w.eq_ignore_ascii_case("ref")
+                            || w.eq_ignore_ascii_case("short")
+                            || w.eq_ignore_ascii_case("int")
+                            || w.eq_ignore_ascii_case("float")
+                            || w.eq_ignore_ascii_case("long")
+                    })
+            })
+            .unwrap_or("")
+            .trim();
+        // The script's ref declarations, in order.
+        let refs: Vec<String> = u
+            .source
+            .lines()
+            .filter_map(|l| {
+                let t = l.trim();
+                if !t.split_whitespace().next()?.eq_ignore_ascii_case("ref") {
+                    return None;
+                }
+                t.split_whitespace()
+                    .nth(1)
+                    .map(|n| n.trim_end_matches(';').to_string())
+            })
+            .collect();
+        println!();
+        println!("--- {} : {call_line}", u.edid);
+        println!("    0x{:04X} ref index {idx}", ins.opcode);
+        println!("    refs declared: {:?}", refs);
+        shown += 1;
+    }
+
     println!("=== command argument tags ===");
     let mut tags: std::collections::BTreeMap<u8, Vec<usize>> = std::collections::BTreeMap::new();
     for (_, _, args, _) in &with_args {
