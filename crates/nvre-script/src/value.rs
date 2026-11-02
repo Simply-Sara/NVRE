@@ -336,7 +336,13 @@ pub fn encode_expr(
                     let mut b = vec![0x72];
                     b.extend_from_slice(&ridx.to_le_bytes());
                     b.push(0x58); // 'X'
-                    b.extend_from_slice(&cmd.opcode.to_le_bytes());
+                                  // The expression-form opcode, which for GetAV is not the
+                                  // statement form's: measured, all 52 expression calls in
+                                  // the corpus write 0x100E.
+                    let expr_op = crate::opcodes::expression_opcode(member).ok_or_else(|| {
+                        crate::Error::Parse(format!("`{member}` is not a known command"))
+                    })?;
+                    b.extend_from_slice(&expr_op.to_le_bytes());
                     if cmd.args.is_empty() && count == 0 {
                         b.extend_from_slice(&0u16.to_le_bytes());
                     } else {
@@ -423,7 +429,13 @@ pub fn encode_expr(
                 }
 
                 let mut b = vec![0x58]; // 'X'
-                b.extend_from_slice(&cmd.opcode.to_le_bytes());
+                                        // The expression-form opcode, which for GetAV is not the
+                                        // statement form's: measured, all 52 expression calls in the
+                                        // corpus write 0x100E where the statement form writes 0x11CD.
+                let expr_op = crate::opcodes::expression_opcode(&t.text).ok_or_else(|| {
+                    crate::Error::Parse(format!("`{}` is not a known command", t.text))
+                })?;
+                b.extend_from_slice(&expr_op.to_le_bytes());
                 // paramBytes = 2 (for count) + arg_bytes.len()
                 let param_bytes = (2 + arg_bytes.len()) as u16;
                 b.extend_from_slice(&param_bytes.to_le_bytes());

@@ -268,6 +268,11 @@ pub const COMMANDS: &[Command] = &[
         args: &["ActorValue"],
     },
     Command {
+        name: "GetContainerInventoryCount",
+        opcode: 0x127A,
+        args: &[],
+    },
+    Command {
         // `Kill` is the same command under a shorter name: the corpus spells
         // it both ways (`Kill;`, `KillActor`, `killActor Opp 1 2`) and both
         // compile to 0x108B. One entry, because two rows with one opcode is a
@@ -3428,6 +3433,22 @@ pub fn command_called(name: &str) -> Option<&'static Command> {
 /// The command with this opcode.
 pub fn command_at(opcode: u16) -> Option<&'static Command> {
     COMMANDS.iter().find(|c| c.opcode == opcode)
+}
+
+/// The opcode a command call writes when it appears as an expression value
+/// (`0x58`-prefixed), which is not always the opcode its statement call
+/// writes.
+///
+/// Measured: every one of the corpus's 52 expression-form GetAV/
+/// GetActorValue calls writes `0x100E`, and its 23 statement-form `GetAV`
+/// calls write `0x11CD` — the same source name resolves to a different
+/// opcode by position. An expression that resolved `GetAV` to the statement
+/// opcode compiles a condition the game reads as a different function.
+pub fn expression_opcode(name: &str) -> Option<u16> {
+    if name.eq_ignore_ascii_case("GetAV") {
+        return Some(0x100E);
+    }
+    command_called(name).map(|c| c.opcode)
 }
 
 /// Every command whose name starts with `prefix`, case-insensitively.
