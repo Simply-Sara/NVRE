@@ -60,11 +60,55 @@
 //! **The parser is done.** `examples/parse_census`: **14,301 / 14,301** `.psc`
 //! in the CK's `Scripts.zip` parse — every source Bethesda shipped.
 //!
-//! **The emitter is started, and is not at parity.** It produces a *sound*
-//! `.pex` — it writes, re-reads, keeps its size fields right and lands every
-//! jump on a real instruction — for real scripts including `Actor.psc`
-//! (`examples/emit_probe`). It does **not** yet reproduce the Creation Kit's
-//! bytes: `examples/parity` reports 0 identical of 14,026.
+//! **The emitter works, and is not at byte parity.** `examples/semcensus` is
+//! the number that matters, and it measures the *program* rather than the
+//! bytes: every operand resolved through its own file's table, functions
+//! matched by state and name.
+//!
+//! ```text
+//! 1026 / 149,327 scripts reproduce the Creation Kit exactly
+//! 73,588 / 482,272 instruction and local lines agree
+//! ```
+//!
+//! `examples/parity` reports 0 identical and is *not* the useful number: it
+//! compares bytes, and the two compilers order their string tables
+//! differently, so every index differs even where the code does not.
+//!
+//! # Rules the corpus settled
+//!
+//! Each of these was measured, and each contradicts something plausible:
+//!
+//! - **The compiler injects `GetState` and `GotoState`** into every script.
+//!   Their bodies are fixed. (See below.)
+//! - **Every `.pex` carries the user flags `conditional` and `hidden`**, on all
+//!   14,026 — including the 2,859 whose source declares neither.
+//! - **A function's locals table holds temporaries only.** No `self`, no
+//!   parameters, no `::State`. `GetState`'s table is empty.
+//! - **An empty function body gets no instructions at all** — not even an
+//!   implicit `return None`, and no `::NoneVar`.
+//! - **An `auto` property is referenced by its `::Name_var` backing member**,
+//!   and a property is an *instance* of its type, never the class: `ExileScene`
+//!   is a `Scene` instance, so `ExileScene.IsPlaying()` is a `callmethod`.
+//! - **`arr[i] = v` is `array_setelement arr i v`**, not an `assign`, and the
+//!   stored value is materialised into a temporary first.
+//! - **Primitive type names are always capitalised**: `Int`, `Float`, `Bool`,
+//!   `String`, `None`. Only class names vary in case.
+//! - **`0x13` is `cmp_gte`**, proven by `achievementsscript` compiling
+//!   `statValue >= …` to it. `jmp` is `0x14`.
+//!
+//! What remains:
+//!
+//! 1. **The property and function record order.** The Creation Kit stores both
+//!    in hash containers and emits them in iteration order — in
+//!    `achievementsscript` the injected `GetState` and `GotoState` sit at
+//!    positions 5 and 7 of 8, between the script's own. That order is not
+//!    source order (29.9%), alphabetical, reverse, type-then-name, length, or
+//!    FNV-1a at any bucket count. **This is the one blocker to byte parity.**
+//! 2. **The temporary allocator.** The CK reuses `::tempN` where this emitter
+//!    allocates a fresh one per expression, so its bodies list ~7 locals where
+//!    this one lists ~11.
+//! 3. **The debug line table**, one source line per instruction.
+//! 4. **Return types for methods the corpus never showed**, which stay `var`.
 //!
 //! # The string table, decoded
 //!
