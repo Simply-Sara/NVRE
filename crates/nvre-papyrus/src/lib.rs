@@ -43,13 +43,43 @@
 //!   single reader cannot treat the two as the same layout with different byte
 //!   order. [`pex`] keeps the game flavour explicit for that reason.
 //!
-//! # Status
+//! # Status, measured
 //!
-//! The container reader is done and verified against the shipped corpus. The
-//! writer round-trips a parsed file byte for byte. The compiler is the next
-//! layer and is not built yet: the crate exposes [`compile`] as the place it
-//! will live, and refuses rather than pretending.
+//! **The container is done.** Read and write, both dialects:
+//!
+//! ```text
+//! census     14026/14026   Skyrim Special Edition, Skyrim - Misc.bsa (v3.2)
+//!            10015/10015   Skyrim, Skyrim - Misc.bsa (v3.1)
+//!             7875/7875    Fallout 4, Fallout4 - Misc.ba2 (v3.9, big structs,
+//!                          little-endian)
+//! ```
+//!
+//! Every one parses, writes back byte for byte, and agrees with the game on its
+//! own `size` field. That is `examples/census`.
+//!
+//! **The parser is done.** `examples/parse_census`: **14,301 / 14,301** `.psc`
+//! in the CK's `Scripts.zip` parse — every source Bethesda shipped.
+//!
+//! **The emitter is started, and is not at parity.** It produces a *sound*
+//! `.pex` — it writes, re-reads, keeps its size fields right and lands every
+//! jump on a real instruction — for real scripts including `Actor.psc`
+//! (`examples/emit_probe`). It does **not** yet reproduce the Creation Kit's
+//! bytes: `examples/parity` reports 0 identical of 14,026, and the first
+//! difference in every one is the string table, because the CK's table is
+//! ordered by its own intern order rather than first use.
+//!
+//! What remains for parity, in the order it is worth doing:
+//!
+//! 1. **The string table's order.** Every other field depends on getting it
+//!    right, because every index in the file is an index into it.
+//! 2. **The temporary and local ordering** inside a function — the CK's
+//!    `::tempN` series is assigned by its own expression walker.
+//! 3. **The debug block**, which records a source line per instruction.
+//! 4. **Array assignment** (`a[i] = v` through `array_setelement`) and
+//!    negative property initial values, both of which the emitter refuses
+//!    today rather than guessing.
 
+pub mod emit;
 pub mod lex;
 pub mod opcodes;
 pub mod parse;

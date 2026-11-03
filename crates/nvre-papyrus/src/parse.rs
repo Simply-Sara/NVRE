@@ -1154,19 +1154,6 @@ impl<'a> Parser<'a> {
         compound && self.t.get(i + 1).map(|t| &t.kind) == Some(&Kind::Assign)
     }
 
-    /// Whether the reader is at `op =`, where `op` is one of `+ - * / %`.
-    fn at_compound_operator(&self) -> bool {
-        let compound = matches!(
-            self.peek().map(|t| &t.kind),
-            Some(Kind::Plus)
-                | Some(Kind::Minus)
-                | Some(Kind::Star)
-                | Some(Kind::Slash)
-                | Some(Kind::Percent)
-        );
-        compound && self.t.get(self.i + 1).map(|t| &t.kind) == Some(&Kind::Assign)
-    }
-
     fn or_expr(&mut self) -> Result<Expr, Error> {
         let mut lhs = self.and_expr()?;
         while self.eat(&Kind::OrOr) {
