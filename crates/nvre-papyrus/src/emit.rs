@@ -162,6 +162,26 @@ pub struct Compiler<'a> {
     /// own starts at the counter rather than at zero. That is exactly why a
     /// no-parameter function in the shipped corpus can begin at `::temp8`.
     next_temp: usize,
+    /// Condition temporaries of the `if` construct currently being compiled,
+    /// with the nesting depth at which the construct started.
+    ///
+    /// The CK does **not** free a condition temp at its `jmpf`. It frees every
+    /// condition temp of the construct when the *outermost* `if` finishes, in
+    /// allocation order — so the highest-numbered one is on top of the LIFO free
+    /// list and comes back first. Measured with the real compiler:
+    ///
+    /// ```text
+    /// three separate ifs      -> cond temps ::temp0 ::temp0 ::temp0
+    /// if { if { } } then if   -> ::temp0 ::temp1, next cond ::temp1
+    /// if / elseif then if     -> ::temp0 ::temp1, next cond ::temp1
+    /// ```
+    ///
+    /// Freeing at each `jmpf` instead is what a shipping compiler would do, and
+    /// it is wrong: it hands the second branch of an `elseif` the first branch's
+    /// slot.
+    cond_temps: Vec<StrIndex>,
+    /// How many `if` constructs are open.
+    if_depth: usize,
 }
 
 /// One property's compiled form.
@@ -211,6 +231,8 @@ impl<'a> Compiler<'a> {
             strings: Vec::new(),
             types: Vec::new(),
             next_temp: 0,
+            cond_temps: Vec::new(),
+            if_depth: 0,
             user_flag_names: {
                 // Both are always present, on all 14,026 shipped scripts —
                 // including the 2,859 whose source declares neither. Only the
@@ -1022,22 +1044,51 @@ impl<'a> Compiler<'a> {
         // start; each branch's body ends with a jump past the whole chain.
         let mut patch_false: Vec<usize> = Vec::new();
         let mut patch_end: Vec<usize> = Vec::new();
+        // A branch's `jmpf` targets the START OF THE NEXT BRANCH, not the end of
+        // the chain. In `if/elseif/elseif/elseif` the game emits
+        // `cmp_eq, jmpf +3, call, jmp +13` for every branch: false falls through
+        // to the next condition three instructions later, while a taken branch
+        // jumps clear of them all. Pointing `jmpf` at the chain end as well made
+        // a false condition skip the remaining branches entirely — the same
+        // instruction count and completely different behaviour.
+        let mut pending_false: Option<usize> = None;
+        self.if_depth += 1;
+        let mark = self.cond_temps.len();
+        // The first branch's condition temp, held until the construct ends.
+        let mut first_cond: Option<StrIndex> = None;
 
-        for b in branches {
+        for (mine_branch, b) in branches.iter().enumerate() {
+            // We are at the start of this branch, so the previous branch's
+            // failed condition lands here. It has to be AFTER that branch's
+            // trailing `jmp`, which is why this is not done at the end of the
+            // loop body: landing before the `jmp` was one instruction short.
+            if let Some(prev) = pending_false.take() {
+                let here = buf.here();
+                if let Value::Int(v) = &mut buf.instructions[prev].args[1] {
+                    *v = here as i32 - prev as i32;
+                }
+            }
+            let mut mine_cond: Option<StrIndex> = None;
             if let Some(cond) = &b.cond {
                 let c = self.expr(buf, cond, b.line)?;
                 let mut ins = Instruction::new(opcode_of("jmpf"));
-                ins.args.push(c);
+                ins.args.push(c.clone());
                 let at = buf.here();
                 ins.args.push(Value::Int(0));
                 buf.push(ins, b.line);
-                // NOTE: the condition temp is deliberately NOT released here.
-                // The game does reuse it — `OnTrackedStatsEvent` uses `::temp1`
-                // for several consecutive `if` conditions — so releasing looks
-                // right, and it was tried: 40,782 identical functions against
-                // 41,080 for not releasing. The CK's reuse rule is narrower
-                // than "free whatever an instruction consumed", and guessing at
-                // it here costs more than the reuse gains.
+                // NOT released here. See the `cond_temps` field: the CK holds
+                // every condition temp of the construct until the outermost `if`
+                // finishes, then frees them in allocation order. Freeing at the
+                // `jmpf` would hand the second branch of an `elseif` the first
+                // branch's slot, which the real compiler does not do.
+                if let Value::Identifier(ci) = c {
+                    self.cond_temps.push(ci);
+                    mine_cond = Some(ci);
+                    if first_cond.is_none() {
+                        first_cond = Some(ci);
+                    }
+                }
+                pending_false = Some(at);
                 patch_false.push(at);
             }
             self.block(buf, &b.body)?;
@@ -1051,12 +1102,43 @@ impl<'a> Compiler<'a> {
             let at = buf.here();
             buf.push(ins, b.line);
             patch_end.push(at);
+            // The CK frees a branch's condition temp at the end of that branch,
+            // so `elseif` reuses one slot for every branch after the first.
+            // Measured: `if/elseif/elseif/elseif` gets ::temp0 then ::temp1
+            // three times over — branch 1's ::temp0 is NOT recycled.
+            if mine_branch > 0 {
+                if let Some(ci) = mine_cond {
+                    self.release_temp(buf, &Value::Identifier(ci));
+                }
+            }
         }
+        // The first branch's condition temp is released here, at the end of the
+        // whole construct. Restricting this to single-branch `if`s was also
+        // tried, because `if/elseif/…` really does hand a following `if` the
+        // ::temp1 slot rather than ::temp0 — but it scores 41,210 identical
+        // functions against 41,230 for releasing unconditionally, so the reuse
+        // rule for a chain's first condition is still not decoded. Recorded
+        // rather than guessed at any further.
+        if let Some(ci) = first_cond {
+            self.release_temp(buf, &Value::Identifier(ci));
+        }
+        self.cond_temps.truncate(mark);
 
+        self.if_depth -= 1;
         let end = buf.here();
+        if let Some(prev) = pending_false.take() {
+            if let Value::Int(v) = &mut buf.instructions[prev].args[1] {
+                *v = end as i32 - prev as i32;
+            }
+        }
+        // The LAST branch's failed condition falls through to the end of the
+        // chain, which is here. Every earlier one was already pointed at the
+        // start of the branch that follows it.
         for at in patch_false {
             if let Value::Int(v) = &mut buf.instructions[at].args[1] {
-                *v = end as i32 - at as i32;
+                if *v == 0 {
+                    *v = end as i32 - at as i32;
+                }
             }
         }
         for at in patch_end {
@@ -1636,10 +1718,23 @@ impl<'a> Compiler<'a> {
                             ins.args.push(Value::Identifier(target));
                             ins.args.push(Value::Identifier(fname));
                             ins.args.push(Value::Identifier(tmp));
-                            ins.varargs = args
-                                .iter()
-                                .map(|a| self.expr(buf, a, line))
-                                .collect::<Result<Vec<_>, _>>()?;
+                            // Static calls pad their omitted trailing
+                            // arguments exactly like method calls:
+                            // `Debug.Trace("a")` emits
+                            // `callstatic debug Trace ::NoneVar "a" 0`.
+                            let own = self.own_class().unwrap_or_default();
+                            let sig = crate::signatures::method_params(&own, name);
+                            let defs = crate::signatures::defaults(name);
+                            let mut va = Vec::with_capacity(args.len());
+                            for (i, a) in args.iter().enumerate() {
+                                let v = self.expr(buf, a, line)?;
+                                let v = match sig.and_then(|s| s.get(i)) {
+                                    Some(w) => self.coerce_arg(buf, v, w, line),
+                                    None => v,
+                                };
+                                va.push(v);
+                            }
+                            ins.varargs = self.pad_defaults(va, defs);
                             buf.push(ins, line);
                             return Ok(Value::Identifier(tmp));
                         }
@@ -1688,10 +1783,19 @@ impl<'a> Compiler<'a> {
                                 ins.args.push(Value::Identifier(target));
                                 ins.args.push(Value::Identifier(m));
                                 ins.args.push(Value::Identifier(tmp));
-                                ins.varargs = args
-                                    .iter()
-                                    .map(|a| self.expr(buf, a, line))
-                                    .collect::<Result<Vec<_>, _>>()?;
+                                let defs = crate::signatures::defaults(method);
+                                let cls = class.to_ascii_lowercase();
+                                let sig = crate::signatures::method_params(&cls, method);
+                                let mut va = Vec::with_capacity(args.len());
+                                for (i, a) in args.iter().enumerate() {
+                                    let v = self.expr(buf, a, line)?;
+                                    let v = match sig.and_then(|s| s.get(i)) {
+                                        Some(w) => self.coerce_arg(buf, v, w, line),
+                                        None => v,
+                                    };
+                                    va.push(v);
+                                }
+                                ins.varargs = self.pad_defaults(va, defs);
                                 buf.push(ins, line);
                                 return Ok(Value::Identifier(tmp));
                             }
