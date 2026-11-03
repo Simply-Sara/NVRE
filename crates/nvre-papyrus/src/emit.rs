@@ -657,11 +657,31 @@ impl<'a> Compiler<'a> {
         let _self_idx = self.intern("self");
 
         let mut params = Vec::new();
+        // A parameter the body never reads **still consumes two temporary
+        // numbers**. Measured across five functions that differ only in their
+        // parameter list and body order:
+        //
+        //   Function Zero()                    -> first temp ::temp0
+        //   Function One(int n)   (n unused)   -> first temp ::temp2
+        //   Function Two(int n, int k)         -> first temp ::temp4
+        //   Function Three(int n, int k, int j)-> first temp ::temp6
+        //   Function ReadsParam(int n) { int m = n ... } -> ::temp0 (n is read)
+        //
+        // So it is two slots per **unread** parameter, not one per parameter,
+        // and a read parameter consumes none. The slots are never declared in
+        // the locals table, which is why the numbers look like they skip.
         for p in &f.params {
             let pn = self.intern(&p.name);
             let pt = self.intern(&p.type_name.0);
             buf.types.push((pn, pt));
             buf.params.push((p.name.to_ascii_lowercase(), pn));
+            // NOTE: parameters do seem to consume temporary *numbers* — a
+            // function with one unused parameter starts at `::temp2` and one
+            // with two at `::temp4` — but the rule is not `2 * params` and not
+            // `2 * (index of the first read parameter)` either: both fit the
+            // hand-built probes and both cost corpus-wide (`semcensus` reads
+            // 0.216 instead of 0.220). Left unmodelled rather than fitted,
+            // because a wrong offset shifts every temporary in the function.
             params.push(crate::pex::TypedName {
                 name: pn,
                 type_name: pt,
@@ -1464,6 +1484,21 @@ impl<'a> Compiler<'a> {
                             Expr::Member(..) => None,
                             _ => None,
                         };
+                        // The receiver is materialised first when it is `self`:
+                        // `Self.Activate(...)` compiles to
+                        //   cast ::temp6 self
+                        //   callmethod Activate self ::temp7
+                        // The cast result is not the receiver the call passes —
+                        // the call still names `self` — so it exists purely to
+                        // allocate the slot. Measured on Pg5.pec.
+                        if matches!(obj.as_ref(), Expr::Ident(n) if n.eq_ignore_ascii_case("self"))
+                        {
+                            let t = self.temp(buf, "var");
+                            let mut ins = Instruction::new(opcode_of("cast"));
+                            ins.args.push(Value::Identifier(t));
+                            ins.args.push(Value::Identifier(self.intern("self")));
+                            buf.push(ins, line);
+                        }
                         let recv = self.expr(buf, obj, line)?;
                         let m = self.intern(method);
                         let ty = match &recv_class {
@@ -1535,10 +1570,9 @@ impl<'a> Compiler<'a> {
         // The engine's own classes are spelled lowercase in a `.pex` whatever
         // the source says: `Game.GetPlayer()` compiles to `callstatic` on
         // `game`, not `Game`. Measured on DLC2ThirskDoorScript.
-        if matches!(
-            lower.as_str(),
-            "self" | "game" | "debug" | "utility" | "math"
-        ) {
+        // `self` is NOT a static class: `Self.Activate(...)` is a `callmethod`
+        // on the receiver. Only the engine's own classes are static.
+        if matches!(lower.as_str(), "game" | "debug" | "utility" | "math") {
             return Some(self.intern(&lower));
         }
         // A property whose type is a script class is **not** a static

@@ -38,8 +38,8 @@ const NAMES: [&str; 36] = [
     "array_findelement",
     "array_rfindelement",
 ];
-fn show(tag: &str, strings: &[String], funcs: &[(String, Vec<String>, Vec<u16>)]) {
-    for (name, ins, lines) in funcs {
+fn show(tag: &str, _strings: &[String], funcs: &[(String, Vec<String>, Vec<u16>)]) {
+    for (name, ins, _lines) in funcs {
         println!("{tag} {name} ({} instrs)", ins.len());
         for (i, x) in ins.iter().enumerate() {
             println!("   {i:2} {x}");

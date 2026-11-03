@@ -1,5 +1,5 @@
 use nvre_papyrus::emit::{Compiler, Symbols};
-use nvre_papyrus::{lex, parse, Value};
+use nvre_papyrus::{lex, parse};
 const NAMES: [&str; 36] = [
     "nop",
     "iadd",
@@ -50,7 +50,7 @@ fn main() {
         states: Vec::new(),
     };
     let c = Compiler::new(&s, sy).compile().unwrap();
-    for (state, funcs) in &c.states {
+    for (_state, funcs) in &c.states {
         for f in funcs {
             println!(
                 "fn {} lines={:?}",
