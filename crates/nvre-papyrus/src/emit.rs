@@ -795,8 +795,21 @@ impl<'a> Compiler<'a> {
         // one — the Creation Kit's allocator is a free list keyed by type, and
         // a different type needs a different slot because the type is part of
         // the declaration the file records.
+        // LIFO, not first-fit: the CK pops the **most recently released** slot
+        // of the matching type. Measured on `ArenaCrowdQuestScript`'s
+        // `MoveEveryoneIntoPlace`, a ten-line loop of
+        // `SpectatorN.GetReference().MoveTo(SpotN.GetReference())`:
+        //
+        //   0 GetReference Spectator01 -> ::temp0     (the receiver)
+        //   1 GetReference Spot01      -> ::temp1     (the argument)
+        //   2 MoveTo ::temp0 ::NoneVar ::temp1 ...
+        //   3 GetReference Spectator02 -> ::temp1     <- the ARGUMENT's slot
+        //   4 GetReference Spot02      -> ::temp0     <- the RECEIVER's slot
+        //
+        // Releasing the receiver before the argument puts ::temp0 below ::temp1
+        // on the stack, so popping returns ::temp1 first.
         let t = self.intern(ty);
-        if let Some(at) = buf.free_temps.iter().position(|(_, ft)| *ft == t) {
+        if let Some(at) = buf.free_temps.iter().rposition(|(_, ft)| *ft == t) {
             let (i, _) = buf.free_temps.remove(at);
             return i;
         }
@@ -1627,7 +1640,7 @@ impl<'a> Compiler<'a> {
                         let tmp = self.temp(buf, ty);
                         let mut ins = Instruction::new(opcode_of("callmethod"));
                         ins.args.push(Value::Identifier(m));
-                        ins.args.push(recv);
+                        ins.args.push(recv.clone());
                         ins.args.push(Value::Identifier(tmp));
                         // Arguments are converted type-directed: an int in a
                         // float slot gets a `cast`, everything else is left
@@ -1654,7 +1667,18 @@ impl<'a> Compiler<'a> {
                         // Omitted trailing arguments are written out, not
                         // dropped: the .pex must carry the count the game has.
                         ins.varargs = self.pad_defaults(va, defs);
+                        let released: Vec<Value> = ins.varargs.clone();
                         buf.push(ins, line);
+                        // A temporary consumed as an argument or receiver is
+                        // released once the call is emitted. The CK frees the
+                        // receiver **before** the arguments, which is what makes
+                        // a loop of `A.GetReference().MoveTo(B.GetReference())`
+                        // alternate ::temp0 ::temp1 from one statement to the
+                        // next instead of counting upward forever.
+                        self.release_temp(buf, &recv);
+                        for a in &released {
+                            self.release_temp(buf, a);
+                        }
                         Value::Identifier(tmp)
                     }
                     other => {
