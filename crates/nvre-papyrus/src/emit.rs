@@ -400,7 +400,7 @@ impl<'a> Compiler<'a> {
         let goto_state = self.intern("GotoState");
         let mut own_names: Vec<StrIndex> = Vec::new();
         for (_state, f) in &order {
-            own_names.push(self.intern(&f.name));
+            own_names.push(self.intern(&canonical_event_name(&f.name)));
         }
         let obj_name = self.intern(&script_name);
 
@@ -718,7 +718,7 @@ impl<'a> Compiler<'a> {
 
     /// Compile one function body.
     fn function(&mut self, f: &FunctionDecl) -> Result<(Function, Vec<u16>), Error> {
-        let name = self.intern(&f.name);
+        let name = self.intern(&canonical_event_name(&f.name));
         // A return type slot is NOT spelled like a variable slot: measured over
         // the corpus, a class return type is capitalised in 297 cases and
         // lowercase in 89, the opposite of `::X_var` slots. So the source's
@@ -2169,4 +2169,16 @@ pub fn declared_properties(s: &Script) -> Vec<&Decl> {
         .iter()
         .filter(|d| matches!(d.kind, DeclKind::Property(_)))
         .collect()
+}
+
+fn canonical_event_name(name: &str) -> &str {
+    if name.eq_ignore_ascii_case("oninit") {
+        "OnInit"
+    } else if name.eq_ignore_ascii_case("onbeginstate") {
+        "onBeginState"
+    } else if name.eq_ignore_ascii_case("onendstate") {
+        "onEndState"
+    } else {
+        name
+    }
 }
