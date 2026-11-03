@@ -1317,10 +1317,28 @@ impl<'a> Compiler<'a> {
     /// result type the compiled bytes themselves show. `GetState` returns a
     /// `String` in every shipped script that has it.
     fn call_result_type(&self, name: &str) -> &'static str {
-        // The corpus table first: 2,591 method names have a single agreed type
-        // there, harvested from the game's own locals tables. The hand-written
-        // fallbacks below only cover names it does not.
+        // The DECLARATIONS first: `Actor Function F()` states its result type
+        // outright, and 30,148 names carry one. That is direct evidence, unlike
+        // `crate::returns`, which infers a result type from the temporary the
+        // call was stored into and therefore only knows calls that happen to
+        // appear in a shipped script.
+        //
+        // Falling back to `var` is what made `EffectShader.Play(...)` allocate a
+        // `var` temporary as its destination: `Play` returns None, so the game
+        // writes `::NoneVar` and allocates nothing. A wrong result type thus
+        // costs a local AND shifts every later temporary in the script, because
+        // the counter is script-wide.
+        // Order matters and was measured: the LOCALS-derived table must win.
+        // Putting the declaration table first scores 41,137 against 42,479 — the
+        // declarations describe the class as its source defines it, while the
+        // shipped `.pex` was built against whatever the game actually had, and
+        // the two disagree for long enough to matter. So declarations only fill
+        // in names the locals table never saw.
         if let Some(t) = crate::returns::method_return(name) {
+            return t;
+        }
+        let own = self.own_class().unwrap_or_default();
+        if let Some(t) = crate::signatures::return_type(&own, name) {
             return t;
         }
         match name.to_ascii_lowercase().as_str() {

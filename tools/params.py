@@ -120,6 +120,10 @@ def main():
     # dropped from the exact table — but argument 0 is `Form` in both, and that
     # is the one that decides whether the caller needs a `cast`.
     pos_types = defaultdict(lambda: defaultdict(set))
+    # Return types, keyed the same two ways. A `.psc` declares
+    # `Actor Function F()` or `Function F()` — the latter returns None.
+    ret_of = defaultdict(Counter)
+    static_ret = defaultdict(Counter)
     pos_defaults = defaultdict(lambda: defaultdict(set))
     parents = {}  # class -> its `extends` parent
     total = 0
@@ -154,6 +158,16 @@ def main():
             # differently.
             shape = tuple((t, d) for t, _n, d in parsed)
             fn = mm.group(2).lower()
+            ret = (mm.group(0).split("Function")[0].split("function")[0]).strip()
+            if mm.group(1).lower() == "event":
+                ret = "None"
+            elif not ret:
+                ret = "None"
+            elif not ret.split():
+                ret = "None"
+            ret_of[fn][ret] += 1
+            if cls:
+                static_ret[(cls, fn)][ret] += 1
             for i, (t, d) in enumerate(shape):
                 pos_types[fn][i].add(t)
                 pos_defaults[fn][i].add(d)
@@ -230,6 +244,28 @@ def main():
             dflt = "None" if d is None else f'Some(("{d[0]}", "{d[1]}"))'
             parts.append(f'Some(("{t}", {dflt}))')
         print(f'    ("{fn}", &[{", ".join(parts)}]),')
+    print("];")
+    print()
+    # Return types: keep only names where every declaration agrees.
+    ret_rows = []
+    for fn, c in sorted(ret_of.items()):
+        if len(c) == 1:
+            ret_rows.append((fn, c.most_common(1)[0][0]))
+    for (cls, fn), c in sorted(static_ret.items()):
+        if len(c) == 1:
+            ret_rows.append((f"{cls}.{fn}", c.most_common(1)[0][0]))
+    print(f"  // {len(ret_rows)} return-type entries", file=sys.stderr)
+    print()
+    print("/// `(function, return type)`, lowercased, from the corpus declarations.")
+    print("///")
+    print("/// A `.psc` spells the return type in front of `Function`: `Actor Function")
+    print("/// GetCasterActor()` returns Actor, and a bare `Function Play(...)` returns")
+    print("/// None. This is direct evidence, unlike deriving a call's result type from")
+    print("/// the temporary it was stored into — that only covers calls that happen to")
+    print("/// appear in a shipped script.")
+    print("pub const RETURNS: &[(&str, &str)] = &[")
+    for fn, r in ret_rows:
+        print(f'    ("{fn}", "{r}"),')
     print("];")
     print()
     print(
