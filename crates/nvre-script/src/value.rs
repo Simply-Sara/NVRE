@@ -311,7 +311,28 @@ pub fn encode_expr(
 
                     let mut arg_bytes = Vec::new();
                     let count = arg_tokens.len() as u16;
-                    for atok in &arg_tokens {
+                    for (p_idx, atok) in arg_tokens.iter().enumerate() {
+                        // A Number in a Float position writes `7A` + f64, like
+                        // the statement form. Measured: VEuclidQuestSCRIPT's
+                        // `player.PlaceAtReticle EuclidTarget 1 0 20000` writes
+                        // the 0 and 20000 as f64 — the args follow the
+                        // signature, not the spelling.
+                        if atok.kind == Kind::Number
+                            && cmd
+                                .args
+                                .get(p_idx)
+                                .is_some_and(|exp| exp.eq_ignore_ascii_case("Float"))
+                        {
+                            let Ok(f) = atok.text.parse::<f64>() else {
+                                return Err(crate::Error::Parse(format!(
+                                    "`{}` is not a float this emitter can encode",
+                                    atok.text
+                                )));
+                            };
+                            arg_bytes.push(0x7A);
+                            arg_bytes.extend_from_slice(&f.to_le_bytes());
+                            continue;
+                        }
                         if atok.kind == Kind::Number {
                             if let Ok(n) = atok.text.parse::<i32>() {
                                 arg_bytes.push(0x6E);
@@ -412,7 +433,28 @@ pub fn encode_expr(
                 // Encode arguments for function call
                 let mut arg_bytes = Vec::new();
                 let count = arg_tokens.len() as u16;
-                for (_p_idx, atok) in arg_tokens.iter().enumerate() {
+                for (p_idx, atok) in arg_tokens.iter().enumerate() {
+                    // A Number in a Float position writes `7A` + f64, like the
+                    // statement form. Measured: VEuclidQuestSCRIPT's
+                    // `player.PlaceAtReticle EuclidTarget 1 0 20000` writes the
+                    // 0 and 20000 as f64 — the args follow the signature, not
+                    // the spelling.
+                    if atok.kind == Kind::Number
+                        && cmd
+                            .args
+                            .get(p_idx)
+                            .is_some_and(|exp| exp.eq_ignore_ascii_case("Float"))
+                    {
+                        let Ok(f) = atok.text.parse::<f64>() else {
+                            return Err(crate::Error::Parse(format!(
+                                "`{}` is not a float this emitter can encode",
+                                atok.text
+                            )));
+                        };
+                        arg_bytes.push(0x7A);
+                        arg_bytes.extend_from_slice(&f.to_le_bytes());
+                        continue;
+                    }
                     if atok.kind == Kind::Number {
                         if let Ok(n) = atok.text.parse::<i32>() {
                             arg_bytes.push(0x6E);

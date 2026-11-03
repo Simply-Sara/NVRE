@@ -3202,7 +3202,7 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "PlaceAtReticle",
         opcode: 0x1263,
-        args: &["ObjectID", "Count", "MinDistance", "MaxDistance"],
+        args: &["ObjectID", "Count", "Float", "Float"],
     },
     Command {
         name: "PlayerInRegion",
