@@ -848,21 +848,16 @@ impl<'a> Compiler<'a> {
         // one — the Creation Kit's allocator is a free list keyed by type, and
         // a different type needs a different slot because the type is part of
         // the declaration the file records.
-        // LIFO, not first-fit: the CK pops the **most recently released** slot
-        // of the matching type. Measured on `ArenaCrowdQuestScript`'s
-        // `MoveEveryoneIntoPlace`, a ten-line loop of
-        // `SpectatorN.GetReference().MoveTo(SpotN.GetReference())`:
+        // FIFO within a type: the free list is keyed by type name and the
+        // **earliest-released** slot of that type is handed back first, not the
+        // most recent one. The list itself is per function; the counter below is
+        // script-wide and never resets, which is why the two behave differently.
         //
-        //   0 GetReference Spectator01 -> ::temp0     (the receiver)
-        //   1 GetReference Spot01      -> ::temp1     (the argument)
-        //   2 MoveTo ::temp0 ::NoneVar ::temp1 ...
-        //   3 GetReference Spectator02 -> ::temp1     <- the ARGUMENT's slot
-        //   4 GetReference Spot02      -> ::temp0     <- the RECEIVER's slot
-        //
-        // Releasing the receiver before the argument puts ::temp0 below ::temp1
-        // on the stack, so popping returns ::temp1 first.
+        // `ArenaCrowdQuestScript.MoveEveryoneIntoPlace` still alternates
+        // `::temp0 ::temp1` from one statement to the next — that falls out of
+        // the ORDER the slots are released in, not out of the list being a stack.
         let t = self.intern(ty);
-        if let Some(at) = buf.free_temps.iter().rposition(|(_, ft)| *ft == t) {
+        if let Some(at) = buf.free_temps.iter().position(|(_, ft)| *ft == t) {
             let (i, _) = buf.free_temps.remove(at);
             return i;
         }
@@ -1782,11 +1777,23 @@ impl<'a> Compiler<'a> {
                         let tmp = self.temp(buf, &lt);
                         let mut ins = Instruction::new(opcode_of("cast"));
                         ins.args.push(Value::Identifier(tmp));
-                        ins.args.push(r);
+                        ins.args.push(r.clone());
                         buf.push(ins, line);
+                        // The cast's temporary goes back on the free list
+                        // BEFORE the result is allocated, so the result reuses
+                        // it. That ordering is what the compiler does: it
+                        // creates the cast temp, marks it unused at once, marks
+                        // both operands unused, and only then allocates the
+                        // result — which therefore lands in the cast's slot.
+                        self.release_temp(buf, &Value::Identifier(tmp));
                         r = Value::Identifier(tmp);
                     }
                 }
+                // Both operands are dead once the instruction is formed, and
+                // they are released before the result is allocated for the same
+                // reason: the result must be free to take one of their slots.
+                self.release_temp(buf, &l);
+                self.release_temp(buf, &r);
                 // A comparison yields Bool whatever its operands are; an
                 // arithmetic instruction yields its operands' own type.
                 let result_ty = match op.as_str() {
@@ -1817,14 +1824,8 @@ impl<'a> Compiler<'a> {
                 ins.args.push(l.clone());
                 ins.args.push(r.clone());
                 buf.push(ins, line);
-                // A source operand is dead once the instruction that reads it
-                // has been emitted, and the CK frees it immediately and reuses
-                // the slot. Not doing so was the largest remaining source of
-                // drift: `AchievementsScript` allocates 8 temporaries and this
-                // emitter was allocating 101, because only assignment and call
-                // arguments were ever released.
-                self.release_temp(buf, &l);
-                self.release_temp(buf, &r);
+                // (operands were released above, before the result slot was
+                // chosen — see the comment there.)
                 if op == "!=" {
                     // `a != b` is `not (a == b)`.
                     let tmp2 = self.temp(buf, "Bool");
