@@ -193,6 +193,9 @@ pub struct LocalDecl {
     pub name: String,
     /// Its initial value, when written.
     pub initial: Option<Expr>,
+    /// The line it is declared on. Without it the debug table records 0 for
+    /// the `assign` that initialises it.
+    pub line: u16,
 }
 
 /// One state's contents.
@@ -768,6 +771,7 @@ impl<'a> Parser<'a> {
                 break;
             }
             let _doc = self.doc();
+            let member_line = self.line();
             let ty = TypeName(self.word("a member type")?);
             let name = self.word("a member name")?;
             let initial = if self.eat(&Kind::Assign) {
@@ -779,6 +783,7 @@ impl<'a> Parser<'a> {
                 type_name: ty,
                 name,
                 initial,
+                line: member_line,
             });
         }
         Ok(out)
@@ -958,6 +963,7 @@ impl<'a> Parser<'a> {
                     type_name: ty,
                     name,
                     initial,
+                    line,
                 };
                 locals.push(d.clone());
                 return Ok(Stmt::Local(d));
@@ -975,6 +981,7 @@ impl<'a> Parser<'a> {
                     type_name: ty,
                     name,
                     initial,
+                    line,
                 };
                 locals.push(d.clone());
                 return Ok(Stmt::Local(d));

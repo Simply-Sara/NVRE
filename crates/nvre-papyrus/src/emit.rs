@@ -656,7 +656,25 @@ impl<'a> Compiler<'a> {
         //
         // A body that *does* something and then falls off the end is a
         // different case: the VM needs the terminator, so one is added.
+        // ...and when the body already ends in a `None` call, no terminator is
+        // added either: `Debug.Trace(...)` as the last statement compiles to
+        // `callstatic debug Trace ::NoneVar` and stops there. The CK reads the
+        // returning-None call as the end of the function.
+        let ends_in_none_call = buf
+            .instructions
+            .last()
+            .map(|i| {
+                matches!(i.opcode, 23..=25)
+                    && matches!(i.args.get(2), Some(Value::Identifier(t)) if {
+                        self.strings
+                            .get(*t as usize)
+                            .map(|s| s == "::NoneVar")
+                            .unwrap_or(false)
+                    })
+            })
+            .unwrap_or(false);
         if !buf.instructions.is_empty()
+            && !ends_in_none_call
             && !matches!(buf.instructions.last().map(|i| i.opcode), Some(0x1A))
         {
             let none = self.none_var(&mut buf);
@@ -722,6 +740,14 @@ impl<'a> Compiler<'a> {
     /// integers and `Float` in one that adds floats, and which arithmetic
     /// opcode is emitted depends on it.
     fn temp(&mut self, buf: &mut FnBuf, ty: &str) -> StrIndex {
+        // A `None` result is not a temporary: the CK writes it to `::NoneVar`,
+        // which exists once per function. `Debug.Trace(...)` as a statement
+        // compiles to `callstatic debug Trace ::NoneVar`, and allocating a
+        // fresh `::tempN` there both adds a local and makes every later
+        // temporary in the function one number too high.
+        if ty.eq_ignore_ascii_case("none") {
+            return self.none_var(buf);
+        }
         // Reuse a released temporary of the same type before allocating a new
         // one — the Creation Kit's allocator is a free list keyed by type, and
         // a different type needs a different slot because the type is part of
@@ -772,15 +798,19 @@ impl<'a> Compiler<'a> {
                 let ln = self.intern(&l.name);
                 let lt = self.intern(&l.type_name.0);
                 buf.locals.push((ln, lt));
+                // Also the emitter's type environment, or `value_type` cannot
+                // see it: `int a = 1` followed by `a + 2` chose `fadd` because
+                // `a` was in `locals` but not in `types`.
+                buf.types.push((ln, lt));
                 buf.declared.push((l.name.to_ascii_lowercase(), ln));
                 // A declaration with an initial value is an assignment.
                 if let Some(init) = &l.initial {
                     let dest = Value::Identifier(ln);
-                    let v = self.expr(buf, init, 0)?;
+                    let v = self.expr(buf, init, l.line)?;
                     let mut ins = Instruction::new(opcode_of("assign"));
                     ins.args.push(dest);
                     ins.args.push(v);
-                    buf.push(ins, 0);
+                    buf.push(ins, l.line);
                 }
                 Ok(())
             }
@@ -829,7 +859,7 @@ impl<'a> Compiler<'a> {
                 let rhs = self.expr(buf, value, *line)?;
                 let dt = self.value_type(buf, &dest);
                 let tmp = self.temp(buf, &dt);
-                let arith = self.arith_op(op, &dest);
+                let arith = self.arith_op(buf, op, &dest);
                 let mut ins = Instruction::new(arith);
                 ins.args.push(Value::Identifier(tmp));
                 ins.args.push(dest.clone());
@@ -979,8 +1009,15 @@ impl<'a> Compiler<'a> {
     /// An integer expression compiles to `iadd`/`isub`/`imul`/`idiv` and a
     /// float one to the `f` forms. The operand's own type is what decides, so
     /// this reads the type of the value it was actually given.
-    fn arith_op(&self, op: &str, lhs: &Value) -> u8 {
-        let int = self.value_is_int(lhs);
+    fn arith_op(&self, buf: &FnBuf, op: &str, lhs: &Value) -> u8 {
+        // The operand's type comes from the *function's* type environment, not
+        // the compiler's: `int a = 1` declares `a` in the buffer, so asking the
+        // script-level table found nothing and every integer sum compiled to
+        // `fadd`. Measured on `Temps.psc`, where the CK emits `iadd`.
+        // Compared case-insensitively: a local's declared type is interned as
+        // the source spelled it (`int`), while the canonical slot spelling is
+        // `Int`. An exact compare made every integer sum a float one.
+        let int = self.value_type(buf, lhs).eq_ignore_ascii_case("int");
         match (op, int) {
             ("+", true) => opcode_of("iadd"),
             ("+", false) => opcode_of("fadd"),
@@ -1265,11 +1302,11 @@ impl<'a> Compiler<'a> {
                 };
                 let tmp = self.temp(buf, &result_ty);
                 let code = match op.as_str() {
-                    "+" => self.arith_op("+", &l),
-                    "-" => self.arith_op("-", &l),
-                    "*" => self.arith_op("*", &l),
-                    "/" => self.arith_op("/", &l),
-                    "%" => self.arith_op("%", &l),
+                    "+" => self.arith_op(buf, "+", &l),
+                    "-" => self.arith_op(buf, "-", &l),
+                    "*" => self.arith_op(buf, "*", &l),
+                    "/" => self.arith_op(buf, "/", &l),
+                    "%" => self.arith_op(buf, "%", &l),
                     "==" => opcode_of("cmp_eq"),
                     "!=" => opcode_of("cmp_eq"),
                     "<" => opcode_of("cmp_lt"),
