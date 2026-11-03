@@ -265,7 +265,15 @@ fn code_matches(a: &[u8], b: &[u8]) -> bool {
                     f.text_or_empty(s.name),
                     s.functions.len()
                 ));
-                for fun in &s.functions {
+                // Functions are compared **by name, in sorted order**, not by
+                // position. The Creation Kit stores a state's functions in a
+                // hash container and emits them in its iteration order -- in
+                // `achievementsscript` the injected `GetState` and `GotoState`
+                // sit at positions 5 and 7 of 8, between the script's own. So
+                // position says nothing about correctness; name and body do.
+                let mut ordered: Vec<&nvre_papyrus::pex::Function> = s.functions.iter().collect();
+                ordered.sort_by_key(|fun| f.text_or_empty(fun.name).to_ascii_lowercase());
+                for fun in ordered {
                     out.push(format!(
                         "fn {} ret {} doc {} flags {}",
                         f.text_or_empty(fun.name),

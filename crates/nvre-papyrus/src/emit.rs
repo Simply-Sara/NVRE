@@ -71,8 +71,16 @@ struct FnBuf {
     /// debug block needs it, and it must stay in step, so both are appended by
     /// the same helper.
     lines: Vec<u16>,
-    /// Locals, including the receiver and the temporaries.
+    /// The locals table **as the file will list it**: temporaries and declared
+    /// `local`s, and nothing else. The game's functions list no `self` and no
+    /// parameters here — measured on `DLC2ThirskDoorScript`, whose `OnActivate`
+    /// declares six `::tempN` and `::NoneVar` and nothing more.
     locals: Vec<(StrIndex, StrIndex)>,
+    /// The emitter's own type environment, which is wider than `locals`: it
+    /// also carries parameters, `self`, and anything else whose type a later
+    /// instruction needs to know. This is what `value_type` consults; it is
+    /// never written to the file.
+    types: Vec<(StrIndex, StrIndex)>,
     /// How many temporaries have been handed out.
     next_temp: usize,
     /// Whether `::NoneVar` has been declared yet.
@@ -89,6 +97,7 @@ impl FnBuf {
             instructions: Vec::new(),
             lines: Vec::new(),
             locals: Vec::new(),
+            types: Vec::new(),
             next_temp: 0,
             none_var: None,
             params: Vec::new(),
@@ -387,10 +396,10 @@ impl<'a> Compiler<'a> {
             user_flags: 0,
             flags: 0,
             params: Vec::new(),
-            locals: vec![crate::pex::TypedName {
-                name: state_var,
-                type_name: ret,
-            }],
+            // `::State` is a script-level variable, not a local: the game's
+            // `GetState` has an *empty* locals table. Measured on
+            // DLC2ThirskDoorScript.
+            locals: Vec::new(),
             instructions: vec![ins],
         }
     }
@@ -517,16 +526,17 @@ impl<'a> Compiler<'a> {
 
         let mut buf = FnBuf::new();
 
-        // `self` is a local on every non-global function.
+        // `self` is *not* a local. The locals table holds temporaries and
+        // declared `local`s only — the game's `OnActivate` lists six `::tempN`
+        // and `::NoneVar`, with neither `self` nor its parameter. Measured on
+        // DLC2ThirskDoorScript.
         let self_idx = self.intern("self");
-        let actor_type = self.intern("Actor");
-        buf.locals.push((self_idx, actor_type));
 
         let mut params = Vec::new();
         for p in &f.params {
             let pn = self.intern(&p.name);
             let pt = self.intern(&p.type_name.0);
-            buf.locals.push((pn, pt));
+            buf.types.push((pn, pt));
             buf.params.push((p.name.to_ascii_lowercase(), pn));
             params.push(crate::pex::TypedName {
                 name: pn,
@@ -537,6 +547,7 @@ impl<'a> Compiler<'a> {
             let ln = self.intern(&l.name);
             let lt = self.intern(&l.type_name.0);
             buf.locals.push((ln, lt));
+            buf.types.push((ln, lt));
             buf.declared.push((l.name.to_ascii_lowercase(), ln));
         }
 
@@ -583,6 +594,7 @@ impl<'a> Compiler<'a> {
         buf.none_var = Some(i);
         let none_type = self.intern("None");
         buf.locals.push((i, none_type));
+        buf.types.push((i, none_type));
         i
     }
 
@@ -597,6 +609,7 @@ impl<'a> Compiler<'a> {
         let i = self.intern(&format!("::temp{n}"));
         let t = self.intern(ty);
         buf.locals.push((i, t));
+        buf.types.push((i, t));
         i
     }
 
@@ -981,7 +994,7 @@ impl<'a> Compiler<'a> {
     /// is what lets a comparison see that its two sides are different classes
     /// and emit the `cast` the Creation Kit emits.
     fn declared_type(&self, buf: &FnBuf, index: StrIndex) -> Option<String> {
-        buf.locals
+        buf.types
             .iter()
             .rev()
             .find(|(n, _)| *n == index)
