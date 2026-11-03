@@ -83,6 +83,15 @@ struct FnBuf {
     types: Vec<(StrIndex, StrIndex)>,
     /// How many temporaries have been handed out.
     next_temp: usize,
+    /// Temporaries that have been released and can be handed out again.
+    ///
+    /// The Creation Kit does not allocate a fresh temporary per expression: a
+    /// temporary is freed once the instruction that consumed it has been
+    /// emitted, and the next expression that needs one **of the same type**
+    /// reuses it. That is why its `OnActivate` lists six locals where a
+    /// allocate-per-node emitter lists eleven, and why a function's local count
+    /// is not simply its number of temporaries.
+    free_temps: Vec<(StrIndex, StrIndex)>,
     /// Whether `::NoneVar` has been declared yet.
     none_var: Option<StrIndex>,
     /// Parameters, by lowercased name.
@@ -99,6 +108,7 @@ impl FnBuf {
             locals: Vec::new(),
             types: Vec::new(),
             next_temp: 0,
+            free_temps: Vec::new(),
             none_var: None,
             params: Vec::new(),
             declared: Vec::new(),
@@ -206,8 +216,24 @@ impl<'a> Compiler<'a> {
         c
     }
 
+    /// Intern a string, **case-insensitively**.
+    ///
+    /// The Creation Kit keeps one entry per name regardless of case, and the
+    /// spelling that survives is the first one it saw. Measured over the whole
+    /// shipped corpus: **not one of the 14,026 scripts** has two entries that
+    /// differ only in case (`tools/interning2.py` checks this). A `.pex`'s own
+    /// `size` and index fields depend on it, so a case-sensitive table produces
+    /// a file whose lengths disagree with the game's even when the code matches.
+    ///
+    /// The consequence is not cosmetic. Papyrus names are case-insensitive, and
+    /// the CK reuses text it has already seen without comparing case, so a
+    /// *string literal* can come back with the capitalisation of an earlier
+    /// variable or literal: declare `string barfoo` and write `"BarFoo"` and the
+    /// script's runtime value can be `"barfoo"`. The shipped scripts show the
+    /// table is case-folded; they cannot show the literal-capture part, which
+    /// only appears at run time.
     fn intern(&mut self, s: &str) -> StrIndex {
-        if let Some(i) = self.strings.iter().position(|x| x == s) {
+        if let Some(i) = self.strings.iter().position(|x| x.eq_ignore_ascii_case(s)) {
             return i as StrIndex;
         }
         self.strings.push(s.to_string());
@@ -674,13 +700,41 @@ impl<'a> Compiler<'a> {
     /// integers and `Float` in one that adds floats, and which arithmetic
     /// opcode is emitted depends on it.
     fn temp(&mut self, buf: &mut FnBuf, ty: &str) -> StrIndex {
+        // Reuse a released temporary of the same type before allocating a new
+        // one — the Creation Kit's allocator is a free list keyed by type, and
+        // a different type needs a different slot because the type is part of
+        // the declaration the file records.
+        let t = self.intern(ty);
+        if let Some(at) = buf.free_temps.iter().position(|(_, ft)| *ft == t) {
+            let (i, _) = buf.free_temps.remove(at);
+            return i;
+        }
         let n = buf.next_temp;
         buf.next_temp += 1;
         let i = self.intern(&format!("::temp{n}"));
-        let t = self.intern(ty);
         buf.locals.push((i, t));
         buf.types.push((i, t));
         i
+    }
+
+    /// Release a temporary once the instruction that consumed it is emitted.
+    ///
+    /// Only a real temporary is releasable: a parameter, a property's backing
+    /// variable or a source `local` is a name the script owns, and freeing one
+    /// would let a later expression overwrite it.
+    fn release_temp(&mut self, buf: &mut FnBuf, v: &Value) {
+        let Value::Identifier(i) = v else { return };
+        let is_temp = self
+            .strings
+            .get(*i as usize)
+            .map(|s| s.starts_with("::temp"))
+            .unwrap_or(false);
+        if !is_temp {
+            return;
+        }
+        if let Some((_, t)) = buf.locals.iter().find(|(n, _)| n == i) {
+            buf.free_temps.push((*i, *t));
+        }
     }
 
     fn block(&mut self, buf: &mut FnBuf, body: &[Stmt]) -> Result<(), Error> {
@@ -736,8 +790,9 @@ impl<'a> Compiler<'a> {
                 let v = self.expr(buf, value, *line)?;
                 let mut ins = Instruction::new(opcode_of("assign"));
                 ins.args.push(dest);
-                ins.args.push(v);
+                ins.args.push(v.clone());
                 buf.push(ins, *line);
+                self.release_temp(buf, &v);
                 Ok(())
             }
             Stmt::CompoundAssign {
@@ -765,14 +820,16 @@ impl<'a> Compiler<'a> {
                 Ok(())
             }
             Stmt::Expr(e) => {
-                let _ = self.expr(buf, e, 0)?;
+                let v = self.expr(buf, e, 0)?;
+                self.release_temp(buf, &v);
                 Ok(())
             }
             Stmt::Return { value, line } => {
                 let v = self.expr(buf, value, *line)?;
                 let mut ins = Instruction::new(opcode_of("return"));
-                ins.args.push(v);
+                ins.args.push(v.clone());
                 buf.push(ins, *line);
+                self.release_temp(buf, &v);
                 Ok(())
             }
             Stmt::Break { line } => {
