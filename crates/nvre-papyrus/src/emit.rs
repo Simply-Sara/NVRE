@@ -1661,6 +1661,39 @@ impl<'a> Compiler<'a> {
         Value::Identifier(t)
     }
 
+    /// Whether a value of type `have` converts into a slot of type `want`.
+    ///
+    /// The exact ladder: same type, int to float (one-way), anything to bool or
+    /// string, `none` to any object, and a subtype to any of its ancestors.
+    fn widens_to(&self, want: &str, have: &str) -> bool {
+        if have.eq_ignore_ascii_case(want) {
+            return true;
+        }
+        let is = |t: &str, n: &str| t.eq_ignore_ascii_case(n);
+        if is(want, "bool") || is(want, "string") {
+            return true;
+        }
+        if is(want, "float") && is(have, "int") {
+            return true;
+        }
+        if is(have, "none") {
+            return true;
+        }
+        let mut here = Some(have.to_ascii_lowercase());
+        let mut hops = 0;
+        while let Some(c) = here {
+            if hops > 12 {
+                break;
+            }
+            if c.eq_ignore_ascii_case(want) {
+                return true;
+            }
+            here = crate::signatures::parent(&c).map(str::to_string);
+            hops += 1;
+        }
+        false
+    }
+
     /// The type name a compiled value carries, for sizing a temporary.
     fn value_type(&self, buf: &FnBuf, v: &Value) -> String {
         match v {
@@ -1769,7 +1802,7 @@ impl<'a> Compiler<'a> {
                 self.logical(buf, op, lhs, rhs, line)?
             }
             Expr::Binary { op, lhs, rhs } => {
-                let l = self.expr(buf, lhs, line)?;
+                let mut l = self.expr(buf, lhs, line)?;
                 let mut r = self.expr(buf, rhs, line)?;
                 // A comparison across two different script types casts the
                 // right operand first, into its own temporary. Measured on
@@ -1786,17 +1819,27 @@ impl<'a> Compiler<'a> {
                     // `i < 3` cast an integer literal.
                     let same = lt.eq_ignore_ascii_case(&rt);
                     if !same && !lt.eq_ignore_ascii_case("var") && !rt.eq_ignore_ascii_case("var") {
-                        // Cast the RIGHT operand. Measured both ways: casting
-                        // the temporary side instead scores 40,579 identical
-                        // functions against 40,583 for this, so this stays even
-                        // though `akActivator == Game.GetPlayer()` really does
-                        // cast the call result — the rule that decides which
-                        // side is not yet decoded, and the difference is small
-                        // enough that guessing costs more than it gains.
-                        let tmp = self.temp(buf, &lt);
+                        // Which side is converted: **cast the right operand to
+                        // the left's type by default**, and only flip when the
+                        // left cannot accept the right but the right can accept
+                        // the left. That is why `someInt < someFloat` casts the
+                        // LEFT (int cannot absorb a float; float can absorb an
+                        // int) while `someFloat == someInt` casts the right.
+                        //
+                        // Deciding this by "cast whichever is a temporary" was
+                        // tried earlier and scored marginally worse, because the
+                        // rule is about the types, not about which side happens
+                        // to be a temp.
+                        let cast_left = !self.widens_to(&lt, &rt) && self.widens_to(&rt, &lt);
+                        let (want, src, to_left) = if cast_left {
+                            (rt.clone(), l.clone(), true)
+                        } else {
+                            (lt.clone(), r.clone(), false)
+                        };
+                        let tmp = self.temp(buf, &want);
                         let mut ins = Instruction::new(opcode_of("cast"));
                         ins.args.push(Value::Identifier(tmp));
-                        ins.args.push(r.clone());
+                        ins.args.push(src);
                         buf.push(ins, line);
                         // The cast's temporary goes back on the free list
                         // BEFORE the result is allocated, so the result reuses
@@ -1805,7 +1848,11 @@ impl<'a> Compiler<'a> {
                         // both operands unused, and only then allocates the
                         // result — which therefore lands in the cast's slot.
                         self.release_temp(buf, &Value::Identifier(tmp));
-                        r = Value::Identifier(tmp);
+                        if to_left {
+                            l = Value::Identifier(tmp);
+                        } else {
+                            r = Value::Identifier(tmp);
+                        }
                     }
                 }
                 // Both operands are dead once the instruction is formed, and
