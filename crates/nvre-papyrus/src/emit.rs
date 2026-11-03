@@ -903,7 +903,17 @@ impl<'a> Compiler<'a> {
                 // CK reuses `::temp0`. Measured on `Tn.psc`.
                 if let Some(init) = &l.initial {
                     let dest = Value::Identifier(ln);
-                    let v = self.expr(buf, init, l.line)?;
+                    let raw = self.expr(buf, init, l.line)?;
+                    // A local's initial value is converted to the local's
+                    // declared type, exactly like a plain assignment. Measured
+                    // with the real compiler on `Form f = akProp` where akProp
+                    // is an `Actor`:
+                    //   cast ::temp0 ::akProp_var
+                    //   assign f ::temp0
+                    // `Actor a = Game.GetPlayer()` has NO cast, because the call
+                    // already yields an actor — so the rule is "types differ",
+                    // not "always cast".
+                    let v = self.coerce_arg(buf, raw, &l.type_name.0, l.line);
                     let mut ins = Instruction::new(opcode_of("assign"));
                     ins.args.push(dest);
                     ins.args.push(v.clone());
@@ -965,8 +975,20 @@ impl<'a> Compiler<'a> {
                     buf.push(ins, *line);
                     return Ok(());
                 }
+                let want = self.target_type(buf, target);
                 let dest = self.lvalue(buf, target)?;
-                let v = self.expr(buf, value, *line)?;
+                let raw = self.expr(buf, value, *line)?;
+                // A value entering a typed slot is converted to that slot's
+                // type, not only at call arguments. Measured with the real
+                // compiler:
+                //   Actor a = Game.GetPlayer()   -> no cast, ::temp0 is already actor
+                //   Form f = akProp (akProp: Actor)
+                //     -> cast ::temp0 ::akProp_var ; assign f ::temp0
+                // Same rule, same target type: the destination's.
+                let v = match &want {
+                    Some(w) => self.coerce_arg(buf, raw, w, *line),
+                    None => raw,
+                };
                 let mut ins = Instruction::new(opcode_of("assign"));
                 ins.args.push(dest);
                 ins.args.push(v.clone());
@@ -1181,6 +1203,31 @@ impl<'a> Compiler<'a> {
     }
 
     /// A value that can be assigned to.
+    /// The declared type of an assignment target, when the compiler knows it.
+    ///
+    /// Used to decide whether the value needs a `cast` on the way in. A local or
+    /// parameter is in the function's type table; a property is a script-level
+    /// declaration, which `type_of` covers. Anything else (`arr[i]`) has no
+    /// single declared type and returns `None`, leaving the value untouched.
+    fn target_type(&self, buf: &FnBuf, e: &Expr) -> Option<String> {
+        match e {
+            Expr::Ident(n) => {
+                let lower = n.to_ascii_lowercase();
+                if let Some((_, i)) = buf
+                    .params
+                    .iter()
+                    .chain(&buf.declared)
+                    .find(|(p, _)| p == &lower)
+                {
+                    return self.declared_type(buf, *i);
+                }
+                self.type_of(n).map(|t| t.0.clone())
+            }
+            Expr::Member(_, name) => Some(self.property_type(name).to_string()),
+            _ => None,
+        }
+    }
+
     fn lvalue(&mut self, buf: &mut FnBuf, e: &Expr) -> Result<Value, Error> {
         match e {
             Expr::Ident(n) => {
@@ -1457,6 +1504,43 @@ impl<'a> Compiler<'a> {
     /// function — far worse than leaving an argument alone.
     fn coerce_arg(&mut self, buf: &mut FnBuf, value: Value, want: &str, line: u16) -> Value {
         let want = want.trim_end_matches("[]");
+        // The `None` literal materialises into a typed temporary when the slot
+        // wants a class. Measured with the real compiler: `Actor.ClearForcedLandingMarker()`
+        // calls `SetForcedLandingMarker(None)`, which compiles to
+        //   cast ::temp7 None
+        //   callmethod SetForcedLandingMarker self ::NoneVar ::temp7
+        // Passing `::NoneVar` straight through is the same value and a different
+        // instruction. It is the single largest remaining bucket (~2,290
+        // functions), because `None` is how Papyrus spells "unset object".
+        // The source writes `None`, which the expression path turns into the
+        // `::NoneVar` identifier — but the CK casts from a **tag-0 `None`**, not
+        // from that variable:
+        //   cast ::temp7 None
+        // so both spellings have to be recognised here.
+        let is_none = match &value {
+            Value::None => true,
+            Value::Identifier(i) => self
+                .strings
+                .get(*i as usize)
+                .map(|s| s.eq_ignore_ascii_case("::NoneVar"))
+                .unwrap_or(false),
+            _ => false,
+        };
+        if is_none {
+            if want.is_empty()
+                || want.eq_ignore_ascii_case("none")
+                || want.eq_ignore_ascii_case("var")
+                || want.eq_ignore_ascii_case("nothing")
+            {
+                return value;
+            }
+            let t = self.temp(buf, want);
+            let mut ins = Instruction::new(opcode_of("cast"));
+            ins.args.push(Value::Identifier(t));
+            ins.args.push(Value::None);
+            buf.push(ins, line);
+            return Value::Identifier(t);
+        }
         let have = self.value_type(buf, &value);
         if have.eq_ignore_ascii_case(want) || have.eq_ignore_ascii_case("var") {
             return value;
@@ -1763,10 +1847,24 @@ impl<'a> Compiler<'a> {
                         ins.args.push(Value::Identifier(fname));
                         ins.args.push(Value::Identifier(self_i));
                         ins.args.push(Value::Identifier(tmp));
-                        let dealt: Vec<Value> = args
-                            .iter()
-                            .map(|a| self.expr(buf, a, line))
-                            .collect::<Result<Vec<_>, _>>()?;
+                        // A bare `f(...)` is a call on `self`, and its arguments
+                        // are converted exactly like a member call's. This path
+                        // had padding but no coercion, so `SetForcedLandingMarker(None)`
+                        // passed `::NoneVar` where the game emits
+                        // `cast ::temp7 None` first — the difference in ~2,290
+                        // functions, because `None` is how Papyrus spells an
+                        // unset object.
+                        let own = self.own_class().unwrap_or_default();
+                        let sig = crate::signatures::method_params(&own, name);
+                        let mut dealt = Vec::with_capacity(args.len());
+                        for (i, a) in args.iter().enumerate() {
+                            let v = self.expr(buf, a, line)?;
+                            let v = match sig.and_then(|s| s.get(i)) {
+                                Some(w) => self.coerce_arg(buf, v, w, line),
+                                None => v,
+                            };
+                            dealt.push(v);
+                        }
                         let defs = crate::signatures::defaults(name);
                         ins.varargs = self.pad_defaults(dealt, defs);
                         buf.push(ins, line);
