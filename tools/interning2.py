@@ -119,7 +119,7 @@ def parse(b, trace=None):
     calls = []          # (opcode, [args]) for every call instruction met
 
     def func(tag):
-        sid(tag + '.ret')
+        ret = sid(tag + '.ret')
         sid(tag + '.doc')
         r.u32()
         flags = r.u8()
@@ -139,7 +139,7 @@ def parse(b, trace=None):
                     argv.append(value(tag + '.arg'))
             if op in (23, 24, 25):
                 calls.append((op, argv, locals_))
-        return dict(flags=flags, locals=locals_)
+        return dict(flags=flags, locals=locals_, ret=ret)
 
     objs = []
     for _ in range(r.u16()):

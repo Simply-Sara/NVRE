@@ -609,7 +609,11 @@ impl<'a> Compiler<'a> {
     /// Compile one function body.
     fn function(&mut self, f: &FunctionDecl) -> Result<(Function, Vec<u16>), Error> {
         let name = self.intern(&f.name);
-        let ret = self.var_type(
+        // A return type slot is NOT spelled like a variable slot: measured over
+        // the corpus, a class return type is capitalised in 297 cases and
+        // lowercase in 89, the opposite of `::X_var` slots. So the source's
+        // spelling is kept rather than normalised.
+        let ret = self.intern(
             f.return_type
                 .as_ref()
                 .map(|t| t.0.as_str())
