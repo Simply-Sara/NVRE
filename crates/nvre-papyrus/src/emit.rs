@@ -366,7 +366,11 @@ impl<'a> Compiler<'a> {
             .decls
             .iter()
             .filter_map(|d| match &d.kind {
-                DeclKind::Property(p) if p.is_auto => Some(p),
+                // `AutoReadOnly` is NOT backed by a variable: its value is a
+                // constant folded into the getter. Measured on `actor.pex`,
+                // whose five `CritStage_* AutoReadOnly` properties leave the
+                // object's variable list completely empty.
+                DeclKind::Property(p) if p.is_auto && !p.is_read_only => Some(p),
                 _ => None,
             })
             .collect();
@@ -542,15 +546,34 @@ impl<'a> Compiler<'a> {
         let mut getter = None;
         let mut setter = None;
 
-        if p.is_auto {
-            // `auto` is readable and writable unless `AutoReadOnly` says
-            // otherwise, and it is backed by a variable named `::Name_var`.
+        if p.is_auto && p.is_read_only {
+            // `AutoReadOnly` is a different shape from plain `auto`, and the
+            // difference is structural rather than cosmetic — measured by
+            // compiling one with the real compiler:
+            //
+            //   * no backing variable at all (`::Name_var` is not created)
+            //   * flag bit 2 (auto) is NOT set; it carries only bit 0
+            //   * it has a real getter body returning the constant
+            //
+            // So it takes the same path as a hand-written accessor.
+            flags |= 0x1;
+            let mut ins = Instruction::new(opcode_of("return"));
+            ins.args
+                .push(self.value_of(p.initial.as_ref(), &p.type_name)?);
+            getter = Some(Function {
+                name: self.intern("Get"),
+                return_type: type_name,
+                doc: self.intern(""),
+                user_flags: 0,
+                flags: 0,
+                params: Vec::new(),
+                locals: Vec::new(),
+                instructions: vec![ins],
+            });
+        } else if p.is_auto {
+            // Plain `auto`: readable and writable, backed by `::Name_var`.
             flags |= 0x4;
-            if !p.is_read_only {
-                flags |= 0x3;
-            } else {
-                flags |= 0x1;
-            }
+            flags |= 0x3;
             let var = self.intern(&format!("::{}_var", p.name));
             auto_var = Some(var);
         } else if let Some(a) = &p.accessors {
