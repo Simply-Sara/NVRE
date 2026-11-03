@@ -32,6 +32,12 @@ from collections import defaultdict, Counter
 # re.M matters: `^` otherwise matches only at the start of the file and every
 # declaration is missed. re.S lets a parameter list wrap across lines, which the
 # engine's own scripts do for long signatures.
+# `Quest Property CurrFight Auto` - the type precedes the `Property` keyword.
+PROP = re.compile(
+    r"^\s*([A-Za-z_][\w\[\]]*)\s+Property\s+(\w+)",
+    re.I | re.M,
+)
+
 CALL = re.compile(
     r"^\s*(?:[A-Za-z_][\w\[\]]*\s+)?(Function|Event)\s+(\w+)\s*\((.*?)\)",
     re.I | re.M | re.S,
@@ -124,6 +130,10 @@ def main():
     # `Actor Function F()` or `Function F()` — the latter returns None.
     ret_of = defaultdict(Counter)
     static_ret = defaultdict(Counter)
+    # Properties declared by each class: `Quest Property CurrFight auto` on
+    # ArenaScript means `aScript.CurrFight` has type Quest, which is what decides
+    # whether reading it needs a cast.
+    class_props = defaultdict(Counter)
     pos_defaults = defaultdict(lambda: defaultdict(set))
     parents = {}  # class -> its `extends` parent
     total = 0
@@ -148,6 +158,12 @@ def main():
                 parents[cls] = m.group(2).lower()
 
         # Every Function declaration, including those inside states.
+        for pm in PROP.finditer(src):
+            pname = pm.group(2).lower()
+            ptype = pm.group(1).strip()
+            if cls and re.match(r"^[A-Za-z_]\w*(\[\d*\])?$", ptype):
+                class_props[(cls, pname)][ptype] += 1
+
         for mm in CALL.finditer(src):
             parsed = [parse_type_and_name(p) for p in split_params(mm.group(3))]
             if any(p is None for p in parsed):
@@ -255,6 +271,18 @@ def main():
         if len(c) == 1:
             ret_rows.append((f"{cls}.{fn}", c.most_common(1)[0][0]))
     print(f"  // {len(ret_rows)} return-type entries", file=sys.stderr)
+    prop_rows = [(f"{c}.{p}", v.most_common(1)[0][0]) for (c, p), v in sorted(class_props.items()) if len(v) == 1]
+    print(f"  // {len(prop_rows)} property types", file=sys.stderr)
+    print()
+    print("/// `(class.property, type)`, lowercased, from the corpus declarations.")
+    print("///")
+    print("/// `Quest Property CurrFight auto` on ArenaScript means `aScript.CurrFight`")
+    print("/// has type Quest. Without it a property read through another object is")
+    print("/// typed `var`, so no conversion is possible on the way into a Quest slot.")
+    print("pub const PROP_TYPES: &[(&str, &str)] = &[")
+    for k, v in prop_rows:
+        print(f'    ("{k}", "{v}"),')
+    print("];")
     print()
     print("/// `(function, return type)`, lowercased, from the corpus declarations.")
     print("///")

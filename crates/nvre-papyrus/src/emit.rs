@@ -2227,7 +2227,21 @@ impl<'a> Compiler<'a> {
                 // consistent with both orders.
                 let o = self.expr(buf, obj, line)?;
                 let p = self.intern(name);
-                let tmp = self.temp(buf, self.property_type(name));
+                // The property may belong to ANOTHER class: `aScript.CurrFight`
+                // reads a property declared on ArenaScript. The receiver's own
+                // declared type says which class to ask, and the answer is what
+                // gives the read a type at all — an untyped value cannot be
+                // converted into the slot it is written to, so the cast the game
+                // emits would be missing.
+                let pty = match obj.as_ref() {
+                    Expr::Ident(n) => {
+                        let cls = self.type_of(n).map(|t| t.0.clone()).unwrap_or_default();
+                        crate::signatures::property_type(&cls, name)
+                            .unwrap_or_else(|| self.property_type(name))
+                    }
+                    _ => self.property_type(name),
+                };
+                let tmp = self.temp(buf, pty);
                 let mut ins = Instruction::new(opcode_of("propget"));
                 ins.args.push(Value::Identifier(p));
                 ins.args.push(o);
