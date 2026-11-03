@@ -72,6 +72,14 @@
 //!
 //! 1. **The string table's order.** Every other field depends on getting it
 //!    right, because every index in the file is an index into it.
+//!    `tools/interning.py` measures how far a candidate order gets. The prefix
+//!    is settled and matches every script tried: the script's name, then the
+//!    empty string, then `GetState` and `GotoState` (the compiler's own
+//!    state-machine pair, present whether or not the source spells them), then
+//!    the script's own function names in file order, then its user-flag names,
+//!    then the parent class. Beyond that point the order comes from the
+//!    per-function body walk and the property records, and is not yet
+//!    decoded — which is why the prefix matches and the whole table does not.
 //! 2. **The temporary and local ordering** inside a function — the CK's
 //!    `::tempN` series is assigned by its own expression walker.
 //! 3. **The debug block**, which records a source line per instruction.
