@@ -41,3 +41,8 @@ IDEA.md
 # rather than published: a reader who finds one takes it for a current statement
 # about the repository.
 docs/legal-analysis.md
+
+# Python bytecode. These were tracked by accident and are build output, not
+# source: they carry the interpreter version and rebuild themselves.
+__pycache__/
+*.pyc
