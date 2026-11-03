@@ -1153,7 +1153,23 @@ impl<'a> Compiler<'a> {
             // `if` still emits its jump even when the body is empty
             // (`if c endif` -> `jmpf c 2 ; jmp 1`, Em3), which is why the count
             // is not simply `bodies.len()`.
-            let skip = b.body.is_empty() && branches.len() > 1;
+            // A branch whose body ends in `return` gets no trailing jump: the
+            // jump would be unreachable. Measured on
+            // `ArenaCombatQuest.ShouldEnd`, whose `if/else` both `return`:
+            //
+            //   2 return true
+            //   3 jmp 2          <- the THEN branch keeps its jump
+            //   4 return false   <- the ELSE branch has none
+            //
+            // which is the same dead-code elimination that leaves an empty
+            // branch with no jump at all.
+            // Only the LAST branch drops it, and only when it ends in `return`:
+            // in `ArenaCombatQuest.ShouldEnd` the then-branch keeps its jump and
+            // the else-branch has none. Applying the rule to every branch scores
+            // 43,624 against 43,639, so earlier branches keep theirs.
+            let last_and_returns = mine_branch + 1 == branches.len()
+                && matches!(b.body.last(), Some(Stmt::Return { .. }));
+            let skip = (b.body.is_empty() && branches.len() > 1) || last_and_returns;
             if !skip {
                 let mut ins = Instruction::new(opcode_of("jmp"));
                 ins.args.push(Value::Int(0));
