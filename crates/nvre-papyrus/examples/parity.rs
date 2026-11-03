@@ -241,6 +241,21 @@ fn code_matches(a: &[u8], b: &[u8]) -> bool {
     let (Ok(x), Ok(y)) = (PexFile::parse(a), PexFile::parse(b)) else {
         return false;
     };
+    // Compare the code *semantically*: every string operand is resolved
+    // through its own file's table and compared as text.
+    //
+    // Comparing the raw indices would be wrong here, and wrong in a way that
+    // hides the truth: this emitter and the Creation Kit order their string
+    // tables differently, so identical code shows up as different indices on
+    // every single operand. What is being asked is "did the same program get
+    // generated", not "did the tables happen to coincide".
+    fn val(f: &PexFile, v: &nvre_papyrus::Value) -> String {
+        match v {
+            nvre_papyrus::Value::Identifier(i) => format!("id({})", f.text_or_empty(*i)),
+            nvre_papyrus::Value::String(i) => format!("str({})", f.text_or_empty(*i)),
+            other => format!("{other:?}"),
+        }
+    }
     fn code(f: &PexFile) -> Vec<String> {
         let mut out = Vec::new();
         for o in &f.objects {
@@ -251,9 +266,31 @@ fn code_matches(a: &[u8], b: &[u8]) -> bool {
                     s.functions.len()
                 ));
                 for fun in &s.functions {
-                    out.push(format!("fn {}", f.text_or_empty(fun.name)));
+                    out.push(format!(
+                        "fn {} ret {} doc {} flags {}",
+                        f.text_or_empty(fun.name),
+                        f.text_or_empty(fun.return_type),
+                        f.text_or_empty(fun.doc),
+                        fun.flags
+                    ));
+                    for l in &fun.locals {
+                        out.push(format!(
+                            "  local {} {}",
+                            f.text_or_empty(l.name),
+                            f.text_or_empty(l.type_name)
+                        ));
+                    }
                     for i in &fun.instructions {
-                        out.push(format!("{:?} {:?} {:?}", i.opcode, i.args, i.varargs));
+                        out.push(format!(
+                            "{:?} [{}] {:?}",
+                            i.opcode,
+                            i.args
+                                .iter()
+                                .map(|a| val(f, a))
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                            i.varargs
+                        ));
                     }
                 }
             }

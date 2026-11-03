@@ -973,7 +973,25 @@ impl<'a> Compiler<'a> {
             }
             Expr::Binary { op, lhs, rhs } => {
                 let l = self.expr(buf, lhs, line)?;
-                let r = self.expr(buf, rhs, line)?;
+                let mut r = self.expr(buf, rhs, line)?;
+                // A comparison across two different script types casts the
+                // right operand first, into its own temporary. Measured on
+                // DLC2ThirskDoorScript, where `akActivator == Game.GetPlayer()`
+                // compiles to `cast ::temp2 ::temp1` followed by
+                // `cmp_eq ::temp3 akActivator ::temp2`.
+                let is_cmp = matches!(op.as_str(), "==" | "!=" | "<" | "<=" | ">" | ">=");
+                if is_cmp {
+                    let lt = self.value_type(&l);
+                    let rt = self.value_type(&r);
+                    if lt != rt && lt != "var" && rt != "var" {
+                        let tmp = self.temp(buf, &lt);
+                        let mut ins = Instruction::new(opcode_of("cast"));
+                        ins.args.push(Value::Identifier(tmp));
+                        ins.args.push(r);
+                        buf.push(ins, line);
+                        r = Value::Identifier(tmp);
+                    }
+                }
                 // A comparison yields Bool whatever its operands are; an
                 // arithmetic instruction yields its operands' own type.
                 let result_ty = match op.as_str() {
@@ -992,7 +1010,7 @@ impl<'a> Compiler<'a> {
                     "<" => opcode_of("cmp_lt"),
                     "<=" => opcode_of("cmp_lte"),
                     ">" => opcode_of("cmp_gt"),
-                    ">=" => opcode_of("comp_gte"),
+                    ">=" => opcode_of("cmp_gte"),
                     other => {
                         return Err(Error::Parse(format!(
                             "operator `{other}` is not compiled yet"
@@ -1089,6 +1107,29 @@ impl<'a> Compiler<'a> {
                         Value::Identifier(tmp)
                     }
                     Expr::Member(obj, method) => {
+                        // `Game.GetPlayer()` parses as a member access, but the
+                        // engine's own classes are not objects: the CK emits
+                        // `callstatic game GetPlayer ::temp1`, with the class
+                        // lowercase and the function second. Emitting
+                        // `callmethod` here instead is accepted by the loader
+                        // and then fails at run time, so the check has to come
+                        // before the receiver is compiled.
+                        if let Expr::Ident(class) = obj.as_ref() {
+                            if let Some(target) = self.static_target(class) {
+                                let m = self.intern(method);
+                                let tmp = self.temp(buf, self.call_result_type(method));
+                                let mut ins = Instruction::new(opcode_of("callstatic"));
+                                ins.args.push(Value::Identifier(target));
+                                ins.args.push(Value::Identifier(m));
+                                ins.args.push(Value::Identifier(tmp));
+                                ins.varargs = args
+                                    .iter()
+                                    .map(|a| self.expr(buf, a, line))
+                                    .collect::<Result<Vec<_>, _>>()?;
+                                buf.push(ins, line);
+                                return Ok(Value::Identifier(tmp));
+                            }
+                        }
                         let recv = self.expr(buf, obj, line)?;
                         let m = self.intern(method);
                         let tmp = self.temp(buf, self.call_result_type(method));
@@ -1146,11 +1187,14 @@ impl<'a> Compiler<'a> {
     /// rather than a silently wrong value.
     fn static_target(&mut self, name: &str) -> Option<StrIndex> {
         let lower = name.to_ascii_lowercase();
+        // The engine's own classes are spelled lowercase in a `.pex` whatever
+        // the source says: `Game.GetPlayer()` compiles to `callstatic` on
+        // `game`, not `Game`. Measured on DLC2ThirskDoorScript.
         if matches!(
             lower.as_str(),
             "self" | "game" | "debug" | "utility" | "math"
         ) {
-            return Some(self.intern(name));
+            return Some(self.intern(&lower));
         }
         // A property whose type is a script class is a static receiver.
         if let Some(t) = self.type_of(name) {
