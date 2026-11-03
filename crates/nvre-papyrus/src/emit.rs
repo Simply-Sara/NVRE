@@ -899,6 +899,26 @@ impl<'a> Compiler<'a> {
                     buf.push(ins, *line);
                     return Ok(());
                 }
+                // `a.b = v` is **not** an `assign`: it is `propset b a v`, with
+                // the property name first. Falling through to the plain assign
+                // path emitted `assign ::PropName v`, which is not an
+                // instruction the VM can execute. Measured over all 3,352
+                // `propset` instructions in the shipped corpus: slot 2 is a
+                // temporary every time (the value), slot 1 is a temporary only
+                // 964 times (the object), and slot 0 never is (the property
+                // name). `examples/propargs.rs` counts it.
+                if let Expr::Member(obj, name) = target {
+                    let o = self.expr(buf, obj, *line)?;
+                    let p = self.intern(name);
+                    let v = self.expr(buf, value, *line)?;
+                    let mut ins = Instruction::new(opcode_of("propset"));
+                    ins.args.push(Value::Identifier(p));
+                    ins.args.push(o);
+                    ins.args.push(v.clone());
+                    buf.push(ins, *line);
+                    self.release_temp(buf, &v);
+                    return Ok(());
+                }
                 let dest = self.lvalue(buf, target)?;
                 let v = self.expr(buf, value, *line)?;
                 let mut ins = Instruction::new(opcode_of("assign"));
@@ -1443,6 +1463,13 @@ impl<'a> Compiler<'a> {
                     // `i < 3` cast an integer literal.
                     let same = lt.eq_ignore_ascii_case(&rt);
                     if !same && !lt.eq_ignore_ascii_case("var") && !rt.eq_ignore_ascii_case("var") {
+                        // Cast the RIGHT operand. Measured both ways: casting
+                        // the temporary side instead scores 40,579 identical
+                        // functions against 40,583 for this, so this stays even
+                        // though `akActivator == Game.GetPlayer()` really does
+                        // cast the call result — the rule that decides which
+                        // side is not yet decoded, and the difference is small
+                        // enough that guessing costs more than it gains.
                         let tmp = self.temp(buf, &lt);
                         let mut ins = Instruction::new(opcode_of("cast"));
                         ins.args.push(Value::Identifier(tmp));
@@ -1690,19 +1717,28 @@ impl<'a> Compiler<'a> {
             }
             Expr::Member(obj, name) => {
                 // A bare member read is a property get.
+                //
+                // The operand order is **name, object, destination**, not
+                // destination-first. Measured over all 6,630 `propget`
+                // instructions in the shipped corpus: slot 2 is a temporary
+                // 6,630/6,630 times (it is the destination), slot 1 is a
+                // temporary only 1,160 times (it is the object, usually a
+                // property's backing variable), and slot 0 is never a temporary
+                // (it is the property name). `examples/propargs.rs` counts it.
+                //
+                // An earlier `proptags` probe read slot 2 and found an
+                // `Identifier` 9,982 times, which looked like confirmation but
+                // was not: a `::tempN` is an identifier too, so that count was
+                // consistent with both orders.
                 let o = self.expr(buf, obj, line)?;
                 let p = self.intern(name);
                 let tmp = self.temp(buf, self.property_type(name));
                 let mut ins = Instruction::new(opcode_of("propget"));
-                ins.args.push(Value::Identifier(tmp));
-                ins.args.push(o);
-                // The property name is an **identifier**, not a string: the
-                // shipped corpus has 9,982 propget/propset names and every one
-                // carries tag byte 1. A `String` here writes the same text with
-                // tag 2, which is a different byte in the file and would not
-                // load. Measured by `examples/proptags.rs`.
                 ins.args.push(Value::Identifier(p));
+                ins.args.push(o);
+                ins.args.push(Value::Identifier(tmp));
                 buf.push(ins, line);
+                self.release_temp(buf, &Value::Identifier(tmp.clone()));
                 Value::Identifier(tmp)
             }
             Expr::Index(arr, idx) => {
