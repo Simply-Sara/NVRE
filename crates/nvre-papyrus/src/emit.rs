@@ -1146,16 +1146,26 @@ impl<'a> Compiler<'a> {
                 patch_false.push(at);
             }
             self.block(buf, &b.body)?;
-            // Every branch body ends with a jump past the rest of the chain,
-            // including the last one: `if (1 == 1) x = 1 endif` compiles to
-            // `cmp_eq, jmpf 3, assign, jmp 1`. Measured on R2 and R6. Omitting
-            // it for the final branch also left the `jmpf` target short by the
-            // width of the missing jump.
-            let mut ins = Instruction::new(opcode_of("jmp"));
-            ins.args.push(Value::Int(0));
-            let at = buf.here();
-            buf.push(ins, b.line);
-            patch_end.push(at);
+            // A branch body ends with a jump past the rest of the chain —
+            // except that an **empty** branch in a multi-branch construct gets
+            // none. Measured with the real compiler on `Actor.MakePlayerFriend`,
+            // whose inner and outer `if`s both have a comment-only `else`:
+            //
+            //   10 jmp 1     <- inner then-branch
+            //   11 jmp 1     <- outer then-branch, and that is the end
+            //
+            // Both empty `else` bodies contribute nothing. A single-branch
+            // `if` still emits its jump even when the body is empty
+            // (`if c endif` -> `jmpf c 2 ; jmp 1`, Em3), which is why the count
+            // is not simply `bodies.len()`.
+            let skip = b.body.is_empty() && branches.len() > 1;
+            if !skip {
+                let mut ins = Instruction::new(opcode_of("jmp"));
+                ins.args.push(Value::Int(0));
+                let at = buf.here();
+                buf.push(ins, b.line);
+                patch_end.push(at);
+            }
             // The CK frees a branch's condition temp at the end of that branch,
             // so `elseif` reuses one slot for every branch after the first.
             // Measured: `if/elseif/elseif/elseif` gets ::temp0 then ::temp1
