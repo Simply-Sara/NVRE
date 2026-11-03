@@ -1003,6 +1003,12 @@ impl<'a> Compiler<'a> {
     /// result type the compiled bytes themselves show. `GetState` returns a
     /// `String` in every shipped script that has it.
     fn call_result_type(&self, name: &str) -> &'static str {
+        // The corpus table first: 2,591 method names have a single agreed type
+        // there, harvested from the game's own locals tables. The hand-written
+        // fallbacks below only cover names it does not.
+        if let Some(t) = crate::returns::method_return(name) {
+            return t;
+        }
         match name.to_ascii_lowercase().as_str() {
             "getstate" => "String",
             "getvalueint" | "getvalue" => "Int",
