@@ -553,10 +553,19 @@ impl<'a> Compiler<'a> {
 
         self.block(&mut buf, &f.body)?;
 
-        // A function with no explicit `return` still needs one, and the
-        // compiler emits `return None` for a void function and leaves a value
-        // function to fall off the end.
-        if !matches!(buf.instructions.last().map(|i| i.opcode), Some(0x1A)) {
+        // An **empty** body gets nothing at all — not even `return None`. The
+        // corpus is unambiguous: 69 of the 73 non-native functions with zero
+        // locals in `activemagiceffect`, `abtgtrapsightscript` and
+        // `activateagainafterdelay` have empty bodies and no instructions, and
+        // their `::NoneVar` is never declared either. Emitting an implicit
+        // `return None` there invents an instruction and a local the game does
+        // not have.
+        //
+        // A body that *does* something and then falls off the end is a
+        // different case: the VM needs the terminator, so one is added.
+        if !buf.instructions.is_empty()
+            && !matches!(buf.instructions.last().map(|i| i.opcode), Some(0x1A))
+        {
             let none = self.none_var(&mut buf);
             let mut ins = Instruction::new(opcode_of("return"));
             ins.args.push(Value::Identifier(none));
@@ -927,7 +936,7 @@ impl<'a> Compiler<'a> {
         rhs: &Expr,
         line: u16,
     ) -> Result<Value, Error> {
-        let result = self.temp(buf, "bool");
+        let result = self.temp(buf, "Bool");
         let a = self.expr(buf, lhs, line)?;
         let mut ins = Instruction::new(opcode_of("assign"));
         ins.args.push(Value::Identifier(result));
@@ -1076,7 +1085,7 @@ impl<'a> Compiler<'a> {
                 // arithmetic instruction yields its operands' own type.
                 let result_ty = match op.as_str() {
                     "+" | "-" | "*" | "/" | "%" => self.value_type(buf, &l),
-                    _ => "bool".to_string(),
+                    _ => "Bool".to_string(),
                 };
                 let tmp = self.temp(buf, &result_ty);
                 let code = match op.as_str() {
@@ -1104,7 +1113,7 @@ impl<'a> Compiler<'a> {
                 buf.push(ins, line);
                 if op == "!=" {
                     // `a != b` is `not (a == b)`.
-                    let tmp2 = self.temp(buf, "bool");
+                    let tmp2 = self.temp(buf, "Bool");
                     let mut ins = Instruction::new(opcode_of("not"));
                     ins.args.push(Value::Identifier(tmp2));
                     ins.args.push(Value::Identifier(tmp));
@@ -1116,7 +1125,7 @@ impl<'a> Compiler<'a> {
             Expr::Unary { op, operand } => {
                 let v = self.expr(buf, operand, line)?;
                 let result_ty = match op.as_str() {
-                    "!" => "bool".to_string(),
+                    "!" => "Bool".to_string(),
                     _ => self.value_type(buf, &v),
                 };
                 let tmp = self.temp(buf, &result_ty);
@@ -1224,9 +1233,30 @@ impl<'a> Compiler<'a> {
                                 return Ok(Value::Identifier(tmp));
                             }
                         }
+                        // The receiver's declared type tells us which class the
+                        // method belongs to, so the corpus table can supply the
+                        // result type. Without it the temporary is `var`, and
+                        // the corpus shows `var` for only a handful of the
+                        // 4,000+ call results it records.
+                        let recv_class = match obj.as_ref() {
+                            Expr::Ident(n) => self.type_of(n).map(|t| t.0.clone()),
+                            Expr::Member(..) => None,
+                            _ => None,
+                        };
                         let recv = self.expr(buf, obj, line)?;
                         let m = self.intern(method);
-                        let tmp = self.temp(buf, self.call_result_type(method));
+                        let ty = match &recv_class {
+                            Some(c) => {
+                                let t = self.static_result_type(c, method);
+                                if t == "var" {
+                                    self.call_result_type(method)
+                                } else {
+                                    t
+                                }
+                            }
+                            None => self.call_result_type(method),
+                        };
+                        let tmp = self.temp(buf, ty);
                         let mut ins = Instruction::new(opcode_of("callmethod"));
                         ins.args.push(Value::Identifier(m));
                         ins.args.push(recv);
