@@ -2091,9 +2091,17 @@ impl<'a> Compiler<'a> {
                         let m = self.intern(method);
                         let ty = match &recv_class {
                             Some(c) => {
+                                // Look the result type up on the RECEIVER's
+                                // class first: `AtronachFrostFXS.Play(...)` has a
+                                // receiver of type EffectShader, so the answer is
+                                // `effectshader.play`, which is None. Consulting
+                                // only the script's own class missed it, fell
+                                // back to `var`, and allocated a temporary where
+                                // the game writes ::NoneVar.
                                 let t = self.static_result_type(c, method);
                                 if t == "var" {
-                                    self.call_result_type(method)
+                                    crate::signatures::return_type(c, method)
+                                        .unwrap_or_else(|| self.call_result_type(method))
                                 } else {
                                     t
                                 }
