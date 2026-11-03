@@ -229,9 +229,19 @@ impl<'a> Compiler<'a> {
                 DeclKind::Variable(v) => c
                     .types
                     .push((v.name.to_ascii_lowercase(), v.type_name.clone())),
-                DeclKind::Property(p) => c
-                    .types
-                    .push((p.name.to_ascii_lowercase(), p.type_name.clone())),
+                DeclKind::Property(p) => {
+                    c.types
+                        .push((p.name.to_ascii_lowercase(), p.type_name.clone()));
+                    // The instruction stream never mentions a property by its
+                    // source name: it uses the backing variable
+                    // `::Name_var`. Registering only the source spelling left
+                    // every property argument with no known type, so an
+                    // `Armor` passed where a `Form` was wanted got no upcast.
+                    c.types.push((
+                        format!("::{}_var", p.name).to_ascii_lowercase(),
+                        p.type_name.clone(),
+                    ));
+                }
                 _ => {}
             }
         }
@@ -1345,12 +1355,41 @@ impl<'a> Compiler<'a> {
     fn coerce_arg(&mut self, buf: &mut FnBuf, value: Value, want: &str, line: u16) -> Value {
         let want = want.trim_end_matches("[]");
         let have = self.value_type(buf, &value);
-        // Arrays and objects are never widened by a cast in the shipped corpus.
-        let numeric = |t: &str| t.eq_ignore_ascii_case("int") || t.eq_ignore_ascii_case("float");
-        if !numeric(&have) || !numeric(want) {
+        if have.eq_ignore_ascii_case(want) || have.eq_ignore_ascii_case("var") {
             return value;
         }
-        if have.eq_ignore_ascii_case(want) {
+        // Two conversions are modelled, both measured:
+        //
+        // 1. Numeric widening — an int in a float slot. `Self.MoveTo(oProp, 1, 1, 1)`
+        //    casts all three int literals because `MoveTo` wants floats.
+        // 2. **Object upcast** — a subtype in a supertype slot. `addItem` wants a
+        //    `Form`, and the argument is an `Armor` property, so the CK emits
+        //    `cast ::temp1 ::ArmorBriarHeartEmpty_var` first. Decidable only
+        //    with the `extends` chain, which is why it needs `PARENTS`.
+        let numeric = |t: &str| t.eq_ignore_ascii_case("int") || t.eq_ignore_ascii_case("float");
+        let ok = if numeric(&have) && numeric(want) {
+            true
+        } else {
+            // Walk up from the value's class looking for the wanted type.
+            let mut here = crate::signatures::parent(&have).map(str::to_string);
+            let mut hops = 0;
+            let mut found = false;
+            while let Some(c) = here {
+                if hops > 12 {
+                    break;
+                }
+                if c.eq_ignore_ascii_case(want) {
+                    found = true;
+                    break;
+                }
+                here = crate::signatures::parent(&c).map(str::to_string);
+                hops += 1;
+            }
+            found
+        };
+        if !ok {
+            // A conversion the model does not know: leave the argument alone
+            // rather than invent a cast.
             return value;
         }
         let t = self.temp(buf, want);
@@ -1398,16 +1437,20 @@ impl<'a> Compiler<'a> {
     /// is what lets a comparison see that its two sides are different classes
     /// and emit the `cast` the Creation Kit emits.
     fn declared_type(&self, buf: &FnBuf, index: StrIndex) -> Option<String> {
-        buf.types
-            .iter()
-            .rev()
-            .find(|(n, _)| *n == index)
-            .map(|(_, t)| {
+        if let Some(t) = buf.types.iter().rev().find(|(n, _)| *n == index) {
+            return Some(
                 self.strings
-                    .get(*t as usize)
+                    .get(t.1 as usize)
                     .cloned()
-                    .unwrap_or_else(|| "var".to_string())
-            })
+                    .unwrap_or_else(|| "var".to_string()),
+            );
+        }
+        // Not a function-scope name, so it is object scope: a declared variable
+        // or a property's backing variable. Falling through to `None` here made
+        // every property argument look untyped, which silently disabled both the
+        // numeric and the object upcast.
+        let name = self.strings.get(index as usize)?;
+        self.type_of(name).map(|t| t.0.clone())
     }
 
     /// Compile an expression, returning the value that holds its result.
@@ -1672,16 +1715,19 @@ impl<'a> Compiler<'a> {
                         // Arguments are converted type-directed: an int in a
                         // float slot gets a `cast`, everything else is left
                         // alone. Measured with the real compiler, not guessed.
-                        // The class only sharpens the lookup; the unqualified
-                        // name is the fallback. Measured both ways over the
-                        // corpus and the fallback is the better of the two:
-                        // qualified-only reads 0.211 equal lines and 68.8% of
-                        // functions, the fallback 0.209 and 69.1%. Neither is
-                        // clean, so the arguments below are still only partly
-                        // modelled.
+                        // Resolve through the **class chain**, not just the
+                        // receiver's own class: `AddItem` is declared on
+                        // `ObjectReference` and reached from an `Actor`, and
+                        // `additem` is absent from the unqualified table because
+                        // `FormArray.AddItem(Form)` and
+                        // `ObjectReference.AddItem(Form, int, bool)` disagree.
+                        // Without the walk the call got neither its argument
+                        // cast nor its trailing `false`.
                         let class = recv_class.as_deref().unwrap_or("");
-                        let sig = crate::signatures::method_params(class, method);
-                        let defs = crate::signatures::method_defaults(class, method);
+                        let (sig, defs) = match crate::signatures::method_signature(class, method) {
+                            Some((p, d)) => (Some(p), Some(d)),
+                            None => (None, None),
+                        };
                         let mut va = Vec::with_capacity(args.len());
                         for (i, a) in args.iter().enumerate() {
                             let v = self.expr(buf, a, line)?;
@@ -1738,7 +1784,6 @@ impl<'a> Compiler<'a> {
                 ins.args.push(o);
                 ins.args.push(Value::Identifier(tmp));
                 buf.push(ins, line);
-                self.release_temp(buf, &Value::Identifier(tmp.clone()));
                 Value::Identifier(tmp)
             }
             Expr::Index(arr, idx) => {

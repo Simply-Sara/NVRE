@@ -113,6 +113,7 @@ def main():
 
     arity = defaultdict(Counter)  # name -> Counter of full shapes
     static_arity = defaultdict(Counter)  # (class, name) -> Counter of shapes
+    parents = {}  # class -> its `extends` parent
     total = 0
 
     for name in z.namelist():
@@ -124,9 +125,15 @@ def main():
             continue
         # The script's own name is its class name for static calls.
         cls = None
-        m = re.search(r"^\s*scriptname\s+(\w+)", src, re.I | re.M)
+        m = re.search(r"^\s*scriptname\s+(\w+)(?:\s+extends\s+(\w+))?", src, re.I | re.M)
         if m:
             cls = m.group(1).lower()
+            # The inheritance chain is what lets a call on an `Actor` find a
+            # method declared on `ObjectReference`. Without it, every inherited
+            # method looks unknown and gets neither an argument cast nor its
+            # default padding.
+            if m.group(2):
+                parents[cls] = m.group(2).lower()
 
         # Every Function declaration, including those inside states.
         for mm in CALL.finditer(src):
@@ -167,6 +174,13 @@ def main():
         )
         print(f'    ("{key}", &[{types}], &[{defaults}]),')
 
+    print(f"  // {len(parents)} extends relationships", file=sys.stderr)
+    print('/// `(class, parent)`, lowercased, from every `Scriptname X extends Y`.')
+    print("pub const PARENTS: &[(&str, &str)] = &[")
+    for c, p in sorted(parents.items()):
+        print(f'    ("{c}", "{p}"),')
+    print("];")
+    print()
     print(
         "/// `(function, parameter types, defaults)`, lowercased, measured from the corpus."
     )
