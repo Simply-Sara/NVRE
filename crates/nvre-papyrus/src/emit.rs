@@ -2094,6 +2094,10 @@ impl<'a> Compiler<'a> {
                 ins.args.push(o);
                 ins.args.push(Value::Identifier(tmp));
                 buf.push(ins, line);
+                // NOTE: the receiver temp is deliberately NOT released here.
+                // Releasing it scores 42,339 against 42,341, so either the slot
+                // is still live for the caller or the release belongs somewhere
+                // else in the property path. Recorded rather than kept.
                 Value::Identifier(tmp)
             }
             Expr::Index(arr, idx) => {
@@ -2105,6 +2109,8 @@ impl<'a> Compiler<'a> {
                 ins.args.push(a);
                 ins.args.push(i);
                 buf.push(ins, line);
+                // NOTE: array operands are not released here either — same
+                // measurement, same result.
                 Value::Identifier(tmp)
             }
         })
