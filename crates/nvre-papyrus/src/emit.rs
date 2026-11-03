@@ -32,8 +32,12 @@
 //! jmpf          cond ops
 //! ```
 //!
-//! A jump's operand is a count of **operations to skip**, counted from the
-//! instruction after the jump.
+//! A jump's operand is a **relative offset from the jump instruction itself**:
+//! the target index is `jump_index + operand`. Settled by a loop, where only
+//! this reading lands the backward `jmp` on the `while` condition; the forward
+//! jumps then land exactly on `instructions.len()`, the index past the last
+//! instruction. The earlier note here said the count was from the instruction
+//! *after* the jump, which is off by one in both directions.
 
 use crate::opcodes;
 use crate::parse::{
@@ -673,53 +677,14 @@ impl<'a> Compiler<'a> {
 
         self.block(&mut buf, &f.body)?;
 
-        // An **empty** body gets nothing at all — not even `return None`. The
-        // corpus is unambiguous: 69 of the 73 non-native functions with zero
-        // locals in `activemagiceffect`, `abtgtrapsightscript` and
-        // `activateagainafterdelay` have empty bodies and no instructions, and
-        // their `::NoneVar` is never declared either. Emitting an implicit
-        // `return None` there invents an instruction and a local the game does
-        // not have.
+        // There is **no implicit trailing `return`**. Measured with the real
+        // compiler on six bodies — empty, a plain assignment, an `if`, a
+        // `while`, a `None`-returning call, and an `if` whose body ends in one:
+        // not one of them ends in a `return`. A void function simply stops.
         //
-        // A body that *does* something and then falls off the end is a
-        // different case: the VM needs the terminator, so one is added.
-        // ...and when the body already ends in a `None` call, no terminator is
-        // added either: `Debug.Trace(...)` as the last statement compiles to
-        // `callstatic debug Trace ::NoneVar` and stops there. The CK reads the
-        // returning-None call as the end of the function.
-        let ends_in_none_call = buf
-            .instructions
-            .last()
-            .map(|i| {
-                matches!(i.opcode, 23..=25)
-                    && matches!(i.args.get(2), Some(Value::Identifier(t)) if {
-                        self.strings
-                            .get(*t as usize)
-                            .map(|s| s == "::NoneVar")
-                            .unwrap_or(false)
-                    })
-            })
-            .unwrap_or(false);
-        if !buf.instructions.is_empty()
-            && !ends_in_none_call
-            && !matches!(buf.instructions.last().map(|i| i.opcode), Some(0x1A))
-        {
-            let none = self.none_var(&mut buf);
-            let mut ins = Instruction::new(opcode_of("return"));
-            ins.args.push(Value::Identifier(none));
-            // The implicit terminator carries the line of the last statement
-            // in the body, not the declaration's: `Probe.psc`'s `OnActivate`
-            // ends `endif` on line 6 and `EndEvent` on 7, and the CK records
-            // line 5 — the last statement that emitted anything.
-            let last = buf
-                .lines
-                .iter()
-                .rev()
-                .find(|l| **l != 0)
-                .copied()
-                .unwrap_or(f.line);
-            buf.push(ins, last);
-        }
+        // The VM loads and runs these, so the earlier habit of appending
+        // `return ::NoneVar` was adding an instruction the game never has, in
+        // every function that did not end with an explicit `return`.
 
         let lines = buf.lines.clone();
         Ok((
@@ -936,13 +901,17 @@ impl<'a> Compiler<'a> {
                 ins.args.push(Value::Int(0));
                 buf.push(ins, *line);
                 self.block(buf, body)?;
+                // The backward jump is relative to ITS OWN index, not to the
+                // `jmpf`'s. Using `at` made every loop jump one instruction too
+                // far forward — `while` compiled to `jmp -1` where the CK has
+                // `jmp -4`.
+                let here = buf.here();
                 let mut ins = Instruction::new(opcode_of("jmp"));
-                ins.args
-                    .push(Value::Int(start as i32 - (buf.here() as i32 + 1)));
+                ins.args.push(Value::Int(start as i32 - here as i32));
                 buf.push(ins, *line);
                 let after = buf.here();
                 if let Value::Int(v) = &mut buf.instructions[at].args[1] {
-                    *v = after as i32 - at as i32 - 1;
+                    *v = after as i32 - at as i32;
                 }
                 Ok(())
             }
@@ -966,25 +935,27 @@ impl<'a> Compiler<'a> {
                 patch_false.push(at);
             }
             self.block(buf, &b.body)?;
-            // Only a branch with a following branch needs a jump past the rest.
-            if i + 1 < branches.len() {
-                let mut ins = Instruction::new(opcode_of("jmp"));
-                ins.args.push(Value::Int(0));
-                let at = buf.here();
-                buf.push(ins, b.line);
-                patch_end.push(at);
-            }
+            // Every branch body ends with a jump past the rest of the chain,
+            // including the last one: `if (1 == 1) x = 1 endif` compiles to
+            // `cmp_eq, jmpf 3, assign, jmp 1`. Measured on R2 and R6. Omitting
+            // it for the final branch also left the `jmpf` target short by the
+            // width of the missing jump.
+            let mut ins = Instruction::new(opcode_of("jmp"));
+            ins.args.push(Value::Int(0));
+            let at = buf.here();
+            buf.push(ins, b.line);
+            patch_end.push(at);
         }
 
         let end = buf.here();
         for at in patch_false {
             if let Value::Int(v) = &mut buf.instructions[at].args[1] {
-                *v = end as i32 - at as i32 - 1;
+                *v = end as i32 - at as i32;
             }
         }
         for at in patch_end {
             if let Value::Int(v) = &mut buf.instructions[at].args[0] {
-                *v = end as i32 - at as i32 - 1;
+                *v = end as i32 - at as i32;
             }
         }
         let _ = line;
@@ -1203,7 +1174,7 @@ impl<'a> Compiler<'a> {
 
         let end = buf.here();
         if let Value::Int(v) = &mut buf.instructions[at].args[1] {
-            *v = end as i32 - at as i32 - 1;
+            *v = end as i32 - at as i32;
         }
         Ok(Value::Identifier(result))
     }
@@ -1317,7 +1288,12 @@ impl<'a> Compiler<'a> {
                 if is_cmp {
                     let lt = self.value_type(buf, &l);
                     let rt = self.value_type(buf, &r);
-                    if lt != rt && lt != "var" && rt != "var" {
+                    // Compared case-insensitively: a local's declared type is
+                    // interned as the source spelled it (`int`) while a literal
+                    // yields the canonical `Int`, and an exact compare made
+                    // `i < 3` cast an integer literal.
+                    let same = lt.eq_ignore_ascii_case(&rt);
+                    if !same && !lt.eq_ignore_ascii_case("var") && !rt.eq_ignore_ascii_case("var") {
                         let tmp = self.temp(buf, &lt);
                         let mut ins = Instruction::new(opcode_of("cast"));
                         ins.args.push(Value::Identifier(tmp));
