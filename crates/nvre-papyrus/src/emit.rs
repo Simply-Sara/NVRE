@@ -872,6 +872,16 @@ impl<'a> Compiler<'a> {
         crate::returns::static_return(class, function).unwrap_or("var")
     }
 
+    /// The `::Name_var` member that stores an `auto` property, if `name` is one.
+    fn auto_backing_var(&self, name: &str) -> Option<String> {
+        self.script.decls.iter().find_map(|d| match &d.kind {
+            DeclKind::Property(p) if p.is_auto && p.name.eq_ignore_ascii_case(name) => {
+                Some(format!("::{}_var", p.name))
+            }
+            _ => None,
+        })
+    }
+
     /// The type this script `extends`, which is the class a bare `f()` call
     /// implicitly dispatches through.
     fn own_class(&self) -> Option<String> {
@@ -1026,6 +1036,14 @@ impl<'a> Compiler<'a> {
                     .find(|(p, _)| p == &lower)
                 {
                     Value::Identifier(*i)
+                } else if let Some(var) = self.auto_backing_var(n) {
+                    // An `auto` property is not a name in the code: the
+                    // property's storage is the `::Name_var` member of the
+                    // object's variable list, and that is what instructions
+                    // reference. Measured on DLC2ThirskDoorScript, where
+                    // `Bujold.GetReference()` compiles to
+                    // `callmethod GetReference ::Bujold_var ::temp2`.
+                    Value::Identifier(self.intern(&var))
                 } else {
                     Value::Identifier(self.intern(n))
                 }
@@ -1272,13 +1290,13 @@ impl<'a> Compiler<'a> {
         ) {
             return Some(self.intern(&lower));
         }
-        // A property whose type is a script class is a static receiver.
-        if let Some(t) = self.type_of(name) {
-            let base = t.base();
-            if !crate::parse::is_builtin_type(&base) {
-                return Some(self.intern(name));
-            }
-        }
+        // A property whose type is a script class is **not** a static
+        // receiver: `Scene Property ExileScene auto` makes `ExileScene` an
+        // *instance*, and `ExileScene.IsPlaying()` is a `callmethod` on it.
+        // Treating it as a class emitted `callstatic`, which the loader accepts
+        // and the VM then runs against the wrong receiver. Measured on
+        // DLC2ThirskDoorScript, where the game emits
+        // `callmethod IsPlaying ::ExileScene_var ::temp5`.
         None
     }
 }
