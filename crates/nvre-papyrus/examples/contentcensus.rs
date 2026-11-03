@@ -105,7 +105,7 @@ fn function(strings: &[String], f: &nvre_papyrus::pex::Function) -> String {
         .collect();
     locals.sort();
     s.push_str(&locals.join(","));
-    s.push('|');
+    s.push('\u{1}');
     for i in &f.instructions {
         s.push_str(&format!(
             "{}({})",
@@ -154,7 +154,7 @@ fn prop(strings: &[String], p: &nvre_papyrus::pex::Property) -> String {
             .unwrap_or_default()
     );
     for b in [p.getter.as_ref(), p.setter.as_ref()].into_iter().flatten() {
-        s.push('|');
+        s.push('\u{1}');
         s.push_str(&function(strings, b));
     }
     s
@@ -183,7 +183,7 @@ fn canonical_game(f: &PexFile) -> String {
     let mut out = String::new();
     for o in &f.objects {
         out.push_str(&format!(
-            "OBJ {} {} {} {} {}|",
+            "OBJ {} {} {} {} {}\u{1}",
             strings.get(o.name as usize).cloned().unwrap_or_default(),
             strings.get(o.parent as usize).cloned().unwrap_or_default(),
             strings.get(o.doc as usize).cloned().unwrap_or_default(),
@@ -196,11 +196,11 @@ fn canonical_game(f: &PexFile) -> String {
         let mut vs: Vec<String> = o.variables.iter().map(|v| variable(strings, v)).collect();
         vs.sort();
         out.push_str(&vs.join(","));
-        out.push('|');
+        out.push('\u{1}');
         let mut ps: Vec<String> = o.properties.iter().map(|p| prop(strings, p)).collect();
         ps.sort();
         out.push_str(&ps.join(","));
-        out.push('|');
+        out.push('\u{1}');
         let mut sts: Vec<String> = o
             .states
             .iter()
@@ -323,7 +323,7 @@ fn main() {
         let go = game.objects.first();
         let gs = |i: u16| game.text_or_empty(i).to_string();
         let mut mine = format!(
-            "OBJ {} {} {} {} {}|",
+            "OBJ {} {} {} {} {}\u{1}",
             go.map(|o| gs(o.name)).unwrap_or_default(),
             go.map(|o| gs(o.parent)).unwrap_or_default(),
             go.map(|o| gs(o.doc)).unwrap_or_default(),
@@ -344,7 +344,7 @@ fn main() {
             .collect();
         vs.sort();
         mine.push_str(&vs.join(","));
-        mine.push('|');
+        mine.push('\u{1}');
         let mut ps: Vec<String> = c
             .properties
             .iter()
@@ -360,7 +360,7 @@ fn main() {
                         .unwrap_or_default()
                 );
                 for b in [p.getter.as_ref(), p.setter.as_ref()].into_iter().flatten() {
-                    m.push('|');
+                    m.push('\u{1}');
                     m.push_str(&function(strings, b));
                 }
                 m
@@ -368,7 +368,7 @@ fn main() {
             .collect();
         ps.sort();
         mine.push_str(&ps.join(","));
-        mine.push('|');
+        mine.push('\u{1}');
         let mut sts: Vec<String> = c
             .states
             .iter()
@@ -387,8 +387,8 @@ fn main() {
         } else {
             diff += 1;
             {
-                let mb: Vec<&str> = mine.split('|').collect();
-                let tb: Vec<&str> = theirs.split('|').collect();
+                let mb: Vec<&str> = mine.split('\u{1}').collect();
+                let tb: Vec<&str> = theirs.split('\u{1}').collect();
                 let at = mb.iter().zip(tb.iter()).position(|(x, y)| x != y);
                 let field = match at {
                     Some(0) => "object header (doc / auto-state / user flags)",
@@ -402,8 +402,8 @@ fn main() {
             if shown < show {
                 shown += 1;
                 // first differing field group
-                let mb: Vec<&str> = mine.split('|').collect();
-                let tb: Vec<&str> = theirs.split('|').collect();
+                let mb: Vec<&str> = mine.split('\u{1}').collect();
+                let tb: Vec<&str> = theirs.split('\u{1}').collect();
                 let at = mb.iter().zip(tb.iter()).position(|(x, y)| x != y);
                 let field = match at {
                     Some(0) => "object header",

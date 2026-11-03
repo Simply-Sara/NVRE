@@ -364,6 +364,17 @@ impl<'a> Compiler<'a> {
                 properties.push(self.property(p)?);
             }
         }
+        // Records are written in ascending **string index** order, which is
+        // measured rather than assumed: over the corpus, property name indices
+        // ascend in 4,399 of 4,420 scripts (99.5%) and variable name indices in
+        // 4,519 of 4,524 (99.9%). That is not a hash order — it falls out of
+        // the interning walk, and it means sorting by index reproduces it.
+        //
+        // Functions and states are the exceptions: their indices ascend in only
+        // 20.8% and 53.2% respectively, so those genuinely are hash-ordered and
+        // stay in source order here.
+        properties.sort_by_key(|p| p.name);
+        variables.sort_by_key(|(n, _, _)| *n);
 
         // ---- the bodies, in file order, in the default state ----
         let mut debug: Vec<(StrIndex, StrIndex, Vec<u16>)> = Vec::new();
