@@ -2007,15 +2007,23 @@ impl<'a> Compiler<'a> {
                             // `callstatic debug Trace ::NoneVar "a" 0`.
                             let own = self.own_class().unwrap_or_default();
                             let defs = crate::signatures::defaults(name);
-                            let mut va = Vec::with_capacity(args.len());
-                            for (i, a) in args.iter().enumerate() {
+                            // Arguments are evaluated RIGHT TO LEFT: the last
+                            // argument's instructions come before the first's.
+                            // Measured on `ArenaScript.ResolveWager`, where
+                            // `AddItem(Gold, WagerAmount * 2)` emits the `imul`
+                            // for argument 1 before the `cast` for argument 0.
+                            // Positions in the vararg list stay in order; only
+                            // the evaluation order is reversed.
+                            let mut va: Vec<Option<Value>> = vec![None; args.len()];
+                            for (i, a) in args.iter().enumerate().rev() {
                                 let v = self.expr(buf, a, line)?;
                                 let v = match crate::signatures::arg_type(&own, name, i) {
                                     Some(w) => self.coerce_arg(buf, v, w, line),
                                     None => v,
                                 };
-                                va.push(v);
+                                va[i] = Some(v);
                             }
+                            let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
                             ins.varargs = self.pad_defaults(va, defs, name);
                             buf.push(ins, line);
                             return Ok(Value::Identifier(tmp));
@@ -2044,6 +2052,10 @@ impl<'a> Compiler<'a> {
                         // functions, because `None` is how Papyrus spells an
                         // unset object.
                         let own = self.own_class().unwrap_or_default();
+                        // NOTE: a bare `f(...)` evaluates its arguments LEFT to
+                        // RIGHT, unlike a member call. Reversing this scores
+                        // 43,603 against 43,605, so the two paths genuinely
+                        // differ.
                         let mut dealt = Vec::with_capacity(args.len());
                         for (i, a) in args.iter().enumerate() {
                             let v = self.expr(buf, a, line)?;
@@ -2157,15 +2169,23 @@ impl<'a> Compiler<'a> {
                         // defaults need looking up here.
                         let defs =
                             crate::signatures::method_signature(class, method).map(|(_, d)| d);
-                        let mut va = Vec::with_capacity(args.len());
-                        for (i, a) in args.iter().enumerate() {
+                        // Arguments are evaluated RIGHT TO LEFT: the last
+                        // argument's instructions are emitted before the first's.
+                        // Measured on `ArenaScript.ResolveWager`, where
+                        // `AddItem(Gold, WagerAmount * 2)` emits the `imul` for
+                        // argument 1 before the `cast` for argument 0, then
+                        // passes them in the correct positions. Only evaluation
+                        // order is reversed; the vararg list keeps source order.
+                        let mut slots: Vec<Option<Value>> = vec![None; args.len()];
+                        for (i, a) in args.iter().enumerate().rev() {
                             let v = self.expr(buf, a, line)?;
                             let v = match crate::signatures::arg_type(class, method, i) {
                                 Some(want) => self.coerce_arg(buf, v, want, line),
                                 None => v,
                             };
-                            va.push(v);
+                            slots[i] = Some(v);
                         }
+                        let va: Vec<Value> = slots.into_iter().map(|v| v.unwrap()).collect();
                         // Omitted trailing arguments are written out, not
                         // dropped: the .pex must carry the count the game has.
                         ins.varargs = self.pad_defaults(va, defs, method);
