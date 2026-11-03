@@ -312,11 +312,46 @@ impl<'a> Compiler<'a> {
         let _parent_idx = self.intern(&parent);
 
         // ---- the variables ----
+        //
+        // An `auto` property's storage is a **variable of the object**, not
+        // part of the property record: `Quest Property DA10 auto` produces
+        // `::DA10_var : quest` in the variable list. Omitting them was the
+        // single largest content gap in the census, because most shipped
+        // scripts declare most of their state this way.
+        //
+        // They are emitted before the source's own variables, intermixed into
+        // one list (see `achievementsscript`, whose `::HardWorkerDone_var` sits
+        // among the real variables rather than after them).
+        //
+        // The order *within* the list is the Creation Kit's hash-container
+        // iteration, which is not decoded: measured over the 4,336 scripts that
+        // declare two or more `auto` properties, file order equals source order
+        // in 864, reversed source order in 671, and neither in 2,801. So this
+        // emits source order and is knowingly wrong for the rest — `semcensus`
+        // sorts before comparing and so does not see the difference.
         let mut variables = Vec::new();
+        let autos: Vec<&PropertyDecl> = self
+            .script
+            .decls
+            .iter()
+            .filter_map(|d| match &d.kind {
+                DeclKind::Property(p) if p.is_auto => Some(p),
+                _ => None,
+            })
+            .collect();
+        for p in autos.iter().rev() {
+            let n = self.intern(&format!("::{}_var", p.name));
+            let t = self.var_type(&p.type_name.0);
+            let init = match &p.initial {
+                Some(e) => self.value_of(Some(e), &p.type_name)?,
+                None => Value::None,
+            };
+            variables.push((n, t, init));
+        }
         for d in &self.script.decls {
             if let DeclKind::Variable(v) = &d.kind {
                 let n = self.intern(&v.name);
-                let t = self.intern(&v.type_name.0);
+                let t = self.var_type(&v.type_name.0);
                 let init = self.value_of(v.initial.as_ref(), &v.type_name)?;
                 variables.push((n, t, init));
             }
@@ -450,7 +485,9 @@ impl<'a> Compiler<'a> {
 
     fn property(&mut self, p: &PropertyDecl) -> Result<CompiledProperty, Error> {
         let name = self.intern(&p.name);
-        let type_name = self.intern(&p.type_name.0);
+        // A property's type slot is spelled like a variable's: primitives
+        // capitalised, classes lowercased.
+        let type_name = self.var_type(&p.type_name.0);
         let doc = self.intern("");
         let mut flags = 0u8;
         let mut auto_var = None;
@@ -505,6 +542,14 @@ impl<'a> Compiler<'a> {
             Expr::Str(s) => Value::String(self.intern(s)),
             Expr::None => Value::None,
             Expr::Ident(n) => Value::Identifier(self.intern(n)),
+            // A negative literal is a unary minus over a literal, not a
+            // literal, so `Int Property X = -1 auto` used to be refused
+            // outright: 94 of the shipped scripts do exactly that.
+            Expr::Unary { op, operand } if op == "-" => match self.value_of(Some(operand), ty)? {
+                Value::Int(i) => Value::Int(-i),
+                Value::Float(f) => Value::Float(-f),
+                other => other,
+            },
             other => {
                 return Err(Error::Parse(format!(
                     "a property's initial value must be a literal, found {other:?}"
@@ -516,7 +561,7 @@ impl<'a> Compiler<'a> {
     /// Compile one function body.
     fn function(&mut self, f: &FunctionDecl) -> Result<(Function, Vec<u16>), Error> {
         let name = self.intern(&f.name);
-        let ret = self.intern(
+        let ret = self.var_type(
             f.return_type
                 .as_ref()
                 .map(|t| t.0.as_str())
@@ -579,7 +624,12 @@ impl<'a> Compiler<'a> {
                 return_type: ret,
                 doc,
                 user_flags: 0,
-                flags: if f.is_global { 0x1 } else { 0 },
+                // Bit 0 is `global`, bit 1 is `native`. A native function has
+                // no body in the `.pex` — its code lives in the engine — so
+                // emitting flag 0 made the VM look for instructions that are
+                // not there. `activemagiceffect` declares dozens of these and
+                // the corpus gives every one of them flags=2.
+                flags: (if f.is_global { 0x1 } else { 0 }) | (if f.is_native { 0x2 } else { 0 }),
                 params,
                 locals: buf
                     .locals
@@ -879,6 +929,36 @@ impl<'a> Compiler<'a> {
     /// class's own source, so this is the only way to know.
     fn static_result_type(&self, class: &str, function: &str) -> &'static str {
         crate::returns::static_return(class, function).unwrap_or("var")
+    }
+
+    /// A type name as a **variable slot** spells it.
+    ///
+    /// Measured over every `::X_var` in the corpus: a primitive is always
+    /// capitalised (`Int` 2,718, `Bool` 1,552, `Float` 766, `String` 169 — no
+    /// lowercase spelling at all), while a class name is lowercase in 91% of
+    /// the 37,235 cases. The source spells these however it likes, so the slot
+    /// is normalised rather than copied.
+    fn var_type(&mut self, name: &str) -> StrIndex {
+        let lower = name
+            .trim()
+            .trim_end_matches("[]")
+            .trim()
+            .to_ascii_lowercase();
+        let canonical = match lower.as_str() {
+            "int" => "Int".to_string(),
+            "float" => "Float".to_string(),
+            "bool" => "Bool".to_string(),
+            "string" => "String".to_string(),
+            "none" => "None".to_string(),
+            _ => {
+                if name.ends_with("[]") {
+                    format!("{lower}[]")
+                } else {
+                    lower
+                }
+            }
+        };
+        self.intern(&canonical)
     }
 
     /// The `::Name_var` member that stores an `auto` property, if `name` is one.
