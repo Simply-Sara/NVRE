@@ -924,7 +924,7 @@ impl<'a> Compiler<'a> {
         let mut patch_false: Vec<usize> = Vec::new();
         let mut patch_end: Vec<usize> = Vec::new();
 
-        for (i, b) in branches.iter().enumerate() {
+        for b in branches {
             if let Some(cond) = &b.cond {
                 let c = self.expr(buf, cond, b.line)?;
                 let mut ins = Instruction::new(opcode_of("jmpf"));
