@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
-"""Harvest method signatures — argument types, not just return types.
+"""Harvest method signatures INCLUDING their default argument values.
 
 `src/returns.rs` was harvested from `.pex` locals tables, which give the RETURN
-type of a call (the temporary it stores into is declared) but say nothing about
-the ARGUMENTS. Arguments are what decide whether the compiler inserts a `cast`
-before a call, and the oracle showed that clearly:
+type of a call but say nothing about arguments. `tools/params.py` then harvested
+argument types from the shipped `.psc`. Neither is enough, because the compiler
+also **appends a default value for every omitted trailing argument**:
 
-    Self.MoveTo(oProp, fProp, fProp, iProp)
-      -> ::oProp_var ::fProp_var ::fProp_var bare, but iProp CAST
-    akA.MoveTo(oProp, afV, afV, afV)
-      -> everything bare
+    source:  BlockActivation()
+    .pex:    callmethod blockActivation self ::NoneVar true
 
-`MoveTo` wants (ObjectReference, float, float, float, bool). `oProp` and `fProp`
-already match; `iProp` is an int where a float is required, so it is cast. So the
-rule is type-directed conversion, and it needs the parameter list.
+    source:  Activate(akActionRef)
+    .pex:    callmethod activate ::temp0 ::temp1 actronaut false
 
-Where the signatures come from: the shipped `.psc` files. A `.psc` declares its
-own functions with real parameter types, and the shipped corpus includes the
-engine's own scripts (`ObjectReference.psc`, `Actor.psc`, `Game.psc`, …), so most
-engine signatures are readable directly rather than guessed.
+    source:  GetLinkedRef()
+    .pex:    callmethod getLinkedRef self ::temp0 None
+
+So a signature needs three things per parameter: its type, whether it has a
+default, and what that default is.
 
 This writes `crates/nvre-papyrus/src/signatures.rs`.
 
@@ -34,11 +32,14 @@ from collections import defaultdict, Counter
 # re.M matters: `^` otherwise matches only at the start of the file and every
 # declaration is missed. re.S lets a parameter list wrap across lines, which the
 # engine's own scripts do for long signatures.
-CALL = re.compile(r"^\s*(?:[A-Za-z_][\w\[\]]*\s+)?(Function|Event)\s+(\w+)\s*\((.*?)\)", re.I | re.M | re.S)
+CALL = re.compile(
+    r"^\s*(?:[A-Za-z_][\w\[\]]*\s+)?(Function|Event)\s+(\w+)\s*\((.*?)\)",
+    re.I | re.M | re.S,
+)
 
 
 def split_params(text):
-    """`(Actor akA, float afV)` -> ['Actor akA', 'float afV']."""
+    """`(Actor akA, float afV = 1.0)` -> ['Actor akA', 'float afV = 1.0']."""
     text = " ".join(text.split())
     if not text:
         return []
@@ -58,15 +59,45 @@ def split_params(text):
     return out
 
 
+def default_of(spec):
+    """The default literal of a parameter, normalised, or None.
+
+    Returns ('bool', 'true'), ('int', '0'), ('float', '0.0'), ('none', 'None')
+    or ('str', 'foo'). Anything unparseable is None, meaning "no default we can
+    reproduce" — the emitter then leaves the call short rather than inventing a
+    value.
+    """
+    if "=" not in spec:
+        return None
+    _, _, raw = spec.partition("=")
+    raw = raw.strip()
+    if not raw:
+        return None
+    low = raw.lower()
+    if low in ("true", "false"):
+        return ("bool", low)
+    if low == "none":
+        return ("none", "None")
+    if re.fullmatch(r"-?\d+", raw):
+        return ("int", raw)
+    if re.fullmatch(r"-?\d*\.\d+([eE][-+]?\d+)?", raw):
+        return ("float", raw)
+    m = re.fullmatch(r'"((?:[^"\\]|\\.)*)"', raw)
+    if m:
+        return ("str", m.group(1))
+    return None
+
+
 def parse_type_and_name(spec):
-    """`Actor akA` -> ('actor', 'aka'). Returns None when unparseable."""
+    """`Actor akA = None` -> ('actor', 'aka', ('none', 'None'))."""
     spec = spec.strip()
     if not spec:
         return None
-    # Trailing modifiers and defaults are not part of the type.
-    spec = re.split(r"\s*=", spec)[0]
-    spec = spec.replace("[]", "[]")
-    bits = spec.split()
+    default = default_of(spec)
+    head = re.split(r"\s*=", spec)[0].strip()
+    if not head:
+        return None
+    bits = head.split()
     if len(bits) < 2:
         return None
     name = bits[-1]
@@ -74,27 +105,23 @@ def parse_type_and_name(spec):
     # `ObjectReference akA` or `float[2] af` or `int[] ai`.
     if not re.match(r"^[A-Za-z_]\w*(\[\d*\])?$", type_name):
         return None
-    return type_name.lower(), name.lower()
+    return type_name.lower(), name.lower(), default
 
 
 def main():
-    path = sys.argv[1]
-    z = zipfile.ZipFile(path)
+    z = zipfile.ZipFile(sys.argv[1])
 
-    # (method_lower) -> Counter of (argtypes tuple)
-    arity = defaultdict(Counter)
-    # (class_lower, method_lower) -> Counter of argtypes
-    static_arity = defaultdict(Counter)
+    arity = defaultdict(Counter)  # name -> Counter of full shapes
+    static_arity = defaultdict(Counter)  # (class, name) -> Counter of shapes
     total = 0
 
     for name in z.namelist():
         if not name.endswith(".psc"):
             continue
         try:
-            raw = z.read(name)
+            src = z.read(name).decode("cp1252", "replace")
         except Exception:
             continue
-        src = raw.decode("cp1252", "replace")
         # The script's own name is its class name for static calls.
         cls = None
         m = re.search(r"^\s*scriptname\s+(\w+)", src, re.I | re.M)
@@ -103,44 +130,57 @@ def main():
 
         # Every Function declaration, including those inside states.
         for mm in CALL.finditer(src):
-            params = split_params(mm.group(3))
-            parsed = [parse_type_and_name(p) for p in params]
+            parsed = [parse_type_and_name(p) for p in split_params(mm.group(3))]
             if any(p is None for p in parsed):
                 continue
-            types = tuple(t for t, _ in parsed)
+            # A shape is the full parameter list: types AND defaults. Two
+            # declarations with the same types but different defaults are
+            # different signatures, because they pad an omitted call
+            # differently.
+            shape = tuple((t, d) for t, _n, d in parsed)
             fn = mm.group(2).lower()
-            arity[fn][types] += 1
+            arity[fn][shape] += 1
             if cls:
-                static_arity[(cls, fn)][types] += 1
+                static_arity[(cls, fn)][shape] += 1
             total += 1
 
     print(f"  // {total} declarations", file=sys.stderr)
-    print(f"  // {len(arity)} distinct function names", file=sys.stderr)
-
-    # A signature is usable when one argument list clearly dominates. Report
-    # ambiguity rather than picking silently: the same method name can exist on
-    # unrelated classes with different parameter types.
+    # A signature is usable only when exactly one shape was observed. Report
+    # ambiguity rather than picking the majority: a name can mean different
+    # things on unrelated classes, and the majority shape mis-casts the rest.
     unambiguous = {k: v.most_common(1)[0] for k, v in arity.items() if len(v) == 1}
-    print(f"  // {len(unambiguous)} with a single observed signature", file=sys.stderr)
+    print(f"  // {len(arity)} names, {len(unambiguous)} with one shape", file=sys.stderr)
     ambiguous = {k: v for k, v in arity.items() if len(v) > 1}
-    print(f"  // {len(ambiguous)} with more than one", file=sys.stderr)
-    for k in list(ambiguous)[:8]:
-        print(f"  //   {k}: {list(ambiguous[k].items())[:3]}", file=sys.stderr)
+    print(f"  // {len(ambiguous)} ambiguous (dropped)", file=sys.stderr)
+    # `unambiguous` values are (shape, count) pairs, so unpack the shape first.
+    defaulted = sum(
+        1
+        for (shape, _n) in unambiguous.values()
+        if any(d for _t, d in shape)
+    )
+    print(f"  // {defaulted} carry at least one defaulted parameter", file=sys.stderr)
 
-    rows = []
-    for fn, (types, _n) in sorted(unambiguous.items()):
-        rows.append((fn, types))
-    # `static_arity` values are Counters of argtype tuples, not the single
-    # (types, count) pair that `unambiguous` holds. Taking most_common(1) here
-    # is what makes a class-qualified entry trustworthy: only names with exactly
-    # one observed shape for that class are emitted.
+    def emit(key, shape):
+        types = ", ".join(f'"{t}"' for t, _d in shape)
+        defaults = ", ".join(
+            "None" if d is None else f'Some(("{d[0]}", "{d[1]}"))' for _t, d in shape
+        )
+        print(f'    ("{key}", &[{types}], &[{defaults}]),')
+
+    print(
+        "/// `(function, parameter types, defaults)`, lowercased, measured from the corpus."
+    )
+    print("pub const SIGNATURES: &[(&str, &[&str], &[Option<(&str, &str)>])] = &[")
+    for fn, (shape, _n) in sorted(unambiguous.items()):
+        emit(fn, shape)
+    # `static_arity` values are Counters of shapes, not the single (shape, count)
+    # pair that `unambiguous` holds. Taking most_common(1) here is what makes a
+    # class-qualified entry trustworthy: only names with exactly one observed
+    # shape for that class are emitted.
     for (cls, fn), counter in sorted(static_arity.items()):
         if len(counter) == 1:
-            rows.append((f"{cls}.{fn}", counter.most_common(1)[0][0]))
-
-    for key, types in rows:
-        joined = ", ".join(f'"{t}"' for t in types)
-        print(f'    ("{key}", &[{joined}]),')
+            emit(f"{cls}.{fn}", counter.most_common(1)[0][0])
+    print("];")
 
 
 if __name__ == "__main__":

@@ -85,8 +85,12 @@ struct FnBuf {
     /// instruction needs to know. This is what `value_type` consults; it is
     /// never written to the file.
     types: Vec<(StrIndex, StrIndex)>,
-    /// How many temporaries have been handed out.
-    next_temp: usize,
+    /// NOTE: the counter of handed-out temporaries is **not** here. It lives on
+    /// `Compiler`, because it is monotonic across the whole script and never
+    /// resets between functions — measured with the real compiler on three
+    /// identical one-temp functions, which came out `::temp0`, `::temp1` and
+    /// `::temp2`. `free_temps` below *is* per-function: the reuse list starts
+    /// empty for every function.
     /// Temporaries that have been released and can be handed out again.
     ///
     /// The Creation Kit does not allocate a fresh temporary per expression: a
@@ -111,7 +115,6 @@ impl FnBuf {
             lines: Vec::new(),
             locals: Vec::new(),
             types: Vec::new(),
-            next_temp: 0,
             free_temps: Vec::new(),
             none_var: None,
             params: Vec::new(),
@@ -152,6 +155,15 @@ pub struct Compiler<'a> {
     /// every script carries them in the order its source spells them on the
     /// `Scriptname` line, which the parser records as flags rather than names.
     user_flag_names: Vec<String>,
+    /// How many temporaries the whole script has handed out.
+    ///
+    /// **Script-wide, not per function** — measured with the real compiler on
+    /// three identical one-temp functions, which came out `::temp0`, `::temp1`
+    /// and `::temp2`. It never resets between functions. The reuse list does:
+    /// it starts empty for every function, so a function with no release of its
+    /// own starts at the counter rather than at zero. That is exactly why a
+    /// no-parameter function in the shipped corpus can begin at `::temp8`.
+    next_temp: usize,
 }
 
 /// One property's compiled form.
@@ -200,6 +212,7 @@ impl<'a> Compiler<'a> {
             symbols,
             strings: Vec::new(),
             types: Vec::new(),
+            next_temp: 0,
             user_flag_names: {
                 // Both are always present, on all 14,026 shipped scripts —
                 // including the 2,859 whose source declares neither. Only the
@@ -787,8 +800,8 @@ impl<'a> Compiler<'a> {
             let (i, _) = buf.free_temps.remove(at);
             return i;
         }
-        let n = buf.next_temp;
-        buf.next_temp += 1;
+        let n = self.next_temp;
+        self.next_temp += 1;
         let i = self.intern(&format!("::temp{n}"));
         buf.locals.push((i, t));
         buf.types.push((i, t));
@@ -1039,7 +1052,9 @@ impl<'a> Compiler<'a> {
             Expr::Member(obj, name) => {
                 // `a.b = v` is `propset a b v`; the object is a value.
                 let _ = self.expr(buf, obj, 0)?;
-                Ok(Value::String(self.intern(name)))
+                // An identifier, like `propget`: all 3,352 propset names in
+                // the shipped corpus carry tag byte 1.
+                Ok(Value::Identifier(self.intern(name)))
             }
             other => Err(Error::Parse(format!("not assignable: {other:?}"))),
         }
@@ -1228,6 +1243,49 @@ impl<'a> Compiler<'a> {
             },
             _ => false,
         }
+    }
+
+    /// Append the default value of every trailing parameter the source omitted.
+    ///
+    /// The compiler **writes out a literal for each omitted argument**, so a
+    /// call written short in source is longer in the `.pex`:
+    ///
+    /// ```text
+    /// source:  BlockActivation()      ->  callmethod blockActivation self ::NoneVar true
+    /// source:  Activate(akActionRef)  ->  callmethod activate ::temp0 ::temp1 actronaut false
+    /// source:  GetLinkedRef()         ->  callmethod getLinkedRef self ::temp0 None
+    /// ```
+    ///
+    /// Without this the call is emitted short and the loader sees a different
+    /// argument count from the one the game shipped.
+    ///
+    /// A parameter with **no** default is never padded: the source was required
+    /// to supply it, and filling in a value there would be invention.
+    fn pad_defaults(
+        &mut self,
+        mut args: Vec<Value>,
+        sig: Option<&'static [Option<(&'static str, &'static str)>]>,
+    ) -> Vec<Value> {
+        let Some(sig) = sig else { return args };
+        for slot in sig.iter().skip(args.len()) {
+            let Some((kind, text)) = slot else { break };
+            let v = match *kind {
+                "bool" => Value::Bool(*text == "true"),
+                "none" => Value::None,
+                "int" => match text.parse::<i32>() {
+                    Ok(n) => Value::Int(n),
+                    Err(_) => break,
+                },
+                "float" => match text.parse::<f32>() {
+                    Ok(f) => Value::Float(f),
+                    Err(_) => break,
+                },
+                "str" => Value::String(self.intern(text)),
+                _ => break,
+            };
+            args.push(v);
+        }
+        args
     }
 
     /// The type a call argument has to be converted to, given the parameter
@@ -1497,10 +1555,12 @@ impl<'a> Compiler<'a> {
                         ins.args.push(Value::Identifier(fname));
                         ins.args.push(Value::Identifier(self_i));
                         ins.args.push(Value::Identifier(tmp));
-                        ins.varargs = args
+                        let dealt: Vec<Value> = args
                             .iter()
                             .map(|a| self.expr(buf, a, line))
                             .collect::<Result<Vec<_>, _>>()?;
+                        let defs = crate::signatures::defaults(name);
+                        ins.varargs = self.pad_defaults(dealt, defs);
                         buf.push(ins, line);
                         Value::Identifier(tmp)
                     }
@@ -1581,6 +1641,7 @@ impl<'a> Compiler<'a> {
                         // modelled.
                         let class = recv_class.as_deref().unwrap_or("");
                         let sig = crate::signatures::method_params(class, method);
+                        let defs = crate::signatures::method_defaults(class, method);
                         let mut va = Vec::with_capacity(args.len());
                         for (i, a) in args.iter().enumerate() {
                             let v = self.expr(buf, a, line)?;
@@ -1590,7 +1651,9 @@ impl<'a> Compiler<'a> {
                             };
                             va.push(v);
                         }
-                        ins.varargs = va;
+                        // Omitted trailing arguments are written out, not
+                        // dropped: the .pex must carry the count the game has.
+                        ins.varargs = self.pad_defaults(va, defs);
                         buf.push(ins, line);
                         Value::Identifier(tmp)
                     }
@@ -1609,7 +1672,12 @@ impl<'a> Compiler<'a> {
                 let mut ins = Instruction::new(opcode_of("propget"));
                 ins.args.push(Value::Identifier(tmp));
                 ins.args.push(o);
-                ins.args.push(Value::String(p));
+                // The property name is an **identifier**, not a string: the
+                // shipped corpus has 9,982 propget/propset names and every one
+                // carries tag byte 1. A `String` here writes the same text with
+                // tag 2, which is a different byte in the file and would not
+                // load. Measured by `examples/proptags.rs`.
+                ins.args.push(Value::Identifier(p));
                 buf.push(ins, line);
                 Value::Identifier(tmp)
             }
