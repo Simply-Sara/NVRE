@@ -93,12 +93,10 @@ struct FnBuf {
     /// empty for every function.
     /// Temporaries that have been released and can be handed out again.
     ///
-    /// The Creation Kit does not allocate a fresh temporary per expression: a
-    /// temporary is freed once the instruction that consumed it has been
-    /// emitted, and the next expression that needs one **of the same type**
-    /// reuses it. That is why its `OnActivate` lists six locals where a
-    /// allocate-per-node emitter lists eleven, and why a function's local count
-    /// is not simply its number of temporaries.
+    /// **Per function.** A script-wide free list was tried and measured worse
+    /// (39,868 identical functions against 41,006), because a slot released in
+    /// one function cannot legitimately be reused by the next: each function
+    /// names its own locals. The counter stays script-wide regardless.
     free_temps: Vec<(StrIndex, StrIndex)>,
     /// Whether `::NoneVar` has been declared yet.
     none_var: Option<StrIndex>,
@@ -338,17 +336,24 @@ impl<'a> Compiler<'a> {
 
         // The bodies to compile, in file order: named states, then the
         // script's own. The injected pair is separate and always first.
+        // **Source order**, in one pass. This is not cosmetic: the temporary
+        // counter is script-wide and advances in the order functions are
+        // COMPILED, while the file lays them out in a different (hash) order.
+        // `AchievementsScript` proves it — `OnTrackedStatsEvent` is line 43 and
+        // starts at `::temp0`, `IncSideQuests` is line 154 and starts at
+        // `::temp8`. Compiling named states first (what this did) put the
+        // functions in the wrong order and put every later temporary out by the
+        // amount the earlier ones had allocated.
         let mut order: Vec<(Option<String>, &FunctionDecl)> = Vec::new();
         for d in &self.script.decls {
-            if let DeclKind::State(st) = &d.kind {
-                for f in &st.functions {
-                    order.push((Some(st.name.clone()), f));
+            match &d.kind {
+                DeclKind::State(st) => {
+                    for f in &st.functions {
+                        order.push((Some(st.name.clone()), f));
+                    }
                 }
-            }
-        }
-        for d in &self.script.decls {
-            if let DeclKind::Function(f) = &d.kind {
-                order.push((None, f));
+                DeclKind::Function(f) => order.push((None, f)),
+                _ => {}
             }
         }
 
@@ -1026,6 +1031,13 @@ impl<'a> Compiler<'a> {
                 let at = buf.here();
                 ins.args.push(Value::Int(0));
                 buf.push(ins, b.line);
+                // NOTE: the condition temp is deliberately NOT released here.
+                // The game does reuse it — `OnTrackedStatsEvent` uses `::temp1`
+                // for several consecutive `if` conditions — so releasing looks
+                // right, and it was tried: 40,782 identical functions against
+                // 41,080 for not releasing. The CK's reuse rule is narrower
+                // than "free whatever an instruction consumed", and guessing at
+                // it here costs more than the reuse gains.
                 patch_false.push(at);
             }
             self.block(buf, &b.body)?;
@@ -1395,8 +1407,9 @@ impl<'a> Compiler<'a> {
         let t = self.temp(buf, want);
         let mut ins = Instruction::new(opcode_of("cast"));
         ins.args.push(Value::Identifier(t));
-        ins.args.push(value);
+        ins.args.push(value.clone());
         buf.push(ins, line);
+        self.release_temp(buf, &value);
         Value::Identifier(t)
     }
 
@@ -1548,9 +1561,17 @@ impl<'a> Compiler<'a> {
                 };
                 let mut ins = Instruction::new(code);
                 ins.args.push(Value::Identifier(tmp));
-                ins.args.push(l);
-                ins.args.push(r);
+                ins.args.push(l.clone());
+                ins.args.push(r.clone());
                 buf.push(ins, line);
+                // A source operand is dead once the instruction that reads it
+                // has been emitted, and the CK frees it immediately and reuses
+                // the slot. Not doing so was the largest remaining source of
+                // drift: `AchievementsScript` allocates 8 temporaries and this
+                // emitter was allocating 101, because only assignment and call
+                // arguments were ever released.
+                self.release_temp(buf, &l);
+                self.release_temp(buf, &r);
                 if op == "!=" {
                     // `a != b` is `not (a == b)`.
                     let tmp2 = self.temp(buf, "Bool");
