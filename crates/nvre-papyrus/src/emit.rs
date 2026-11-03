@@ -1458,12 +1458,38 @@ impl<'a> Compiler<'a> {
         &mut self,
         mut args: Vec<Value>,
         sig: Option<&'static [Option<(&'static str, &'static str)>]>,
+        function: &str,
     ) -> Vec<Value> {
-        let Some(sig) = sig else { return args };
-        for slot in sig.iter().skip(args.len()) {
+        // A function with no usable signature can still be padded from the
+        // per-position table. `additem` is the canonical case: its signature is
+        // dropped as ambiguous, but every declaration that reaches slots 1 and 2
+        // agrees they default to `1` and `false`, and the game writes both out.
+        let slots: Vec<Option<(String, String)>> = match sig {
+            Some(s) => s
+                .iter()
+                .map(|o| o.map(|(k, v)| (k.to_string(), v.to_string())))
+                .collect(),
+            None => {
+                let mut v = Vec::new();
+                for i in 0..8 {
+                    match crate::signatures::positional_default(function, i) {
+                        Some(Some((k, val))) => v.push(Some((k.to_string(), val.to_string()))),
+                        Some(None) => v.push(None),
+                        // Past the end of what the table knows: stop.
+                        None => break,
+                    }
+                }
+                v
+            }
+        };
+        if slots.is_empty() {
+            return args;
+        }
+        for slot in slots.iter().skip(args.len()) {
             let Some((kind, text)) = slot else { break };
-            let v = match *kind {
-                "bool" => Value::Bool(*text == "true"),
+            let (kind, text) = (kind.as_str(), text.as_str());
+            let v = match kind {
+                "bool" => Value::Bool(text == "true"),
                 "none" => Value::None,
                 "int" => match text.parse::<i32>() {
                     Ok(n) => Value::Int(n),
@@ -1835,18 +1861,17 @@ impl<'a> Compiler<'a> {
                             // `Debug.Trace("a")` emits
                             // `callstatic debug Trace ::NoneVar "a" 0`.
                             let own = self.own_class().unwrap_or_default();
-                            let sig = crate::signatures::method_params(&own, name);
                             let defs = crate::signatures::defaults(name);
                             let mut va = Vec::with_capacity(args.len());
                             for (i, a) in args.iter().enumerate() {
                                 let v = self.expr(buf, a, line)?;
-                                let v = match sig.and_then(|s| s.get(i)) {
+                                let v = match crate::signatures::arg_type(&own, name, i) {
                                     Some(w) => self.coerce_arg(buf, v, w, line),
                                     None => v,
                                 };
                                 va.push(v);
                             }
-                            ins.varargs = self.pad_defaults(va, defs);
+                            ins.varargs = self.pad_defaults(va, defs, name);
                             buf.push(ins, line);
                             return Ok(Value::Identifier(tmp));
                         }
@@ -1874,18 +1899,17 @@ impl<'a> Compiler<'a> {
                         // functions, because `None` is how Papyrus spells an
                         // unset object.
                         let own = self.own_class().unwrap_or_default();
-                        let sig = crate::signatures::method_params(&own, name);
                         let mut dealt = Vec::with_capacity(args.len());
                         for (i, a) in args.iter().enumerate() {
                             let v = self.expr(buf, a, line)?;
-                            let v = match sig.and_then(|s| s.get(i)) {
+                            let v = match crate::signatures::arg_type(&own, name, i) {
                                 Some(w) => self.coerce_arg(buf, v, w, line),
                                 None => v,
                             };
                             dealt.push(v);
                         }
                         let defs = crate::signatures::defaults(name);
-                        ins.varargs = self.pad_defaults(dealt, defs);
+                        ins.varargs = self.pad_defaults(dealt, defs, name);
                         buf.push(ins, line);
                         Value::Identifier(tmp)
                     }
@@ -1921,7 +1945,7 @@ impl<'a> Compiler<'a> {
                                     };
                                     va.push(v);
                                 }
-                                ins.varargs = self.pad_defaults(va, defs);
+                                ins.varargs = self.pad_defaults(va, defs, method);
                                 buf.push(ins, line);
                                 return Ok(Value::Identifier(tmp));
                             }
@@ -1975,14 +1999,15 @@ impl<'a> Compiler<'a> {
                         // Without the walk the call got neither its argument
                         // cast nor its trailing `false`.
                         let class = recv_class.as_deref().unwrap_or("");
-                        let (sig, defs) = match crate::signatures::method_signature(class, method) {
-                            Some((p, d)) => (Some(p), Some(d)),
-                            None => (None, None),
-                        };
+                        // The per-position table covers names whose whole
+                        // signature was dropped as ambiguous, so only the
+                        // defaults need looking up here.
+                        let defs =
+                            crate::signatures::method_signature(class, method).map(|(_, d)| d);
                         let mut va = Vec::with_capacity(args.len());
                         for (i, a) in args.iter().enumerate() {
                             let v = self.expr(buf, a, line)?;
-                            let v = match sig.and_then(|s| s.get(i)) {
+                            let v = match crate::signatures::arg_type(class, method, i) {
                                 Some(want) => self.coerce_arg(buf, v, want, line),
                                 None => v,
                             };
@@ -1990,7 +2015,7 @@ impl<'a> Compiler<'a> {
                         }
                         // Omitted trailing arguments are written out, not
                         // dropped: the .pex must carry the count the game has.
-                        ins.varargs = self.pad_defaults(va, defs);
+                        ins.varargs = self.pad_defaults(va, defs, method);
                         let released: Vec<Value> = ins.varargs.clone();
                         buf.push(ins, line);
                         // A temporary consumed as an argument or receiver is

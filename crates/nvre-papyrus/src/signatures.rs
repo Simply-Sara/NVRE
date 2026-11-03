@@ -14508,6 +14508,5500 @@ pub const PARENTS: &[(&str, &str)] = &[
     ("wuuthradscript", "objectreference"),
 ];
 
+/// `(function, per-position type where every declaration agreed)`.
+///
+/// A position is kept even when the whole signature is ambiguous, because
+/// the argument slot is what decides a `cast`: `additem` is
+/// `(Form)` on FormArray and `(Form, int, bool)` on ObjectReference, so the
+/// signature is dropped — but slot 0 is `Form` either way.
+pub const ARG_POSITIONS: &[(&str, &[Option<(&str, Option<(&str, &str)>)>])] = &[
+    ("__iswatched", &[Some(("objectreference", None))]),
+    ("_cleanupbody", &[Some(("referencealias", None))]),
+    (
+        "_getspelltomeleveledlists",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    ("abs", &[Some(("float", None))]),
+    (
+        "absorbeffect",
+        &[Some(("actor", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    ("absorbsoulfrommiraak", &[Some(("actor", None))]),
+    ("acceptabletrigger", &[Some(("objectreference", None))]),
+    (
+        "acceptablevelocitydelta",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("acceptingtransfers", &[Some(("actor", None))]),
+    (
+        "acceptradiantquest",
+        &[Some(("actor", None)), Some(("bool", None))],
+    ),
+    ("acos", &[Some(("float", None))]),
+    (
+        "activate",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("activateactors", &[Some(("objectreference", None))]),
+    (
+        "activatenow",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("activatesteamchain", &[Some(("int", None))]),
+    ("activatesword", &[Some(("objectreference", None))]),
+    ("add", &[Some(("form", None))]),
+    ("addachievement", &[Some(("int", None))]),
+    (
+        "addactortocrimefactionforcurrentlocation",
+        &[Some(("actor", None))],
+    ),
+    ("addactortospectatoralias", &[Some(("actor", None))]),
+    ("addaliastocontainer", &[Some(("referencealias", None))]),
+    (
+        "addaliastocrimefactionforcurrentlocation",
+        &[Some(("referencealias", None))],
+    ),
+    ("addaliastonpcfaction", &[Some(("referencealias", None))]),
+    ("addattackdeltamissionbonus", &[Some(("int", None))]),
+    (
+        "addbacktoattackerpool",
+        &[Some(("int", Some(("int", "1"))))],
+    ),
+    (
+        "addbacktodefenderpool",
+        &[Some(("int", Some(("int", "1"))))],
+    ),
+    ("addbooks", &[Some(("form", None)), Some(("int", None))]),
+    ("addbuildingitemtoplayer", &[Some(("form", None))]),
+    (
+        "addcivilwarachievment",
+        &[
+            Some(("int", None)),
+            Some(("location", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "adddependentanimatedobjectreference",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "addenemyfortstobacktowar",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("addfish", &[Some(("form", None)), Some(("int", None))]),
+    ("addfollowfactiontoactor", &[Some(("actor", None))]),
+    (
+        "addform",
+        &[
+            Some(("form", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "addformtolist",
+        &[
+            Some(("int", None)),
+            Some(("leveleditem", None)),
+            Some(("leveleditem", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "addgarrisonbacktowar",
+        &[
+            Some(("location", None)),
+            Some(("int", Some(("int", "0")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "addhavokballandsocketconstraint",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    ("addinventoryeventfilter", &[Some(("form", None))]),
+    (
+        "additem",
+        &[
+            Some(("form", None)),
+            Some(("int", Some(("int", "1")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "additemtocontainer",
+        &[Some(("form", None)), Some(("int", Some(("int", "1"))))],
+    ),
+    ("addkeyifneeded", &[Some(("objectreference", None))]),
+    ("addmetobuilderfaction", &[Some(("actor", None))]),
+    ("addobjectivetopedestal", &[Some(("objectreference", None))]),
+    ("addorphanablechild", &[Some(("actor", None))]),
+    (
+        "addorremoveplayerfromfaction",
+        &[
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "addpassenger",
+        &[
+            Some(("actor", None)),
+            Some(("objectreference", None)),
+            Some(("int", Some(("int", "1")))),
+        ],
+    ),
+    ("addperk", &[Some(("perk", None))]),
+    ("addperkpoints", &[Some(("int", None))]),
+    ("addprisonkey", &[Some(("actor", None))]),
+    (
+        "addquaternions",
+        &[Some(("float[]", None)), Some(("float[]", None))],
+    ),
+    ("addquest", &[Some(("quest", None))]),
+    ("addreftocontainer", &[Some(("objectreference", None))]),
+    ("addshout", &[Some(("shout", None))]),
+    (
+        "addspell",
+        &[
+            Some(("spell", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "addsteam",
+        &[Some(("int", None)), Some(("objectreference", None))],
+    ),
+    ("addtoarmorslot", &[Some(("form", None))]),
+    ("addtoeatingbuffer", &[Some(("float", None))]),
+    ("addtofaction", &[Some(("faction", None))]),
+    ("addtofollowerlist", &[Some(("actor", None))]),
+    ("addtoguestlist", &[Some(("referencealias", None))]),
+    ("addtolist", &[Some(("objectreference", None))]),
+    ("addtomap", &[Some(("bool", Some(("bool", "false"))))]),
+    ("addtomapforlocation", &[Some(("location", None))]),
+    ("addtopulledlist", &[Some(("objectreference", None))]),
+    (
+        "adjustgraphvalueforrange",
+        &[Some(("actor", None)), Some(("float", None))],
+    ),
+    ("adoptchild", &[Some(("actor", None))]),
+    (
+        "advancecampaignphase",
+        &[Some(("int", Some(("int", "-1"))))],
+    ),
+    ("advancedragonattackscene", &[Some(("int", None))]),
+    (
+        "advanceskill",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    ("aliasloadingorunloading", &[Some(("bool", None))]),
+    ("allowbleedoutdialogue", &[Some(("bool", None))]),
+    ("allowcomplexinteractions", &[Some(("location", None))]),
+    ("allowdragons", &[Some(("location", None))]),
+    ("allowpcdialogue", &[Some(("bool", None))]),
+    ("amianightmare", &[Some(("actor", None))]),
+    ("animatefov", &[Some(("float", Some(("float", "1600.0"))))]),
+    ("ansilvundsummoneffect", &[Some(("referencealias", None))]),
+    (
+        "appear",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "appendformlist",
+        &[Some(("formlist", None)), Some(("formlist", None))],
+    ),
+    ("apply", &[Some(("float", None))]),
+    (
+        "applyattributepenalty",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+            Some(("string", None)),
+        ],
+    ),
+    (
+        "applycoldstage",
+        &[Some(("float", None)), Some(("float", None))],
+    ),
+    ("applycrossfade", &[Some(("float", Some(("float", "1.0"))))]),
+    ("applycrowneffect", &[Some(("bool", None))]),
+    (
+        "applyexhaustionstage",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    (
+        "applyhavokimpulse",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "applyhungerstage",
+        &[Some(("float", None)), Some(("float", None))],
+    ),
+    ("applyism", &[Some(("imagespacemodifier", None))]),
+    (
+        "applyneedrumble",
+        &[
+            Some(("bool", None)),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "applyneedsfx",
+        &[
+            Some(("bool", None)),
+            Some(("sound", None)),
+            Some(("sound", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "applyneedstageplayereffects",
+        &[
+            Some(("bool", None)),
+            Some(("spell", None)),
+            Some(("message", None)),
+            Some(("message", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "applyrumble",
+        &[
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("float", Some(("float", "-1.0")))),
+        ],
+    ),
+    (
+        "applysfx",
+        &[
+            Some(("sound", None)),
+            Some(("sound", Some(("none", "None")))),
+        ],
+    ),
+    ("arenatransformation", &[Some(("actor", None))]),
+    ("arrestpersuade", &[Some(("actor", None))]),
+    ("arrowswap", &[Some(("bool", Some(("bool", "true"))))]),
+    ("asin", &[Some(("float", None))]),
+    ("assigndebriscontroller", &[Some(("objectreference", None))]),
+    (
+        "assignwavecontroller",
+        &[Some(("dlc1_bf_wavecontrollerscript", None))],
+    ),
+    ("atan", &[Some(("float", None))]),
+    ("atan2", &[Some(("float", None)), Some(("float", None))]),
+    ("atan2rad", &[Some(("float", None)), Some(("float", None))]),
+    ("attachashpile", &[Some(("form", Some(("none", "None"))))]),
+    ("attachtocart", &[Some(("bool", None))]),
+    ("attenuatefire", &[Some(("int", None)), Some(("int", None))]),
+    (
+        "attenuatefrost",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    (
+        "bard2playsong",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", Some(("str", "Any")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "0")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "bardplayinstrumental",
+        &[Some(("actor", None)), Some(("string", Some(("str", ""))))],
+    ),
+    ("bardregisterlocationowner", &[Some(("actor", None))]),
+    ("basescriptextensionerror", &[Some(("string", None))]),
+    ("basicdamage", &[Some(("actor", None))]),
+    ("batteleportandswapto", &[Some(("objectreference", None))]),
+    ("batteleportto", &[Some(("objectreference", None))]),
+    ("batteleporttoendmagic", &[Some(("objectreference", None))]),
+    ("batteleporttoendmelee", &[Some(("objectreference", None))]),
+    (
+        "batteleporttoendsameform",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "batteleporttoendswapform",
+        &[Some(("objectreference", None))],
+    ),
+    ("beginfallingcompress", &[Some(("objectreference", None))]),
+    (
+        "bellshapetranslatetorefatspeed",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "bellshapetranslatetorefatspeedandgotostate",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+        ],
+    ),
+    (
+        "bellshapetranslatetorefnodeatspeed",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "bellshapetranslatetorefnodeatspeedandgotostate",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+        ],
+    ),
+    ("bend", &[Some(("int", None))]),
+    (
+        "between",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("blockactivation", &[Some(("bool", Some(("bool", "true"))))]),
+    ("blockgames", &[Some(("actor", None))]),
+    ("bookplaced", &[Some(("int", None))]),
+    ("bookremoved", &[Some(("int", None))]),
+    ("bootcurrentanimalandhiredog", &[Some(("actor", None))]),
+    (
+        "brawl",
+        &[
+            Some(("actor", None)),
+            Some(("actor", Some(("none", "None")))),
+        ],
+    ),
+    ("breakchannel", &[Some(("objectreference", None))]),
+    (
+        "breaknamecalling",
+        &[Some(("bool", None)), Some(("actor", None))],
+    ),
+    ("bribe", &[Some(("actor", None))]),
+    ("bribeguard", &[Some(("actor", None))]),
+    (
+        "buildbyohobject",
+        &[
+            Some(("location", None)),
+            Some(("location", None)),
+            Some(("form", None)),
+        ],
+    ),
+    (
+        "buildhouseexteriorpart",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("form", None)),
+        ],
+    ),
+    (
+        "buildhouseinteriorpart",
+        &[Some(("int", None)), None, None, Some(("int", None))],
+    ),
+    (
+        "buildhousepart",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            None,
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    ("buildtrophy", &[Some(("int", None))]),
+    ("buyanimal", &[Some(("actor", None))]),
+    (
+        "buybuildingmaterial",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    ("buychicken", &[Some(("actor", None))]),
+    ("buycow", &[Some(("actor", None))]),
+    ("buygarden", &[Some(("actor", None))]),
+    ("buyhorse", &[Some(("actor", None))]),
+    ("buyproperty", &[Some(("int", None))]),
+    (
+        "buyroomfurniture",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    (
+        "calculateanimationvalue",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "calculateencounterlevel",
+        &[Some(("int", Some(("int", "4"))))],
+    ),
+    ("calculatefavorcost", &[Some(("int", None))]),
+    (
+        "calculatesmithingvalue",
+        &[Some(("keyword", None)), Some(("int", None))],
+    ),
+    (
+        "calldragon",
+        &[
+            Some(("actor", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("canchangehorsearmor", &[Some(("actor", None))]),
+    (
+        "cangetrestedbonus",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("captureframerate", &[Some(("int", None))]),
+    (
+        "cast",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("castinvis", &[Some(("actor", None))]),
+    ("castspellfromsun", &[Some(("bool", None))]),
+    ("catchevent", &[Some(("form", None)), Some(("int", None))]),
+    (
+        "catchfail",
+        &[
+            Some(("bool", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("catchup", &[Some(("objectreference", None))]),
+    ("ceiling", &[Some(("float", None))]),
+    ("cellattachsetup", &[Some(("objectreference", None))]),
+    ("centeroncell", &[Some(("string", None))]),
+    ("centeroncellandwait", &[Some(("string", None))]),
+    (
+        "changecarrystate",
+        &[
+            Some(("bool", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("changehorsearmor", &[Some(("int", None))]),
+    (
+        "changemiraakcombatstyle",
+        &[Some(("int", Some(("int", "1"))))],
+    ),
+    (
+        "changepipestate",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    ("changestate", &[None, Some(("int", Some(("int", "-1"))))]),
+    ("changetotaldeathsneeded", &[Some(("int", None))]),
+    ("check", &[Some(("int", None))]),
+    ("checkactorweapons", &[Some(("actor", None))]),
+    (
+        "checkadoptorphanagechild",
+        &[Some(("objectreference", None)), Some(("int", None))],
+    ),
+    (
+        "checkadopturchinchild",
+        &[Some(("objectreference", None)), Some(("int", None))],
+    ),
+    (
+        "checkcompletionstatus",
+        &[
+            Some(("int[]", None)),
+            Some(("int[]", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("checkcountplayeffect", &[Some(("int", None))]),
+    ("checkdeadandsetstage", &[Some(("referencealias", None))]),
+    ("checkfoodpoisoning", &[Some(("form", None))]),
+    (
+        "checkforgissuroverhearing",
+        &[Some(("actor", Some(("none", "None"))))],
+    ),
+    ("checkforscenestart", &[Some(("location", None))]),
+    ("checkforversionupdates", &[Some(("int", None))]),
+    ("checkifmaxcold", &[Some(("float", None))]),
+    ("checkifsideisdead", &[Some(("referencealias[]", None))]),
+    ("checkintimidate", &[Some(("actor", None))]),
+    (
+        "checkisinplaneofoblivion",
+        &[
+            Some(("worldspace", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "checklocationandregisterforupdate",
+        &[Some(("location", Some(("none", "None"))))],
+    ),
+    ("checklocrefmarker", &[Some(("objectreference", None))]),
+    ("checkmypillartoggle", &[Some(("actor", None))]),
+    ("checkore", &[Some(("form", None))]),
+    ("checkperks", &[Some(("objectreference", None))]),
+    (
+        "checkrikkegalmarnotatcamppackagelocationandmoveifneeded",
+        &[
+            Some(("actor", None)),
+            Some(("package", None)),
+            Some(("location", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("checkthievingthreshold", &[Some(("actor", None))]),
+    (
+        "checktotals",
+        &[
+            Some(("location", None)),
+            Some(("faction", None)),
+            Some(("globalvariable", None)),
+        ],
+    ),
+    ("checktriggerref", &[Some(("objectreference", None))]),
+    (
+        "childlocationchanged",
+        &[
+            Some(("actor", None)),
+            Some(("location", None)),
+            Some(("location", None)),
+        ],
+    ),
+    (
+        "chimehit",
+        &[Some(("int", None)), Some(("objectreference", None))],
+    ),
+    (
+        "chooseattackingfaction",
+        &[Some(("int", Some(("int", "0"))))],
+    ),
+    (
+        "chooseholdtoattack",
+        &[Some(("int", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    ("civilwarbattle", &[Some(("bool", None))]),
+    (
+        "clamp",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "clampfloat",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "clampfloatto",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "clampint",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "cleanseranasroom",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("cleanup", &[Some(("bool", Some(("bool", "false"))))]),
+    ("cleanupfishingrodactivator", &[Some(("bool", None))]),
+    (
+        "clearactorsenemyflagoncrimefactions",
+        &[Some(("actor", None))],
+    ),
+    (
+        "clearaliasenemyflagoncrimefactions",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "clearaliasifactorisinit",
+        &[
+            Some(("referencealias", None)),
+            Some(("actor", None)),
+            Some(("globalvariable", None)),
+        ],
+    ),
+    (
+        "clearattributepenalty",
+        &[Some(("string", Some(("str", ""))))],
+    ),
+    ("clearheadslot", &[Some(("int", None))]),
+    ("clearholdcrimegold", &[Some(("location", None))]),
+    (
+        "clearname",
+        &[Some(("int", None)), Some(("objectreference", None))],
+    ),
+    ("clearreffrom", &[Some(("objectreference", None))]),
+    ("clearskiesfunction", &[Some(("int", None))]),
+    (
+        "closeanddisable",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("closeuserlog", &[Some(("string", None))]),
+    (
+        "combatstarted",
+        &[
+            Some(("actor", None)),
+            Some(("actor", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("completechange", &[Some(("referencealias", None))]),
+    ("completecwobj", &[Some(("location", None))]),
+    (
+        "completeradiantquest",
+        &[Some(("companionsradiantquest", None))],
+    ),
+    (
+        "completestoryquest",
+        &[Some(("companionsstoryquest", None))],
+    ),
+    (
+        "constellationactivated",
+        &[Some(("objectreference", None)), Some(("int", None))],
+    ),
+    (
+        "controllerforcecollapsecompress",
+        &[Some(("objectreference", None))],
+    ),
+    ("controllights", &[Some(("int", None))]),
+    ("cos", &[Some(("float", None))]),
+    (
+        "countactiveenemies",
+        &[Some(("objectreference", None)), Some(("int", None))],
+    ),
+    (
+        "countaliasiffilledandalive",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "countlinkedrefchain",
+        &[
+            Some(("keyword", Some(("none", "None")))),
+            Some(("int", Some(("int", "100")))),
+        ],
+    ),
+    ("countlinks", &[Some(("objectreference", None))]),
+    (
+        "countorebytypeandupdatequest",
+        &[
+            Some(("miscobject", None)),
+            Some(("globalvariable", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "countperks",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("crabdied", &[Some(("objectreference", None))]),
+    (
+        "createaliasedcourierally",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedcourierenemy",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedcourierimperial",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedcouriersons",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliaseditem",
+        &[
+            Some(("form", None)),
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "createaliasedprisonerally",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedprisonerenemy",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedprisonerimperial",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedprisonersons",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedsoldierally",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedsoldierattacker",
+        &[
+            Some(("location", None)),
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedsoldierdefender",
+        &[
+            Some(("location", None)),
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedsoldierenemy",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedsoldierimperial",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createaliasedsoldiersons",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createandgivemessagetoplayer",
+        &[Some(("form", None)), Some(("referencealias", None))],
+    ),
+    (
+        "createdetectionevent",
+        &[Some(("actor", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    (
+        "createdisguisedactorandforceintoalias",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("int", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "createdisguisedhunter",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "createdisguisedvampire",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("createeulerfrommatrix", &[Some(("float[]", None))]),
+    ("createeulerfromquaternion", &[Some(("float[]", None))]),
+    ("createinteriordefenders", &[Some(("location", None))]),
+    (
+        "creatematrixfromeuler",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("creatematrixfromquaternion", &[Some(("float[]", None))]),
+    (
+        "createmissionaliasedactor",
+        &[
+            Some(("referencealias", None)),
+            Some(("actorbase", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createmissions",
+        &[
+            Some(("location", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "createquaternionfromeuler",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("createquest", &[Some(("int", None))]),
+    ("createquestbasedonlocation", &[Some(("location", None))]),
+    ("critterdeath", &[Some(("actor", None))]),
+    (
+        "damageactorvalue",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    ("damageav", &[Some(("string", None)), Some(("float", None))]),
+    ("damageboss", &[Some(("actor", None))]),
+    ("damageobject", &[Some(("float", None))]),
+    ("dealshrineeventhealthdamage", &[Some(("int", None))]),
+    (
+        "deathsequence",
+        &[
+            Some(("actor", None)),
+            Some(("actor", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "debugchannelnotify",
+        &[Some(("string", None)), Some(("string", None))],
+    ),
+    ("decalspray", &[Some(("actor", None)), Some(("int", None))]),
+    (
+        "decreasecold",
+        &[
+            Some(("float", None)),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "decreaseexhaustion",
+        &[
+            Some(("float", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("decreaseguarded", &[Some(("int", Some(("int", "1"))))]),
+    ("decreasehungerbuffered", &[Some(("float", None))]),
+    ("decreasehungerimpl", &[Some(("float", None))]),
+    ("decreaseopen", &[Some(("int", Some(("int", "1"))))]),
+    ("decreaseplayful", &[Some(("int", Some(("int", "1"))))]),
+    ("decreaseserious", &[Some(("int", Some(("int", "1"))))]),
+    ("decrementcountcultists", &[Some(("referencealias", None))]),
+    (
+        "decrementneed",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("float", Some(("float", "-1.0")))),
+        ],
+    ),
+    ("decrementpoorcount", &[Some(("int", None))]),
+    ("degreestoradians", &[Some(("float", None))]),
+    (
+        "determineandsetcrimefactionforsoldieractor",
+        &[Some(("actor", None))],
+    ),
+    (
+        "determinerolealias",
+        &[
+            Some(("actor", None)),
+            Some(("float", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "determineroleglobal",
+        &[
+            Some(("actor", None)),
+            Some(("float", None)),
+            Some(("globalvariable", None)),
+            Some(("globalvariable", None)),
+        ],
+    ),
+    ("devoursoulchangestate", &[Some(("int", None))]),
+    (
+        "dim",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "directmotesat",
+        &[Some(("formlist", None)), Some(("objectreference", None))],
+    ),
+    ("disable", &[Some(("bool", Some(("bool", "false"))))]),
+    ("disableallotherdrivers", &[Some(("objectreference", None))]),
+    (
+        "disableanddelete",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("disableifnotcompleted", &[Some(("int", None))]),
+    (
+        "disableifset",
+        &[Some(("objectreference", None)), Some(("actor", None))],
+    ),
+    (
+        "disablelinkchain",
+        &[
+            Some(("keyword", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("disablenowait", &[Some(("bool", Some(("bool", "false"))))]),
+    ("disableobjects", &[Some(("bool", Some(("bool", "true"))))]),
+    ("disablerituallights", &[Some(("objectreference", None))]),
+    ("disallowcomplexinteractions", &[Some(("location", None))]),
+    ("disallowdragons", &[Some(("location", None))]),
+    ("discovermilitarycampmarkers", &[Some(("int", None))]),
+    ("dismissbard", &[Some(("actor", None))]),
+    (
+        "dismissfollower",
+        &[
+            Some(("int", Some(("int", "0")))),
+            Some(("int", Some(("int", "1")))),
+        ],
+    ),
+    ("dismisshireling", &[Some(("actorbase", None))]),
+    (
+        "dismisssteward",
+        &[Some(("int", None)), Some(("actor", None))],
+    ),
+    ("dispeldragon", &[Some(("objectreference", None))]),
+    ("dispelspell", &[Some(("spell", None))]),
+    ("displaycoldleveltransitionmessage", &[Some(("int", None))]),
+    ("displayfish", &[Some(("form", None))]),
+    ("displayitem", &[Some(("form", None))]),
+    ("doaction", &[Some(("int", None))]),
+    (
+        "docombatspellapply",
+        &[Some(("spell", None)), Some(("objectreference", None))],
+    ),
+    ("dodelete", &[Some(("actor", None))]),
+    (
+        "dolocalhit",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("int", None)),
+            Some(("bool", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "doublecheckactors",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "dragonabsorbeffect",
+        &[Some(("actor", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    (
+        "dropcarrieditems",
+        &[Some(("form", None)), Some(("int", None))],
+    ),
+    (
+        "dropobject",
+        &[Some(("form", None)), Some(("int", Some(("int", "1"))))],
+    ),
+    ("dropwall", &[Some(("objectreference", None))]),
+    ("dumpaliasdata", &[Some(("quest", None))]),
+    ("elementaleffect", &[Some(("actor", None))]),
+    ("enable", &[Some(("bool", Some(("bool", "false"))))]),
+    ("enableai", &[Some(("bool", Some(("bool", "true"))))]),
+    ("enableallfurniture", &[Some(("int", None))]),
+    (
+        "enabledwarventech",
+        &[Some(("dlc1rh05dwarventechscript", None))],
+    ),
+    (
+        "enablefasttravel",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("enablehm", &[Some(("bool", None))]),
+    (
+        "enablehmbattle",
+        &[Some(("bool", None)), Some(("int", Some(("int", "-1"))))],
+    ),
+    (
+        "enablehmstorn",
+        &[Some(("bool", None)), Some(("int", Some(("int", "-1"))))],
+    ),
+    (
+        "enablelinkchain",
+        &[Some(("keyword", Some(("none", "None"))))],
+    ),
+    ("enablemapmarkeralias", &[Some(("referencealias", None))]),
+    ("enablenowait", &[Some(("bool", Some(("bool", "false"))))]),
+    ("enablepatrol", &[Some(("int", None))]),
+    (
+        "enablerituallights",
+        &[Some(("objectreference", None)), Some(("float", None))],
+    ),
+    ("enableroomfurniture", &[Some(("int", None))]),
+    (
+        "enablevalericasgarden",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "enablevalericasroom",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("enablingactor", &[Some(("objectreference", None))]),
+    ("enddistractionscene", &[Some(("scene", None))]),
+    (
+        "endshrineevent",
+        &[Some(("actor", None)), Some(("weapon", None))],
+    ),
+    (
+        "enforcedrawbridgecollisionstate",
+        &[Some(("location", None)), Some(("cwsiegescript", None))],
+    ),
+    (
+        "engagefollowbehavior",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("equipblade", &[Some(("actor", None))]),
+    (
+        "equiphorsearmor",
+        &[Some(("actor", None)), Some(("armor", None))],
+    ),
+    (
+        "equipitem",
+        &[
+            Some(("form", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("equipshout", &[Some(("shout", None))]),
+    ("equipspell", &[Some(("spell", None)), Some(("int", None))]),
+    ("esberndelphinewait", &[Some(("bool", None))]),
+    ("evaluatelever", &[Some(("objectreference", None))]),
+    ("evpaliases", &[Some(("bool", Some(("bool", "false"))))]),
+    ("exileactor", &[Some(("actor", None))]),
+    (
+        "exitcart",
+        &[
+            Some(("referencealias", None)),
+            Some(("int", Some(("int", "0")))),
+        ],
+    ),
+    ("extract", &[Some(("actor", None))]),
+    ("factionname", &[Some(("int", None))]),
+    ("factionownsall", &[Some(("int", None))]),
+    (
+        "fadeinghost",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "fadeoutgame",
+        &[
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("failattackquest", &[Some(("locationalias", None))]),
+    ("failcwobj", &[Some(("location", None))]),
+    ("faildefensequest", &[Some(("locationalias", None))]),
+    ("fakeharvest", &[Some(("objectreference", None))]),
+    ("fasttravel", &[Some(("objectreference", None))]),
+    ("feed", &[Some(("actor", None))]),
+    ("fgreceivegift", &[Some(("actor", None))]),
+    ("fgreceivepoorgift", &[Some(("actor", None))]),
+    (
+        "fightforawhile",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    (
+        "figureeighttest",
+        &[Some(("float", None)), Some(("float", None))],
+    ),
+    (
+        "fillsoul",
+        &[Some(("objectreference", None)), Some(("int", None))],
+    ),
+    ("find", &[Some(("form", None))]),
+    ("findallowedcatchdatainlist", &[Some(("formlist", None))]),
+    (
+        "findarrayindex",
+        &[Some(("int[]", None)), Some(("int", None))],
+    ),
+    (
+        "findclosestactor",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findclosestactorfromref",
+        &[Some(("objectreference", None)), Some(("float", None))],
+    ),
+    (
+        "findclosestreferenceofanytypeinlist",
+        &[
+            Some(("formlist", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findclosestreferenceofanytypeinlistfromref",
+        &[
+            Some(("formlist", None)),
+            Some(("objectreference", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findclosestreferenceoftype",
+        &[
+            Some(("form", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findclosestreferenceoftypefromref",
+        &[
+            Some(("form", None)),
+            Some(("objectreference", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findrandomactor",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findrandomactorfromref",
+        &[Some(("objectreference", None)), Some(("float", None))],
+    ),
+    (
+        "findrandomreferenceofanytypeinlist",
+        &[
+            Some(("formlist", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findrandomreferenceofanytypeinlistfromref",
+        &[
+            Some(("formlist", None)),
+            Some(("objectreference", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findrandomreferenceoftype",
+        &[
+            Some(("form", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "findrandomreferenceoftypefromref",
+        &[
+            Some(("form", None)),
+            Some(("objectreference", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("findref", &[Some(("objectreference", None))]),
+    (
+        "findsunartlocation",
+        &[Some(("float", Some(("float", "1.0"))))],
+    ),
+    ("findweather", &[Some(("int", None))]),
+    (
+        "finished",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("finishquest", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "fire",
+        &[
+            Some(("objectreference", None)),
+            Some(("ammo", Some(("none", "None")))),
+        ],
+    ),
+    ("firetriggerevent", &[Some(("spell", None))]),
+    ("fish", &[Some(("bool", Some(("bool", "false"))))]),
+    ("fishingdebug", &[Some(("string", None))]),
+    (
+        "fishingplaquepatchreassignaliases",
+        &[
+            Some(("ccbgssse001_fishplaquescript[]", None)),
+            Some(("ccbgssse001_fishplaquealiasscript[]", None)),
+        ],
+    ),
+    ("fishtaken", &[Some(("objectreference", None))]),
+    (
+        "flagfieldcowithactivequestfaction",
+        &[
+            Some(("int", Some(("int", "-1")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "flagfieldcowithmissionresultfaction",
+        &[
+            Some(("int", Some(("int", "-1")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "flagfieldcowithpotentialmissionfactions",
+        &[
+            Some(("int", Some(("int", "-1")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "0")))),
+        ],
+    ),
+    ("floor", &[Some(("float", None))]),
+    (
+        "flyaroundspawner",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("flyaway", &[Some(("float", None))]),
+    ("flyto", &[Some(("objectreference", None))]),
+    ("flytoperch", &[Some(("objectreference", None))]),
+    ("focuspointactivate", &[Some(("objectreference", None))]),
+    ("followplayer", &[Some(("bool", Some(("bool", "false"))))]),
+    ("forceactive", &[Some(("bool", Some(("bool", "false"))))]),
+    (
+        "forceactorvalue",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    (
+        "forcealiasintofortjobalias",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("forceav", &[Some(("string", None)), Some(("float", None))]),
+    (
+        "forceintonextexterioralias",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "forceintonextinterioralias",
+        &[Some(("objectreference", None))],
+    ),
+    ("forcelocationto", &[Some(("location", None))]),
+    (
+        "forcemovementdirection",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "forcemovementdirectionramp",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.1")))),
+        ],
+    ),
+    (
+        "forcemovementrotationspeed",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "forcemovementrotationspeedramp",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.1")))),
+        ],
+    ),
+    ("forcemovementspeed", &[Some(("float", None))]),
+    (
+        "forcemovementspeedramp",
+        &[
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.1")))),
+        ],
+    ),
+    ("forcemovementspeedupdate", &[Some(("actor", None))]),
+    ("forcerefifempty", &[Some(("objectreference", None))]),
+    ("forcerefinto", &[Some(("objectreference", None))]),
+    ("forcerefto", &[Some(("objectreference", None))]),
+    (
+        "forcereftoandreturnalias",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "forcetargetangle",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "forcetargetdirection",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    ("forcetargetspeed", &[Some(("float", None))]),
+    ("forcetemperaturelevelui", &[Some(("int", None))]),
+    ("foundplayercompress", &[Some(("objectreference", None))]),
+    ("fragment_0", &[None, Some(("actor", None))]),
+    ("fragment_1", &[None, Some(("actor", None))]),
+    ("fragment_10_markathsetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_10_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_10_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_10_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_10_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_11",
+        &[Some(("objectreference", None)), Some(("actor", None))],
+    ),
+    (
+        "fragment_11_markarthsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_11_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_11_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_11_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_11_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_13",
+        &[Some(("objectreference", None)), Some(("actor", None))],
+    ),
+    ("fragment_13_markathsetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_13_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_13_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_13_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_13_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_15",
+        &[Some(("objectreference", None)), Some(("actor", None))],
+    ),
+    ("fragment_17_markathsetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_17_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_17_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_17_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_17_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_18_markarthsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_18_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_18_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_18_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_18_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_2", &[None, Some(("actor", None))]),
+    (
+        "fragment_21_markarthsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_21_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_21_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_21_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_22_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_22_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_22_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_25_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_27_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_27_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_3", &[None, Some(("actor", None))]),
+    (
+        "fragment_34_markarthsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_34_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_34_solitutesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_34_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_34_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_37_markarthsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_37_riftensetup", &[Some(("cwsiegescript", None))]),
+    (
+        "fragment_37_solitudesetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_37_whiterunsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    (
+        "fragment_37_windhelmsetup",
+        &[Some(("cwsiegescript", None))],
+    ),
+    ("fragment_4", &[None, Some(("actor", None))]),
+    ("fragment_5", &[None, Some(("actor", None))]),
+    (
+        "fragment_6",
+        &[Some(("objectreference", None)), Some(("actor", None))],
+    ),
+    ("fragment_6_markarthsetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_6_riftensetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_6_solitudesetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_6_whiterunsetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_6_windhelmsetup", &[Some(("cwsiegescript", None))]),
+    ("fragment_7", &[None, Some(("actor", None))]),
+    ("fragment_9", &[Some(("objectreference", None))]),
+    (
+        "freeprisoner",
+        &[
+            Some(("actor", None)),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("freezealias", &[Some(("referencealias", None))]),
+    ("frostmoonringequipped", &[Some(("int", None))]),
+    ("frostmoonringunequipped", &[Some(("int", None))]),
+    ("gametimedaystorealtimeseconds", &[Some(("float", None))]),
+    ("gametimetostring", &[Some(("float", None))]),
+    ("gasexplode", &[Some(("objectreference", None))]),
+    ("get", &[Some(("int", None))]),
+    ("getactorallgeiance", &[Some(("actor", None))]),
+    ("getactorvalue", &[Some(("string", None))]),
+    ("getactorvaluemax", &[Some(("string", None))]),
+    ("getactorvaluepercentage", &[Some(("string", None))]),
+    ("getalias", &[Some(("int", None))]),
+    (
+        "getaliascampfieldcoforhold",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    ("getaliasforlocation", &[Some(("location", None))]),
+    (
+        "getaliashqfieldcoforhold",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    (
+        "getamounttoincrementby",
+        &[Some(("int", None)), Some(("float", None))],
+    ),
+    ("getanimationvariablebool", &[Some(("string", None))]),
+    ("getanimationvariablefloat", &[Some(("string", None))]),
+    ("getanimationvariableint", &[Some(("string", None))]),
+    ("getarmorformiscobject", &[Some(("miscobject", None))]),
+    ("getat", &[Some(("int", None))]),
+    (
+        "getattackdeltapointsforcapital",
+        &[Some(("location", None))],
+    ),
+    (
+        "getattackdeltapointsfordefenderonlygarrison",
+        &[Some(("location", None)), Some(("objectreference", None))],
+    ),
+    (
+        "getattackdeltapointsforgarrison",
+        &[Some(("location", None)), Some(("objectreference", None))],
+    ),
+    ("getattacker", &[Some(("location", None))]),
+    ("getattackerspawnref", &[Some(("referencealias", None))]),
+    ("getav", &[Some(("string", None))]),
+    ("getavmax", &[Some(("string", None))]),
+    ("getavpercentage", &[Some(("string", None))]),
+    ("getbaseactorvalue", &[Some(("string", None))]),
+    ("getbaseav", &[Some(("string", None))]),
+    ("getbudgetname", &[Some(("int", None))]),
+    ("getcampaignstartmarker", &[Some(("int", None))]),
+    ("getcampenablemarker", &[Some(("int", None))]),
+    (
+        "getcamplocationforhold",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    ("getcapitallocationforhold", &[Some(("location", None))]),
+    (
+        "getcartidle",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "getcellarholdingchestforlocation",
+        &[Some(("location", None))],
+    ),
+    ("getcolderfromspellhit", &[Some(("float", None))]),
+    ("getcoldstagemaximum", &[Some(("int", None))]),
+    ("getcombatantalias", &[Some(("int", None))]),
+    (
+        "getcountfarms",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "getcountmills",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "getcountmines",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("getcrimefactionforactorfaction", &[Some(("actor", None))]),
+    (
+        "getcrimefactionforactorscurrentlocation",
+        &[Some(("actor", None))],
+    ),
+    ("getcrimefactionforhold", &[Some(("location", None))]),
+    (
+        "getcrimefactionforholdlocation",
+        &[Some(("location", None))],
+    ),
+    ("getcurrentbudget", &[Some(("int", None))]),
+    ("getcurrentholdlocationforactor", &[Some(("actor", None))]),
+    ("getcwobjglobal", &[Some(("int", None))]),
+    ("getdefender", &[Some(("location", None))]),
+    ("getdefenderspawnref", &[Some(("referencealias", None))]),
+    ("getdistance", &[Some(("objectreference", None))]),
+    ("getdoorforwave", &[Some(("int", None))]),
+    ("getenablemarkerforpatrol", &[Some(("int", None))]),
+    ("getequippedarmorinslot", &[Some(("int", None))]),
+    ("getequippeditemtype", &[Some(("int", None))]),
+    ("getequippedspell", &[Some(("int", None))]),
+    (
+        "getequippedweapon",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("getexiledmarkerforactor", &[Some(("actor", None))]),
+    (
+        "getfacingtotarget",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "getfacingtotargetz",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "getfaction",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("getfactionhqmarkerforactor", &[Some(("actor", None))]),
+    ("getfactionrank", &[Some(("faction", None))]),
+    ("getfactionreaction", &[Some(("actor", None))]),
+    ("getfightquestfromindex", &[Some(("int", None))]),
+    ("getform", &[Some(("int", None))]),
+    (
+        "getformfromfile",
+        &[Some(("int", None)), Some(("string", None))],
+    ),
+    (
+        "getformlistindex",
+        &[
+            Some(("formlist", None)),
+            Some(("int", None)),
+            Some(("form", Some(("none", "None")))),
+        ],
+    ),
+    ("getgamesettingfloat", &[Some(("string", None))]),
+    ("getgamesettingint", &[Some(("string", None))]),
+    ("getgamesettingstring", &[Some(("string", None))]),
+    ("getgarrisoncost", &[Some(("location", None))]),
+    ("getheadingangle", &[Some(("objectreference", None))]),
+    ("getholdid", &[Some(("location", None))]),
+    ("getholdowner", &[Some(("int", None))]),
+    (
+        "getindexfromfightquest",
+        &[Some(("arenacombatquest", None))],
+    ),
+    ("getindexfromradiantquest", &[Some(("quest", None))]),
+    ("getintforholdlocation", &[Some(("location", None))]),
+    ("getitemcount", &[Some(("form", None))]),
+    ("getkeyworddata", &[Some(("keyword", None))]),
+    ("getkeywordforwave", &[Some(("int", None))]),
+    ("getlinkedref", &[Some(("keyword", Some(("none", "None"))))]),
+    ("getlocationforhold", &[Some(("int", None))]),
+    ("getlocationglobal", &[Some(("int", None))]),
+    ("getmapmarkerforlocation", &[Some(("location", None))]),
+    ("getmaxstagevalue", &[Some(("int", None))]),
+    ("getminskill", &[Some(("keyword", None))]),
+    ("getmiscobjectforarmor", &[Some(("armor", None))]),
+    ("getmiscquestcompletestage", &[Some(("int", None))]),
+    ("getmiscquestletterwasreadstage", &[Some(("int", None))]),
+    ("getmiscquestreadletterobjective", &[Some(("int", None))]),
+    (
+        "getmycurrentholdlocation",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "getmyeditorlocationholdlocation",
+        &[Some(("objectreference", None))],
+    ),
+    ("getmyparentholdlocation", &[Some(("location", None))]),
+    ("getnextfishcatchdata", &[Some(("formlist", None))]),
+    (
+        "getnextindex",
+        &[Some(("int", None)), Some(("float[]", None))],
+    ),
+    ("getnextjunkcatchdata", &[Some(("formlist", None))]),
+    ("getnthlinkedref", &[Some(("int", None))]),
+    (
+        "getobjectforlocationanditem",
+        &[Some(("location", None)), Some(("form", None))],
+    ),
+    (
+        "getoffset3ddata",
+        &[
+            Some(("float[]", None)),
+            Some(("float[]", None)),
+            Some(("float[]", None)),
+            Some(("float[]", None)),
+        ],
+    ),
+    ("getoppositefactionint", &[Some(("int", None))]),
+    ("getoutofjailcard", &[Some(("actor", None))]),
+    ("getowner", &[Some(("location", None))]),
+    (
+        "getplayerallegianceenemyfaction",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "getplayerallegiancefaction",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("getpoolexpressedassoldiercount", &[Some(("float", None))]),
+    ("getradiantquestfromindex", &[Some(("int", None))]),
+    ("getrandomsong", &[Some(("objectreference", None))]),
+    ("getreaction", &[Some(("faction", None))]),
+    (
+        "getreferencecampfieldcoforhold",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    (
+        "getreferencehqfieldcoforhold",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    ("getreftypealivecount", &[Some(("locationreftype", None))]),
+    ("getreftypedeadcount", &[Some(("locationreftype", None))]),
+    ("getregistryindex", &[Some(("objectreference", None))]),
+    ("getrelationshiprank", &[Some(("actor", None))]),
+    (
+        "getrelationshipstring",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    ("getresourcetype", &[Some(("referencealias", None))]),
+    (
+        "getrespawnmarker",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("getrikkeorgalmar", &[Some(("int", Some(("int", "-1"))))]),
+    (
+        "getroomdisablelist",
+        &[Some(("byohhousescript", None)), Some(("int", None))],
+    ),
+    (
+        "getroomenablelist",
+        &[Some(("byohhousescript", None)), Some(("int", None))],
+    ),
+    ("getstagedone", &[Some(("int", None))]),
+    ("getstewardindex", &[Some(("actor", None))]),
+    (
+        "getstrengthpoints",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    (
+        "getthresholdcounter",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "5.0")))),
+        ],
+    ),
+    ("getticks", &[Some(("float", None)), Some(("float", None))]),
+    (
+        "gettotalav",
+        &[Some(("string", None)), Some(("string", None))],
+    ),
+    ("getvampirerace", &[Some(("actor", None))]),
+    ("getwarmerfromspellhit", &[Some(("float", None))]),
+    (
+        "getwinner",
+        &[
+            Some(("location", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("ghostactivate", &[Some(("referencealias", None))]),
+    ("ghostflash", &[Some(("float", None))]),
+    ("gimpalias", &[Some(("referencealias", None))]),
+    ("giveacube", &[Some(("bool", Some(("bool", "true"))))]),
+    ("givebooktoplayer", &[Some(("int", None))]),
+    ("givechildgift", &[Some(("actor", None))]),
+    ("givegift", &[Some(("actor", None))]),
+    ("givenewoutfit", &[Some(("actor", None))]),
+    (
+        "giveplayeraliasquestitem",
+        &[Some(("form", None)), Some(("referencealias", None))],
+    ),
+    ("giveplayerbountyletterforquest", &[Some(("quest", None))]),
+    ("giveplayerservantskey", &[Some(("actor", None))]),
+    ("givequestreward", &[Some(("int", Some(("int", "0"))))]),
+    ("goldtransfer", &[Some(("objectreference", None))]),
+    ("gotblood", &[Some(("objectreference", None))]),
+    ("gotingredient", &[Some(("objectreference", None))]),
+    ("gotingredientbase", &[Some(("form", None))]),
+    (
+        "gotolink",
+        &[Some(("int", None)), Some(("objectreference", None))],
+    ),
+    ("gotonewplant", &[Some(("float", None))]),
+    ("gotonewpoint", &[Some(("float", None))]),
+    ("gotparentpitch", &[Some(("objectreference", None))]),
+    (
+        "goup",
+        &[
+            Some(("float", Some(("float", "7500.0")))),
+            Some(("float", Some(("float", "2500.0")))),
+        ],
+    ),
+    (
+        "greybeardspeakingeffect",
+        &[Some(("float", Some(("float", "2.0"))))],
+    ),
+    ("guilddiscount", &[Some(("actor", None))]),
+    ("guildmodifycrimegold", &[Some(("faction", None))]),
+    ("guildpayoff", &[Some(("actor", None))]),
+    ("handleactivate", &[Some(("objectreference", None))]),
+    (
+        "handleattributediseaseapply",
+        &[
+            Some(("spell", None)),
+            Some(("activemagiceffect", None)),
+            Some(("actor", None)),
+        ],
+    ),
+    (
+        "handlecombatstatechanged",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    (
+        "handlecontainerchanged",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "handlecubeobjectiveevent",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    ("handledeath", &[Some(("actor", None))]),
+    (
+        "handlehit",
+        &[
+            Some(("objectreference", None)),
+            Some(("form", None)),
+            Some(("projectile", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    (
+        "handleinjection",
+        &[
+            Some(("leveleditem", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "handleinjecttolists",
+        &[
+            Some(("leveleditem[]", None)),
+            Some(("int[]", None)),
+            Some(("int[]", None)),
+        ],
+    ),
+    (
+        "handlelocationchange",
+        &[Some(("location", None)), Some(("location", None))],
+    ),
+    (
+        "handleonenteronleave",
+        &[Some(("int", None)), Some(("bool", None))],
+    ),
+    (
+        "handlesoundbyname",
+        &[
+            Some(("string", None)),
+            Some(("bool", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("handletriggerenter", &[Some(("objectreference", None))]),
+    ("handletriggerleave", &[Some(("objectreference", None))]),
+    (
+        "handleversionchanges",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    (
+        "handleweaponplacement",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "harkonbitesplayer",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("harvest", &[Some(("objectreference", None))]),
+    (
+        "hasassociation",
+        &[
+            Some(("associationtype", None)),
+            Some(("actor", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "hascommonparent",
+        &[
+            Some(("location", None)),
+            Some(("keyword", Some(("none", "None")))),
+        ],
+    ),
+    ("haseffectkeyword", &[Some(("keyword", None))]),
+    (
+        "hasfamilyrelationship",
+        &[Some(("actor", Some(("none", "None"))))],
+    ),
+    ("hasform", &[Some(("form", None))]),
+    ("haskeyword", &[Some(("keyword", None))]),
+    ("haslos", &[Some(("objectreference", None))]),
+    ("hasmagiceffect", &[Some(("magiceffect", None))]),
+    ("hasmagiceffectwithkeyword", &[Some(("keyword", None))]),
+    ("hasnode", &[Some(("string", None))]),
+    ("hasparentrelationship", &[Some(("actor", None))]),
+    ("hasperk", &[Some(("perk", None))]),
+    ("hasreftype", &[Some(("locationreftype", None))]),
+    ("hasspell", &[Some(("form", None))]),
+    ("hirebard", &[Some(("actor", None))]),
+    ("hirecarriagedriver", &[Some(("actor", None))]),
+    ("hiredog", &[Some(("actor", None))]),
+    ("hiresteward", &[Some(("int", None)), Some(("actor", None))]),
+    ("holdname", &[Some(("int", None))]),
+    ("houseanimaldied", &[Some(("objectreference", None))]),
+    ("hsmtransfer", &[Some(("actor", None))]),
+    (
+        "ignorefriendlyhits",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "ignoretriggerevents",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("imperialsareattacking", &[Some(("location", None))]),
+    ("inchardworker", &[Some(("int", None))]),
+    (
+        "increasecold",
+        &[
+            Some(("float", None)),
+            Some(("float", Some(("float", "-1.0")))),
+        ],
+    ),
+    ("increaseexhaustion", &[Some(("float", None))]),
+    ("increaseguarded", &[Some(("int", Some(("int", "1"))))]),
+    ("increasehunger", &[Some(("float", None))]),
+    ("increaseopen", &[Some(("int", Some(("int", "1"))))]),
+    ("increaseplayful", &[Some(("int", Some(("int", "1"))))]),
+    ("increasepower", &[Some(("actor", None))]),
+    ("increaseserious", &[Some(("int", Some(("int", "1"))))]),
+    ("incrementdefenderdeadcount", &[Some(("actor", None))]),
+    ("incrementdraugrdeadcount", &[Some(("actor", None))]),
+    ("incrementexitcartcount", &[Some(("int", None))]),
+    (
+        "incrementneed",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "-1.0")))),
+        ],
+    ),
+    (
+        "incrementneedbytick",
+        &[
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    ("incrementnegotiationdelta", &[Some(("int", None))]),
+    ("incrementpushtargetcount", &[Some(("actor", None))]),
+    ("incrementskill", &[Some(("string", None))]),
+    (
+        "incrementskillby",
+        &[Some(("string", None)), Some(("int", None))],
+    ),
+    (
+        "incrementstat",
+        &[Some(("string", None)), Some(("int", Some(("int", "1"))))],
+    ),
+    ("incrementwaterstage", &[Some(("bool", None))]),
+    ("initializesummon", &[Some(("objectreference", None))]),
+    (
+        "injecttome",
+        &[
+            Some(("book", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", Some(("int", "1")))),
+            Some(("int", Some(("int", "1")))),
+        ],
+    ),
+    (
+        "injecttomes",
+        &[
+            Some(("book[]", None)),
+            Some(("int[]", None)),
+            Some(("int[]", None)),
+            Some(("int[]", Some(("none", "None")))),
+            Some(("int[]", Some(("none", "None")))),
+        ],
+    ),
+    ("installactor", &[Some(("actor", None))]),
+    ("intimidate", &[Some(("actor", None))]),
+    (
+        "introquestcompleted",
+        &[
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("inversequaternion", &[Some(("float[]", None))]),
+    ("isactioncomplete", &[Some(("int", None))]),
+    ("isactivatechild", &[Some(("objectreference", None))]),
+    (
+        "isactorattacker",
+        &[Some(("actor", None)), Some(("location", None))],
+    ),
+    (
+        "isactorcurrentlyinlocation",
+        &[Some(("actor", None)), Some(("location", None))],
+    ),
+    (
+        "isactordefender",
+        &[Some(("actor", None)), Some(("location", None))],
+    ),
+    (
+        "isactorinfactioninformlist",
+        &[Some(("actor", None)), Some(("formlist", None))],
+    ),
+    ("isaliasalive", &[Some(("referencealias", None))]),
+    ("isaliasattacker", &[Some(("referencealias", None))]),
+    (
+        "isallowedinlocation",
+        &[Some(("actor", None)), Some(("location", None))],
+    ),
+    ("isallowedtojoinplayersfaction", &[Some(("actor", None))]),
+    (
+        "isangleacceptable",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("isarcher", &[Some(("actor", None)), Some(("float", None))]),
+    ("iscchousedestination", &[Some(("int", None))]),
+    ("ischild", &[Some(("location", None))]),
+    ("isdetectedby", &[Some(("actor", None))]),
+    ("isequipped", &[Some(("form", None))]),
+    ("isfactionincrimegroup", &[Some(("faction", None))]),
+    ("isfishcatchtype", &[Some(("int", None))]),
+    ("isfishingallowed", &[Some(("int", None))]),
+    (
+        "isfurnitureinuse",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "isfurnituremarkerinuse",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("ishighprofiletarget", &[Some(("objectreference", None))]),
+    ("ishostiletoactor", &[Some(("actor", None))]),
+    ("ishousecomplete", &[Some(("byohhousescript", None))]),
+    ("isimperial", &[Some(("actor", None))]),
+    ("isinfaction", &[Some(("faction", None))]),
+    ("isinlocation", &[Some(("location", None))]),
+    ("isitemcatchtype", &[Some(("int", None))]),
+    ("isitemondisplay", &[Some(("form", None))]),
+    ("ismage", &[Some(("actor", None)), Some(("float", None))]),
+    ("isobjectivecompleted", &[Some(("int", None))]),
+    ("isobjectivedisplayed", &[Some(("int", None))]),
+    ("isobjectivefailed", &[Some(("int", None))]),
+    ("isplayerally", &[Some(("objectreference", None))]),
+    ("isplayerattacking", &[Some(("location", None))]),
+    ("isplayerinmyfaction", &[Some(("actor", None))]),
+    ("isplayerisnearafriendly", &[Some(("bool", None))]),
+    (
+        "isreadingallowed",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "issamelocation",
+        &[
+            Some(("location", None)),
+            Some(("keyword", Some(("none", "None")))),
+        ],
+    ),
+    ("issons", &[Some(("actor", None))]),
+    ("isstagedone", &[Some(("int", None))]),
+    ("issueorder", &[None, Some(("float", None))]),
+    (
+        "issueorderneverspeaktoyouagain",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "issueorderwithduration",
+        &[Some(("objectreference", None)), Some(("float", None))],
+    ),
+    ("issueplayorder", &[Some(("float", None))]),
+    ("isunicorn", &[Some(("actor", None))]),
+    ("isvalidalias", &[Some(("actor", None))]),
+    ("iswordunlocked", &[Some(("wordofpower", None))]),
+    ("jumpat", &[Some(("objectreference", None))]),
+    (
+        "keepoffsetfromactor",
+        &[
+            Some(("actor", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "20.0")))),
+            Some(("float", Some(("float", "5.0")))),
+        ],
+    ),
+    ("kill", &[Some(("actor", Some(("none", "None"))))]),
+    ("killessential", &[Some(("actor", Some(("none", "None"))))]),
+    ("killhunter", &[Some(("actor", None))]),
+    ("killsilent", &[Some(("actor", Some(("none", "None"))))]),
+    (
+        "knockareaeffect",
+        &[Some(("float", None)), Some(("float", None))],
+    ),
+    ("landatperch", &[Some(("objectreference", None))]),
+    ("learneffect", &[Some(("int", None))]),
+    ("loathingtransformation", &[Some(("actor", None))]),
+    ("localgotostate", &[Some(("string", None))]),
+    ("locationchangecheck", &[Some(("location", None))]),
+    (
+        "lock",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("lockbalconydoor", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "lockbossroomdoor",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "lockdownbanquethall",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "lockme",
+        &[
+            Some(("referencealias", None)),
+            Some(("int", Some(("int", "255")))),
+        ],
+    ),
+    (
+        "log",
+        &[
+            Some(("string", None)),
+            Some(("string", None)),
+            Some(("int", Some(("int", "0")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("log2n", &[Some(("int", None))]),
+    ("logalias", &[Some(("referencealias", None))]),
+    ("makeaggressive", &[Some(("bool", None))]),
+    (
+        "makealiasaggressiveandattackplayer",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "makealiasesaggressive",
+        &[Some(("int", Some(("int", "1"))))],
+    ),
+    (
+        "makecrowdmember",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("makeenemyofplayer", &[Some(("actor", None))]),
+    (
+        "makefactionsallies",
+        &[
+            Some(("faction", None)),
+            Some(("faction", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "makefactionsenemies",
+        &[
+            Some(("faction", None)),
+            Some(("faction", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "makemeabuilder",
+        &[Some(("actor", None)), Some(("int", Some(("int", "4"))))],
+    ),
+    ("makemestopcombat", &[Some(("referencealias", None))]),
+    ("makemyeyesred", &[Some(("referencealias", None))]),
+    ("makesuspicious", &[Some(("actor", None))]),
+    (
+        "maketrollfollower",
+        &[
+            Some(("objectreference", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("makezombie", &[Some(("objectreference", None))]),
+    ("managebridges", &[Some(("int", None))]),
+    ("max", &[Some(("float", None)), Some(("float", None))]),
+    ("messagebox", &[Some(("string", None))]),
+    ("min", &[Some(("float", None)), Some(("float", None))]),
+    ("miraakappears", &[Some(("objectreference", None))]),
+    ("mod", &[Some(("float", None))]),
+    (
+        "modactorvalue",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    (
+        "modassessment",
+        &[Some(("int", None)), Some(("float", None))],
+    ),
+    ("modav", &[Some(("string", None)), Some(("float", None))]),
+    ("modaxis", &[Some(("int", None)), Some(("int", None))]),
+    ("modcountsoldiers", &[Some(("int", None))]),
+    (
+        "modcrimegold",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "modcwobjglobal",
+        &[Some(("globalvariable", None)), Some(("float", None))],
+    ),
+    ("moddlc2soulstealcount", &[Some(("int", None))]),
+    (
+        "modfactionrank",
+        &[Some(("faction", None)), Some(("int", None))],
+    ),
+    ("modfavorpoints", &[Some(("int", Some(("int", "1"))))]),
+    (
+        "modfavorpointswithglobal",
+        &[Some(("globalvariable", None))],
+    ),
+    ("modfavorsacceptedcount", &[Some(("int", None))]),
+    ("modglobal", &[Some(("int", None))]),
+    ("modifypool", &[Some(("bool", None)), Some(("int", None))]),
+    (
+        "modobjectivebyenemysoldierdeath",
+        &[
+            Some(("actor", None)),
+            Some(("int", Some(("int", "1")))),
+            Some(("location", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "modobjectivebymissionsuccess",
+        &[Some(("location", None)), Some(("int", Some(("int", "25"))))],
+    ),
+    (
+        "modobjectivebysabotage",
+        &[
+            Some(("resourceobjectscript", None)),
+            Some(("int", Some(("int", "5")))),
+        ],
+    ),
+    (
+        "modobjectiveglobal",
+        &[
+            Some(("float", None)),
+            Some(("globalvariable", None)),
+            Some(("int", Some(("int", "-1")))),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "modobjectiveglobalandcheckobjectiveredisplay",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "modreaction",
+        &[Some(("faction", None)), Some(("int", None))],
+    ),
+    ("modtargetcount", &[Some(("int", None))]),
+    (
+        "monitorplayerdistance",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("moveactortoexilemarker", &[Some(("actor", None))]),
+    ("movealiasestoref", &[Some(("objectreference", None))]),
+    (
+        "movebehind",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "movebehindplayer",
+        &[Some(("objectreference", None)), Some(("float", None))],
+    ),
+    (
+        "movebooks",
+        &[Some(("playerbookshelfcontainerscript", None))],
+    ),
+    ("movehome", &[Some(("referencealias", None))]),
+    (
+        "moveifnotdead",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    ("moveobject", &[Some(("objectreference", None))]),
+    ("moveplayerhome", &[Some(("bool", Some(("bool", "false"))))]),
+    (
+        "moveplayertodungeon",
+        &[Some(("objectreference", None)), Some(("location", None))],
+    ),
+    (
+        "moverefsbehind",
+        &[
+            Some(("objectreference[]", None)),
+            Some(("objectreference", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "moverefsbehindplayer",
+        &[Some(("objectreference[]", None)), Some(("float", None))],
+    ),
+    (
+        "moverikkegalmartocampifneeded",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "movespouse",
+        &[Some(("actor", None)), Some(("referencealias", None))],
+    ),
+    (
+        "movespouseadoption",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    ("movetamedragonfailsafe", &[Some(("actor", None))]),
+    (
+        "moveto",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "movetobehindplayer",
+        &[
+            Some(("objectreference", None)),
+            Some(("int", Some(("int", "1000")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "movetocouncil",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "movetoifunloaded",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "movetointeractionlocation",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "movetonode",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    (
+        "movetoparty",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "movetowhenunloaded",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    ("moveusalong", &[Some(("actor", None))]),
+    ("mq04addobjectiveto", &[Some(("objectreference", None))]),
+    ("mq04removeobjectiveto", &[Some(("objectreference", None))]),
+    (
+        "mq06deathsequence",
+        &[
+            Some(("actor", None)),
+            Some(("actor", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "multiplyquaternions",
+        &[Some(("float[]", None)), Some(("float[]", None))],
+    ),
+    ("namevampirelord", &[Some(("actor", None))]),
+    ("nightmarehandler", &[Some(("actor", None))]),
+    ("normalizeangle", &[Some(("float", None))]),
+    ("notification", &[Some(("string", None))]),
+    ("notifyoncartexit", &[Some(("referencealias", None))]),
+    (
+        "npctransformintovampirelord",
+        &[
+            Some(("actor", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("oktomovequestionmark", &[Some(("actor", None))]),
+    ("onactivate", &[Some(("objectreference", None))]),
+    ("onadd", &[Some(("objectreference", None))]),
+    (
+        "onanimationevent",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    (
+        "onanimationeventunregistered",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    ("onclose", &[Some(("objectreference", None))]),
+    (
+        "oncombatstatechange",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    (
+        "oncombatstatechanged",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    (
+        "oncontainerchanged",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "oncontainerchanges",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("ondead", &[Some(("actor", None))]),
+    ("ondeath", &[Some(("actor", None))]),
+    (
+        "ondestructionstagechanged",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    ("ondying", &[Some(("actor", None))]),
+    (
+        "oneffectend",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    (
+        "oneffectfinish",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    (
+        "oneffectstart",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    ("onenter", &[Some(("objectreference", None))]),
+    ("onequipped", &[Some(("actor", None))]),
+    (
+        "ongainlos",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    ("ongetup", &[Some(("objectreference", None))]),
+    (
+        "onhit",
+        &[
+            Some(("objectreference", None)),
+            Some(("form", None)),
+            Some(("projectile", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    ("onhitimpl", &[Some(("objectreference", None))]),
+    (
+        "onitemadded",
+        &[
+            Some(("form", None)),
+            Some(("int", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("onitemaddedorremoved", &[Some(("form", None))]),
+    (
+        "onitemremoved",
+        &[
+            Some(("form", None)),
+            Some(("int", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("onleave", &[Some(("objectreference", None))]),
+    (
+        "onlocationchange",
+        &[Some(("location", None)), Some(("location", None))],
+    ),
+    (
+        "onlostlos",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    ("onlycanthropystatechanged", &[Some(("bool", None))]),
+    (
+        "onmagiceffectapply",
+        &[Some(("objectreference", None)), Some(("magiceffect", None))],
+    ),
+    (
+        "onobjectequipped",
+        &[Some(("form", None)), Some(("objectreference", None))],
+    ),
+    (
+        "onobjectunequipped",
+        &[Some(("form", None)), Some(("objectreference", None))],
+    ),
+    ("onopen", &[Some(("objectreference", None))]),
+    ("onpackagechange", &[Some(("package", None))]),
+    ("onpackageend", &[Some(("package", None))]),
+    ("onpackagestart", &[Some(("package", None))]),
+    (
+        "onplayerbowshot",
+        &[
+            Some(("weapon", None)),
+            Some(("ammo", None)),
+            Some(("float", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    ("onplayerfasttravelend", &[Some(("float", None))]),
+    ("onsell", &[Some(("actor", None))]),
+    ("onsit", &[Some(("objectreference", None))]),
+    (
+        "onsleepstart",
+        &[Some(("float", None)), Some(("float", None))],
+    ),
+    ("onsleepstop", &[Some(("bool", None))]),
+    ("onspellcast", &[Some(("form", None))]),
+    (
+        "onstoryactivateactor",
+        &[Some(("location", None)), Some(("objectreference", None))],
+    ),
+    (
+        "onstoryaddtoplayer",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("location", None)),
+            Some(("form", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "onstoryassaultactor",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("location", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("onstorybribenpc", &[Some(("objectreference", None))]),
+    (
+        "onstorychangelocation",
+        &[
+            Some(("objectreference", None)),
+            Some(("location", None)),
+            Some(("location", None)),
+        ],
+    ),
+    (
+        "onstorycraftitem",
+        &[
+            Some(("objectreference", None)),
+            Some(("location", None)),
+            Some(("form", None)),
+        ],
+    ),
+    (
+        "onstorycrimegold",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("form", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("onstorycure", &[Some(("form", None))]),
+    (
+        "onstorydialogue",
+        &[
+            Some(("location", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "onstoryescapejail",
+        &[Some(("location", None)), Some(("form", None))],
+    ),
+    ("onstoryflatternpc", &[Some(("objectreference", None))]),
+    (
+        "onstoryhello",
+        &[
+            Some(("location", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("onstoryincreaselevel", &[Some(("int", None))]),
+    ("onstoryincreaseskill", &[Some(("string", None))]),
+    (
+        "onstoryinfection",
+        &[Some(("objectreference", None)), Some(("form", None))],
+    ),
+    ("onstoryintimidatenpc", &[Some(("objectreference", None))]),
+    (
+        "onstorykillactor",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("location", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "onstorynewvoicepower",
+        &[Some(("objectreference", None)), Some(("form", None))],
+    ),
+    (
+        "onstorypicklock",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("onstoryplayergetsfavor", &[Some(("objectreference", None))]),
+    (
+        "onstoryscript",
+        &[
+            Some(("keyword", None)),
+            Some(("location", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "ontrackedstatsevent",
+        &[Some(("string", None)), Some(("int", None))],
+    ),
+    (
+        "ontraphit",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("int", None)),
+            Some(("bool", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "ontraphitstart",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("int", None)),
+            Some(("bool", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("ontraphitstop", &[Some(("objectreference", None))]),
+    ("ontrigger", &[Some(("objectreference", None))]),
+    ("ontriggerenter", &[Some(("objectreference", None))]),
+    ("ontriggerleave", &[Some(("objectreference", None))]),
+    ("onunequipped", &[Some(("actor", None))]),
+    ("onvampirefeed", &[Some(("actor", None))]),
+    ("onvampirismstatechanged", &[Some(("bool", None))]),
+    (
+        "onwardhit",
+        &[
+            Some(("objectreference", None)),
+            Some(("spell", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "openexitdoor",
+        &[Some(("bool", None)), Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("openinventory", &[Some(("bool", Some(("bool", "false"))))]),
+    (
+        "openportal",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "opensprinttrialgate",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("openuserlog", &[Some(("string", None))]),
+    (
+        "outputxmlfield",
+        &[Some(("string", None)), Some(("string", None))],
+    ),
+    ("outputxmlrowclosetag", &[Some(("string", None))]),
+    ("outputxmlrowopentag", &[Some(("string", None))]),
+    ("overbudget", &[Some(("int", None))]),
+    ("pacifyalias", &[Some(("referencealias", None))]),
+    ("pacifyaliasforsurrender", &[Some(("referencealias", None))]),
+    (
+        "pathtoreference",
+        &[Some(("objectreference", None)), Some(("float", None))],
+    ),
+    ("payhireling", &[Some(("objectreference", None))]),
+    ("payplayer", &[Some(("int", None))]),
+    ("persuade", &[Some(("actor", None))]),
+    ("persuadeguard", &[Some(("actor", None))]),
+    ("petdeath", &[Some(("actor", None))]),
+    ("pickdeduction", &[Some(("int", None))]),
+    ("pickgiftlist", &[Some(("int", None))]),
+    ("picknextfight", &[Some(("int", Some(("int", "0"))))]),
+    ("picknextwagerfight", &[Some(("arenacombatquest", None))]),
+    ("pickradiantquest", &[Some(("actor", None))]),
+    (
+        "pickshout",
+        &[
+            Some(("shout", None)),
+            Some(("shout", None)),
+            Some(("shout", None)),
+        ],
+    ),
+    (
+        "picksprintawaytarget",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("pillarkill", &[Some(("actor", None))]),
+    ("pillarset", &[Some(("int", None))]),
+    ("pillartrap", &[Some(("objectreference", None))]),
+    (
+        "placeactoratme",
+        &[
+            Some(("actorbase", None)),
+            Some(("int", Some(("int", "4")))),
+            Some(("encounterzone", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "placeatme",
+        &[
+            Some(("form", None)),
+            Some(("int", Some(("int", "1")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("placeatmefromarray", &[Some(("actorbase[]", None))]),
+    ("placebet", &[Some(("int", None))]),
+    (
+        "placedummymarker",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    ("placefishingrodactivator", &[Some(("int", None))]),
+    (
+        "placeflag",
+        &[
+            Some(("location", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "placeinfrontofme",
+        &[
+            Some(("form", None)),
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "placelandingmarker",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    (
+        "placenearme",
+        &[
+            Some(("form", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "play",
+        &[
+            None,
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("playandwait", &[Some(("objectreference", None))]),
+    ("playanimation", &[Some(("string", None))]),
+    (
+        "playanimationandwait",
+        &[Some(("string", None)), Some(("string", None))],
+    ),
+    ("playchosensong", &[Some(("int", None))]),
+    (
+        "playeractivatebed",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("playerbitesme", &[Some(("actor", None))]),
+    (
+        "playerchangelocation",
+        &[Some(("location", None)), Some(("location", None))],
+    ),
+    ("playerenteredambushzone", &[Some(("bool", None))]),
+    ("playerequippeditem", &[Some(("int", None))]),
+    ("playeriscurrentlyabsorbingpower", &[Some(("actor", None))]),
+    ("playerisdoneabsorbingpower", &[Some(("actor", None))]),
+    ("playerisvampirelord", &[Some(("bool", None))]),
+    (
+        "playerlocationchanged",
+        &[Some(("location", None)), Some(("location", None))],
+    ),
+    ("playermovetoandwait", &[Some(("string", None))]),
+    (
+        "playerpaycrimegold",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "playerreadsscroll",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("playersfactionisattacker", &[Some(("location", None))]),
+    ("playersfactionisdefender", &[Some(("location", None))]),
+    ("playertookoath", &[Some(("int", None))]),
+    ("playerunequippeditem", &[Some(("int", None))]),
+    (
+        "playgamebryoanimation",
+        &[
+            Some(("string", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    ("playidle", &[Some(("idle", None))]),
+    (
+        "playidlewithtarget",
+        &[Some(("idle", None)), Some(("objectreference", None))],
+    ),
+    (
+        "playimpacteffect",
+        &[
+            Some(("impactdataset", None)),
+            Some(("string", Some(("str", "")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "-1.0")))),
+            Some(("float", Some(("float", "512.0")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "playsong",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", Some(("str", "Any")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "0")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "playsongrequest",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", Some(("str", "Any")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("int", Some(("int", "0")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("playsound", &[Some(("int", None))]),
+    (
+        "playsoundbyname",
+        &[
+            Some(("string", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("playsubgraphanimation", &[Some(("string", None))]),
+    (
+        "playsyncedanimationandwaitss",
+        &[
+            Some(("string", None)),
+            Some(("string", None)),
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("string", None)),
+        ],
+    ),
+    (
+        "playsyncedanimationss",
+        &[
+            Some(("string", None)),
+            Some(("objectreference", None)),
+            Some(("string", None)),
+        ],
+    ),
+    (
+        "playterraineffect",
+        &[Some(("string", None)), Some(("string", None))],
+    ),
+    ("playwebanimations", &[Some(("int", None))]),
+    ("pluginactor", &[Some(("objectreference", None))]),
+    (
+        "polldetection",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("scene", None)),
+        ],
+    ),
+    (
+        "popto",
+        &[
+            Some(("imagespacemodifier", None)),
+            Some(("float", Some(("float", "1.0")))),
+        ],
+    ),
+    (
+        "positionfishanddisablephysics",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "positionitemanddisablephysics",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "positionrelativeto",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("float[]", None)),
+            Some(("float[]", None)),
+        ],
+    ),
+    ("postrampagehandling", &[Some(("c03questscript", None))]),
+    ("pow", &[Some(("float", None)), Some(("float", None))]),
+    ("prepforreading", &[Some(("bool", Some(("bool", "false"))))]),
+    ("preptorkild", &[Some(("actor", None))]),
+    ("pressureplatehit", &[Some(("bool", None))]),
+    ("prisonergearup", &[Some(("actor", None))]),
+    ("processalias", &[Some(("referencealias", None))]),
+    ("processalliesforsiege", &[Some(("location", None))]),
+    ("processanimationevent", &[Some(("string", None))]),
+    (
+        "processarray",
+        &[Some(("faction[]", None)), Some(("int", None))],
+    ),
+    (
+        "processguardaliasintointeriorexterioralias",
+        &[Some(("referencealias", None))],
+    ),
+    ("processhit", &[Some(("objectreference", None))]),
+    ("processhitevent", &[Some(("objectreference", None))]),
+    (
+        "processifcamp",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("processinfection", &[Some(("actor", None))]),
+    (
+        "processonupdateoronhitevent",
+        &[Some(("objectreference", None)), Some(("form", None))],
+    ),
+    (
+        "processpalacetrigger",
+        &[Some(("objectreference", None)), Some(("bool", None))],
+    ),
+    (
+        "processpostrevoltfactions",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "processprerevoltfactions",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "processshadowshieldhit",
+        &[Some(("objectreference", None)), Some(("form", None))],
+    ),
+    ("processsoldieralias", &[Some(("referencealias", None))]),
+    ("processsoldierdeath", &[Some(("actor", None))]),
+    (
+        "processtraphit",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("int", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "processtriggeractor",
+        &[
+            Some(("actor", None)),
+            Some(("float", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("processtriggeractorleaving", &[Some(("actor", None))]),
+    (
+        "promote",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("promotetofriendescort", &[Some(("actor", None))]),
+    ("purchasegarrisonlocation", &[Some(("location", None))]),
+    (
+        "purchasegarrisonlocationalias",
+        &[Some(("locationalias", None))],
+    ),
+    (
+        "purchasehouse",
+        &[
+            Some(("cell", None)),
+            Some(("key", None)),
+            Some(("book", None)),
+            Some(("globalvariable", None)),
+        ],
+    ),
+    ("purchasepatrolandreturnnewowner", &[Some(("int", None))]),
+    (
+        "pushactoraway",
+        &[Some(("actor", None)), Some(("float", None))],
+    ),
+    (
+        "putmourneractorinfaction",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    (
+        "putmourneraliasinfaction",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("querystat", &[Some(("string", None))]),
+    ("questaccepted", &[Some(("quest", None))]),
+    ("questgiverobjective", &[Some(("objectreference", None))]),
+    (
+        "queuemovefamily",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "quickstartsiege",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", Some(("int", "1")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("radianstodegrees", &[Some(("float", None))]),
+    ("radiantitemadded", &[Some(("int", None))]),
+    ("radiantitemremoved", &[Some(("int", None))]),
+    (
+        "ramprumble",
+        &[
+            Some(("float", Some(("float", "0.5")))),
+            Some(("float", Some(("float", "0.25")))),
+            Some(("float", Some(("float", "1600.0")))),
+        ],
+    ),
+    ("randomcreaturechicken", &[Some(("actor", None))]),
+    ("randomcreaturedremora", &[Some(("actor", None))]),
+    ("randomcreaturemudcrab", &[Some(("actor", None))]),
+    ("randomcreaturerabbit", &[Some(("actor", None))]),
+    (
+        "randomfloat",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "1.0")))),
+        ],
+    ),
+    (
+        "randomint",
+        &[
+            Some(("int", Some(("int", "0")))),
+            Some(("int", Some(("int", "100")))),
+        ],
+    ),
+    (
+        "readapocryphabook",
+        &[
+            Some(("dlc2apocryphabookscript", None)),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "readbook",
+        &[
+            Some(("dlc2blackbookscript", None)),
+            Some(("dlc2blackbookscript", Some(("none", "None")))),
+        ],
+    ),
+    ("readoghmainfinium", &[Some(("bool", None))]),
+    ("readscroll", &[Some(("int", None))]),
+    ("realtimesecondstogametimedays", &[Some(("float", None))]),
+    (
+        "receiveharkonsgift",
+        &[
+            Some(("actor", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("receiveseranasgift", &[Some(("actor", None))]),
+    ("recruitblade", &[Some(("actor", None))]),
+    ("reducefishpopulation", &[Some(("int", None))]),
+    ("refill", &[Some(("potion", None))]),
+    ("refillchest", &[Some(("objectreference", None))]),
+    (
+        "refisvalidforwardtarget",
+        &[Some(("objectreference", None))],
+    ),
+    ("regionentered", &[Some(("string", None))]),
+    ("regionleft", &[Some(("string", None))]),
+    ("register", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "registeradditionalhunter",
+        &[Some(("objectreference", None))],
+    ),
+    ("registeralias", &[Some(("referencealias", None))]),
+    ("registeraliasattacker", &[Some(("referencealias", None))]),
+    ("registeraliasdefender", &[Some(("referencealias", None))]),
+    (
+        "registeraliaseswithcwreinforcementscript",
+        &[Some(("location", None))],
+    ),
+    (
+        "registerallyphasemarkers",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "registerattackeraliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("registerattackpoint", &[Some(("location", None))]),
+    (
+        "registerbattlecentermarkerandlocation",
+        &[Some(("objectreference", None)), Some(("location", None))],
+    ),
+    ("registercombatant", &[Some(("objectreference", None))]),
+    ("registerdeath", &[Some(("referencealias", None))]),
+    (
+        "registerdefenderaliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerdragonattack",
+        &[Some(("location", None)), Some(("actor", None))],
+    ),
+    ("registereventhappening", &[Some(("location", None))]),
+    ("registerexternalalias", &[Some(("referencealias", None))]),
+    (
+        "registerforanimationevent",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    ("registerforevents", &[Some(("objectreference", None))]),
+    (
+        "registerforlos",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    ("registerfornextupdate", &[Some(("int", None))]),
+    ("registerforpopulationupdate", &[Some(("float", None))]),
+    (
+        "registerforsinglelosgain",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    (
+        "registerforsingleloslost",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    ("registerforsingleupdate", &[Some(("float", None))]),
+    ("registerforsingleupdategametime", &[Some(("float", None))]),
+    ("registerforupdate", &[Some(("float", None))]),
+    ("registerforupdategametime", &[Some(("float", None))]),
+    (
+        "registerforupdatetriggerposition",
+        &[Some(("referencealias", None)), Some(("int", None))],
+    ),
+    (
+        "registerimperialattackeraliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerimperialdefenderaliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerinteriordefenderaliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerinteriorspawneraliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerlocationattacked",
+        &[
+            Some(("location", None)),
+            Some(("location", None)),
+            Some(("int", Some(("int", "0")))),
+        ],
+    ),
+    ("registerlocationowner", &[Some(("objectreference", None))]),
+    (
+        "registermetobuild",
+        &[Some(("int", None)), Some(("objectreference", None))],
+    ),
+    (
+        "registermissionsuccess",
+        &[
+            Some(("location", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "registermissiontypewithcampaign",
+        &[Some(("int", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    (
+        "registermonsterdeath",
+        &[Some(("dlc2pillarmonsterscript", None))],
+    ),
+    ("registerobject", &[Some(("objectreference", None))]),
+    (
+        "registerpillarshouttrigger",
+        &[Some(("dlc2pillarshouttriggerscript", None))],
+    ),
+    (
+        "registerradiantfisheventlistener",
+        &[Some(("ccbgssse001_radiantfisheventlistener", None))],
+    ),
+    (
+        "registerradiantquest",
+        &[Some(("companionsradiantquest", None))],
+    ),
+    (
+        "registerresourceobjectaliasesforupdate",
+        &[
+            Some(("referencealias", Some(("none", "None")))),
+            Some(("referencealias", Some(("none", "None")))),
+            Some(("referencealias", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "registersonsattackeraliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registersonsdefenderaliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerspawnattackeraliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerspawnattackeraliaseswithcwreinforcementscript",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerspawndefenderaliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "registerspawndefenderaliaseswithcwreinforcementscript",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("registerspawnpoint", &[Some(("objectreference", None))]),
+    ("registerspecatoralias", &[Some(("referencealias", None))]),
+    (
+        "registertransitioncombatant",
+        &[Some(("objectreference", None))],
+    ),
+    ("registerwaterobject", &[Some(("objectreference", None))]),
+    ("rehire", &[Some(("objectreference", None))]),
+    ("reload", &[Some(("objectreference", None))]),
+    (
+        "remodelentryroom",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    (
+        "remotecast",
+        &[
+            Some(("objectreference", None)),
+            Some(("actor", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("remove", &[Some(("float", None))]),
+    ("removeaddedform", &[Some(("form", None))]),
+    (
+        "removeallitems",
+        &[
+            Some(("objectreference", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "removeallstolenitems",
+        &[Some(("objectreference", Some(("none", "None"))))],
+    ),
+    ("removebooks", &[Some(("form", None)), Some(("int", None))]),
+    (
+        "removecarrieditems",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "removecrossfade",
+        &[Some(("float", Some(("float", "1.0"))))],
+    ),
+    (
+        "removedependentanimatedobjectreference",
+        &[Some(("objectreference", None))],
+    ),
+    ("removefish", &[Some(("form", None)), Some(("int", None))]),
+    ("removefromarmorslot", &[Some(("form", None))]),
+    ("removefromfaction", &[Some(("faction", None))]),
+    ("removegarrisonfromwar", &[Some(("location", None))]),
+    (
+        "removehavokconstraints",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("objectreference", None)),
+            Some(("string", None)),
+        ],
+    ),
+    ("removeingredients", &[Some(("formlist", None))]),
+    ("removeinventoryeventfilter", &[Some(("form", None))]),
+    (
+        "removeitem",
+        &[
+            Some(("form", None)),
+            Some(("int", Some(("int", "1")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("removemourneractorfromfactions", &[Some(("actor", None))]),
+    (
+        "removemudcrabally",
+        &[Some(("actor", None)), Some(("referencealias", None))],
+    ),
+    (
+        "removeobjectivetopedestal",
+        &[Some(("objectreference", None))],
+    ),
+    (
+        "removeoldclothesifpresent",
+        &[
+            Some(("armor", None)),
+            Some(("miscobject", None)),
+            Some(("miscobject", None)),
+        ],
+    ),
+    ("removepart", &[Some(("int", None))]),
+    (
+        "removepassenger",
+        &[Some(("referencealias", None)), Some(("int", None))],
+    ),
+    ("removeperk", &[Some(("perk", None))]),
+    ("removequest", &[Some(("quest", None))]),
+    ("removeracespells", &[Some(("actor", None))]),
+    ("removeredwaterdeneffects", &[Some(("float", None))]),
+    (
+        "removereffromcontainer",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("removeshout", &[Some(("shout", None))]),
+    ("removespell", &[Some(("spell", None))]),
+    ("removesubingredients", &[Some(("formlist", None))]),
+    ("rentroom", &[Some(("dialoguegenericscript", None))]),
+    ("requestmodel", &[Some(("string", None))]),
+    ("requestorphanagetransfer", &[Some(("actor", None))]),
+    (
+        "reset",
+        &[Some(("objectreference", Some(("none", "None"))))],
+    ),
+    ("resetchimes", &[Some(("objectreference", None))]),
+    ("resetdefenderonlygarrison", &[Some(("int", None))]),
+    ("resetdriver", &[Some(("referencealias", None))]),
+    ("resethelpmessage", &[Some(("string", None))]),
+    ("resolvegasactivation", &[Some(("objectreference", None))]),
+    ("resolveleveledweapon", &[Some(("int", None))]),
+    (
+        "resolveobjective",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    ("resolveoffscreen", &[Some(("int", Some(("int", "0"))))]),
+    ("resolveshoutlogic", &[Some(("spell", None))]),
+    (
+        "resolvetriggerlogic",
+        &[
+            Some(("objectreference", None)),
+            Some(("spell", Some(("none", "None")))),
+        ],
+    ),
+    ("respawn", &[Some(("referencealias", None))]),
+    (
+        "restartcivilwarcompleteobjectiveifneeded",
+        &[Some(("int", None)), Some(("location", None))],
+    ),
+    (
+        "restoreactorvalue",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    (
+        "restoreav",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    (
+        "restorecameraandcontrols",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("restorename", &[Some(("int", None))]),
+    ("restraindragon", &[Some(("bool", None))]),
+    (
+        "resurrectcounduit",
+        &[Some(("referencealias", Some(("none", "None"))))],
+    ),
+    ("returnfragment", &[Some(("objectreference", None))]),
+    (
+        "returnfromreading",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "returnitemtoplayer",
+        &[
+            Some(("form", None)),
+            Some(("int", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "returnlocationfordefenderonlygarrison",
+        &[Some(("int", None))],
+    ),
+    ("rewardcheck", &[Some(("bool", Some(("bool", "false"))))]),
+    (
+        "rideincart",
+        &[
+            None,
+            None,
+            Some(("objectreference", None)),
+            Some(("int", Some(("int", "-1")))),
+            Some(("int", Some(("int", "1")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("ringshift", &[Some(("int", None))]),
+    (
+        "rollforrieklings",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "rotatedometostate",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    ("rotatepillar", &[Some(("int", None)), Some(("int", None))]),
+    (
+        "rotatepillartostate",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    (
+        "rotateringtostate",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    ("runningfollowpackage", &[Some(("actor", None))]),
+    (
+        "safeguardagainstdragons",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "say",
+        &[
+            Some(("topic", None)),
+            Some(("actor", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "scanforrecipes",
+        &[Some(("formlist", None)), Some(("formlist", None))],
+    ),
+    ("scansublist", &[Some(("formlist", None))]),
+    ("schoolwithotherfish", &[Some(("float", None))]),
+    ("selectnewcrowneffect", &[Some(("int", None))]),
+    ("sellcabbage", &[Some(("actor", None))]),
+    ("sellgourd", &[Some(("actor", None))]),
+    ("sellleek", &[Some(("actor", None))]),
+    ("sellnirnroot", &[Some(("actor", None))]),
+    ("sellore", &[Some(("actor", None)), Some(("keyword", None))]),
+    ("sellparts", &[Some(("actor", None))]),
+    ("sellpotato", &[Some(("actor", None))]),
+    ("sellwheat", &[Some(("actor", None))]),
+    ("sellwood", &[Some(("actor", None))]),
+    (
+        "sendanimationevent",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    ("sendlycanthropystatechanged", &[Some(("bool", None))]),
+    (
+        "sendplayertojail",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("sendstealalarm", &[Some(("actor", None))]),
+    ("sendtrespassalarm", &[Some(("actor", None))]),
+    ("sendvampirismstatechanged", &[Some(("bool", None))]),
+    (
+        "setactive",
+        &[
+            Some(("bool", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setactivehouselocation",
+        &[
+            Some(("objectreference", None)),
+            Some(("int", None)),
+            Some(("string", None)),
+        ],
+    ),
+    ("setactorcause", &[Some(("actor", None))]),
+    ("setactorowner", &[Some(("actorbase", None))]),
+    (
+        "setactorvalue",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    ("setalert", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setallowflying", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setallowflyingex",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setallowflyingmountlandingrequests",
+        &[Some(("bool", None))],
+    ),
+    (
+        "setally",
+        &[
+            Some(("faction", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setalpha",
+        &[
+            Some(("float", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setangle",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("setanimal", &[Some(("objectreference", None))]),
+    (
+        "setanimationvariablebool",
+        &[Some(("string", None)), Some(("bool", None))],
+    ),
+    (
+        "setanimationvariablefloat",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    (
+        "setanimationvariableint",
+        &[Some(("string", None)), Some(("int", None))],
+    ),
+    (
+        "setattackactoronsight",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("setav", &[Some(("string", None)), Some(("float", None))]),
+    ("setbarposition", &[Some(("bool", None))]),
+    ("setbeastform", &[Some(("bool", None))]),
+    ("setbountyletterwasread", &[Some(("quest", None))]),
+    ("setbribed", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setbuilderfactionfriendliness",
+        &[
+            Some(("actor", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("setcalculatedpopulationrecently", &[Some(("bool", None))]),
+    ("setcameratarget", &[Some(("actor", None))]),
+    ("setchattervalue", &[None, Some(("int", None))]),
+    (
+        "setcivilwarside",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("setcleared", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setcontainerallowstolenitems", &[Some(("bool", None))]),
+    ("setcontroller", &[Some(("objectreference", None))]),
+    ("setcrimefaction", &[Some(("faction", None))]),
+    ("setcrimefactionforsoldieractor", &[Some(("actor", None))]),
+    (
+        "setcrimefactionforsoldieralias",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "setcrimefactiononactorforeditorlocationshold",
+        &[Some(("actor", None))],
+    ),
+    ("setcrimegold", &[Some(("int", None))]),
+    ("setcrimegoldviolent", &[Some(("int", None))]),
+    ("setcriticalstage", &[Some(("int", None))]),
+    ("setcurrentstageid", &[Some(("int", None))]),
+    ("setdestroyed", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setdlc1wenextspecialattackday",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("setdoingfavor", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setdontmove", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setdungeonmarker", &[Some(("objectreference", None))]),
+    (
+        "setenemy",
+        &[
+            Some(("faction", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("setessential", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setexpressionoverride",
+        &[Some(("int", None)), Some(("int", Some(("int", "100"))))],
+    ),
+    ("seteyetexture", &[Some(("textureset", None))]),
+    ("setfactionowner", &[Some(("faction", None))]),
+    (
+        "setfactionrank",
+        &[Some(("faction", None)), Some(("int", None))],
+    ),
+    ("setfieldcoalias", &[Some(("objectreference", None))]),
+    ("setfishpopulation", &[Some(("int", None))]),
+    (
+        "setflagalias",
+        &[Some(("objectreference", None)), Some(("location", None))],
+    ),
+    (
+        "setfogplanes",
+        &[Some(("float", None)), Some(("float", None))],
+    ),
+    ("setfogpower", &[Some(("float", None))]),
+    ("setfogstate", &[Some(("bool", None))]),
+    ("setfollower", &[Some(("objectreference", None))]),
+    ("setfootik", &[Some(("bool", None))]),
+    ("setforcedlandingmarker", &[Some(("objectreference", None))]),
+    ("setforrefill", &[Some(("actor", None))]),
+    ("setfrequency", &[Some(("float", None))]),
+    (
+        "setgarrisoncost",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    ("setghost", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setgiftstate", &[Some(("bool", None))]),
+    (
+        "setglobals",
+        &[
+            Some(("globalvariable", None)),
+            Some(("globalvariable", None)),
+        ],
+    ),
+    ("setgodmode", &[Some(("bool", None))]),
+    (
+        "sethaschildbedroom",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("setheadtracking", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setholdowner",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    (
+        "setholdownerbyint",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "sethomemarker",
+        &[
+            Some(("int", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "sethousedata",
+        &[
+            Some(("int", None)),
+            Some(("objectreference", None)),
+            Some(("location", None)),
+            Some(("location", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "sethouseowned",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("sethudcartmode", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setinchargen",
+        &[
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    (
+        "setinfinitepools",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "setinibool",
+        &[Some(("string", None)), Some(("bool", None))],
+    ),
+    (
+        "setinifloat",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    ("setiniint", &[Some(("string", None)), Some(("int", None))]),
+    (
+        "setinistring",
+        &[Some(("string", None)), Some(("string", None))],
+    ),
+    (
+        "setinitialspawnerproperties",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("critterspawn", None)),
+        ],
+    ),
+    ("setinoblivion", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setinstancevolume",
+        &[Some(("int", None)), Some(("float", None))],
+    ),
+    ("setintimidated", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setinventoryfilter", &[Some(("referencealias", None))]),
+    ("setinvulnerable", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setisbusy", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setkeyworddata",
+        &[Some(("keyword", None)), Some(("float", None))],
+    ),
+    ("setlastarresttime", &[Some(("actor", None))]),
+    ("setlever", &[Some(("objectreference", None))]),
+    ("setlocklevel", &[Some(("int", None))]),
+    (
+        "setlookat",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("setlumbermilloperator", &[Some(("objectreference", None))]),
+    (
+        "setmotiontype",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "setnewhome",
+        &[
+            Some(("referencealias", None)),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("setnewlocationglobal", &[Some(("globalvariable", None))]),
+    (
+        "setnewowneroffort",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    ("setnobleedoutrecovery", &[Some(("bool", None))]),
+    (
+        "setnofavorallowed",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("setnotshowonstealthmeter", &[Some(("bool", None))]),
+    (
+        "setobjectivecompleted",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "setobjectivedisplayed",
+        &[
+            Some(("int", None)),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setobjectivefailed",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("setopen", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setoutfit",
+        &[
+            Some(("outfit", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setownereastmarch",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerfalkreath",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerhaafingar",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerhjaalmarch",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerkeyworddataonly",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    (
+        "setownerpale",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerreach",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerrift",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerstartresetquest",
+        &[
+            Some(("location", None)),
+            Some(("int", None)),
+            Some(("keyword", None)),
+        ],
+    ),
+    (
+        "setownerwhiterun",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "setownerwinterhold",
+        &[Some(("int", None)), Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("setplaque", &[Some(("ccbgssse001_fishplaquescript", None))]),
+    (
+        "setplayeraidriven",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "setplayerallegiance",
+        &[Some(("int", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    ("setplayercontrols", &[Some(("bool", None))]),
+    ("setplayerenemy", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setplayerexpelled",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("setplayerfactionrank", &[Some(("int", None))]),
+    ("setplayerinventoryeventfilter", &[Some(("form", None))]),
+    ("setplayerpositionvariable", &[Some(("int", None))]),
+    (
+        "setplayerreportcrime",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "setplayerteammate",
+        &[
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    (
+        "setpoolattacker",
+        &[
+            Some(("int", Some(("int", "10")))),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setpoolattackeroncwreinforcementscript",
+        &[
+            Some(("int", None)),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setpooldefender",
+        &[
+            Some(("int", Some(("int", "10")))),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setpooldefenderoncwreinforcementscript",
+        &[
+            Some(("int", None)),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("float", Some(("float", "1.0")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "setposition",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("setpower", &[Some(("objectreference", None))]),
+    ("setprotected", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setpublic", &[Some(("bool", Some(("bool", "true"))))]),
+    (
+        "setpurchasedlocation",
+        &[Some(("location", None)), Some(("int", None))],
+    ),
+    (
+        "setquestcomplete",
+        &[
+            Some(("quest", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("setrace", &[Some(("race", Some(("none", "None"))))]),
+    (
+        "setreaction",
+        &[Some(("faction", None)), Some(("int", None))],
+    ),
+    (
+        "setreenablecontrols",
+        &[Some(("dlc2blackbookscript", None)), Some(("bool", None))],
+    ),
+    (
+        "setrelationshiprank",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    (
+        "setresourcecountproperties",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("setresourcetypeforalias", &[Some(("referencealias", None))]),
+    ("setrestrained", &[Some(("bool", None))]),
+    ("setreward", &[Some(("string", None))]),
+    (
+        "setrewardvariables",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "setsail",
+        &[Some(("actor", None)), Some(("int", Some(("int", "1"))))],
+    ),
+    (
+        "setsandbox",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    ("setscale", &[Some(("float", None))]),
+    ("setscenevarglobal", &[Some(("int", None))]),
+    (
+        "setshouldspawnreinforcements",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("setsittingrotation", &[Some(("float", None))]),
+    (
+        "setsoldieraliasdialoguefactions",
+        &[
+            Some(("referencealias", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("setstage", &[Some(("int", None))]),
+    ("setstagebasedontrigger", &[Some(("objectreference", None))]),
+    ("setstageondeadcount", &[Some(("int", None))]),
+    (
+        "setsubgraphfloatvariable",
+        &[Some(("string", None)), Some(("float", None))],
+    ),
+    (
+        "setsungazeimagespacemodifier",
+        &[Some(("imagespacemodifier", Some(("none", "None"))))],
+    ),
+    (
+        "settamedragoncanland",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    ("settargetintrigger", &[Some(("bool", None))]),
+    ("settileplaced", &[Some(("int", None))]),
+    (
+        "settrophybase",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("setuitemperaturelevel", &[Some(("int", None))]),
+    ("setunconscious", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setuntimed", &[Some(("bool", None))]),
+    ("setup", &[Some(("int", Some(("int", "0"))))]),
+    ("setupactor", &[Some(("objectreference", None))]),
+    ("setupactors", &[Some(("objectreference", None))]),
+    ("setupaliases", &[Some(("location", None))]),
+    ("setupattackerdefenderaliases", &[Some(("location", None))]),
+    (
+        "setupcameraandposition",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    ("setupchimes", &[Some(("objectreference", None))]),
+    ("setupcritter", &[Some(("actor", None))]),
+    (
+        "setupinteriorsiege",
+        &[
+            Some(("location", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("setupshrineevent", &[Some(("int", None))]),
+    ("setuptransition", &[Some(("bool", Some(("bool", "true"))))]),
+    ("setvalue", &[Some(("float", None))]),
+    ("setvalueint", &[Some(("int", None))]),
+    ("setvehicle", &[Some(("objectreference", None))]),
+    ("setvoicerecoverytime", &[Some(("float", None))]),
+    ("setvolume", &[Some(("float", None))]),
+    ("setwaiting", &[Some(("bool", None))]),
+    ("setwasmorningevening", &[Some(("bool", None))]),
+    ("setwaterstage", &[Some(("int", None))]),
+    ("setwave", &[Some(("int", None))]),
+    (
+        "shakecamera",
+        &[
+            Some(("objectreference", Some(("none", "None")))),
+            Some(("float", Some(("float", "0.5")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "shakecontroller",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("shouldmiraakappear", &[Some(("actor", None))]),
+    (
+        "shouldspawnwithindistanceandweather",
+        &[Some(("float", None))],
+    ),
+    (
+        "show",
+        &[
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "showashelpmessage",
+        &[
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("showboilerobjectives", &[Some(("objectreference", None))]),
+    ("showfanfarescreenandaddcaughtitem", &[Some(("form", None))]),
+    (
+        "showfirstpersongeometry",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "showgiftmenu",
+        &[
+            Some(("bool", None)),
+            Some(("formlist", Some(("none", "None")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("showhead", &[Some(("int", None)), Some(("int", None))]),
+    ("showorphanageobjective", &[Some(("int", None))]),
+    (
+        "showplayerroom",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    ("showpowerprompt", &[Some(("objectreference", None))]),
+    ("showrefposition", &[Some(("objectreference", None))]),
+    ("showtrainingmenu", &[Some(("actor", None))]),
+    (
+        "shutdownradiantquests",
+        &[Some(("actor", Some(("none", "None"))))],
+    ),
+    ("shutdownradiantquestsfor", &[Some(("actor", None))]),
+    ("shutup", &[Some(("actor", None))]),
+    ("sin", &[Some(("float", None))]),
+    ("solveme", &[Some(("objectreference", None))]),
+    ("sonsareattacking", &[Some(("location", None))]),
+    ("soundalarm", &[Some(("objectreference", None))]),
+    (
+        "spawnactor",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "spawncrabs",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("spawncritteratref", &[Some(("objectreference", None))]),
+    ("spawnflamingpotcrab", &[Some(("int", None))]),
+    ("spawnghostfriend", &[Some(("actor", None))]),
+    ("spawngold", &[Some(("actor", None))]),
+    ("spawnsweetroll", &[Some(("actor", None))]),
+    (
+        "spin",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "splinetranslateto",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "splinetranslatetoref",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "splinetranslatetorefatspeed",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "splinetranslatetorefatspeedandgotostate",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+        ],
+    ),
+    (
+        "splinetranslatetorefnode",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "splinetranslatetorefnodeatspeed",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "splinetranslatetorefnodeatspeedandgotostate",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+        ],
+    ),
+    ("spouseshop", &[Some(("actor", None))]),
+    ("sprintaway", &[Some(("bool", Some(("bool", "false"))))]),
+    ("sprintstarttriggerchangestate", &[Some(("bool", None))]),
+    ("sprinttotarget", &[Some(("objectreference", None))]),
+    (
+        "sprinttotargetandteleportaway",
+        &[Some(("objectreference", None))],
+    ),
+    ("sqrt", &[Some(("float", None))]),
+    ("startbattlephase", &[Some(("int", None))]),
+    ("startcampaignquest", &[Some(("int", None))]),
+    ("startcannibal", &[Some(("actor", None))]),
+    ("startcombat", &[Some(("actor", None))]),
+    ("startcwcitizensflee", &[Some(("location", None))]),
+    ("startdistractionscene", &[Some(("scene", None))]),
+    (
+        "startfrienddistractionscene",
+        &[
+            Some(("actor", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("startgame", &[Some(("int", None)), None]),
+    (
+        "startgametag",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+            Some(("int", None)),
+            Some(("form", None)),
+        ],
+    ),
+    (
+        "startmonitoringfordeath",
+        &[Some(("bool", Some(("bool", "true"))))],
+    ),
+    (
+        "startmyscene",
+        &[
+            Some(("bool", Some(("bool", "false")))),
+            Some(("int", Some(("int", "600")))),
+        ],
+    ),
+    ("startoffscreenfiring", &[Some(("float", None))]),
+    ("startpathing", &[Some(("objectreference", None))]),
+    (
+        "startplayerinteraction",
+        &[
+            Some(("ccbgssse001_fishingactscript", None)),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("startquest", &[Some(("objectreference", None))]),
+    (
+        "startquestdlc1vampirefeedbystander",
+        &[Some(("actor", None))],
+    ),
+    ("startscriptprofiling", &[Some(("string", None))]),
+    ("startstoryquest", &[Some(("companionsstoryquest", None))]),
+    ("starttitlesequence", &[Some(("string", None))]),
+    (
+        "starttraveling",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", Some(("float", "1000.0")))),
+        ],
+    ),
+    ("startvampirefeed", &[Some(("actor", None))]),
+    (
+        "startwaittimer",
+        &[Some(("float", None)), Some(("int", None))],
+    ),
+    ("startwatersfx", &[Some(("bool", None))]),
+    (
+        "startwicrowd",
+        &[
+            Some(("objectreference", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("startwidragonkillquest", &[Some(("actor", None))]),
+    ("stop", &[Some(("objectreference", None))]),
+    ("stopimods", &[Some(("bool", Some(("bool", "true"))))]),
+    ("stopinstance", &[Some(("int", None))]),
+    (
+        "stopquestandstartnewone",
+        &[Some(("quest", None)), Some(("int", None))],
+    ),
+    ("stopquestandstartnewonehunter", &[Some(("quest", None))]),
+    (
+        "stopquestandstartnewonehuntertech",
+        &[Some(("quest", None))],
+    ),
+    ("stopquestandstartnewonevampire", &[Some(("quest", None))]),
+    (
+        "stopriding",
+        &[
+            None,
+            None,
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("stopscriptprofiling", &[Some(("string", None))]),
+    (
+        "stopsoundbyname",
+        &[
+            Some(("string", None)),
+            Some(("objectreference", Some(("none", "None")))),
+        ],
+    ),
+    ("storefoundenemy", &[Some(("actor", None))]),
+    ("storehouselocation", &[Some(("int", None))]),
+    ("stripessentialandenable", &[Some(("referencealias", None))]),
+    ("subtractattackdeltamissionbonus", &[Some(("int", None))]),
+    (
+        "subtractfromattackerpool",
+        &[Some(("int", Some(("int", "1"))))],
+    ),
+    (
+        "subtractfromdefenderpool",
+        &[Some(("int", Some(("int", "1"))))],
+    ),
+    (
+        "subtractquaternions",
+        &[Some(("float[]", None)), Some(("float[]", None))],
+    ),
+    (
+        "succeeddefensequest",
+        &[
+            Some(("locationalias", None)),
+            Some(("locationalias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("summon", &[Some(("actorbase", None)), Some(("int", None))]),
+    ("summonphase", &[Some(("int", None))]),
+    ("survivallogmessage", &[Some(("string", None))]),
+    (
+        "swapaliases",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("swaparmorformiscobject", &[Some(("actor", None))]),
+    ("switchtofalling", &[Some(("objectreference", None))]),
+    (
+        "tag",
+        &[
+            Some(("actor", None)),
+            Some(("actor", None)),
+            Some(("form", None)),
+        ],
+    ),
+    ("takeacube", &[Some(("bool", Some(("bool", "true"))))]),
+    ("takebook", &[Some(("dlc2blackbookscript", None))]),
+    ("takebookfromplayer", &[Some(("int", None))]),
+    ("takescreenshot", &[Some(("string", None))]),
+    (
+        "takeshot",
+        &[
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+        ],
+    ),
+    ("tamedragon", &[Some(("actor", None))]),
+    ("tan", &[Some(("float", None))]),
+    ("teachword", &[Some(("wordofpower", None))]),
+    (
+        "teleportandsetnewsummonphase",
+        &[Some(("objectreference", None)), Some(("int", None))],
+    ),
+    ("teleportmiraak", &[Some(("objectreference", None))]),
+    ("teleportplayertotarget", &[Some(("objectreference", None))]),
+    (
+        "teleporttolocation",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", Some(("bool", "true")))),
+        ],
+    ),
+    ("teleporttosafepoint", &[Some(("bool", None))]),
+    ("testforalduinhit", &[Some(("objectreference", None))]),
+    (
+        "testforswap",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "testfortrigger",
+        &[Some(("objectreference", None)), Some(("int", None))],
+    ),
+    ("testrefissoulgem", &[Some(("objectreference", None))]),
+    ("tethertohorse", &[Some(("objectreference", None))]),
+    ("tg08disablelinkchain", &[Some(("objectreference", None))]),
+    ("tg08enablelinkchain", &[Some(("objectreference", None))]),
+    ("tg08enablewaterstream", &[Some(("objectreference", None))]),
+    (
+        "tg08matchtranslatelinkchain",
+        &[Some(("objectreference", None))],
+    ),
+    ("tg08matchwaterstream", &[Some(("objectreference", None))]),
+    ("tgradiantcount", &[Some(("location", None))]),
+    ("toggleandimpulse", &[Some(("objectreference", None))]),
+    ("togglecamp", &[Some(("int", None)), Some(("bool", None))]),
+    (
+        "toggleenablemarkers",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", Some(("none", "None")))),
+            Some(("referencealias", Some(("none", "None")))),
+            Some(("referencealias", Some(("none", "None")))),
+        ],
+    ),
+    (
+        "togglemapmarkersandfasttravelendbattle",
+        &[Some(("bool", None))],
+    ),
+    (
+        "togglemapmarkersandfasttravelstartbattle",
+        &[Some(("bool", None))],
+    ),
+    (
+        "toggleoffcomplexwiinteractions",
+        &[Some(("locationalias", None))],
+    ),
+    ("toggleoffwidragons", &[Some(("locationalias", None))]),
+    (
+        "toggleoncomplexwiinteractions",
+        &[Some(("locationalias", None))],
+    ),
+    ("toggleonwidragons", &[Some(("locationalias", None))]),
+    (
+        "trace",
+        &[Some(("string", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    (
+        "traceandbox",
+        &[Some(("string", None)), Some(("int", Some(("int", "0"))))],
+    ),
+    (
+        "traceconditional",
+        &[Some(("string", None)), Some(("bool", None))],
+    ),
+    (
+        "tracestack",
+        &[
+            Some(("string", Some(("str", "Tracing stack on request")))),
+            Some(("int", Some(("int", "0")))),
+        ],
+    ),
+    (
+        "traceuser",
+        &[
+            Some(("string", None)),
+            Some(("string", None)),
+            Some(("int", Some(("int", "0")))),
+        ],
+    ),
+    ("trackdragondeath", &[Some(("int", None))]),
+    ("trackeditemchanged", &[Some(("form", None))]),
+    ("trackfriend", &[Some(("actor", None))]),
+    (
+        "transferavs",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    ("transferorphan", &[Some(("actor", None))]),
+    ("transformifnecessary", &[Some(("actor", None))]),
+    (
+        "translatecchouseexteriorloctoint",
+        &[Some(("location", None))],
+    ),
+    ("translatecchouseinttoexteriorloc", &[Some(("int", None))]),
+    ("translatecchouseinttointeriorloc", &[Some(("int", None))]),
+    ("translatecchouseinttoobj", &[Some(("int", None))]),
+    (
+        "translatehousealiastoint",
+        &[Some(("referencealias", None))],
+    ),
+    ("translatehouseinttoalias", &[Some(("int", None))]),
+    ("translatehouseinttointeriorloc", &[Some(("int", None))]),
+    ("translatehouseinttoloc", &[Some(("int", None))]),
+    ("translatehouseinttoobj", &[Some(("int", None))]),
+    ("translatelocationtohouseint", &[Some(("location", None))]),
+    (
+        "translateto",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "translatetoref",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", Some(("float", "0.0")))),
+        ],
+    ),
+    (
+        "translatetorefatspeed",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "translatetorefatspeedandgotostate",
+        &[
+            Some(("objectreference", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+        ],
+    ),
+    (
+        "translatetorefnodeatspeed",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "translatetorefnodeatspeedandgotostate",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("string", None)),
+        ],
+    ),
+    ("trapsoul", &[Some(("actor", None))]),
+    (
+        "travel",
+        &[Some(("int", Some(("int", "-1")))), Some(("actor", None))],
+    ),
+    ("treeharvested", &[Some(("int", None))]),
+    ("triggeraftershock", &[Some(("float", None))]),
+    ("triggerexplosion", &[Some(("objectreference", None))]),
+    ("triggerscreenblood", &[Some(("int", None))]),
+    ("triggertentacleattack", &[Some(("int", None))]),
+    (
+        "triggertentacleattackfull",
+        &[
+            Some(("bool", Some(("bool", "false")))),
+            Some(("float", Some(("float", "0.5")))),
+        ],
+    ),
+    (
+        "triggertentacleattacksingle",
+        &[
+            Some(("int", Some(("int", "1")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("float", Some(("float", "0.5")))),
+        ],
+    ),
+    ("triggerwaterrisematch", &[Some(("objectreference", None))]),
+    ("trollabandoned", &[Some(("actor", None))]),
+    ("trymiraakmakehisintroduction", &[Some(("actor", None))]),
+    (
+        "trypromotetoactiveallyandreturnactor",
+        &[Some(("referencealias", None)), Some(("location", None))],
+    ),
+    (
+        "trytoaddally",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    (
+        "trytoaddmudcrabally",
+        &[Some(("actor", None)), Some(("actor", None))],
+    ),
+    ("trytoaddtofaction", &[Some(("faction", None))]),
+    (
+        "trytochangestate",
+        &[Some(("keyword", None)), Some(("int", None))],
+    ),
+    (
+        "trytocreateinteriordefender",
+        &[
+            Some(("location", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    (
+        "trytodeletewhenablealias",
+        &[Some(("referencealias", None))],
+    ),
+    ("trytodisablealias", &[Some(("referencealias", None))]),
+    (
+        "trytodisablelightbeamscompress",
+        &[Some(("objectreference", None))],
+    ),
+    ("trytodispeldragon", &[Some(("actor", None))]),
+    ("trytoenablealias", &[Some(("referencealias", None))]),
+    (
+        "trytoforceref",
+        &[
+            Some(("referencealias", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "trytogetforcedspawnlinkedref",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "trytogetpriorityspawnlinkedref",
+        &[Some(("referencealias", None))],
+    ),
+    ("trytokill", &[Some(("objectreference", None))]),
+    (
+        "trytokilloffscreendefender",
+        &[Some(("referencealias", None))],
+    ),
+    ("trytomoveto", &[Some(("objectreference", None))]),
+    (
+        "trytomovetonextmarker",
+        &[Some(("bool", Some(("bool", "false"))))],
+    ),
+    (
+        "trytoplaceflag",
+        &[
+            Some(("objectreference", None)),
+            Some(("activator", None)),
+            Some(("activator", None)),
+            Some(("location", None)),
+            Some(("string", None)),
+        ],
+    ),
+    (
+        "trytoprocessally",
+        &[
+            Some(("referencealias", None)),
+            Some(("location", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    ("trytopulsetrigger", &[Some(("referencealias", None))]),
+    ("trytoreleasedragon", &[Some(("actor", None))]),
+    ("trytoremoveflag", &[Some(("objectreference", None))]),
+    ("trytoremovefromfaction", &[Some(("faction", None))]),
+    ("trytoresetalias", &[Some(("referencealias", None))]),
+    (
+        "trytoresetenemysoldieralias",
+        &[Some(("referencealias", None))],
+    ),
+    ("trytoresetsoldieralias", &[Some(("referencealias", None))]),
+    ("trytorespawn", &[Some(("referencealias", None))]),
+    ("trytorespawnalias", &[Some(("referencealias", None))]),
+    ("trytosabotage", &[Some(("objectreference", None))]),
+    (
+        "trytotravel",
+        &[Some(("objectreference", None)), Some(("actor", None))],
+    ),
+    (
+        "trytoturnoffcatapultalias",
+        &[Some(("referencealias", None))],
+    ),
+    (
+        "trytoturnoncatapultalias",
+        &[Some(("referencealias", None))],
+    ),
+    ("turnmeintovampire", &[Some(("actor", None))]),
+    ("turnoff", &[Some(("bool", Some(("bool", "true"))))]),
+    ("turnonaliases", &[Some(("bool", None))]),
+    ("unblockgames", &[Some(("actor", None))]),
+    ("undoaction", &[Some(("int", None))]),
+    (
+        "unequipitem",
+        &[
+            Some(("form", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    ("unequipitemslot", &[Some(("int", None))]),
+    ("unequipshout", &[Some(("shout", None))]),
+    (
+        "unequipspell",
+        &[Some(("spell", None)), Some(("int", None))],
+    ),
+    ("unfreezealias", &[Some(("referencealias", None))]),
+    ("unlockdoor", &[Some(("objectreference", None))]),
+    (
+        "unlockme",
+        &[
+            Some(("referencealias", None)),
+            Some(("int", Some(("int", "255")))),
+        ],
+    ),
+    ("unlockopendoor", &[Some(("objectreference", None))]),
+    ("unlockword", &[Some(("wordofpower", None))]),
+    ("unregistereventhappening", &[Some(("location", None))]),
+    (
+        "unregisterforanimationevent",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    ("unregisterforevents", &[Some(("objectreference", None))]),
+    (
+        "unregisterforlos",
+        &[Some(("actor", None)), Some(("objectreference", None))],
+    ),
+    (
+        "unregisterresourceobjectaliasesforupdate",
+        &[
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+            Some(("referencealias", None)),
+        ],
+    ),
+    ("unregisterwaterobject", &[Some(("objectreference", None))]),
+    ("unshutup", &[Some(("actor", None))]),
+    (
+        "updateattributepenalty",
+        &[
+            Some(("float", None)),
+            Some(("string", Some(("str", "")))),
+            Some(("string", Some(("str", "")))),
+        ],
+    ),
+    (
+        "updateboilersdone",
+        &[Some(("bool", None)), Some(("objectreference", None))],
+    ),
+    (
+        "updatecaravan",
+        &[
+            Some(("int", None)),
+            Some(("form", None)),
+            Some(("actor", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "updatecompletionstatus",
+        &[
+            Some(("byohhousescript", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "updatecubecounters",
+        &[
+            Some(("objectreference", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    (
+        "updatecurrentinstanceglobal",
+        &[Some(("globalvariable", None))],
+    ),
+    (
+        "updategiftvalues",
+        &[
+            Some(("actor", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "updateobjective",
+        &[
+            Some(("location", None)),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("bool", Some(("bool", "false")))),
+            Some(("globalvariable", Some(("none", "None")))),
+        ],
+    ),
+    ("updatepollingcounter", &[Some(("bool", None))]),
+    (
+        "updatequeue",
+        &[Some(("locationalias", None)), Some(("keyword", None))],
+    ),
+    (
+        "updatesinglebook",
+        &[
+            Some(("form", None)),
+            Some(("objectreference", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "updatesinglefish",
+        &[
+            Some(("form", None)),
+            Some(("ccbgssse001_fishtankcritterscript", None)),
+            Some(("objectreference", None)),
+        ],
+    ),
+    (
+        "updatetemperatureui",
+        &[
+            Some(("int", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    ("updateto000900", &[Some(("int", None))]),
+    ("updateto000901", &[Some(("int", None))]),
+    ("updateto100004", &[Some(("int", None))]),
+    (
+        "validatecchousemovedestination",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    (
+        "validateholdtoattack",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    (
+        "validatemovedestination",
+        &[Some(("int", None)), Some(("int", None))],
+    ),
+    ("vampirechange", &[Some(("actor", None))]),
+    ("vampirecure", &[Some(("actor", None))]),
+    (
+        "vampireprogression",
+        &[Some(("actor", None)), Some(("int", None))],
+    ),
+    ("wait", &[Some(("float", None))]),
+    ("waitfor3d", &[Some(("objectreference", None))]),
+    ("waitforanimationevent", &[Some(("string", None))]),
+    ("waitforplayer", &[Some(("bool", Some(("bool", "true"))))]),
+    ("waitgametime", &[Some(("float", None))]),
+    ("waitmenumode", &[Some(("float", None))]),
+    (
+        "warptorefandgotostate",
+        &[Some(("objectreference", None)), Some(("string", None))],
+    ),
+    (
+        "warptorefnodeandgotostate",
+        &[
+            Some(("objectreference", None)),
+            Some(("string", None)),
+            Some(("string", None)),
+        ],
+    ),
+    ("waterupdate", &[Some(("float", None))]),
+    (
+        "weaparmorcounter",
+        &[
+            Some(("bool", None)),
+            Some(("form", None)),
+            Some(("keyword", None)),
+            Some(("keyword", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("whiterunsiegehappening", &[Some(("bool", None))]),
+    (
+        "winholdandsetowner",
+        &[
+            Some(("location", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    (
+        "winholdandsetownerkeyworddataonly",
+        &[
+            Some(("location", None)),
+            Some(("bool", None)),
+            Some(("bool", None)),
+        ],
+    ),
+    (
+        "winholdoffscreenifnotdoingcapitalbattles",
+        &[
+            Some(("location", None)),
+            Some(("bool", Some(("bool", "true")))),
+            Some(("bool", Some(("bool", "false")))),
+        ],
+    ),
+    (
+        "within",
+        &[
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+            Some(("float", None)),
+        ],
+    ),
+    (
+        "withingamedaterange",
+        &[
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+            Some(("int", None)),
+        ],
+    ),
+    ("workonpillar", &[Some(("bool", Some(("bool", "true"))))]),
+    ("workonpillarnpc", &[Some(("actor", None))]),
+    ("wornhaskeyword", &[Some(("keyword", None))]),
+];
+
 /// `(function, parameter types, defaults)`, lowercased, measured from the corpus.
 pub const SIGNATURES: &[(&str, &[&str], &[Option<(&str, &str)>])] = &[
     ("__iswatched", &["objectreference"], &[None]),
@@ -83092,10 +88586,54 @@ pub const SIGNATURES: &[(&str, &[&str], &[Option<(&str, &str)>])] = &[
     ("wuuthradscript.onequipped", &["actor"], &[None]),
     ("wuuthradscript.onunequipped", &["actor"], &[None]),
 ];
+
 /// The direct parent of `class`, from its `Scriptname X extends Y` line.
 pub fn parent(class: &str) -> Option<&'static str> {
     let c = class.to_ascii_lowercase();
     PARENTS.iter().find(|(n, _)| *n == c).map(|(_, p)| *p)
+}
+
+/// The type expected at argument `pos` of `function`, from the per-position
+/// table.
+///
+/// This is weaker than [`params`] and deliberately kept separate: it only says
+/// what slot `pos` holds, not the whole signature. It exists because a name can
+/// carry different signatures on unrelated classes while its individual argument
+/// slots agree — `additem` is `(Form)` on `FormArray` and `(Form, int, bool)` on
+/// `ObjectReference`, so the signature is dropped but slot 0 is `Form` either
+/// way, and slot 0 is what decides the `cast`.
+pub fn positional_arg(function: &str, pos: usize) -> Option<&'static str> {
+    let f = function.to_ascii_lowercase();
+    let (_, slots) = ARG_POSITIONS.iter().find(|(n, _)| *n == f)?;
+    slots.get(pos)?.as_ref().map(|(t, _)| *t)
+}
+
+/// The default value at argument `pos` of `function`, from the per-position
+/// table. `None` means "no default known", which is not the same as "no default":
+/// the emitter only pads when this returns a value.
+pub fn positional_default(
+    function: &str,
+    pos: usize,
+) -> Option<Option<(&'static str, &'static str)>> {
+    let f = function.to_ascii_lowercase();
+    let (_, slots) = ARG_POSITIONS.iter().find(|(n, _)| *n == f)?;
+    match slots.get(pos)? {
+        Some((_, d)) => Some(*d),
+        None => Some(None),
+    }
+}
+
+/// The type expected at argument `pos`, from the full signature when there is
+/// one and from the per-position table otherwise.
+///
+/// This is the lookup the emitter should use: a whole signature is the strongest
+/// evidence, and the per-position table recovers the slot types of names whose
+/// signature was dropped as ambiguous.
+pub fn arg_type(class: &str, function: &str, pos: usize) -> Option<&'static str> {
+    if let Some(t) = method_params(class, function).and_then(|s| s.get(pos)) {
+        return Some(*t);
+    }
+    positional_arg(function, pos)
 }
 
 /// The parameter types of `function`, or `None` when the corpus never showed a

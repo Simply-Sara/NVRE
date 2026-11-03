@@ -113,6 +113,14 @@ def main():
 
     arity = defaultdict(Counter)  # name -> Counter of full shapes
     static_arity = defaultdict(Counter)  # (class, name) -> Counter of shapes
+    # (name, position) -> set of types seen there. A whole signature can be
+    # ambiguous while a single position is not: `AddItem` is
+    # `FormArray.AddItem(Form)` on one class and
+    # `ObjectReference.AddItem(Form, int, bool)` on another, so the name is
+    # dropped from the exact table — but argument 0 is `Form` in both, and that
+    # is the one that decides whether the caller needs a `cast`.
+    pos_types = defaultdict(lambda: defaultdict(set))
+    pos_defaults = defaultdict(lambda: defaultdict(set))
     parents = {}  # class -> its `extends` parent
     total = 0
 
@@ -146,6 +154,9 @@ def main():
             # differently.
             shape = tuple((t, d) for t, _n, d in parsed)
             fn = mm.group(2).lower()
+            for i, (t, d) in enumerate(shape):
+                pos_types[fn][i].add(t)
+                pos_defaults[fn][i].add(d)
             arity[fn][shape] += 1
             if cls:
                 static_arity[(cls, fn)][shape] += 1
@@ -179,6 +190,46 @@ def main():
     print("pub const PARENTS: &[(&str, &str)] = &[")
     for c, p in sorted(parents.items()):
         print(f'    ("{c}", "{p}"),')
+    print("];")
+    print()
+    unambiguous_pos = 0
+    rows = []
+    for fn, by_pos in sorted(pos_types.items()):
+        width = max(by_pos) + 1
+        slots = []
+        for i in range(width):
+            ts = by_pos.get(i)
+            if not (ts and len(ts) == 1):
+                slots.append(None)
+                continue
+            # The default is kept only when every declaration that reaches this
+            # position agrees on it. A shorter declaration simply does not reach
+            # the slot, so it is not counted as disagreeing.
+            ts_defaults = pos_defaults[fn].get(i, set())
+            d = next(iter(ts_defaults)) if len(ts_defaults) == 1 else None
+            slots.append((next(iter(ts)), d))
+        if any(s is not None for s in slots):
+            unambiguous_pos += 1
+            rows.append((fn, slots))
+    print(f"  // {unambiguous_pos} names with a position-unambiguous type", file=sys.stderr)
+    print()
+    print("/// `(function, per-position type where every declaration agreed)`.")
+    print("///")
+    print("/// A position is kept even when the whole signature is ambiguous, because")
+    print("/// the argument slot is what decides a `cast`: `additem` is")
+    print("/// `(Form)` on FormArray and `(Form, int, bool)` on ObjectReference, so the")
+    print("/// signature is dropped — but slot 0 is `Form` either way.")
+    print("pub const ARG_POSITIONS: &[(&str, &[Option<(&str, Option<(&str, &str)>)>])] = &[")
+    for fn, slots in rows:
+        parts = []
+        for s in slots:
+            if s is None:
+                parts.append("None")
+                continue
+            t, d = s
+            dflt = "None" if d is None else f'Some(("{d[0]}", "{d[1]}"))'
+            parts.append(f'Some(("{t}", {dflt}))')
+        print(f'    ("{fn}", &[{", ".join(parts)}]),')
     print("];")
     print()
     print(
