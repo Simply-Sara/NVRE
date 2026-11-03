@@ -947,13 +947,22 @@ impl<'a> Compiler<'a> {
                 if let Expr::Member(obj, name) = target {
                     let o = self.expr(buf, obj, *line)?;
                     let p = self.intern(name);
-                    let v = self.expr(buf, value, *line)?;
+                    let raw = self.expr(buf, value, *line)?;
+                    // The VALUE is materialised into a temporary, always: slot 2
+                    // of all 3,352 shipped `propset` instructions is a `::tempN`
+                    // and never a literal. `kmyQuest.SomeProp = true` compiles to
+                    //   assign ::temp17 true
+                    //   propset SomeProp kmyQuest ::temp17
+                    // and the CK reuses that one temp for consecutive propsets,
+                    // so releasing it after the instruction is what makes the
+                    // next one take the same slot.
+                    let ty = self.value_type(buf, &raw);
+                    let v = self.materialise(buf, raw, &ty, *line);
                     let mut ins = Instruction::new(opcode_of("propset"));
                     ins.args.push(Value::Identifier(p));
                     ins.args.push(o);
-                    ins.args.push(v.clone());
+                    ins.args.push(v);
                     buf.push(ins, *line);
-                    self.release_temp(buf, &v);
                     return Ok(());
                 }
                 let dest = self.lvalue(buf, target)?;
