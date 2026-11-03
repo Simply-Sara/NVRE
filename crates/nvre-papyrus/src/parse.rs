@@ -337,6 +337,10 @@ pub struct Script {
     pub name: String,
     /// `extends`, if written.
     pub parent: Option<String>,
+    /// Whether the `Scriptname` line said `Hidden`.
+    pub declares_hidden: bool,
+    /// Whether the `Scriptname` line said `Conditional`.
+    pub declares_conditional: bool,
     /// The script's doc comment.
     pub doc: Option<String>,
     /// Everything declared, in source order.
@@ -455,9 +459,19 @@ impl<'a> Parser<'a> {
         // one to be read as a declaration makes the *next* line's first word a
         // declared name — which is a parse error two lines later, pointing at
         // the wrong line.
+        let mut declares_hidden = false;
+        let mut declares_conditional = false;
         loop {
             match self.peek().and_then(|t| t.word()).as_deref() {
-                Some("hidden") | Some("conditional") | Some("mandatory") => {
+                Some("hidden") => {
+                    declares_hidden = true;
+                    self.i += 1;
+                }
+                Some("conditional") => {
+                    declares_conditional = true;
+                    self.i += 1;
+                }
+                Some("mandatory") => {
                     self.i += 1;
                 }
                 Some("native") => {
@@ -489,6 +503,8 @@ impl<'a> Parser<'a> {
         Ok(Script {
             name,
             parent,
+            declares_hidden,
+            declares_conditional,
             doc,
             decls,
             is_native,

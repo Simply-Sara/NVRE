@@ -122,6 +122,13 @@ pub struct Compiler<'a> {
     strings: Vec<String>,
     /// Per-lowercased-variable-name type, for choosing the arithmetic opcode.
     types: Vec<(String, TypeName)>,
+    /// The user-flag names this script declares, interned in declaration order
+    /// before the parent class because that is where the file puts them.
+    ///
+    /// `hidden` and `conditional` are the two a script can declare; Skyrim's
+    /// every script carries them in the order its source spells them on the
+    /// `Scriptname` line, which the parser records as flags rather than names.
+    user_flag_names: Vec<String>,
 }
 
 /// One property's compiled form.
@@ -165,6 +172,16 @@ impl<'a> Compiler<'a> {
             symbols,
             strings: Vec::new(),
             types: Vec::new(),
+            user_flag_names: {
+                // Both are always present, on all 14,026 shipped scripts —
+                // including the 2,859 whose source declares neither. Only the
+                // order varies, and it does not follow the source line:
+                // `conditional` precedes `hidden` on 8,730 and follows it on
+                // 5,296, with no correlation to what the `Scriptname` line
+                // spells. That order is not decoded, so this takes the more
+                // common one and is wrong on the 5,296.
+                vec!["conditional".to_string(), "hidden".to_string()]
+            },
         };
         for d in &script.decls {
             match &d.kind {
@@ -204,96 +221,148 @@ impl<'a> Compiler<'a> {
     }
 
     /// Compile the whole script.
+    ///
+    /// # The compiler injects two functions into every script
+    ///
+    /// `GetState` and `GotoState` are not in any source file — the compiler
+    /// adds them, and they are why every shipped `.pex` has them at string
+    /// indices 2 and 3 regardless of what its source says. Their bodies are
+    /// fixed, measured on `DLC2ThirskDoorScript.pex`:
+    ///
+    /// ```text
+    /// String GetState()
+    ///     {Function that returns the current state}
+    ///     return ::State
+    ///
+    /// None GotoState(String newState)
+    ///     {Function that switches this object to the specified state}
+    ///     callmethod onEndState self ::NoneVar  <0>
+    ///     assign ::State newState
+    ///     callmethod onBeginState self ::NoneVar  <0>
+    /// ```
+    ///
+    /// They are emitted first in the default state, in that order, ahead of
+    /// the script's own bodies.
+    ///
+    /// # The string table's order
+    ///
+    /// The table is the sequence of distinct strings the finished file
+    /// *mentions*, read in file order — measured on 14,020 of the 14,026
+    /// shipped scripts by `tools/interning2.py`. That makes the debug block
+    /// the first thing to name anything, so this function interns in the
+    /// file's field order rather than a convenient one:
+    ///
+    /// ```text
+    /// 0        the script name
+    /// 1        ""                       (the debug entries' state name)
+    /// 2, 3     GetState, GotoState      (the injected pair's names)
+    /// 4..      the script's own body names, in file order
+    /// then     hidden/conditional, in that order — the object's user flags
+    /// then     the parent class, then the object's own name (already 0), its
+    ///          doc, its auto-state
+    /// then     each variable: name, type
+    /// then     each property: the backing variable first, then the name
+    /// then     the states' bodies, in file order: return type, doc, params,
+    ///          locals, operands
+    /// ```
     pub fn compile(mut self) -> Result<CompiledScript, Error> {
-        // The string table starts with the script's own name and the empty
-        // string, in that order — measured on every shipped script.
         let script_name = self.script.name.clone();
         let _ = self.intern(&script_name);
-        let _ = self.intern("");
 
-        let mut variables = Vec::new();
-        let mut properties = Vec::new();
-
-        // Variables and properties are emitted in source order, which is what
-        // the object record's field order is.
+        // The bodies to compile, in file order: named states, then the
+        // script's own. The injected pair is separate and always first.
+        let mut order: Vec<(Option<String>, &FunctionDecl)> = Vec::new();
         for d in &self.script.decls {
-            match &d.kind {
-                DeclKind::Variable(v) => {
-                    let n = self.intern(&v.name);
-                    let t = self.intern(&v.type_name.0);
-                    let init = self.value_of(v.initial.as_ref(), &v.type_name)?;
-                    variables.push((n, t, init));
+            if let DeclKind::State(st) = &d.kind {
+                for f in &st.functions {
+                    order.push((Some(st.name.clone()), f));
                 }
-                DeclKind::Property(p) => {
-                    let cp = self.property(p)?;
-                    properties.push(cp);
-                }
-                _ => {}
             }
         }
-
-        // The default state holds the script's own functions and events.
-        let mut default_funcs = Vec::new();
-        let mut debug = Vec::new();
         for d in &self.script.decls {
             if let DeclKind::Function(f) = &d.kind {
-                // `native` functions have no body at all.
-                if f.is_native {
-                    let name = self.intern(&f.name);
-                    let ret = self.intern(
-                        f.return_type
-                            .as_ref()
-                            .map(|t| t.0.as_str())
-                            .unwrap_or("None"),
-                    );
-                    let doc = self.intern(f.doc.as_deref().unwrap_or(""));
-                    let params = f
-                        .params
-                        .iter()
-                        .map(|p| crate::pex::TypedName {
-                            name: self.intern(&p.name),
-                            type_name: self.intern(&p.type_name.0),
-                        })
-                        .collect();
-                    default_funcs.push(Function {
-                        name,
-                        return_type: ret,
-                        doc,
-                        user_flags: 0,
-                        flags: 0x2,
-                        params,
-                        locals: Vec::new(),
-                        instructions: Vec::new(),
-                    });
-                    continue;
-                }
-                let (f, lines) = self.function(f)?;
-                default_funcs.push(f.clone());
-                let obj = self.intern(&script_name);
-                debug.push((obj, f.name, lines));
+                order.push((None, f));
             }
         }
 
-        // Named states.
-        let mut states = Vec::new();
-        for d in &self.script.decls {
-            if let DeclKind::State(s) = &d.kind {
-                let state_name = self.intern(&s.name);
-                let mut funcs = Vec::new();
-                for f in &s.functions {
-                    let (cf, lines) = self.function(f)?;
-                    debug.push((state_name, cf.name, lines));
-                    funcs.push(cf);
-                }
-                states.push((state_name, funcs));
-            }
-        }
-
-        // The default state is emitted last by the compiler and carries the
-        // empty name. Measured: `DLC2ThirskDoorScript.pex`'s single state has
-        // the empty string as its name.
+        // ---- the debug block's names, in entry order ----
         let empty = self.intern("");
-        states.push((empty, default_funcs));
+        let get_state = self.intern("GetState");
+        let goto_state = self.intern("GotoState");
+        let mut own_names: Vec<StrIndex> = Vec::new();
+        for (_state, f) in &order {
+            own_names.push(self.intern(&f.name));
+        }
+        let obj_name = self.intern(&script_name);
+
+        // ---- the object's user flags, then its parent ----
+        for flag in self.user_flag_names.clone() {
+            let _ = self.intern(&flag);
+        }
+        let parent = self.script.parent.clone().unwrap_or_default();
+        let _parent_idx = self.intern(&parent);
+
+        // ---- the variables ----
+        let mut variables = Vec::new();
+        for d in &self.script.decls {
+            if let DeclKind::Variable(v) = &d.kind {
+                let n = self.intern(&v.name);
+                let t = self.intern(&v.type_name.0);
+                let init = self.value_of(v.initial.as_ref(), &v.type_name)?;
+                variables.push((n, t, init));
+            }
+        }
+
+        // ---- the properties, backing variable before name ----
+        let mut properties = Vec::new();
+        for d in &self.script.decls {
+            if let DeclKind::Property(p) = &d.kind {
+                properties.push(self.property(p)?);
+            }
+        }
+
+        // ---- the bodies, in file order, in the default state ----
+        let mut debug: Vec<(StrIndex, StrIndex, Vec<u16>)> = Vec::new();
+        let mut default_funcs = Vec::new();
+
+        // The injected pair. Their names are already interned; their bodies
+        // introduce `String`, the doc strings, `::State` and so on in the order
+        // the file mentions them, which is why they are compiled first.
+        default_funcs.push(self.get_state_fn(get_state, empty));
+        default_funcs.push(self.goto_state_fn(goto_state, empty));
+        // The debug block lists only the script's own bodies, not the injected
+        // pair: `DLC2ThirskDoorScript`'s debug block has three entries for four
+        // functions.
+        debug.push((obj_name, empty, Vec::new()));
+        debug.push((obj_name, empty, Vec::new()));
+
+        let mut states: Vec<(StrIndex, Vec<Function>)> = Vec::new();
+        let mut index = 0usize;
+        let mut by_state: Vec<(Option<String>, Vec<Function>)> = Vec::new();
+        for (state, f) in &order {
+            let (cf, lines) = self.function(f)?;
+            let _ = own_names[index];
+            debug.push((obj_name, self.intern(state.as_deref().unwrap_or("")), lines));
+            index += 1;
+            match by_state.iter_mut().find(|(k, _)| k == state) {
+                Some((_, v)) => v.push(cf),
+                None => by_state.push((state.clone(), vec![cf])),
+            }
+        }
+        for (name, mut funcs) in by_state {
+            let n = self.intern(name.as_deref().unwrap_or(""));
+            if name.is_none() {
+                // The script's own bodies go after the injected pair.
+                let mut all = std::mem::take(&mut default_funcs);
+                all.append(&mut funcs);
+                funcs = all;
+            }
+            states.push((n, funcs));
+        }
+        // A script with no own bodies still has the injected pair.
+        if states.is_empty() {
+            states.push((empty, default_funcs));
+        }
 
         Ok(CompiledScript {
             strings: self.strings,
@@ -302,6 +371,72 @@ impl<'a> Compiler<'a> {
             states,
             debug,
         })
+    }
+
+    /// The injected `String GetState()`.
+    fn get_state_fn(&mut self, name: StrIndex, _empty: StrIndex) -> Function {
+        let ret = self.intern("String");
+        let doc = self.intern("Function that returns the current state");
+        let state_var = self.intern("::State");
+        let mut ins = Instruction::new(opcode_of("return"));
+        ins.args.push(Value::Identifier(state_var));
+        Function {
+            name,
+            return_type: ret,
+            doc,
+            user_flags: 0,
+            flags: 0,
+            params: Vec::new(),
+            locals: vec![crate::pex::TypedName {
+                name: state_var,
+                type_name: ret,
+            }],
+            instructions: vec![ins],
+        }
+    }
+
+    /// The injected `Function GotoState(String newState)`.
+    fn goto_state_fn(&mut self, name: StrIndex, _empty: StrIndex) -> Function {
+        let ret = self.intern("None");
+        let doc = self.intern("Function that switches this object to the specified state");
+        let new_state = self.intern("newState");
+        let string_t = self.intern("String");
+        let on_end = self.intern("onEndState");
+        let self_i = self.intern("self");
+        let none_var = self.intern("::NoneVar");
+        let state_var = self.intern("::State");
+        let on_begin = self.intern("onBeginState");
+
+        let mut call_end = Instruction::new(opcode_of("callmethod"));
+        call_end.args.push(Value::Identifier(on_end));
+        call_end.args.push(Value::Identifier(self_i));
+        call_end.args.push(Value::Identifier(none_var));
+
+        let mut assign = Instruction::new(opcode_of("assign"));
+        assign.args.push(Value::Identifier(state_var));
+        assign.args.push(Value::Identifier(new_state));
+
+        let mut call_begin = Instruction::new(opcode_of("callmethod"));
+        call_begin.args.push(Value::Identifier(on_begin));
+        call_begin.args.push(Value::Identifier(self_i));
+        call_begin.args.push(Value::Identifier(none_var));
+
+        Function {
+            name,
+            return_type: ret,
+            doc,
+            user_flags: 0,
+            flags: 0,
+            params: vec![crate::pex::TypedName {
+                name: new_state,
+                type_name: string_t,
+            }],
+            locals: vec![crate::pex::TypedName {
+                name: none_var,
+                type_name: ret,
+            }],
+            instructions: vec![call_end, assign, call_begin],
+        }
     }
 
     fn property(&mut self, p: &PropertyDecl) -> Result<CompiledProperty, Error> {
@@ -495,6 +630,25 @@ impl<'a> Compiler<'a> {
                 value,
                 line,
             } => {
+                // `arr[i] = v` is not an `assign` at all — it is
+                // `array_setelement arr i v`, and the value being stored is
+                // materialised into a temporary first because that is what the
+                // instruction takes. Measured on `dlc1referencealiasarrayscript`
+                // (`RefArray[0] = RefToAdd` is `array_setelement ::RefArray_var
+                // 0 ::temp3`) and `byohrelationshipadoptableaccessor`.
+                if let Expr::Index(arr, idx) = target {
+                    let a = self.expr(buf, arr, *line)?;
+                    let i = self.expr(buf, idx, *line)?;
+                    let v = self.expr(buf, value, *line)?;
+                    let ty = self.value_type(&v);
+                    let v = self.materialise(buf, v, ty, *line);
+                    let mut ins = Instruction::new(opcode_of("array_setelement"));
+                    ins.args.push(a);
+                    ins.args.push(i);
+                    ins.args.push(v);
+                    buf.push(ins, *line);
+                    return Ok(());
+                }
                 let dest = self.lvalue(buf, target)?;
                 let v = self.expr(buf, value, *line)?;
                 let mut ins = Instruction::new(opcode_of("assign"));
@@ -610,6 +764,27 @@ impl<'a> Compiler<'a> {
         }
         let _ = line;
         Ok(())
+    }
+
+    /// Put a value into a temporary if the instruction cannot take it directly.
+    ///
+    /// The compiler does this for every operand of `array_setelement`: a
+    /// literal or a call result is stored into a `::tempN` and the instruction
+    /// takes that identifier. Measured on `dlc1vampireshrinescript`, where
+    /// `itemValues[myValue] = true` compiles to `assign ::temp8 bool` followed
+    /// by `array_setelement itemValues myValue ::temp8`.
+    fn materialise(&mut self, buf: &mut FnBuf, v: Value, ty: &str, line: u16) -> Value {
+        match v {
+            Value::Identifier(_) => v,
+            other => {
+                let tmp = self.temp(buf, ty);
+                let mut ins = Instruction::new(opcode_of("assign"));
+                ins.args.push(Value::Identifier(tmp));
+                ins.args.push(other);
+                buf.push(ins, line);
+                Value::Identifier(tmp)
+            }
+        }
     }
 
     /// A value that can be assigned to.
