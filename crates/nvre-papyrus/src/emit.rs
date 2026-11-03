@@ -1596,6 +1596,25 @@ impl<'a> Compiler<'a> {
             Value::Bool(_) => "Bool".to_string(),
             Value::String(_) => "String".to_string(),
             Value::Identifier(i) => {
+                // `self` has a type too: the script's own class. Leaving it as
+                // `var` meant `self` was never converted, so
+                // `DoCombatSpellApply(spell, self)` passed it bare where the CK
+                // emits `cast ::temp1 self` (self: actronaut -> ObjectReference).
+                // That was the single largest remaining shape difference.
+                if self
+                    .strings
+                    .get(*i as usize)
+                    .map(|s| s.eq_ignore_ascii_case("self"))
+                    .unwrap_or(false)
+                {
+                    // The script's OWN class, not its parent. `own_class()`
+                    // returns the parent (it is used for static result-type
+                    // lookups), and using it here said `self` was already an
+                    // `ObjectReference` — so no upcast fired where the CK emits
+                    // `cast ::temp1 self` for a parameter declared
+                    // `ObjectReference`. A script's `self` is of its own type.
+                    return self.script.name.clone();
+                }
                 // A temporary's type was decided when it was allocated, and
                 // that is what a comparison has to see: `akActivator` is an
                 // `ObjectReference` and `::temp1` holding `Game.GetPlayer()` is
