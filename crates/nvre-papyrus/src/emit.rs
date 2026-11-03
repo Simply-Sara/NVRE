@@ -530,7 +530,7 @@ impl<'a> Compiler<'a> {
         // declared `local`s only — the game's `OnActivate` lists six `::tempN`
         // and `::NoneVar`, with neither `self` nor its parameter. Measured on
         // DLC2ThirskDoorScript.
-        let self_idx = self.intern("self");
+        let _self_idx = self.intern("self");
 
         let mut params = Vec::new();
         for p in &f.params {
