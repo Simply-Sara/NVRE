@@ -179,8 +179,13 @@ pub struct CompiledScript {
     /// Its states, each with its functions. The default state has the empty
     /// name and holds the script's own bodies.
     pub states: Vec<(StrIndex, Vec<Function>)>,
-    /// The debug entries: (state, function, lines).
-    pub debug: Vec<(StrIndex, StrIndex, Vec<u16>)>,
+    /// The debug entries, in file order: `(object, state, function, lines)`.
+    ///
+    /// One entry per function **including the injected `GetState` and
+    /// `GotoState`**, whose own entries have empty line tables. The `lines`
+    /// vector is parallel to the function's instructions and holds the
+    /// 1-based source line each one came from.
+    pub debug: Vec<(StrIndex, StrIndex, StrIndex, Vec<u16>)>,
 }
 
 impl<'a> Compiler<'a> {
@@ -403,7 +408,7 @@ impl<'a> Compiler<'a> {
         variables.sort_by_key(|(n, _, _)| *n);
 
         // ---- the bodies, in file order, in the default state ----
-        let mut debug: Vec<(StrIndex, StrIndex, Vec<u16>)> = Vec::new();
+        let mut debug: Vec<(StrIndex, StrIndex, StrIndex, Vec<u16>)> = Vec::new();
         let mut default_funcs = Vec::new();
 
         // The injected pair. Their names are already interned; their bodies
@@ -411,11 +416,12 @@ impl<'a> Compiler<'a> {
         // the file mentions them, which is why they are compiled first.
         default_funcs.push(self.get_state_fn(get_state, empty));
         default_funcs.push(self.goto_state_fn(goto_state, empty));
-        // The debug block lists only the script's own bodies, not the injected
-        // pair: `DLC2ThirskDoorScript`'s debug block has three entries for four
-        // functions.
-        debug.push((obj_name, empty, Vec::new()));
-        debug.push((obj_name, empty, Vec::new()));
+        // The injected pair has **real** debug entries with its own names. The
+        // block is not just the source's own bodies: a script declaring no
+        // functions still lists both, and `T4.pex`'s block has six entries for
+        // four source functions.
+        debug.push((obj_name, empty, get_state, Vec::new()));
+        debug.push((obj_name, empty, goto_state, Vec::new()));
 
         let mut states: Vec<(StrIndex, Vec<Function>)> = Vec::new();
         let mut index = 0usize;
@@ -423,7 +429,12 @@ impl<'a> Compiler<'a> {
         for (state, f) in &order {
             let (cf, lines) = self.function(f)?;
             let _ = own_names[index];
-            debug.push((obj_name, self.intern(state.as_deref().unwrap_or("")), lines));
+            debug.push((
+                obj_name,
+                self.intern(state.as_deref().unwrap_or("")),
+                own_names[index],
+                lines,
+            ));
             index += 1;
             match by_state.iter_mut().find(|(k, _)| k == state) {
                 Some((_, v)) => v.push(cf),
@@ -651,7 +662,18 @@ impl<'a> Compiler<'a> {
             let none = self.none_var(&mut buf);
             let mut ins = Instruction::new(opcode_of("return"));
             ins.args.push(Value::Identifier(none));
-            buf.push(ins, f.line);
+            // The implicit terminator carries the line of the last statement
+            // in the body, not the declaration's: `Probe.psc`'s `OnActivate`
+            // ends `endif` on line 6 and `EndEvent` on 7, and the CK records
+            // line 5 — the last statement that emitted anything.
+            let last = buf
+                .lines
+                .iter()
+                .rev()
+                .find(|l| **l != 0)
+                .copied()
+                .unwrap_or(f.line);
+            buf.push(ins, last);
         }
 
         let lines = buf.lines.clone();
@@ -819,8 +841,8 @@ impl<'a> Compiler<'a> {
                 buf.push(ins, *line);
                 Ok(())
             }
-            Stmt::Expr(e) => {
-                let v = self.expr(buf, e, 0)?;
+            Stmt::Expr(e, line) => {
+                let v = self.expr(buf, e, *line)?;
                 self.release_temp(buf, &v);
                 Ok(())
             }

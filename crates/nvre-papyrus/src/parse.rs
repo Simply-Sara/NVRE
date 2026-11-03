@@ -239,7 +239,8 @@ pub enum Stmt {
         line: u16,
     },
     /// A call as a statement: `Activate(akActivator, true)`.
-    Expr(Expr),
+    /// A bare expression used as a statement, with the line it sits on.
+    Expr(Expr, u16),
     /// `if cond … elseif cond … else … endif`.
     If {
         /// The branches, in source order. The first entry's condition is the
@@ -1015,7 +1016,7 @@ impl<'a> Parser<'a> {
                 });
             }
         }
-        Ok(Stmt::Expr(target))
+        Ok(Stmt::Expr(target, line))
     }
 
     /// Whether the current two tokens look like `Type name`.
@@ -1048,9 +1049,13 @@ impl<'a> Parser<'a> {
 
     fn if_statement(&mut self, line: u16) -> Result<Stmt, Error> {
         let mut branches = Vec::new();
+        // The branch's line is the keyword's, not the line the condition ended
+        // on. Reading it after `condition()` returns the *next* line, which put
+        // every `jmpf` one line too low in the debug table: `Probe.psc`'s `if`
+        // on line 4 recorded line 5.
+        let mut branch_line = line;
         let mut cond = Some(self.condition()?);
         loop {
-            let branch_line = self.line();
             let mut inner_locals = Vec::new();
             let mut body = Vec::new();
             loop {
@@ -1070,10 +1075,12 @@ impl<'a> Parser<'a> {
             });
             match self.peek().and_then(|t| t.word()).as_deref() {
                 Some("elseif") => {
+                    branch_line = self.line();
                     self.i += 1;
                     cond = Some(self.condition()?);
                 }
                 Some("else") => {
+                    branch_line = self.line();
                     self.i += 1;
                     // `else if` — the CK accepts it as an `else` whose body
                     // starts with an `if`.
