@@ -1,0 +1,21 @@
+[package]
+name = "nvre-papyrus"
+description = "NVRE's Papyrus toolchain: the .pex container reader and writer, the bytecode instruction set, and the .psc compiler that turns source into a script the game runs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+nvre-util.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+proptest = "1"
+# The census example reads the shipped scripts straight out of the game's own
+# archives rather than a directory of extracted files, so the evidence is the
+# game's bytes and not a copy someone made earlier.
+bsa105 = { path = "../bsa105" }
+ba2 = { path = "../ba2" }
+# `parse_census` reads the shipped sources out of the CK's own Scripts.zip.
+zip = "2"
