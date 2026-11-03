@@ -165,6 +165,7 @@ pub mod opcodes;
 pub mod parse;
 pub mod pex;
 pub mod returns;
+pub mod signatures;
 
 pub use lex::lex;
 pub use parse::parse;

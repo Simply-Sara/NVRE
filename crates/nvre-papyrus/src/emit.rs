@@ -1230,6 +1230,46 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    /// The type a call argument has to be converted to, given the parameter
+    /// signature for `method`.
+    ///
+    /// The compiler converts **type-directed**, not by materialising every
+    /// identifier. The real compiler shows it directly:
+    ///
+    /// ```text
+    /// Self.MoveTo(oProp, fProp, fProp, iProp)
+    ///   -> ::oProp_var ::fProp_var ::fProp_var bare, iProp -> cast ::temp0 ::iProp_var
+    /// akA.MoveTo(oProp, afV, afV, afV)
+    ///   -> every argument bare
+    /// ```
+    ///
+    /// `MoveTo` wants `(ObjectReference, float, float, float, bool)`. `oProp` and
+    /// `fProp` already sat in matching slots; `iProp` was an int where a float is
+    /// required, so it got a `cast`.
+    ///
+    /// Only the numeric widening the VM actually performs is modelled: int to
+    /// float. Anything else is left alone, because a wrong `cast` costs an
+    /// instruction and changes the temporary numbering for the rest of the
+    /// function — far worse than leaving an argument alone.
+    fn coerce_arg(&mut self, buf: &mut FnBuf, value: Value, want: &str, line: u16) -> Value {
+        let want = want.trim_end_matches("[]");
+        let have = self.value_type(buf, &value);
+        // Arrays and objects are never widened by a cast in the shipped corpus.
+        let numeric = |t: &str| t.eq_ignore_ascii_case("int") || t.eq_ignore_ascii_case("float");
+        if !numeric(&have) || !numeric(want) {
+            return value;
+        }
+        if have.eq_ignore_ascii_case(want) {
+            return value;
+        }
+        let t = self.temp(buf, want);
+        let mut ins = Instruction::new(opcode_of("cast"));
+        ins.args.push(Value::Identifier(t));
+        ins.args.push(value);
+        buf.push(ins, line);
+        Value::Identifier(t)
+    }
+
     /// The type name a compiled value carries, for sizing a temporary.
     fn value_type(&self, buf: &FnBuf, v: &Value) -> String {
         match v {
@@ -1502,21 +1542,15 @@ impl<'a> Compiler<'a> {
                             Expr::Member(..) => None,
                             _ => None,
                         };
-                        // The receiver is materialised first when it is `self`:
-                        // `Self.Activate(...)` compiles to
-                        //   cast ::temp6 self
-                        //   callmethod Activate self ::temp7
-                        // The cast result is not the receiver the call passes —
-                        // the call still names `self` — so it exists purely to
-                        // allocate the slot. Measured on Pg5.pec.
-                        if matches!(obj.as_ref(), Expr::Ident(n) if n.eq_ignore_ascii_case("self"))
-                        {
-                            let t = self.temp(buf, "var");
-                            let mut ins = Instruction::new(opcode_of("cast"));
-                            ins.args.push(Value::Identifier(t));
-                            ins.args.push(Value::Identifier(self.intern("self")));
-                            buf.push(ins, line);
-                        }
+                        // NOTE: there is no special "materialise the receiver"
+                        // step. `Self.Activate(Self, true)` compiles to
+                        //   cast ::temp2 self
+                        //   callmethod Activate self ::temp3 ::temp2 Bool(true)
+                        // so `self` IS cast — but as ARGUMENT 0 for `Activate`'s
+                        // `ObjectReference` parameter, not because it is the
+                        // receiver. An earlier version cast it before every
+                        // `Self.<method>()` call, which put a `cast` on calls the
+                        // CK leaves alone (`Self.MoveTo(...)` has none).
                         let recv = self.expr(buf, obj, line)?;
                         let m = self.intern(method);
                         let ty = match &recv_class {
@@ -1535,10 +1569,28 @@ impl<'a> Compiler<'a> {
                         ins.args.push(Value::Identifier(m));
                         ins.args.push(recv);
                         ins.args.push(Value::Identifier(tmp));
-                        ins.varargs = args
-                            .iter()
-                            .map(|a| self.expr(buf, a, line))
-                            .collect::<Result<Vec<_>, _>>()?;
+                        // Arguments are converted type-directed: an int in a
+                        // float slot gets a `cast`, everything else is left
+                        // alone. Measured with the real compiler, not guessed.
+                        // The class only sharpens the lookup; the unqualified
+                        // name is the fallback. Measured both ways over the
+                        // corpus and the fallback is the better of the two:
+                        // qualified-only reads 0.211 equal lines and 68.8% of
+                        // functions, the fallback 0.209 and 69.1%. Neither is
+                        // clean, so the arguments below are still only partly
+                        // modelled.
+                        let class = recv_class.as_deref().unwrap_or("");
+                        let sig = crate::signatures::method_params(class, method);
+                        let mut va = Vec::with_capacity(args.len());
+                        for (i, a) in args.iter().enumerate() {
+                            let v = self.expr(buf, a, line)?;
+                            let v = match sig.and_then(|s| s.get(i)) {
+                                Some(want) => self.coerce_arg(buf, v, want, line),
+                                None => v,
+                            };
+                            va.push(v);
+                        }
+                        ins.varargs = va;
                         buf.push(ins, line);
                         Value::Identifier(tmp)
                     }
