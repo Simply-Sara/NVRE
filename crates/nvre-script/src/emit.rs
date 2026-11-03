@@ -242,7 +242,7 @@ pub fn emit(script: &Script) -> Result<Vec<u8>, crate::Error> {
             // A declaration outside any block emits nothing, as it does
             // inside one. It is carried as a statement for the jumpOps
             // count, not for any bytes of its own.
-            Stmt::Decl => {
+            Stmt::Decl(_) => {
                 i += 1;
             }
 
@@ -270,25 +270,41 @@ pub fn emit(script: &Script) -> Result<Vec<u8>, crate::Error> {
 
 /// Information about the branches of an `If` statement chain.
 struct IfChain {
-    /// Statements in the `if` body (and its start index).
-    if_body_range: std::ops::Range<usize>,
-    /// Any `elseif` branches: (condition tokens, body range).
-    elseifs: Vec<(Vec<crate::lex::Token>, std::ops::Range<usize>)>,
-    /// The `else` body range, if present.
-    else_body_range: Option<std::ops::Range<usize>>,
+    /// The branches, in source order — the `if` head first, then whatever
+    /// mixture of `elseif` and `else` the source wrote. Source order is not
+    /// decoration: `else if (...)` followed by an `elseif` is an `else` and
+    /// then an `elseif`, and emitting every `elseif` before the `else` puts
+    /// the branches in an order the game never wrote (VCG03CampfireTrigger).
+    branches: Vec<Branch>,
     /// The index just after the `EndIf`.
     after_endif: usize,
 }
 
-/// Analyze an `If` statement starting at `if_idx` and find all its branches.
-fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Error> {
-    let mut depth = 0usize;
-    let mut current_start = if_idx + 1;
-    let mut if_body_range = None;
-    let mut elseifs = Vec::new();
-    let mut else_body_range = None;
-    let mut after_endif = None;
+/// One branch of an `if` chain: its head instruction, its condition (none for
+/// `else`), and the statements under it.
+struct Branch {
+    /// The head's opcode — `If`, `ElseIf` or `Else`.
+    head: StmtOp,
+    /// The condition, for the heads that have one.
+    cond: Option<Vec<crate::lex::Token>>,
+    /// The branch's body.
+    body: std::ops::Range<usize>,
+}
 
+/// Analyze an `If` statement starting at `if_idx` and find all its branches.
+///
+/// The statements are flat, so a chain is read as a list of branch markers at
+/// the same depth — the `if`, each `elseif`, the `else` — and each branch's
+/// body is the run between its own marker and the next one. Reading it that
+/// way is what makes an *empty* branch work: `elseif getdestroyed == 1` with
+/// nothing under it (MrHouseSCRIPT line 21) has a body of no statements, and
+/// the game writes `jumpOps 0` for it and then the `else` that follows. The
+/// order the markers appear in is the order the branches are emitted in.
+fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Error> {
+    let mut markers: Vec<(usize, StmtOp, Option<Vec<crate::lex::Token>>)> =
+        vec![(if_idx, StmtOp::If, None)];
+    let mut depth = 0usize;
+    let mut after_endif = None;
     let mut i = if_idx + 1;
     while i < script.stmts.len() {
         match &script.stmts[i] {
@@ -297,57 +313,22 @@ fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Er
                 i += 1;
             }
             Stmt::ElseIf(cond) if depth == 0 => {
-                if if_body_range.is_none() {
-                    if_body_range = Some(current_start..i);
-                } else {
-                    // Previous was an elseif
-                    if let Some(last) = elseifs.last_mut() {
-                        let (c, _): &mut (Vec<crate::lex::Token>, std::ops::Range<usize>) = last;
-                        *last = (c.clone(), current_start..i);
-                    }
-                }
-                elseifs.push((cond.clone(), 0..0)); // range will be populated on next branch/endif
-                current_start = i + 1;
+                markers.push((i, StmtOp::ElseIf, Some(cond.clone())));
                 i += 1;
             }
             Stmt::Else if depth == 0 => {
-                if if_body_range.is_none() {
-                    if_body_range = Some(current_start..i);
-                } else if !elseifs.is_empty() && elseifs.last().unwrap().1.is_empty() {
-                    let (c, _) = elseifs.last().unwrap();
-                    let c = c.clone();
-                    elseifs.pop();
-                    elseifs.push((c, current_start..i));
-                }
-                current_start = i + 1;
+                markers.push((i, StmtOp::Else, None));
                 i += 1;
+            }
+            Stmt::EndIf if depth == 0 => {
+                after_endif = Some(i + 1);
+                break;
             }
             Stmt::EndIf => {
-                if depth == 0 {
-                    if else_body_range.is_none() {
-                        if if_body_range.is_none() {
-                            if_body_range = Some(current_start..i);
-                        } else if !elseifs.is_empty() && elseifs.last().unwrap().1.is_empty() {
-                            let (c, _) = elseifs.last().unwrap();
-                            let c = c.clone();
-                            elseifs.pop();
-                            elseifs.push((c, current_start..i));
-                        } else {
-                            else_body_range = Some(current_start..i);
-                        }
-                    } else {
-                        else_body_range = Some(current_start..i);
-                    }
-                    after_endif = Some(i + 1);
-                    break;
-                } else {
-                    depth -= 1;
-                    i += 1;
-                }
-            }
-            _ => {
+                depth -= 1;
                 i += 1;
             }
+            _ => i += 1,
         }
     }
 
@@ -357,10 +338,21 @@ fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Er
         ));
     };
 
+    // Each branch's body runs from just after its marker to just before the
+    // next marker (or the `endif`).
+    let mut branches = Vec::with_capacity(markers.len());
+    for n in 0..markers.len() {
+        let (at, head, cond) = &markers[n];
+        let end = markers.get(n + 1).map(|(next, _, _)| *next).unwrap_or(after - 1);
+        branches.push(Branch {
+            head: *head,
+            cond: cond.clone(),
+            body: at + 1..end,
+        });
+    }
+
     Ok(IfChain {
-        if_body_range: if_body_range.unwrap_or(current_start..current_start),
-        elseifs,
-        else_body_range,
+        branches,
         after_endif: after,
     })
 }
@@ -405,7 +397,7 @@ fn jump_ops(bytes: &[u8], decls: usize) -> u16 {
 fn count_decls(stmts: &[crate::parse::Stmt]) -> usize {
     stmts
         .iter()
-        .filter(|s| matches!(s, crate::parse::Stmt::Decl))
+        .filter(|s| matches!(s, crate::parse::Stmt::Decl(crate::parse::DeclKind::Ref)))
         .count()
 }
 
@@ -414,6 +406,27 @@ fn emit_if_chain(
     script: &Script,
     if_idx: usize,
     cond: &[crate::lex::Token],
+) -> Result<(Vec<u8>, usize), crate::Error> {
+    emit_branch(script, if_idx, Some(cond), StmtOp::If)
+}
+
+/// Emit one branch head and its body — the shared shape behind `If` and the
+/// stray `ElseIf`/`Else` the GECK still compiles.
+///
+/// The game does not reject a chain that does not nest: `TecMineHostage` closes
+/// its outer `if` and then writes `elseif ( GetDead == 1 )` on the next line,
+/// and the GECK compiled it as `18 00 [jumpOps 1][exprLen][expr]`, its body,
+/// and an `endif` (measured; the instruction is at index 24 of the unit's
+/// bytecode). `CrNightkinCloakUntilFireScript` does the same with a bare
+/// `else`, which compiles to `17 00 02 00 [jumpOps]` — jumpOps only, no
+/// expression. So a stray `elseif`/`else` is emitted as a branch head of its
+/// own, its body running to the next `endif` at its level, and the `endif`
+/// that closes it is emitted with it.
+fn emit_branch(
+    script: &Script,
+    if_idx: usize,
+    cond: Option<&[crate::lex::Token]>,
+    head: StmtOp,
 ) -> Result<(Vec<u8>, usize), crate::Error> {
     let chain = analyze_if_chain(script, if_idx)?;
 
@@ -432,6 +445,16 @@ fn emit_if_chain(
                     out.extend(bytes);
                     idx = next_idx;
                 }
+                Stmt::ElseIf(c) => {
+                    let (bytes, next_idx) = emit_branch(script, idx, Some(c), StmtOp::ElseIf)?;
+                    out.extend(bytes);
+                    idx = next_idx;
+                }
+                Stmt::Else => {
+                    let (bytes, next_idx) = emit_branch(script, idx, None, StmtOp::Else)?;
+                    out.extend(bytes);
+                    idx = next_idx;
+                }
                 other => {
                     out.extend(emit_statement(script, other)?);
                     idx += 1;
@@ -441,71 +464,33 @@ fn emit_if_chain(
         Ok(out)
     }
 
-    let if_body = emit_stmts(script, chain.if_body_range.clone())?;
-    let if_decls = count_decls(&script.stmts[chain.if_body_range.clone()]);
-    let if_ops = jump_ops(&if_body, if_decls);
-
-    let mut elseifs_bytes = Vec::new();
-    let mut elseif_ops_list = Vec::new();
-    for (c, r) in &chain.elseifs {
-        let b = emit_stmts(script, r.clone())?;
-        let ops = jump_ops(&b, count_decls(&script.stmts[r.clone()]));
-        elseifs_bytes.push((c, b));
-        elseif_ops_list.push(ops);
-    }
-
-    let else_body = if let Some(r) = &chain.else_body_range {
-        Some(emit_stmts(script, r.clone())?)
-    } else {
-        None
-    };
-    let else_ops = else_body
-        .as_ref()
-        .map(|b| {
-            jump_ops(
-                b,
-                count_decls(&script.stmts[chain.else_body_range.clone().unwrap()]),
-            )
-        })
-        .unwrap_or(0);
-
     let mut out = Vec::new();
-
-    // 1. Emit If (0x0016)
-    // jumpOps is the number of operations to skip if false — the branch's
-    // source statements, declarations included, with a 0x1C prefix not
-    // counting as one of them. See `jump_ops` for the measurement.
-    let if_cond_bytes = crate::value::encode_expr(cond, script)?;
-    let mut if_args = Vec::with_capacity(4 + if_cond_bytes.len());
-    if_args.extend_from_slice(&if_ops.to_le_bytes());
-    if_args.extend_from_slice(&(if_cond_bytes.len() as u16).to_le_bytes());
-    if_args.extend_from_slice(&if_cond_bytes);
-    out.extend(frame(StmtOp::If.opcode(), &if_args));
-
-    // If body
-    out.extend(if_body);
-
-    // 2. Emit ElseIfs
-    for (i, (c, b)) in elseifs_bytes.into_iter().enumerate() {
-        let c_bytes = crate::value::encode_expr(c, script)?;
-        let ops = elseif_ops_list[i];
-        let mut elseif_args = Vec::with_capacity(4 + c_bytes.len());
-        elseif_args.extend_from_slice(&ops.to_le_bytes());
-        elseif_args.extend_from_slice(&(c_bytes.len() as u16).to_le_bytes());
-        elseif_args.extend_from_slice(&c_bytes);
-        out.extend(frame(StmtOp::ElseIf.opcode(), &elseif_args));
-        out.extend(b);
+    for (n, branch) in chain.branches.iter().enumerate() {
+        let body = emit_stmts(script, branch.body.clone())?;
+        // jumpOps is the number of operations to skip when the branch is not
+        // taken: its own statements, declarations included. A `0x1C`
+        // SetCurrentRef prefix is framing, not an operation — see `jump_ops`.
+        let ops = jump_ops(&body, count_decls(&script.stmts[branch.body.clone()]));
+        // The head a branch's own spelling asked for, for the first one; the
+        // rest carry the marker's owm kind (a stray `elseif` chain is emitted
+        // as one `if`-shaped branch and nothing after it).
+        let branch_head = if n == 0 { head } else { branch.head };
+        let mut args = Vec::new();
+        args.extend_from_slice(&ops.to_le_bytes());
+        let cond_tokens: Option<&[crate::lex::Token]> = if n == 0 {
+            cond
+        } else {
+            branch.cond.as_deref()
+        };
+        if let Some(cond) = cond_tokens {
+            let cond_bytes = crate::value::encode_expr(cond, script)?;
+            args.extend_from_slice(&(cond_bytes.len() as u16).to_le_bytes());
+            args.extend_from_slice(&cond_bytes);
+        }
+        out.extend(frame(branch_head.opcode(), &args));
+        out.extend(body);
     }
-
-    // 3. Emit Else
-    if let Some(eb) = else_body {
-        out.extend(frame(StmtOp::Else.opcode(), &else_ops.to_le_bytes()));
-        out.extend(eb);
-    }
-
-    // 4. Emit EndIf (0x0019)
     out.extend(frame(StmtOp::EndIf.opcode(), &[]));
-
     Ok((out, chain.after_endif))
 }
 
@@ -539,7 +524,7 @@ fn describe(stmt: &Stmt) -> &'static str {
         Stmt::Else => "else",
         Stmt::ElseIf(_) => "elseif",
         Stmt::EndIf => "endif",
-        Stmt::Decl => "a declaration",
+        Stmt::Decl(_) => "a declaration",
         Stmt::Return => "return",
         Stmt::Call { .. } => "a command call",
         Stmt::Unknown { .. } => "an unreadable line",
@@ -586,6 +571,18 @@ fn emit_block(script: &Script, start: usize) -> Result<Vec<u8>, crate::Error> {
                 body.extend(bytes);
                 i = next_i;
             }
+            // A stray `elseif`/`else` — the GECK compiles these as their own
+            // branch head rather than refusing them; see `emit_branch`.
+            Stmt::ElseIf(cond) => {
+                let (bytes, next_i) = emit_branch(script, i, Some(cond), StmtOp::ElseIf)?;
+                body.extend(bytes);
+                i = next_i;
+            }
+            Stmt::Else => {
+                let (bytes, next_i) = emit_branch(script, i, None, StmtOp::Else)?;
+                body.extend(bytes);
+                i = next_i;
+            }
             Stmt::End => {
                 closed = true;
                 break;
@@ -611,7 +608,16 @@ fn emit_block(script: &Script, start: usize) -> Result<Vec<u8>, crate::Error> {
     // 00]`, where the count appears *after* the block length and only when
     // there is a parameter to count. So the count is written last, and only
     // for a block that has one.
-    let params = emit_begin_params(script, start)?;
+    // An event that cannot take an argument has whatever the source passed
+    // dropped, not encoded: `BEGIN ScriptEffectStart EnchARCHIMEDESEffect`
+    // (VHeliosARCHIMEDESEffectScript) writes `11 00 | 24 00 00 00` — six
+    // argument bytes, no count, no parameter. Resolving the name would refuse
+    // a block the game compiled by ignoring it.
+    let params = if code.takes_argument() {
+        emit_begin_params(script, start)?
+    } else {
+        Vec::new()
+    };
     let mut begin_args = Vec::with_capacity(6 + params.len());
     begin_args.extend_from_slice(&code.code().to_le_bytes());
     // The block's length: the body's bytes **plus** the `End` that closes it.
@@ -682,7 +688,7 @@ fn emit_statement(script: &Script, stmt: &Stmt) -> Result<Vec<u8>, crate::Error>
         Stmt::Return => Ok(frame(StmtOp::Return.opcode(), &[])),
         // A declaration emits nothing of its own — but see `jump_ops`: it is
         // still a statement the game counts.
-        Stmt::Decl => Ok(vec![]),
+        Stmt::Decl(_) => Ok(vec![]),
         // `ScriptName` inside a block is the same marker as outside one.
         Stmt::ScriptName(_) => Ok(frame(StmtOp::ScriptName.opcode(), &[])),
         Stmt::Set { on, target, expr } => emit_set(script, on, target, expr),
@@ -721,6 +727,7 @@ fn emit_set(
     target: &crate::lex::Token,
     expr: &[crate::lex::Token],
 ) -> Result<Vec<u8>, crate::Error> {
+    let mut dot_ref_prefix: Option<u16> = None;
     let dest_bytes = if let Some(ref_name) = on {
         let ridx = resolve_ref(ref_name, script)?;
         // A dotted assignment destination is either a variable of this
@@ -737,12 +744,15 @@ fn emit_set(
             b.extend_from_slice(&id.to_le_bytes());
             b
         } else {
-            // Dotted variable assignment target: 0x72 [refIdx: u16] 0x73 0x01 0x00
-            let mut b = vec![0x72];
-            b.extend_from_slice(&ridx.to_le_bytes());
-            b.push(0x73);
-            b.extend_from_slice(&1u16.to_le_bytes());
-            b
+            // `Ref.Set var to …` is a SetCurrentRef prefix and then a plain
+            // variable destination: measured,
+            // `MS14ArmorVoiceRef.Set SayTimer to GameDaysPassed + 0.1`
+            // (Fallout3.esm MS14PowerArmorScript) writes `1C 00 | 01 00` and
+            // then `15 00 | 0A 00 | 66 02 00 | 0A 00 | …` — the `1C` frames
+            // the reference and the destination is the variable alone.
+            dot_ref_prefix = Some(ridx);
+            let dest = crate::value::read_value(std::slice::from_ref(target), script)?;
+            crate::value::encode(&dest)
         }
     } else {
         // A bare destination name. The variable case comes first — a
@@ -789,11 +799,19 @@ fn emit_set(
 
     let expr_bytes = crate::value::encode_expr(expr, script)?;
 
+    // The `1C` prefix is its own instruction, not part of the `Set` frame:
+    // measured, `1C 00 | 01 00` then `15 00 | 0A 00 | …`.
+    let mut out = Vec::new();
+    if let Some(ridx) = dot_ref_prefix {
+        out.extend_from_slice(&0x001Cu16.to_le_bytes());
+        out.extend_from_slice(&ridx.to_le_bytes());
+    }
     let mut args = dest_bytes;
     args.extend_from_slice(&(expr_bytes.len() as u16).to_le_bytes());
     args.extend_from_slice(&expr_bytes);
 
-    Ok(frame(StmtOp::Set.opcode(), &args))
+    out.extend(frame(StmtOp::Set.opcode(), &args));
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -1234,6 +1252,26 @@ fn emit_call(
     // The count is of arguments, not of bytes: one `n`-tagged argument is five
     // bytes, and writing its byte length as the count is a call with five
     // arguments where the source asked for one.
+    // A command that drops its argument must not encode it: the argument is
+    // often a package or idle name that is nowhere in the record's reference
+    // list (`VMS18WhiteGloveKitchenPatrollerREF.RemoveScriptPackage
+    // VMS18KitchenPatrollerFollowPlayer`), so resolving it would fail on a
+    // call whose bytes carry no argument at all.
+    let significant: Vec<&crate::lex::Token> = args
+        .iter()
+        .filter(|t| {
+            t.kind != crate::lex::Kind::Space
+                && t.kind != crate::lex::Kind::Comment
+                && t.text != ","
+        })
+        .collect();
+    if matches!(cmd.opcode, 0x1017 | 0x1098 | 0x105E | 0x105D | 0x1101) && significant.len() == 1
+    {
+        let mut out = prefix_bytes;
+        out.extend(frame(cmd.opcode, &[]));
+        return Ok(out);
+    }
+
     let mut encoded: Vec<Vec<u8>> = Vec::new();
     let mut param_idx = 0;
     let mut ai = 0;
@@ -1249,14 +1287,35 @@ fn emit_call(
             let num_tok = &args[ai + 1];
             let mut combined = num_tok.clone();
             combined.text = format!("-{}", num_tok.text);
-            let expected_type = cmd.args.get(param_idx).copied();
-            encoded.push(emit_arg(&combined, script, expected_type)?);
+            encoded.push(emit_arg(&combined, script, Some(cmd), param_idx)?);
             param_idx += 1;
             ai += 2;
             continue;
         }
-        let expected_type = cmd.args.get(param_idx).copied();
-        encoded.push(emit_arg(t, script, expected_type)?);
+        // A dotted compound inside an argument list is `Script.var`, the
+        // 5-byte `72 <refIdx> <tag> <varId>` form measured in
+        // `ShowMessage TrapLowSkillRepairMsg NQlvl.TRAPPlateSkillReq`
+        // (`01 00 | 72 05 00 | 01 00 | 72 02 00 73 1B 00 | 00 00 00 00`). The
+        // var's ID lives in the target script's own SLSD table, which the
+        // caller supplies; a target no table covers is refused.
+        if t.kind == crate::lex::Kind::Word
+            && ai + 2 < args.len()
+            && args[ai + 1].text == "."
+            && args[ai + 2].kind == crate::lex::Kind::Word
+        {
+            let member = &args[ai + 2];
+            let (tag, id) = crate::value::resolve_remote_var(&t.text, &member.text, script)?;
+            let ref_idx = resolve_ref(&t.text, script)?;
+            let mut b = vec![0x72];
+            b.extend_from_slice(&ref_idx.to_le_bytes());
+            b.push(tag);
+            b.extend_from_slice(&id.to_le_bytes());
+            encoded.push(b);
+            param_idx += 1;
+            ai += 3;
+            continue;
+        }
+        encoded.push(emit_arg(t, script, Some(cmd), param_idx)?);
         param_idx += 1;
         ai += 1;
     }
@@ -1274,7 +1333,9 @@ fn emit_call(
         // the corpus, every one argLen 0, dotted and bare alike. One
         // dropped argument is accepted on that evidence; two is a call this
         // emitter does not understand.
-        if encoded.len() == 1 && (cmd.opcode == 0x1017 || cmd.opcode == 0x1098) {
+        if encoded.len() == 1
+            && matches!(cmd.opcode, 0x1017 | 0x1098 | 0x1142 | 0x105E | 0x105D)
+        {
             let mut out = prefix_bytes;
             out.extend(frame(cmd.opcode, &[]));
             return Ok(out);
@@ -1312,6 +1373,20 @@ fn emit_call(
                 "`ShowMessage` needs its message argument".to_string(),
             ));
         }
+        // A bare number after the message is not a format value: see the tail
+        // below. It is taken off the end and loses its `n` tag.
+        let mut literal_arg: Option<i64> = None;
+        if significant.len() == 2 && significant[1].kind == crate::lex::Kind::Number {
+            if let Ok(n) = significant[1].text.parse::<i64>() {
+                literal_arg = Some(n);
+                encoded.pop();
+            }
+        }
+        if encoded.is_empty() {
+            return Err(crate::Error::Parse(
+                "`ShowMessage` needs its message argument".to_string(),
+            ));
+        }
         let message = encoded.remove(0);
         let mut body = Vec::new();
         body.extend_from_slice(&1u16.to_le_bytes());
@@ -1320,7 +1395,61 @@ fn emit_call(
         for e in &encoded {
             body.extend(e);
         }
-        body.extend_from_slice(&0u32.to_le_bytes());
+        // The trailing word is zero in every call that passes format values.
+        // Measured, the one call that passes a bare number instead —
+        // `ShowMessage VCG01CasualHardcoreMessage 1` in
+        // VCG01CasualHardcoreMessageSCRIPT — writes `00 00 | 01 00 00 00`: no
+        // format values, and the number in that trailing word. One unit is the
+        // whole evidence, so it is reproduced exactly rather than generalised.
+        let tail = match literal_arg {
+            Some(n) => n as u32,
+            None => 0,
+        };
+        body.extend_from_slice(&tail.to_le_bytes());
+        let mut out = prefix_bytes;
+        out.extend(frame(cmd.opcode, &body));
+        return Ok(out);
+    }
+
+    // `ShowWarning` frames its arguments in two counts: how many strings, then
+    // the strings, then how many other values, then those. Measured on
+    // Fallout3.esm's MS13MesmetronEffectScript, `ShowWarning "Mesmetron die
+    // roll: %.0f" dieRoll` writes `01 00 | 18 00 | <the 24 characters> | 01 00
+    // | 73 06 00`, and the same unit's stringless calls write `01 00 | 0A 00 |
+    // "Always Mez" | 00 00`.
+    if cmd.opcode == 0x11B9 {
+        let mut strings = 0u16;
+        let mut others = 0u16;
+        let mut body = Vec::new();
+        for (at, t) in significant.iter().enumerate() {
+            let is_string = t.kind == crate::lex::Kind::String
+                || cmd
+                    .args
+                    .get(at)
+                    .is_some_and(|ty| param_kind(ty).as_str() == "string");
+            if is_string {
+                strings += 1;
+            } else {
+                others += 1;
+            }
+        }
+        body.extend_from_slice(&strings.to_le_bytes());
+        let mut tail: Vec<u8> = Vec::new();
+        for (at, one) in encoded.iter().enumerate() {
+            let t = significant.get(at);
+            let is_string = t.is_some_and(|t| t.kind == crate::lex::Kind::String)
+                || cmd
+                    .args
+                    .get(at)
+                    .is_some_and(|ty| param_kind(ty).as_str() == "string");
+            if is_string {
+                body.extend(one);
+            } else {
+                tail.extend(one);
+            }
+        }
+        body.extend_from_slice(&others.to_le_bytes());
+        body.extend(tail);
         let mut out = prefix_bytes;
         out.extend(frame(cmd.opcode, &body));
         return Ok(out);
@@ -1364,6 +1493,8 @@ pub fn actor_value_code(name: &str) -> Option<u16> {
         ("Health", 16),
         ("MeleeDamage", 17),
         ("DamageResistance", 18),
+        // The name the scripts spell: `Player.GetAV DamageResist` is 18.
+        ("DamageResist", 18),
         ("PoisonResistance", 19),
         ("RadResistance", 20),
         ("SpeedMult", 21),
@@ -1387,6 +1518,9 @@ pub fn actor_value_code(name: &str) -> Option<u16> {
         ("Repair", 39),
         ("Science", 40),
         ("Guns", 41),
+        // Fallout 3 spells the same skill `SmallGuns`; measured
+        // `Player.ModAv SmallGuns 10` → `29 00` (41) in BobbleheadSGUNScript.
+        ("SmallGuns", 41),
         ("Sneak", 42),
         ("Speech", 43),
         ("Survival", 44),
@@ -1400,6 +1534,10 @@ pub fn actor_value_code(name: &str) -> Option<u16> {
         ("FireResistance", 52),
         ("WaterBreathing", 53),
         ("RadLevel", 54),
+        // The same code under the name the scripts actually spell: measured
+        // `player.RestoreAV RadiationRads 1000` → `36 00` (54) in
+        // VFSJulieFarkasSCRIPT, and 5 units spell it this way.
+        ("RadiationRads", 54),
         ("BloodyMess", 55),
         ("UnarmedDamage", 56),
         ("Assistance", 57),
@@ -1452,16 +1590,180 @@ pub fn anim_group_code(name: &str) -> Option<u16> {
     None
 }
 
+/// A code parameter's name, as the `u16` the game writes.
+///
+/// Every code here was read off the corpus, because a code has no name in the
+/// bytes to find: `GetIsSex Male` is 0 and `Female` 1 (BCTrooperHostageScript);
+/// `IsInCriticalStage GooEnd` is 2 and `DisintegrateEnd` 4
+/// (CookCookScript), with `SetCriticalStage GooStart` 1 and
+/// `DisintegrateStart` 3 (PlasmaGooificationEffectScript); `GetPCMiscStat
+/// "Locations Discovered"` is 1 and `"Times Addicted"` 10 (VCGTutorialSCRIPT).
+/// A name outside these refuses rather than guesses — a wrong code is a call
+/// that silently does something else.
+fn code_named(name: &str, ty: &str) -> Option<Vec<u8>> {
+    let lower = name.to_ascii_lowercase();
+    let code: u16 = match param_kind(ty).as_str() {
+        "sex" => match lower.as_str() {
+            "male" => 0,
+            "female" => 1,
+            _ => return None,
+        },
+        "criticalstage" => match lower.as_str() {
+            "goostart" => 1,
+            "gooend" => 2,
+            "disintegratestart" => 3,
+            "disintegrateend" => 4,
+            _ => return None,
+        },
+        "miscellaneousstat" => match lower.as_str() {
+            // Measured in FalloutNV.esm (Locations Discovered → 1, Times
+            // Addicted → 10) and in Fallout3.esm's AchievementScript, whose
+            // nine `GetPCMiscStat` calls pair with codes 2, 3, 12, 5, 4, 1, 14,
+            // 16, 16 in source order.
+            "locations discovered" => 1,
+            "people killed" => 2,
+            "creatures killed" => 3,
+            "locks picked" => 4,
+            "computers hacked" => 5,
+            "times addicted" => 10,
+            "speech successes" => 12,
+            "pants exploded" => 14,
+            "bobbleheads found" => 16,
+            // Measured from the `ModPCMiscStat` calls that write them:
+            // `Weapons Created` → 17, `People Mezzed` → 18, `Captives
+            // Rescued` → 19.
+            "weapons created" => 17,
+            "people mezzed" => 18,
+            "captives rescued" => 19,
+            _ => return None,
+        },
+        "actorvalue" => actor_value_code(name)?,
+        "animgroup" => anim_group_code(name)?,
+        _ => return None,
+    };
+    Some(code.to_le_bytes().to_vec())
+}
+
+/// Whether a parameter type is written as a bare `u16` code rather than a
+/// tagged value.
+///
+/// Measured for `ActorValue` (`DamageAV Health 5` writes `16 00`), `AnimGroup`
+/// (`PlayGroup Forward` writes `03 00`) and `Miscellaneous Stat`
+/// (`GetPCMiscStat "Times Addicted"` writes `0A 00`) — all three are a raw
+/// little-endian word with no tag and no count of their own.
+fn is_code_param(ty: &str) -> bool {
+    matches!(
+        param_kind(ty).as_str(),
+        "actorvalue" | "animgroup" | "miscellaneousstat" | "sex" | "criticalstage"
+    )
+}
+
+/// A parameter type reduced to a comparable key.
+///
+/// The table spells the same type more than one way — `ActorValue` (4 rows) and
+/// `Actor Value` (9), `AnimGroup` (1) and `Animation Group` (2) — and comparing
+/// the raw strings silently missed the majority spelling, which is how
+/// `IsAnimPlaying Forward` and `GetActorValue Health` came to be refused as
+/// "names a reference".
+fn param_kind(ty: &str) -> String {
+    let key: String = ty
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .map(|c| c.to_ascii_lowercase())
+        .collect();
+    // `Animation Group` (2 rows) and `AnimGroup` (1) are the same parameter.
+    if key == "animationgroup" {
+        "animgroup".to_string()
+    } else {
+        key
+    }
+}
+
+/// A code parameter's name, as the `u16` the game writes. and whatever the command
+/// pads it with.
+///
+/// Measured, and it is not a FormID and not a reference index — the name is
+/// the text itself, so a form the record's `SCRO` list does not carry can
+/// still be passed:
+///
+/// ```text
+/// PlayIdle LooseDoctorHealPlayer
+///   → 90 11 | 19 00 | 01 00 | 15 00 | "LooseDoctorHealPlayer"
+///      opcode  argLen  count   len=21 the characters, no terminator
+/// ```
+///
+/// `ShowWarning` pads the text with two zero bytes (`01 00 | 07 00 | "Got Hit"
+/// | 00 00`), and it is the only command in the corpus that does: 42 of 42
+/// `ShowWarning` calls carry the pair, and `PlayIdle` (90), `GetGameSetting`,
+/// `IsDLCInstalled`, `EnableNavMesh` and `PlayBink` carry none.
+fn string_arg(text: &str, cmd: Option<&'static crate::opcodes::Command>) -> Vec<u8> {
+    // The quotes are the source's delimiters, not part of the name; a doubled
+    // quote inside them is one quote.
+    let inner = text.trim_matches('"').replace("\"\"", "\"");
+    let bytes = inner.as_bytes();
+    let mut out = Vec::with_capacity(2 + bytes.len() + 2);
+    out.extend_from_slice(&(bytes.len() as u16).to_le_bytes());
+    out.extend_from_slice(bytes);
+    // The two bytes `ShowWarning` writes after its text are its count of value
+    // arguments, and `emit_call` writes them, not this function.
+    let _ = cmd;
+    out
+}
+
+/// Encode one command argument, for the parameter type at `param_idx`.
+///
+/// The one place a command argument is turned into bytes, so the statement
+/// form and both expression forms (`Ref.Command` and bare `Command`) cannot
+/// disagree about what a name in a given position means.
+pub fn encode_command_arg(
+    t: &crate::lex::Token,
+    script: &Script,
+    cmd: &'static crate::opcodes::Command,
+    param_idx: usize,
+) -> Result<Vec<u8>, crate::Error> {
+    emit_arg(t, script, Some(cmd), param_idx)
+}
+
 fn emit_arg(
     t: &crate::lex::Token,
     script: &Script,
-    expected_type: Option<&str>,
+    cmd: Option<&'static crate::opcodes::Command>,
+    param_idx: usize,
 ) -> Result<Vec<u8>, crate::Error> {
+    let expected_type = cmd.and_then(|c| c.args.get(param_idx)).copied();
+    // A quoted token is whatever the parameter's declared type says it is:
+    //  - a code parameter reads the name (`GetPCMiscStat "Times Addicted"` is
+    //    `04 00 | 01 00 | 0A 00`, a code — not the twelve characters);
+    //  - a form parameter reads the name as that form (`AddNote
+    //    "MegatonGenericBrassLanternPassword"` is `01 00 | 72 02 00`, a
+    //    reference index);
+    //  - anything else is the text itself (`ShowWarning "Got Hit"`).
+    if t.kind == crate::lex::Kind::String {
+        let inner = t.text.trim_matches('"').replace("\"\"", "\"");
+        if let Some(exp) = expected_type {
+            let kind = param_kind(exp);
+            if is_code_param(exp) {
+                return code_named(&inner, exp).ok_or_else(|| {
+                    crate::Error::Parse(format!(
+                        "`{inner}` is not a {kind} this emitter knows"
+                    ))
+                });
+            }
+            if kind != "string" {
+                if let Ok(idx) = crate::value::resolve_ref_index(&inner, script) {
+                    let mut b = vec![0x72];
+                    b.extend_from_slice(&idx.to_le_bytes());
+                    return Ok(b);
+                }
+            }
+        }
+        return Ok(string_arg(&t.text, cmd));
+    }
     match t.kind {
         crate::lex::Kind::Number => {
             // Check if expected parameter type is Float
             if let Some(exp) = expected_type {
-                if exp.eq_ignore_ascii_case("Float") {
+                if param_kind(exp).as_str() == "float" {
                     let Ok(f) = t.text.parse::<f64>() else {
                         return Err(crate::Error::Parse(format!(
                             "`{}` is not a float this emitter can encode",
@@ -1471,6 +1773,22 @@ fn emit_arg(
                     let mut out = vec![0x7A];
                     out.extend_from_slice(&f.to_le_bytes());
                     return Ok(out);
+                }
+                // A code parameter is a bare `u16`, not an `n`-tagged i32:
+                // measured for `GetPCMiscStat "Times Addicted"` (`38 11 04 00
+                // 01 00 0A 00` — the code is the last two bytes) and for
+                // ActorValue, AnimGroup and the rest.
+                if is_code_param(exp) {
+                    let Ok(n) = t.text.parse::<i64>() else {
+                        return Err(crate::Error::Parse(format!(
+                            "`{}` is not a code this emitter can encode",
+                            t.text
+                        )));
+                    };
+                    return Ok((n as u16).to_le_bytes().to_vec());
+                }
+                if param_kind(exp).as_str() == "string" {
+                    return Ok(string_arg(&t.text, cmd));
                 }
             }
             let Ok(n) = t.text.parse::<i32>() else {
@@ -1488,17 +1806,34 @@ fn emit_arg(
         // names one of the record's references, which this emitter cannot
         // index correctly — so it is refused rather than guessed.
         crate::lex::Kind::Word => {
-            // Check for expected ActorValue, AnimGroup or Axis
+            // The parameter's declared type decides what a name means, and it
+            // has to come first: `GetPos X` is the axis letter even when the
+            // script declares a variable called `X`, and `PlayIdle SomeName`
+            // is the idle's own text even though the name is nowhere in the
+            // record's reference list.
             if let Some(exp) = expected_type {
-                if exp.eq_ignore_ascii_case("ActorValue") {
+                if param_kind(exp).as_str() == "string" {
+                    return Ok(string_arg(&t.text, cmd));
+                }
+                if param_kind(exp).as_str() == "actorvalue" {
                     if let Some(av) = actor_value_code(&t.text) {
-                        return Ok((av as u16).to_le_bytes().to_vec());
+                        return Ok(av.to_le_bytes().to_vec());
                     }
-                } else if exp.eq_ignore_ascii_case("AnimGroup") {
+                    return Err(crate::Error::Parse(format!(
+                        "`{}` is not an actor value this emitter knows",
+                        t.text
+                    )));
+                }
+                if param_kind(exp).as_str() == "animgroup" {
                     if let Some(ag) = anim_group_code(&t.text) {
-                        return Ok((ag as u16).to_le_bytes().to_vec());
+                        return Ok(ag.to_le_bytes().to_vec());
                     }
-                } else if exp.eq_ignore_ascii_case("Axis") {
+                    return Err(crate::Error::Parse(format!(
+                        "`{}` is not an animation group this emitter knows",
+                        t.text
+                    )));
+                }
+                if param_kind(exp).as_str() == "axis" {
                     // Measured: `SetAngle X 0` writes the axis as its own
                     // ASCII letter — `58 7A ...` for X, `59` for Y, `5A` for
                     // Z — not a tagged value and not a raw u16.
@@ -1508,13 +1843,26 @@ fn emit_arg(
                         "Z" => return Ok(vec![b'Z']),
                         _ => {}
                     }
+                    return Err(crate::Error::Parse(format!(
+                        "`{}` is not an axis",
+                        t.text
+                    )));
                 }
-            }
-            if let Some(av) = actor_value_code(&t.text) {
-                return Ok((av as u16).to_le_bytes().to_vec());
-            }
-            if let Some(ag) = anim_group_code(&t.text) {
-                return Ok((ag as u16).to_le_bytes().to_vec());
+                if is_code_param(exp) {
+                    return code_named(&t.text, exp).ok_or_else(|| {
+                        crate::Error::Parse(format!(
+                            "`{}` is not a {} this emitter knows",
+                            t.text,
+                            param_kind(exp)
+                        ))
+                    });
+                }
+                if is_code_param(exp) {
+                    return Err(crate::Error::Parse(format!(
+                        "`{}` is not a code this emitter can encode",
+                        t.text
+                    )));
+                }
             }
 
             // A declared variable of the record's table. In a command
@@ -1543,9 +1891,35 @@ fn emit_arg(
                     return Ok(out);
                 }
             }
-            // Next check if it's a known reference name
+            // A standalone reference-list name as an argument: the tag follows
+            // what the entry names, exactly as it does in an expression — a
+            // global writes `47` 'G' and a placed reference `5A`/`72`. Measured:
+            // `PlaceAtReticle EuclidTargetPointer 1 0 EuclidPointerRange` writes
+            // the global as `47 05 00`, where `72 05 00` is a different operand
+            // the game would read as a reference.
             if let Ok(ref_idx) = resolve_ref(&t.text, script) {
-                let mut out = vec![0x72];
+                let kind = script
+                    .refs
+                    .iter()
+                    .find(|r| r.name.eq_ignore_ascii_case(&t.text))
+                    .map(|r| r.kind)
+                    .unwrap_or(crate::parse::RefKind::Reference);
+                // A global read as a *number* writes `47` ('G'); used where a
+                // reference is expected it stays `72`. Measured:
+                // `PlaceAtReticle EuclidTargetPointer 1 0 EuclidPointerRange`
+                // takes a Float and writes `47 05 00`, while a reference
+                // parameter writes `72`.
+                let numeric = expected_type.is_some_and(|exp| {
+                    matches!(
+                        param_kind(exp).as_str(),
+                        "float" | "integer" | "int" | "value" | "amount" | "count"
+                    )
+                });
+                let tag = match kind {
+                    crate::parse::RefKind::Global if numeric => 0x47,
+                    _ => 0x72,
+                };
+                let mut out = vec![tag];
                 out.extend_from_slice(&ref_idx.to_le_bytes());
                 return Ok(out);
             }
@@ -1558,5 +1932,167 @@ fn emit_arg(
             "cannot encode `{}` as a command argument",
             t.text
         ))),
+    }
+}
+
+#[cfg(test)]
+mod corpus_tests {
+    //! Byte-exact assertions taken from the game's own compiled scripts.
+    //!
+    //! Every expectation here is a run of bytes read out of `FalloutNV.esm` or
+    //! `Fallout3.esm`'s `SCDA`, named with the unit it came from. A test written
+    //! from this crate's own output would only prove self-consistency; these are
+    //! the measurements, so a change that breaks one has changed an encoding the
+    //! game does not share.
+
+    use crate::emit::read_instructions;
+    use crate::parse::{RefEntry, RefKind, RefSlot};
+
+    fn refs(names: &[&str]) -> Vec<RefEntry> {
+        names
+            .iter()
+            .map(|n| RefEntry {
+                name: (*n).to_string(),
+                slot: RefSlot::Form,
+                kind: RefKind::Reference,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn playidle_writes_its_idle_name_as_text() {
+        // Measured, DoctorKempSCRIPT (FalloutNV.esm):
+        //   PlayIdle LooseDoctorHealPlayer
+        //     → 90 11 | 19 00 | 01 00 | 15 00 | "LooseDoctorHealPlayer"
+        // The idle is not in the record's reference list at all, so a compiler
+        // that wants an index here cannot emit the call.
+        let got = crate::compile("scn S\nBegin GameMode\n  PlayIdle LooseDoctorHealPlayer\nEnd\n").unwrap();
+        let expected: Vec<u8> = [
+            &[0x90u8, 0x11, 0x19, 0x00, 0x01, 0x00, 0x15, 0x00][..],
+            b"LooseDoctorHealPlayer",
+        ]
+        .concat();
+        assert!(
+            got.windows(expected.len()).any(|w| w == expected),
+            "{:02X?}",
+            got
+        );
+    }
+
+    #[test]
+    fn showwarning_frames_a_string_count_then_a_value_count() {
+        // Measured, MS13MesmetronEffectScript (Fallout3.esm):
+        //   ShowWarning "Mesmetron die roll: %.0f" dieRoll
+        //     → B9 11 | 21 00 | 01 00 | 18 00 | <24 characters> | 01 00 | 73 06 00
+        let got = crate::compile_with_refs(
+            "scn S\nshort dieRoll\nBegin GameMode\n  ShowWarning \"ab\" dieRoll\nEnd\n",
+            &[],
+            &[],
+            &[],
+        )
+        .unwrap();
+        // argLen 2 (string count) + 2 (length) + 2 (text) + 2 (value count) + 3 (the var)
+        let expected = [
+            0xB9u8, 0x11, 0x0B, 0x00, 0x01, 0x00, 0x02, 0x00, b'a', b'b', 0x01, 0x00, 0x73, 0x01,
+            0x00,
+        ];
+        assert!(
+            got.windows(expected.len()).any(|w| w == expected),
+            "{:02X?}",
+            got
+        );
+    }
+
+    #[test]
+    fn a_negative_literal_is_its_digits_then_the_negate_operator() {
+        // Measured: `set X to -1` writes `20 31 20 7E` — never a signed ASCII
+        // literal, and never the binary minus `2D`.
+        let got = crate::compile_with_refs(
+            "scn S\nshort X\nBegin GameMode\n  set X to -1\nEnd\n",
+            &[],
+            &[crate::VarEntry {
+                name: "X".to_string(),
+                id: 1,
+                is_int: true,
+            }],
+            &[],
+        )
+        .unwrap();
+        assert!(
+            got.windows(7).any(|w| w == [0x15, 0x00, 0x05, 0x00, 0x73, 0x01, 0x00]
+                || w == [0x73, 0x01, 0x00, 0x04, 0x00, 0x20, 0x31]),
+            "{:02X?}",
+            got
+        );
+        assert!(got.windows(2).any(|w| w == [0x20, 0x7E]), "{:02X?}", got);
+        assert!(!got.windows(2).any(|w| w == [0x20, 0x2D]), "{:02X?}", got);
+    }
+
+    #[test]
+    fn else_if_writes_the_else_and_drops_the_condition() {
+        // Measured, MS01QuestScript (Fallout3.esm): `else if iDestroyed == 1`
+        // compiles to `0017 else | 01 00` and then the body — no `if`
+        // instruction, and no trace of the condition.
+        let src = "scn S\nshort a\nBegin GameMode\nif a == 0\nset a to 1\nelse if a == 2\nset a to 3\nendif\nEnd\n";
+        let got = crate::compile_with_refs(
+            src,
+            &[],
+            &[crate::VarEntry {
+                name: "a".to_string(),
+                id: 1,
+                is_int: true,
+            }],
+            &[],
+        )
+        .unwrap();
+        let ins = read_instructions(&got);
+        let opcodes: Vec<u16> = ins.iter().map(|i| i.opcode).collect();
+        assert_eq!(opcodes, vec![0x1D, 0x10, 0x16, 0x15, 0x17, 0x15, 0x19, 0x11]);
+        // The `else`'s jumpOps counts the one statement under it.
+        let at = ins.iter().position(|i| i.opcode == 0x0017).unwrap();
+        assert_eq!(ins[at].args, 1u16.to_le_bytes().to_vec());
+    }
+
+    #[test]
+    fn a_digit_leading_record_name_is_one_word() {
+        // Fallout's records are named that way — `1ECookCook`, `3CBSCave1`,
+        // `1stFloorAlarm` — and the source spells the record's name, so the lexer
+        // must not split it into a number and a word.
+        let tokens = crate::lex::lex("if GetInCell 3CBSCave1 == 1");
+        let words: Vec<&str> = tokens
+            .iter()
+            .filter(|t| t.kind == crate::lex::Kind::Word)
+            .map(|t| t.text.as_str())
+            .collect();
+        assert!(words.contains(&"3CBSCave1"), "{words:?}");
+    }
+
+    #[test]
+    fn a_dotted_set_prepends_set_current_ref() {
+        // Measured, MS14PowerArmorScript (Fallout3.esm):
+        //   MS14ArmorVoiceRef.Set SayTimer to GameDaysPassed + 0.1
+        //     → 1C 00 | 01 00   (its own instruction)
+        //       15 00 | 0A 00 | 66 02 00 | 0A 00 | …
+        let got = crate::compile_with_refs(
+            "scn S\nfloat SayTimer\nBegin GameMode\n  MS14ArmorVoiceRef.Set SayTimer to 1\nEnd\n",
+            &refs(&["MS14ArmorVoiceRef"]),
+            &[crate::VarEntry {
+                name: "SayTimer".to_string(),
+                id: 2,
+                is_int: false,
+            }],
+            &[],
+        )
+        .unwrap();
+        let ins = read_instructions(&got);
+        let at = ins
+            .iter()
+            .position(|i| i.opcode == 0x001C)
+            .expect("a SetCurrentRef prefix");
+        assert_eq!(ins[at].args, 1u16.to_le_bytes().to_vec());
+        assert_eq!(ins[at + 1].opcode, 0x0015);
+        // The destination is the variable alone — `66 02 00` — with no
+        // reference prefix of its own.
+        assert_eq!(&ins[at + 1].args[..3], &[0x66, 0x02, 0x00]);
     }
 }

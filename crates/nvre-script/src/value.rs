@@ -198,12 +198,13 @@ pub fn encode_expr(
     script: &crate::parse::Script,
 ) -> Result<Vec<u8>, crate::Error> {
     // 1. Filter out whitespace and comments
-    let filtered: Vec<&Token> = tokens
+    let significant: Vec<Token> = tokens
         .iter()
         .filter(|t| t.kind != Kind::Space && t.kind != Kind::Comment)
+        .cloned()
         .collect();
 
-    if filtered.is_empty() {
+    if significant.is_empty() {
         return Ok(Vec::new());
     }
 
@@ -240,12 +241,67 @@ pub fn encode_expr(
         }
     }
 
+    /// Fold a sign that sits in an operand position into the number after it.
+    ///
+    /// `set X to -1` is a negation of the operand `1`, not a binary `-` with a
+    /// missing left side: the game writes the value `20 31 20 7E` (the digits,
+    /// then the postfix `~`), so the lexer's separate `-` token has to become
+    /// part of the number before the shunting-yard sees it. A `-` after an
+    /// operand is subtraction and is left alone — `iCount - 1` stays binary,
+    /// which is `2D`, not `7E`.
+    fn fold_unary_signs(tokens: &[Token]) -> Vec<Token> {
+        let mut out: Vec<Token> = Vec::with_capacity(tokens.len());
+        let mut k = 0;
+        while k < tokens.len() {
+            let t = &tokens[k];
+            let operand_position = match out.last() {
+                None => true,
+                Some(prev) => op_info(prev).is_some() || prev.text == "(" || prev.text == ",",
+            };
+            if operand_position
+                && (t.text == "-" || t.text == "+")
+                && k + 1 < tokens.len()
+                && tokens[k + 1].kind == Kind::Number
+            {
+                let mut number = tokens[k + 1].clone();
+                number.text = format!("{}{}", t.text, number.text);
+                out.push(number);
+                k += 2;
+                continue;
+            }
+            // A sign in front of a *name* is a negation of that operand, and
+            // the game writes it postfix: `set shoot to -shoot` compiles to
+            // `20 73 02 00 20 7E` (the variable, then `~`), measured in
+            // Fallout3.esm's MS01QuestScript. A `-` after an operand is
+            // subtraction and stays `2D`.
+            if operand_position
+                && t.text == "-"
+                && k + 1 < tokens.len()
+                && matches!(tokens[k + 1].kind, Kind::Word)
+            {
+                out.push(tokens[k + 1].clone());
+                let mut negate = tokens[k + 1].clone();
+                negate.text = "~".to_string();
+                negate.kind = Kind::Punct;
+                out.push(negate);
+                k += 2;
+                continue;
+            }
+            out.push(t.clone());
+            k += 1;
+        }
+        out
+    }
+
+    let filtered: Vec<Token> = fold_unary_signs(&significant);
+
     let mut output: Vec<Vec<u8>> = Vec::new();
     let mut op_stack: Vec<Item> = Vec::new();
 
+
     let mut i = 0;
     while i < filtered.len() {
-        let t = filtered[i];
+        let t = &filtered[i];
 
         if t.text == "(" {
             op_stack.push(Item::LParen);
@@ -260,6 +316,13 @@ pub fn encode_expr(
                     Item::Op(sym, _) => output.push(sym.as_bytes().to_vec()),
                 }
             }
+            i += 1;
+            continue;
+        }
+
+        // The postfix negate operator, written by `fold_unary_signs`.
+        if t.text == "~" {
+            output.push(vec![b'~']);
             i += 1;
             continue;
         }
@@ -298,11 +361,34 @@ pub fn encode_expr(
                     let mut arg_tokens = Vec::new();
                     let mut j = i + 3;
                     while j < filtered.len() {
-                        let next = filtered[j];
-                        if op_info(next).is_some() || next.text == ")" || next.text == "(" {
+                        let next = &filtered[j];
+                        // A sign at the start of an argument is part of the
+                        // value, not a binary operator: `IsLimbGone -1`
+                        // (Fallout3.esm RobcoRobotScript) passes -1 as the
+                        // limb, and reading the `-` as subtraction gives a call
+                        // with no arguments followed by a stray operator.
+                        let leading_sign = arg_tokens.is_empty()
+                            && (next.text == "-" || next.text == "+")
+                            && filtered.get(j + 1).is_some_and(|n| n.kind == Kind::Number);
+                        if (!leading_sign && op_info(next).is_some())
+                            || next.text == ")"
+                            || next.text == "("
+                        {
                             break;
                         }
-                        arg_tokens.push(next);
+                        if leading_sign {
+                            if let Some(n) = filtered.get(j + 1) {
+                                let mut tok = n.clone();
+                                tok.text = format!("{}{}", next.text, n.text);
+                                arg_tokens.push(tok);
+                                j += 2;
+                                if arg_tokens.len() == cmd.args.len() {
+                                    break;
+                                }
+                                continue;
+                            }
+                        }
+                        arg_tokens.push(next.clone());
                         j += 1;
                         if arg_tokens.len() == cmd.args.len() {
                             break;
@@ -311,60 +397,12 @@ pub fn encode_expr(
 
                     let mut arg_bytes = Vec::new();
                     let count = arg_tokens.len() as u16;
+                    // One encoder for every argument position, the type's
+                    // first: the statement form and both expression forms must
+                    // not disagree about what a name in a given position is.
                     for (p_idx, atok) in arg_tokens.iter().enumerate() {
-                        // A Number in a Float position writes `7A` + f64, like
-                        // the statement form. Measured: VEuclidQuestSCRIPT's
-                        // `player.PlaceAtReticle EuclidTarget 1 0 20000` writes
-                        // the 0 and 20000 as f64 — the args follow the
-                        // signature, not the spelling.
-                        if atok.kind == Kind::Number
-                            && cmd
-                                .args
-                                .get(p_idx)
-                                .is_some_and(|exp| exp.eq_ignore_ascii_case("Float"))
-                        {
-                            let Ok(f) = atok.text.parse::<f64>() else {
-                                return Err(crate::Error::Parse(format!(
-                                    "`{}` is not a float this emitter can encode",
-                                    atok.text
-                                )));
-                            };
-                            arg_bytes.push(0x7A);
-                            arg_bytes.extend_from_slice(&f.to_le_bytes());
-                            continue;
-                        }
-                        if atok.kind == Kind::Number {
-                            if let Ok(n) = atok.text.parse::<i32>() {
-                                arg_bytes.push(0x6E);
-                                arg_bytes.extend_from_slice(&n.to_le_bytes());
-                                continue;
-                            }
-                        }
-                        // A declared variable of this script: its SLSD ID and
-                        // its type's tag.
-                        if let Ok((idx, is_int)) = resolve_var(&atok.text, script) {
-                            arg_bytes.push(var_tag(is_int));
-                            arg_bytes.extend_from_slice(&idx.to_le_bytes());
-                            continue;
-                        }
-                        // One of the record's references.
-                        if let Ok(ar) = resolve_ref_index(&atok.text, script) {
-                            arg_bytes.push(0x72);
-                            arg_bytes.extend_from_slice(&ar.to_le_bytes());
-                            continue;
-                        }
-                        if let Some(av) = crate::emit::actor_value_code(&atok.text) {
-                            arg_bytes.extend_from_slice(&(av as u16).to_le_bytes());
-                            continue;
-                        }
-                        if let Some(ag) = crate::emit::anim_group_code(&atok.text) {
-                            arg_bytes.extend_from_slice(&(ag as u16).to_le_bytes());
-                            continue;
-                        }
-                        return Err(crate::Error::Parse(format!(
-                            "cannot resolve argument `{}` for dotted command `{}.{}`",
-                            atok.text, target, member
-                        )));
+                        arg_bytes
+                            .extend(crate::emit::encode_command_arg(atok, script, cmd, p_idx)?);
                     }
 
                     let mut b = vec![0x72];
@@ -419,76 +457,42 @@ pub fn encode_expr(
                 let mut arg_tokens = Vec::new();
                 let mut j = i + 1;
                 while j < filtered.len() {
-                    let next = filtered[j];
-                    if op_info(next).is_some() || next.text == ")" || next.text == "(" {
+                    let next = &filtered[j];
+                    let leading_sign = arg_tokens.is_empty()
+                        && (next.text == "-" || next.text == "+")
+                        && filtered.get(j + 1).is_some_and(|n| n.kind == Kind::Number);
+                    if (!leading_sign && op_info(next).is_some())
+                        || next.text == ")"
+                        || next.text == "("
+                    {
                         break;
                     }
-                    arg_tokens.push(next);
+                    if leading_sign {
+                        if let Some(n) = filtered.get(j + 1) {
+                            let mut tok = n.clone();
+                            tok.text = format!("{}{}", next.text, n.text);
+                            arg_tokens.push(tok);
+                            j += 2;
+                            if arg_tokens.len() == cmd.args.len() {
+                                break;
+                            }
+                            continue;
+                        }
+                    }
+                    arg_tokens.push(next.clone());
                     j += 1;
                     if arg_tokens.len() == cmd.args.len() {
                         break;
                     }
                 }
 
-                // Encode arguments for function call
+                // Encode arguments for function call: the same encoder the
+                // statement form uses, so a name, a code and a float mean the
+                // same thing in both.
                 let mut arg_bytes = Vec::new();
                 let count = arg_tokens.len() as u16;
                 for (p_idx, atok) in arg_tokens.iter().enumerate() {
-                    // A Number in a Float position writes `7A` + f64, like the
-                    // statement form. Measured: VEuclidQuestSCRIPT's
-                    // `player.PlaceAtReticle EuclidTarget 1 0 20000` writes the
-                    // 0 and 20000 as f64 — the args follow the signature, not
-                    // the spelling.
-                    if atok.kind == Kind::Number
-                        && cmd
-                            .args
-                            .get(p_idx)
-                            .is_some_and(|exp| exp.eq_ignore_ascii_case("Float"))
-                    {
-                        let Ok(f) = atok.text.parse::<f64>() else {
-                            return Err(crate::Error::Parse(format!(
-                                "`{}` is not a float this emitter can encode",
-                                atok.text
-                            )));
-                        };
-                        arg_bytes.push(0x7A);
-                        arg_bytes.extend_from_slice(&f.to_le_bytes());
-                        continue;
-                    }
-                    if atok.kind == Kind::Number {
-                        if let Ok(n) = atok.text.parse::<i32>() {
-                            arg_bytes.push(0x6E);
-                            arg_bytes.extend_from_slice(&n.to_le_bytes());
-                            continue;
-                        }
-                    }
-                    // Variable or Reference
-                    if let Ok((idx, is_int)) = resolve_var(&atok.text, script) {
-                        arg_bytes.push(var_tag(is_int));
-                        arg_bytes.extend_from_slice(&idx.to_le_bytes());
-                        continue;
-                    }
-                    // One of the record's references: declared ref variables,
-                    // then SCRO entries.
-                    if let Ok(ridx) = resolve_ref_index(&atok.text, script) {
-                        arg_bytes.push(0x72);
-                        arg_bytes.extend_from_slice(&ridx.to_le_bytes());
-                        continue;
-                    }
-
-                    if let Some(av) = crate::emit::actor_value_code(&atok.text) {
-                        arg_bytes.extend_from_slice(&(av as u16).to_le_bytes());
-                        continue;
-                    }
-                    if let Some(ag) = crate::emit::anim_group_code(&atok.text) {
-                        arg_bytes.extend_from_slice(&(ag as u16).to_le_bytes());
-                        continue;
-                    }
-
-                    return Err(crate::Error::Parse(format!(
-                        "cannot resolve argument `{}` for command `{}` in expression",
-                        atok.text, cmd.name
-                    )));
+                    arg_bytes.extend(crate::emit::encode_command_arg(atok, script, cmd, p_idx)?);
                 }
 
                 let mut b = vec![0x58]; // 'X'
@@ -692,16 +696,27 @@ pub fn resolve_remote_var(
                 "`{target}` names a remote script whose variable table the compiler does not have"
             ))
         })?;
-    let var = remote
+    if let Some(var) = remote
         .vars
         .iter()
         .find(|v| v.name.eq_ignore_ascii_case(member))
-        .ok_or_else(|| {
-            crate::Error::Parse(format!(
-                "`{member}` is not a variable of remote script `{target}`"
-            ))
-        })?;
-    Ok((if var.is_int { 0x73 } else { 0x66 }, var.id))
+    {
+        return Ok((if var.is_int { 0x73 } else { 0x66 }, var.id));
+    }
+    // A name the target's table does not carry is resolved in the compiling
+    // script's own table instead — measured, `set Follower1 to
+    // GomorrahCasinoEnterTriggerREF.Follower1` in GomorrahHotelDoorScript
+    // writes `66 01 00 | 07 00 | 20 72 0E 00 66 01 00`: the ref is the
+    // trigger's slot (0x0E) and the variable is `Follower1` at *this* script's
+    // own SLSD id 1, because the trigger's script has no variable by that name
+    // at all. The GECK apparently falls back the same way; without the
+    // fallback the unit is refused rather than compiled.
+    if let Ok((id, is_int)) = resolve_var(member, script) {
+        return Ok((if is_int { 0x73 } else { 0x66 }, id));
+    }
+    Err(crate::Error::Parse(format!(
+        "`{member}` is not a variable of remote script `{target}`"
+    )))
 }
 
 /// Resolve a reference name to its 1-based index in the record's reference
@@ -714,12 +729,80 @@ pub fn resolve_remote_var(
 /// model fits only the records whose `SCRV` entries happen to be written
 /// before their `SCRO` entries.
 pub fn resolve_ref_index(name: &str, script: &crate::parse::Script) -> Result<u16, crate::Error> {
-    if let Some(at) = script
+    // The first slot a name occupies. A record may name one form twice, and
+    // the game then picks inconsistently — MS16AmbushTriggerBSCRIPT
+    // (Fallout3.esm) names `Player` at slots 2 and 6 and writes slot 2 for its
+    // `BEGIN OnTriggerEnter PlayerREF` and slot 6 for a `GetDistance player`
+    // operand in the same script. Nothing in the reference list distinguishes
+    // the two, so the first is taken (which is right for every unit in
+    // FalloutNV.esm) and that one Fallout 3 unit is left differing.
+    resolve_ref_index_where(name, script, false)
+}
+
+/// The same lookup, taking the *first* slot a name occupies.
+///
+/// A record can name one form twice — MS16AmbushTriggerBSCRIPT's list has
+/// `Player` at slots 2 and 6 — and the game is not consistent about which it
+/// writes: measured in that unit, the `Begin OnTriggerEnter PlayerREF`
+/// parameter is slot 2 (the first) while the `GetDistance Player` operand in
+/// the same script is slot 6 (the last). So the position asks for its own rule:
+/// a `Begin` parameter takes the first, everything else the last.
+pub fn resolve_ref_index_first(
+    name: &str,
+    script: &crate::parse::Script,
+) -> Result<u16, crate::Error> {
+    resolve_ref_index_where(name, script, false)
+}
+
+fn resolve_ref_index_where(
+    name: &str,
+    script: &crate::parse::Script,
+    prefer_last: bool,
+) -> Result<u16, crate::Error> {
+    let matches: Vec<usize> = script
         .refs
         .iter()
-        .position(|r| r.name.eq_ignore_ascii_case(name))
-    {
+        .enumerate()
+        .filter(|(_, r)| r.name.eq_ignore_ascii_case(name))
+        .map(|(i, _)| i)
+        .collect();
+    if let Some(at) = if prefer_last {
+        matches.last().copied()
+    } else {
+        matches.first().copied()
+    } {
         return Ok(at as u16 + 1);
+    }
+    // `PlayerRef` is the source's other spelling for the record's `Player`
+    // entry, and the game resolves it to that entry's own slot rather than to
+    // FormID 0x14: measured, `if ( BoxingGloveTarget != PlayerRef )` in
+    // BoxingGlovesFatigueOnHitScript writes `20 5A 02 00`, where slot 2 is the
+    // `SCRO` entry named `Player`. Measured in 9 units, always the `Player`
+    // entry's index.
+    if name.eq_ignore_ascii_case("PlayerRef") {
+        // The other spelling of the record's `Player` entry, and the same
+        // first/last question: as an operand the game takes the later entry
+        // (VES01VictorGSMyBodyguardScript writes `20 5A 07 00` where slot 7 is
+        // the second `Player`), and as a `Begin` parameter the earlier one.
+        let players: Vec<usize> = script
+            .refs
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.name.eq_ignore_ascii_case("Player"))
+            .map(|(i, _)| i)
+            .collect();
+        // The alias takes the *last* `Player` slot — measured in
+        // VES01VictorGSMyBodyguardScript (`20 5A 07 00`, slot 7 of two) and
+        // VHDKimballSpeechSCRIPT. It is the one name where the later entry is
+        // the right one, which is why it has a rule of its own.
+        let prefer_last = true;
+        if let Some(at) = if prefer_last {
+            players.last().copied()
+        } else {
+            players.first().copied()
+        } {
+            return Ok(at as u16 + 1);
+        }
     }
     // No supplied list carries the name. The one case that still resolves
     // is a declared `ref` variable when the caller supplied no list at all

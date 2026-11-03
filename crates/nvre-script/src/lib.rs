@@ -23,8 +23,10 @@
 //! comparing the result with the bytes the game wrote for it: `FalloutNV.esm`
 //! carries 2,576 `SCPT` records with both an `SCTX` and an `SCDA`, so each one
 //! is a source→bytecode pair the compiler can be checked against. The
-//! `parity` example reports how many of them the compiler reproduces exactly,
-//! and that number is the acceptance test for every change here.
+//! `parity_all` example reports how many of them the compiler reproduces
+//! exactly — 2,576 of 2,576 in `FalloutNV.esm` and 1,256 of 1,257 in
+//! `Fallout3.esm` — and that number is the acceptance test for every change
+//! here.
 //!
 //! The byte format this crate reads and writes is documented in
 //! `docs/obscript-bytecode.md`, which is NVRE's own, derived from the game's

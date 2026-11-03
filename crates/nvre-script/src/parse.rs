@@ -68,9 +68,10 @@ pub enum Stmt {
     EndIf,
     /// A variable declaration: `short x`, `float x`, `ref x`. Emits no
     /// instruction of its own — the variable lives in the record's `SLSD`/
-    /// `SCVR` list — but it is still a statement in the source, and the
-    /// game's `jumpOps` counts it as one.
-    Decl,
+    /// `SCVR` list — but a `ref` declaration still counts as one of the
+    /// operations a branch's `jumpOps` skips, and the kind is what the count
+    /// needs. See `emit::count_decls`.
+    Decl(DeclKind),
     /// `return`
     Return,
     /// A command call: `[Ref.]Command args…`.
@@ -353,6 +354,40 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
         return Vec::new();
     };
 
+    // A line that opens with punctuation is not a statement the GECK read: a
+    // source header `:Ref ID: BettyRef` (Fallout3.esm BettyScript line 4) and a
+    // stray `.disable` (Vault106AmataHallSCRIPT line 7) both compile to
+    // nothing, and the game shipped them that way.
+    // A leading `.` is a typo the GECK read past: `Vault106AmataHallSCRIPT`
+    // line 7 is `.disable`, and the game compiled it as `Disable` (the unit's
+    // bytecode carries `22 10 02 00 00 00` at that point). So the dot is
+    // dropped and the rest of the line read as the statement it means.
+    // Anything else that opens with punctuation is not a statement — a source
+    // header `:Ref ID: BettyRef` (BettyScript line 4) compiled to nothing.
+    if first.kind == Kind::Punct {
+        if first.text == "." && words.len() > 1 {
+            return parse_line(line, &toks[1..]);
+        }
+        return Vec::new();
+    }
+
+    // A run of punctuation with nothing to say it is a statement — a rule of
+    // `=====` the author left in front of a block, with no `;` in front of it
+    // — is decoration the GECK ignored, and six shipped units carry one
+    // (`FHeliosStasisTriggerSCRIPT` line 103). A line with no word, number or
+    // string token has no statement in it to read, so it is skipped for the
+    // same reason a blank line is. The "refuse rather than guess" rule is
+    // about a line that has a statement and cannot be read, not about one that
+    // has none.
+    if words.iter().all(|t| {
+        !matches!(
+            t.kind,
+            Kind::Word | Kind::Number | Kind::String
+        )
+    }) {
+        return Vec::new();
+    }
+
     // `ScriptName` / `scn` — the script's own name. The name is the word after
     // the keyword.
     if first.is_word("scriptname") || first.is_word("scn") {
@@ -364,8 +399,8 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
     // record's SLSD/SCVR list. Carried as its own statement, because the
     // game's jumpOps count includes it — a branch's skip count is the count
     // of its source statements, not of its emitted instructions.
-    if decl_kind(&first.text).is_some() {
-        return vec![Stmt::Decl];
+    if let Some(kind) = decl_kind(&first.text) {
+        return vec![Stmt::Decl(kind)];
     }
 
     // `Begin <event> [args]` and `End`.
@@ -406,6 +441,13 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
         return vec![Stmt::ElseIf(rest_of(&words, 1))];
     }
     if first.is_word("else") {
+        // `else if cond` writes the `else` and drops the condition: measured,
+        // MS01QuestScript's `else if iDestroyed == 1` (Fallout3.esm) is
+        // `17 00 | 01 00` followed by the body, with no `if` instruction at all.
+        // The one unit that keeps the nested `if` — VCG03CampfireTriggerSCRIPT's
+        // `else if (GetObjectiveDisplayed … )` — gets it from the `if` on the
+        // *next* line, not from this one, so treating the line as a bare `else`
+        // is what reproduces both.
         return vec![Stmt::Else];
     }
     if first.is_word("endif") {
@@ -421,31 +463,62 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
     // emits as its own token. The dot joins a word to the word that follows
     // it, whether or not the writer put a space after it: `rDoor.Activate` and
     // `rDoor. Activate` are the same statement, and the GECK accepts both.
-    if let Some(dot_at) = words.iter().position(|t| t.text == ".") {
-        // The reference is the word before the dot, and the command the word
-        // after it. A dot at the start of a line has no reference in front of
-        // it, and a dot anywhere else — inside a number, say — is not this.
-        if dot_at == 0 {
-            return vec![unknown(line, toks)];
-        }
-        let ref_tok = words.get(dot_at - 1);
-        let cmd_tok = words.get(dot_at + 1);
-        if let (Some(r), Some(c)) = (ref_tok, cmd_tok) {
-            if r.kind == Kind::Word && c.kind == Kind::Word {
-                return vec![Stmt::Call {
-                    on: Some(r.text.clone()),
-                    command: c.text.clone(),
-                    args: rest_of(&words, dot_at + 2),
-                }];
+    // The dot that makes a call dotted is the one in the command's own
+    // position — `Ref.Command args` — not the first dot anywhere on the line.
+    // A dot further along belongs to an argument (`ShowMessage Msg
+    // NQlvl.TRAPBearSkillReq01`), and joining at that one threw away the
+    // command and its earlier arguments, so the call became
+    // `NQlvl.TRAPBearSkillReq01` and the emitter reported it as an unknown
+    // command (11 corpus units).
+    if words.get(1).is_some_and(|t| t.text == ".") && words.len() > 2 {
+        let r = &words[0];
+        let c = &words[2];
+        if r.kind == Kind::Word && c.kind == Kind::Word {
+            let args = rest_of(&words, 3);
+            // `Ref.Set var to expr` is an assignment, not a call: measured,
+            // `MS14ArmorVoiceRef.Set SayTimer to GameDaysPassed + 0.1`
+            // (Fallout3.esm MS14PowerArmorScript) writes a `set` instruction
+            // whose destination is `72 <refIdx> <tag> <varId>`.
+            if c.is_word("set") || c.is_word("let") {
+                if let Some(to_at) = args.iter().position(|t| t.is_word("to")) {
+                    if let Some(target) = args[..to_at].first() {
+                        return vec![Stmt::Set {
+                            on: Some(r.text.clone()),
+                            target: bare(target),
+                            expr: args[to_at + 1..].to_vec(),
+                        }];
+                    }
+                }
             }
+            return vec![Stmt::Call {
+                on: Some(r.text.clone()),
+                command: c.text.clone(),
+                args,
+            }];
         }
     }
 
     if first.kind == Kind::Word && !KEYWORDS.contains(&first.text.to_ascii_lowercase().as_str()) {
+        // A statement that is a bare comparison — `getfurnituremarkerid == 26`
+        // (VNelsonHostageRestrain line 11) — compiles to the command call
+        // alone: measured, the line writes `10A0 GetFurnitureMarkerID` with no
+        // arguments, and the `== 26` is dropped entirely. So the operator ends
+        // the argument list; what follows it is not part of the call.
+        let args = rest_of(&words, 1);
+        let cut = args.iter().position(|t| {
+            matches!(
+                t.text.as_str(),
+                "==" | "!=" | "<" | "<=" | ">" | ">=" | "&&" | "||"
+            )
+        });
+        let args = match cut {
+            Some(at) => args[..at].to_vec(),
+            None => args,
+        };
         return vec![Stmt::Call {
             on: None,
             command: first.text.clone(),
-            args: rest_of(&words, 1),
+            args,
         }];
     }
 

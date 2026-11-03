@@ -220,7 +220,10 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "AttachAshPile",
         opcode: 0x1211,
-        args: &[],
+        // Measured both ways: a bare `AttachAshPile` writes `00 00` (the count
+        // of a command that declares parameters and was called with none), and
+        // `AttachAshPile 2` writes `01 00 | 6E 02 00 00 00`.
+        args: &["Integer"],
     },
     Command {
         name: "BWaitersServeWine",
@@ -245,7 +248,9 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "Dispel",
         opcode: 0x1142,
-        args: &[],
+        // It keeps its argument: measured `Dispel StealthBoyInvisibilitySpell`
+        // writes `01 00 | 72 01 00`.
+        args: &["Spell"],
     },
     Command {
         name: "DropMe",
@@ -260,7 +265,10 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "EnableNavMesh",
         opcode: 0x11C0,
-        args: &["Flag"],
+        // A name, not a flag: `enableNavmesh BE880` writes the five characters
+        // `BE880` as a string argument (`01 00 | 05 00 | "BE880"`), measured
+        // in 4 corpus units.
+        args: &["String"],
     },
     Command {
         name: "GetAV",
@@ -401,17 +409,29 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "ModActorValue",
         opcode: 0x1010,
-        args: &["ActorValue", "Float"],
+        // Measured, and it is the opposite of its neighbours: DamageAV and
+        // RestoreAV write their Amount as a float (`7A` + f64), while
+        // ModActorValue writes an i32 (`6E`) in all 25 corpus units that call
+        // it — `ModAV SpeedMult -15` is `6E F1 FF FF FF`, not a float.
+        args: &["ActorValue", "Integer"],
     },
     Command {
         name: "MoveTo",
         opcode: 0x109E,
-        args: &["Marker"],
+        // The marker, then three offsets, all floats. Measured: every corpus
+        // call that passes offsets writes them as `7A` + f64 (7 units), e.g.
+        // `MoveTo x y z 64` writes the 64 as 64.0 — declaring them "Integer"
+        // made each offset four bytes short and showed up as a `blockLen`
+        // mismatch rather than as an argument bug.
+        args: &["Marker", "Float", "Float", "Float"],
     },
     Command {
         name: "PMS",
         opcode: 0x1123,
-        args: &["Shader"],
+        // The shader and its strength. Measured: `PMS NightkinCloakFXShader
+        // .5` writes the strength as a float (`7A` + f64 0.5), and a source
+        // that writes `1` gets `1.0`.
+        args: &["Shader", "Float"],
     },
     Command {
         name: "PickIdle",
@@ -491,7 +511,10 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "SetCriticalStage",
         opcode: 0x1212,
-        args: &["Stage"],
+        // The stage is a code, like `IsInCriticalStage`'s: measured
+        // `SetCriticalStage GooStart` → `01 00 01 00` and `GooEnd` →
+        // `01 00 02 00`.
+        args: &["CriticalStage"],
     },
     Command {
         name: "SetDestroyed",
@@ -3272,6 +3295,15 @@ pub const COMMANDS: &[Command] = &[
     Command {
         name: "IsLoadingMenuEnabled",
         opcode: 0x1271,
+        args: &[],
+    },
+    Command {
+        // Measured: the only opcode in `FalloutNV.esm` that no table entry
+        // names is 0x127B, written with no arguments in the 5 units that call
+        // it — `SystemSave;` in YesManDeadSCRIPT and MrHouseSCRIPT. See
+        // `examples/unknown_ops.rs`, which is how it was found.
+        name: "SystemSave",
+        opcode: 0x127B,
         args: &[],
     },
 ];

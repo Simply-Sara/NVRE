@@ -29,10 +29,23 @@ cargo build
 
 | Path | What it is |
 |---|---|
-| `crates/` | 13 crates: format readers (`nvre-esm`, `nvre-nif`, `bsa105`, `ba2`, `nvre-vfs`, `nvre-dds`), the world index (`nvre-world`), the write path (`nvre-edit`), the asset layer (`nvre-assets`), and the GUI (`nvre-editor`). |
+| `crates/` | 15 crates: format readers (`nvre-esm`, `nvre-nif`, `bsa105`, `ba2`, `nvre-vfs`, `nvre-dds`), the world index (`nvre-world`), the write path (`nvre-edit`), the asset layer (`nvre-assets`), the obscript toolchain (`nvre-script`), and the GUI (`nvre-editor`). |
 | `schemas/` | Record and NIF layouts, layered `base → family → version`. Each game loads only its own chain. Every layout is measured against the shipped masters, and carries a `confidence` and a `note` naming its source — see [schemas/README.md](schemas/README.md). |
 | `docs/spec-notes/` | The measured notes behind the layouts: `fo4.md`, `fo4-csg-format.md`, `schema-coverage.md`. Every claim in `schemas/` traces to one of these. |
+| `docs/obscript-bytecode.md` | The compiled-script format, measured against the games' own `SCTX`/`SCDA` pairs. |
 
+
+## Scripts
+
+`nvre-script` compiles obscript source (a `SCPT` record's `SCTX`) into the
+bytecode the game runs (its `SCDA`), so a script can be edited without the GECK.
+It is checked against the game itself: every shipped script carries both its
+source and its compiled bytes, and the compiler reproduces **2,576 of 2,576** in
+`FalloutNV.esm` and **1,256 of 1,257** in `Fallout3.esm` byte for byte.
+
+```bash
+NVRE_DATA=<Data> cargo run --release -p nvre-script --example parity_all
+```
 
 ## Licence
 

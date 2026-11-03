@@ -184,7 +184,17 @@ pub fn lex(source: &str) -> Vec<Token> {
 
         let is_sign_operator = (c == '-' || c == '+') && preceded_by_operand;
 
+        // A `.` that follows an operand is the member separator of
+        // `Ref.member`, not the start of a `.5` literal: `REPCONHQFreeform
+        // .1stFloorAlarm` (written without the space in the source) would
+        // otherwise lex as the word `REPCONHQFreeform` and the number
+        // `.1stFloorAlarm`, losing the separator.
+        let dot_is_separator = c == '.'
+            && preceded_by_operand
+            && i > 0
+            && !chars[i - 1].is_whitespace();
         let starts_number = !is_sign_operator
+            && !dot_is_separator
             && (c.is_ascii_digit()
                 || ((c == '-' || c == '+' || c == '.')
                     && i + 1 < chars.len()
@@ -209,6 +219,27 @@ pub fn lex(source: &str) -> Vec<Token> {
                 } else {
                     break;
                 }
+            }
+            // A digit run followed by letters is a name, not a number.
+            // Fallout's records are named that way — `1ECookCook`,
+            // `3CBSCave1`, `1stFloorAlarm`, `2eLVBStation`,
+            // `3ETopsPresidentialSuite` — and the source spells the record's
+            // name, so the whole run is one word. Splitting it produced
+            // `ECookCook is not a declared variable`, a message that blamed the
+            // source for the lexer's cut (7 corpus units).
+            if i < chars.len() && (chars[i].is_alphabetic() || chars[i] == '_') {
+                while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_') {
+                    text.push(chars[i]);
+                    i += 1;
+                    col += 1;
+                }
+                out.push(Token {
+                    text,
+                    kind: Kind::Word,
+                    line: start_line,
+                    col: start_col,
+                });
+                continue;
             }
             out.push(Token {
                 text,
