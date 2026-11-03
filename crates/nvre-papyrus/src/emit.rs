@@ -830,14 +830,19 @@ impl<'a> Compiler<'a> {
                 // `a` was in `locals` but not in `types`.
                 buf.types.push((ln, lt));
                 buf.declared.push((l.name.to_ascii_lowercase(), ln));
-                // A declaration with an initial value is an assignment.
+                // A declaration with an initial value is an assignment, and —
+                // like any assignment — it releases the temporary it consumed.
+                // Leaving that out meant `int d = a + b` held `::temp0` for the
+                // rest of the function, so the next sum took `::temp1` where the
+                // CK reuses `::temp0`. Measured on `Tn.psc`.
                 if let Some(init) = &l.initial {
                     let dest = Value::Identifier(ln);
                     let v = self.expr(buf, init, l.line)?;
                     let mut ins = Instruction::new(opcode_of("assign"));
                     ins.args.push(dest);
-                    ins.args.push(v);
+                    ins.args.push(v.clone());
                     buf.push(ins, l.line);
+                    self.release_temp(buf, &v);
                 }
                 Ok(())
             }
