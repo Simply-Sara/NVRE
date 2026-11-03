@@ -120,6 +120,7 @@ pub mod lex;
 pub mod opcodes;
 pub mod parse;
 pub mod pex;
+pub mod returns;
 
 pub use lex::lex;
 pub use parse::parse;

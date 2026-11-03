@@ -138,7 +138,7 @@ pub const SKYRIM: [OpInfo; 36] = [
         varargs: false,
     },
     OpInfo {
-        name: "comp_gte",
+        name: "cmp_gte",
         args: 3,
         varargs: false,
     },
@@ -350,9 +350,12 @@ mod tests {
         assert_eq!(SKYRIM[0x16].name, "jmpf");
         assert_eq!(SKYRIM[0x0F].name, "cmp_eq");
         assert_eq!(SKYRIM[0x10].name, "cmp_lt");
-        // Index 0x13 is `jmp`, which is what the same file's `else` block ends
-        // with.
-        assert_eq!(SKYRIM[0x13].name, "jmp");
+        // 0x13 is `cmp_gte`, and the corpus proves it rather than the name
+        // suggesting it: `achievementsscript` compiles `statValue >=
+        // NumCompletedMiscObjectivesNeeded` to `0x13 ::temp1 statValue
+        // NumCompletedMiscObjectivesNeeded` followed by `jmpf`. `jmp` is 0x14.
+        assert_eq!(SKYRIM[0x13].name, "cmp_gte");
+        assert_eq!(SKYRIM[0x14].name, "jmp");
     }
 
     #[test]

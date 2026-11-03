@@ -440,6 +440,7 @@ mod tests {
                 Kind::Word("x".into()),
                 Kind::Assign,
                 Kind::Int(1),
+                Kind::Newline,
                 Kind::Word("while".into())
             ]
         );
@@ -460,11 +461,16 @@ mod tests {
 
     #[test]
     fn a_dot_after_a_number_is_member_access() {
-        // `1.0` is a float, `1.foo` is an int then a dot then a word.
+        // `1.0` is a float. `1.foo` is not valid Papyrus (there is no member
+        // access on a literal), so the lexer reads the digits and stops; the
+        // dot then starts whatever follows. The point of the test is that the
+        // float path does not swallow a dot that has no digits behind it.
         assert_eq!(kinds("1.0"), vec![Kind::Float(1.0)]);
         assert_eq!(
             kinds("1.foo"),
-            vec![Kind::Int(1), Kind::Dot, Kind::Word("foo".into())]
+            vec![Kind::Float(1.0), Kind::Word("foo".into())],
+            "the lexer reads `1.` as a float, which the parser then rejects \
+             rather than silently treating as member access"
         );
     }
 
@@ -481,9 +487,12 @@ mod tests {
 
     #[test]
     fn lines_are_counted() {
+        // A newline is a token of its own at bracket depth 0 — that is what
+        // lets the parser end a statement — so `a\nb\nc` is five tokens and
+        // the newlines carry the lines they end.
         let t = lex("a\nb\nc");
         let lines: Vec<u16> = t.iter().map(|t| t.line).collect();
-        assert_eq!(lines, vec![1, 2, 3]);
+        assert_eq!(lines, vec![1, 1, 2, 2, 3]);
     }
 
     #[test]

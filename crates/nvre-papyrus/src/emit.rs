@@ -640,8 +640,8 @@ impl<'a> Compiler<'a> {
                     let a = self.expr(buf, arr, *line)?;
                     let i = self.expr(buf, idx, *line)?;
                     let v = self.expr(buf, value, *line)?;
-                    let ty = self.value_type(&v);
-                    let v = self.materialise(buf, v, ty, *line);
+                    let ty = self.value_type(buf, &v);
+                    let v = self.materialise(buf, v, &ty, *line);
                     let mut ins = Instruction::new(opcode_of("array_setelement"));
                     ins.args.push(a);
                     ins.args.push(i);
@@ -667,7 +667,8 @@ impl<'a> Compiler<'a> {
                 // a read, an arithmetic instruction, and an assign.
                 let dest = self.lvalue(buf, target)?;
                 let rhs = self.expr(buf, value, *line)?;
-                let tmp = self.temp(buf, self.value_type(&dest));
+                let dt = self.value_type(buf, &dest);
+                let tmp = self.temp(buf, &dt);
                 let arith = self.arith_op(op, &dest);
                 let mut ins = Instruction::new(arith);
                 ins.args.push(Value::Identifier(tmp));
@@ -848,6 +849,22 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    /// What `class.function()` returns, for a call whose result has to be
+    /// given a type before the instruction that will hold it is chosen.
+    ///
+    /// The answer comes from [`crate::returns`], which is measured from the
+    /// shipped scripts rather than transcribed — a compile unit cannot see the
+    /// class's own source, so this is the only way to know.
+    fn static_result_type(&self, class: &str, function: &str) -> &'static str {
+        crate::returns::static_return(class, function).unwrap_or("var")
+    }
+
+    /// The type this script `extends`, which is the class a bare `f()` call
+    /// implicitly dispatches through.
+    fn own_class(&self) -> Option<String> {
+        self.script.parent.clone()
+    }
+
     /// The declared type of a property, for its `propget` temporary.
     fn property_type(&self, name: &str) -> &'static str {
         match self.type_of(name) {
@@ -928,20 +945,52 @@ impl<'a> Compiler<'a> {
     }
 
     /// The type name a compiled value carries, for sizing a temporary.
-    fn value_type(&self, v: &Value) -> &'static str {
+    fn value_type(&self, buf: &FnBuf, v: &Value) -> String {
         match v {
-            Value::Float(_) => "Float",
-            Value::Int(_) => "Int",
-            Value::Bool(_) => "Bool",
-            Value::String(_) => "String",
+            Value::Float(_) => "Float".to_string(),
+            Value::Int(_) => "Int".to_string(),
+            Value::Bool(_) => "Bool".to_string(),
+            Value::String(_) => "String".to_string(),
+            Value::Identifier(i) => {
+                // A temporary's type was decided when it was allocated, and
+                // that is what a comparison has to see: `akActivator` is an
+                // `ObjectReference` and `::temp1` holding `Game.GetPlayer()` is
+                // an `actor`, which is exactly what makes the CK emit a cast.
+                self.declared_type(buf, *i).unwrap_or_else(|| {
+                    if self.value_is_int(v) {
+                        "Int".to_string()
+                    } else {
+                        "Float".to_string()
+                    }
+                })
+            }
             _ => {
                 if self.value_is_int(v) {
-                    "Int"
+                    "Int".to_string()
                 } else {
-                    "Float"
+                    "Float".to_string()
                 }
             }
         }
+    }
+
+    /// The type a local, temporary or parameter holds, by its string index.
+    ///
+    /// The function's own locals table is the authority: `temp()` records the
+    /// type it chose, and a `local` declaration records its declared type. This
+    /// is what lets a comparison see that its two sides are different classes
+    /// and emit the `cast` the Creation Kit emits.
+    fn declared_type(&self, buf: &FnBuf, index: StrIndex) -> Option<String> {
+        buf.locals
+            .iter()
+            .rev()
+            .find(|(n, _)| *n == index)
+            .map(|(_, t)| {
+                self.strings
+                    .get(*t as usize)
+                    .cloned()
+                    .unwrap_or_else(|| "var".to_string())
+            })
     }
 
     /// Compile an expression, returning the value that holds its result.
@@ -981,8 +1030,8 @@ impl<'a> Compiler<'a> {
                 // `cmp_eq ::temp3 akActivator ::temp2`.
                 let is_cmp = matches!(op.as_str(), "==" | "!=" | "<" | "<=" | ">" | ">=");
                 if is_cmp {
-                    let lt = self.value_type(&l);
-                    let rt = self.value_type(&r);
+                    let lt = self.value_type(buf, &l);
+                    let rt = self.value_type(buf, &r);
                     if lt != rt && lt != "var" && rt != "var" {
                         let tmp = self.temp(buf, &lt);
                         let mut ins = Instruction::new(opcode_of("cast"));
@@ -995,10 +1044,10 @@ impl<'a> Compiler<'a> {
                 // A comparison yields Bool whatever its operands are; an
                 // arithmetic instruction yields its operands' own type.
                 let result_ty = match op.as_str() {
-                    "+" | "-" | "*" | "/" | "%" => self.value_type(&l),
-                    _ => "bool",
+                    "+" | "-" | "*" | "/" | "%" => self.value_type(buf, &l),
+                    _ => "bool".to_string(),
                 };
-                let tmp = self.temp(buf, result_ty);
+                let tmp = self.temp(buf, &result_ty);
                 let code = match op.as_str() {
                     "+" => self.arith_op("+", &l),
                     "-" => self.arith_op("-", &l),
@@ -1036,10 +1085,10 @@ impl<'a> Compiler<'a> {
             Expr::Unary { op, operand } => {
                 let v = self.expr(buf, operand, line)?;
                 let result_ty = match op.as_str() {
-                    "!" => "bool",
-                    _ => self.value_type(&v),
+                    "!" => "bool".to_string(),
+                    _ => self.value_type(buf, &v),
                 };
-                let tmp = self.temp(buf, result_ty);
+                let tmp = self.temp(buf, &result_ty);
                 let code = match op.as_str() {
                     "!" => opcode_of("not"),
                     "-" => {
@@ -1094,7 +1143,17 @@ impl<'a> Compiler<'a> {
                             return Ok(Value::Identifier(tmp));
                         }
                         let self_i = self.intern("self");
-                        let tmp = self.temp(buf, self.call_result_type(name));
+                        let ty = if let Some(c) = self.own_class() {
+                            self.static_result_type(&c, name)
+                        } else {
+                            self.call_result_type(name)
+                        };
+                        let ty = if ty == "var" {
+                            self.call_result_type(name)
+                        } else {
+                            ty
+                        };
+                        let tmp = self.temp(buf, ty);
                         let mut ins = Instruction::new(opcode_of("callmethod"));
                         ins.args.push(Value::Identifier(fname));
                         ins.args.push(Value::Identifier(self_i));
@@ -1117,7 +1176,11 @@ impl<'a> Compiler<'a> {
                         if let Expr::Ident(class) = obj.as_ref() {
                             if let Some(target) = self.static_target(class) {
                                 let m = self.intern(method);
-                                let tmp = self.temp(buf, self.call_result_type(method));
+                                // The result's type decides the temporary, and
+                                // that decides whether a later comparison needs
+                                // a `cast`. Measured, not guessed.
+                                let ty = self.static_result_type(class, method);
+                                let tmp = self.temp(buf, ty);
                                 let mut ins = Instruction::new(opcode_of("callstatic"));
                                 ins.args.push(Value::Identifier(target));
                                 ins.args.push(Value::Identifier(m));

@@ -116,6 +116,8 @@ def parse(b, trace=None):
             return ('bool', None)
         raise ValueError(t)
 
+    calls = []          # (opcode, [args]) for every call instruction met
+
     def func(tag):
         sid(tag + '.ret')
         sid(tag + '.doc')
@@ -130,12 +132,13 @@ def parse(b, trace=None):
         for _ in range(r.u16()):
             op = r.u8()
             nargs, has_varargs = OPS[op]
-            for _ in range(nargs):
-                value(tag + '.arg')
+            argv = [value(tag + '.arg') for _ in range(nargs)]
             if has_varargs:
                 c = value(tag + '.arg')
                 for _ in range(c[1]):
-                    value(tag + '.arg')
+                    argv.append(value(tag + '.arg'))
+            if op in (23, 24, 25):
+                calls.append((op, argv, locals_))
         return dict(flags=flags, locals=locals_)
 
     objs = []
@@ -175,6 +178,8 @@ def parse(b, trace=None):
                 st['funcs'].append((sid('state.func.name'), func('state.func')))
             o['states'].append(st)
         objs.append(o)
+    if trace is not None:
+        trace.append(('calls', calls))
     return hdr, strings, user_flags, objs
 
 
