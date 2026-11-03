@@ -1515,6 +1515,23 @@ pub const COMMANDS: &[Command] = &[
         args: &["Cell", "ObjectReferenceID"],
     },
     Command {
+        // Measured in four of the five Old World Blues units that call it:
+        // `If ( GetInCharGen == 1 )` writes `20 58 7F 12 00 00` — the `X`
+        // token, opcode 0x127F, no parameter bytes. See
+        // `examples/expr_ops.rs`, which censuses the calls that only appear
+        // inside a condition.
+        //
+        // One unit, NVDLC03StealthSuitISFXSCRIPT, was compiled against a
+        // different opcode for the same call: `58 7C 12 02 00 00 00` — opcode
+        // 0x127C, and a parameter count of zero written out. Nothing in the
+        // source distinguishes the two, so the table carries the majority
+        // spelling and that one unit is left differing rather than having a
+        // coin flipped on it.
+        name: "GetInCharGen",
+        opcode: 0x127F,
+        args: &[],
+    },
+    Command {
         name: "SetInChargen",
         opcode: 0x10E7,
         args: &["Integer"],
@@ -3291,6 +3308,48 @@ pub const COMMANDS: &[Command] = &[
         name: "EnableLoadingMenu",
         opcode: 0x1270,
         args: &["Integer"],
+    },
+    // The four commands the Fallout: New Vegas DLCs add. Each opcode is the
+    // only one in its plugin that no table entry names, and the source names
+    // the command exactly as often as the opcode appears:
+    // `examples/unknown_ops.rs` has the census.
+    Command {
+        // The getter, used only inside conditions: measured in
+        // NVDLC01GhostSCRIPT (DeadMoney.esm), `If (IsActorRefEssential) &&
+        // (Player.HasPerk NVDLC01GhostHunter)` writes `20 58 72 12 00 00` — the
+        // `X` token, opcode 0x1272, and a zero parameter length.
+        name: "IsActorRefEssential",
+        opcode: 0x1272,
+        args: &[],
+    },
+    Command {
+        // DeadMoney.esm: 22 calls, `SetActorRefEssential 1` → `01 00 | 6E 01 00
+        // 00 00`.
+        name: "SetActorRefEssential",
+        opcode: 0x1273,
+        args: &["Integer"],
+    },
+    Command {
+        // DeadMoney.esm 25, HonestHearts.esm 2, OldWorldBlues.esm 27,
+        // LonesomeRoad.esm 29 — the source spells it exactly that often. The
+        // argument is a challenge reference (`72 03 00`).
+        name: "IncrementScriptedChallenge",
+        opcode: 0x1275,
+        args: &["Challenge"],
+    },
+    Command {
+        // DeadMoney.esm: 16 calls, `AlwaysShowActorSubtitles 1`.
+        name: "AlwaysShowActorSubtitles",
+        opcode: 0x1277,
+        args: &["Integer"],
+    },
+    Command {
+        // `ShowSleepWaitMenu 1 1` — LonesomeRoad.esm's bedroll and
+        // HonestHearts.esm's campfire, two integer flags: `02 00 | 6E 01 00 00
+        // 00 | 6E 01 00 00 00`.
+        name: "ShowSleepWaitMenu",
+        opcode: 0x1279,
+        args: &["Integer", "Integer"],
     },
     Command {
         name: "IsLoadingMenuEnabled",

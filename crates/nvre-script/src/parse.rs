@@ -180,6 +180,15 @@ pub struct RefEntry {
     /// For an `SCRO` slot, what the form is — a global variable (GLOB)
     /// writes `47` 'G' where a placed reference writes `5A` 'Z'.
     pub kind: RefKind,
+    /// The `SCRO` form's FormID, or 0 when the caller did not supply it.
+    ///
+    /// It is what tells two duplicate entries apart: a record can name the
+    /// *same* form twice (one entry per spelling the source used — `Player`
+    /// and `PlayerREF` both point at 0x14) or name two *different* forms that
+    /// share one EDID (`VHDKimballSpeechSCRIPT` lists 0011A208 and 00043E94,
+    /// both called `Player`). The two cases choose their slot by different
+    /// rules, so the index alone is not enough.
+    pub form: u32,
 }
 
 /// Which subrecord a reference-list slot came from.
@@ -343,6 +352,63 @@ fn words_of(toks: &[Token]) -> Vec<&Token> {
         .collect()
 }
 
+/// Cut a call's argument list at the first binary operator.
+///
+/// A stored script sometimes writes an expression where a command takes a
+/// plain value, and the GECK kept only the part it could encode: measured,
+/// `DLC03WQ01BanditBodyGuardRefA.addItem caps001 cutAmount + 10`
+/// (BrokenSteel.esm) writes `02 00 | 72 06 00 | 73 03 00` — two arguments, and
+/// the `+ 10` is gone entirely. The same shape covers a bare comparison left
+/// on its own line, `DLC04FF06hostREF.getDead == 0` and
+/// `getfurnituremarkerid == 26`, which compile to the call alone.
+///
+/// A sign directly before a number is not an operator here: `IsLimbGone -1`
+/// passes -1 as its only argument.
+fn truncate_call_args(tokens: &[Token], command: &str) -> Vec<Token> {
+    const OPERATORS: &[&str] = &[
+        "==", "!=", "<", "<=", ">", ">=", "&&", "||", "+", "-", "*", "/", "%",
+    ];
+    // A `-` before a number is a sign when the command still wants an
+    // argument: measured, `user.setAV variable08 -1` (Zeta.esm) writes both
+    // arguments — `02 00 | 45 00 | 6E FF FF FF FF`. A `+` never is: measured,
+    // `DLC03WQ01BanditBodyGuardRefA.addItem caps001 cutAmount + 10`
+    // (BrokenSteel.esm) writes two arguments and the `+ 10` is gone, even
+    // though `AddItem` declares a third. No shipped call passes a `+`-signed
+    // number as an argument; `+` is only ever arithmetic there.
+    let declared = crate::opcodes::command_called(command)
+        .map(|c| c.args.len())
+        .unwrap_or(0);
+    // A trailing `:` is a terminator the GECK read past, the way it read past a
+    // `;`: measured, `ShowMessage NVDLC03HQBuddyUnlockMSG:` (OldWorldBlues.esm's
+    // NVDLC03SinkMainComputerSCRIPT) compiles the message alone.
+    let words: Vec<&Token> = tokens
+        .iter()
+        .filter(|t| t.kind != Kind::Space && t.kind != Kind::Comment && t.text != ",")
+        .take_while(|t| t.text != ":")
+        .collect();
+    let mut out: Vec<Token> = Vec::with_capacity(words.len());
+    let mut k = 0usize;
+    while k < words.len() {
+        let t = words[k];
+        if OPERATORS.contains(&t.text.as_str()) {
+            let signed = t.text == "-" && out.len() < declared;
+            if signed {
+                if let Some(n) = words.get(k + 1).filter(|n| n.kind == Kind::Number) {
+                    let mut one = (*n).clone();
+                    one.text = format!("{}{}", t.text, n.text);
+                    out.push(one);
+                    k += 2;
+                    continue;
+                }
+            }
+            break;
+        }
+        out.push(t.clone());
+        k += 1;
+    }
+    out
+}
+
 /// Parse one line's tokens into zero or more statements.
 ///
 /// Zero, because a comment-only or blank line is not a statement. More than
@@ -493,32 +559,16 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
             return vec![Stmt::Call {
                 on: Some(r.text.clone()),
                 command: c.text.clone(),
-                args,
+                args: truncate_call_args(&args, &c.text),
             }];
         }
     }
 
     if first.kind == Kind::Word && !KEYWORDS.contains(&first.text.to_ascii_lowercase().as_str()) {
-        // A statement that is a bare comparison — `getfurnituremarkerid == 26`
-        // (VNelsonHostageRestrain line 11) — compiles to the command call
-        // alone: measured, the line writes `10A0 GetFurnitureMarkerID` with no
-        // arguments, and the `== 26` is dropped entirely. So the operator ends
-        // the argument list; what follows it is not part of the call.
-        let args = rest_of(&words, 1);
-        let cut = args.iter().position(|t| {
-            matches!(
-                t.text.as_str(),
-                "==" | "!=" | "<" | "<=" | ">" | ">=" | "&&" | "||"
-            )
-        });
-        let args = match cut {
-            Some(at) => args[..at].to_vec(),
-            None => args,
-        };
         return vec![Stmt::Call {
             on: None,
             command: first.text.clone(),
-            args,
+            args: truncate_call_args(&rest_of(&words, 1), &first.text),
         }];
     }
 

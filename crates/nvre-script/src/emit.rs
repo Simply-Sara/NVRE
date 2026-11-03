@@ -1257,7 +1257,8 @@ fn emit_call(
     // list (`VMS18WhiteGloveKitchenPatrollerREF.RemoveScriptPackage
     // VMS18KitchenPatrollerFollowPlayer`), so resolving it would fail on a
     // call whose bytes carry no argument at all.
-    let significant: Vec<&crate::lex::Token> = args
+    let folded = crate::value::fold_dotted(args);
+    let significant: Vec<&crate::lex::Token> = folded
         .iter()
         .filter(|t| {
             t.kind != crate::lex::Kind::Space
@@ -1265,7 +1266,10 @@ fn emit_call(
                 && t.text != ","
         })
         .collect();
-    if matches!(cmd.opcode, 0x1017 | 0x1098 | 0x105E | 0x105D | 0x1101) && significant.len() == 1
+    if matches!(
+        cmd.opcode,
+        0x1017 | 0x1098 | 0x105E | 0x105D | 0x1101 | 0x11FA | 0x11BB | 0x1158
+    ) && significant.len() == 1
     {
         let mut out = prefix_bytes;
         out.extend(frame(cmd.opcode, &[]));
@@ -1275,44 +1279,21 @@ fn emit_call(
     let mut encoded: Vec<Vec<u8>> = Vec::new();
     let mut param_idx = 0;
     let mut ai = 0;
-    while ai < args.len() {
-        let t = &args[ai];
+    while ai < folded.len() {
+        let t = &folded[ai];
         if t.kind == crate::lex::Kind::Space || t.kind == crate::lex::Kind::Comment || t.text == ","
         {
             ai += 1;
             continue;
         }
         // Handle negative number passed as `-` followed by `number`
-        if t.text == "-" && ai + 1 < args.len() && args[ai + 1].kind == crate::lex::Kind::Number {
-            let num_tok = &args[ai + 1];
+        if t.text == "-" && ai + 1 < folded.len() && folded[ai + 1].kind == crate::lex::Kind::Number {
+            let num_tok = &folded[ai + 1];
             let mut combined = num_tok.clone();
             combined.text = format!("-{}", num_tok.text);
             encoded.push(emit_arg(&combined, script, Some(cmd), param_idx)?);
             param_idx += 1;
             ai += 2;
-            continue;
-        }
-        // A dotted compound inside an argument list is `Script.var`, the
-        // 5-byte `72 <refIdx> <tag> <varId>` form measured in
-        // `ShowMessage TrapLowSkillRepairMsg NQlvl.TRAPPlateSkillReq`
-        // (`01 00 | 72 05 00 | 01 00 | 72 02 00 73 1B 00 | 00 00 00 00`). The
-        // var's ID lives in the target script's own SLSD table, which the
-        // caller supplies; a target no table covers is refused.
-        if t.kind == crate::lex::Kind::Word
-            && ai + 2 < args.len()
-            && args[ai + 1].text == "."
-            && args[ai + 2].kind == crate::lex::Kind::Word
-        {
-            let member = &args[ai + 2];
-            let (tag, id) = crate::value::resolve_remote_var(&t.text, &member.text, script)?;
-            let ref_idx = resolve_ref(&t.text, script)?;
-            let mut b = vec![0x72];
-            b.extend_from_slice(&ref_idx.to_le_bytes());
-            b.push(tag);
-            b.extend_from_slice(&id.to_le_bytes());
-            encoded.push(b);
-            param_idx += 1;
-            ai += 3;
             continue;
         }
         encoded.push(emit_arg(t, script, Some(cmd), param_idx)?);
@@ -1386,6 +1367,25 @@ fn emit_call(
             return Err(crate::Error::Parse(
                 "`ShowMessage` needs its message argument".to_string(),
             ));
+        }
+        // A format value is a *value*, so a global in that position writes
+        // `47` 'G': measured, ThePitt.esm's
+        // `showmessage DLC01FF008MedicineLowMessage DLC01FF008MedicineSkillNeeded`
+        // writes `01 00 | 72 08 00 | 01 00 | 47 06 00` — the second name is a
+        // GLOB and the game writes the global tag, where a reference argument
+        // would write `72`.
+        for (at, one) in encoded.iter_mut().enumerate().skip(1) {
+            if one.first() != Some(&0x72) {
+                continue;
+            }
+            let idx = u16::from_le_bytes([one[1], one[2]]);
+            let is_global = script
+                .refs
+                .get(idx as usize - 1)
+                .is_some_and(|r| r.kind == crate::parse::RefKind::Global);
+            if is_global && significant.get(at).is_some() {
+                one[0] = 0x47;
+            }
         }
         let message = encoded.remove(0);
         let mut body = Vec::new();
@@ -1538,6 +1538,16 @@ pub fn actor_value_code(name: &str) -> Option<u16> {
         // `player.RestoreAV RadiationRads 1000` → `36 00` (54) in
         // VFSJulieFarkasSCRIPT, and 5 units spell it this way.
         ("RadiationRads", 54),
+        // The same code under the name the Old World Blues scripts spell.
+        ("RadResist", 20),
+        // Fallout 3's name for the same code: measured
+        // `triggerActor.getAV detectLifeRange` → `58 0E 10 04 00 01 00 33 00`
+        // (BrokenSteel.esm's testPhilCLightningVol1SCRIPT).
+        ("DetectLifeRange", 51),
+        // The DLCs' own hardcore meter, misspelled in every script that uses
+        // it: measured `player.SetAV sleepdeprevation 0` → `02 00 | 4B 00`
+        // (DeadMoney.esm's NVDLC01SuitesAutoDocSCRIPT).
+        ("SleepDeprevation", 75),
         ("BloodyMess", 55),
         ("UnarmedDamage", 56),
         ("Assistance", 57),
@@ -1579,6 +1589,20 @@ pub fn anim_group_code(name: &str) -> Option<u16> {
         ("FastLeft", 9),
         ("FastRight", 10),
         ("TurnLeft", 15),
+        // Measured in Anchorage.esm's DLCAnchOverlookGunsSCRIPT: the source's
+        // `playgroup TurnRight 1` compiles to `02 00 | 10 00 | 6E 01 …`.
+        ("TurnRight", 16),
+        // Fallout 3 spells the reload groups lettered, and each code is
+        // measured: `examples/pair_args.rs -- 1013 PlayGroup` pairs every
+        // `PlayGroup <name>` call in Zeta.esm with the instruction it compiled
+        // to (422 names paired, no disagreements) and reads 142..147 for
+        // ReloadA..ReloadF.
+        ("ReloadA", 142),
+        ("ReloadB", 143),
+        ("ReloadC", 144),
+        ("ReloadD", 145),
+        ("ReloadE", 146),
+        ("ReloadF", 147),
         ("Equip", 24),
         ("Unequip", 25),
     ];
@@ -1609,6 +1633,10 @@ fn code_named(name: &str, ty: &str) -> Option<Vec<u8>> {
             _ => return None,
         },
         "criticalstage" => match lower.as_str() {
+            // Measured: `If (IsInCriticalStage None != 1)` in
+            // NVDLC04TempleMarkedMen*SCRIPT (LonesomeRoad.esm) writes `01 00
+            // 00 00` — no stage at all is code 0.
+            "none" => 0,
             "goostart" => 1,
             "gooend" => 2,
             "disintegratestart" => 3,
@@ -1651,6 +1679,18 @@ fn code_named(name: &str, ty: &str) -> Option<Vec<u8>> {
 /// (`PlayGroup Forward` writes `03 00`) and `Miscellaneous Stat`
 /// (`GetPCMiscStat "Times Addicted"` writes `0A 00`) — all three are a raw
 /// little-endian word with no tag and no count of their own.
+/// Whether a parameter is written as `7A` + `f64`.
+///
+/// `Float` is the table's usual spelling, but the same parameter is spelled
+/// `Health Percent`, and measured it is a float: PointLookout.esm's
+/// `AddItemToLeveledList VendorChestFoodOnly DLc04PungaWild 1 4 .25` writes
+/// `7A 00 00 00 00 00 00 D0 3F` — 0.25 as an `f64`. `PlaceAtMeHealthPercent`
+/// carries the same parameter name and is written the same way here; the
+/// corpus has no call to it, so that one is by name rather than by bytes.
+fn is_float_param(ty: &str) -> bool {
+    matches!(param_kind(ty).as_str(), "float" | "healthpercent")
+}
+
 fn is_code_param(ty: &str) -> bool {
     matches!(
         param_kind(ty).as_str(),
@@ -1763,7 +1803,7 @@ fn emit_arg(
         crate::lex::Kind::Number => {
             // Check if expected parameter type is Float
             if let Some(exp) = expected_type {
-                if param_kind(exp).as_str() == "float" {
+                if is_float_param(exp) {
                     let Ok(f) = t.text.parse::<f64>() else {
                         return Err(crate::Error::Parse(format!(
                             "`{}` is not a float this emitter can encode",
@@ -1806,6 +1846,22 @@ fn emit_arg(
         // names one of the record's references, which this emitter cannot
         // index correctly — so it is refused rather than guessed.
         crate::lex::Kind::Word => {
+            // `Script.var` — a remote script variable, the 5-byte compound
+            // `72 <refIdx> <tag> <the variable's own SLSD id>`. Measured:
+            // `set Follower1 to GomorrahCasinoEnterTriggerREF.Follower1`
+            // (FalloutNV.esm) and `linkedref.PlaceLeveledActorAtMe … DLC05HQ.spawnDiff`
+            // (Zeta.esm, as an argument).
+            if let Some((target, member)) = t.text.split_once('.') {
+                if !target.is_empty() && !member.is_empty() {
+                    let (tag, id) = crate::value::resolve_remote_var(target, member, script)?;
+                    let ref_idx = crate::value::resolve_ref_index(target, script)?;
+                    let mut b = vec![0x72];
+                    b.extend_from_slice(&ref_idx.to_le_bytes());
+                    b.push(tag);
+                    b.extend_from_slice(&id.to_le_bytes());
+                    return Ok(b);
+                }
+            }
             // The parameter's declared type decides what a name means, and it
             // has to come first: `GetPos X` is the axis letter even when the
             // script declares a variable called `X`, and `PlayIdle SomeName`
@@ -1897,7 +1953,7 @@ fn emit_arg(
             // `PlaceAtReticle EuclidTargetPointer 1 0 EuclidPointerRange` writes
             // the global as `47 05 00`, where `72 05 00` is a different operand
             // the game would read as a reference.
-            if let Ok(ref_idx) = resolve_ref(&t.text, script) {
+            if let Ok(ref_idx) = crate::value::resolve_ref_index(&t.text, script) {
                 let kind = script
                     .refs
                     .iter()
@@ -1912,7 +1968,17 @@ fn emit_arg(
                 let numeric = expected_type.is_some_and(|exp| {
                     matches!(
                         param_kind(exp).as_str(),
-                        "float" | "integer" | "int" | "value" | "amount" | "count"
+                        "float"
+                            | "integer"
+                            | "int"
+                            | "value"
+                            | "amount"
+                            | "count"
+                            | "xp"
+                            | "level"
+                            | "stage"
+                            | "distance"
+                            | "percent"
                     )
                 });
                 let tag = match kind {
@@ -1955,6 +2021,7 @@ mod corpus_tests {
                 name: (*n).to_string(),
                 slot: RefSlot::Form,
                 kind: RefKind::Reference,
+                form: 0,
             })
             .collect()
     }

@@ -48,7 +48,7 @@ fn main() {
         return;
     };
 
-    let mut report = |id: u32, label: &str| {
+    let report = |id: u32, label: &str| {
         let mut found = false;
         visit_nodes(&plugin.nodes, &mut |rec, _| {
             if rec.header.form_id != id {

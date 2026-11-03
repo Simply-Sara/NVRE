@@ -246,6 +246,7 @@ fn main() {
                         name,
                         slot: nvre_script::RefSlot::Form,
                         kind,
+                        form: 0,
                     });
                 }
                 RefListEntry::Scrv(var_id) => {
@@ -261,6 +262,7 @@ fn main() {
                         name,
                         slot: nvre_script::RefSlot::Var,
                         kind: nvre_script::RefKind::Reference,
+                        form: 0,
                     });
                 }
             }

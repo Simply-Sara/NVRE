@@ -57,6 +57,45 @@ fn main() {
         return;
     };
 
+    // The plugin's own masters, in load order. A DLC's scripts name forms that
+    // live in the master (`VNPCFollowers`, `Player`, every idle and package), so
+    // compiling a DLC without them resolves nothing: 20% of its units would
+    // "differ" for a reason that has nothing to do with the compiler. The
+    // `MAST` subrecords of the file header are the list.
+    let mut masters: Vec<Plugin> = Vec::new();
+    {
+        let mut names: Vec<String> = Vec::new();
+        visit_nodes(&plugin.nodes, &mut |rec, _| {
+            if rec.header.sig != *b"TES4" {
+                return;
+            }
+            let Ok(subs) = rec.subrecords() else { return };
+            for s in subs.iter() {
+                if s.sig == *b"MAST" {
+                    names.push(
+                        String::from_utf8_lossy(&s.data)
+                            .trim_end_matches('\0')
+                            .to_string(),
+                    );
+                }
+            }
+        });
+        for name in names {
+            if name.eq_ignore_ascii_case(&plugin_name) {
+                continue;
+            }
+            let path = std::path::Path::new(&data).join(&name);
+            let Ok(bytes) = std::fs::read(&path) else {
+                eprintln!("warning: master {name} not found; its names will not resolve");
+                continue;
+            };
+            match Plugin::parse_bytes(Bytes::from(bytes), name.clone()) {
+                Ok(p) => masters.push(p),
+                Err(_) => eprintln!("warning: master {name} did not parse"),
+            }
+        }
+    }
+
     // Pass one, over every record: the FormID -> EDID and FormID ->
     // signature maps the per-unit resolution needs, the SCRI chain (a
     // record's script), and every script's own variable table.
@@ -74,7 +113,8 @@ fn main() {
     let mut base_of: std::collections::HashMap<u32, u32> = Default::default();
     let mut script_tables: std::collections::HashMap<String, Vec<nvre_script::VarEntry>> =
         Default::default();
-    visit_nodes(&plugin.nodes, &mut |rec, _| {
+    for source in masters.iter().chain(std::iter::once(&plugin)) {
+    visit_nodes(&source.nodes, &mut |rec, _| {
         let Ok(subs) = rec.subrecords() else { return };
         let sig = String::from_utf8_lossy(&rec.header.sig).into_owned();
         sig_of.insert(rec.header.form_id, sig.clone());
@@ -142,6 +182,7 @@ fn main() {
             .collect();
         script_tables.insert(edid, table);
     });
+    }
     // Player reference FormID 0x14
     edid_of.insert(0x00000014, "Player".to_string());
     sig_of.insert(0x00000014, "ACHR".to_string());
@@ -247,6 +288,7 @@ fn main() {
                         name,
                         slot: nvre_script::RefSlot::Form,
                         kind,
+                        form: *fid,
                     });
                 }
                 RefListEntry::Scrv(var_id) => {
@@ -262,6 +304,7 @@ fn main() {
                         name,
                         slot: nvre_script::RefSlot::Var,
                         kind: nvre_script::RefKind::Reference,
+                        form: 0,
                     });
                 }
             }

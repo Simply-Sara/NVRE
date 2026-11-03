@@ -174,6 +174,7 @@ fn main() {
                     name,
                     slot: nvre_script::RefSlot::Form,
                     kind,
+                    form: 0,
                 });
             } else if s.sig == *b"SCRV" && s.data.len() == 4 {
                 let var_id = u16::from_le_bytes([s.data[0], s.data[1]]);
@@ -186,6 +187,7 @@ fn main() {
                     name,
                     slot: nvre_script::RefSlot::Var,
                     kind: nvre_script::RefKind::Reference,
+                    form: 0,
                 });
             }
         }

@@ -362,12 +362,32 @@ pub fn encode_expr(
                     let mut j = i + 3;
                     while j < filtered.len() {
                         let next = &filtered[j];
+                        if next.text == "," {
+                            j += 1;
+                            continue;
+                        }
+                        // A dotted compound is one argument: fold `A.member`
+                        // as it is collected, so the argument count below
+                        // counts arguments rather than tokens.
+                        if next.kind == Kind::Word
+                            && filtered.get(j + 1).is_some_and(|d| d.text == ".")
+                            && filtered.get(j + 2).is_some_and(|m| m.kind == Kind::Word)
+                        {
+                            let mut one = next.clone();
+                            one.text = format!("{}.{}", next.text, filtered[j + 2].text);
+                            arg_tokens.push(one);
+                            j += 3;
+                            if arg_tokens.len() == cmd.args.len() {
+                                break;
+                            }
+                            continue;
+                        }
                         // A sign at the start of an argument is part of the
                         // value, not a binary operator: `IsLimbGone -1`
                         // (Fallout3.esm RobcoRobotScript) passes -1 as the
                         // limb, and reading the `-` as subtraction gives a call
                         // with no arguments followed by a stray operator.
-                        let leading_sign = arg_tokens.is_empty()
+                        let leading_sign = arg_tokens.len() < cmd.args.len()
                             && (next.text == "-" || next.text == "+")
                             && filtered.get(j + 1).is_some_and(|n| n.kind == Kind::Number);
                         if (!leading_sign && op_info(next).is_some())
@@ -395,6 +415,7 @@ pub fn encode_expr(
                         }
                     }
 
+                    let arg_tokens = crate::value::fold_dotted(&arg_tokens);
                     let mut arg_bytes = Vec::new();
                     let count = arg_tokens.len() as u16;
                     // One encoder for every argument position, the type's
@@ -458,7 +479,11 @@ pub fn encode_expr(
                 let mut j = i + 1;
                 while j < filtered.len() {
                     let next = &filtered[j];
-                    let leading_sign = arg_tokens.is_empty()
+                    if next.text == "," {
+                        j += 1;
+                        continue;
+                    }
+                    let leading_sign = arg_tokens.len() < cmd.args.len()
                         && (next.text == "-" || next.text == "+")
                         && filtered.get(j + 1).is_some_and(|n| n.kind == Kind::Number);
                     if (!leading_sign && op_info(next).is_some())
@@ -489,6 +514,7 @@ pub fn encode_expr(
                 // Encode arguments for function call: the same encoder the
                 // statement form uses, so a name, a code and a float mean the
                 // same thing in both.
+                let arg_tokens = crate::value::fold_dotted(&arg_tokens);
                 let mut arg_bytes = Vec::new();
                 let count = arg_tokens.len() as u16;
                 for (p_idx, atok) in arg_tokens.iter().enumerate() {
@@ -596,6 +622,35 @@ pub fn encode_expr(
     }
 
     Ok(result)
+}
+
+/// Fold `Name.member` into one token.
+///
+/// A command argument can be a remote script variable —
+/// `linkedref.PlaceLeveledActorAtMe DLC05ExLabWaveSpawn DLC05HQ.spawnDiff`
+/// (Zeta.esm) — and the lexer emits its three parts separately. Folding them
+/// into one token lets a single encoder (`emit::encode_command_arg`) decode the
+/// compound in every position, statement and expression alike, instead of each
+/// argument collector growing its own copy of the rule.
+pub fn fold_dotted(tokens: &[crate::lex::Token]) -> Vec<crate::lex::Token> {
+    let mut out: Vec<crate::lex::Token> = Vec::with_capacity(tokens.len());
+    let mut k = 0usize;
+    while k < tokens.len() {
+        let t = &tokens[k];
+        if t.kind == Kind::Word
+            && tokens.get(k + 1).is_some_and(|d| d.text == ".")
+            && tokens.get(k + 2).is_some_and(|m| m.kind == Kind::Word)
+        {
+            let mut one = t.clone();
+            one.text = format!("{}.{}", t.text, tokens[k + 2].text);
+            out.push(one);
+            k += 3;
+            continue;
+        }
+        out.push(t.clone());
+        k += 1;
+    }
+    out
 }
 
 /// The tagged bytes for a numeric literal.
@@ -729,78 +784,148 @@ pub fn resolve_remote_var(
 /// model fits only the records whose `SCRV` entries happen to be written
 /// before their `SCRO` entries.
 pub fn resolve_ref_index(name: &str, script: &crate::parse::Script) -> Result<u16, crate::Error> {
-    // The first slot a name occupies. A record may name one form twice, and
-    // the game then picks inconsistently — MS16AmbushTriggerBSCRIPT
-    // (Fallout3.esm) names `Player` at slots 2 and 6 and writes slot 2 for its
-    // `BEGIN OnTriggerEnter PlayerREF` and slot 6 for a `GetDistance player`
-    // operand in the same script. Nothing in the reference list distinguishes
-    // the two, so the first is taken (which is right for every unit in
-    // FalloutNV.esm) and that one Fallout 3 unit is left differing.
-    resolve_ref_index_where(name, script, false)
+    resolve_ref_index_where(name, script)
 }
 
-/// The same lookup, taking the *first* slot a name occupies.
+/// The slots a name occupies, in the order its spellings bind to them.
 ///
-/// A record can name one form twice — MS16AmbushTriggerBSCRIPT's list has
-/// `Player` at slots 2 and 6 — and the game is not consistent about which it
-/// writes: measured in that unit, the `Begin OnTriggerEnter PlayerREF`
-/// parameter is slot 2 (the first) while the `GetDistance Player` operand in
-/// the same script is slot 6 (the last). So the position asks for its own rule:
-/// a `Begin` parameter takes the first, everything else the last.
-pub fn resolve_ref_index_first(
-    name: &str,
-    script: &crate::parse::Script,
-) -> Result<u16, crate::Error> {
-    resolve_ref_index_where(name, script, false)
+/// A record can carry one name in two slots — either the same form twice
+/// (`Player` and `PlayerREF` both point at 0x14) or two different forms that
+/// share a name (`VHDKimballSpeechSCRIPT` lists 0011A208 and 00043E94). Either
+/// way the entries are one per *spelling*, and which slot a spelling takes is
+/// decided by the source:
+///
+/// 1. **A spelling used in a `Begin` parameter binds first.** The compiler
+///    reads every block header before it reads a statement, so the reference a
+///    `Begin … player` needs is allocated before any other.
+/// 2. **Otherwise, first use in the source.**
+///
+/// Measured on all four units that carry a duplicate:
+///
+/// - `MS16AmbushTriggerBSCRIPT` (Fallout3.esm): `BEGIN OnTriggerEnter PlayerREF`
+///   binds `PlayerREF` to slot 2, so the later `GetDistance player` writes 6.
+/// - `Lucky38VictorElevatorScript`: `begin onhit player` at the end of the file
+///   binds `player` to slot 1, so the earlier `!= playerREF` writes 17.
+/// - `VES01VictorGSMyBodyguardScript`: no `Begin` parameter, so first use
+///   decides — `player.IsInCombat` (slot 3) before `!= playerREF` (slot 7).
+/// - `VHDKimballSpeechSCRIPT`: two different forms under one name;
+///   `Player.…` (45) before `PlayerREF.IsSpellTarget` (51).
+fn source_spellings(name: &str, script: &crate::parse::Script) -> Vec<String> {
+    // (spelling, first use, used in a Begin parameter)
+    let mut found: Vec<(String, usize, bool)> = Vec::new();
+    let mut at = 0usize;
+    fn push(found: &mut Vec<(String, usize, bool)>, at: &mut usize, name: &str, t: &str, in_begin: bool) {
+        let matches = t.eq_ignore_ascii_case(name)
+            || (name.eq_ignore_ascii_case("Player") && t.eq_ignore_ascii_case("PlayerRef"));
+        if !matches {
+            return;
+        }
+        if let Some(one) = found.iter_mut().find(|(s, _, _)| s.eq_ignore_ascii_case(t)) {
+            one.2 |= in_begin;
+        } else {
+            found.push((t.to_string(), *at, in_begin));
+            *at += 1;
+        }
+    }
+    for stmt in &script.stmts {
+        match stmt {
+            crate::parse::Stmt::Begin { args, .. } => {
+                for t in args {
+                    if t.kind == Kind::Word {
+                        push(&mut found, &mut at, name, &t.text, true);
+                    }
+                }
+            }
+            crate::parse::Stmt::If(args) | crate::parse::Stmt::ElseIf(args) => {
+                for t in args {
+                    if t.kind == Kind::Word {
+                        push(&mut found, &mut at, name, &t.text, false);
+                    }
+                }
+            }
+            crate::parse::Stmt::Set {
+                on, target, expr, ..
+            } => {
+                if let Some(on) = on {
+                    push(&mut found, &mut at, name, on, false);
+                }
+                if target.kind == Kind::Word {
+                    push(&mut found, &mut at, name, &target.text, false);
+                }
+                for t in expr {
+                    if t.kind == Kind::Word {
+                        push(&mut found, &mut at, name, &t.text, false);
+                    }
+                }
+            }
+            crate::parse::Stmt::Call { on, args, .. } => {
+                if let Some(on) = on {
+                    push(&mut found, &mut at, name, on, false);
+                }
+                for t in args {
+                    if t.kind == Kind::Word {
+                        push(&mut found, &mut at, name, &t.text, false);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    found.sort_by_key(|(_, first, in_begin)| (!*in_begin, *first));
+    found.into_iter().map(|(s, _, _)| s).collect()
 }
 
 fn resolve_ref_index_where(
     name: &str,
     script: &crate::parse::Script,
-    prefer_last: bool,
 ) -> Result<u16, crate::Error> {
-    let matches: Vec<usize> = script
+    // The entries a spelling can name. `PlayerRef` is the source's other
+    // spelling of the record's `Player` entry, exactly as the engine treats it.
+    let matches_name = |r: &crate::parse::RefEntry| {
+        r.name.eq_ignore_ascii_case(name)
+            || (name.eq_ignore_ascii_case("PlayerRef") && r.name.eq_ignore_ascii_case("Player"))
+    };
+    let mut slots: Vec<usize> = script
         .refs
         .iter()
         .enumerate()
-        .filter(|(_, r)| r.name.eq_ignore_ascii_case(name))
+        .filter(|(_, r)| matches_name(r))
         .map(|(i, _)| i)
         .collect();
-    if let Some(at) = if prefer_last {
-        matches.last().copied()
-    } else {
-        matches.first().copied()
-    } {
-        return Ok(at as u16 + 1);
-    }
-    // `PlayerRef` is the source's other spelling for the record's `Player`
-    // entry, and the game resolves it to that entry's own slot rather than to
-    // FormID 0x14: measured, `if ( BoxingGloveTarget != PlayerRef )` in
-    // BoxingGlovesFatigueOnHitScript writes `20 5A 02 00`, where slot 2 is the
-    // `SCRO` entry named `Player`. Measured in 9 units, always the `Player`
-    // entry's index.
-    if name.eq_ignore_ascii_case("PlayerRef") {
-        // The other spelling of the record's `Player` entry, and the same
-        // first/last question: as an operand the game takes the later entry
-        // (VES01VictorGSMyBodyguardScript writes `20 5A 07 00` where slot 7 is
-        // the second `Player`), and as a `Begin` parameter the earlier one.
-        let players: Vec<usize> = script
+    if slots.is_empty() {
+        // The GECK renames a duplicated form by appending `DUPLICATE` and a
+        // number, and the source keeps the old spelling: HonestHearts.esm's
+        // `NVDLC02JoshuaREF.AddScriptPackage NVDLC02JoshuaGrahamLeaveForceGreetPACKAGE`
+        // compiles against a record called
+        // `...PACKAGE` + `DUPLICATE000` (measured: `01 00 | 72 03 00`, the
+        // third slot). Only that exact suffix is accepted — any other prefix
+        // relationship is a different form whose name merely starts the same.
+        slots = script
             .refs
             .iter()
             .enumerate()
-            .filter(|(_, r)| r.name.eq_ignore_ascii_case("Player"))
+            .filter(|(_, r)| {
+                r.name.len() > name.len()
+                    && r.name[..name.len()].eq_ignore_ascii_case(name)
+                    && r.name[name.len()..]
+                        .to_ascii_uppercase()
+                        .strip_prefix("DUPLICATE")
+                        .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
+            })
             .map(|(i, _)| i)
             .collect();
-        // The alias takes the *last* `Player` slot — measured in
-        // VES01VictorGSMyBodyguardScript (`20 5A 07 00`, slot 7 of two) and
-        // VHDKimballSpeechSCRIPT. It is the one name where the later entry is
-        // the right one, which is why it has a rule of its own.
-        let prefer_last = true;
-        if let Some(at) = if prefer_last {
-            players.last().copied()
-        } else {
-            players.first().copied()
-        } {
+    }
+    match slots.len() {
+        0 => {}
+        1 => return Ok(slots[0] as u16 + 1),
+        _ => {
+            let canonical = script.refs[slots[0]].name.clone();
+            let spellings = source_spellings(&canonical, script);
+            let rank = spellings
+                .iter()
+                .position(|s| s.eq_ignore_ascii_case(name))
+                .unwrap_or(spellings.len());
+            let at = slots.get(rank).copied().unwrap_or(*slots.last().unwrap());
             return Ok(at as u16 + 1);
         }
     }
