@@ -1607,9 +1607,28 @@ impl<'a> Compiler<'a> {
         //    `Form`, and the argument is an `Armor` property, so the CK emits
         //    `cast ::temp1 ::ArmorBriarHeartEmpty_var` first. Decidable only
         //    with the `extends` chain, which is why it needs `PARENTS`.
+        // Whether `have` converts to `want` at all. The rule is not "numeric or
+        // subclass" — it is a specific ladder, and the permissive branches are
+        // easy to miss:
+        //
+        //   same type            -> no cast (handled above)
+        //   target float         -> source int           (widening only)
+        //   target bool          -> ANY source           (truthiness)
+        //   target string        -> ANY source           (stringification)
+        //   target object, source none     -> yes
+        //   target object, source subtype  -> yes, walk the extends chain upward
+        //   target int,  source float      -> NO (never narrows)
+        //
+        // The `bool` and `string` branches are the ones that surprise: any value
+        // assigned to a bool or string slot is cast, so `bool b = someInt` and
+        // `string s = someForm` both emit a `cast` even though no numeric
+        // widening is involved.
         let numeric = |t: &str| t.eq_ignore_ascii_case("int") || t.eq_ignore_ascii_case("float");
-        let ok = if numeric(&have) && numeric(want) {
+        let ok = if want.eq_ignore_ascii_case("bool") || want.eq_ignore_ascii_case("string") {
             true
+        } else if numeric(&have) && numeric(want) {
+            // Only int -> float widens; float -> int is not a conversion.
+            want.eq_ignore_ascii_case("float")
         } else {
             // Walk up from the value's class looking for the wanted type.
             let mut here = crate::signatures::parent(&have).map(str::to_string);
