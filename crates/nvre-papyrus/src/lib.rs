@@ -64,28 +64,56 @@
 //! `.pex` — it writes, re-reads, keeps its size fields right and lands every
 //! jump on a real instruction — for real scripts including `Actor.psc`
 //! (`examples/emit_probe`). It does **not** yet reproduce the Creation Kit's
-//! bytes: `examples/parity` reports 0 identical of 14,026, and the first
-//! difference in every one is the string table, because the CK's table is
-//! ordered by its own intern order rather than first use.
+//! bytes: `examples/parity` reports 0 identical of 14,026.
 //!
-//! What remains for parity, in the order it is worth doing:
+//! # The string table, decoded
 //!
-//! 1. **The string table's order.** Every other field depends on getting it
-//!    right, because every index in the file is an index into it.
-//!    `tools/interning.py` measures how far a candidate order gets. The prefix
-//!    is settled and matches every script tried: the script's name, then the
-//!    empty string, then `GetState` and `GotoState` (the compiler's own
-//!    state-machine pair, present whether or not the source spells them), then
-//!    the script's own function names in file order, then its user-flag names,
-//!    then the parent class. Beyond that point the order comes from the
-//!    per-function body walk and the property records, and is not yet
-//!    decoded — which is why the prefix matches and the whole table does not.
-//! 2. **The temporary and local ordering** inside a function — the CK's
-//!    `::tempN` series is assigned by its own expression walker.
-//! 3. **The debug block**, which records a source line per instruction.
-//! 4. **Array assignment** (`a[i] = v` through `array_setelement`) and
-//!    negative property initial values, both of which the emitter refuses
-//!    today rather than guessing.
+//! The table is the sequence of distinct strings the finished file *mentions*,
+//! read in file order. That is measured, not assumed: `tools/interning2.py`
+//! tests it against the corpus and it holds for **14,020 of the 14,026**.
+//!
+//! It is a consequence of something the format docs never say. **The compiler
+//! injects `GetState` and `GotoState` into every script.** They appear in no
+//! source and in every `.pex`, which is why those two names sit at indices 2
+//! and 3 whatever the script is. Their bodies are fixed:
+//!
+//! ```text
+//! String GetState()
+//!     {Function that returns the current state}
+//!     return ::State
+//!
+//! None GotoState(String newState)
+//!     {Function that switches this object to the specified state}
+//!     callmethod onEndState self ::NoneVar  <0>
+//!     assign ::State newState
+//!     callmethod onBeginState self ::NoneVar <0>
+//! ```
+//!
+//! With them emitted, the first eight indices of `DLC2ThirskDoorScript` are
+//! byte-identical to the game's: the script name, `""`, `GetState`,
+//! `GotoState`, the script's own body names, then `conditional` and `hidden`.
+//!
+//! Two more measured facts, both surprising:
+//!
+//! - **Every `.pex` carries the user flags `conditional` and `hidden`**, on
+//!   all 14,026 — including the 2,859 whose source declares neither. Only the
+//!   order varies (`conditional` first on 8,730, `hidden` first on 5,296) and
+//!   it does not follow the source line. That order is not decoded.
+//! - **Property name indices ascend in 3,258 of 3,262 scripts**, so properties
+//!   are interned in their file-record order. What decides that record order
+//!   is *not* source order (29.9% agreement), alphabetical, reverse,
+//!   type-then-name, length, or FNV-1a hash — every one scores at chance.
+//!
+//! What remains for parity:
+//!
+//! 1. **The property record order** — the one unknown that still blocks the
+//!    middle of the table.
+//! 2. **The user-flag order**, `conditional` before `hidden` or the reverse.
+//! 3. **The temporary and local ordering** inside a function — the CK's
+//!    `::tempN` series is assigned by its own expression walker, and it makes
+//!    fewer of them than this emitter does.
+//! 4. **The debug block**, which records a source line per instruction.
+//!
 
 pub mod emit;
 pub mod lex;
