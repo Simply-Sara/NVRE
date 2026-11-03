@@ -35,3 +35,9 @@ IDEA.md
 # plus a target/ directory, so committing one would add gigabytes of duplicate
 # build output and a second copy of the repository.
 .worktrees/
+
+# Working notes that are not part of the project's documentation. Written
+# against a specific commit and stale by the next one, so they are kept locally
+# rather than published: a reader who finds one takes it for a current statement
+# about the repository.
+docs/legal-analysis.md
