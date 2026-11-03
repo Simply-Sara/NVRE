@@ -76,6 +76,7 @@ fn main() {
                         NAMES[i.opcode as usize],
                         i.args
                             .iter()
+                            .chain(i.varargs.iter())
                             .map(|x| v(&c.strings, x))
                             .collect::<Vec<_>>()
                             .join(",")
@@ -102,6 +103,7 @@ fn main() {
                                 NAMES[i.opcode as usize],
                                 i.args
                                     .iter()
+                                    .chain(i.varargs.iter())
                                     .map(|x| v(&g.strings, x))
                                     .collect::<Vec<_>>()
                                     .join(",")

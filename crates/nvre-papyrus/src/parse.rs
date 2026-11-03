@@ -523,12 +523,12 @@ impl<'a> Parser<'a> {
         // `State` and `Auto State` open a state block.
         if lower == "auto" {
             if self.eat_word("state") {
-                return self.state_block(self.line());
+                return self.state_block();
             }
             return self.err("`auto` must be followed by `state` at file scope");
         }
         if lower == "state" {
-            return self.state_block(self.line());
+            return self.state_block();
         }
 
         // `Function` / `Event`, with or without a return type.
@@ -680,12 +680,18 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn state_block(&mut self, _line: u16) -> Result<Decl, Error> {
-        let name = if self.eat_word("state") {
-            self.word("a state name")?
-        } else {
-            String::new()
-        };
+    /// One state block, with the `state` keyword already consumed.
+    ///
+    /// The caller consumes `state` (or `Auto State`) before calling, so this
+    /// must NOT look for it again. It used to: `declaration` ate `state` as its
+    /// first word, `state_block` then found no `state` keyword, and every plain
+    /// `State Busy … endState` block came back with an **empty name** — silently
+    /// merging into the default state. `Auto State` was unaffected, because
+    /// `auto` is consumed first and `state` was still there to eat. Measured on
+    /// `BladeTrapHit`, whose `state CannotHit` and `Auto state CanHit` both
+    /// landed in the default state.
+    fn state_block(&mut self) -> Result<Decl, Error> {
+        let name = self.word("a state name")?;
         let mut functions = Vec::new();
         loop {
             self.skip_newlines();

@@ -36,6 +36,7 @@ fn main() {
                     let args: Vec<String> = i
                         .args
                         .iter()
+                        .chain(i.varargs.iter())
                         .map(|v| match v {
                             Value::None => "None".to_string(),
                             Value::Identifier(x) => s(*x),

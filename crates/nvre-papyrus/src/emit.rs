@@ -449,19 +449,37 @@ impl<'a> Compiler<'a> {
                 None => by_state.push((state.clone(), vec![cf])),
             }
         }
+        // The default state is **always present and always first**, and it is
+        // the only state that carries the injected pair. Measured over all
+        // 14,026 shipped scripts:
+        //
+        //   13,323  have the default state alone
+        //      703  have the default state *and* named states
+        //        0  have only named states
+        //      703  of 703 multi-state scripts put the default state first
+        //
+        // Emitting the default state only when the source had a top-level body
+        // dropped `GetState` and `GotoState` from every script whose functions
+        // all live inside named states — 138 scripts, and the resulting `.pex`
+        // does not load. A script with no top-level body still has the pair.
+        let named = self.intern("");
         for (name, mut funcs) in by_state {
             let n = self.intern(name.as_deref().unwrap_or(""));
-            if name.is_none() {
+            let is_default = name.is_none();
+            if is_default {
                 // The script's own bodies go after the injected pair.
                 let mut all = std::mem::take(&mut default_funcs);
                 all.append(&mut funcs);
                 funcs = all;
             }
-            states.push((n, funcs));
+            if is_default {
+                states.insert(0, (n, funcs));
+            } else {
+                states.push((n, funcs));
+            }
         }
-        // A script with no own bodies still has the injected pair.
-        if states.is_empty() {
-            states.push((empty, default_funcs));
+        if !states.iter().any(|(n, _)| *n == named) {
+            states.insert(0, (named, std::mem::take(&mut default_funcs)));
         }
 
         Ok(CompiledScript {

@@ -28,8 +28,17 @@ fn text_of(p: &PexFile, mine: Option<&[String]>, f: &Function) -> Vec<String> {
     f.instructions
         .iter()
         .map(|i| {
+            // `args` alone is NOT the whole instruction: `callmethod`,
+            // `callstatic` and `callparent` carry every argument in
+            // `varargs`. Omitting them made two call shapes compare equal —
+            // `RegisterForAnimationEvent(self, "Apex")` and
+            // `RegisterForAnimationEvent(self, "reset")` looked identical, and
+            // so did `play(receiver)`. Every parity number measured with this
+            // probe before this fix was blind to arguments.
             let mut out = opcodes::name(i.opcode).to_string();
-            for a in &i.args {
+            let mut all: Vec<&Value> = i.args.iter().collect();
+            all.extend(i.varargs.iter());
+            for a in all {
                 out.push(' ');
                 out.push_str(&operand(p, mine, a));
             }
