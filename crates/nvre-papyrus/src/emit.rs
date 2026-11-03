@@ -1268,6 +1268,16 @@ impl<'a> Compiler<'a> {
                 {
                     return Ok(Value::Identifier(*i));
                 }
+                // A script-level name. A property's storage is its backing
+                // variable, `::Name_var`: the shipped corpus writes
+                // `assign ::HardWorkerChoppedWood_var true` for
+                // `HardWorkerChoppedWood = true`, never the bare name. An
+                // AutoReadOnly property has no backing variable — its value is a
+                // constant folded into the getter — so it is left alone.
+                if self.is_auto_property(n) {
+                    let backing = format!("::{n}_var");
+                    return Ok(Value::Identifier(self.intern(&backing)));
+                }
                 Ok(Value::Identifier(self.intern(n)))
             }
             Expr::Member(obj, name) => {
@@ -1677,6 +1687,23 @@ impl<'a> Compiler<'a> {
         buf.push(ins, line);
         self.release_temp(buf, &value);
         Value::Identifier(t)
+    }
+
+    /// Whether `name` is an `auto` property, whose storage is a backing variable.
+    ///
+    /// `AutoReadOnly` is excluded: it has no variable, because its value is a
+    /// constant folded into a generated getter.
+    fn is_auto_property(&self, name: &str) -> bool {
+        let n = name.to_ascii_lowercase();
+        self.script.decls.iter().any(|d| match &d.kind {
+            crate::parse::DeclKind::Property(p) => {
+                p.is_auto && !p.is_read_only && {
+                    let pn = p.name.to_ascii_lowercase();
+                    pn == n
+                }
+            }
+            _ => false,
+        })
     }
 
     /// Whether a value of type `have` converts into a slot of type `want`.
