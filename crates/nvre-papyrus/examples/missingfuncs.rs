@@ -35,6 +35,7 @@ fn main() {
 
     // name -> how many scripts are missing it
     let mut by_name: BTreeMap<String, usize> = BTreeMap::new();
+    let mut case_mismatch: BTreeMap<String, usize> = BTreeMap::new();
     let mut rows: Vec<String> = Vec::new();
     let mut total = 0usize;
 
@@ -84,6 +85,21 @@ fn main() {
                 }
                 total += 1;
                 *by_name.entry(gname.to_ascii_lowercase()).or_default() += 1;
+                // Is the function actually absent, or present under a different
+                // spelling? Papyrus is case-insensitive, so a case-only mismatch
+                // is a real defect — but a completely different one from a
+                // function that is not emitted at all, and they need separating
+                // before either can be acted on.
+                let case_only = c.states.iter().flat_map(|(_, fs)| fs.iter()).any(|f| {
+                    c.strings
+                        .get(f.name as usize)
+                        .map(|s| s.eq_ignore_ascii_case(&gname))
+                        .unwrap_or(false)
+                });
+                if case_only {
+                    *case_mismatch.entry(gname.clone()).or_default() += 1;
+                    continue;
+                }
                 if rows.len() < limit {
                     // Enough of the source to see what form it is.
                     let decl = src
@@ -105,6 +121,12 @@ fn main() {
     }
 
     println!("missing functions: {total}\n");
+    let ncase: usize = case_mismatch.values().sum();
+    println!("  of which present under a DIFFERENT SPELLING: {ncase}");
+    for (n, c) in &case_mismatch {
+        println!("     {c:3}  {n}");
+    }
+    println!();
     println!("most common names:");
     let mut v: Vec<_> = by_name.into_iter().collect();
     v.sort_by(|a, b| b.1.cmp(&a.1));
