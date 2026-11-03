@@ -153,6 +153,20 @@ pub struct Compiler<'a> {
     /// every script carries them in the order its source spells them on the
     /// `Scriptname` line, which the parser records as flags rather than names.
     user_flag_names: Vec<String>,
+    /// The declared return type of the function being compiled, if any.
+    ///
+    /// `return` is a **typed slot** like any other. Measured with the real
+    /// compiler:
+    ///
+    /// ```text
+    /// ObjectReference Function F() { return akActorProp }   (Actor property)
+    ///   -> cast ::temp0 ::akActorProp_var ; return ::temp0
+    /// Form Function F() { return akActorProp }
+    ///   -> cast ::temp0 ::akActorProp_var ; return ::temp0
+    /// Actor Function F() { return Game.GetPlayer() }
+    ///   -> no cast; the call already yields an actor
+    /// ```
+    cur_return: Option<String>,
     /// How many temporaries the whole script has handed out.
     ///
     /// **Script-wide, not per function** — measured with the real compiler on
@@ -231,6 +245,7 @@ impl<'a> Compiler<'a> {
             strings: Vec::new(),
             types: Vec::new(),
             next_temp: 0,
+            cur_return: None,
             cond_temps: Vec::new(),
             if_depth: 0,
             user_flag_names: {
@@ -716,6 +731,7 @@ impl<'a> Compiler<'a> {
         );
         let doc = self.intern(f.doc.as_deref().unwrap_or(""));
 
+        self.cur_return = f.return_type.as_ref().map(|t| t.0.clone());
         let mut buf = FnBuf::new();
 
         // `self` is *not* a local. The locals table holds temporaries and
@@ -1026,7 +1042,14 @@ impl<'a> Compiler<'a> {
                 Ok(())
             }
             Stmt::Return { value, line } => {
-                let v = self.expr(buf, value, *line)?;
+                let raw = self.expr(buf, value, *line)?;
+                // The returned value is converted to the function's declared
+                // return type, exactly like an assignment target. Measured on
+                // Ret1/Ret2/Ret3 with the real compiler.
+                let v = match self.cur_return.clone() {
+                    Some(w) => self.coerce_arg(buf, raw, &w, *line),
+                    None => raw,
+                };
                 let mut ins = Instruction::new(opcode_of("return"));
                 ins.args.push(v.clone());
                 buf.push(ins, *line);
