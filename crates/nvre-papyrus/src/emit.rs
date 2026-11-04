@@ -797,31 +797,27 @@ impl<'a> Compiler<'a> {
         let _self_idx = self.intern("self");
 
         let mut params = Vec::new();
-        // A parameter the body never reads **still consumes two temporary
-        // numbers**. Measured across five functions that differ only in their
-        // parameter list and body order:
+        // A parameter costs the temporary counter **nothing**, read or unread.
         //
-        //   Function Zero()                    -> first temp ::temp0
-        //   Function One(int n)   (n unused)   -> first temp ::temp2
-        //   Function Two(int n, int k)         -> first temp ::temp4
-        //   Function Three(int n, int k, int j)-> first temp ::temp6
-        //   Function ReadsParam(int n) { int m = n ... } -> ::temp0 (n is read)
+        // An earlier note here claimed an unread parameter consumes two numbers,
+        // from five hand-built probes that seemed to show
+        // `Function One(int n)` starting at `::temp2`. `examples/parambase`
+        // measures the relation over the 12,432 shipped functions that have both
+        // parameters and temporaries, and the base is `0` in the overwhelming
+        // majority for EVERY (params, unread) combination — including 1,047
+        // one-parameter functions (638 at base 0) and 8 six-parameter functions
+        // with five unread (all 8 at base 0). The spread around it is the
+        // script-wide counter, not a parameter effect.
         //
-        // So it is two slots per **unread** parameter, not one per parameter,
-        // and a read parameter consumes none. The slots are never declared in
-        // the locals table, which is why the numbers look like they skip.
+        // So the probes were reading a neighbour's drift: the counter is
+        // per-script and monotonic, so a hand-built file with one function cannot
+        // show the rule at all. Do not reintroduce an offset here without
+        // re-running that probe.
         for p in &f.params {
             let pn = self.intern(&p.name);
             let pt = self.intern(&p.type_name.0);
             buf.types.push((pn, pt));
             buf.params.push((p.name.to_ascii_lowercase(), pn));
-            // NOTE: parameters do seem to consume temporary *numbers* — a
-            // function with one unused parameter starts at `::temp2` and one
-            // with two at `::temp4` — but the rule is not `2 * params` and not
-            // `2 * (index of the first read parameter)` either: both fit the
-            // hand-built probes and both cost corpus-wide (`semcensus` reads
-            // 0.216 instead of 0.220). Left unmodelled rather than fitted,
-            // because a wrong offset shifts every temporary in the function.
             params.push(crate::pex::TypedName {
                 name: pn,
                 type_name: pt,
