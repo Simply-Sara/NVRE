@@ -1052,7 +1052,16 @@ impl<'a> Compiler<'a> {
                 Ok(())
             }
             Stmt::Return { value, line } => {
-                let raw = self.expr(buf, value, *line)?;
+                // A bare `return` returns the **None literal**, not the
+                // `::NoneVar` identifier: the game writes `return None` (value
+                // tag 0). The expression path turns source `None` into
+                // `::NoneVar`, which is the right identifier for a call
+                // destination but the wrong operand for a return.
+                let raw = if matches!(value, Expr::None) {
+                    Value::None
+                } else {
+                    self.expr(buf, value, *line)?
+                };
                 // The returned value is converted to the function's declared
                 // return type, exactly like an assignment target. Measured on
                 // Ret1/Ret2/Ret3 with the real compiler.
@@ -1183,7 +1192,13 @@ impl<'a> Compiler<'a> {
             // the else-branch has none. Applying the rule to every branch scores
             // 43,624 against 43,639, so earlier branches keep theirs.
             let is_last = mine_branch + 1 == branches.len();
-            let last_and_returns = is_last && matches!(b.body.last(), Some(Stmt::Return { .. }));
+            // ...and only for a MULTI-branch construct. A single-branch
+            // `if c return endif` DOES get its trailing jump: the false path has
+            // to skip the return, and the game emits
+            //   jmpf ::temp0 3 / return None / jmp 1
+            // Measured on `CWSoldierDeathObserverActorScript.OnDeath`.
+            let last_and_returns =
+                is_last && branches.len() > 1 && matches!(b.body.last(), Some(Stmt::Return { .. }));
             // An EMPTY branch drops its jump only when it is the LAST branch.
             // `ActivateAgainAfterDelay.onActivate` has a comment-only `if` body
             // followed by a real `else`, and the game still emits the then
