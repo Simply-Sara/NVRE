@@ -66,11 +66,11 @@
 //!
 //! ```text
 //! examples/behaviour   (54,620 functions, Skyrim SE)
-//!     byte-identical                  49,502   90.6%
-//!     identical up to temp NUMBERING   4,088    7.5%
-//!     behaviourally different          1,030    1.9%
-//!       of which case-only spelling      675   (a spelling difference, not code)
-//!   scripts with a behavioural difference     641 / 14,026    4.6%
+//!     byte-identical                  49,544   90.7%
+//!     identical up to temp NUMBERING   4,050    7.4%
+//!     behaviourally different          1,026    1.9%
+//!       of which case-only spelling      676   (a spelling difference, not code)
+//!   scripts with a behavioural difference     640 / 14,026    4.6%
 //!
 //! examples/structural  50,901 / 54,528 structurally identical after
 //!                      renumbering both sides (93.3%)
