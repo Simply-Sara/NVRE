@@ -1472,7 +1472,15 @@ impl<'a> Compiler<'a> {
     ) -> Result<Value, Error> {
         let result = self.temp(buf, "Bool");
         let a = self.expr(buf, lhs, line)?;
-        let mut ins = Instruction::new(opcode_of("assign"));
+        // The operand is **cast** into the result slot, not assigned. Measured
+        // on `AudioRepeaterActivator01Script.OnCellAttach`, whose
+        // `while (bRunning && is3DLoaded())` compiles to
+        //   cast ::temp0 bRunning
+        //   jmpf ::temp0 …
+        // and then `cast ::temp0 ::temp0` for the right-hand side, which has
+        // already landed in that very slot — a cast of a temporary to itself,
+        // which the compiler emits anyway because the destination is fixed.
+        let mut ins = Instruction::new(opcode_of("cast"));
         ins.args.push(Value::Identifier(result));
         ins.args.push(a);
         buf.push(ins, line);
@@ -1485,7 +1493,7 @@ impl<'a> Compiler<'a> {
         buf.push(ins, line);
 
         let b = self.expr(buf, rhs, line)?;
-        let mut ins = Instruction::new(opcode_of("assign"));
+        let mut ins = Instruction::new(opcode_of("cast"));
         ins.args.push(Value::Identifier(result));
         ins.args.push(b);
         buf.push(ins, line);
