@@ -352,6 +352,16 @@ pub struct Script {
     /// Whether the source said `Native` at script scope, which is a
     /// Fallout-4 and later idiom for a script with no body.
     pub is_native: bool,
+    /// Classes named by an `Import` line, lowercased, in source order.
+    ///
+    /// `Import Utility` is a directive, not a declaration. Parsed as one it
+    /// looks exactly like `Type Name` — so it became a **variable** named
+    /// `Utility` of type `Import`, which both emitted a variable the game does
+    /// not have and interned `Utility` into the string table. The `.pex` then
+    /// holds the capitalised spelling, so a later `callstatic` that should read
+    /// `utility` comes out as `Utility` because the table keeps the first
+    /// spelling it saw.
+    pub imports: Vec<String>,
 }
 
 /// Parse a token stream.
@@ -490,6 +500,7 @@ impl<'a> Parser<'a> {
         }
 
         let mut decls = Vec::new();
+        let mut imports = Vec::new();
         self.skip_newlines();
         while !self.at_end() {
             // A stray doc comment before a declaration belongs to it.
@@ -497,6 +508,16 @@ impl<'a> Parser<'a> {
             self.skip_newlines();
             if self.at_end() {
                 break;
+            }
+            // `Import` is a directive: it names a class whose globals are in
+            // scope, and contributes no declaration and no string-table entry.
+            if self.peek().and_then(|t| t.word()).as_deref() == Some("import") {
+                self.i += 1;
+                imports.push(
+                    self.word("a class name after `import`")?
+                        .to_ascii_lowercase(),
+                );
+                continue;
             }
             let mut decl = self.declaration()?;
             if decl.doc.is_none() {
@@ -512,6 +533,7 @@ impl<'a> Parser<'a> {
             doc,
             decls,
             is_native,
+            imports,
         })
     }
 

@@ -2190,6 +2190,43 @@ impl<'a> Compiler<'a> {
                             buf.push(ins, line);
                             return Ok(Value::Identifier(tmp));
                         }
+                        // A bare call resolves against the implicitly-imported
+                        // engine classes BEFORE it resolves as a method on
+                        // `self`, because `Game`, `Utility`, `Math` and `Debug`
+                        // are in scope in every script without an `Import`:
+                        //   wait (RandomFloat (DelayMin, DelayMax))
+                        //   -> callstatic utility RandomFloat ::temp3 …
+                        //   -> callstatic utility wait ::NoneVar ::temp3
+                        // Emitting `callmethod RandomFloat self` is accepted by
+                        // the loader and fails at run time, because `self` has no
+                        // such member. The script's own declarations win.
+                        if !self.declares_own_function(name) {
+                            if let Some(cls) = crate::signatures::imported_class(name) {
+                                let target = self.intern(cls);
+                                let ty = self.static_result_type(cls, name);
+                                let tmp = self.temp(buf, ty);
+                                let mut ins = Instruction::new(opcode_of("callstatic"));
+                                ins.args.push(Value::Identifier(target));
+                                ins.args.push(Value::Identifier(fname));
+                                ins.args.push(Value::Identifier(tmp));
+                                let defs = crate::signatures::method_signature(cls, name)
+                                    .map(|(_, d)| d)
+                                    .or_else(|| crate::signatures::defaults(name));
+                                let mut va: Vec<Option<Value>> = vec![None; args.len()];
+                                for (i, a) in args.iter().enumerate() {
+                                    let v = self.expr(buf, a, line)?;
+                                    let v = match crate::signatures::arg_type(cls, name, i) {
+                                        Some(w) => self.coerce_arg(buf, v, w, line),
+                                        None => v,
+                                    };
+                                    va[i] = Some(v);
+                                }
+                                let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
+                                ins.varargs = self.pad_defaults(va, defs, name);
+                                buf.push(ins, line);
+                                return Ok(Value::Identifier(tmp));
+                            }
+                        }
                         let self_i = self.intern("self");
                         let ty = if let Some(c) = self.own_class() {
                             self.static_result_type(&c, name)
@@ -2496,6 +2533,25 @@ impl<'a> Compiler<'a> {
     /// members are not visible here. It is honest about being one, and a
     /// mis-resolution produces a `callstatic` on a name the game then rejects
     /// rather than a silently wrong value.
+    /// Whether the script declares a function of this name in any state.
+    ///
+    /// Needed because a script's OWN function shadows an implicitly-imported
+    /// engine function of the same name: a script that declares `abs(...)`
+    /// calls its own, not `Math.Abs`.
+    fn declares_own_function(&self, name: &str) -> bool {
+        fn walk(d: &crate::parse::DeclKind, want: &str) -> bool {
+            match d {
+                crate::parse::DeclKind::Function(f) => f.name.eq_ignore_ascii_case(want),
+                crate::parse::DeclKind::State(s) => s
+                    .functions
+                    .iter()
+                    .any(|f| f.name.eq_ignore_ascii_case(want)),
+                _ => false,
+            }
+        }
+        self.script.decls.iter().any(|d| walk(&d.kind, name))
+    }
+
     fn static_target(&mut self, name: &str) -> Option<StrIndex> {
         let lower = name.to_ascii_lowercase();
         // The engine's own classes are spelled lowercase in a `.pex` whatever
