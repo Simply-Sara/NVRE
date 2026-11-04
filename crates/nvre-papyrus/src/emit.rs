@@ -2565,6 +2565,29 @@ impl<'a> Compiler<'a> {
                 }
             }
             Expr::Member(obj, name) => {
+                // `.Length` on an array is `array_length`, not a property read:
+                //   array_length ::temp73 ::LogPiles_var
+                // Emitting `propget Length ::LogPiles_var ::temp86` asks the VM
+                // for a member that does not exist. `Length` is only ever the
+                // array pseudo-property, so the name alone settles it; the type
+                // is consulted only to avoid stealing a real property called
+                // `Length` from an object receiver.
+                if name.eq_ignore_ascii_case("length") {
+                    let ty = match obj.as_ref() {
+                        Expr::Ident(n) => self.receiver_class(buf, n),
+                        Expr::Cast(_, t) => Some(t.0.clone()),
+                        _ => None,
+                    };
+                    if ty.as_deref().map(|t| t.ends_with("[]")).unwrap_or(true) {
+                        let a = self.expr(buf, obj, line)?;
+                        let dest = self.temp(buf, "Int");
+                        let mut ins = Instruction::new(opcode_of("array_length"));
+                        ins.args.push(Value::Identifier(dest));
+                        ins.args.push(a);
+                        buf.push(ins, line);
+                        return Ok(Value::Identifier(dest));
+                    }
+                }
                 // A bare member read is a property get.
                 //
                 // The operand order is **name, object, destination**, not
