@@ -1167,9 +1167,16 @@ impl<'a> Compiler<'a> {
             // in `ArenaCombatQuest.ShouldEnd` the then-branch keeps its jump and
             // the else-branch has none. Applying the rule to every branch scores
             // 43,624 against 43,639, so earlier branches keep theirs.
-            let last_and_returns = mine_branch + 1 == branches.len()
-                && matches!(b.body.last(), Some(Stmt::Return { .. }));
-            let skip = (b.body.is_empty() && branches.len() > 1) || last_and_returns;
+            let is_last = mine_branch + 1 == branches.len();
+            let last_and_returns = is_last && matches!(b.body.last(), Some(Stmt::Return { .. }));
+            // An EMPTY branch drops its jump only when it is the LAST branch.
+            // `ActivateAgainAfterDelay.onActivate` has a comment-only `if` body
+            // followed by a real `else`, and the game still emits the then
+            // branch's `jmp 17` — dropping it makes the false path fall into the
+            // else correctly but the true path skip nothing. A single-branch
+            // `if` keeps its jump even when empty (`if c endif`).
+            let last_and_empty = is_last && b.body.is_empty() && branches.len() > 1;
+            let skip = last_and_empty || last_and_returns;
             if !skip {
                 let mut ins = Instruction::new(opcode_of("jmp"));
                 ins.args.push(Value::Int(0));
