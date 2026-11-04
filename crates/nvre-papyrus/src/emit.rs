@@ -994,7 +994,28 @@ impl<'a> Compiler<'a> {
                     // — the literal is materialised BEFORE the receiver is
                     // evaluated, not after.
                     let p = self.intern(name);
+                    // The slot the value is written into is the PROPERTY's
+                    // declared type, not the value's own. Measured on
+                    // `(GetOwningQuest() as BYOHRelationshipAdoptionScript)
+                    // .OrderToConfirm = 2`, where OrderToConfirm is a Float and
+                    // the literal is an Int:
+                    //   cast ::temp4 2
+                    //   assign ::temp3 ::temp4
+                    //   propset OrderToConfirm ::temp2 ::temp3
+                    // Two instructions: the conversion, then the copy into the
+                    // value slot. Coercing to the value's own type emitted a
+                    // bare `assign ::temp1 2` and no cast at all.
+                    let pty = self
+                        .receiver_class_of(buf, obj)
+                        .and_then(|cls| {
+                            crate::signatures::property_type(&cls, name).map(str::to_string)
+                        })
+                        .or_else(|| self.property_type(name).to_string().into());
                     let raw = self.expr(buf, value, *line)?;
+                    let raw = match &pty {
+                        Some(t) => self.coerce_arg(buf, raw, t, *line),
+                        None => raw,
+                    };
                     // The VALUE is materialised into a temporary, always: slot 2
                     // of all 3,352 shipped `propset` instructions is a `::tempN`
                     // and never a literal. `kmyQuest.SomeProp = true` compiles to
@@ -1003,8 +1024,11 @@ impl<'a> Compiler<'a> {
                     // and the CK reuses that one temp for consecutive propsets,
                     // so releasing it after the instruction is what makes the
                     // next one take the same slot.
-                    let ty = self.value_type(buf, &raw);
-                    let v = self.materialise(buf, raw, &ty, *line);
+                    let ty = match &pty {
+                        Some(t) => t.clone(),
+                        None => self.value_type(buf, &raw),
+                    };
+                    let v = self.materialise_copy(buf, raw, &ty, *line);
                     let o = self.expr(buf, obj, *line)?;
                     let mut ins = Instruction::new(opcode_of("propset"));
                     ins.args.push(Value::Identifier(p));
@@ -1321,6 +1345,22 @@ impl<'a> Compiler<'a> {
         if already_temp {
             return v;
         }
+        let tmp = self.temp(buf, ty);
+        let mut ins = Instruction::new(opcode_of("assign"));
+        ins.args.push(Value::Identifier(tmp));
+        ins.args.push(v);
+        buf.push(ins, line);
+        Value::Identifier(tmp)
+    }
+
+    /// Like [`materialise`], but copies even when the value is already a
+    /// temporary.
+    ///
+    /// A `propset` value goes through **two** steps when it needs converting:
+    /// the conversion produces a temporary and the value slot is a second one.
+    /// See the `cast ::temp4 2` / `assign ::temp3 ::temp4` measurement at the
+    /// `propset` site.
+    fn materialise_copy(&mut self, buf: &mut FnBuf, v: Value, ty: &str, line: u16) -> Value {
         let tmp = self.temp(buf, ty);
         let mut ins = Instruction::new(opcode_of("assign"));
         ins.args.push(Value::Identifier(tmp));
@@ -1829,6 +1869,27 @@ impl<'a> Compiler<'a> {
             return self.declared_type(buf, *i);
         }
         self.type_of(name).map(|t| t.0.clone())
+    }
+
+    /// The declared class of a receiver **expression**, not just a name.
+    ///
+    /// A property write can be on a cast — `(GetOwningQuest() as SomeScript).Prop
+    /// = v` — and resolving only bare names left the property untyped, so its
+    /// value was never converted and the cast the game emits was missing.
+    fn receiver_class_of(&self, buf: &FnBuf, e: &Expr) -> Option<String> {
+        match e {
+            Expr::Ident(n) => self.receiver_class(buf, n),
+            Expr::Cast(_, ty) => Some(ty.0.clone()),
+            Expr::Call { callee, .. } => match callee.as_ref() {
+                Expr::Member(obj, m) => {
+                    let c = self.receiver_class_of(buf, obj)?;
+                    crate::signatures::return_type(&c, m).map(str::to_string)
+                }
+                Expr::Ident(n) => self.call_result_type(n).to_string().into(),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     /// Whether `name` is an `auto` property, whose storage is a backing variable.
