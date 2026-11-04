@@ -2398,7 +2398,15 @@ impl<'a> Compiler<'a> {
                             }
                             let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
                             ins.varargs = self.pad_defaults(va, defs, name);
+                            let released: Vec<Value> = ins.varargs.clone();
                             buf.push(ins, line);
+                            // The arguments are consumed by the call and are dead.
+                            // Every call path must do this: a path that forgets
+                            // keeps its temporaries live for the rest of the
+                            // function and shifts every later allocation.
+                            for a in &released {
+                                self.release_temp(buf, a);
+                            }
                             return Ok(Value::Identifier(tmp));
                         }
                         // A bare call resolves against the implicitly-imported
@@ -2434,7 +2442,11 @@ impl<'a> Compiler<'a> {
                                 }
                                 let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
                                 ins.varargs = self.pad_defaults(va, defs, name);
+                                let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
+                                for a in &released {
+                                    self.release_temp(buf, a);
+                                }
                                 return Ok(Value::Identifier(tmp));
                             }
                         }
@@ -2576,7 +2588,11 @@ impl<'a> Compiler<'a> {
                                     va.push(v);
                                 }
                                 ins.varargs = self.pad_defaults(va, defs, method);
+                                let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
+                                for a in &released {
+                                    self.release_temp(buf, a);
+                                }
                                 return Ok(Value::Identifier(tmp));
                             }
                         }
