@@ -150,6 +150,28 @@ pub fn root_ui(ctx: &egui::Context, id: &'static str) -> egui::Ui {
     )
 }
 
+/// A vertical scroll area whose bar is pinned to the panel's right edge.
+///
+/// egui's default `auto_shrink` is `[true, true]`: the area shrinks to the
+/// *content's* size and the bar is painted at the area's own right edge. A grid
+/// of labelled fields is narrower than the window it sits in, so the bar landed
+/// wherever the widest row happened to end — mid-panel, and it moved as the
+/// user changed record or as a longer value widened a column.
+///
+/// Taking the width from the panel instead of from the content (`auto_shrink`'s
+/// x off, y left on) puts the bar at the window's edge and keeps it still. The
+/// vertical shrink stays on because a scroll area that is taller than its
+/// content should not reserve the empty space below it.
+///
+/// The bar's width and opacity are not set here: egui keeps those in the style,
+/// not on the `ScrollArea`, so [`crate::windows::widen_scroll_bars`] sets them
+/// for the whole app.
+pub fn vertical_scroll(id_salt: &str) -> egui::ScrollArea {
+    egui::ScrollArea::vertical()
+        .id_salt(id_salt)
+        .auto_shrink([false, true])
+}
+
 /// The main window: the editor's front door.
 ///
 /// The viewport and every panel own a window of their own, so this one holds only
@@ -941,7 +963,7 @@ pub fn properties(
             });
             ui.separator();
         }
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        crate::panels::vertical_scroll("properties_grid").show(ui, |ui| {
             schema_grid(ui, &mut session, fid, &mut edit);
         });
     });
@@ -2106,7 +2128,7 @@ pub fn place(
                 "categories".into(),
                 egui::UiBuilder::new().max_rect(list),
             );
-            egui::ScrollArea::vertical().show(&mut ui, |ui| {
+            crate::panels::vertical_scroll("categories").show(&mut ui, |ui| {
                 let mut last_group = "";
                 for (i, g) in groups.iter().enumerate() {
                     if g.group != last_group {

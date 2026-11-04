@@ -471,9 +471,11 @@ impl Default for Launcher {
 ///
 /// The scroll bar's *width* and opacity are not set here: egui keeps those in the
 /// style, not on the `ScrollArea`, so they are set for the whole app by
-/// [`crate::windows::widen_scroll_bars`] instead.
+/// [`crate::windows::widen_scroll_bars`] instead. Its *position* is
+/// [`crate::panels::vertical_scroll`]'s business — a bar pinned to the column's
+/// right edge rather than to the end of the longest file name.
 fn scroll_area(id_salt: &str) -> bevy_egui::egui::ScrollArea {
-    bevy_egui::egui::ScrollArea::vertical().id_salt(id_salt)
+    crate::panels::vertical_scroll(id_salt)
 }
 
 /// The plugins in a folder, sorted by name.

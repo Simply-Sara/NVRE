@@ -698,8 +698,9 @@ pub fn ui(
 
         // The body scrolls, the tab strip does not: GECK's own dialog keeps
         // the tabs pinned above the fields, and a strip that scrolled away
-        // would leave the user unable to say which tab they are on.
-        egui::ScrollArea::vertical().show(ui, |ui| match state.tab {
+        // would leave the user unable to say which tab they are on. The bar is
+        // at the window's edge, not at the end of the widest row.
+        crate::panels::vertical_scroll("cell_editor_body").show(ui, |ui| match state.tab {
             CellEditorTab::CommonData => common_data_group(ui, &mut session, &mut state),
             CellEditorTab::Lighting => {
                 lighting_group(ui, &mut state);

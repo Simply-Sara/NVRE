@@ -626,8 +626,9 @@ pub fn ui(
             named
         };
         let game = session.game.id;
-        egui::ScrollArea::vertical()
-            .id_salt("obj_scroll")
+        // The bar sits at the panel's right edge, not at the end of the widest
+        // row — see [`crate::panels::vertical_scroll`].
+        crate::panels::vertical_scroll("obj_scroll")
             .max_height(avail_h)
             .show(ui, |ui| match page_name.as_deref() {
                 Some(name) => match pages.get(name) {
