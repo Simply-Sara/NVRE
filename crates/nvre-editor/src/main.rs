@@ -315,6 +315,7 @@ fn main() {
         .init_resource::<windows::ViewportHotbar>()
         .init_resource::<gizmo::GizmoState>()
         .init_resource::<object_editor::ObjectEditorState>()
+        .init_resource::<object_editor::Pages>()
         .init_resource::<cell_editor::CellEditorState>()
         .init_resource::<file_details_window::FileDetailsState>()
         .init_resource::<size_info_window::SizeInfoState>()

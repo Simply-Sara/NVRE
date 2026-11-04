@@ -15435,6 +15435,173 @@ const MODD_FLAGS: [(u8, &str); 4] = [
 /// here, in code, because they are behaviour rather than data. Every block
 /// takes the same arguments whether or not its page uses the session, so the
 /// table can name any of them.
+///
+/// A page of the object editor: one record type's layout, with its own state.
+///
+/// A page owns the fields it shows. That is what makes a page per game possible:
+/// Fallout 4's weapon and Fallout: New Vegas's weapon are different layouts with
+/// different fields, so they are different pages rather than one page that
+/// branches on the game. A page that owns nothing is a page that can only be the
+/// schema grid.
+///
+/// Which page a record type gets is the schema's answer — the object-window
+/// table's `editor` field names one — so a game customises its object editor by
+/// naming pages in `schemas/<game>/object_window.json`, not by adding a window.
+pub trait EditorPage: Send + Sync {
+    /// The name the schema's table uses for this page.
+    fn name(&self) -> &str;
+
+    /// The games whose layouts this page is correct for.
+    ///
+    /// The guard that keeps a page from being served to a game it does not fit.
+    /// A page written against Fallout: New Vegas's byte offsets reads garbage
+    /// from Fallout 4's record of the same signature, and nothing in the UI would
+    /// say so — the fields would simply be wrong. Naming the games makes that a
+    /// message instead.
+    fn games(&self) -> &'static [&'static str];
+
+    /// Read the record into this page's own state.
+    ///
+    /// Called when the object editor opens a record, and again after a revert.
+    fn load(&mut self, _session: &crate::session::Session, _form_id: u32, _sig: [u8; 4]) {}
+
+    /// Draw the page.
+    ///
+    /// `session` is mutable because a field edit goes straight into the document
+    /// as it is made — the same path the reference property grid uses. `shared`
+    /// is the record's header, which every page shows and no page owns.
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        session: &mut crate::session::Session,
+        shared: &mut ObjectEditorState,
+    );
+
+    /// Write this page's edits into the document.
+    ///
+    /// Empty for a page that writes as it edits, which is what the schema grid
+    /// does: a field edit is one subrecord's re-encoded bytes, and that is what
+    /// the document stores.
+    fn save(&self, _session: &mut crate::session::Session, _form_id: u32) {}
+}
+
+/// The schema grid as a page.
+///
+/// A record type can name this page outright — `"editor": "grid"` — which is how
+/// a game says "this type needs no bespoke UI, show the layout". It is also what
+/// the object editor falls back to when the table names no page at all, so the
+/// two paths are one implementation.
+#[derive(Default)]
+pub struct GridPage {
+    /// The grid's own widget state: the last field touched, and why it failed.
+    edit: crate::panels::FieldEdit,
+}
+
+impl EditorPage for GridPage {
+    fn name(&self) -> &str {
+        "grid"
+    }
+
+    fn games(&self) -> &'static [&'static str] {
+        // The grid reads the schema and nothing else, so it is correct for every
+        // game whose schema decodes — which is every game.
+        crate::game::ALL_IDS
+    }
+
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        session: &mut crate::session::Session,
+        shared: &mut ObjectEditorState,
+    ) {
+        crate::panels::schema_grid(ui, session, shared.form_id, &mut self.edit);
+    }
+}
+
+/// A page from the editor's own table, whose state lives in [`ObjectEditorState`].
+///
+/// The 96 hand-written pages were built before a page could own its fields: their
+/// state is the shared `ObjectEditorState` and their drawing is a function. This
+/// adapter is what lets them be registered as pages without being rewritten, so
+/// the trait can land and the pages can move over one at a time. A page that
+/// moves keeps its behaviour and gains a `load`/`save` of its own; nothing has to
+/// change in the window.
+pub struct LegacyPage {
+    name: &'static str,
+    block: EditorBlock,
+}
+
+impl LegacyPage {
+    /// The page for a name in [`editor_block`]'s table, if the table has one.
+    pub fn for_name(name: &str) -> Option<Self> {
+        let block = editor_block(name)?;
+        // The name is leaked once per page name, at the moment the page is first
+        // used, so the trait can hand it out as `&'static str`. A page name is a
+        // handful of bytes and there are fewer than a hundred of them.
+        let name: &'static str = Box::leak(name.to_string().into_boxed_str());
+        Some(Self { name, block })
+    }
+}
+
+impl EditorPage for LegacyPage {
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn games(&self) -> &'static [&'static str] {
+        // Every hand-written page decodes Fallout: New Vegas's byte offsets.
+        // Fallout 3 is the same family and its three differing records only add
+        // subrecords, so the pages are correct there too (and incomplete, which
+        // the schema grid is not).
+        &["fnv", "fo3"]
+    }
+
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        session: &mut crate::session::Session,
+        shared: &mut ObjectEditorState,
+    ) {
+        (self.block)(ui, session, shared);
+    }
+}
+
+/// Every page the object editor can open, by the name the schema's table uses.
+///
+/// Built lazily: the first time a name is asked for, the legacy table is
+/// consulted, so there is one list of hand-written page names — [`editor_block`]'s
+/// match — rather than a second one that could drift from it.
+#[derive(Resource, Default)]
+pub struct Pages {
+    map: std::collections::BTreeMap<String, Box<dyn EditorPage>>,
+}
+
+impl Pages {
+    /// The page registered under `name`, or `None` when nothing is.
+    pub fn get(&mut self, name: &str) -> Option<&mut (dyn EditorPage + '_)> {
+        if !self.map.contains_key(name) {
+            let page: Option<Box<dyn EditorPage>> = if name == "grid" {
+                Some(Box::new(GridPage::default()))
+            } else {
+                LegacyPage::for_name(name).map(|p| Box::new(p) as Box<dyn EditorPage>)
+            };
+            self.map.insert(name.to_string(), page?);
+        }
+        let page = self.map.get_mut(name)?;
+        Some(&mut **page)
+    }
+
+    /// Whether a page is registered under `name`, without creating it.
+    pub fn has(&self, name: &str) -> bool {
+        name == "grid" || self.map.contains_key(name) || editor_block(name).is_some()
+    }
+
+    /// The pages that have been opened this session, by name.
+    pub fn opened(&self) -> impl Iterator<Item = &str> {
+        self.map.keys().map(String::as_str)
+    }
+}
+
 pub type EditorBlock = fn(&mut egui::Ui, &crate::session::Session, &mut ObjectEditorState);
 
 /// The editor block registered under `name`, or `None` when the schema names
@@ -15551,7 +15718,7 @@ pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
     mut session: ResMut<crate::session::Session>,
     mut state: ResMut<ObjectEditorState>,
-    mut grid: Local<crate::panels::FieldEdit>,
+    mut pages: ResMut<Pages>,
 ) {
     let Some((fid, sig)) = session.editing_object else {
         return;
@@ -15605,41 +15772,72 @@ pub fn ui(
         ui.add_space(6.0);
 
         // The body is the schema's answer, not the editor's own map: the
-        // object-window table names the editor block for this record type, and
-        // the registry maps that name to a page. A signature the table names a
-        // block for gets that page; a signature the table names **no** block for
-        // gets the schema grid, which is every field the layout declares and
-        // nothing a game has to be named to see.
+        // object-window table names the page for this record type, and the
+        // registry holds it. A signature the table names a page for gets that
+        // page; a signature it names **no** page for gets the schema grid, which
+        // is every field the layout declares and nothing a game has to be named
+        // to see.
         //
-        // The name is cloned out of the schema before the grid below borrows the
+        // A page also declares which games it is correct for, and a page served
+        // to a game it does not fit is a message rather than a silently wrong
+        // form: a page written against Fallout: New Vegas's byte offsets would
+        // read garbage from Fallout 4's record of the same signature.
+        //
+        // The name is cloned out of the schema before the page borrows the
         // session mutably, so the lookup does not hold a borrow across it.
         let avail_h = (ui.available_height() - 48.0).max(200.0);
-        let block_name: Option<String> = session
+        let page_name: Option<String> = session
             .schema
             .object_window
             .categories
             .get(String::from_utf8_lossy(&state.sig).as_ref())
             .and_then(|c| c.editor.clone());
-        let block = block_name.as_deref().and_then(editor_block);
+        let game = session.game.id;
         egui::ScrollArea::vertical()
             .id_salt("obj_scroll")
             .max_height(avail_h)
-            .show(ui, |ui| match (block, block_name.as_deref()) {
-                (Some(block), _) => block(ui, &session, &mut state),
-                // A block name the registry does not know is a table typo;
-                // say so rather than silently showing nothing.
-                (None, Some(name)) => {
-                    ui.colored_label(
-                        ui.visuals().error_fg_color,
-                        format!("the schema names editor block {name:?}, which is not registered"),
-                    );
-                }
-                // No page of its own: the schema grid. This is the case for
-                // every record type in a game whose pages have not been written
-                // yet, and for a signature no game has a page for at all.
-                (None, None) => {
-                    crate::panels::schema_grid(ui, &mut session, state.form_id, &mut grid)
-                }
+            .show(ui, |ui| match page_name.as_deref() {
+                Some(name) => match pages.get(name) {
+                    Some(page) if page.games().contains(&game) => {
+                        page.ui(ui, &mut session, &mut state)
+                    }
+                    // The page exists but is not for this game. Say which games
+                    // it is for, so the fix (name a page this game has, or write
+                    // one) is visible in the message.
+                    Some(page) => {
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            format!(
+                                "the schema names page {name:?} for {}, and that page is \
+                                 only for {}",
+                                session.game.name,
+                                page.games().join(", ")
+                            ),
+                        );
+                    }
+                    // A page name the registry does not know is a table typo;
+                    // say so rather than silently showing nothing.
+                    None => {
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            format!(
+                                "the schema names editor block {name:?}, which is not registered"
+                            ),
+                        );
+                    }
+                },
+                // No page named: the schema grid. This is the case for every
+                // record type in a game whose pages have not been written yet,
+                // and for a signature no game has a page for at all.
+                None => match pages.get("grid") {
+                    Some(page) => page.ui(ui, &mut session, &mut state),
+                    None => {
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            "the schema grid is not registered",
+                        );
+                    }
+                },
             });
 
         // The object bounds are a shared subrecord: every type that

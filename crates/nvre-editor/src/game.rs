@@ -284,6 +284,9 @@ pub const FALLOUT_4: GameProfile = GameProfile {
 /// Every profile the editor knows, in the order [`detect`] tries them.
 pub const ALL: [GameProfile; 5] = [FNV, FO3, SKYRIM, SKYRIM_SE, FALLOUT_4];
 
+/// Every game's id, for a page that is correct for all of them.
+pub const ALL_IDS: &[&str] = &["fnv", "fo3", "skyrim", "skyrimse", "fo4"];
+
 impl GameProfile {
     /// The profile whose id is `id`, case-insensitively.
     pub fn by_id(id: &str) -> Option<&'static GameProfile> {
