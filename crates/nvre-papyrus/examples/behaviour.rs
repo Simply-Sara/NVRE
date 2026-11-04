@@ -162,6 +162,34 @@ fn main() {
     }
     sources.sort();
 
+    // The class table, built from EVERY source, so an inherited name has a type.
+    //
+    // This is what an editor does and what a mod build does: a single file
+    // compiled alone cannot see its parent's declarations, so `myself` — inherited
+    // from `BYOHBuildingObjectScript` — types as nothing, no conversion fires at
+    // the argument slot, and the call is one instruction short. Measured on
+    // `byohbuildingobjectexteriorscript::OnContainerChanged`, where the game
+    // writes `cast ::temp5 ::mySelf_var` and a single-file compile writes the
+    // variable bare.
+    //
+    // Two passes: parse everything, then compile. The parse pass is the cost of
+    // measuring what a user would actually get.
+    let table = {
+        let mut parsed: Vec<nvre_papyrus::parse::Script> = Vec::new();
+        for name in &sources {
+            let src = {
+                let mut f = zip.by_name(name).unwrap();
+                let mut b = Vec::new();
+                f.read_to_end(&mut b).unwrap();
+                nvre_util::cp1252::decode(&b)
+            };
+            if let Ok(script) = parse(&lex(&src)) {
+                parsed.push(script);
+            }
+        }
+        nvre_papyrus::symbols::ClassTable::new(parsed.iter())
+    };
+
     let (mut exact, mut numbering_only, mut behavioural) = (0usize, 0usize, 0usize);
     // Behavioural differences that vanish when case is ignored — a spelling
     // difference from the string table, not a codegen one.
@@ -195,13 +223,7 @@ fn main() {
         let Ok(script) = parse(&lex(&src)) else {
             continue;
         };
-        let symbols = Symbols {
-            script: script.name.clone(),
-            parent: script.parent.clone().unwrap_or_default(),
-            variables: Vec::new(),
-            properties: Vec::new(),
-            states: Vec::new(),
-        };
+        let symbols = nvre_papyrus::emit::Symbols::for_script(&script, &table);
         let Ok(c) = Compiler::new(&script, symbols).compile() else {
             continue;
         };
