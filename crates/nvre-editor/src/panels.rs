@@ -1270,6 +1270,55 @@ fn field_editor(
         }
         return;
     }
+    // An enum decodes to `{"value": n, "name": "…"}` — one number and the name
+    // of that number. A dropdown is the right widget: the names are the schema's
+    // vocabulary, and a modder picking "Very Hard" should not have to know it is
+    // 3. The table is read before the type switch because the decoded shape is an
+    // object, which the object arm would otherwise render as `(object)`.
+    let variants = nvre_edit::encode::enum_values_at(
+        &session.schema,
+        rec_sig,
+        &sig,
+        view.block.as_deref(),
+        path,
+    );
+    if !variants.is_empty() {
+        if let Some(raw) = current.get("value").and_then(|v| v.as_i64()) {
+            let cur_name = variants
+                .iter()
+                .find(|(v, _)| *v == raw)
+                .map(|(_, n)| n.clone())
+                .unwrap_or_else(|| raw.to_string());
+            let mut picked = raw;
+            egui::ComboBox::from_id_salt(format!("enum_{}_{}", view.sig, path))
+                .selected_text(cur_name)
+                .width(200.0)
+                .show_ui(ui, |ui| {
+                    for (value, name) in &variants {
+                        ui.selectable_value(&mut picked, *value, name);
+                    }
+                });
+            if picked != raw {
+                // The decoder's shape is `{value, name}`; the name is derived from
+                // the value by the encoder, so only the value is written and the
+                // decoder fills the name back in.
+                let mut obj = serde_json::Map::new();
+                obj.insert("value".into(), serde_json::json!(picked));
+                if let Some((_, name)) = variants.iter().find(|(v, _)| *v == picked) {
+                    obj.insert("name".into(), serde_json::json!(name));
+                }
+                edit.last = Some((sig, path.to_string()));
+                match session.set_object_field(form_id, &sig, path, serde_json::Value::Object(obj))
+                {
+                    Ok(()) => edit.error = None,
+                    Err(e) => edit.error = Some(e),
+                }
+            }
+        } else {
+            ui.monospace("(enum with no value)");
+        }
+        return;
+    }
     match current {
         serde_json::Value::Number(n) => {
             let mut v = n.as_f64().unwrap_or(0.0);
@@ -1355,16 +1404,134 @@ fn field_editor(
                 changed = Some(serde_json::json!(next));
             }
         }
-        // Arrays and null have no single-value widget: an array's length is
-        // part of its encoding, so editing one element in place would silently
-        // drop the rest. Shown as text, and the subrecord's raw JSON stays
-        // available in the value below.
-        other => {
-            ui.monospace(match other {
-                serde_json::Value::Array(_) => "(list)",
-                serde_json::Value::Null => "(none)",
-                _ => "",
+        // A list: one row per element, each editable as a whole value, plus a
+        // way to add and remove one. The edit is the whole array, because an
+        // array's length is part of its encoding — writing one element in place
+        // would have to resize the subrecord without telling the encoder.
+        serde_json::Value::Array(items) => {
+            let elem = nvre_edit::encode::array_elem_at(
+                &session.schema,
+                rec_sig,
+                &sig,
+                view.block.as_deref(),
+                path,
+            );
+            let mut next: Option<Vec<serde_json::Value>> = None;
+            ui.vertical(|ui| {
+                let mut remove: Option<usize> = None;
+                for (i, item) in items.iter().enumerate() {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("[{i}]"));
+                        match item {
+                            // A scalar element gets the same widget a scalar
+                            // field does, at the element's own path.
+                            serde_json::Value::Number(n) => {
+                                let mut v = n.as_f64().unwrap_or(0.0);
+                                let is_int = n.is_i64() || n.is_u64();
+                                let drag = egui::DragValue::new(&mut v).speed(if is_int {
+                                    1.0
+                                } else {
+                                    0.1
+                                });
+                                if ui.add(drag).changed() {
+                                    let mut list = items.clone();
+                                    list[i] = if is_int {
+                                        serde_json::json!(v.round() as i64)
+                                    } else {
+                                        serde_json::json!(v)
+                                    };
+                                    next = Some(list);
+                                }
+                            }
+                            serde_json::Value::Bool(b) => {
+                                let mut v = *b;
+                                if ui.checkbox(&mut v, "").changed() {
+                                    let mut list = items.clone();
+                                    list[i] = serde_json::json!(v);
+                                    next = Some(list);
+                                }
+                            }
+                            // A struct element is edited field by field, each one
+                            // addressed as `<array>.<index>.<field>` — which is
+                            // what `set_path` walks, and what `rows()` produces
+                            // for an array the grid would otherwise flatten.
+                            serde_json::Value::Object(fields) => {
+                                for (name, value) in fields {
+                                    ui.label(name);
+                                    let mut v = value.as_f64().unwrap_or(0.0);
+                                    if value.is_number() {
+                                        let is_int = value.is_i64() || value.is_u64();
+                                        let drag = egui::DragValue::new(&mut v).speed(if is_int {
+                                            1.0
+                                        } else {
+                                            0.1
+                                        });
+                                        if ui.add(drag).changed() {
+                                            let mut list = items.clone();
+                                            let put = if is_int {
+                                                serde_json::json!(v.round() as i64)
+                                            } else {
+                                                serde_json::json!(v)
+                                            };
+                                            if let Some(serde_json::Value::Object(o)) =
+                                                list.get_mut(i)
+                                            {
+                                                o.insert(name.clone(), put);
+                                            }
+                                            // The whole array is written, through
+                                            // the same path the grid addresses it
+                                            // by, so the encoder sees one value.
+                                            next = Some(list);
+                                        }
+                                    } else {
+                                        ui.monospace(value.to_string());
+                                    }
+                                }
+                            }
+                            other => {
+                                ui.monospace(other.to_string());
+                            }
+                        }
+                        if ui.small_button("remove").clicked() {
+                            remove = Some(i);
+                        }
+                    });
+                }
+                if let Some(i) = remove {
+                    let mut list = items.clone();
+                    list.remove(i);
+                    next = Some(list);
+                }
+                let count = items.len();
+                ui.horizontal(|ui| {
+                    ui.weak(format!("{count} element(s)"));
+                    if ui.small_button("add").clicked() {
+                        // A new element is the layout's zero: the encoder rejects
+                        // nothing that encodes, and an empty struct of the right
+                        // shape is the honest starting point.
+                        let mut list = items.clone();
+                        list.push(match elem.as_ref() {
+                            Some(nvre_esm::TypeDef::Struct(_)) | None => {
+                                serde_json::Value::Object(Default::default())
+                            }
+                            Some(nvre_esm::TypeDef::Prim(nvre_esm::schema::Prim::F32)) => {
+                                serde_json::json!(0.0)
+                            }
+                            Some(nvre_esm::TypeDef::Prim(nvre_esm::schema::Prim::FormId)) => {
+                                serde_json::json!(0)
+                            }
+                            Some(_) => serde_json::json!(0),
+                        });
+                        next = Some(list);
+                    }
+                });
             });
+            if let Some(list) = next {
+                changed = Some(serde_json::Value::Array(list));
+            }
+        }
+        serde_json::Value::Null => {
+            ui.monospace("(none)");
         }
     }
     if let Some(value) = changed {

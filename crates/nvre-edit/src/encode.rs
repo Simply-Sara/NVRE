@@ -443,6 +443,37 @@ pub fn encode_type(
                     path: path.to_string(),
                     msg: "enum value out of range".into(),
                 })?,
+                // The decoder's own shape: `{"value": n, "name": "…"}`. Accepting
+                // it is what makes an enum field round-trippable at all — without
+                // this, decode-then-encode gives the encoder an object where it
+                // wants a number, and the field reads as "does not re-encode" and
+                // is shown read-only. The number is authoritative: the name is the
+                // decoder's rendering of it, and a dropdown writes both.
+                Value::Object(o) => match o.get("value") {
+                    Some(Value::Number(n)) => n.as_i64().ok_or_else(|| EncodeError::Value {
+                        path: path.to_string(),
+                        msg: "enum value out of range".into(),
+                    })?,
+                    // A name with no number: the name decides, as below.
+                    _ => match o.get("name").and_then(|v| v.as_str()) {
+                        Some(s) => values
+                            .iter()
+                            .find(|(_, name)| name == s)
+                            .map(|(k, _)| *k)
+                            .ok_or_else(|| EncodeError::Variant {
+                                path: path.to_string(),
+                                variant: s.to_string(),
+                                known: values
+                                    .iter()
+                                    .map(|(_, n)| n.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
+                            })?,
+                        None => {
+                            return Err(kind_err(path, "enum name or number", value));
+                        }
+                    },
+                },
                 Value::String(s) => values
                     .iter()
                     .find(|(_, name)| name == s)
@@ -1616,6 +1647,94 @@ pub fn is_formid_field(
         path.split('.').collect()
     };
     at_path(&schema.resolve_def(&def.ty), &parts)
+}
+
+/// The names an enum field's values have, from the schema.
+///
+/// The decoder emits an enum as `{"value": n, "name": "…"}`, which carries the
+/// name of the value the record holds — but not the other names, so a dropdown
+/// built from the value alone could not offer anything else. The table is where
+/// they live.
+///
+/// Empty when the field is not an enum, which is how the grid tells the two
+/// apart without a second walk of the layout.
+pub fn enum_values_at(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    path: &str,
+) -> Vec<(i64, String)> {
+    let Some(def) = schema.lookup_in_block(rec_sig, sub_sig, block) else {
+        return Vec::new();
+    };
+    fn at_path(t: &TypeDef, parts: &[&str]) -> Option<TypeDef> {
+        let Some((part, rest)) = parts.split_first() else {
+            return Some(t.clone());
+        };
+        match t {
+            TypeDef::Struct(fields) => {
+                let f = fields.iter().find(|f| f.name == *part)?;
+                at_path(&f.ty, rest)
+            }
+            TypeDef::Union(variants) => variants.iter().find_map(|(_, v)| at_path(v, parts)),
+            TypeDef::PeekUnion { variants, .. } | TypeDef::ValueUnion { variants, .. } => {
+                variants.iter().find_map(|v| at_path(v, parts))
+            }
+            _ => None,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    match at_path(&schema.resolve_def(&def.ty), &parts) {
+        Some(TypeDef::Enum { values, .. }) => values,
+        _ => Vec::new(),
+    }
+}
+
+/// The element layout of an array field, when the field at `path` is one.
+///
+/// An array's length is part of its encoding: adding or removing an element
+/// changes the bytes, so the grid cannot edit one element in place. What it can
+/// do is show the list, let the elements be edited as whole rows, and let one be
+/// added or removed — which is a write of the whole subrecord, exactly what the
+/// encoder already does for every other field.
+pub fn array_elem_at(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    path: &str,
+) -> Option<TypeDef> {
+    let def = schema.lookup_in_block(rec_sig, sub_sig, block)?;
+    fn at_path(t: &TypeDef, parts: &[&str]) -> Option<TypeDef> {
+        let Some((part, rest)) = parts.split_first() else {
+            return Some(t.clone());
+        };
+        match t {
+            TypeDef::Struct(fields) => {
+                let f = fields.iter().find(|f| f.name == *part)?;
+                at_path(&f.ty, rest)
+            }
+            TypeDef::Union(variants) => variants.iter().find_map(|(_, v)| at_path(v, parts)),
+            TypeDef::PeekUnion { variants, .. } | TypeDef::ValueUnion { variants, .. } => {
+                variants.iter().find_map(|v| at_path(v, parts))
+            }
+            _ => None,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    match at_path(&schema.resolve_def(&def.ty), &parts) {
+        Some(TypeDef::Array { elem, .. }) => Some(*elem),
+        _ => None,
+    }
 }
 
 /// A flat, editable view of one record: every subrecord with its signature,
