@@ -1584,8 +1584,14 @@ impl<'a> Compiler<'a> {
         let b = self.expr(buf, rhs, line)?;
         let mut ins = Instruction::new(opcode_of("cast"));
         ins.args.push(Value::Identifier(result));
-        ins.args.push(b);
+        ins.args.push(b.clone());
         buf.push(ins, line);
+        // The right operand is consumed by that cast and is dead. Leaving it
+        // live kept its slot occupied for the rest of the function:
+        // `AltarOfMolagBalScript.OnAnimationEvent` has `cmp_eq ::temp3 …` /
+        // `cast ::temp2 ::temp3`, and the game reuses ::temp3 as the very next
+        // call's destination while we allocated ::temp4.
+        self.release_temp(buf, &b);
 
         let end = buf.here();
         if let Value::Int(v) = &mut buf.instructions[at].args[1] {
