@@ -1425,6 +1425,11 @@ impl<'a> Compiler<'a> {
     /// shipped scripts rather than transcribed — a compile unit cannot see the
     /// class's own source, so this is the only way to know.
     fn static_result_type(&self, class: &str, function: &str) -> &'static str {
+        // NOTE: also tried consulting the declaration-derived table here, both
+        // class-qualified and class-agnostic. Both score worse — the
+        // class-agnostic fallback takes behavioural differences from 4,556 to
+        // 5,059 — because a name shared across unrelated classes then resolves
+        // to one arbitrary type. The locals-derived table stays authoritative.
         crate::returns::static_return(class, function).unwrap_or("var")
     }
 
