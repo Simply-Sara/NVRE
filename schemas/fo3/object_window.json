@@ -710,13 +710,7 @@
         2,
         7,
         11,
-        12,
-        15,
-        16,
-        17,
-        19,
-        24,
-        25
+        12
        ]
       },
       "subs": [
@@ -888,6 +882,28 @@
       ],
       "tab": "ModelList",
       "title": "Model List"
+     },
+     {
+      "fields": {
+       "ACBS": [
+        "flags"
+       ]
+      },
+      "flags_bits": {
+       "ACBS.flags": [
+        15,
+        16,
+        17,
+        19,
+        24,
+        25
+       ]
+      },
+      "subs": [
+       "ACBS"
+      ],
+      "tab": "ModelList",
+      "title": "Model Flags"
      },
      {
       "subs": [

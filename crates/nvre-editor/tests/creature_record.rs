@@ -339,7 +339,13 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     let expected_traits = schema_bits("Traits", "ACBS.flags");
     assert_eq!(expected_general.len(), 10, "General names ten flags");
     assert_eq!(expected_animation.len(), 8, "Animation names the eight movement flags");
-    assert_eq!(expected_traits.len(), 10, "Traits keeps the rest");
+    assert_eq!(expected_traits.len(), 4, "Traits keeps the four that are about the actor");
+    let expected_model = schema_bits("ModelList", "ACBS.flags");
+    assert_eq!(
+        expected_model.len(),
+        6,
+        "ModelList names the six that are about the model"
+    );
     // Every named bit is on at least one tab, and on exactly one: the word is
     // split three ways and the same checkbox on two tabs is not a split but a
     // duplicate. A checkbox on no tab is the failure that matters — it would be
@@ -347,6 +353,7 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     let all: Vec<u32> = expected_general
         .iter()
         .chain(&expected_animation)
+        .chain(&expected_model)
         .chain(&expected_traits)
         .copied()
         .collect();
@@ -379,9 +386,10 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         assert!(all.contains(bit), "bit {bit} is on no tab at all");
     }
 
-    let split: [(&str, &Vec<u32>); 3] = [
+    let split: [(&str, &Vec<u32>); 4] = [
         ("General", &expected_general),
         ("Animation", &expected_animation),
+        ("ModelList", &expected_model),
         ("Traits", &expected_traits),
     ];
     for (tab, expected) in split {
@@ -1083,6 +1091,90 @@ fn the_animation_tab_carries_the_movement_flags() {
         assert!(
             !rows.iter().any(|(t, _)| t == gone),
             "the Movement section also draws {gone:?}, so it shows the whole subrecord: {rows:?}"
+        );
+    }
+}
+
+#[test]
+fn the_model_list_tab_carries_the_model_flags() {
+    // The six ACBS bits that describe the creature's *model* — No Head, No Right
+    // Arm, No Left Arm, No Shadow, Tilt Front/Back, Tilt Left/Right — were on
+    // Traits' Flags section, which is about the actor. They belong with the
+    // model, on the Model List tab, beside the model path and the object bounds
+    // that were moved there earlier.
+    //
+    // The section narrows `ACBS` to its flags alone, the way Movement does:
+    // `ACBS` also holds fatigue, barter gold, the level and the rest, and a
+    // "Model Flags" section that drew those would be the whole subrecord wearing
+    // a new title.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let titles = |v: &[&nvre_esm::schema::SectionDef]| -> Vec<String> {
+        v.iter().map(|s| s.title.clone()).collect()
+    };
+    let sections = session.schema.page_sections("CREA");
+    let model_list = sections_on_tab(&sections, Some("ModelList"));
+    let model_flags = model_list
+        .iter()
+        .find(|s| s.title == "Model Flags")
+        .unwrap_or_else(|| {
+            panic!(
+                "the Model List tab has no Model Flags section: {:?}",
+                titles(&model_list)
+            )
+        });
+    assert_eq!(
+        model_flags.flags_bits.get("ACBS.flags").map(Vec::len),
+        Some(6),
+        "the Model Flags section shows six bits: {:?}",
+        model_flags.flags_bits.get("ACBS.flags")
+    );
+    assert_eq!(
+        model_flags.fields.get("ACBS").map(Vec::as_slice),
+        Some(&["flags".to_string()][..]),
+        "the Model Flags section shows the whole ACBS rather than its flags: {:?}",
+        model_flags.fields
+    );
+    // And the six are gone from Traits, which is the other half of the move.
+    let traits = sections_on_tab(&sections, Some("Traits"));
+    let traits_bits: Vec<u32> = traits
+        .iter()
+        .filter_map(|s| s.flags_bits.get("ACBS.flags").cloned())
+        .flatten()
+        .collect();
+    for bit in [15u32, 16, 17, 19, 24, 25] {
+        assert!(
+            !traits_bits.contains(&bit),
+            "bit {bit} is still on Traits after moving to the Model List tab"
+        );
+    }
+
+    // Drawn: the six checkboxes under a "Model Flags" heading.
+    state.tab.chosen = Some("ModelList".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        rows.iter().any(|(t, _)| t == "Model Flags"),
+        "no Model Flags heading on the Model List tab: {rows:?}"
+    );
+    for want in [
+        "No Head",
+        "No Right Arm",
+        "No Left Arm",
+        "No Shadow",
+        "Tilt Front/Back",
+        "Tilt Left/Right",
+    ] {
+        assert!(
+            rows.iter().any(|(t, _)| t == want),
+            "the model checkbox {want:?} is not drawn: {rows:?}"
+        );
+    }
+    // And nothing else from ACBS: the section narrowed the subrecord.
+    for gone in ["fatigue", "barter_gold", "karma", "speed_multiplier"] {
+        assert!(
+            !rows.iter().any(|(t, _)| t == gone),
+            "the Model Flags section also draws {gone:?}: {rows:?}"
         );
     }
 }
