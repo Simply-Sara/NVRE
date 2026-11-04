@@ -1076,7 +1076,7 @@ impl<'a> Compiler<'a> {
                         .and_then(|cls| {
                             crate::signatures::property_type(&cls, name).map(str::to_string)
                         })
-                        .or_else(|| self.property_type(name).to_string().into());
+                        .or_else(|| Some(self.property_type(name)));
                     // The value slot is allocated BEFORE the conversion, so the
                     // cast's own temporary takes the HIGHER number. Measured on
                     // `CWScript.OnInit`, `debugOn = 0` where `debugOn` is a
@@ -1188,7 +1188,7 @@ impl<'a> Compiler<'a> {
                         .and_then(|cls| {
                             crate::signatures::property_type(&cls, name).map(str::to_string)
                         })
-                        .or_else(|| self.property_type(name).to_string().into());
+                        .or_else(|| Some(self.property_type(name)));
                     let ty = pty.unwrap_or_else(|| "var".to_string());
                     let v_slot = self.temp(buf, &ty);
                     let o = self.expr(buf, obj, *line)?;
@@ -1528,7 +1528,7 @@ impl<'a> Compiler<'a> {
                 }
                 self.type_of(n).map(|t| t.0.clone())
             }
-            Expr::Member(_, name) => Some(self.property_type(name).to_string()),
+            Expr::Member(_, name) => Some(self.property_type(name)),
             _ => None,
         }
     }
@@ -1738,16 +1738,33 @@ impl<'a> Compiler<'a> {
     }
 
     /// The declared type of a property, for its `propget` temporary.
-    fn property_type(&self, name: &str) -> &'static str {
+    /// A property's declared type as a slot type.
+    ///
+    /// The eight words this returns are the ones the corpus spells in a locals
+    /// table: the four primitives capitalised, and the class name **as declared**.
+    /// An earlier version mapped every class to `var`, which is the same
+    /// "typed slot answering var" defect that cost conversions at call arguments
+    /// and array reads: `kmyquest.CWs.WhiterunLocation` is a
+    /// `Location Property WhiterunLocation` on `CWScript`, the game types the
+    /// `propget` destination `::temp17:location`, and a `var` slot could not be
+    /// compared against `cityVar` (a `location` parameter) without an extra cast
+    /// — and it took a different temporary, displacing the rest of a 900-line
+    /// quest fragment.
+    ///
+    /// A class name is normalised to lowercase, which is how the corpus spells a
+    /// class in a slot; primitives stay capitalised. That split is measured, not
+    /// cosmetic — see `var_type`.
+    fn property_type(&self, name: &str) -> String {
         match self.type_of(name) {
             Some(t) => match t.base().as_str() {
-                "int" => "Int",
-                "float" => "Float",
-                "bool" => "Bool",
-                "string" => "String",
-                _ => "var",
+                "int" => "Int".to_string(),
+                "float" => "Float".to_string(),
+                "bool" => "Bool".to_string(),
+                "string" => "String".to_string(),
+                "none" | "var" => "var".to_string(),
+                other => other.to_ascii_lowercase(),
             },
-            None => "var",
+            None => "var".to_string(),
         }
     }
 
@@ -2278,6 +2295,17 @@ impl<'a> Compiler<'a> {
                 Expr::Ident(n) => self.call_result_type(n).to_string().into(),
                 _ => None,
             },
+            // A **chained** member: `kmyquest.CWs.WhiterunLocation`. The
+            // receiver's class is the type of the property read before it, so
+            // `CWScript.CWs` is a `CWScript` and the property asked of it is
+            // `cwscript.whiterunlocation`. Without this arm the read fell through
+            // to `var`, and `cityVar == kmyquest.CWs.WhiterunLocation` (cityVar a
+            // `location`) needed an extra cast — then took a different temporary,
+            // displacing the rest of a 900-line quest fragment.
+            Expr::Member(obj, name) => {
+                let c = self.receiver_class_of(buf, obj)?;
+                crate::signatures::property_type(&c, name).map(str::to_string)
+            }
             _ => None,
         }
     }
@@ -3157,6 +3185,17 @@ impl<'a> Compiler<'a> {
                 // converted into the slot it is written to, so the cast the game
                 // emits would be missing.
                 let pty = match obj.as_ref() {
+                    // A CHAINED receiver — `kmyquest.CWs.WhiterunLocation` — is
+                    // the case the `Ident` arm cannot reach: the property asked
+                    // of `kmyquest.CWs` is `cwscript.whiterunlocation`, and
+                    // `CWScript` is what the first read's type says. Without this
+                    // the read typed `var` and the comparison against a
+                    // `location` variable gained a cast.
+                    Expr::Member(..) | Expr::Call { .. } | Expr::Cast(..) => self
+                        .receiver_class_of(buf, obj)
+                        .and_then(|cls| crate::signatures::property_type(&cls, name))
+                        .map(slot_type)
+                        .unwrap_or_else(|| self.property_type(name)),
                     Expr::Ident(n) => {
                         // The receiver may be a LOCAL (`ArenaScript aScript`,
                         // declared inside the function) as well as a script-level
@@ -3165,12 +3204,17 @@ impl<'a> Compiler<'a> {
                         // produced could not be converted into the `quest` slot it
                         // was assigned to and the cast the game emits was missing.
                         let cls = self.receiver_class(buf, n).unwrap_or_default();
+                        // The corpus table keeps the `.psc` spelling of a class;
+                        // a slot stores it lowercase. Normalise both sources the
+                        // same way, or the destination is typed `Location` where
+                        // the corpus writes `location`.
                         crate::signatures::property_type(&cls, name)
+                            .map(slot_type)
                             .unwrap_or_else(|| self.property_type(name))
                     }
                     _ => self.property_type(name),
                 };
-                let tmp = self.temp(buf, pty);
+                let tmp = self.temp(buf, &pty);
                 let mut ins = Instruction::new(opcode_of("propget"));
                 ins.args.push(Value::Identifier(p));
                 ins.args.push(o);
@@ -3362,6 +3406,27 @@ impl<'a> Compiler<'a> {
         // DLC2ThirskDoorScript, where the game emits
         // `callmethod IsPlaying ::ExileScene_var ::temp5`.
         None
+    }
+}
+
+/// A declared type name as a **locals-table** slot type.
+///
+/// The four primitives are capitalised in a slot and a class name is lowercase:
+/// measured over the corpus, a class return type is capitalised in 297 cases and
+/// lowercase in 89, while `::X_var` slots are lowercase 91% of the time. The
+/// corpus tables in `signatures.rs` keep the `.psc` spelling, so anything read
+/// from them has to pass through here before it becomes a slot — otherwise a
+/// `propget` destination is typed `Location` where the file writes `location`,
+/// and the slot type disagreeing with the corpus shows up as a `cast` that should
+/// not be there.
+fn slot_type(declared: &str) -> String {
+    match declared.trim_end_matches("[]") {
+        t if t.eq_ignore_ascii_case("int") => "Int".to_string(),
+        t if t.eq_ignore_ascii_case("float") => "Float".to_string(),
+        t if t.eq_ignore_ascii_case("bool") => "Bool".to_string(),
+        t if t.eq_ignore_ascii_case("string") => "String".to_string(),
+        t if t.eq_ignore_ascii_case("none") => "var".to_string(),
+        t => t.to_ascii_lowercase(),
     }
 }
 
