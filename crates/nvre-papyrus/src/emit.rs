@@ -2062,7 +2062,11 @@ impl<'a> Compiler<'a> {
                 // (operands were released above, before the result slot was
                 // chosen — see the comment there.)
                 if op == "!=" {
-                    // `a != b` is `not (a == b)`.
+                    // `a != b` is `not (a == b)`, and the `not` writes **in
+                    // place**: the comparison's result slot is released first so
+                    // the negation takes the same one.
+                    //   game  cmp_eq ::temp18 ... / not ::temp18 ::temp18
+                    self.release_temp(buf, &Value::Identifier(tmp));
                     let tmp2 = self.temp(buf, "Bool");
                     let mut ins = Instruction::new(opcode_of("not"));
                     ins.args.push(Value::Identifier(tmp2));
@@ -2078,6 +2082,15 @@ impl<'a> Compiler<'a> {
                     "!" => "Bool".to_string(),
                     _ => self.value_type(buf, &v),
                 };
+                // A unary operator writes **in place**: the operand is consumed,
+                // so it goes back on the free list before the result is chosen
+                // and the result takes its slot.
+                //   `if (!IsInFaction(akFaction))`
+                //   -> callmethod IsInFaction self ::temp18 akFaction
+                //      not ::temp18 ::temp18
+                // Allocating a fresh slot instead gave `not ::temp20 ::temp19`
+                // and cost an extra Bool local in 2,175 functions.
+                self.release_temp(buf, &v);
                 let tmp = self.temp(buf, &result_ty);
                 let code = match op.as_str() {
                     "!" => opcode_of("not"),
