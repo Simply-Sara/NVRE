@@ -55,8 +55,13 @@ pub struct ClassTable {
 #[derive(Debug, Default, Clone)]
 struct ClassInfo {
     parent: Option<String>,
-    /// Variables and properties, in declaration order, keyed by lowercased name.
+    /// Variables and properties, keyed by lowercased name.
     members: HashMap<String, TypeName>,
+    /// Every function the class declares in any state, lowercased.
+    ///
+    /// The semantic checker needs this to answer "does this class have this
+    /// method", which is the check that catches `someActor.NotARealMethod()`.
+    methods: std::collections::HashSet<String>,
 }
 
 impl ClassTable {
@@ -65,6 +70,7 @@ impl ClassTable {
         let mut classes = HashMap::new();
         for s in scripts {
             let mut members = HashMap::new();
+            let mut methods = std::collections::HashSet::new();
             for d in &s.decls {
                 match &d.kind {
                     // A script-scope variable is visible to subclasses.
@@ -72,6 +78,15 @@ impl ClassTable {
                         members
                             .entry(d.name.to_ascii_lowercase())
                             .or_insert_with(|| d.type_name.clone());
+                    }
+                    DeclKind::Function(f) => {
+                        methods.insert(f.name.to_ascii_lowercase());
+                    }
+                    // A state's functions are members of the same object.
+                    DeclKind::State(st) => {
+                        for f in &st.functions {
+                            methods.insert(f.name.to_ascii_lowercase());
+                        }
                     }
                     _ => {}
                 }
@@ -81,6 +96,7 @@ impl ClassTable {
                 ClassInfo {
                     parent: s.parent.as_ref().map(|p| p.to_ascii_lowercase()),
                     members,
+                    methods,
                 },
             );
         }
@@ -113,6 +129,13 @@ impl ClassTable {
             here = info.parent.clone();
         }
         None
+    }
+
+    /// Whether `class` declares `method`, in any state.
+    pub fn declares_method(&self, class: &str, method: &str) -> Option<bool> {
+        self.classes
+            .get(&class.to_ascii_lowercase())
+            .map(|i| i.methods.contains(&method.to_ascii_lowercase()))
     }
 
     /// The parent of `class`, if the table knows it.

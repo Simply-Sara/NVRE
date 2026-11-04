@@ -25,7 +25,30 @@
 //! | check | severity | why it is safe |
 //! |---|---|---|
 //! | more arguments than the declaration accepts | error | only fires when a signature is known, and only when the call exceeds it |
+//! | **a method the receiver's class does not have** | error | fires only when the receiver's class is *known*; coverage measured at 99.47% of 36,610 resolvable calls, and the whole remainder is the injected pair |
 //! | a name that resolves nowhere | warning | conservative: it must be a local, parameter, script declaration, inherited member, state, known class or known function to pass |
+//!
+//! ## The method check, and the one rule it needs
+//!
+//! `someActor.NotARealMethod()` compiles today, loads, and fails in the game. It
+//! is the most common real mod bug, so it is worth a check — but only after
+//! measuring whether the tables can support one. `examples/methodcover` does:
+//!
+//! ```text
+//! member calls with a resolved receiver class: 36,610
+//!   known to the tables: 36,415 (99.47%)
+//!   UNKNOWN:                195   <- ALL of them GetState or GotoState
+//! ```
+//!
+//! So the gap is not coverage, it is one rule: **`GetState` and `GotoState` are
+//! injected by the compiler into every script**, so they are members of every
+//! script instance and appear in no `.psc`. Allowing them explicitly takes the
+//! corpus to zero findings — and removing the exclusion reproduces exactly those
+//! 195 findings, which is the cross-check that the rule is the whole difference.
+//!
+//! Two refusals make it safe: an **unresolvable receiver** is never judged, and a
+//! receiver whose class the caller has **no source for** is never judged either.
+//! Both stay silent rather than guess.
 //!
 //! ## What is deliberately NOT checked
 //!
@@ -154,6 +177,71 @@ impl<'a> Context<'a> {
             functions,
             script_names,
         }
+    }
+
+    /// The class of a receiver expression, when it can be resolved.
+    ///
+    /// Returns `None` whenever the class is not knowable, and the method check
+    /// then stays silent — an unresolvable receiver must never produce a finding.
+    fn receiver_class(&self, e: &Expr, script: &Script) -> Option<String> {
+        match e {
+            Expr::Ident(n) => {
+                let lower = n.to_ascii_lowercase();
+                // `self` and `parent` are both the script's own class: `parent`
+                // is the same object, just dispatched to the base implementation.
+                if lower == "self" || lower == "parent" {
+                    return script.parent.clone();
+                }
+                // A script-scope declaration in this file.
+                for d in &script.decls {
+                    if d.name.eq_ignore_ascii_case(n) {
+                        return Some(d.type_name.0.clone());
+                    }
+                }
+                // An inherited one.
+                script
+                    .parent
+                    .as_ref()
+                    .and_then(|p| self.classes.member_type(p, n))
+                    .map(|t| t.0.clone())
+            }
+            Expr::Cast(_, ty) => Some(ty.0.clone()),
+            _ => None,
+        }
+    }
+
+    /// Whether `class` declares `method`, anywhere up its `extends` chain.
+    ///
+    /// Three sources, because each knows things the others do not: the caller's
+    /// own sources (a mod's classes), the harvested signature table (the engine's
+    /// shipped classes), and the return-type table (methods whose parameter shape
+    /// was ambiguous and so was dropped from the signature table).
+    fn method_exists(&self, class: &str, method: &str) -> bool {
+        // A method declared in the caller's sources, on this class or an ancestor.
+        let mut here = Some(class.to_ascii_lowercase());
+        for _ in 0..64 {
+            let Some(c) = here else { break };
+            // `None` means the caller has no source for that class, so it cannot
+            // say either way; `Some(false)` means it has the source and the method
+            // is not there.
+            if self.classes.declares_method(&c, method) == Some(true) {
+                return true;
+            }
+            here = self.classes.parent_of(&c).map(str::to_string);
+        }
+        if signatures::method_signature(class, method).is_some() {
+            return true;
+        }
+        if signatures::return_type(class, method).is_some() {
+            return true;
+        }
+        // The engine's classes are reached through their own hierarchy, which the
+        // harvested table already walks.
+        let lower = class.to_ascii_lowercase();
+        if is_engine_class(&lower) && signatures::method_signature(&lower, method).is_some() {
+            return true;
+        }
+        false
     }
 
     /// Whether `name` is a member of this script's parent chain.
@@ -359,6 +447,36 @@ pub fn check(script: &Script, ctx: &Context<'_>) -> Vec<Diagnostic> {
                         }
                     }
                 }
+                // A method call on a receiver whose class IS known, but which
+                // does not declare the method. This is the check that catches the
+                // most real mod bugs — `someActor.NotARealMethod()` compiles today
+                // and fails in the game — and it is safe only because coverage
+                // was measured first: 36,415 of 36,610 resolvable member calls in
+                // the corpus (99.47%) hit a known signature, and every one of the
+                // 195 that did not was `GetState` or `GotoState`.
+                //
+                // Those two are **injected by the compiler into every script**, so
+                // they are members of every script instance and appear in no
+                // `.psc`. They are allowed explicitly below, which takes the
+                // corpus to zero findings.
+                if let Expr::Member(obj, method) = callee.as_ref() {
+                    if !is_injected_method(method) {
+                        if let Some(cls) = ctx.receiver_class(obj, script) {
+                            // Only judge a class the caller has sources for. A
+                            // class from an unpublished plugin is unknowable, and
+                            // guessing would produce exactly the noise this check
+                            // is meant to avoid.
+                            let known_class =
+                                ctx.classes.has(&cls) || is_engine_class(&cls.to_ascii_lowercase());
+                            if known_class && !ctx.method_exists(&cls, method) {
+                                out.push(Diagnostic::error(
+                                    line,
+                                    format!("`{cls}` has no method `{method}`"),
+                                ));
+                            }
+                        }
+                    }
+                }
                 // The callee is a FUNCTION NAME, not a value: descending into it
                 // as a name would report every call to `GotoState` or any engine
                 // function as an undeclared variable. A member callee still has
@@ -416,6 +534,16 @@ pub fn check(script: &Script, ctx: &Context<'_>) -> Vec<Diagnostic> {
     out
 }
 
+/// Whether the compiler **injects** this method into every script.
+///
+/// `GetState` and `GotoState` are not in any source file: the compiler adds them
+/// to every script, so they are members of every script instance. A method check
+/// that did not know this would flag all 195 of their calls in the corpus — which
+/// is the entire remainder of the unknown-method bucket, measured.
+fn is_injected_method(name: &str) -> bool {
+    name.eq_ignore_ascii_case("getstate") || name.eq_ignore_ascii_case("gotostate")
+}
+
 /// The engine's own classes, which are in scope everywhere.
 fn is_engine_class(name: &str) -> bool {
     matches!(
@@ -434,6 +562,49 @@ mod tests {
         let table = ClassTable::new([&script]);
         let ctx = Context::new(&script, &table);
         check(&script, &ctx)
+    }
+
+    #[test]
+    fn a_method_the_receiver_does_not_have_is_an_error() {
+        // This is the bug the check exists for: it compiles today and fails in
+        // the game. `ObjectReference` has no `NotARealMethod`.
+        let d = check_src(
+            "Scriptname A extends ObjectReference\nFunction F()\n\tSelf.NotARealMethod()\nEndFunction\n",
+        );
+        assert!(
+            d.iter().any(|d| d.message.contains("NotARealMethod")),
+            "an invented method must be reported: {d:?}"
+        );
+    }
+
+    #[test]
+    fn a_method_the_receiver_does_have_is_clean() {
+        let d = check_src(
+            "Scriptname A extends ObjectReference\nFunction F()\n\tSelf.Disable()\nEndFunction\n",
+        );
+        assert!(d.is_empty(), "{d:?}");
+    }
+
+    #[test]
+    fn the_injected_pair_is_always_available() {
+        // `GetState` and `GotoState` are added by the compiler to every script
+        // and appear in no `.psc`. Without this exclusion the check flags all 195
+        // of their calls in the corpus.
+        let d = check_src(
+            "Scriptname A extends ObjectReference\nFunction F()\n\tGotoState(\"x\")\n\tstring s = GetState()\nEndFunction\n",
+        );
+        assert!(d.is_empty(), "{d:?}");
+    }
+
+    #[test]
+    fn a_method_on_an_unknown_class_is_not_judged() {
+        // The caller has no source for `SomeUnpublishedPluginScript`, so nothing
+        // can be said about it. Guessing here is exactly the noise the zero
+        // false-positive rule forbids.
+        let d = check_src(
+            "Scriptname A extends ObjectReference\nSomeUnpublishedPluginScript Property S auto\nFunction F()\n\tS.AnythingAtAll()\nEndFunction\n",
+        );
+        assert!(d.is_empty(), "{d:?}");
     }
 
     #[test]
