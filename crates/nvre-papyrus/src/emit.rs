@@ -2224,6 +2224,57 @@ impl<'a> Compiler<'a> {
                         // `callmethod` here instead is accepted by the loader
                         // and then fails at run time, so the check has to come
                         // before the receiver is compiled.
+                        // `parent.Foo(...)` is `callparent`, a distinct opcode
+                        // with **no receiver operand** — the receiver is
+                        // implicit, so the argument list is `method dest args…`.
+                        // Emitting `callmethod Foo parent …` looks up a variable
+                        // named `parent` and fails at run time.
+                        //
+                        // Only 66 sites in the whole corpus against 115,365
+                        // `callmethod`, so no census ever ranked it; it is
+                        // invisible rather than rare.
+                        if let Expr::Ident(n) = obj.as_ref() {
+                            if n.eq_ignore_ascii_case("parent") {
+                                let m = self.intern(method);
+                                let ty = self.call_result_type(method);
+                                let tmp = self.temp(buf, ty);
+                                let mut ins = Instruction::new(opcode_of("callparent"));
+                                ins.args.push(Value::Identifier(m));
+                                ins.args.push(Value::Identifier(tmp));
+                                let mut slots: Vec<Option<Value>> = vec![None; args.len()];
+                                for (i, a) in args.iter().enumerate().rev() {
+                                    slots[i] = Some(self.expr(buf, a, line)?);
+                                }
+                                let va: Vec<Value> =
+                                    slots.into_iter().map(|v| v.unwrap()).collect();
+                                // Defaults come from the PARENT class, not the
+                                // unqualified name. `parent.Cleanup()` takes no
+                                // arguments, but `cleanup` is also declared with a
+                                // `bool` elsewhere in the corpus, so padding from
+                                // the unqualified table appended a phantom `false`
+                                // the game does not have. Walk the `extends` chain
+                                // from the script's parent and pad only from a
+                                // declaration that actually reaches the call.
+                                let mut here = self.own_class();
+                                let mut defs = None;
+                                for _ in 0..12 {
+                                    let Some(c) = here else { break };
+                                    if let Some(d) = crate::signatures::method_defaults(&c, method)
+                                    {
+                                        defs = Some(d);
+                                        break;
+                                    }
+                                    here = crate::signatures::parent(&c).map(str::to_string);
+                                }
+                                ins.varargs = self.pad_defaults(va, defs, method);
+                                let released: Vec<Value> = ins.varargs.clone();
+                                buf.push(ins, line);
+                                for a in &released {
+                                    self.release_temp(buf, a);
+                                }
+                                return Ok(Value::Identifier(tmp));
+                            }
+                        }
                         if let Expr::Ident(class) = obj.as_ref() {
                             if let Some(target) = self.static_target(class) {
                                 let m = self.intern(method);
