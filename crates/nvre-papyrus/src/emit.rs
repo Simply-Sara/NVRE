@@ -2129,6 +2129,23 @@ impl<'a> Compiler<'a> {
                         let tmp = self.temp(buf, &want);
                         let mut ins = Instruction::new(opcode_of("cast"));
                         ins.args.push(Value::Identifier(tmp));
+                        // A `None` operand casts from the **None literal**, not
+                        // from the `::NoneVar` identifier. `GetReference() != None`
+                        // compiles to `cast ::temp85 None` / `cmp_eq ::temp86
+                        // ::temp84 ::temp85`; pushing the identifier instead is a
+                        // different instruction with the same intent.
+                        let src = match &src {
+                            Value::Identifier(i)
+                                if self
+                                    .strings
+                                    .get(*i as usize)
+                                    .map(|s| s.eq_ignore_ascii_case("::NoneVar"))
+                                    .unwrap_or(false) =>
+                            {
+                                Value::None
+                            }
+                            other => other.clone(),
+                        };
                         ins.args.push(src.clone());
                         buf.push(ins, line);
                         // The cast's operand is consumed by it and is dead
