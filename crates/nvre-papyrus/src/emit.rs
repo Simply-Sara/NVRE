@@ -1116,6 +1116,71 @@ impl<'a> Compiler<'a> {
                 value,
                 line,
             } => {
+                // `a.b += v` is not a plain read-modify-write of a name: the
+                // property is read with `propget`, the sum stored in a
+                // temporary, and the result written back with `propset`.
+                // `lvalue` answers a member target with the property NAME, which
+                // is right for `propset`'s first operand and useless as an
+                // arithmetic operand — taking it emitted
+                // `fadd ::temp0 Value 1 ; assign Value ::temp0`, an assignment to
+                // a name the VM has no slot for.
+                //
+                // Measured on `AbTGTrapsightScript.OnEffectStart`, whose whole
+                // body is `pTSight.Value += 1`:
+                //
+                //   0 propget value ::pTSight_var ::temp1   the read
+                //   1 cast    ::temp2 1                     the int literal, widened
+                //   2 fadd    ::temp2 ::temp1 ::temp2       the sum reuses the cast's slot
+                //   3 assign  ::temp0 ::temp2               into the propset value slot
+                //   4 propset value ::pTSight_var ::temp0
+                //
+                // `::temp0` is the LOWEST number in the function, so the value
+                // slot is allocated before the expression is evaluated — the same
+                // "materialise the value first" rule the plain `a.b = v` path
+                // already follows.
+                if let Expr::Member(obj, name) = target {
+                    let p = self.intern(name);
+                    let pty = self
+                        .receiver_class_of(buf, obj)
+                        .and_then(|cls| {
+                            crate::signatures::property_type(&cls, name).map(str::to_string)
+                        })
+                        .or_else(|| self.property_type(name).to_string().into());
+                    let ty = pty.unwrap_or_else(|| "var".to_string());
+                    let v_slot = self.temp(buf, &ty);
+                    let o = self.expr(buf, obj, *line)?;
+                    let cur = self.temp(buf, &ty);
+                    let mut ins = Instruction::new(opcode_of("propget"));
+                    ins.args.push(Value::Identifier(p));
+                    ins.args.push(o.clone());
+                    ins.args.push(Value::Identifier(cur));
+                    buf.push(ins, *line);
+                    let rhs = self.expr(buf, value, *line)?;
+                    let rhs = self.coerce_arg(buf, rhs, &ty, *line);
+                    // The cast's slot goes back on the free list before the sum
+                    // is allocated, so the sum lands in it — the same ordering
+                    // the comparison path needs.
+                    self.release_temp(buf, &rhs);
+                    let dest = self.temp(buf, &ty);
+                    let arith = self.arith_op(buf, op, &Value::Identifier(cur));
+                    let mut ins = Instruction::new(arith);
+                    ins.args.push(Value::Identifier(dest));
+                    ins.args.push(Value::Identifier(cur));
+                    ins.args.push(rhs);
+                    buf.push(ins, *line);
+                    let mut ins = Instruction::new(opcode_of("assign"));
+                    ins.args.push(Value::Identifier(v_slot));
+                    ins.args.push(Value::Identifier(dest));
+                    buf.push(ins, *line);
+                    let mut ins = Instruction::new(opcode_of("propset"));
+                    ins.args.push(Value::Identifier(p));
+                    ins.args.push(o);
+                    ins.args.push(Value::Identifier(v_slot));
+                    buf.push(ins, *line);
+                    self.release_temp(buf, &Value::Identifier(dest));
+                    self.release_temp(buf, &Value::Identifier(v_slot));
+                    return Ok(());
+                }
                 // `x += 1` is `x = x + 1` and the compiler emits exactly that:
                 // a read, an arithmetic instruction, and an assign.
                 let dest = self.lvalue(buf, target)?;
