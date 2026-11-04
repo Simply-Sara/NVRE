@@ -102,6 +102,7 @@
       "struct": [
        {
         "name": "flags",
+        "note": ". Bits 27-31 are fopdoc's, not xEdit's wbDefinitionsFNV list: that list names bit 27 twice ('Not Pushable' and 'Allow Pickpocket'), which left every later name one bit too low \u2014 28 read Is Ghost, 29 No Rotating To Head-track, 30 Invulnerable. fopdoc gives 27 Not Pushable, 28 Allow Pickpocket, 29 Is Ghost, 30 No Rotating To Head-track, 31 Invulnerable.",
         "type": {
          "bits": {
           "0": "Biped",
@@ -121,11 +122,12 @@
           "24": "Tilt Front/Back",
           "25": "Tilt Left/Right",
           "26": "No Knockdowns",
-          "27": "Not Pushable / Allow Pickpocket",
-          "28": "Is Ghost",
-          "29": "No Rotating To Head-track",
+          "27": "Not Pushable",
+          "28": "Allow Pickpocket",
+          "29": "Is Ghost",
           "3": "Respawn",
-          "30": "Invulnerable",
+          "30": "No Rotating To Head-track",
+          "31": "Invulnerable",
           "4": "Swims",
           "5": "Flies",
           "6": "Walks",

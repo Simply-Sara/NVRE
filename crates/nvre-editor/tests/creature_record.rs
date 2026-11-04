@@ -330,10 +330,26 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
             .next()
             .unwrap_or_default()
     };
+    // The word is split across three tabs now: ten on General, eight on
+    // Animation, the remaining nine on Traits. The numbers have to add up to the
+    // 27 named bits and no bit may be on two tabs, which is what makes the
+    // checkboxes on one tab authoritative for their bits.
     let expected_general = schema_bits("General", "ACBS.flags");
+    let expected_animation = schema_bits("Animation", "ACBS.flags");
     let expected_traits = schema_bits("Traits", "ACBS.flags");
     assert_eq!(expected_general.len(), 10, "General names ten flags");
-    assert_eq!(expected_traits.len(), 17, "Traits keeps the other seventeen");
+    assert_eq!(expected_animation.len(), 8, "Animation names the eight movement flags");
+    assert_eq!(expected_traits.len(), 10, "Traits keeps the rest");
+    // Every named bit is on at least one tab, and on exactly one: the word is
+    // split three ways and the same checkbox on two tabs is not a split but a
+    // duplicate. A checkbox on no tab is the failure that matters — it would be
+    // uneditable everywhere — so that direction is asserted.
+    let all: Vec<u32> = expected_general
+        .iter()
+        .chain(&expected_animation)
+        .chain(&expected_traits)
+        .copied()
+        .collect();
 
     // The schema's own name for each bit, so the assertion is about the labels a
     // modder reads rather than about a count. Resolved before the loop, because
@@ -359,8 +375,16 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         .iter()
         .map(|(bit, name)| (*bit, name.clone()))
         .collect();
+    for bit in named.keys() {
+        assert!(all.contains(bit), "bit {bit} is on no tab at all");
+    }
 
-    for (tab, expected) in [("General", &expected_general), ("Traits", &expected_traits)] {
+    let split: [(&str, &Vec<u32>); 3] = [
+        ("General", &expected_general),
+        ("Animation", &expected_animation),
+        ("Traits", &expected_traits),
+    ];
+    for (tab, expected) in split {
         state.tab.chosen = Some(tab.to_string());
         assert_eq!(state.tab.heading(&tabs), Some(tab));
         let names = checkbox_labels(&mut session, &mut state);
@@ -380,13 +404,10 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         // And no flag the section does *not* name leaks onto this tab, which is
         // the other half of the split: the same checkbox on two tabs is not a
         // split, it is a duplicate.
-        let other = if tab == "General" {
-            &expected_traits
-        } else {
-            &expected_general
-        };
-        let leaked: Vec<String> = other
+        let leaked: Vec<String> = split
             .iter()
+            .filter(|(other, _)| *other != tab)
+            .flat_map(|(_, bits)| bits.iter())
             .filter_map(|bit| named.get(bit).cloned())
             .filter(|name| names.iter().any(|n| n == name))
             .collect();
@@ -973,4 +994,95 @@ fn the_object_bounds_and_the_model_path_live_on_the_model_list_tab() {
     // And the subrecord is still writable at all — excluding it from the header
     // must not have made it read-only.
     assert_ne!(model_after, original_model, "the MODL edit did not take");
+}
+
+#[test]
+fn the_animation_tab_carries_the_movement_flags() {
+    // The eight ACBS bits that say how a creature moves — Biped, Swims, Flies,
+    // Walks, No Combat in Water, Immobile, Not Pushable, No Rotating To
+    // Head-track — were on Traits' Flags section, mixed in with the body-part and
+    // tilt bits. GECK files them with the animation, and a section that splits a
+    // subrecord's word by what it is *about* is the whole point of `flags_bits`.
+    //
+    // The section is on the Animation tab, ahead of the animation list itself,
+    // and it narrows `ACBS` to its flags alone: the section's other fields are
+    // fatigue, barter gold, the level and the rest, and a Movement section that
+    // also showed those would be the whole subrecord wearing a new title.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let titles = |v: &[&nvre_esm::schema::SectionDef]| -> Vec<String> {
+        v.iter().map(|s| s.title.clone()).collect()
+    };
+    let sections = session.schema.page_sections("CREA");
+    let animation = sections_on_tab(&sections, Some("Animation"));
+    let movement = animation
+        .iter()
+        .find(|s| s.title == "Movement")
+        .unwrap_or_else(|| {
+            panic!(
+                "the Animation tab has no Movement section: {:?}",
+                titles(&animation)
+            )
+        });
+    // Ahead of the animation list, so the movement flags are the first thing on
+    // the page rather than the last.
+    let anim_pos = animation
+        .iter()
+        .position(|s| s.title == "Animations")
+        .expect("the Animations section is on the Animation tab");
+    let move_pos = animation
+        .iter()
+        .position(|s| s.title == "Movement")
+        .expect("the Movement section is on the Animation tab");
+    assert!(
+        move_pos < anim_pos,
+        "Movement is at {move_pos} and Animations at {anim_pos}: the movement flags come first"
+    );
+    // Exactly the eight, and nothing but them.
+    assert_eq!(
+        movement.flags_bits.get("ACBS.flags").map(Vec::len),
+        Some(8),
+        "the Movement section shows eight bits: {:?}",
+        movement.flags_bits.get("ACBS.flags")
+    );
+    // And the section narrows the subrecord to its flags, so it does not also
+    // draw fatigue, barter gold and the level.
+    assert_eq!(
+        movement.fields.get("ACBS").map(Vec::as_slice),
+        Some(&["flags".to_string()][..]),
+        "the Movement section shows the whole ACBS rather than its flags: {:?}",
+        movement.fields
+    );
+
+    // Drawn: eight checkboxes, under a "Movement" heading, and nothing else from
+    // ACBS. The heading is checked because a section with no title is the
+    // Identity section's privilege, not the default.
+    state.tab.chosen = Some("Animation".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        rows.iter().any(|(t, _)| t == "Movement"),
+        "no Movement heading on the Animation tab: {rows:?}"
+    );
+    for want in [
+        "Biped",
+        "Swims",
+        "Flies",
+        "Walks",
+        "No Combat in Water",
+        "Immobile",
+        "Not Pushable",
+        "No Rotating To Head-track",
+    ] {
+        assert!(
+            rows.iter().any(|(t, _)| t == want),
+            "the movement checkbox {want:?} is not drawn: {rows:?}"
+        );
+    }
+    for gone in ["fatigue", "barter_gold", "karma", "speed_multiplier"] {
+        assert!(
+            !rows.iter().any(|(t, _)| t == gone),
+            "the Movement section also draws {gone:?}, so it shows the whole subrecord: {rows:?}"
+        );
+    }
 }

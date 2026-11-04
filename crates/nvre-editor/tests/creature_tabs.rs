@@ -365,6 +365,15 @@ fn every_bit_of_a_split_flags_word_is_on_exactly_one_tab() {
                  them — those checkboxes would be uneditable everywhere"
             );
             // And no bit on two tabs, which would be the same checkbox twice.
+            //
+            // There is no exemption. There was one: the schema used to name
+            // bit 27 twice — "Not Pushable / Allow Pickpocket" — after xEdit's
+            // wbDefinitionsFNV list, which put the same checkbox on two tabs by
+            // accident. fopdoc settles it: 27 Not Pushable, 28 Allow Pickpocket,
+            // 29 Is Ghost, 30 No Rotating To Head-track, 31 Invulnerable. The
+            // old double-name had also left every later name one bit too low,
+            // so 28 read Is Ghost, 29 No Rotating To Head-track and 30
+            // Invulnerable. The schema now follows fopdoc.
             let mut dupes: Vec<u32> = Vec::new();
             for bit in &named {
                 let tabs: Vec<&String> = hits
