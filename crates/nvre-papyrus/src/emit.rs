@@ -2401,6 +2401,25 @@ impl<'a> Compiler<'a> {
             }
             Expr::Unary { op, operand } => {
                 let v = self.expr(buf, operand, line)?;
+                // A minus applied **directly to a numeric literal** is a negative
+                // literal, not a negation instruction. Measured,
+                // `ArenaScript::PickNextFight`:
+                //
+                //   source: minFight = -1
+                //   game:   assign minFight -1
+                //   ours:   ineg ::temp39 1        <- one instruction too many
+                //           assign minFight ::temp39
+                //
+                // The extra instruction displaces every later temporary in the
+                // function, which is why the buckets it produced read as
+                // `ineg vs assign`, `ineg vs callmethod`, `ineg vs cmp_eq` and
+                // so on: the game's stream at that index is whatever legitimately
+                // follows. Folding costs nothing and is what the compiler writes.
+                match (op.as_str(), &v) {
+                    ("-", Value::Int(n)) => return Ok(Value::Int(-*n)),
+                    ("-", Value::Float(f)) => return Ok(Value::Float(-*f)),
+                    _ => {}
+                }
                 let result_ty = match op.as_str() {
                     "!" => "Bool".to_string(),
                     _ => self.value_type(buf, &v),
