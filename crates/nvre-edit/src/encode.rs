@@ -1110,8 +1110,28 @@ pub fn decoded_in_block(
     sub: &nvre_esm::Subrecord,
     block: Option<&str>,
 ) -> Option<Value> {
+    decoded_in_block_localized(schema, rec_sig, sub, block, false)
+}
+
+/// The same, for a subrecord of a **localized** plugin.
+///
+/// A localized plugin stores its text as a four-byte string-table ID rather than
+/// as characters, so the same subrecord decodes differently depending on the file
+/// it came from. Reading a 9-byte `DESC` as a zstring when it is a string ID with
+/// padding leaves the padding unexplained, which reads as "does not re-encode"
+/// and makes the field read-only in the editor. Skyrim's and Fallout 4's shipped
+/// masters are both localized (`TES4` header flag 0x80), and Fallout: New Vegas's
+/// is not, which is why this only showed up in two of the five games.
+pub fn decoded_in_block_localized(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &nvre_esm::Subrecord,
+    block: Option<&str>,
+    localized: bool,
+) -> Option<Value> {
     let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, *rec_sig);
     ctx.block = block.map(str::to_string);
+    ctx.localized = localized;
     let d = nvre_esm::decode::decode_sub(rec_sig, sub, &mut ctx);
     match d.status {
         nvre_esm::decode::SubStatus::Ok => d.value,
@@ -1181,9 +1201,27 @@ pub fn roundtrips_in_block(
     sub: &nvre_esm::Subrecord,
     block: Option<&str>,
 ) -> bool {
-    let Some(value) = decoded_in_block(schema, rec_sig, sub, block) else {
+    roundtrips_in_block_localized(schema, rec_sig, sub, block, false)
+}
+
+/// Re-encode a subrecord in its block, for a localized plugin.
+///
+/// The localized flag decides whether a text field's payload is characters or a
+/// string-table ID, and the encoder has to be told the same thing the decoder
+/// was: a field read as text and written as an ID would be a different length.
+pub fn roundtrips_in_block_localized(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub: &nvre_esm::Subrecord,
+    block: Option<&str>,
+    localized: bool,
+) -> bool {
+    let Some(value) = decoded_in_block_localized(schema, rec_sig, sub, block, localized) else {
         return false;
     };
+    // The encoder needs no localized flag: `Prim::Localized` writes a number as
+    // the four-byte string ID and a string as text, so the value's own type
+    // decides. Only the decoder has to be told, because it has nothing to go on.
     match encode_sub_len_in_block(
         schema,
         rec_sig,
@@ -1567,7 +1605,17 @@ pub struct SubView {
 /// The record's block sequence is walked first, so each subrecord is decoded
 /// with the block that was open when it was read — which is the layout the game
 /// used, and so the layout the editor has to write back.
-pub fn sub_views(schema: &Schema, rec: &nvre_esm::Record) -> Result<Vec<SubView>, String> {
+///
+/// `localized` is whether the plugin the record came from stores its text as
+/// string-table IDs. Skyrim's and Fallout 4's shipped masters do and Fallout: New
+/// Vegas's does not, so the same subrecord decodes to different bytes' worth of
+/// value depending on the file; [`crate::Session`] answers it per record, because
+/// a mod's record and the master it inherits from can differ.
+pub fn sub_views(
+    schema: &Schema,
+    rec: &nvre_esm::Record,
+    localized: bool,
+) -> Result<Vec<SubView>, String> {
     let subs = rec.subrecords().map_err(|e| e.to_string())?;
     let rec_sig = rec.header.sig;
     // One entry per subrecord, in file order: the block it was read in.
@@ -1585,6 +1633,10 @@ pub fn sub_views(schema: &Schema, rec: &nvre_esm::Record) -> Result<Vec<SubView>
         let block = blocks.get(i).cloned().flatten();
         let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, rec_sig);
         ctx.block = block.clone();
+        // The plugin's own answer about how its text is stored. A localized
+        // plugin holds a four-byte string ID where a plain one holds characters,
+        // so a subrecord read with the wrong flag is wrong by a whole field.
+        ctx.localized = localized;
         let d = nvre_esm::decode::decode_sub(&rec_sig, s, &mut ctx);
         let name = d.name.clone().unwrap_or_else(|| s.sig_str());
         out.push(SubView {
@@ -1593,7 +1645,7 @@ pub fn sub_views(schema: &Schema, rec: &nvre_esm::Record) -> Result<Vec<SubView>
             block: block.clone(),
             value: d.value.unwrap_or(Value::Null),
             writable: d.status == nvre_esm::decode::SubStatus::Ok
-                && roundtrips_in_block(schema, &rec_sig, s, block.as_deref()),
+                && roundtrips_in_block_localized(schema, &rec_sig, s, block.as_deref(), localized),
             problem: match d.status {
                 nvre_esm::decode::SubStatus::Ok => None,
                 other => Some(d.error.unwrap_or_else(|| other.as_str().to_string())),

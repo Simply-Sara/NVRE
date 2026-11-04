@@ -971,7 +971,8 @@ pub fn sectioned_grid(
         return;
     };
     let rec_sig = rec.header.sig;
-    let views = sub_views(&session.schema, &rec).unwrap_or_default();
+    let views = sub_views(&session.schema, &rec, session.record_is_localized(form_id))
+        .unwrap_or_default();
     if views.is_empty() {
         ui.label("the schema describes no subrecords for this record");
         return;
@@ -1132,7 +1133,8 @@ pub fn schema_grid(
         return;
     };
     let rec_sig = rec.header.sig;
-    let views = sub_views(&session.schema, &rec).unwrap_or_default();
+    let views = sub_views(&session.schema, &rec, session.record_is_localized(form_id))
+        .unwrap_or_default();
     // Which subrecords have a queued edit, for the badge. The values come from
     // `resolved_record` above, which has the edits applied.
     let edited: Vec<[u8; 4]> = session

@@ -1801,6 +1801,39 @@ impl Session {
         })
     }
 
+    /// Whether the plugin a record came from stores its text as string-table IDs.
+    ///
+    /// The flag decides how a text subrecord decodes: a localized plugin holds a
+    /// four-byte ID where a plain one holds characters, so the same `DESC` is
+    /// four bytes in Fallout 4's master and nine in an uncompressed mod. Reading
+    /// one as the other is not a small mistake — the field is wrong by however
+    /// many bytes the two forms differ, and the editor showed the result as
+    /// read-only with no explanation.
+    ///
+    /// The record's own plugin decides when the session is editing it, and the
+    /// defining plugin decides for an inherited record: a mod's record can be
+    /// plain in a load order whose master is localized, and the bytes that matter
+    /// are the ones the record itself was written with.
+    pub fn record_is_localized(&self, form_id: u32) -> bool {
+        let own = self.doc.name();
+        if self.doc.record(form_id).is_some() {
+            return self
+                .lo
+                .plugins
+                .iter()
+                .find(|p| p.name.eq_ignore_ascii_case(own))
+                .map(|p| p.header.is_localized())
+                .unwrap_or_else(|| self.doc.is_localized());
+        }
+        self.load_order()
+            .ok()
+            .and_then(|lo| {
+                nvre_world::fields::winner(lo, form_id)
+                    .map(|(pi, _)| lo.plugins[pi].header.is_localized())
+            })
+            .unwrap_or_else(|| self.doc.is_localized())
+    }
+
     /// The signature of a record by FormID.
     pub fn record_sig(&self, form_id: u32) -> Option<[u8; 4]> {
         if let Some(r) = self.doc.record(form_id) {
@@ -1972,7 +2005,16 @@ impl Session {
         // meaning is meant, both for reading it and for writing it back.
         let block = nvre_esm::decode::block_of(&rec_sig, &subs, &self.schema, *sig);
         let mut decoded =
-            nvre_edit::encode::decoded_in_block(&self.schema, &rec_sig, sub, block.as_deref())
+            // The same flag the grid read the record with: a localized plugin's
+            // text is a four-byte ID, and writing it as text would be a
+            // different length from the bytes the record holds.
+            nvre_edit::encode::decoded_in_block_localized(
+                &self.schema,
+                &rec_sig,
+                sub,
+                block.as_deref(),
+                self.record_is_localized(fid),
+            )
                 .ok_or_else(|| format!("{} does not decode", nvre_util::tag_str(sig)))?;
         set_path(&mut decoded, path, value)?;
         let bytes = nvre_edit::encode::encode_sub_len_in_block(

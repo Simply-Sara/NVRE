@@ -39,7 +39,7 @@ fn open(s: &mut Session, edid: &str) {
 /// A subrecord's decoded value on a record.
 fn view(s: &Session, fid: u32, sig: &str) -> serde_json::Value {
     let rec = s.doc.record(fid).expect("the record");
-    nvre_edit::encode::sub_views(&s.schema, rec)
+    nvre_edit::encode::sub_views(&s.schema, rec, false)
         .expect("subrecord views")
         .into_iter()
         .find(|v| v.sig == sig)
@@ -66,7 +66,7 @@ fn saved_view(s: &Session, fid: u32, sig: &str, name: &str) -> serde_json::Value
         }
     });
     let rec = found.expect("the record survives the save");
-    let v = nvre_edit::encode::sub_views(&s.schema, &rec)
+    let v = nvre_edit::encode::sub_views(&s.schema, &rec, false)
         .expect("subrecord views")
         .into_iter()
         .find(|v| v.sig == sig)
@@ -250,7 +250,7 @@ fn every_field_of_a_placed_reference_is_reachable() {
     let fid = target.form_id;
     s.select(fid);
     let rec = s.doc.record(fid).expect("the record");
-    let views = nvre_edit::encode::sub_views(&s.schema, rec).expect("views");
+    let views = nvre_edit::encode::sub_views(&s.schema, rec, false).expect("views");
 
     // The point of the panel: every subrecord lists its fields, including a bare
     // scalar's own value. A subrecord that lists nothing has a field the modder

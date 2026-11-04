@@ -298,8 +298,11 @@ fn run_game(
         let mut t = SigTotals::default();
         for rec in &records {
             t.records += 1;
+            // How this record's text is stored, which decides whether a text
+            // subrecord decodes as characters or as a string-table ID.
+            let localized = session.record_is_localized(rec.header.form_id);
             let Ok(subs) = rec.subrecords() else { continue };
-            let Ok(views) = nvre_edit::encode::sub_views(schema, rec) else {
+            let Ok(views) = nvre_edit::encode::sub_views(schema, rec, localized) else {
                 continue;
             };
             for (sub, view) in subs.iter().zip(views.iter()) {
@@ -381,7 +384,7 @@ fn run_game(
                         continue;
                     }
                     t.editable += 1;
-                    match check_field(schema, &sig, sub, view, path, current) {
+                    match check_field(schema, &sig, sub, view, path, current, localized) {
                         Check::Ok => t.ok += 1,
                         Check::Skipped => t.skipped += 1,
                         Check::Bound => t.bounds += 1,
@@ -514,6 +517,7 @@ fn check_field(
     view: &nvre_edit::encode::SubView,
     path: &str,
     current: &Value,
+    localized: bool,
 ) -> Check {
     // The values worth trying, in order. A number at the top of its range fails
     // to encode, so the other direction is tried before calling it a bound.
@@ -575,7 +579,7 @@ fn check_field(
     };
 
     // Read it back through the same decoder the grid reads with.
-    let reread = nvre_edit::encode::decoded_in_block(
+    let reread = nvre_edit::encode::decoded_in_block_localized(
         schema,
         rec_sig,
         &nvre_esm::Subrecord {
@@ -584,6 +588,7 @@ fn check_field(
             extended: sub.extended,
         },
         view.block.as_deref(),
+        localized,
     );
     let Some(reread) = reread else {
         return Check::Fail("the edited subrecord does not decode".into());

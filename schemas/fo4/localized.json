@@ -1,0 +1,18 @@
+{
+ "_comment": "Fallout 4's localized text. Fallout4.esm sets the TES4 header's 0x80 'localized' flag (measured: flags 0x81 in the shipped master), so its text fields hold a four-byte index into the game's string table rather than characters. xEdit declares them with wbLStringKC: wbFULL := wbLStringKC(FULL, 'Name', 0, cpTranslate) and wbDESC := wbLStringKC(DESC, 'Description', 0, cpTranslate) (wbDefinitionsFO4.pas:3692-3694).\n\nThe base schema's FULL and DESC are Fallout: New Vegas's, where they are zstrings in a plugin with no localized flag. Typing them as u32 here is what the bytes actually are: a four-byte ID that re-encodes byte-exact, instead of a 'string' whose trailing padding could not be explained and which the editor therefore showed read-only. Skyrim's schema made the same change for the same reason.\n\nOnly the subrecords that are localized wherever they appear are here. Several signatures are localized in one record and numeric in another (DNAM, NAM1, CNAM), so those need a per-record override rather than a common one, and typing them here would break every record that uses them as numbers.",
+ "format": "fnv.schema/1",
+ "common": {
+  "DESC": {
+   "confidence": "documented",
+   "name": "Description",
+   "note": "wbLStringKC(DESC, 'Description', 0, cpTranslate) in wbDefinitionsFO4.pas:3694 — a string-table index, four bytes. [measured: 4 bytes in every DESC in Fallout4.esm]",
+   "type": "u32"
+  },
+  "FULL": {
+   "confidence": "documented",
+   "name": "Name",
+   "note": "wbLStringKC(FULL, 'Name', 0, cpTranslate) in wbDefinitionsFO4.pas:3692 — a string-table index, four bytes. [measured: 4 bytes in every FULL in Fallout4.esm]",
+   "type": "u32"
+  }
+ }
+}
