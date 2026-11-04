@@ -1534,8 +1534,17 @@ impl<'a> Compiler<'a> {
         rhs: &Expr,
         line: u16,
     ) -> Result<Value, Error> {
-        let result = self.temp(buf, "Bool");
+        // The left operand is evaluated FIRST, then released, and only then is
+        // the result slot allocated — so it lands on the operand's own slot and
+        // the cast becomes a cast of a temporary to itself:
+        //   cmp_eq ::temp2 akSource ::temp1
+        //   cast ::temp2 ::temp2
+        // Allocating the result first put it on a fresh slot instead
+        // (`cast ::temp0 ::temp3`) and cost an extra Bool local in 1,804
+        // functions. Measured on `AltarOfMolagBalScript.OnAnimationEvent`.
         let a = self.expr(buf, lhs, line)?;
+        self.release_temp(buf, &a);
+        let result = self.temp(buf, "Bool");
         // The operand is **cast** into the result slot, not assigned. Measured
         // on `AudioRepeaterActivator01Script.OnCellAttach`, whose
         // `while (bRunning && is3DLoaded())` compiles to

@@ -53,6 +53,14 @@ CALL = re.compile(
 
 def split_params(text):
     """`(Actor akA, float afV = 1.0)` -> ['Actor akA', 'float afV = 1.0']."""
+    # A declaration may continue over several lines with a trailing `\`. The
+    # backslash is not part of the parameter list, and leaving it in makes the
+    # first parameter of the next line parse as `"\\ bool abSneaking"`, which
+    # fails the identifier check and **drops the whole declaration**:
+    # `Game.DisablePlayerControls(bool abMovement = true, ... , int aiContext = 0)`
+    # is written that way, so it was absent from the table entirely and every
+    # call to it was emitted with no arguments at all.
+    text = text.replace("\\", " ")
     text = " ".join(text.split())
     if not text:
         return []
