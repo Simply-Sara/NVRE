@@ -2586,7 +2586,33 @@ impl<'a> Compiler<'a> {
                                 dest = Some(t);
                             }
                         }
-                        let dest = dest.unwrap_or_else(|| Value::Identifier(self.temp(buf, "String")));
+                        let dest = match dest {
+                            Some(d) => d,
+                            None => {
+                                // Neither side converts, so the destination is a
+                                // fresh slot — and the CK reuses the LEFT
+                                // operand's. Measured on
+                                // `CWScript.AddCivilWarAchievment`, where
+                                // `"AddCivilWarAchievment(" + x + ")"` is
+                                // `strcat ::temp9 … ::temp9` then
+                                // `strcat ::temp9 ::temp9 ")"`: the second
+                                // concatenation writes the slot the first read.
+                                // Releasing the left operand before allocating is
+                                // what the FIFO free list needs to hand it back.
+                                let left_is_temp = match &l {
+                                    Value::Identifier(i) => self
+                                        .strings
+                                        .get(*i as usize)
+                                        .map(|n| n.starts_with("::temp"))
+                                        .unwrap_or(false),
+                                    _ => false,
+                                };
+                                if left_is_temp {
+                                    self.release_temp(buf, &l);
+                                }
+                                Value::Identifier(self.temp(buf, "String"))
+                            }
+                        };
                         let mut ins = Instruction::new(opcode_of("strcat"));
                         ins.args.push(dest.clone());
                         ins.args.push(lv.clone());
@@ -2594,6 +2620,18 @@ impl<'a> Compiler<'a> {
                         buf.push(ins, line);
                         // The operands are dead; the destination is not, and in
                         // the converted shapes it IS one of them.
+                        //
+                        // The LEFT operand is released FIRST, and it is what a
+                        // chain reuses. Measured on
+                        // `CWScript.AddCivilWarAchievment`, whose
+                        // `"AddCivilWarAchievment(" + whichCivilWarAchivement + ")"`
+                        // is `strcat ::temp9 … ::temp9` then
+                        // `strcat ::temp9 ::temp9 ")"` — the second concatenation
+                        // writes the SAME slot. The free list is FIFO per type, so
+                        // only the left operand being freed before the right hands
+                        // that slot back out; freeing neither gave
+                        // `strcat ::temp10 ::temp9 ")"` and displaced the rest of
+                        // the function.
                         if lv != dest {
                             self.release_temp(buf, &lv);
                         }
