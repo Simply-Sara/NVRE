@@ -1081,6 +1081,22 @@ impl<'a> Compiler<'a> {
                             crate::signatures::property_type(&cls, name).map(str::to_string)
                         })
                         .or_else(|| self.property_type(name).to_string().into());
+                    // The value slot is allocated BEFORE the conversion, so the
+                    // cast's own temporary takes the HIGHER number. Measured on
+                    // `CWScript.OnInit`, `debugOn = 0` where `debugOn` is a
+                    // Float property and the literal an Int:
+                    //
+                    //   game:  cast ::temp1 0                 <- cast allocated second
+                    //          assign ::temp0 ::temp1
+                    //          propset value ::debugOn_var ::temp0
+                    //   ours:  cast ::temp0 0                 <- cast allocated first
+                    //          assign ::temp1 ::temp0
+                    //          propset value ::debugOn_var ::temp1
+                    //
+                    // Same three instructions, both slots exchanged — and because
+                    // the counter is script-wide, every later function in a
+                    // 400-function script inherited the swap.
+                    let pre_slot = pty.as_ref().map(|t| self.temp(buf, t));
                     let raw = self.expr(buf, value, *line)?;
                     let raw = match &pty {
                         Some(t) => self.coerce_arg(buf, raw, t, *line),
@@ -1098,7 +1114,16 @@ impl<'a> Compiler<'a> {
                         Some(t) => t.clone(),
                         None => self.value_type(buf, &raw),
                     };
-                    let v = self.materialise_copy(buf, raw, &ty, *line);
+                    let v = match pre_slot {
+                        Some(slot) => {
+                            let mut ins = Instruction::new(opcode_of("assign"));
+                            ins.args.push(Value::Identifier(slot));
+                            ins.args.push(raw);
+                            buf.push(ins, *line);
+                            Value::Identifier(slot)
+                        }
+                        None => self.materialise_copy(buf, raw, &ty, *line),
+                    };
                     let o = self.expr(buf, obj, *line)?;
                     let mut ins = Instruction::new(opcode_of("propset"));
                     ins.args.push(Value::Identifier(p));
