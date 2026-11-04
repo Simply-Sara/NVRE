@@ -798,7 +798,6 @@ fn emit_set(
     };
 
     let expr_bytes = crate::value::encode_expr(expr, script)?;
-
     // The `1C` prefix is its own instruction, not part of the `Set` frame:
     // measured, `1C 00 | 01 00` then `15 00 | 0A 00 | …`.
     let mut out = Vec::new();

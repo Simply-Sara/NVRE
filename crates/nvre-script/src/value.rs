@@ -360,6 +360,15 @@ pub fn encode_expr(
                     // Check if command takes arguments
                     let mut arg_tokens = Vec::new();
                     let mut j = i + 3;
+                    // The declared arity caps the argument list, except for a
+                    // command the corpus calls with more than it declares
+                    // (`IsLimbGone 0 10`), where the list runs to the next
+                    // operator instead. See `opcodes::takes_extra_args`.
+                    let cap = if crate::opcodes::takes_extra_args(member) {
+                        usize::MAX
+                    } else {
+                        cmd.args.len()
+                    };
                     while j < filtered.len() {
                         let next = &filtered[j];
                         if next.text == "," {
@@ -377,7 +386,7 @@ pub fn encode_expr(
                             one.text = format!("{}.{}", next.text, filtered[j + 2].text);
                             arg_tokens.push(one);
                             j += 3;
-                            if arg_tokens.len() == cmd.args.len() {
+                            if arg_tokens.len() == cap {
                                 break;
                             }
                             continue;
@@ -387,7 +396,7 @@ pub fn encode_expr(
                         // (Fallout3.esm RobcoRobotScript) passes -1 as the
                         // limb, and reading the `-` as subtraction gives a call
                         // with no arguments followed by a stray operator.
-                        let leading_sign = arg_tokens.len() < cmd.args.len()
+                        let leading_sign = arg_tokens.len() < cap
                             && (next.text == "-" || next.text == "+")
                             && filtered.get(j + 1).is_some_and(|n| n.kind == Kind::Number);
                         if (!leading_sign && op_info(next).is_some())
@@ -402,7 +411,7 @@ pub fn encode_expr(
                                 tok.text = format!("{}{}", next.text, n.text);
                                 arg_tokens.push(tok);
                                 j += 2;
-                                if arg_tokens.len() == cmd.args.len() {
+                                if arg_tokens.len() == cap {
                                     break;
                                 }
                                 continue;
@@ -410,7 +419,7 @@ pub fn encode_expr(
                         }
                         arg_tokens.push(next.clone());
                         j += 1;
-                        if arg_tokens.len() == cmd.args.len() {
+                        if arg_tokens.len() == cap {
                             break;
                         }
                     }
@@ -477,13 +486,20 @@ pub fn encode_expr(
                 // Consume command arguments from filtered tokens
                 let mut arg_tokens = Vec::new();
                 let mut j = i + 1;
+                // Same cap as the dotted form: the declared arity, unless the
+                // corpus calls this command with more (`IsLimbGone 0 10`).
+                let cap = if crate::opcodes::takes_extra_args(&t.text) {
+                    usize::MAX
+                } else {
+                    cmd.args.len()
+                };
                 while j < filtered.len() {
                     let next = &filtered[j];
                     if next.text == "," {
                         j += 1;
                         continue;
                     }
-                    let leading_sign = arg_tokens.len() < cmd.args.len()
+                    let leading_sign = arg_tokens.len() < cap
                         && (next.text == "-" || next.text == "+")
                         && filtered.get(j + 1).is_some_and(|n| n.kind == Kind::Number);
                     if (!leading_sign && op_info(next).is_some())
@@ -498,7 +514,7 @@ pub fn encode_expr(
                             tok.text = format!("{}{}", next.text, n.text);
                             arg_tokens.push(tok);
                             j += 2;
-                            if arg_tokens.len() == cmd.args.len() {
+                            if arg_tokens.len() == cap {
                                 break;
                             }
                             continue;
@@ -506,7 +522,7 @@ pub fn encode_expr(
                     }
                     arg_tokens.push(next.clone());
                     j += 1;
-                    if arg_tokens.len() == cmd.args.len() {
+                    if arg_tokens.len() == cap {
                         break;
                     }
                 }
@@ -1122,5 +1138,55 @@ mod tests {
         // one, and the game runs a wrong encoding.
         let err = value_of("1 + 2", &script_with(&[], &[])).unwrap_err();
         assert!(err.to_string().contains("1 + 2"), "{err}");
+    }
+
+    /// The argument count of an expression-form call, read from the `X` (0x58)
+    /// token's own frame: `58 <opcode:u16> <paramBytes:u16> <count:u16>`.
+    fn expr_call_count(bytes: &[u8]) -> u16 {
+        let at = bytes
+            .iter()
+            .position(|b| *b == 0x58)
+            .expect("an expression-form call writes the X token");
+        u16::from_le_bytes([bytes[at + 5], bytes[at + 6]])
+    }
+
+    #[test]
+    fn a_command_with_a_declared_arity_consumes_exactly_that_many_arguments() {
+        // `GetDistance` declares one argument: it must not swallow the
+        // operator that follows it. This is the guard on the `takes_extra_args`
+        // escape hatch — a command reachable only through it would otherwise
+        // consume the rest of the condition.
+        let bytes = encode_expr(&lex("GetDistance 0 == 0"), &script_with(&[], &[])).unwrap();
+        assert_eq!(expr_call_count(&bytes), 1, "bytes: {bytes:02X?}");
+        // And a command with a second operand and no escape hatch takes one
+        // argument, leaving the second in the stream: `IsActionRef 0 1` is not
+        // a two-argument call.
+        let bytes = encode_expr(&lex("IsActionRef 0 1"), &script_with(&[], &[])).unwrap();
+        assert_eq!(expr_call_count(&bytes), 1, "bytes: {bytes:02X?}");
+    }
+
+    #[test]
+    fn islimbgone_consumes_a_second_argument() {
+        // Measured, DeadMoney.esm's `NVDLC01KitchenGasDamageTriggerSCRIPT`:
+        // `If (IsLimbGone 0 10 != 1)` writes
+        // `58 8E 11 | 0C 00 | 02 00 | 6E 00 00 00 00 | 6E 0A 00 00 00` — two
+        // `n`-tagged ints, then `20 31 20 21 3D` (`1 !=`) as its own operands.
+        // Capping the list at the declared arity leaves `10` in the RPN stream
+        // as a separate operand, which is a different condition (2384 bytes
+        // against the game's 2388).
+        let script = script_with(&[], &[]);
+        let bytes = encode_expr(&lex("IsLimbGone 0 10 != 1"), &script).unwrap();
+        assert_eq!(expr_call_count(&bytes), 2, "two args: {bytes:02X?}");
+        // The whole frame, against the game's own bytes for that condition.
+        assert_eq!(
+            bytes,
+            vec![
+                0x20, 0x58, 0x8E, 0x11, 0x0C, 0x00, 0x02, 0x00, 0x6E, 0x00, 0x00, 0x00, 0x00,
+                0x6E, 0x0A, 0x00, 0x00, 0x00, 0x20, 0x31, 0x20, 0x21, 0x3D
+            ]
+        );
+        // And the same command with one argument still passes one.
+        let one = encode_expr(&lex("IsLimbGone 1"), &script).unwrap();
+        assert_eq!(expr_call_count(&one), 1, "{one:02X?}");
     }
 }

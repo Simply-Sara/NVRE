@@ -270,6 +270,13 @@ fn main() {
             let Some(table) = script_tables.get(&script_edid).cloned() else {
                 continue;
             };
+            if std::env::var("WHY_REMOTE_ORIGIN").is_ok() {
+                eprintln!(
+                    "remote {remote_name} -> script {script_edid} ({:08X}) vars={}",
+                    script_fid,
+                    table.len()
+                );
+            }
             remotes.push(nvre_script::RemoteScript {
                 name: remote_name,
                 vars: table,
@@ -307,6 +314,33 @@ fn main() {
                     .collect::<Vec<_>>()
             );
             if let Ok(name) = std::env::var("WHY_RESOLVE") {
+                // `WHY_RESOLVE=<name>` also prints the remote tables, because a
+                // dotted remote variable resolves through them: when several
+                // names collapse to one id, the question is what the target
+                // script's table actually holds.
+                for r in &remotes {
+                    if name == "*" {
+                        println!("  remote {} vars={}", r.name, r.vars.len());
+                        for v in &r.vars {
+                            println!("    {} id={} int={}", v.name, v.id, v.is_int);
+                        }
+                        continue;
+                    }
+                    let hit = r
+                        .vars
+                        .iter()
+                        .find(|v| v.name.eq_ignore_ascii_case(&name));
+                    println!(
+                        "  remote {} vars={} {}{}",
+                        r.name,
+                        r.vars.len(),
+                        if hit.is_some() { "HAS " } else { "no  " },
+                        name
+                    );
+                    if let Some(v) = hit {
+                        println!("    {} id={} int={}", v.name, v.id, v.is_int);
+                    }
+                }
                 for (i, r) in refs.iter().enumerate() {
                     if r.name.eq_ignore_ascii_case(&name) {
                         println!("  refs[{i}] = {:?} slot={:?}", r.name, r.slot);

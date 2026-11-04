@@ -261,6 +261,16 @@ fn main() {
 
     let mut equal = 0usize;
     let mut differs = 0usize;
+    // Units the compiler **refuses**, which are not the same failure as a unit
+    // that compiles to the wrong bytes and must not be counted as one. Every one
+    // of them names data the record no longer carries — a form whose `EDID` was
+    // renamed after the `.pex` was built, or a remote variable whose `SLSD` id
+    // the record has since renumbered. The bytecode on disk holds the id the
+    // GECK resolved at compile time; the shipped source holds the spelling and
+    // the shipped record holds today's ids, and nothing ties the three back
+    // together. No emitter rule can reproduce them, and the GECK itself would
+    // fail to recompile them today.
+    let mut refused = 0usize;
     let mut first_differs: Vec<(u32, String)> = Vec::new();
     let mut reasons: Vec<String> = Vec::new();
     let mut differing: Vec<&Unit> = Vec::new();
@@ -366,11 +376,10 @@ fn main() {
                 }
             }
             Err(e) => {
-                differs += 1;
-                reasons.push(format!("compile error: {e}"));
-                differing.push(unit);
+                refused += 1;
+                reasons.push(format!("refused: {e}"));
                 if first_differs.len() < 2000 {
-                    first_differs.push((unit.fid, format!("compile error: {e}")));
+                    first_differs.push((unit.fid, format!("refused: {e}")));
                 }
             }
         }
@@ -393,13 +402,16 @@ fn main() {
         println!("  {count:>5}  {reason}");
     }
 
-    let total = equal + differs;
-    let pct = if total == 0 {
+    let total = equal + differs + refused;
+    let comparable = equal + differs;
+    let pct = if comparable == 0 {
         0.0
     } else {
-        equal as f64 * 100.0 / total as f64
+        equal as f64 * 100.0 / comparable as f64
     };
-    println!("byte-equal: {equal} / {total}  ({pct:.2}%)");
+    println!("units:      {total}");
+    println!("byte-equal: {equal} / {comparable}  ({pct:.2}% of the units that compile)");
+    println!("refused:    {refused}  (they name data the record no longer carries)");
     println!("differs:    {differs}");
     // A few source lines behind the most common reasons, so the failure can be
     // read rather than guessed from its message alone.

@@ -3542,6 +3542,34 @@ pub fn expression_opcode(name: &str) -> Option<u16> {
     command_called(name).map(|c| c.opcode)
 }
 
+/// Whether a command accepts **more** arguments than its table entry declares.
+///
+/// Measured, `IsLimbGone`: the table entry carries the limb alone, and the
+/// corpus calls it with one argument in thirteen scripts
+/// (`if IsLimbGone 0 || IsLimbGone 1 …`, `if ThisCreature.IsLimbGone 5 == 1`)
+/// and with **two** in exactly one unit —
+/// `DeadMoney.esm`'s `NVDLC01KitchenGasDamageTriggerSCRIPT`, whose
+/// `If (IsLimbGone 0 10 != 1)` writes `58 8E 11 | 0C 00 | 02 00 | 6E 00 00 00
+/// 00 | 6E 0A 00 00 00`: two `n`-tagged ints, and the second one is the
+/// source's `10`. Reading the declared count as a hard cap leaves `10` in the
+/// RPN stream as a separate operand, which is a different condition rather
+/// than a differently numbered one.
+///
+/// So the count stops at the declared arity **unless** the command is listed
+/// here; for a listed command it stops at the next operator, exactly as the
+/// GECK did. Adding a name here is a corpus measurement, not a guess — a
+/// command that is listed and never takes an extra argument would start
+/// swallowing the operator after its last argument.
+pub fn takes_extra_args(name: &str) -> bool {
+    // Resolve the alias first, so `IsLimbGone` found under either spelling
+    // behaves the same.
+    let canonical = command_called(name).map(|c| c.name).unwrap_or(name);
+    EXTRA_ARGS.iter().any(|n| n.eq_ignore_ascii_case(canonical))
+}
+
+/// The commands [`takes_extra_args`] allows to exceed their declared arity.
+const EXTRA_ARGS: &[&str] = &["IsLimbGone"];
+
 /// Every command whose name starts with `prefix`, case-insensitively.
 pub fn commands_starting_with(prefix: &str) -> Vec<&'static Command> {
     let prefix = prefix.to_ascii_lowercase();

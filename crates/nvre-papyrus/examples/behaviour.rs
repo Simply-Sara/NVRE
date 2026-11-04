@@ -298,7 +298,10 @@ fn main() {
     println!("what the behavioural differences are:");
     let mut v: Vec<_> = why.into_iter().collect();
     v.sort_by(|a, b| b.1.cmp(&a.1));
-    for (k, n) in v.iter().take(14) {
+    // Print every bucket, not the top 14: a truncated taxonomy ranks the work by
+    // the first fourteen causes the corpus happened to hit, which is exactly the
+    // trap of sampling when the question is "what is left".
+    for (k, n) in v.iter() {
         println!(
             "  {n:6}  {k}   e.g. {}",
             example.get(k).map(String::as_str).unwrap_or("")
