@@ -60,19 +60,42 @@
 //! **The parser is done.** `examples/parse_census`: **14,301 / 14,301** `.psc`
 //! in the CK's `Scripts.zip` parse — every source Bethesda shipped.
 //!
-//! **The emitter works, and is not at byte parity.** `examples/semcensus` is
-//! the number that matters, and it measures the *program* rather than the
-//! bytes: every operand resolved through its own file's table, functions
-//! matched by state and name.
+//! **The emitter is close, and measured four ways.** Read them in this order,
+//! because each one answers a different question and the loosest is the one
+//! that reflects whether the code is *right*:
 //!
 //! ```text
-//! 1026 / 149,327 scripts reproduce the Creation Kit exactly
-//! 73,588 / 482,272 instruction and local lines agree
+//! examples/behaviour   (54,620 functions, Skyrim SE)
+//!     byte-identical                  47,640   87.2%
+//!     identical up to temp NUMBERING   4,299    7.9%
+//!     behaviourally different          2,681    4.9%
+//!   scripts with a behavioural difference   1,546 / 14,026   11.0%
+//!
+//! examples/structural  48,232 / 54,528 structurally identical after
+//!                      renumbering both sides (88.5%)
+//! examples/typecensus  51,912 / 54,528 locals type multisets identical (95.2%)
+//! examples/parse_census 14,301 / 14,301 .psc parse
 //! ```
 //!
-//! `examples/parity` reports 0 identical and is *not* the useful number: it
-//! compares bytes, and the two compilers order their string tables
-//! differently, so every index differs even where the code does not.
+//! `behaviour` is the headline: it canonicalises each operand by **where its
+//! value came from**, so `::temp3` and `::temp7` around the same instructions
+//! are the same program, and only a different opcode, operand, branch target or
+//! length counts as different.
+//!
+//! `structural` is the work list `behaviour` cannot give. It renumbers both
+//! sides relative to their own temporary base and reports the first instruction
+//! that STILL differs, so a uniform offset does not drown the real defects.
+//!
+//! `typecensus` compares a function's locals table **by multiset of type names**
+//! — pure type information, no instructions — which isolates the type model from
+//! instruction selection and from the allocator. It is what found that the
+//! signature harvest was producing garbage.
+//!
+//! `examples/parity` compares raw bytes and is *not* a useful headline: the two
+//! compilers order their string tables differently, so every index differs even
+//! where the code does not. File-level byte identity is also unreachable by
+//! nature — the header stamps `compilation_time`, `user_name` and
+//! `machine_name`.
 //!
 //! # Rules the corpus settled
 //!
