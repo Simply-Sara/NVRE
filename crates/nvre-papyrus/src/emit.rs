@@ -1292,17 +1292,33 @@ impl<'a> Compiler<'a> {
     /// `itemValues[myValue] = true` compiles to `assign ::temp8 bool` followed
     /// by `array_setelement itemValues myValue ::temp8`.
     fn materialise(&mut self, buf: &mut FnBuf, v: Value, ty: &str, line: u16) -> Value {
-        match v {
-            Value::Identifier(_) => v,
-            other => {
-                let tmp = self.temp(buf, ty);
-                let mut ins = Instruction::new(opcode_of("assign"));
-                ins.args.push(Value::Identifier(tmp));
-                ins.args.push(other);
-                buf.push(ins, line);
-                Value::Identifier(tmp)
-            }
+        // **Already a temporary** passes through; anything else is copied into
+        // one — including a plain variable or parameter. The rule is that slot 2
+        // of a `propset` is always a `::tempN`, not merely always non-literal:
+        //   `DA02.stage = stageToSet`      (stageToSet is an int variable)
+        //   -> assign ::temp0 stageToSet
+        //      propset stage ::DA02_var ::temp0
+        // Returning an identifier unchanged covered literals and call results but
+        // left variables bare, which cost the temporary AND started the
+        // script-wide counter one lower than the game's, shifting every later
+        // function in the file. Witness: DA02FixStageScript.
+        let already_temp = match &v {
+            Value::Identifier(i) => self
+                .strings
+                .get(*i as usize)
+                .map(|s| s.starts_with("::temp"))
+                .unwrap_or(false),
+            _ => false,
+        };
+        if already_temp {
+            return v;
         }
+        let tmp = self.temp(buf, ty);
+        let mut ins = Instruction::new(opcode_of("assign"));
+        ins.args.push(Value::Identifier(tmp));
+        ins.args.push(v);
+        buf.push(ins, line);
+        Value::Identifier(tmp)
     }
 
     /// A value that can be assigned to.
