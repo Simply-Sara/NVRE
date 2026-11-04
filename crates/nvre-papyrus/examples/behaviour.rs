@@ -208,9 +208,26 @@ fn main() {
         for gstate in g.objects.iter().flat_map(|o| o.states.iter()) {
             for gf in &gstate.functions {
                 let gname = g.text_or_empty(gf.name).to_string();
-                let mine = c.states.iter().flat_map(|(_, fs)| fs.iter()).find(|f| {
-                    c.strings.get(f.name as usize).map(String::as_str) == Some(gname.as_str())
-                });
+                // Match the STATE as well as the name: a function name can
+                // appear in several states with different bodies, and taking the
+                // first match silently compares the wrong pair — which showed up
+                // as phantom "operand value on callmethod" differences.
+                let want_state = g.text_or_empty(gstate.name).to_ascii_lowercase();
+                let mine = c
+                    .states
+                    .iter()
+                    .find(|(s, _)| {
+                        c.strings
+                            .get(*s as usize)
+                            .map(|n| n.to_ascii_lowercase() == want_state)
+                            .unwrap_or(false)
+                    })
+                    .and_then(|(_, fs)| {
+                        fs.iter().find(|f| {
+                            c.strings.get(f.name as usize).map(String::as_str)
+                                == Some(gname.as_str())
+                        })
+                    });
                 funcs += 1;
                 let Some(m) = mine else {
                     behavioural += 1;
