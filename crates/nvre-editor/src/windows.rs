@@ -236,7 +236,12 @@ pub fn spawn_viewport(mut commands: Commands) {
         .spawn((
             Window {
                 title: VIEWPORT_TITLE.into(),
-                resolution: (1280, 800).into(),
+                // A third of the old 1280x800's *area* rather than a third of
+                // each side: 1280x800 is 1,024,000 px and 740x462 is 341,880,
+                // so the viewport sits beside the panels instead of taking the
+                // screen without shrinking to a thumbnail. Its aspect is 1.6,
+                // the same as before, so nothing in the scene looks distorted.
+                resolution: (740, 462).into(),
                 position: WindowPosition::new(IVec2::new(40, 200)),
                 ..default()
             },
