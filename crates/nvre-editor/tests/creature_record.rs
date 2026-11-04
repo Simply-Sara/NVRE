@@ -351,7 +351,7 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     let expected_traits = schema_bits("Traits", "ACBS.flags");
     assert_eq!(expected_general.len(), 10, "General names ten flags");
     assert_eq!(expected_animation.len(), 8, "Animation names the eight movement flags");
-    assert_eq!(expected_traits.len(), 3, "Traits keeps the three that are about the actor");
+    assert_eq!(expected_traits.len(), 1, "Traits keeps Weapon & Shield?");
     let expected_model = schema_bits("ModelList", "ACBS.flags");
     assert_eq!(
         expected_model.len(),
@@ -364,6 +364,12 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         1,
         "Stats names PC Level Mult, which governs its own level field"
     );
+    let expected_blood = schema_bits("Blood", "ACBS.flags");
+    assert_eq!(
+        expected_blood.len(),
+        2,
+        "Blood names the two blood flags"
+    );
     // Every named bit is on at least one tab, and on exactly one: the word is
     // split three ways and the same checkbox on two tabs is not a split but a
     // duplicate. A checkbox on no tab is the failure that matters — it would be
@@ -373,6 +379,7 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         .chain(&expected_animation)
         .chain(&expected_model)
         .chain(&expected_stats)
+        .chain(&expected_blood)
         .chain(&expected_traits)
         .copied()
         .collect();
@@ -405,11 +412,12 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         assert!(all.contains(bit), "bit {bit} is on no tab at all");
     }
 
-    let split: [(&str, &Vec<u32>); 5] = [
+    let split: [(&str, &Vec<u32>); 6] = [
         ("General", &expected_general),
         ("Animation", &expected_animation),
         ("ModelList", &expected_model),
         ("Stats", &expected_stats),
+        ("Blood", &expected_blood),
         ("Traits", &expected_traits),
     ];
     for (tab, expected) in split {
@@ -1260,4 +1268,68 @@ fn pc_level_mult_sits_on_the_leveling_section() {
         !traits_rows.iter().any(|(t, _)| t == "PC Level Mult"),
         "PC Level Mult is still on the Traits tab: {traits_rows:?}"
     );
+}
+
+#[test]
+fn the_blood_flags_sit_on_the_blood_section() {
+    // Bits 11 and 12 — No Blood Spray, No Blood Decal — were the last two on
+    // Traits' Flags section, which is about the actor. They are about blood, and
+    // there is a Blood tab.
+    //
+    // The Blood section already carried `NAM4` and `CNAM`, the impact dataset and
+    // the blood colour, so it had to start naming `ACBS` as well. A section that
+    // lists a bit for a subrecord it does not name draws nothing at all.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let titles = |v: &[&nvre_esm::schema::SectionDef]| -> Vec<String> {
+        v.iter().map(|s| s.title.clone()).collect()
+    };
+    let sections = session.schema.page_sections("CREA");
+    let blood_tab = sections_on_tab(&sections, Some("Blood"));
+    let blood = blood_tab
+        .iter()
+        .find(|s| s.title == "Blood")
+        .unwrap_or_else(|| panic!("the Blood tab has no Blood section: {:?}", titles(&blood_tab)));
+    assert_eq!(
+        blood.flags_bits.get("ACBS.flags").map(Vec::as_slice),
+        Some(&[11u32, 12][..]),
+        "the Blood section shows the two blood flags: {:?}",
+        blood.flags_bits.get("ACBS.flags")
+    );
+    assert!(
+        blood.subs.iter().any(|t| t == "ACBS"),
+        "the Blood section does not name ACBS, so the flags would not draw: {:?}",
+        blood.subs
+    );
+    assert_eq!(
+        blood.fields.get("ACBS").map(Vec::as_slice),
+        Some(&["flags".to_string()][..]),
+        "the Blood section shows the whole ACBS rather than its flags: {:?}",
+        blood.fields
+    );
+
+    // Drawn: both checkboxes on the Blood tab, and neither on Traits.
+    state.tab.chosen = Some("Blood".to_string());
+    let blood_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    for want in ["No Blood Spray", "No Blood Decal"] {
+        assert!(
+            blood_rows.iter().any(|(t, _)| t == want),
+            "no {want:?} checkbox on the Blood tab: {blood_rows:?}"
+        );
+    }
+    // And the section still shows what it showed before — the impact dataset and
+    // the blood colour are the rest of the Blood tab's reason to exist.
+    assert!(
+        blood_rows.iter().any(|(t, _)| t == "Impact Dataset"),
+        "the Blood section lost its other subrecords: {blood_rows:?}"
+    );
+    state.tab.chosen = Some("Traits".to_string());
+    let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    for gone in ["No Blood Spray", "No Blood Decal"] {
+        assert!(
+            !traits_rows.iter().any(|(t, _)| t == gone),
+            "{gone:?} is still on the Traits tab: {traits_rows:?}"
+        );
+    }
 }

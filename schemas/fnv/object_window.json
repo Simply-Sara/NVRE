@@ -734,9 +734,7 @@
       },
       "flags_bits": {
        "ACBS.flags": [
-        2,
-        11,
-        12
+        2
        ]
       },
       "subs": [
@@ -938,7 +936,19 @@
       "title": "Model Flags"
      },
      {
+      "fields": {
+       "ACBS": [
+        "flags"
+       ]
+      },
+      "flags_bits": {
+       "ACBS.flags": [
+        11,
+        12
+       ]
+      },
       "subs": [
+       "ACBS",
        "NAM4",
        "CNAM"
       ],
