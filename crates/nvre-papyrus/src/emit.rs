@@ -46,6 +46,15 @@ use crate::parse::{
 use crate::pex::{Function, Instruction, StrIndex, Value};
 use crate::Error;
 
+/// Whether `PAPYRUS_TRACE` is set, read once.
+///
+/// Allocation and release happen for every temporary in every function, so the
+/// variable is resolved through a `OnceLock` rather than a syscall per call.
+fn tracing() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PAPYRUS_TRACE").is_some())
+}
+
 /// The compile-time view of one script: what names exist and what they are.
 ///
 /// Name resolution needs to know whether a bare word is a local, a parameter, a
@@ -856,6 +865,14 @@ impl<'a> Compiler<'a> {
         // `ArenaCrowdQuestScript.MoveEveryoneIntoPlace` still alternates
         // `::temp0 ::temp1` from one statement to the next — that falls out of
         // the ORDER the slots are released in, not out of the list being a stack.
+        if tracing() {
+            let names: Vec<String> = buf
+                .free_temps
+                .iter()
+                .map(|(i, _)| self.strings.get(*i as usize).cloned().unwrap_or_default())
+                .collect();
+            eprintln!("  alloc {ty:<16} free={names:?}");
+        }
         let t = self.var_type(ty);
         if let Some(at) = buf.free_temps.iter().position(|(_, ft)| *ft == t) {
             let (i, _) = buf.free_temps.remove(at);
@@ -894,6 +911,12 @@ impl<'a> Compiler<'a> {
             return;
         }
         if let Some((_, t)) = buf.locals.iter().find(|(n, _)| n == i) {
+            if tracing() {
+                eprintln!(
+                    "  free  {}",
+                    self.strings.get(*i as usize).cloned().unwrap_or_default()
+                );
+            }
             buf.free_temps.push((*i, *t));
         }
     }
@@ -2454,7 +2477,19 @@ impl<'a> Compiler<'a> {
                         }
                         let defs = crate::signatures::defaults(name);
                         ins.varargs = self.pad_defaults(dealt, defs, name);
+                        let released: Vec<Value> = ins.varargs.clone();
                         buf.push(ins, line);
+                        // A temporary consumed as an argument is released once
+                        // the call is emitted. The member-call path did this and
+                        // the bare-call path did not, so every temporary passed
+                        // to `f(...)` stayed live for the rest of the function:
+                        // `activate(self, true)` in
+                        // `ActivateAgainAfterDelay.OnActivate` left ::temp0
+                        // occupied and the later `cast ::temp0 self` became
+                        // `cast ::temp4 self`, displacing everything after it.
+                        for a in &released {
+                            self.release_temp(buf, a);
+                        }
                         Value::Identifier(tmp)
                     }
                     Expr::Member(obj, method) => {
