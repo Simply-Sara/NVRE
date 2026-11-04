@@ -2505,18 +2505,43 @@ impl<'a> Compiler<'a> {
                             }
                             return Ok(Value::Identifier(tmp));
                         }
-                        // A bare call resolves against the implicitly-imported
-                        // engine classes BEFORE it resolves as a method on
-                        // `self`, because `Game`, `Utility`, `Math` and `Debug`
-                        // are in scope in every script without an `Import`:
+                        // A bare call resolves against a `global` function
+                        // BEFORE it resolves as a method on `self`. `Game`,
+                        // `Utility`, `Math` and `Debug` are in scope in every
+                        // script without an `Import`, and so are the globals of
+                        // any other class the corpus declares one on:
                         //   wait (RandomFloat (DelayMin, DelayMax))
                         //   -> callstatic utility RandomFloat ::temp3 …
                         //   -> callstatic utility wait ::NoneVar ::temp3
-                        // Emitting `callmethod RandomFloat self` is accepted by
-                        // the loader and fails at run time, because `self` has no
-                        // such member. The script's own declarations win.
-                        if !self.declares_own_function(name) {
-                            if let Some(cls) = crate::signatures::imported_class(name) {
+                        //   log("CWScript", "…")            in CWScript
+                        //   -> callstatic CWScript log ::NoneVar …
+                        //   StopInstance(instance)          anywhere
+                        //   -> callstatic sound stopinstance ::NoneVar …
+                        // Emitting `callmethod f self` is accepted by the loader
+                        // and fails at run time, because `self` has no such
+                        // member. The script's own declarations win.
+                        //
+                        // `globals::GLOBALS` is the whole set, measured: over the
+                        // corpus no function is `global` on more than one class,
+                        // so the name alone decides the class. It supersedes
+                        // `signatures::imported_class`, which covers only the
+                        // four always-imported classes and so missed
+                        // `CWScript.log`, `Sound.StopInstance`,
+                        // `Weather.ReleaseOverride`, `ImageSpaceModifier.
+                        // RemoveCrossfade`, `Message.ResetHelpMessage` and the
+                        // rest — 455 call sites that were emitted as
+                        // `callmethod` on a receiver with no such member.
+                        if let Some(cls) = crate::globals::global_class(name)
+                            .or_else(|| crate::signatures::imported_class(name))
+                        {
+                            // A `global` on the script's own class is a
+                            // `callstatic` even though the script declares it —
+                            // `CWScript.log` is the witness. Elsewhere the
+                            // script's own declaration wins, because it shadows
+                            // the imported name.
+                            if self.class_is_self_or_ancestor(cls)
+                                || !self.declares_own_function(name)
+                            {
                                 let target = self.intern(cls);
                                 let ty = self.static_result_type(cls, name);
                                 let tmp = self.temp(buf, ty);
@@ -2645,7 +2670,10 @@ impl<'a> Compiler<'a> {
                             }
                         }
                         if let Expr::Ident(class) = obj.as_ref() {
-                            if let Some(target) = self.static_target(class) {
+                            if let Some(target) = self
+                                .static_target(class)
+                                .or_else(|| self.class_global_target(buf, class))
+                            {
                                 let m = self.intern(method);
                                 // The result's type decides the temporary, and
                                 // that decides whether a later comparison needs
@@ -2868,6 +2896,9 @@ impl<'a> Compiler<'a> {
     /// Needed because a script's OWN function shadows an implicitly-imported
     /// engine function of the same name: a script that declares `abs(...)`
     /// calls its own, not `Math.Abs`.
+    ///
+    /// A `global` declaration on the script's own class is the exception — see
+    /// [`Self::class_is_self_or_ancestor`].
     fn declares_own_function(&self, name: &str) -> bool {
         fn walk(d: &crate::parse::DeclKind, want: &str) -> bool {
             match d {
@@ -2880,6 +2911,76 @@ impl<'a> Compiler<'a> {
             }
         }
         self.script.decls.iter().any(|d| walk(&d.kind, name))
+    }
+
+    /// Whether `class` is this script's own class or one of its ancestors.
+    ///
+    /// Needed because a `global` function declared on the script's **own** class
+    /// is a `callstatic` on that class even though the script declares it:
+    /// `CWScript` declares `Function log(...) Global` and calls it bare, and the
+    /// game writes `callstatic CWScript log`. Treating "the script declares this
+    /// name" as "it is a method on self" emitted `callmethod log self`, a member
+    /// the VM has no slot for.
+    fn class_is_self_or_ancestor(&self, class: &str) -> bool {
+        if self.script.name.eq_ignore_ascii_case(class) {
+            return true;
+        }
+        let mut here = self
+            .script
+            .parent
+            .clone()
+            .or_else(|| Some(self.symbols.parent.clone()).filter(|p| !p.is_empty()));
+        let mut hops = 0;
+        while let Some(c) = here {
+            if c.eq_ignore_ascii_case(class) {
+                return true;
+            }
+            if hops > 12 {
+                break;
+            }
+            hops += 1;
+            here = crate::signatures::parent(&c).map(str::to_string);
+        }
+        false
+    }
+
+    /// The interned name of a class whose functions can be called statically,
+    /// or `None`.
+    ///
+    /// [`Self::static_target`] covers the four classes that are in scope in
+    /// every script. This adds the rest: a class that declares `global`
+    /// functions is a receiver you can call on by class name —
+    /// `Sound.StopInstance(x)` compiles to `callstatic sound StopInstance`, and
+    /// reading `Sound` as a variable emits `callmethod StopInstance sound`, a
+    /// call on a member the VM has no slot for. Measured on
+    /// `CWSiegeScript::StopCombatSoundsLoop`.
+    ///
+    /// A name that is a parameter, a local or a declared property is a VALUE
+    /// however it is spelled, so it is never a class here: `Sound Property sfx
+    /// auto` makes `sfx.Play(...)` a call on the instance, and an earlier
+    /// version treated exactly that as `callstatic` and ran against the wrong
+    /// receiver.
+    fn class_global_target(&mut self, buf: &FnBuf, name: &str) -> Option<StrIndex> {
+        if !crate::globals::is_global_class(name) {
+            return None;
+        }
+        let lower = name.to_ascii_lowercase();
+        if buf
+            .params
+            .iter()
+            .chain(&buf.declared)
+            .any(|(p, _)| *p == lower)
+        {
+            return None;
+        }
+        if self.type_of(name).is_some() {
+            return None;
+        }
+        // `self` is the script's own object, never a class.
+        if lower == "self" {
+            return None;
+        }
+        Some(self.intern(&lower))
     }
 
     fn static_target(&mut self, name: &str) -> Option<StrIndex> {

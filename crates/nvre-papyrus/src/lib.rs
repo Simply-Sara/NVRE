@@ -184,6 +184,7 @@
 
 pub mod check;
 pub mod emit;
+pub mod globals;
 pub mod lex;
 pub mod opcodes;
 pub mod parse;
