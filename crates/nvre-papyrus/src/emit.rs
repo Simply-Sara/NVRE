@@ -2057,6 +2057,35 @@ impl<'a> Compiler<'a> {
                 // DLC2ThirskDoorScript, where `akActivator == Game.GetPlayer()`
                 // compiles to `cast ::temp2 ::temp1` followed by
                 // `cmp_eq ::temp3 akActivator ::temp2`.
+                // `+` with a String on either side is CONCATENATION, not
+                // addition, and it is a two-instruction shape: the left operand
+                // is cast into the result slot, then `strcat` appends the right
+                // to it in place.
+                //   trace(self + " Opening")
+                //   -> cast ::temp2 self
+                //      strcat ::temp2 ::temp2 " Opening"
+                // Choosing `fadd` there produced `fadd ::temp7 self " Opening"`,
+                // which is not a program the VM can run. Witness:
+                // BlackreachDoorScript.SetOpen.
+                if op == "+" {
+                    let lt = self.value_type(buf, &l);
+                    let rt = self.value_type(buf, &r);
+                    if lt.eq_ignore_ascii_case("string") || rt.eq_ignore_ascii_case("string") {
+                        self.release_temp(buf, &l);
+                        let result = self.temp(buf, "String");
+                        let mut ins = Instruction::new(opcode_of("cast"));
+                        ins.args.push(Value::Identifier(result));
+                        ins.args.push(l);
+                        buf.push(ins, line);
+                        let mut ins = Instruction::new(opcode_of("strcat"));
+                        ins.args.push(Value::Identifier(result));
+                        ins.args.push(Value::Identifier(result));
+                        ins.args.push(r.clone());
+                        buf.push(ins, line);
+                        self.release_temp(buf, &r);
+                        return Ok(Value::Identifier(result));
+                    }
+                }
                 let is_cmp = matches!(op.as_str(), "==" | "!=" | "<" | "<=" | ">" | ">=");
                 // Arithmetic operands are converted the same way. `GameDaysPassed
                 // .Value + 1` casts the int literal to Float before the `fadd`,
