@@ -1333,3 +1333,65 @@ fn the_blood_flags_sit_on_the_blood_section() {
         );
     }
 }
+
+#[test]
+fn the_unverified_bit_stays_marked_unverified() {
+    // Bit 2 is the one ACBS flag nobody has explained. xEdit's own source names it
+    // 'Weapon & Shield?' with the question mark, fopdoc gives it no meaning, and the
+    // GECK wiki's ActorHasBaseFlag table writes it the same way. It is on 22 of 1,578
+    // creatures, all supermutants, behemoths or feral ghouls, and on only 6 of the 475
+    // that carry a melee list — so it is not "can hold a weapon".
+    //
+    // The note says all of that, and the name keeps its question mark. Both matter:
+    // a schema that quietly drops the '?' turns a guess into a fact, and the next
+    // reader has no way to know which bits were verified and which were inherited.
+    let Some((session, _)) = open_creature() else {
+        return;
+    };
+    let acbs = session
+        .schema
+        .records
+        .get("CREA")
+        .and_then(|r| r.subrecords.get("ACBS"))
+        .expect("ACBS is a subrecord of CREA");
+    let nvre_esm::TypeDef::Struct(fields) = session.schema.resolve_def(&acbs.ty) else {
+        panic!("ACBS is a struct");
+    };
+    let nvre_esm::TypeDef::Flags { bits, .. } = &fields
+        .iter()
+        .find(|f| f.name == "flags")
+        .expect("ACBS.flags")
+        .ty
+    else {
+        panic!("ACBS.flags is a flags word");
+    };
+    let name = bits
+        .iter()
+        .find(|(bit, _)| *bit == 2)
+        .map(|(_, n)| n.clone())
+        .unwrap_or_else(|| panic!("bit 2 is not named at all"));
+    assert!(
+        name.contains('?'),
+        "bit 2 is named {name:?} without its question mark — the name is a guess, and \\
+         dropping the '?' presents it as verified"
+    );
+    // The note is not loaded into the schema — `note` is a JSON comment for
+    // readers, never parsed — so it is checked where it lives, on disk.
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv/gameplay.json");
+    let json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).expect("the schema file")).expect("valid JSON");
+    let note = json
+        .pointer("/records/CREA/subrecords/ACBS/type/struct/0/note")
+        .and_then(|v| v.as_str())
+        .unwrap_or_else(|| panic!("no note on ACBS's struct in {}", path.display()));
+    assert!(
+        note.contains("unverified"),
+        "the ACBS note does not mark bit 2 unverified: {note:?}"
+    );
+    // And the evidence that ruled out the obvious reading, so the note is not just a
+    // shrug: someone checked whether it means "can hold a weapon".
+    assert!(
+        note.contains("6 of the 475"),
+        "the note does not record the melee-list count that ruled out 'can hold a weapon'"
+    );
+}
