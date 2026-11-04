@@ -1403,7 +1403,23 @@ class Converter:
         if kind == "wbFloat":
             return "f32", self._note(ctx)
         if kind in ("wbFormIDCk", "wbFormIDCkNoReach", "wbFormIDCK", "wbFormIDck", "wbFormID"):
-            return "formid", self._note(ctx)
+            # `wbFormIDCk(SIG, 'Name', [STAT, MISC])` names the record types the
+            # field may point at. That list is what makes the editor's picker a
+            # filtered list rather than all 44,550 objects, and xEdit declares it
+            # 603 times in this file alone — so it is carried into the schema as
+            # `{"formid": {"of": [...]}}` rather than dropped.
+            #
+            # `NULL` in the list means "none", which is the zero value every
+            # FormID already allows; it is left out because it is not a record
+            # type a picker can offer.
+            of = []
+            if len(parts) > 2:
+                for t in re.findall(r"\b([A-Z0-9]{4})\b", parts[2]):
+                    if t != "NULL":
+                        of.append(t)
+            if not of:
+                return "formid", self._note(ctx)
+            return {"formid": {"of": of}}, self._note(ctx)
         if kind in ("wbString", "wbStringKC", "wbStringLC", "wbStringT", "wbStringForward"):
             return self._convert_string(parts)
         if kind in ("wbLString", "wbLStringKC"):

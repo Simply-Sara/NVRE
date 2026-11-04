@@ -319,6 +319,9 @@ fn decode_type_value(
 ) -> Result<Json, String> {
     match ty {
         Type::Prim(p) => decode_prim(*p, c, ctx),
+        // A targeted FormID is a FormID: the targets are the editor's business,
+        // not the bytes'.
+        Type::FormIdRef { .. } => decode_prim(Prim::FormId, c, ctx),
         Type::Repeat(inner) => {
             let mut elems = Vec::new();
             let mut i = 0usize;

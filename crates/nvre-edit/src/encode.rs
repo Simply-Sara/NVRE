@@ -242,6 +242,8 @@ pub fn encode_type(
 ) -> Result<(), EncodeError> {
     match t {
         TypeDef::Prim(p) => encode_prim(*p, value, out, path),
+        // A targeted FormID writes exactly the four bytes a plain one does.
+        TypeDef::FormIdRef { .. } => encode_prim(Prim::FormId, value, out, path),
         TypeDef::Named(_) => Err(EncodeError::Value {
             path: path.to_string(),
             msg: "unresolved named type".into(),
@@ -1575,6 +1577,45 @@ pub fn derived_paths(
     out.sort();
     out.dedup();
     out
+}
+
+/// Whether the field at `path` is a FormID, so the grid offers a picker for it.
+///
+/// A FormID decodes to a number, and a number gets a spinner by default — which
+/// is a field a modder has to type a hex ID into. The layout is the only thing
+/// that knows the field is a reference, so the grid asks it.
+pub fn is_formid_field(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    path: &str,
+) -> bool {
+    let Some(def) = schema.lookup_in_block(rec_sig, sub_sig, block) else {
+        return false;
+    };
+    fn at_path(t: &TypeDef, parts: &[&str]) -> bool {
+        let Some((part, rest)) = parts.split_first() else {
+            return matches!(t, TypeDef::Prim(Prim::FormId) | TypeDef::FormIdRef { .. });
+        };
+        match t {
+            TypeDef::Struct(fields) => match fields.iter().find(|f| f.name == *part) {
+                Some(f) => at_path(&f.ty, rest),
+                None => false,
+            },
+            TypeDef::Union(variants) => variants.iter().any(|(_, v)| at_path(v, parts)),
+            TypeDef::PeekUnion { variants, .. } | TypeDef::ValueUnion { variants, .. } => {
+                variants.iter().any(|v| at_path(v, parts))
+            }
+            _ => false,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    at_path(&schema.resolve_def(&def.ty), &parts)
 }
 
 /// A flat, editable view of one record: every subrecord with its signature,

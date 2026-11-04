@@ -38,7 +38,13 @@
      "confidence": "documented",
      "name": "Attraction Rule",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), AACT.DATA",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "AORU"
+       ]
+      }
+     }
     },
     "DNAM": {
      "confidence": "documented",
@@ -846,7 +852,13 @@
      "confidence": "documented",
      "name": "Interaction Keyword",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ACTI.KNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "KYWD"
+       ]
+      }
+     }
     },
     "KSIZ": {
      "confidence": "documented",
@@ -1359,7 +1371,13 @@
      "confidence": "documented",
      "name": "Sound - Looping",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ACTI.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "STCP": {
      "confidence": "documented",
@@ -1414,13 +1432,25 @@
      "confidence": "documented",
      "name": "Sound - Activation",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ACTI.VNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "WNAM": {
      "confidence": "documented",
      "name": "Water Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ACTI.WNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "WATR"
+       ]
+      }
+     }
     }
    }
   },
@@ -1520,7 +1550,13 @@
      "confidence": "documented",
      "name": "Light",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ADDN.LNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LIGH"
+       ]
+      }
+     }
     },
     "OBND": {
      "confidence": "documented",
@@ -1565,7 +1601,13 @@
      "confidence": "documented",
      "name": "Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ADDN.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     }
    }
   },
@@ -3055,49 +3097,97 @@
      "confidence": "documented",
      "name": "Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.Additional Races.MODL. The group 'Additional Races' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "NAM0": {
      "confidence": "documented",
      "name": "Male Skin Texture",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.NAM0",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "NAM1": {
      "confidence": "documented",
      "name": "Female Skin Texture",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.NAM1",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "NAM2": {
      "confidence": "documented",
      "name": "Male Skin Texture Swap List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.NAM2",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "NAM3": {
      "confidence": "documented",
      "name": "Female Skin Texture Swap List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.NAM3",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "ONAM": {
      "confidence": "documented",
      "name": "Art Object",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.ONAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARTO"
+       ]
+      }
+     }
     },
     "RNAM": {
      "confidence": "documented",
      "name": "Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.RNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "SNDD": {
      "confidence": "documented",
      "name": "Footstep Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMA.SNDD",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FSTS"
+       ]
+      }
+     }
     }
    }
   },
@@ -3280,7 +3370,13 @@
         "confidence": "documented",
         "name": "Armor Addon",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMO.Models.MODL",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "ARMA"
+          ]
+         }
+        }
        }
       }
      },
@@ -3532,13 +3628,25 @@
      "confidence": "documented",
      "name": "Alternate Block Material",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMO.BAMT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MATT"
+       ]
+      }
+     }
     },
     "BIDS": {
      "confidence": "documented",
      "name": "Block Bash Impact Data Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMO.BIDS",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IPDS"
+       ]
+      }
+     }
     },
     "BOD2": {
      "confidence": "documented",
@@ -3740,13 +3848,25 @@
      "confidence": "documented",
      "name": "Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMO.RNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "TNAM": {
      "confidence": "documented",
      "name": "Template Armor",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ARMO.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARMO"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -3947,7 +4067,13 @@
      "confidence": "documented",
      "name": "Environment Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ASPC.BNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REVB"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -3998,13 +4124,25 @@
      "confidence": "documented",
      "name": "Use Sound from Region (Interiors Only)",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ASPC.RDAT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REGN"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Looping Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), ASPC.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "WNAM": {
      "confidence": "documented",
@@ -4275,7 +4413,13 @@
      "confidence": "documented",
      "name": "Texture",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BNDS.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     }
    }
   },
@@ -4603,7 +4747,13 @@
      "confidence": "documented",
      "name": "Featured Item Message",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BOOK.FIMD",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MESG"
+       ]
+      }
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -4621,7 +4771,13 @@
      "confidence": "documented",
      "name": "Inventory Art",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BOOK.INAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "STAT"
+       ]
+      }
+     }
     },
     "KSIZ": {
      "confidence": "documented",
@@ -4775,7 +4931,13 @@
         "confidence": "documented",
         "name": "Gore Effects - Dismember Blood Art",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BPTD.Body Parts.BNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "ARTO"
+          ]
+         }
+        }
        },
        "BPND": {
         "confidence": "documented",
@@ -5025,7 +5187,13 @@
         "confidence": "documented",
         "name": "Meat Cap TextureSet",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BPTD.Body Parts.CNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "TXST"
+          ]
+         }
+        }
        },
        "DNAM": {
         "confidence": "documented",
@@ -5049,13 +5217,25 @@
         "confidence": "documented",
         "name": "Gore Effects - Blood Impact Material Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BPTD.Body Parts.INAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "MATT"
+          ]
+         }
+        }
        },
        "JNAM": {
         "confidence": "documented",
         "name": "On Cripple - Blood Impact Material Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BPTD.Body Parts.JNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "MATT"
+          ]
+         }
+        }
        },
        "NAM1": {
         "confidence": "documented",
@@ -5067,7 +5247,13 @@
         "confidence": "documented",
         "name": "Collar TextureSet",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), BPTD.Body Parts.NAM2",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "TXST"
+          ]
+         }
+        }
        },
        "NAM4": {
         "confidence": "documented",
@@ -5336,7 +5522,13 @@
      "confidence": "documented",
      "name": "Image Space Modifier",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CAMS.MNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IMAD"
+       ]
+      }
+     }
     }
    }
   },
@@ -5393,7 +5585,13 @@
      "confidence": "documented",
      "name": "Lighting Template",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.LTMP",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LGTM"
+       ]
+      }
+     }
     },
     "MHDT": {
      "confidence": "documented",
@@ -5431,7 +5629,13 @@
      "confidence": "documented",
      "name": "In PreVis File Of",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.RVIS",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CELL"
+       ]
+      }
+     }
     },
     "TVDT": {
      "confidence": "documented",
@@ -5452,19 +5656,37 @@
      "confidence": "documented",
      "name": "Acoustic Space",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XCAS",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ASPC"
+       ]
+      }
+     }
     },
     "XCCM": {
      "confidence": "documented",
      "name": "Sky/Weather from Region",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XCCM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REGN"
+       ]
+      }
+     }
     },
     "XCIM": {
      "confidence": "documented",
      "name": "Image Space",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XCIM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IMGS"
+       ]
+      }
+     }
     },
     "XCLC": {
      "confidence": "documented",
@@ -5993,7 +6215,13 @@
      "confidence": "documented",
      "name": "Music Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XCMO",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MUSC"
+       ]
+      }
+     }
     },
     "XCRI": {
      "confidence": "documented",
@@ -6041,25 +6269,49 @@
      "confidence": "documented",
      "name": "Water",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XCWT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "WATR"
+       ]
+      }
+     }
     },
     "XEZN": {
      "confidence": "documented",
      "name": "Encounter Zone",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XEZN",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ECZN"
+       ]
+      }
+     }
     },
     "XGDR": {
      "confidence": "documented",
      "name": "God Rays",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XGDR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GDRY"
+       ]
+      }
+     }
     },
     "XILL": {
      "confidence": "documented",
      "name": "Lock List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XILL",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "XILW": {
      "confidence": "documented",
@@ -6090,7 +6342,13 @@
      "confidence": "documented",
      "name": "Location",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CELL.XLCN",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LCTN"
+       ]
+      }
+     }
     },
     "XOWN": {
      "confidence": "documented",
@@ -6466,13 +6724,25 @@
      "confidence": "documented",
      "name": "Mod Scrap Scalar",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CMPO.GNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     },
     "MNAM": {
      "confidence": "documented",
      "name": "Scrap Item",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CMPO.MNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MISC"
+       ]
+      }
+     }
     },
     "OBND": {
      "confidence": "documented",
@@ -6518,13 +6788,25 @@
      "confidence": "documented",
      "name": "Menu Art Object",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), COBJ.ANAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARTO"
+       ]
+      }
+     }
     },
     "BNAM": {
      "confidence": "documented",
      "name": "Workbench Keyword",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), COBJ.BNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "KYWD"
+       ]
+      }
+     }
     },
     "CNAM": {
      "confidence": "documented",
@@ -7016,7 +7298,13 @@
      "confidence": "documented",
      "name": "Filter List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CONT.ONAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "PRPS": {
      "confidence": "documented",
@@ -7034,19 +7322,37 @@
      "confidence": "documented",
      "name": "Sound - Close",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CONT.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Sound - Open",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CONT.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "TNAM": {
      "confidence": "documented",
      "name": "Sound - Take All",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CONT.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -7134,7 +7440,13 @@
      "confidence": "documented",
      "name": "Camera Shot",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), CPTH.Camera Shots.SNAM. The group 'Camera Shots' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CAMS"
+       ]
+      }
+     }
     }
    }
   },
@@ -7551,7 +7863,13 @@
      "confidence": "documented",
      "name": "Branch",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DIAL.BNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "DLBR"
+       ]
+      }
+     }
     },
     "DATA": {
      "confidence": "documented",
@@ -7738,7 +8056,13 @@
      "confidence": "documented",
      "name": "Keyword",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DIAL.KNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "KYWD"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
@@ -7750,7 +8074,13 @@
      "confidence": "documented",
      "name": "Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DIAL.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "QUST"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
@@ -7797,13 +8127,25 @@
      "confidence": "documented",
      "name": "Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DLBR.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "QUST"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Starting Topic",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DLBR.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "DIAL"
+       ]
+      }
+     }
     },
     "TNAM": {
      "confidence": "documented",
@@ -7842,7 +8184,13 @@
      "confidence": "documented",
      "name": "Branch",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DLVW.Branches.BNAM. The group 'Branches' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "DLBR"
+       ]
+      }
+     }
     },
     "DNAM": {
      "confidence": "documented",
@@ -7866,7 +8214,13 @@
      "confidence": "documented",
      "name": "Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DLVW.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "QUST"
+       ]
+      }
+     }
     }
    }
   },
@@ -8143,13 +8497,25 @@
      "confidence": "documented",
      "name": "Sound - Close",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DOOR.ANAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "BNAM": {
      "confidence": "documented",
      "name": "Sound - Loop",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DOOR.BNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "CNAM": {
      "confidence": "documented",
@@ -8261,7 +8627,13 @@
      "confidence": "documented",
      "name": "Sound - Open",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), DOOR.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -9765,7 +10137,14 @@
      "confidence": "documented",
      "name": "Condition Actor Value",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EQUP.ANAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "AVIF",
+        "FFFF"
+       ]
+      }
+     }
     },
     "DATA": {
      "confidence": "documented",
@@ -10034,7 +10413,13 @@
      "confidence": "documented",
      "name": "Image Space Modifier",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), EXPL.MNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IMAD"
+       ]
+      }
+     }
     },
     "OBND": {
      "confidence": "documented",
@@ -10176,7 +10561,13 @@
      "confidence": "documented",
      "name": "Shared Crime Faction List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.CRGR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "CRVA": {
      "confidence": "documented",
@@ -10300,19 +10691,37 @@
      "confidence": "documented",
      "name": "Exterior Jail Marker",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.JAIL",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REFR"
+       ]
+      }
+     }
     },
     "JOUT": {
      "confidence": "documented",
      "name": "Jail Outfit",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.JOUT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "OTFT"
+       ]
+      }
+     }
     },
     "PLCN": {
      "confidence": "documented",
      "name": "Player Inventory Container",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.PLCN",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REFR"
+       ]
+      }
+     }
     },
     "PLVD": {
      "confidence": "documented",
@@ -10498,19 +10907,37 @@
      "confidence": "documented",
      "name": "Stolen Goods Container",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.STOL",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REFR"
+       ]
+      }
+     }
     },
     "VENC": {
      "confidence": "documented",
      "name": "Merchant Container",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.VENC",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REFR"
+       ]
+      }
+     }
     },
     "VEND": {
      "confidence": "documented",
      "name": "Vendor Buy/Sell List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.VEND",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "VENV": {
      "confidence": "documented",
@@ -10578,7 +11005,13 @@
      "confidence": "documented",
      "name": "Follower Wait Marker",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FACT.WAIT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REFR"
+       ]
+      }
+     }
     },
     "XNAM": {
      "confidence": "documented",
@@ -10901,7 +11334,23 @@
      "confidence": "documented",
      "name": "Ingredient",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FLOR.PFIG",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ALCH",
+        "AMMO",
+        "ARMO",
+        "BOOK",
+        "INGR",
+        "KEYM",
+        "LIGH",
+        "LVLI",
+        "MISC",
+        "NOTE",
+        "WEAP"
+       ]
+      }
+     }
     },
     "PFPC": {
      "confidence": "documented",
@@ -10960,7 +11409,13 @@
      "confidence": "documented",
      "name": "Harvest Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FLOR.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -11047,7 +11502,13 @@
      "confidence": "documented",
      "name": "Impact Data Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FSTP.DATA",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IPDS"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -11677,7 +12138,17 @@
      "confidence": "documented",
      "name": "Associated Form",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FURN.NAM1",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARMO",
+        "WEAP",
+        "PERK",
+        "SPEL",
+        "HAZD"
+       ]
+      }
+     }
     },
     "NTRM": {
      "confidence": "documented",
@@ -12221,7 +12692,13 @@
      "confidence": "documented",
      "name": "Drinking Water Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), FURN.WNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "WATR"
+       ]
+      }
+     }
     },
     "XMRK": {
      "confidence": "documented",
@@ -12760,7 +13237,13 @@
      "confidence": "documented",
      "name": "Image Space Modifier",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), HAZD.MNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IMAD"
+       ]
+      }
+     }
     },
     "OBND": {
      "confidence": "documented",
@@ -12888,7 +13371,13 @@
      "confidence": "documented",
      "name": "Color",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), HDPT.CNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CLFM"
+       ]
+      }
+     }
     },
     "DATA": {
      "confidence": "documented",
@@ -12922,7 +13411,13 @@
      "confidence": "documented",
      "name": "Part",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), HDPT.Extra Parts.HNAM. The group 'Extra Parts' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "HDPT"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
@@ -12948,13 +13443,25 @@
      "confidence": "documented",
      "name": "Valid Races",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), HDPT.RNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "TNAM": {
      "confidence": "documented",
      "name": "Texture Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), HDPT.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     }
    }
   },
@@ -13188,7 +13695,13 @@
      "confidence": "documented",
      "name": "Unknown",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IDLM.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "KYWD"
+       ]
+      }
+     }
     }
    }
   },
@@ -14143,7 +14656,13 @@
         "confidence": "documented",
         "name": "Idle Animations: Listener",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.Responses.LNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "IDLE"
+          ]
+         }
+        }
        },
        "NAM1": {
         "confidence": "documented",
@@ -14179,13 +14698,25 @@
         "confidence": "documented",
         "name": "Idle Animations: Speaker",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.Responses.SNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "IDLE"
+          ]
+         }
+        }
        },
        "SRAF": {
         "confidence": "documented",
         "name": "Camera Path",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.Responses.SRAF",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "CPTH"
+          ]
+         }
+        }
        },
        "TNAM": {
         "confidence": "documented",
@@ -14267,7 +14798,13 @@
      "confidence": "documented",
      "name": "Shared INFO",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.DNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "INFO"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -14316,7 +14853,13 @@
      "confidence": "documented",
      "name": "INFO group",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.GNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "INFO"
+       ]
+      }
+     }
     },
     "GREE": {
      "confidence": "documented",
@@ -14372,7 +14915,13 @@
      "confidence": "documented",
      "name": "Reset Global",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.MODQ",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     },
     "NAM0": {
      "confidence": "documented",
@@ -14384,13 +14933,25 @@
      "confidence": "documented",
      "name": "Audio Output Override",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.ONAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SOPM"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
      "name": "Previous INFO",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "INFO"
+       ]
+      }
+     }
     },
     "RNAM": {
      "confidence": "documented",
@@ -14419,13 +14980,25 @@
      "confidence": "documented",
      "name": "Topic",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.TPIC",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "DIAL"
+       ]
+      }
+     }
     },
     "TSCE": {
      "confidence": "documented",
      "name": "Start Scene",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), INFO.TSCE",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SCEN"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -15187,7 +15760,13 @@
      "confidence": "documented",
      "name": "Texture Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IPCT.DNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "DODT": {
      "confidence": "documented",
@@ -15283,7 +15862,13 @@
      "confidence": "documented",
      "name": "Secondary Texture Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IPCT.ENAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "FNAM": {
      "confidence": "documented",
@@ -15295,25 +15880,49 @@
      "confidence": "documented",
      "name": "Sound 2",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IPCT.NAM1",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "NAM2": {
      "confidence": "documented",
      "name": "Hazard",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IPCT.NAM2",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "HAZD"
+       ]
+      }
+     }
     },
     "NAM3": {
      "confidence": "documented",
      "name": "Footstep Explosion",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IPCT.NAM3",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "EXPL"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Sound 1",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), IPCT.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     }
    }
   },
@@ -15724,7 +16333,13 @@
      "confidence": "documented",
      "name": "Primary Descriptor",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KSSM.DNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -15736,13 +16351,25 @@
      "confidence": "documented",
      "name": "Exterior Tail",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KSSM.ENAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "KNAM": {
      "confidence": "documented",
      "name": "Keyword",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KSSM.Keywords.KNAM. The group 'Keywords' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "KYWD"
+       ]
+      }
+     }
     },
     "RNAM": {
      "confidence": "documented",
@@ -15781,7 +16408,13 @@
      "confidence": "documented",
      "name": "VATS Descriptor",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KSSM.VNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     }
    }
   },
@@ -15822,7 +16455,13 @@
      "confidence": "documented",
      "name": "Attraction Rule",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), KYWD.DATA",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "AORU"
+       ]
+      }
+     }
     },
     "DNAM": {
      "confidence": "documented",
@@ -16125,7 +16764,13 @@
      "confidence": "documented",
      "name": "Parent",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LAYR.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LAYR"
+       ]
+      }
+     }
     }
    }
   },
@@ -16272,7 +16917,13 @@
      "confidence": "documented",
      "name": "Unreported Crime Faction",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LCTN.FNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FACT"
+       ]
+      }
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -16345,19 +16996,38 @@
      "confidence": "documented",
      "name": "World Location Marker Ref",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LCTN.MNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "REFR",
+        "ACHR"
+       ]
+      }
+     }
     },
     "NAM1": {
      "confidence": "documented",
      "name": "Music",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LCTN.NAM1",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MUSC"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
      "name": "Parent Location",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LCTN.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LCTN"
+       ]
+      }
+     }
     },
     "RCEC": {
      "confidence": "documented",
@@ -17019,7 +17689,13 @@
      "confidence": "documented",
      "name": "God Rays",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LGTM.WGDR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GDRY"
+       ]
+      }
+     }
     }
    }
   },
@@ -17416,7 +18092,13 @@
      "confidence": "documented",
      "name": "Lens",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LIGH.LNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LENS"
+       ]
+      }
+     }
     },
     "MICO": {
      "confidence": "documented",
@@ -17485,7 +18167,13 @@
      "confidence": "documented",
      "name": "Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LIGH.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -17534,7 +18222,13 @@
      "confidence": "documented",
      "name": "God Rays",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LIGH.WGDR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GDRY"
+       ]
+      }
+     }
     }
    }
   },
@@ -17565,7 +18259,14 @@
      "confidence": "documented",
      "name": "Loading Screen NIF",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LSCR.NNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "STAT",
+        "SCOL"
+       ]
+      }
+     }
     },
     "ONAM": {
      "confidence": "documented",
@@ -17588,7 +18289,13 @@
      "confidence": "documented",
      "name": "Transform",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LSCR.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TRNS"
+       ]
+      }
+     }
     },
     "ZNAM": {
      "confidence": "documented",
@@ -17624,7 +18331,13 @@
      "confidence": "documented",
      "name": "Grass",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LTEX.Grasses.GNAM. The group 'Grasses' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GRAS"
+       ]
+      }
+     }
     },
     "HNAM": {
      "confidence": "documented",
@@ -17649,7 +18362,13 @@
      "confidence": "documented",
      "name": "Material Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LTEX.MNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MATT"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
@@ -17661,7 +18380,13 @@
      "confidence": "documented",
      "name": "Texture Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LTEX.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     }
    }
   },
@@ -17811,7 +18536,13 @@
      "confidence": "documented",
      "name": "Use Global",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LVLI.LVLG",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     },
     "LVLM": {
      "confidence": "documented",
@@ -17823,7 +18554,13 @@
      "confidence": "documented",
      "name": "Epic Loot Chance",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LVLI.LVSG",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     },
     "OBND": {
      "confidence": "documented",
@@ -18060,7 +18797,13 @@
      "confidence": "documented",
      "name": "Use Global",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), LVLN.LVLG",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     },
     "LVLM": {
      "confidence": "documented",
@@ -18327,7 +19070,13 @@
      "confidence": "documented",
      "name": "Havok Impact Data Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MATT.HNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IPDS"
+       ]
+      }
+     }
     },
     "MNAM": {
      "confidence": "documented",
@@ -18345,7 +19094,13 @@
      "confidence": "documented",
      "name": "Material Parent",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MATT.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MATT"
+       ]
+      }
+     }
     }
    }
   },
@@ -18420,7 +19175,13 @@
      "confidence": "documented",
      "name": "Owner Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MESG.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "QUST"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
@@ -18820,7 +19581,13 @@
      "confidence": "documented",
      "name": "Effect",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MGEF.Counter Effects.ESCE. The group 'Counter Effects' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MGEF"
+       ]
+      }
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -19801,7 +20568,13 @@
      "confidence": "documented",
      "name": "Looping Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), MSTT.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -21924,7 +22697,13 @@
      "confidence": "documented",
      "name": "Far away model",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.ANAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARMO"
+       ]
+      }
+     }
     },
     "APPR": {
      "confidence": "documented",
@@ -21936,7 +22715,13 @@
      "confidence": "documented",
      "name": "Attack Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.ATKR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "ATTX": {
      "confidence": "documented",
@@ -21948,13 +22733,25 @@
      "confidence": "documented",
      "name": "Facial Hair Color",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.BCLF",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CLFM"
+       ]
+      }
+     }
     },
     "CNAM": {
      "confidence": "documented",
      "name": "Class",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.CNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CLAS"
+       ]
+      }
+     }
     },
     "COCT": {
      "confidence": "documented",
@@ -21966,7 +22763,13 @@
      "confidence": "documented",
      "name": "Crime Faction",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.CRIF",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FACT"
+       ]
+      }
+     }
     },
     "CSCR": {
      "confidence": "documented",
@@ -22009,19 +22812,37 @@
      "confidence": "documented",
      "name": "Default Outfit",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.DOFT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "OTFT"
+       ]
+      }
+     }
     },
     "DPLT": {
      "confidence": "documented",
      "name": "Default Package List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.DPLT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "ECOR": {
      "confidence": "documented",
      "name": "Combat Override Package List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.ECOR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -22033,7 +22854,13 @@
      "confidence": "documented",
      "name": "Follower Command Package List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.FCPL",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "FMIN": {
      "confidence": "documented",
@@ -22045,7 +22872,13 @@
      "confidence": "documented",
      "name": "Head Texture",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.FTST",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "FTYP": {
      "confidence": "documented",
@@ -22063,25 +22896,49 @@
      "confidence": "documented",
      "name": "Gift Filter",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.GNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "GWOR": {
      "confidence": "documented",
      "name": "Guard Warn Override Package List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.GWOR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "HCLF": {
      "confidence": "documented",
      "name": "Hair Color",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.HCLF",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CLFM"
+       ]
+      }
+     }
     },
     "INAM": {
      "confidence": "documented",
      "name": "Death item",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.INAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLI"
+       ]
+      }
+     }
     },
     "KSIZ": {
      "confidence": "documented",
@@ -22101,13 +22958,25 @@
      "confidence": "documented",
      "name": "Legendary Chance",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.LTPC",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     },
     "LTPT": {
      "confidence": "documented",
      "name": "Legendary Template",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.LTPT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLN"
+       ]
+      }
+     }
     },
     "MRSV": {
      "confidence": "documented",
@@ -22259,25 +23128,49 @@
      "confidence": "documented",
      "name": "Observe Dead Body Override Package List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.OCOR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "PFRN": {
      "confidence": "documented",
      "name": "Power Armor Stand",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.PFRN",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FURN"
+       ]
+      }
+     }
     },
     "PKID": {
      "confidence": "documented",
      "name": "Package",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.Packages.PKID. The group 'Packages' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "PACK"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
      "name": "Head Part",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.Head Parts.PNAM. The group 'Head Parts' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "HDPT"
+       ]
+      }
+     }
     },
     "PRKR": {
      "confidence": "documented",
@@ -22343,13 +23236,25 @@
      "confidence": "documented",
      "name": "Follower Elevator Package List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.RCLR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "RNAM": {
      "confidence": "documented",
      "name": "Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.RNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "SHRT": {
      "confidence": "documented",
@@ -22378,7 +23283,13 @@
      "confidence": "documented",
      "name": "Sleeping Outfit",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.SOFT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "OTFT"
+       ]
+      }
+     }
     },
     "SPCT": {
      "confidence": "documented",
@@ -22390,7 +23301,13 @@
      "confidence": "documented",
      "name": "Spectator Override Package List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.SPOR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "STCP": {
      "confidence": "documented",
@@ -22402,7 +23319,13 @@
      "confidence": "documented",
      "name": "Default Template",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.TPLT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLN"
+       ]
+      }
+     }
     },
     "TPTA": {
      "confidence": "documented",
@@ -22512,19 +23435,37 @@
      "confidence": "documented",
      "name": "Voice",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.VTCK",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "VTYP"
+       ]
+      }
+     }
     },
     "WNAM": {
      "confidence": "documented",
      "name": "Skin",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.WNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARMO"
+       ]
+      }
+     }
     },
     "ZNAM": {
      "confidence": "documented",
      "name": "Combat Style",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), NPC_.ZNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CSTY"
+       ]
+      }
+     }
     }
    }
   },
@@ -22820,7 +23761,13 @@
         "confidence": "documented",
         "name": "Object",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), OVIS.Unknown.INDX",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "STAT"
+          ]
+         }
+        }
        }
       }
      }
@@ -23470,7 +24417,13 @@
         "confidence": "documented",
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.OnBegin.INAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "IDLE"
+          ]
+         }
+        }
        },
        "PDTO": {
         "confidence": "documented",
@@ -23538,7 +24491,13 @@
         "confidence": "documented",
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.OnChange.INAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "IDLE"
+          ]
+         }
+        }
        },
        "PDTO": {
         "confidence": "documented",
@@ -23606,7 +24565,13 @@
         "confidence": "documented",
         "name": "Idle",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.OnEnd.INAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "IDLE"
+          ]
+         }
+        }
        },
        "PDTO": {
         "confidence": "documented",
@@ -23704,7 +24669,13 @@
      "confidence": "documented",
      "name": "Combat Style",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.CNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CSTY"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -23935,7 +24906,13 @@
      "confidence": "documented",
      "name": "Owner Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PACK.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "QUST"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -26082,13 +27059,25 @@
      "confidence": "documented",
      "name": "Next Perk",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.NNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "PERK"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PERK.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -27330,7 +28319,13 @@
      "confidence": "documented",
      "name": "Cell",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), PKIN.CNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CELL"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -28307,7 +29302,13 @@
         "confidence": "documented",
         "name": "Quest",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALEQ",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "QUST"
+          ]
+         }
+        }
        },
        "ALFA": {
         "confidence": "documented",
@@ -28340,7 +29341,13 @@
         "confidence": "documented",
         "name": "Specific Location",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFL",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "LCTN"
+          ]
+         }
+        }
        },
        "ALID": {
         "confidence": "documented",
@@ -28393,7 +29400,13 @@
         "confidence": "documented",
         "name": "Keyword",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.KNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        }
       }
      },
@@ -28491,13 +29504,25 @@
         "confidence": "documented",
         "name": "Death Item",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALDI",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "LVLI"
+          ]
+         }
+        }
        },
        "ALDN": {
         "confidence": "documented",
         "name": "Display Name",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALDN",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "MESG"
+          ]
+         }
+        }
        },
        "ALEA": {
         "confidence": "documented",
@@ -28517,7 +29542,13 @@
         "confidence": "documented",
         "name": "Quest",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALEQ",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "QUST"
+          ]
+         }
+        }
        },
        "ALFA": {
         "confidence": "documented",
@@ -28529,7 +29560,13 @@
         "confidence": "documented",
         "name": "Faction",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.Alias Factions.ALFC. The group 'Alias Factions' repeats this subrecord.",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "FACT"
+          ]
+         }
+        }
        },
        "ALFD": {
         "confidence": "documented",
@@ -28556,13 +29593,34 @@
         "confidence": "documented",
         "name": "Forced Reference",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFR",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "ACHR",
+           "PARW",
+           "PBAR",
+           "PCON",
+           "PFLA",
+           "PGRE",
+           "PHZD",
+           "PLYR",
+           "PMIS",
+           "REFR"
+          ]
+         }
+        }
        },
        "ALFV": {
         "confidence": "documented",
         "name": "Forced Voice",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALFV",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "VTYP"
+          ]
+         }
+        }
        },
        "ALID": {
         "confidence": "documented",
@@ -28598,19 +29656,37 @@
         "confidence": "documented",
         "name": "Package",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.Alias Package Data.ALPC. The group 'Alias Package Data' repeats this subrecord.",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "PACK"
+          ]
+         }
+        }
        },
        "ALRT": {
         "confidence": "documented",
         "name": "Ref Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ALRT",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "LCRT"
+          ]
+         }
+        }
        },
        "ALSP": {
         "confidence": "documented",
         "name": "Spell",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.Alias Spells.ALSP. The group 'Alias Spells' repeats this subrecord.",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "SPEL"
+          ]
+         }
+        }
        },
        "ALST": {
         "confidence": "documented",
@@ -28634,7 +29710,13 @@
         "confidence": "documented",
         "name": "Combat override package list",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.ECOR",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "FLST"
+          ]
+         }
+        }
        },
        "FNAM": {
         "confidence": "documented",
@@ -28675,13 +29757,25 @@
         "confidence": "documented",
         "name": "Guard warn override package list",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.GWOR",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "FLST"
+          ]
+         }
+        }
        },
        "KNAM": {
         "confidence": "documented",
         "name": "Keyword",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.KNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "KSIZ": {
         "confidence": "documented",
@@ -28701,19 +29795,39 @@
         "confidence": "documented",
         "name": "Observe dead body override package list",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.OCOR",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "FLST"
+          ]
+         }
+        }
        },
        "SPOR": {
         "confidence": "documented",
         "name": "Spectator override package list",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.SPOR",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "FLST"
+          ]
+         }
+        }
        },
        "VTCK": {
         "confidence": "documented",
         "name": "Voice Types",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), 'Aliases'.wbRStructSK.VTCK",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "FACT",
+           "FLST",
+           "VTYP"
+          ]
+         }
+        }
        }
       }
      },
@@ -28766,7 +29880,13 @@
         "confidence": "documented",
         "name": "Next Quest",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.Stages.NAM0",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "QUST"
+          ]
+         }
+        }
        },
        "NAM2": {
         "confidence": "documented",
@@ -28961,13 +30081,25 @@
      "confidence": "documented",
      "name": "Quest Group",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.GNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "KYWD"
+       ]
+      }
+     }
     },
     "LNAM": {
      "confidence": "documented",
      "name": "Location",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.LNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LCTN"
+       ]
+      }
+     }
     },
     "NEXT": {
      "confidence": "documented",
@@ -28987,7 +30119,13 @@
      "confidence": "documented",
      "name": "Global",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.Text Display Globals.QTGL. The group 'Text Display Globals' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
@@ -29101,7 +30239,13 @@
      "confidence": "documented",
      "name": "Quest Completion XP",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), QUST.XNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "GLOB"
+       ]
+      }
+     }
     }
    }
   },
@@ -29442,7 +30586,13 @@
         "confidence": "documented",
         "name": "Movement Type",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Movement Data Overrides.MTYP",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "MOVT"
+          ]
+         }
+        }
        },
        "SPED": {
         "confidence": "documented",
@@ -29855,7 +31005,13 @@
         "confidence": "documented",
         "name": "Keyword",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.Actor Keywords.SAKD. The group 'Actor Keywords' repeats this subrecord.",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "SAPT": {
         "confidence": "documented",
@@ -29907,7 +31063,13 @@
         "confidence": "documented",
         "name": "Keyword",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Subgraph Data.Target Keywords.STKD. The group 'Target Keywords' repeats this subrecord.",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        }
       }
      },
@@ -29934,13 +31096,25 @@
      "confidence": "documented",
      "name": "Hair Color",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Female Hair Colors.AHCF. The group 'Female Hair Colors' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CLFM"
+       ]
+      }
+     }
     },
     "AHCM": {
      "confidence": "documented",
      "name": "Hair Color",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Male Hair Colors.AHCM. The group 'Male Hair Colors' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CLFM"
+       ]
+      }
+     }
     },
     "ANAM": {
      "confidence": "documented",
@@ -29958,7 +31132,13 @@
      "confidence": "documented",
      "name": "Attack Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.ATKR",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "BOD2": {
      "confidence": "documented",
@@ -29977,7 +31157,13 @@
      "confidence": "documented",
      "name": "Meat Cap TextureSet",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.CNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "DATA": {
      "confidence": "documented",
@@ -30459,13 +31645,25 @@
      "confidence": "documented",
      "name": "Female Default Face Texture",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.DFTF",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "DFTM": {
      "confidence": "documented",
      "name": "Male Default Face Texture",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.DFTM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -30477,7 +31675,13 @@
      "confidence": "documented",
      "name": "Base Movement Defaults - Fly",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.FLMV",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MOVT"
+       ]
+      }
+     }
     },
     "FMRI": {
      "confidence": "documented",
@@ -30503,13 +31707,25 @@
      "confidence": "documented",
      "name": "Texture Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Female Face Details.FTSF. The group 'Female Face Details' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "FTSM": {
      "confidence": "documented",
      "name": "Texture Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.Male Face Details.FTSM. The group 'Male Face Details' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "TXST"
+       ]
+      }
+     }
     },
     "FULL": {
      "confidence": "documented",
@@ -30521,7 +31737,13 @@
      "confidence": "documented",
      "name": "Body Part Data",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.GNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "BPTD"
+       ]
+      }
+     }
     },
     "HCLF": {
      "confidence": "documented",
@@ -30561,7 +31783,13 @@
      "confidence": "documented",
      "name": "Sound - Close Corpse",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.LNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "MLSI": {
      "confidence": "documented",
@@ -30685,25 +31913,49 @@
      "confidence": "documented",
      "name": "Impact Material Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.NAM4",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MATT"
+       ]
+      }
+     }
     },
     "NAM5": {
      "confidence": "documented",
      "name": "Impact Data Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.NAM5",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IPDS"
+       ]
+      }
+     }
     },
     "NAM7": {
      "confidence": "documented",
      "name": "Dismember Blood Art",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.NAM7",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARTO"
+       ]
+      }
+     }
     },
     "NAM8": {
      "confidence": "documented",
      "name": "Morph Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.NAM8",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "NAME": {
      "confidence": "documented",
@@ -30745,7 +31997,13 @@
      "confidence": "documented",
      "name": "Sound - Open Corpse",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.ONAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "PHTN": {
      "confidence": "documented",
@@ -30775,7 +32033,13 @@
      "confidence": "documented",
      "name": "Dialogue Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.QSTI",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "QUST"
+       ]
+      }
+     }
     },
     "RBPC": {
      "confidence": "documented",
@@ -30787,7 +32051,13 @@
      "confidence": "documented",
      "name": "Armor Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.RNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "RPRF": {
      "confidence": "documented",
@@ -30805,13 +32075,25 @@
      "confidence": "documented",
      "name": "Subgraph Additive Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.SADD",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "SNMV": {
      "confidence": "documented",
      "name": "Base Movement Defaults - Sneak",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.SNMV",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MOVT"
+       ]
+      }
+     }
     },
     "SPCT": {
      "confidence": "documented",
@@ -30823,7 +32105,13 @@
      "confidence": "documented",
      "name": "Subgraph Template Race",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.SRAC",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RACE"
+       ]
+      }
+     }
     },
     "STCP": {
      "confidence": "documented",
@@ -30835,7 +32123,13 @@
      "confidence": "documented",
      "name": "Base Movement Defaults - Swim",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.SWMV",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MOVT"
+       ]
+      }
+     }
     },
     "TETI": {
      "confidence": "documented",
@@ -30949,7 +32243,13 @@
      "confidence": "documented",
      "name": "Unarmed Weapon",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.UNWP",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "WEAP"
+       ]
+      }
+     }
     },
     "VNAM": {
      "confidence": "documented",
@@ -30969,7 +32269,13 @@
      "confidence": "documented",
      "name": "Base Movement Defaults - Default",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.WKMV",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MOVT"
+       ]
+      }
+     }
     },
     "WMAP": {
      "confidence": "documented",
@@ -30981,7 +32287,13 @@
      "confidence": "documented",
      "name": "Skin",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), RACE.WNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ARMO"
+       ]
+      }
+     }
     }
    }
   },
@@ -32525,7 +33837,13 @@
         "confidence": "documented",
         "name": "Music",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REGN.Region Data Entries.RDMO",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "MUSC"
+          ]
+         }
+        }
        },
        "RDMP": {
         "confidence": "documented",
@@ -32802,7 +34120,13 @@
      "confidence": "documented",
      "name": "Worldspace",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), REGN.WNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "WRLD"
+       ]
+      }
+     }
     }
    }
   },
@@ -33070,7 +34394,13 @@
         "confidence": "documented",
         "name": "Scene",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCCO.Scenes.SNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "SCEN"
+          ]
+         }
+        }
        },
        "XNAM": {
         "confidence": "documented",
@@ -33106,7 +34436,13 @@
      "confidence": "documented",
      "name": "Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCCO.QNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "QUST"
+       ]
+      }
+     }
     },
     "VNAM": {
      "confidence": "documented",
@@ -33296,13 +34632,25 @@
         "confidence": "documented",
         "name": "Player Question Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.DALC",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "DATA": {
         "confidence": "documented",
         "name": "Topic",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.DATA",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "DEMO": {
         "confidence": "documented",
@@ -33444,13 +34792,25 @@
         "confidence": "documented",
         "name": "Player Neutral Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.JOUT",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "LCEP": {
         "confidence": "documented",
         "name": "Scene",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.LCEP",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "SCEN"
+          ]
+         }
+        }
        },
        "NAM0": {
         "confidence": "documented",
@@ -33462,91 +34822,181 @@
         "confidence": "documented",
         "name": "Player Neutral Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NETO",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "NNGS": {
         "confidence": "documented",
         "name": "NPC Negative Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNGS",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "NNGT": {
         "confidence": "documented",
         "name": "NPC Negative Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNGT",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "NNUS": {
         "confidence": "documented",
         "name": "NPC Neutral Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNUS",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "NNUT": {
         "confidence": "documented",
         "name": "NPC Neutral Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NNUT",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "NPOS": {
         "confidence": "documented",
         "name": "NPC Positive Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NPOS",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "NPOT": {
         "confidence": "documented",
         "name": "NPC Positive Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NPOT",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "NQUS": {
         "confidence": "documented",
         "name": "NPC Question Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NQUS",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "NQUT": {
         "confidence": "documented",
         "name": "NPC Question Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NQUT",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "NTOP": {
         "confidence": "documented",
         "name": "Player Negative Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.NTOP",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "ONAM": {
         "confidence": "documented",
         "name": "Audio Output Override",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.ONAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "SOPM"
+          ]
+         }
+        }
        },
        "PLVD": {
         "confidence": "documented",
         "name": "Player Negative Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.PLVD",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "PNAM": {
         "confidence": "documented",
         "name": "Package",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.Packages.PNAM. The group 'Packages' repeats this subrecord.",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        },
        "PTOP": {
         "confidence": "documented",
         "name": "Player Positive Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.PTOP",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "QTOP": {
         "confidence": "documented",
         "name": "Player Question Response",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.QTOP",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "DIAL"
+          ]
+         }
+        }
        },
        "SCQS": {
         "confidence": "documented",
@@ -33593,7 +35043,13 @@
         "confidence": "documented",
         "name": "Player Positive Dialogue Subtype",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.Actions.VENC",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "KYWD"
+          ]
+         }
+        }
        }
       }
      },
@@ -33750,7 +35206,13 @@
      "confidence": "documented",
      "name": "Quest",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "KYWD"
+       ]
+      }
+     }
     },
     "SCQS": {
      "confidence": "documented",
@@ -33773,7 +35235,13 @@
      "confidence": "documented",
      "name": "Template Scene",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SCEN.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SCEN"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -34097,13 +35565,29 @@
      "confidence": "documented",
      "name": "Parent ",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SMBN.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SMQN",
+        "SMBN",
+        "SMEN"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Previous Sibling ",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SMBN.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SMQN",
+        "SMBN",
+        "SMEN"
+       ]
+      }
+     }
     },
     "XNAM": {
      "confidence": "documented",
@@ -34155,13 +35639,29 @@
      "confidence": "documented",
      "name": "Parent ",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SMEN.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SMQN",
+        "SMBN",
+        "SMEN"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Previous Sibling ",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SMEN.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SMQN",
+        "SMBN",
+        "SMEN"
+       ]
+      }
+     }
     },
     "XNAM": {
      "confidence": "documented",
@@ -34195,7 +35695,13 @@
         "confidence": "documented",
         "name": "Quest",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SMQN.Quests.NNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "QUST"
+          ]
+         }
+        }
        },
        "RNAM": {
         "confidence": "documented",
@@ -34268,7 +35774,15 @@
      "confidence": "documented",
      "name": "Parent ",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SMQN.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SMQN",
+        "SMBN",
+        "SMEN"
+       ]
+      }
+     }
     },
     "QNAM": {
      "confidence": "documented",
@@ -34280,7 +35794,15 @@
      "confidence": "documented",
      "name": "Previous Sibling ",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SMQN.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SMQN",
+        "SMBN",
+        "SMEN"
+       ]
+      }
+     }
     },
     "XNAM": {
      "confidence": "documented",
@@ -34340,13 +35862,25 @@
      "confidence": "documented",
      "name": "Menu Slider Category",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNCT.ONAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNCT"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
      "name": "Parent Category",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNCT.PNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNCT"
+       ]
+      }
+     }
     },
     "UNAM": {
      "confidence": "documented",
@@ -34489,7 +36023,13 @@
      "confidence": "documented",
      "name": "Descriptor",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNDR.Descriptors.DNAM. The group 'Descriptors' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "EDID": {
      "confidence": "documented",
@@ -34501,7 +36041,13 @@
      "confidence": "documented",
      "name": "Category",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNDR.GNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNCT"
+       ]
+      }
+     }
     },
     "ITMC": {
      "confidence": "documented",
@@ -34555,13 +36101,25 @@
      "confidence": "documented",
      "name": "Output Model",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNDR.ONAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SOPM"
+       ]
+      }
+     }
     },
     "SNAM": {
      "confidence": "documented",
      "name": "Alternate Sound For",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SNDR.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     }
    }
   },
@@ -34651,7 +36209,13 @@
      "confidence": "documented",
      "name": "Effect Chain",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SOPM.ENAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "AECH"
+       ]
+      }
+     }
     },
     "MNAM": {
      "confidence": "documented",
@@ -34843,7 +36407,13 @@
      "confidence": "documented",
      "name": "Sound Descriptor",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), SOUN.SDSC",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     }
    }
   },
@@ -36186,7 +37756,13 @@
      "confidence": "documented",
      "name": "Looping Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TACT.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -36235,7 +37811,13 @@
      "confidence": "documented",
      "name": "Voice Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TACT.VNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "VTYP"
+       ]
+      }
+     }
     }
    }
   },
@@ -36320,7 +37902,13 @@
         "confidence": "documented",
         "name": "Submenu",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TERM.Menu Items.TNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "TERM"
+          ]
+         }
+        }
        },
        "UNAM": {
         "confidence": "documented",
@@ -36980,7 +38568,13 @@
      "confidence": "documented",
      "name": "Harvest Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), TREE.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
@@ -37769,7 +39363,13 @@
      "confidence": "documented",
      "name": "Image Space",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WATR.INAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IMGS"
+       ]
+      }
+     }
     },
     "NAM0": {
      "confidence": "documented",
@@ -37835,25 +39435,49 @@
      "confidence": "documented",
      "name": "Open Sound",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WATR.SNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SNDR"
+       ]
+      }
+     }
     },
     "TNAM": {
      "confidence": "documented",
      "name": "Material (unused)",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WATR.TNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MATT"
+       ]
+      }
+     }
     },
     "XNAM": {
      "confidence": "documented",
      "name": "Consume Spell",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WATR.XNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SPEL"
+       ]
+      }
+     }
     },
     "YNAM": {
      "confidence": "documented",
      "name": "Contact Spell",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WATR.YNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SPEL"
+       ]
+      }
+     }
     }
    }
   },
@@ -38281,19 +39905,37 @@
      "confidence": "documented",
      "name": "Alternate Block Material",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.BAMT",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MATT"
+       ]
+      }
+     }
     },
     "BIDS": {
      "confidence": "documented",
      "name": "Block Bash Impact Data Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.BIDS",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IPDS"
+       ]
+      }
+     }
     },
     "CNAM": {
      "confidence": "documented",
      "name": "Template",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.CNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "WEAP"
+       ]
+      }
+     }
     },
     "CRDT": {
      "confidence": "documented",
@@ -38691,13 +40333,25 @@
      "confidence": "documented",
      "name": "Impact Data Set",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.INAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IPDS"
+       ]
+      }
+     }
     },
     "INRD": {
      "confidence": "documented",
      "name": "Instance Naming",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.INRD",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "INNR"
+       ]
+      }
+     }
     },
     "KSIZ": {
      "confidence": "documented",
@@ -38717,7 +40371,13 @@
      "confidence": "documented",
      "name": "NPC Add Ammo List",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.LNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLI"
+       ]
+      }
+     }
     },
     "MASE": {
      "confidence": "documented",
@@ -38744,7 +40404,13 @@
      "confidence": "documented",
      "name": "Embedded Weapon Mod",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.NNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "OMOD"
+       ]
+      }
+     }
     },
     "OBND": {
      "confidence": "documented",
@@ -38844,13 +40510,25 @@
      "confidence": "documented",
      "name": "Aim Model",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.WAMD",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "AMDL"
+       ]
+      }
+     }
     },
     "WZMD": {
      "confidence": "documented",
      "name": "Zoom",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WEAP.WZMD",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ZOOM"
+       ]
+      }
+     }
     },
     "YNAM": {
      "confidence": "documented",
@@ -39061,7 +40739,13 @@
         "confidence": "documented",
         "name": "Worldspace",
         "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.Parent.WNAM",
-        "type": "formid"
+        "type": {
+         "formid": {
+          "of": [
+           "WRLD"
+          ]
+         }
+        }
        }
       }
      }
@@ -39080,7 +40764,13 @@
      "confidence": "documented",
      "name": "Climate",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.CNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CLMT"
+       ]
+      }
+     }
     },
     "DATA": {
      "confidence": "documented",
@@ -39139,7 +40829,13 @@
      "confidence": "documented",
      "name": "Interior Lighting",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.LTMP",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LGTM"
+       ]
+      }
+     }
     },
     "MHDT": {
      "confidence": "documented",
@@ -39249,7 +40945,13 @@
      "confidence": "documented",
      "name": "Water",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.NAM2",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "WATR"
+       ]
+      }
+     }
     },
     "NAM3": {
      "confidence": "documented",
@@ -39353,13 +41055,25 @@
      "confidence": "documented",
      "name": "Encounter Zone",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.XEZN",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "ECZN"
+       ]
+      }
+     }
     },
     "XLCN": {
      "confidence": "documented",
      "name": "Location",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.XLCN",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LCTN"
+       ]
+      }
+     }
     },
     "XWEM": {
      "confidence": "documented",
@@ -39371,7 +41085,13 @@
      "confidence": "documented",
      "name": "Music",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WRLD.ZNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "MUSC"
+       ]
+      }
+     }
     }
    }
   },
@@ -40030,7 +41750,13 @@
      "confidence": "documented",
      "name": "Sun Glare Lens Flare",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WTHR.GNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LENS"
+       ]
+      }
+     }
     },
     "H0TX": {
      "confidence": "documented",
@@ -40127,7 +41853,13 @@
      "confidence": "documented",
      "name": "Precipitation Type",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WTHR.MNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "SPGD"
+       ]
+      }
+     }
     },
     "NAM0": {
      "confidence": "documented",
@@ -44294,7 +46026,13 @@
      "confidence": "documented",
      "name": "Visual Effect",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WTHR.NNAM",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "RFCT"
+       ]
+      }
+     }
     },
     "ONAM": {
      "confidence": "documented",
@@ -44337,7 +46075,13 @@
      "confidence": "documented",
      "name": "Static",
      "note": "xEdit wbDefinitionsFO4.pas (Mozilla Public License 1.1), WTHR.Sky Statics.TNAM. The group 'Sky Statics' repeats this subrecord.",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "STAT"
+       ]
+      }
+     }
     },
     "UNAM": {
      "confidence": "documented",

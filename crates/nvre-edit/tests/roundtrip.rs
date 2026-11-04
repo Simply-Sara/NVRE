@@ -315,7 +315,7 @@ fn sub_views_report_writability() {
     let mut total = 0usize;
     let mut writable = 0usize;
     for r in recs.iter().take(500) {
-        for v in sub_views(&schema, r).unwrap() {
+        for v in sub_views(&schema, r, false).unwrap() {
             total += 1;
             if v.writable {
                 writable += 1;

@@ -175,6 +175,7 @@ pub struct Session {
     pub editing_object: Option<(u32, [u8; 4])>,
     records_cache: RwLock<HashMap<[u8; 4], CachedRecordList>>,
     spells_cache: RwLock<Option<CachedRecordList>>,
+    all_objects_cache: RwLock<Option<CachedRecordList>>,
     items_cache: RwLock<Option<CachedRecordList>>,
     crea_templates_cache: RwLock<Option<CachedRecordList>>,
     npc_templates_cache: RwLock<Option<CachedRecordList>>,
@@ -282,6 +283,7 @@ impl Session {
             editing_object: None,
             records_cache: RwLock::new(HashMap::new()),
             spells_cache: RwLock::new(None),
+            all_objects_cache: RwLock::new(None),
             items_cache: RwLock::new(None),
             crea_templates_cache: RwLock::new(None),
             npc_templates_cache: RwLock::new(None),
@@ -374,6 +376,7 @@ impl Session {
             editing_object: None,
             records_cache: RwLock::new(HashMap::new()),
             spells_cache: RwLock::new(None),
+            all_objects_cache: RwLock::new(None),
             items_cache: RwLock::new(None),
             crea_templates_cache: RwLock::new(None),
             npc_templates_cache: RwLock::new(None),
@@ -1107,6 +1110,82 @@ impl Session {
     /// them; nothing here is specific to cells.
     pub fn records_of(&self, sig: [u8; 4]) -> Arc<[(u32, String)]> {
         self.records_by_sig(sig)
+    }
+
+    /// The records a FormID field may point at, as picker rows.
+    ///
+    /// A field whose schema says `{"formid": {"of": ["STAT", "MISC"]}}` can only
+    /// hold a static or a misc item, and a picker that offers the whole load order
+    /// makes a modder scroll 44,550 rows to find one. The list is the union of the
+    /// named types' own lists, which are already cached per type.
+    ///
+    /// An empty `of` is a FormID the schema does not restrict — `wbFormID`, which
+    /// xEdit writes when it does not know — and the caller then offers everything,
+    /// which is what the picker did before the targets existed.
+    pub fn records_of_any(&self, sigs: &[String]) -> Arc<[(u32, String)]> {
+        if sigs.is_empty() {
+            return self.all_objects();
+        }
+        let mut out: Vec<(u32, String)> = Vec::new();
+        for s in sigs {
+            let b = s.as_bytes();
+            if b.len() != 4 {
+                continue;
+            }
+            let mut sig = [0u8; 4];
+            sig.copy_from_slice(b);
+            out.extend(self.records_by_sig(sig).iter().cloned());
+        }
+        // A record reachable through two of the named types is still one row.
+        out.sort_by(|a, b| {
+            a.1.to_lowercase()
+                .cmp(&b.1.to_lowercase())
+                .then(a.0.cmp(&b.0))
+        });
+        out.dedup_by_key(|(fid, _)| *fid);
+        out.into()
+    }
+
+    /// Every object the load order holds, for a FormID a schema does not restrict.
+    pub fn all_objects(&self) -> Arc<[(u32, String)]> {
+        if let Ok(cache) = self.all_objects_cache.read() {
+            if let Some(hits) = cache.as_ref() {
+                return hits.clone();
+            }
+        }
+        let mut out: Vec<(u32, String)> = Vec::new();
+        if let Ok(lo) = self.load_order() {
+            for (pi, _) in lo.plugins.iter().enumerate() {
+                for r in lo.records[pi].iter().copied() {
+                    if let Some(g) = lo.to_global(pi, r.header.form_id) {
+                        let name = r
+                            .subrecords()
+                            .ok()
+                            .and_then(|subs| {
+                                subs.iter().find(|s| &s.sig == b"EDID").map(|s| {
+                                    let end =
+                                        s.data.iter().position(|b| *b == 0).unwrap_or(s.data.len());
+                                    nvre_util::cp1252::decode(&s.data[..end])
+                                })
+                            })
+                            .filter(|s| !s.is_empty())
+                            .unwrap_or_else(|| format!("{:08X}", r.header.form_id));
+                        out.push((g, name));
+                    }
+                }
+            }
+        }
+        out.sort_by(|a, b| {
+            a.1.to_lowercase()
+                .cmp(&b.1.to_lowercase())
+                .then(a.0.cmp(&b.0))
+        });
+        out.dedup_by_key(|(fid, _)| *fid);
+        let arc: Arc<[(u32, String)]> = out.into();
+        if let Ok(mut cache) = self.all_objects_cache.write() {
+            *cache = Some(arc.clone());
+        }
+        arc
     }
 
     /// Return all Spells and Enchantments across the load order, sorted by Editor ID (cached).

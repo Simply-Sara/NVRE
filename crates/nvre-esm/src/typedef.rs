@@ -17,6 +17,14 @@ pub enum TypeDef {
     Prim(Prim),
     /// A named type the schema does not know.
     Named(String),
+    /// A FormID, and the record types it may point at.
+    ///
+    /// Empty when the schema does not say, which is the unrestricted case: the
+    /// picker then offers every object rather than a filtered list.
+    FormIdRef {
+        /// The record signatures it may point at.
+        of: Vec<String>,
+    },
     /// A struct: the fields, in order.
     Struct(Vec<FieldDef>),
     /// A field read as many times as the bytes allow.
@@ -114,6 +122,9 @@ impl Schema {
         }
         match ty {
             Type::Prim(p) => TypeDef::Prim(*p),
+            // The resolved form keeps the targets, so a picker can still ask
+            // what the field may point at after a named type is resolved.
+            Type::FormIdRef { of } => TypeDef::FormIdRef { of: of.clone() },
             Type::Named(n) => match self.type_def(n) {
                 None => TypeDef::Named(n.clone()),
                 Some(td) => {

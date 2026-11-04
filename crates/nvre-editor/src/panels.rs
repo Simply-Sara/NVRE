@@ -971,8 +971,8 @@ pub fn sectioned_grid(
         return;
     };
     let rec_sig = rec.header.sig;
-    let views = sub_views(&session.schema, &rec, session.record_is_localized(form_id))
-        .unwrap_or_default();
+    let views =
+        sub_views(&session.schema, &rec, session.record_is_localized(form_id)).unwrap_or_default();
     if views.is_empty() {
         ui.label("the schema describes no subrecords for this record");
         return;
@@ -1133,8 +1133,8 @@ pub fn schema_grid(
         return;
     };
     let rec_sig = rec.header.sig;
-    let views = sub_views(&session.schema, &rec, session.record_is_localized(form_id))
-        .unwrap_or_default();
+    let views =
+        sub_views(&session.schema, &rec, session.record_is_localized(form_id)).unwrap_or_default();
     // Which subrecords have a queued edit, for the badge. The values come from
     // `resolved_record` above, which has the edits applied.
     let edited: Vec<[u8; 4]> = session
@@ -1221,6 +1221,55 @@ fn field_editor(
     }
     let sig = sig4(&view.sig);
     let mut changed: Option<serde_json::Value> = None;
+    // A FormID field gets a picker, filtered to the record types the schema says
+    // it may point at. The check comes first because a FormID decodes to a
+    // number and would otherwise be offered a bare spinner.
+    let targets = crate::object_editor::formid_targets_in(
+        &session.schema,
+        rec_sig,
+        &sig,
+        view.block.as_deref(),
+        path,
+    );
+    let is_formid = nvre_edit::encode::is_formid_field(
+        &session.schema,
+        rec_sig,
+        &sig,
+        view.block.as_deref(),
+        path,
+    );
+    if is_formid {
+        let mut opt = current.as_u64().map(|v| v as u32).filter(|v| *v != 0);
+        let items = session.records_of_any(&targets);
+        let label = if targets.is_empty() {
+            "any record".to_string()
+        } else {
+            targets.join(", ")
+        };
+        ui.horizontal(|ui| {
+            crate::object_editor::record_dropdown(
+                ui,
+                &format!("{}_{}", view.sig, path),
+                &items,
+                &mut opt,
+            );
+            ui.weak(label);
+        });
+        if opt != current.as_u64().map(|v| v as u32).filter(|v| *v != 0) {
+            changed = Some(match opt {
+                Some(fid) => serde_json::json!(fid),
+                None => serde_json::json!(0),
+            });
+        }
+        if let Some(value) = changed {
+            edit.last = Some((sig, path.to_string()));
+            match session.set_object_field(form_id, &sig, path, value) {
+                Ok(()) => edit.error = None,
+                Err(e) => edit.error = Some(e),
+            }
+        }
+        return;
+    }
     match current {
         serde_json::Value::Number(n) => {
             let mut v = n.as_f64().unwrap_or(0.0);

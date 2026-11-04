@@ -77,7 +77,7 @@ fn nvre_edit_encode(
 /// subrecord cannot be remapped safely.
 fn remap_value(t: &TypeDef, value: &mut Value, map: &FormIdMap, changed: &mut bool) -> Option<()> {
     match t {
-        TypeDef::Prim(Prim::FormId) => {
+        TypeDef::Prim(Prim::FormId) | TypeDef::FormIdRef { .. } => {
             let local = parse_formid(value)?;
             if local == 0 {
                 return Some(());
@@ -159,7 +159,7 @@ fn parse_one(sub: &Subrecord) -> Result<Vec<Subrecord>, ()> {
 
 fn count_in(t: &TypeDef, value: &Value, n: &mut usize) {
     match t {
-        TypeDef::Prim(Prim::FormId) => {
+        TypeDef::Prim(Prim::FormId) | TypeDef::FormIdRef { .. } => {
             if parse_formid(value).is_some_and(|f| f != 0) {
                 *n += 1;
             }
@@ -202,7 +202,9 @@ pub fn formid_fields(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> V
     let mut out = Vec::new();
     fn walk(t: &TypeDef, out: &mut Vec<String>) {
         match t {
-            TypeDef::Prim(Prim::FormId) => out.push("<formid>".to_string()),
+            TypeDef::Prim(Prim::FormId) | TypeDef::FormIdRef { .. } => {
+                out.push("<formid>".to_string())
+            }
             TypeDef::Struct(fields) => {
                 for f in fields {
                     walk(&f.ty, out);

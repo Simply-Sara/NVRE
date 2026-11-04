@@ -198,6 +198,21 @@ impl Prim {
 pub enum Type {
     /// A primitive.
     Prim(Prim),
+    /// A FormID, and the record types it may point at.
+    ///
+    /// xEdit declares these with `wbFormIDCk(SIG, 'Name', [STAT, MISC])`, and a
+    /// picker that does not know the targets is a picker that offers all 44,550
+    /// objects when the field can only hold a static. 603 declarations in
+    /// `wbDefinitionsFO4.pas` alone carry a target list, so this is the schema
+    /// side of it; `{"formid": {"of": ["STAT"]}}` in the JSON.
+    ///
+    /// An empty list is a FormID with no declared target — `wbFormID`, which
+    /// xEdit writes when it does not know — and the picker offers everything,
+    /// which is what it did before the list existed.
+    FormIdRef {
+        /// The record signatures it may point at, empty when unrestricted.
+        of: Vec<String>,
+    },
     /// A named type: a struct, an enum, or a common type.
     Named(String),
     /// A set of names for the integers a field can hold.
@@ -1244,6 +1259,26 @@ impl Schema {
                     let inner = self.parse_type_value(r)?;
                     return Ok(Type::Repeat(Box::new(inner)));
                 }
+                // `{"formid": {"of": ["STAT", "MISC"]}}`: a FormID whose targets
+                // xEdit declares. The bare string `"formid"` above stays the
+                // unrestricted form, so no existing schema changes meaning.
+                if let Some(ff) = o.get("formid") {
+                    let mut of = Vec::new();
+                    if let Some(list) = ff.get("of").and_then(|v| v.as_array()) {
+                        for t in list {
+                            let Some(sig) = t.as_str() else {
+                                return Err("a formid target is not a string".into());
+                            };
+                            if sig.len() != 4 {
+                                return Err(format!(
+                                    "a formid target is {sig:?}, which is not a four-byte signature"
+                                ));
+                            }
+                            of.push(sig.to_string());
+                        }
+                    }
+                    return Ok(Type::FormIdRef { of });
+                }
                 if let Some(st) = o.get("struct").and_then(|v| v.as_array()) {
                     let mut fields = Vec::with_capacity(st.len());
                     for f in st {
@@ -1702,6 +1737,7 @@ impl Schema {
     pub fn fixed_size(&self, ty: &Type) -> Option<usize> {
         match ty {
             Type::Prim(p) => p.size(),
+            Type::FormIdRef { .. } => Prim::FormId.size(),
             Type::Enum { storage, .. } | Type::Bits { storage, .. } => storage.size(),
             Type::Named(n) => {
                 let td = self.type_def(n)?;

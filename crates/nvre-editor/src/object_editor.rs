@@ -16016,6 +16016,70 @@ fn header_flags_menu(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
     });
 }
 
+/// The record types a FormID field at `path` may point at, if the schema says.
+///
+/// A FormID is one field inside a subrecord's layout, so the path is walked
+/// through the type the same way the grid walks the value: `vats.effect` for a
+/// FormID inside a struct, the empty path for a subrecord that *is* a FormID.
+/// Empty when the schema does not restrict the field, which is the "anything"
+/// case.
+pub fn formid_targets_in(
+    schema: &nvre_esm::Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    path: &str,
+) -> Vec<String> {
+    let Some(def) = schema.lookup_in_block(rec_sig, sub_sig, block) else {
+        return Vec::new();
+    };
+    // The walk stays in `TypeDef`, which is the resolved form: a struct's fields
+    // already carry resolved types, so nothing here has to resolve again.
+    fn at_path(t: &nvre_esm::TypeDef, parts: &[&str]) -> Option<nvre_esm::TypeDef> {
+        let Some((part, rest)) = parts.split_first() else {
+            return Some(t.clone());
+        };
+        match t {
+            nvre_esm::TypeDef::Struct(fields) => {
+                let f = fields.iter().find(|f| f.name == *part)?;
+                at_path(&f.ty, rest)
+            }
+            nvre_esm::TypeDef::Union(variants) => {
+                // The record chose one variant; the grid shows that one's
+                // fields, and any variant that names this field is where the
+                // FormID's targets come from.
+                for (_, v) in variants {
+                    if let Some(found) = at_path(v, parts) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            nvre_esm::TypeDef::PeekUnion { variants, .. }
+            | nvre_esm::TypeDef::ValueUnion { variants, .. } => {
+                for v in variants {
+                    if let Some(found) = at_path(v, parts) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            // An array's elements are addressed by index, which a field path
+            // does not carry.
+            _ => None,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    match at_path(&schema.resolve_def(&def.ty), &parts) {
+        Some(nvre_esm::TypeDef::FormIdRef { of }) => of,
+        _ => Vec::new(),
+    }
+}
+
 fn formid_field(ui: &mut egui::Ui, id: &str, opt: &mut Option<u32>) {
     let mut text = opt.map(|f| format!("{:08X}", f)).unwrap_or_default();
     let resp = ui.add(
@@ -16034,7 +16098,7 @@ fn formid_field(ui: &mut egui::Ui, id: &str, opt: &mut Option<u32>) {
     }
 }
 
-fn record_dropdown(
+pub fn record_dropdown(
     ui: &mut egui::Ui,
     id_salt: &str,
     items: &[(u32, String)],
