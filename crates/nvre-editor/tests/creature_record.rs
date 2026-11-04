@@ -220,8 +220,19 @@ fn the_general_tab_holds_the_identity_and_the_flags_the_editor_puts_there() {
         .expect("Identity is on General");
     assert_eq!(
         identity.subs,
-        vec!["EDID".to_string(), "FULL".to_string(), "SCRI".to_string()],
-        "Identity holds the Editor ID, the name and the script"
+        vec!["EDID".to_string(), "FULL".to_string()],
+        "Identity holds the Editor ID and the name"
+    );
+    // The script is on the Scripts tab, where GECK puts it. It used to sit on
+    // General beside the name, which made the identity section look like the
+    // record's whole header rather than its name.
+    let scripts = sections_on_tab(&sections, Some("Scripts"));
+    assert!(
+        scripts
+            .iter()
+            .any(|s| s.subs.contains(&"SCRI".to_string())),
+        "SCRI is not on the Scripts tab: {:?}",
+        titles(&scripts)
     );
     // And the template data, with the ActorBase picker beside the checkboxes.
     let template = general
@@ -604,24 +615,29 @@ fn the_identity_section_draws_no_title_and_no_bare_signature_labels() {
         !drawn.contains(&"Identity"),
         "the Identity section still draws its heading: {drawn:?}"
     );
-    // The three rows name themselves, under the schema's own names.
-    for want in ["Editor ID", "Name", "Script"] {
+    // The rows name themselves, under the schema's own names.
+    for want in ["Editor ID", "Name"] {
         assert!(
             drawn.contains(&want),
             "the identity section draws no {want:?} row: {drawn:?}"
         );
     }
-    // **One** label per text box. Each of the three used to carry three: the
-    // subrecord's heading ("Editor ID EDID"), the row label ("Editor ID"), and
-    // the box. The subrecord heading is gone, so each name appears exactly
-    // once — and the redundant signature beside it is gone with it.
-    for want in ["Editor ID", "Name", "Script"] {
+    // **One** label per text box. Each used to carry three: the subrecord's
+    // heading ("Editor ID EDID"), the row label ("Editor ID"), and the box. The
+    // subrecord heading is gone, so each name appears exactly once — and the
+    // redundant signature beside it is gone with it.
+    for want in ["Editor ID", "Name"] {
         let count = drawn.iter().filter(|l| **l == want).count();
         assert_eq!(
             count, 1,
             "{want:?} is drawn {count} times — one label per text box, not three: {drawn:?}"
         );
     }
+    // The script is not here: it moved to the Scripts tab, where GECK puts it.
+    assert!(
+        !drawn.contains(&"Script"),
+        "the General tab still draws the script: {drawn:?}"
+    );
     // And the bare signature / placeholder labels are gone. `value` is what an
     // empty field path used to print; the four-byte tags are what a subrecord
     // with no name would fall back to.
@@ -858,5 +874,65 @@ fn a_creature_with_no_template_still_gets_the_picker() {
         written,
         Some(donor),
         "the picker's choice did not land on the record"
+    );
+}
+
+#[test]
+fn the_object_bounds_are_edited_in_one_place_not_two() {
+    // `OBND` is drawn twice: the object editor's header owns it — the
+    // "Object Bounds (OBND)" group with its Min/Max drag values, shared by every
+    // record type that carries one — and the schema grid drew it again under
+    // "Everything else", because no section named it. Two widgets writing one
+    // subrecord is the failure this editor exists not to have: they can disagree,
+    // and whichever wrote last wins.
+    //
+    // The grid now leaves the header's own subrecords to the header. The bounds
+    // are still editable, exactly once, and the six numbers are not on the page
+    // twice.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    assert!(
+        state.raw_subs.contains_key(b"OBND"),
+        "the fixture carries no OBND, so this proves nothing"
+    );
+    state.tab.chosen = Some("General".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    // The header's own editor, which is where the bounds are edited.
+    assert!(
+        rows.iter().any(|(t, _)| t == "Object Bounds (OBND)"),
+        "the header's bounds editor is gone: {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Min:") && rows.iter().any(|(t, _)| t == "Max:"),
+        "the Min/Max drag values are gone: {rows:?}"
+    );
+    // And the grid's copy is not. `min.x` and `max.z` are the field paths the
+    // schema's ObjectBounds struct produces, so they are what the duplicate
+    // looked like.
+    for path in ["min.x", "min.y", "min.z", "max.x", "max.y", "max.z"] {
+        assert!(
+            !rows.iter().any(|(t, _)| t == path),
+            "the schema grid still draws {path:?} — the bounds are editable twice: {rows:?}"
+        );
+    }
+    // The subrecord is still writable through the header, which is the point:
+    // excluding it from the grid must not have made it read-only.
+    let before = payload(&subs(&session, BRAHMIN), b"OBND");
+    assert_eq!(before.len(), 12, "OBND is twelve bytes: two Vec3i16");
+    state.obnd_min[0] = -1234;
+    state.obnd_max[2] = 4321;
+    state.save_to_session(&mut session);
+    let after = payload(&subs(&session, BRAHMIN), b"OBND");
+    assert_eq!(
+        i16::from_le_bytes([after[0], after[1]]),
+        -1234,
+        "min.x did not take: {after:02X?}"
+    );
+    assert_eq!(
+        i16::from_le_bytes([after[10], after[11]]),
+        4321,
+        "max.z did not take: {after:02X?}"
     );
 }

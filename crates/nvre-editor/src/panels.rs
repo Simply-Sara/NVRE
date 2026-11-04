@@ -1229,7 +1229,16 @@ pub fn sectioned_grid_on_tab(
             }
         });
     }
-    let rest: Vec<usize> = (0..views.len()).filter(|i| !claimed.contains(i)).collect();
+    // "Everything else" is the subrecords no section names. The object editor's
+    // header owns a few of them — the object bounds, the model, the script — and
+    // draws its own editor for them above the page, so a second copy here would
+    // be two widgets writing one subrecord. They are excluded rather than
+    // hidden: a record whose page names nothing still gets everything else it
+    // carries, and the header's own editor is where these are edited.
+    let header_owned: [&str; 3] = ["OBND", "MODL", "SCRI"];
+    let rest: Vec<usize> = (0..views.len())
+        .filter(|i| !claimed.contains(i) && !header_owned.contains(&views[*i].sig.as_str()))
+        .collect();
     if !rest.is_empty() {
         ui.add_space(6.0);
         ui.group(|ui| {
