@@ -888,14 +888,10 @@ fn a_creature_with_no_template_still_gets_the_picker() {
         .take_while(|(text, _)| text != "Everything else")
         .collect();
 
-    // The picker is there, and it says why the row is unusual.
+    // The picker is there, reading NONE — which is what says the record has no template yet.
     assert!(
         section.iter().any(|(t, _)| t == "NONE"),
         "no template picker on a creature with no TPLT: {section:?}"
-    );
-    assert!(
-        section.iter().any(|(t, _)| t == "is not on this record"),
-        "the absent subrecord is not marked as such: {section:?}"
     );
     // And the ten template checkboxes are still drawn — skipping the section
     // would have taken them with it.
@@ -1393,5 +1389,61 @@ fn the_unverified_bit_stays_marked_unverified() {
     assert!(
         note.contains("6 of the 475"),
         "the note does not record the melee-list count that ruled out 'can hold a weapon'"
+    );
+}
+
+#[test]
+fn every_link_dropdown_has_one_clear_label() {
+    // The Links section holds five FormID pickers: Death item, Voice, Combat
+    // Style, Melee Weapon List, Body Part Data. Each had a label problem.
+    //
+    // A subrecord the record does not carry showed its raw signature — "LNAM",
+    // "is not on this record" — because the absent-row path printed the tag
+    // instead of asking the schema for the name a present row would have used.
+    // The signature is the one thing a modder already has; the name is what they
+    // came for. The note itself is gone now: the picker reading NONE says it.
+    //
+    // And every picker carried "any record" beside it, which says the dropdown is
+    // unfiltered. That is true of most of them and useful of none: the dropdown
+    // already shows the chosen record, and a hint that is always there stops
+    // being a hint.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("Traits".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    // One label each, under the schema's own names.
+    for want in [
+        "Death item",
+        "Voice",
+        "Combat Style",
+        "Melee Weapon List",
+        "Body Part Data",
+    ] {
+        let count = rows.iter().filter(|(t, _)| t == want).count();
+        assert_eq!(
+            count, 1,
+            "{want:?} is drawn {count} times — one label per dropdown: {rows:?}"
+        );
+    }
+    // No raw signatures standing in for a name.
+    for tag in ["INAM", "VTCK", "ZNAM", "LNAM", "PNAM"] {
+        assert!(
+            !rows.iter().any(|(t, _)| t == tag),
+            "the Links section shows the bare signature {tag:?} instead of its name: {rows:?}"
+        );
+    }
+    // And no unfiltered hint. "LVLI, SPEL" beside a filtered dropdown stays: that
+    // one says what may go here.
+    assert!(
+        !rows.iter().any(|(t, _)| t == "any record"),
+        "a picker still carries the 'any record' hint: {rows:?}"
+    );
+    // An absent subrecord still gets its name — a picker reading NONE is the
+    // whole row, so the name is the only thing that says which link it is.
+    assert!(
+        !rows.iter().any(|(t, _)| t.contains("not on this record")),
+        "the absent-subrecord note is back: {rows:?}"
     );
 }

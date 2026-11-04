@@ -1162,10 +1162,19 @@ pub fn sectioned_grid_on_tab(
             // in the section's order, so the picker sits where the section puts
             // it — above the template checkboxes it introduces.
             for tag in &absent {
-                ui.horizontal(|ui| {
-                    ui.monospace(nvre_util::tag_str(tag));
-                    ui.weak("is not on this record");
-                });
+                // The subrecord's own name, the same one a present row would
+                // carry. A bare signature says "LNAM" to a modder who wants to
+                // know which link is missing, and the signature is the one thing
+                // they already have.
+                let name = session
+                    .schema
+                    .lookup(&rec_sig, tag)
+                    .map(|d| d.name.clone())
+                    .unwrap_or_else(|| nvre_util::tag_str(tag));
+                // The name alone. A subrecord the record does not carry is
+                // shown by a picker reading NONE, which says it better than a
+                // note under the label does.
+                ui.label(&name);
                 // The picker for a subrecord the record does not carry yet, so a
                 // modder can give it one. The target list comes from the schema,
                 // the same way a present subrecord's does.
@@ -1686,11 +1695,6 @@ fn field_editor(
     if is_formid {
         let mut opt = current.as_u64().map(|v| v as u32).filter(|v| *v != 0);
         let items = session.records_of_any(&targets);
-        let label = if targets.is_empty() {
-            "any record".to_string()
-        } else {
-            targets.join(", ")
-        };
         ui.horizontal(|ui| {
             crate::object_editor::record_dropdown(
                 ui,
@@ -1698,7 +1702,13 @@ fn field_editor(
                 &items,
                 &mut opt,
             );
-            ui.weak(label);
+            // Which record types the dropdown is filtered to. Shown only when
+            // there is a filter: "LVLI, SPEL" tells a modder what may go here,
+            // and "any record" tells them nothing they cannot see from the
+            // dropdown listing every record in the game.
+            if !targets.is_empty() {
+                ui.weak(targets.join(", "));
+            }
         });
         if opt != current.as_u64().map(|v| v as u32).filter(|v| *v != 0) {
             changed = Some(match opt {
