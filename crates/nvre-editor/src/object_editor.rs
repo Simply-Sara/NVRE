@@ -15606,14 +15606,12 @@ impl EditorPage for SectionPage {
         session: &mut crate::session::Session,
         shared: &mut ObjectEditorState,
     ) {
-        let Some(sections) = session
+        // The flattened page: the template's sections first, then this game's
+        // own, with a shared heading replaced rather than repeated.
+        let sections = session
             .schema
-            .object_window
-            .categories
-            .get(String::from_utf8_lossy(&shared.sig).as_ref())
-            .map(|c| c.sections.clone())
-            .filter(|s| !s.is_empty())
-        else {
+            .page_sections(String::from_utf8_lossy(&shared.sig).as_ref());
+        let Some(sections) = Some(sections).filter(|s: &Vec<_>| !s.is_empty()) else {
             // A category with no sections is not a described page; the grid is
             // the honest fallback rather than an empty body.
             crate::panels::schema_grid(ui, session, shared.form_id, &mut self.edit);
@@ -15846,15 +15844,13 @@ pub fn ui(
         // The name is cloned out of the schema before the page borrows the
         // session mutably, so the lookup does not hold a borrow across it.
         let avail_h = (ui.available_height() - 48.0).max(200.0);
-        let category = session
-            .schema
-            .object_window
-            .categories
-            .get(String::from_utf8_lossy(&state.sig).as_ref());
+        let sig_key = String::from_utf8_lossy(&state.sig).into_owned();
         // Sections are the more specific answer than a page name: a table that
         // describes the page is customising it, and a game that wants different
-        // contents writes different sections rather than a new page.
-        let described = category.is_some_and(|c| !c.sections.is_empty());
+        // contents writes different sections rather than a new page. A category
+        // that `extends` a template counts, because the template is its body.
+        let described = session.schema.page_is_described(&sig_key);
+        let category = session.schema.object_window.categories.get(&sig_key);
         let page_name: Option<String> = if described {
             Some("sections".to_string())
         } else {

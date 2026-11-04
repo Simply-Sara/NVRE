@@ -25,16 +25,19 @@ fn every_sectioned_page_names_every_subrecord_its_record_has() {
     for id in GAMES {
         let profile = GameProfile::by_id(id).expect("a known game");
         let schema = profile.load_schema().expect("the schema loads");
-        for (sig, cat) in &schema.object_window.categories {
-            if cat.sections.is_empty() {
+        for sig in schema.object_window.categories.keys() {
+            // The flattened page, so a section a category inherits from its
+            // template counts as its own — reading the category directly would
+            // report every shared heading as missing.
+            let sections = schema.page_sections(sig);
+            if sections.is_empty() {
                 continue;
             }
             checked += 1;
             let Some(record) = schema.records.get(sig) else {
                 continue;
             };
-            let named: std::collections::BTreeSet<&str> = cat
-                .sections
+            let named: std::collections::BTreeSet<&str> = sections
                 .iter()
                 .flat_map(|s| s.subs.iter().map(String::as_str))
                 .collect();
@@ -94,8 +97,8 @@ fn a_section_signature_is_four_bytes() {
     for id in GAMES {
         let profile = GameProfile::by_id(id).expect("a known game");
         let schema = profile.load_schema().expect("the schema loads");
-        for (sig, cat) in &schema.object_window.categories {
-            for (i, section) in cat.sections.iter().enumerate() {
+        for sig in schema.object_window.categories.keys() {
+            for (i, section) in schema.page_sections(sig).iter().enumerate() {
                 assert!(
                     !section.title.trim().is_empty(),
                     "{id} {sig}: section {i} has no heading"
@@ -116,17 +119,16 @@ fn the_fallout_4_weapon_page_is_data_and_covers_the_record() {
         .expect("fo4")
         .load_schema()
         .unwrap();
-    let cat = fo4
-        .object_window
-        .categories
-        .get("WEAP")
-        .expect("FO4 files WEAP in its object window");
     assert!(
-        !cat.sections.is_empty(),
+        fo4.object_window.categories.contains_key("WEAP"),
+        "FO4 files WEAP in its object window"
+    );
+    let sections = fo4.page_sections("WEAP");
+    assert!(
+        !sections.is_empty(),
         "FO4's weapon page is described by its sections"
     );
-    let named: std::collections::BTreeSet<&str> = cat
-        .sections
+    let named: std::collections::BTreeSet<&str> = sections
         .iter()
         .flat_map(|s| s.subs.iter().map(String::as_str))
         .collect();

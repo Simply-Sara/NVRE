@@ -423,7 +423,90 @@
    },
    "WEAP": {
     "group": "Items",
-    "editor": "weap"
+    "editor": "weap",
+    "extends": "weap_common",
+    "sections": [
+     {
+      "title": "Model & Textures",
+      "subs": [
+       "MODS"
+      ]
+     },
+     {
+      "title": "Damage",
+      "subs": [
+       "DATA"
+      ]
+     },
+     {
+      "title": "VATS",
+      "subs": [
+       "VATS"
+      ]
+     },
+     {
+      "title": "Sounds",
+      "subs": [
+       "YNAM",
+       "ZNAM",
+       "VNAM",
+       "UNAM",
+       "SNAM",
+       "TNAM",
+       "XNAM",
+       "NAM0",
+       "VANM"
+      ]
+     },
+     {
+      "title": "Mods",
+      "subs": [
+       "WNAM",
+       "EFSD",
+       "WMI1",
+       "WMI2",
+       "WMI3",
+       "WMS1",
+       "WMS2"
+      ]
+     },
+     {
+      "title": "Weapon Mod Slots",
+      "subs": [
+       "MWD1",
+       "MWD2",
+       "MWD3",
+       "MWD4",
+       "MWD5",
+       "MWD6",
+       "MWD7",
+       "WNM1",
+       "WNM2",
+       "WNM3",
+       "WNM4",
+       "WNM5",
+       "WNM6",
+       "WNM7"
+      ]
+     },
+     {
+      "title": "Sound Level",
+      "subs": [
+       "NAM6",
+       "NAM7",
+       "NAM8",
+       "NAM9"
+      ]
+     },
+     {
+      "title": "Other",
+      "subs": [
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ]
+     }
+    ]
    },
    "WRLD": {
     "hidden": true

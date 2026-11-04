@@ -163,7 +163,9 @@ fn run(game: &GameProfile, session: &Session, only_sig: Option<&str>) -> Totals 
         let Ok(subs) = rec.subrecords() else { continue };
         let n_subs = subs.len();
         let cat = schema.object_window.categories.get(&key);
-        let described = cat.is_some_and(|c| !c.sections.is_empty());
+        // The flattened page: a template's sections plus this game's own. Asking
+        // the category directly would miss everything a page inherits.
+        let described = schema.page_is_described(&key);
         let name = cat.and_then(|c| c.editor.as_deref());
         // `Some(n)` when the number of subrecords a page shows is a property of
         // the schema; `None` when it is a property of the page's code.
@@ -171,8 +173,12 @@ fn run(game: &GameProfile, session: &Session, only_sig: Option<&str>) -> Totals 
             // A sectioned page shows the subrecords its sections name, and the
             // renderer shows the rest under "Everything else" — so it shows
             // every subrecord, which the sections test asserts is all of them.
-            let named = cat.map(|c| c.sections.iter().map(|s| s.subs.len()).sum::<usize>());
-            ("sections", true, Some(named.unwrap_or(0).min(n_subs)))
+            let named = schema
+                .page_sections(&key)
+                .iter()
+                .map(|s| s.subs.len())
+                .sum::<usize>();
+            ("sections", true, Some(named.min(n_subs)))
         } else if let Some(name) = name {
             match pages.get(name) {
                 Some(page) => {
@@ -218,10 +224,8 @@ fn run(game: &GameProfile, session: &Session, only_sig: Option<&str>) -> Totals 
             }
         );
         if only_sig.is_some() && described {
-            if let Some(cat) = cat {
-                for section in &cat.sections {
-                    eprintln!("  {}: {}", section.title, section.subs.join(" "));
-                }
+            for section in schema.page_sections(&key) {
+                eprintln!("  {}: {}", section.title, section.subs.join(" "));
             }
         }
     }

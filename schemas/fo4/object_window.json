@@ -391,15 +391,23 @@
        "EDID",
        "FULL",
        "FNAM",
+       "DESC",
        "ETYP",
-       "FLTR"
+       "FLTR",
+       "OBND",
+       "ICON",
+       "MICO"
+      ]
+     },
+     {
+      "title": "Model & Textures",
+      "subs": [
+       "APPR"
       ]
      },
      {
       "title": "Damage",
       "subs": [
-       "DNAM",
-       "CRDT",
        "DAMA",
        "MASE"
       ]
@@ -407,7 +415,6 @@
      {
       "title": "Ammunition",
       "subs": [
-       "INAM",
        "BIDS",
        "BAMT",
        "LNAM"
@@ -421,20 +428,9 @@
       ]
      },
      {
-      "title": "Mods & Naming",
-      "subs": [
-       "CNAM",
-       "INRD",
-       "NNAM",
-       "MICO",
-       "APPR"
-      ]
-     },
-     {
       "title": "Enchantment",
       "subs": [
-       "EITM",
-       "EAMT"
+       "EITM"
       ]
      },
      {
@@ -445,20 +441,10 @@
       ]
      },
      {
-      "title": "Sounds & Effects",
+      "title": "Sounds",
       "subs": [
        "YNAM",
-       "ZNAM",
-       "PTRN",
-       "STCP"
-      ]
-     },
-     {
-      "title": "Appearance",
-      "subs": [
-       "OBND",
-       "ICON",
-       "DESC"
+       "ZNAM"
       ]
      },
      {
@@ -466,8 +452,28 @@
       "subs": [
        "VMAD"
       ]
+     },
+     {
+      "title": "Mods",
+      "subs": [
+       "CNAM"
+      ]
+     },
+     {
+      "title": "Sound Level",
+      "subs": [
+       "PTRN",
+       "STCP"
+      ]
+     },
+     {
+      "title": "Other",
+      "subs": [
+       "INRD"
+      ]
      }
-    ]
+    ],
+    "extends": "weap_common"
    },
    "WTHR": {
     "group": "World Objects"

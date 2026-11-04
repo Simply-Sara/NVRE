@@ -474,6 +474,12 @@ pub struct Schema {
     pub common_subrecords: BTreeMap<String, SubDef>,
     /// How this game's own editor files its records into the object window.
     pub object_window: ObjectWindow,
+    /// Page bodies a category can `extends`, by name.
+    ///
+    /// The shared half of a per-game page: `weap_common` holds the five weapon
+    /// subrecords Fallout, Skyrim and Fallout 4 all have, and each game's weapon
+    /// category says `"extends": "weap_common"` and adds its own sections.
+    pub pages: BTreeMap<String, PageDef>,
     /// The named bits of each record type's `Record Flags` header word.
     ///
     /// A record header is a fixed shape — signature, data size, flags, FormID,
@@ -554,6 +560,13 @@ pub struct CategoryDef {
     /// under it, and a name no block is registered under is a table typo —
     /// the editor reports it rather than guessing.
     pub editor: Option<String>,
+    /// The page body this category starts from, before its own sections.
+    ///
+    /// `"extends": "weap_common"` gives the category that template's sections,
+    /// and its own `sections` then replace any section with the same title and
+    /// add the rest. That is what lets one page body serve every game while each
+    /// game keeps its own headings.
+    pub extends: Option<String>,
     /// The page's sections, when the page is described rather than written.
     ///
     /// A section is a heading and the subrecords filed under it. The renderer
@@ -592,6 +605,23 @@ pub struct SectionDef {
     /// serves records that differ, and it is why a section naming a subrecord
     /// only one game has is not an error.
     pub subs: Vec<String>,
+}
+
+/// A named set of sections a category can build its page from.
+///
+/// The point of a page tree is that the shared part is written once. Fallout,
+/// Skyrim and Fallout 4 have five weapon subrecords in common and a total of 107
+/// between them, so a page per game that restated the common five would be three
+/// copies of the same five plus three different remainders. A page template holds
+/// the shared sections; a game's category says `extends` and adds or replaces the
+/// sections that are its own.
+///
+/// A template is not a category: it has no record type of its own, so it never
+/// appears in the object window. It is a page's body, waiting to be named.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PageDef {
+    /// The sections, in the order to draw them.
+    pub sections: Vec<SectionDef>,
 }
 
 /// Give a struct's repeated field names distinct names.
@@ -852,6 +882,12 @@ impl Schema {
         if let Some(hf) = obj.get("header_flags").and_then(|v| v.as_object()) {
             self.merge_header_flags(hf)?;
         }
+        if let Some(pages) = obj.get("pages").and_then(|v| v.as_object()) {
+            for (name, def) in pages {
+                let sections = Self::parse_sections(name, def)?;
+                self.pages.insert(name.clone(), PageDef { sections });
+            }
+        }
         Ok(())
     }
 
@@ -980,51 +1016,19 @@ impl Schema {
                     };
                     cat.hidden = flag;
                 }
-                if let Some(secs) = o.get("sections") {
-                    let Some(list) = secs.as_array() else {
-                        return Err(format!(
-                            "object_window.categories.{sig}.sections is not a list"
-                        ));
-                    };
-                    let mut out = Vec::with_capacity(list.len());
-                    for (i, s) in list.iter().enumerate() {
-                        let Some(sec) = s.as_object() else {
+                if let Some(e) = o.get("extends") {
+                    match e.as_str() {
+                        Some(name) => cat.extends = Some(name.to_string()),
+                        None if e.is_null() => cat.extends = None,
+                        None => {
                             return Err(format!(
-                                "object_window.categories.{sig}.sections[{i}] is not an object"
-                            ));
-                        };
-                        let Some(title) = sec.get("title").and_then(|t| t.as_str()) else {
-                            return Err(format!(
-                                "object_window.categories.{sig}.sections[{i}] has no title"
-                            ));
-                        };
-                        let Some(subs) = sec.get("subs").and_then(|t| t.as_array()) else {
-                            return Err(format!(
-                                "object_window.categories.{sig}.sections[{i}] has no subs list"
-                            ));
-                        };
-                        let mut list = Vec::with_capacity(subs.len());
-                        for sub in subs {
-                            let Some(tag) = sub.as_str() else {
-                                return Err(format!(
-                                    "object_window.categories.{sig}.sections[{i}].subs holds a \
-                                     name that is not a string"
-                                ));
-                            };
-                            if tag.len() != 4 {
-                                return Err(format!(
-                                    "object_window.categories.{sig}.sections[{i}] names {tag:?}, \
-                                     which is not a four-byte subrecord signature"
-                                ));
-                            }
-                            list.push(tag.to_string());
+                                "object_window.categories.{sig}.extends is not a string"
+                            ))
                         }
-                        out.push(SectionDef {
-                            title: title.to_string(),
-                            subs: list,
-                        });
                     }
-                    cat.sections = out;
+                }
+                if o.contains_key("sections") {
+                    cat.sections = Self::parse_sections(sig, def)?;
                 }
                 self.object_window.categories.insert(sig.clone(), cat);
             }
@@ -1713,6 +1717,104 @@ impl Schema {
             .get(key.as_ref())
             .map(|h| h.bits.as_slice())
             .unwrap_or(EMPTY)
+    }
+
+    /// Parse a `sections` list: a heading and the subrecords under it.
+    ///
+    /// Shared by a category's own sections and a page template's, so the two
+    /// cannot accept different shapes — a template that parsed one way and a
+    /// category another would be two formats pretending to be one.
+    fn parse_sections(owner: &str, def: &Json) -> Result<Vec<SectionDef>, String> {
+        let Some(o) = def.as_object() else {
+            return Err(format!("{owner} is not an object"));
+        };
+        let Some(secs) = o.get("sections") else {
+            return Ok(Vec::new());
+        };
+        let Some(list) = secs.as_array() else {
+            return Err(format!("{owner}.sections is not a list"));
+        };
+        let mut out = Vec::with_capacity(list.len());
+        for (i, s) in list.iter().enumerate() {
+            let Some(sec) = s.as_object() else {
+                return Err(format!("{owner}.sections[{i}] is not an object"));
+            };
+            let Some(title) = sec.get("title").and_then(|t| t.as_str()) else {
+                return Err(format!("{owner}.sections[{i}] has no title"));
+            };
+            let Some(subs) = sec.get("subs").and_then(|t| t.as_array()) else {
+                return Err(format!("{owner}.sections[{i}] has no subs list"));
+            };
+            let mut tags = Vec::with_capacity(subs.len());
+            for sub in subs {
+                let Some(tag) = sub.as_str() else {
+                    return Err(format!(
+                        "{owner}.sections[{i}].subs holds a name that is not a string"
+                    ));
+                };
+                if tag.len() != 4 {
+                    return Err(format!(
+                        "{owner}.sections[{i}] names {tag:?}, which is not a four-byte \
+                         subrecord signature"
+                    ));
+                }
+                tags.push(tag.to_string());
+            }
+            out.push(SectionDef {
+                title: title.to_string(),
+                subs: tags,
+            });
+        }
+        Ok(out)
+    }
+
+    /// The sections a record type's page draws, with `extends` flattened.
+    ///
+    /// A category starts from its template's sections, in the template's order.
+    /// Its own sections then **merge by title**: a heading the template already
+    /// has gains the game's subrecords after the template's, and a heading it
+    /// does not have is appended.
+    ///
+    /// Merging rather than replacing is the rule that cannot lose a field. A
+    /// replace-by-title would let a game's `"Damage": ["DATA"]` silently drop the
+    /// template's `DNAM` and `CRDT` — the subrecords every game shares — because
+    /// the game's file happens to use the same heading for a different purpose.
+    /// That is exactly the failure the sections exist to prevent, so a game adds
+    /// to a shared heading instead of overwriting it.
+    ///
+    /// A category that names a template the schema does not hold gets an empty
+    /// list rather than an error, so a schema written before its template is a
+    /// page with nothing under it instead of a schema that will not load.
+    pub fn page_sections(&self, sig: &str) -> Vec<SectionDef> {
+        let Some(cat) = self.object_window.categories.get(sig) else {
+            return Vec::new();
+        };
+        let mut out: Vec<SectionDef> = match &cat.extends {
+            Some(name) => self
+                .pages
+                .get(name)
+                .map(|p| p.sections.clone())
+                .unwrap_or_default(),
+            None => Vec::new(),
+        };
+        for section in &cat.sections {
+            match out.iter_mut().find(|s| s.title == section.title) {
+                Some(existing) => {
+                    for sub in &section.subs {
+                        if !existing.subs.contains(sub) {
+                            existing.subs.push(sub.clone());
+                        }
+                    }
+                }
+                None => out.push(section.clone()),
+            }
+        }
+        out
+    }
+
+    /// Whether a record type's page is described by sections rather than code.
+    pub fn page_is_described(&self, sig: &str) -> bool {
+        !self.page_sections(sig).is_empty()
     }
 
     /// Check the schema: every type it names must be one it knows.

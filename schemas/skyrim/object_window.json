@@ -326,7 +326,85 @@
     "group": "World Objects"
    },
    "WEAP": {
-    "group": "Items"
+    "group": "Items",
+    "extends": "weap_common",
+    "sections": [
+     {
+      "title": "Identity",
+      "subs": [
+       "EDID",
+       "FULL",
+       "DESC",
+       "ETYP",
+       "OBND"
+      ]
+     },
+     {
+      "title": "Model & Textures",
+      "subs": [
+       "MODL",
+       "MODS",
+       "MODT"
+      ]
+     },
+     {
+      "title": "Damage",
+      "subs": [
+       "DATA"
+      ]
+     },
+     {
+      "title": "Ammunition",
+      "subs": [
+       "BIDS",
+       "BAMT"
+      ]
+     },
+     {
+      "title": "Enchantment",
+      "subs": [
+       "EITM"
+      ]
+     },
+     {
+      "title": "Keywords",
+      "subs": [
+       "KSIZ",
+       "KWDA"
+      ]
+     },
+     {
+      "title": "Sounds",
+      "subs": [
+       "VNAM",
+       "UNAM",
+       "SNAM",
+       "TNAM",
+       "XNAM"
+      ]
+     },
+     {
+      "title": "Script",
+      "subs": [
+       "VMAD"
+      ]
+     },
+     {
+      "title": "Mods",
+      "subs": [
+       "CNAM",
+       "WNAM"
+      ]
+     },
+     {
+      "title": "Sound Level",
+      "subs": [
+       "NAM7",
+       "NAM8",
+       "NAM9"
+      ]
+     }
+    ]
    },
    "WOOP": {
     "group": "Character"

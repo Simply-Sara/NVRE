@@ -1,0 +1,30 @@
+{
+ "_comment": "Page bodies shared by more than one game's object editor. `weap_common` holds the weapon subrecords Fallout: New Vegas, Fallout 3, Skyrim and Fallout 4 all carry \u2014 measured: CRDT, DNAM, EAMT, INAM, NNAM are the only five shared by all four, out of 107 across them. A game's WEAP category says \"extends\": \"weap_common\" and lists its own sections; a section title it shares replaces the template's rather than appearing twice.",
+ "format": "fnv.schema/1",
+ "pages": {
+  "weap_common": {
+   "sections": [
+    {
+     "title": "Damage",
+     "subs": [
+      "DNAM",
+      "CRDT"
+     ]
+    },
+    {
+     "title": "Enchantment",
+     "subs": [
+      "EAMT"
+     ]
+    },
+    {
+     "title": "References",
+     "subs": [
+      "INAM",
+      "NNAM"
+     ]
+    }
+   ]
+  }
+ }
+}
