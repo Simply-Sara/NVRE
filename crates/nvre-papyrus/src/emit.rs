@@ -1228,7 +1228,15 @@ impl<'a> Compiler<'a> {
             // this emits two. It scores 5,275 behavioural differences against
             // 4,602, so the elision is conditional on something not yet
             // identified and the rule is left out.
-            let skip = last_and_empty || last_and_returns;
+            // ...and the LAST branch of a MULTI-branch chain omits it too: the
+            // fall-through already lands past the chain, so the jump is a
+            // no-op. A single-branch `if c x = 1 endif` keeps it — that was
+            // measured directly with the compiler (cmp_eq, jmpf 3, assign,
+            // jmp 1) — but `if c … else … endif` does not emit one for the
+            // else, and neither does a longer chain for its last branch.
+            // Witness: `ActivateAgainAfterDelay.OnActivate`, whose else ends
+            // with `gotoState("pulledPosition")` and has no trailing jmp.
+            let skip = last_and_empty || last_and_returns || (is_last && branches.len() > 1);
             if !skip {
                 let mut ins = Instruction::new(opcode_of("jmp"));
                 ins.args.push(Value::Int(0));
