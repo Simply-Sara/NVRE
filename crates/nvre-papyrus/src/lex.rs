@@ -150,6 +150,14 @@ pub struct Token {
     /// The 1-based source line it starts on. The debug block records a line
     /// per instruction, so every token carries the line that produced it.
     pub line: u16,
+    /// The 1-based **column** it starts on, counted in characters.
+    ///
+    /// An editor needs this and a line number alone is not enough: without a
+    /// column there is nothing to underline, and a diagnostic can only point at
+    /// the whole line. It is computed from the offset of the last newline rather
+    /// than maintained incrementally, so it cannot drift from the position the
+    /// token was actually read at.
+    pub col: u16,
 }
 
 impl Token {
@@ -168,22 +176,30 @@ pub fn lex(src: &str) -> Vec<Token> {
     let mut out = Vec::new();
     let mut i = 0usize;
     let mut line: u16 = 1;
+    // Index just past the last newline. A token's column is its start offset
+    // minus this, so the column is derived from the position rather than kept in
+    // step by hand at every `i += 1`.
+    let mut last_nl = 0usize;
     // How deep inside `(`/`[` the reader is. A newline at depth 0 ends a
     // statement; one inside a bracket does not.
     let mut depth: i32 = 0;
 
     while i < bytes.len() {
         let c = bytes[i];
+        // Where this token starts, for its column.
+        let tok_start = i;
         match c {
             '\n' => {
                 if depth == 0 && !out.is_empty() {
                     out.push(Token {
                         kind: Kind::Newline,
                         line,
+                        col: (tok_start - last_nl + 1) as u16,
                     });
                 }
                 line = line.saturating_add(1);
                 i += 1;
+                last_nl = i;
             }
             c if c.is_whitespace() => i += 1,
             ';' if bytes.get(i + 1) == Some(&'/') => {
@@ -229,12 +245,14 @@ pub fn lex(src: &str) -> Vec<Token> {
                     out.push(Token {
                         kind: Kind::Unknown('\\'),
                         line,
+                        col: (tok_start - last_nl + 1) as u16,
                     });
                     i += 1;
                 }
             }
             '{' => {
                 let start_line = line;
+                let start_col = (tok_start - last_nl + 1) as u16;
                 i += 1;
                 let mut body = String::new();
                 while i < bytes.len() && bytes[i] != '}' {
@@ -250,10 +268,12 @@ pub fn lex(src: &str) -> Vec<Token> {
                 out.push(Token {
                     kind: Kind::DocComment(body.trim().to_string()),
                     line: start_line,
+                    col: start_col,
                 });
             }
             '"' => {
                 let start_line = line;
+                let start_col = (tok_start - last_nl + 1) as u16;
                 i += 1;
                 let mut s = String::new();
                 while i < bytes.len() && bytes[i] != '"' {
@@ -282,6 +302,7 @@ pub fn lex(src: &str) -> Vec<Token> {
                 out.push(Token {
                     kind: Kind::Str(s),
                     line: start_line,
+                    col: start_col,
                 });
             }
             c if c.is_ascii_digit()
@@ -292,6 +313,7 @@ pub fn lex(src: &str) -> Vec<Token> {
                 // as an int leaves `X0001DA07` as a stray word inside the
                 // argument list.
                 let start_line = line;
+                let start_col = (tok_start - last_nl + 1) as u16;
                 i += 2;
                 let mut digits = String::new();
                 while i < bytes.len() && bytes[i].is_ascii_hexdigit() {
@@ -302,10 +324,12 @@ pub fn lex(src: &str) -> Vec<Token> {
                 out.push(Token {
                     kind: Kind::Int(v),
                     line: start_line,
+                    col: start_col,
                 });
             }
             c if c.is_ascii_digit() => {
                 let start_line = line;
+                let start_col = (tok_start - last_nl + 1) as u16;
                 let mut text = String::new();
                 while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == '.') {
                     // A second dot means a member access, not a fractional part.
@@ -319,16 +343,19 @@ pub fn lex(src: &str) -> Vec<Token> {
                     out.push(Token {
                         kind: Kind::Float(text.parse().unwrap_or(0.0)),
                         line: start_line,
+                        col: start_col,
                     });
                 } else {
                     out.push(Token {
                         kind: Kind::Int(text.parse().unwrap_or(0)),
                         line: start_line,
+                        col: start_col,
                     });
                 }
             }
             c if c.is_alphabetic() || c == '_' => {
                 let start_line = line;
+                let start_col = (tok_start - last_nl + 1) as u16;
                 let mut text = String::new();
                 while i < bytes.len() && (bytes[i].is_alphanumeric() || bytes[i] == '_') {
                     text.push(bytes[i]);
@@ -337,11 +364,13 @@ pub fn lex(src: &str) -> Vec<Token> {
                 out.push(Token {
                     kind: Kind::Word(text),
                     line: start_line,
+                    col: start_col,
                 });
             }
             _ => {
                 let two: String = bytes[i..(i + 2).min(bytes.len())].iter().collect();
                 let start_line = line;
+                let start_col = (tok_start - last_nl + 1) as u16;
                 let kind = match two.as_str() {
                     "==" => {
                         i += 2;
@@ -409,6 +438,7 @@ pub fn lex(src: &str) -> Vec<Token> {
                 out.push(Token {
                     kind,
                     line: start_line,
+                    col: start_col,
                 });
             }
         }

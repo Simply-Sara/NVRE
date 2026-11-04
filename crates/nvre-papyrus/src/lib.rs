@@ -228,6 +228,21 @@ pub enum Error {
     /// Source text could not be parsed.
     #[error("{0}")]
     Parse(String),
+    /// Source text could not be parsed, with the position it failed at.
+    ///
+    /// The position is separate from the message because an editor needs it
+    /// structurally — to place a squiggle, to sort diagnostics, to jump to the
+    /// line. Formatting it into the message loses that, and it is how a parse
+    /// error ended up reported at line 1 for a problem on line 6.
+    #[error("{message} (line {line}, column {col})")]
+    ParseAt {
+        /// The 1-based source line.
+        line: u16,
+        /// The 1-based source column.
+        col: u16,
+        /// What went wrong, naming what was expected and what was found.
+        message: String,
+    },
 }
 
 impl From<nvre_util::OutOfBounds> for Error {

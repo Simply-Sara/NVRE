@@ -12,8 +12,9 @@
 //! Exit code is 1 when any error was reported, so it drops into a build step.
 
 use nvre_papyrus::check::{check, Context, Severity};
+use nvre_papyrus::lex;
+use nvre_papyrus::parse::parse_partial;
 use nvre_papyrus::symbols::ClassTable;
-use nvre_papyrus::{lex, parse};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -24,25 +25,30 @@ fn main() {
 
     // Parse everything first: the class table needs the whole set before any
     // single script can be checked against it.
+    //
+    // A RECOVERY parse, not a strict one: a file that does not fully parse still
+    // contributes the declarations that did, so the semantic checks run on them.
+    // One error on line 6 must not hide an error on line 20.
     let mut parsed: Vec<(String, nvre_papyrus::parse::Script)> = Vec::new();
     let mut parse_errors = 0usize;
     for path in &args {
         let src = match std::fs::read(path) {
             Ok(b) => nvre_util::cp1252::decode(&b),
             Err(e) => {
-                println!("{path}:1: error: {e}");
+                println!("{path}:1:1: error: {e}");
                 parse_errors += 1;
                 continue;
             }
         };
-        match parse(&lex(&src)) {
-            Ok(s) => parsed.push((path.clone(), s)),
-            Err(e) => {
-                // A parse error is the diagnostic the user needs first: nothing
-                // downstream can be trusted without it.
-                println!("{path}:1: error: {e}");
-                parse_errors += 1;
-            }
+        let p = parse_partial(&lex(&src));
+        for d in &p.errors {
+            println!("{path}:{}:{}: error: {}", d.line, d.col, d.message);
+            parse_errors += 1;
+        }
+        // Only keep the script if it has a name; a file with no `Scriptname` has
+        // no AST worth checking.
+        if !p.script.name.is_empty() {
+            parsed.push((path.clone(), p.script));
         }
     }
 

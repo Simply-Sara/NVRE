@@ -364,15 +364,96 @@ pub struct Script {
     pub imports: Vec<String>,
 }
 
-/// Parse a token stream.
+/// One parse failure, with the position it was found at.
+///
+/// Separate from [`Error`] because a recovery parse can report **several**, and
+/// an editor wants all of them at once rather than the first.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseDiag {
+    /// The 1-based source line.
+    pub line: u16,
+    /// The 1-based source column.
+    pub col: u16,
+    /// What went wrong.
+    pub message: String,
+}
+
+/// A script and everything that went wrong parsing it.
+///
+/// `script` is always usable: declarations that parsed are present, ones that did
+/// not are missing. That is what a live editor needs — a half-typed file must
+/// still yield the rest of its declarations so they can be checked.
+#[derive(Debug, Clone)]
+pub struct Partial {
+    /// Whatever parsed. Never `None`; the header is required and a file without
+    /// one is rejected outright.
+    pub script: Script,
+    /// Every failure, in source order.
+    pub errors: Vec<ParseDiag>,
+}
+
+/// Parse a token stream, returning the first error and no AST.
+///
+/// Strict entry point. For an editor, use [`parse_partial`], which recovers.
 pub fn parse(tokens: &[Token]) -> Result<Script, Error> {
-    let mut p = Parser { t: tokens, i: 0 };
-    p.script()
+    let p = parse_partial(tokens);
+    if let Some(e) = p.errors.first() {
+        return Err(Error::ParseAt {
+            line: e.line,
+            col: e.col,
+            message: e.message.clone(),
+        });
+    }
+    Ok(p.script)
+}
+
+/// Parse a token stream, **recovering** from errors.
+///
+/// A declaration or statement that fails is recorded and skipped, and parsing
+/// resumes at the next line boundary, so one broken line does not cost the whole
+/// file. The header (`Scriptname`) is not recoverable: without it there is no
+/// script, and a file that lacks one is still a hard error.
+pub fn parse_partial(tokens: &[Token]) -> Partial {
+    let mut p = Parser {
+        t: tokens,
+        i: 0,
+        errors: Vec::new(),
+    };
+    match p.script() {
+        Ok(script) => Partial {
+            script,
+            errors: p.errors,
+        },
+        Err(e) => {
+            // Only the header can fail this way. Report it as a diagnostic and
+            // hand back a stub, so callers have one shape to deal with.
+            let (line, col, message) = match e {
+                Error::ParseAt { line, col, message } => (line, col, message),
+                other => (1, 1, other.to_string()),
+            };
+            Partial {
+                script: Script {
+                    name: String::new(),
+                    parent: None,
+                    declares_hidden: false,
+                    declares_conditional: false,
+                    doc: None,
+                    decls: Vec::new(),
+                    is_native: false,
+                    imports: Vec::new(),
+                },
+                errors: vec![ParseDiag { line, col, message }],
+            }
+        }
+    }
 }
 
 struct Parser<'a> {
     t: &'a [Token],
     i: usize,
+    /// Failures collected during a recovery parse. Empty for a strict parse of
+    /// valid input, which is the corpus.
+    errors: Vec<ParseDiag>,
 }
 
 impl<'a> Parser<'a> {
@@ -418,12 +499,88 @@ impl<'a> Parser<'a> {
         self.i >= self.t.len()
     }
 
+    /// Report a failure **at the position it happened**.
+    ///
+    /// At end of file there is no token to point at, so the position comes from
+    /// the last token read — which is where the source actually ran out. The old
+    /// version said only "end of file" with no position at all, and the caller
+    /// then reported line 1, so an unterminated string on line 6 was reported at
+    /// line 1.
     fn err<T>(&self, what: &str) -> Result<T, Error> {
-        let found = match self.peek() {
-            Some(t) => format!("{} at line {} (token {})", t.kind, t.line, self.i),
-            None => "end of file".to_string(),
+        let (line, col, found) = match self.peek() {
+            Some(t) => (t.line, t.col, t.kind.to_string()),
+            None => match self.t.last() {
+                Some(t) => (t.line, t.col, "end of file".to_string()),
+                None => (1, 1, "empty source".to_string()),
+            },
         };
-        Err(Error::Parse(format!("{what}, found {found}")))
+        Err(Error::ParseAt {
+            line,
+            col,
+            message: format!("{what}, found {found}"),
+        })
+    }
+
+    /// Record a failure and skip to the next line boundary.
+    ///
+    /// Recovery is at the **line**, which is the only synchronisation point the
+    /// grammar offers: every statement ends at a newline outside brackets, so a
+    /// failed construct cannot swallow the one after it. Progress is guaranteed —
+    /// if the failure consumed nothing, one token is discarded — so a malformed
+    /// file cannot spin here.
+    fn recover(&mut self, e: Error, started_at: usize) {
+        let (line, col, message) = match e {
+            Error::ParseAt { line, col, message } => (line, col, message),
+            other => (self.line(), 1, other.to_string()),
+        };
+        self.errors.push(ParseDiag { line, col, message });
+        if self.i == started_at && self.i < self.t.len() {
+            self.i += 1;
+        }
+        // Skip past the end of the current line, but **stop before a block
+        // terminator**. `endif`/`endwhile`/`endfunction` are never valid statement
+        // starts, and consuming one would make the enclosing block report "never
+        // reaches endif" — turning one error into two, the second of them false.
+        //
+        // A `Newline` token is only emitted at bracket depth 0, so this cannot
+        // stop in the middle of an argument list.
+        while self.i < self.t.len() {
+            if let Some(w) = self.t[self.i].word() {
+                // An exact list, not a prefix test: `endurance = 5` starts with
+                // "end" and is an ordinary statement.
+                if matches!(
+                    w.as_str(),
+                    "endif"
+                        | "endwhile"
+                        | "endfunction"
+                        | "endevent"
+                        | "endstate"
+                        | "endproperty"
+                        | "endstruct"
+                ) {
+                    return;
+                }
+            }
+            let is_nl = self.t[self.i].kind == Kind::Newline;
+            self.i += 1;
+            if is_nl {
+                break;
+            }
+        }
+        self.skip_newlines();
+    }
+
+    /// A failure that is really "the source ended before this construct did".
+    ///
+    /// Positioned at the LAST token rather than at the start of the construct:
+    /// the useful place to look is where the file ran out, not where the `if`
+    /// began. The message names the opening line so both are available.
+    fn err_unterminated<T>(&self, message: String) -> Result<T, Error> {
+        let (line, col) = match self.t.last() {
+            Some(t) => (t.line, t.col),
+            None => (1, 1),
+        };
+        Err(Error::ParseAt { line, col, message })
     }
 
     fn word(&mut self, what: &str) -> Result<String, Error> {
@@ -519,11 +676,21 @@ impl<'a> Parser<'a> {
                 );
                 continue;
             }
-            let mut decl = self.declaration()?;
-            if decl.doc.is_none() {
-                decl.doc = pending;
+            // Recovery at DECLARATION level: one broken declaration must not
+            // cost the rest of the file. That is what makes a half-typed script
+            // still worth checking - the declarations that did parse are handed
+            // to the semantic checks, so an error on line 6 does not hide an
+            // error on line 20.
+            let started_at = self.i;
+            match self.declaration() {
+                Ok(mut decl) => {
+                    if decl.doc.is_none() {
+                        decl.doc = pending;
+                    }
+                    decls.push(decl);
+                }
+                Err(e) => self.recover(e, started_at),
             }
-            decls.push(decl);
         }
         Ok(Script {
             name,
@@ -783,10 +950,14 @@ impl<'a> Parser<'a> {
             } else if f.name.eq_ignore_ascii_case("set") {
                 out.setter = Some(f);
             } else {
-                return Err(Error::Parse(format!(
-                    "a property accessor must be `Get` or `Set`, found `{}`",
-                    f.name
-                )));
+                return Err(Error::ParseAt {
+                    line: f.line,
+                    col: 1,
+                    message: format!(
+                        "a property accessor must be `Get` or `Set`, found `{}`",
+                        f.name
+                    ),
+                });
             }
         }
     }
@@ -922,13 +1093,19 @@ impl<'a> Parser<'a> {
                 self.i += 1;
                 return Ok(());
             }
-            let s = self.statement(locals)?;
-            body.push(s);
+            // Recovery at STATEMENT level, so one broken line inside a function
+            // does not discard the function: the statements that did parse are
+            // kept, and the editor can still check them.
+            let started_at = self.i;
+            match self.statement(locals) {
+                Ok(s) => body.push(s),
+                Err(e) => self.recover(e, started_at),
+            }
         }
-        Err(Error::Parse(format!(
+        self.err_unterminated(format!(
             "a body that starts before line {} never reaches `{end_word}`",
             self.line()
-        )))
+        ))
     }
 
     fn statement(&mut self, locals: &mut Vec<LocalDecl>) -> Result<Stmt, Error> {
@@ -1126,9 +1303,8 @@ impl<'a> Parser<'a> {
                     return Ok(Stmt::If { branches, line });
                 }
                 _ => {
-                    return Err(Error::Parse(format!(
-                        "an `if` on line {line} never reaches `endif`"
-                    )))
+                    return self
+                        .err_unterminated(format!("an `if` on line {line} never reaches `endif`"));
                 }
             }
         }
@@ -1185,6 +1361,7 @@ impl<'a> Parser<'a> {
         let probe = {
             let mut probe = Parser {
                 t: self.t,
+                errors: Vec::new(),
                 i: self.i,
             };
             probe.postfix().map(|e| (e, probe.i)).ok()
@@ -1509,5 +1686,128 @@ fn run_hidden_flags(p: &mut Parser<'_>) {
             continue;
         }
         break;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn partial(src: &str) -> Partial {
+        parse_partial(&crate::lex::lex(src))
+    }
+
+    #[test]
+    fn a_token_carries_its_column() {
+        // `Self.Disable()` on line 3, indented by one tab: `Self` starts at
+        // column 2 and `Disable` at 7.
+        let toks = crate::lex::lex("Scriptname A\nFunction F()\n\tSelf.Disable()\nEndFunction\n");
+        let self_tok = toks
+            .iter()
+            .find(|t| t.word().as_deref() == Some("self"))
+            .expect("Self is a token");
+        assert_eq!((self_tok.line, self_tok.col), (3, 2));
+        let disable = toks
+            .iter()
+            .find(|t| t.word().as_deref() == Some("disable"))
+            .expect("Disable is a token");
+        assert_eq!((disable.line, disable.col), (3, 7));
+    }
+
+    #[test]
+    fn a_strict_parse_still_rejects_a_broken_file() {
+        // The recovery parse must not weaken the strict one: a caller that wants
+        // an AST or an error still gets exactly that.
+        assert!(parse(&crate::lex::lex(
+            "Scriptname A\nFunction F()\n\tCount = )\nEndFunction\n"
+        ))
+        .is_err());
+    }
+
+    #[test]
+    fn recovery_keeps_the_declarations_after_the_error() {
+        // THE POINT of recovery: an error in the first function must not cost
+        // the third one, because the editor still has to check it.
+        let p = partial(
+            "Scriptname A\nFunction Broken()\n\tCount = )\nEndFunction\nFunction Fine()\n\tSelf.Disable()\nEndFunction\n",
+        );
+        assert_eq!(p.errors.len(), 1, "{:?}", p.errors);
+        let names: Vec<&str> = p
+            .script
+            .decls
+            .iter()
+            .filter(|d| matches!(d.kind, DeclKind::Function(_)))
+            .map(|d| d.name.as_str())
+            .collect();
+        assert!(
+            names.contains(&"Fine"),
+            "the function after the error must survive: {names:?}"
+        );
+    }
+
+    #[test]
+    fn recovery_reports_a_position_not_line_one() {
+        let p = partial("Scriptname A\nFunction F()\n\tCount = )\nEndFunction\n");
+        assert_eq!(p.errors.len(), 1);
+        assert_eq!(p.errors[0].line, 3, "{:?}", p.errors);
+        assert_eq!(p.errors[0].col, 10, "{:?}", p.errors);
+    }
+
+    #[test]
+    fn an_unterminated_string_is_reported_where_it_starts() {
+        // The string swallows the rest of the file, so the failure surfaces at
+        // end of input - but the position is the unterminated literal, which is
+        // the thing the user has to fix.
+        let p = partial("Scriptname A\nFunction F()\n\tDebug.Trace(\"oops\nEndFunction\n");
+        assert!(!p.errors.is_empty());
+        assert_eq!(p.errors[0].line, 3, "{:?}", p.errors);
+        assert_eq!(p.errors[0].col, 14, "{:?}", p.errors);
+    }
+
+    #[test]
+    fn recovery_does_not_swallow_the_block_terminator() {
+        // If recovery ate the `endif`, the block would report "never reaches
+        // endif" - a second, false error caused by the first.
+        let p = partial(
+            "Scriptname A\nFunction F()\n\tif 1 == 1\n\t\tCount = )\n\tendif\nEndFunction\n",
+        );
+        assert_eq!(p.errors.len(), 1, "{:?}", p.errors);
+        assert!(
+            !p.errors[0].message.contains("never reaches"),
+            "recovery must not lose the terminator: {:?}",
+            p.errors
+        );
+    }
+
+    #[test]
+    fn recovery_works_at_DECLARATION_level_too() {
+        // The statement-level tests above are satisfied by statement recovery
+        // alone: a bad *statement* inside a function is recovered there. This
+        // case fails at `declaration()`, so only declaration-level recovery saves
+        // the function that follows - and removing that recovery must break this
+        // test, which is why it exists.
+        let p = partial(
+            "Scriptname A\nFloat Property\nFunction Fine()\n\tSelf.Disable()\nEndFunction\n",
+        );
+        assert!(!p.errors.is_empty(), "the bad declaration must be reported");
+        let names: Vec<&str> = p
+            .script
+            .decls
+            .iter()
+            .filter(|d| matches!(d.kind, DeclKind::Function(_)))
+            .map(|d| d.name.as_str())
+            .collect();
+        assert!(
+            names.contains(&"Fine"),
+            "the function after a broken DECLARATION must survive: {names:?} / {:?}",
+            p.errors
+        );
+    }
+
+    #[test]
+    fn a_valid_file_reports_nothing() {
+        let p = partial("Scriptname A\nFunction F()\n\tSelf.Disable()\nEndFunction\n");
+        assert!(p.errors.is_empty(), "{:?}", p.errors);
+        assert_eq!(p.script.decls.len(), 1);
     }
 }
