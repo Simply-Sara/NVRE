@@ -1413,8 +1413,11 @@ impl<'a> Compiler<'a> {
                 // `HardWorkerChoppedWood = true`, never the bare name. An
                 // AutoReadOnly property has no backing variable — its value is a
                 // constant folded into the getter — so it is left alone.
-                if self.is_auto_property(n) {
-                    let backing = format!("::{n}_var");
+                // `auto_backing_var` covers an INHERITED `auto` property as
+                // well as a declared one: the storage is the object's, so
+                // `IsTransitionFight = x` in a subclass writes
+                // `::IsTransitionFight_var`.
+                if let Some(backing) = self.auto_backing_var(n) {
                     return Ok(Value::Identifier(self.intern(&backing)));
                 }
                 Ok(Value::Identifier(self.intern(n)))
@@ -1545,12 +1548,43 @@ impl<'a> Compiler<'a> {
 
     /// The `::Name_var` member that stores an `auto` property, if `name` is one.
     fn auto_backing_var(&self, name: &str) -> Option<String> {
-        self.script.decls.iter().find_map(|d| match &d.kind {
+        if let Some(b) = self.script.decls.iter().find_map(|d| match &d.kind {
             DeclKind::Property(p) if p.is_auto && p.name.eq_ignore_ascii_case(name) => {
                 Some(format!("::{}_var", p.name))
             }
             _ => None,
-        })
+        }) {
+            return Some(b);
+        }
+        // An INHERITED `auto` property is not in this script's declaration list,
+        // but it is still backed by `::Name_var` — the storage belongs to the
+        // object, not to the file. `IsTransitionFight = isTransition` in
+        // `ArenaTransitionCombatQuest`, whose `IsTransitionFight` comes from
+        // `ArenaCombatQuest`, compiled to `assign IsTransitionFight …` where the
+        // game writes `assign ::IsTransitionFight_var …`.
+        //
+        // A script VARIABLE of the same name shadows the property, so it is
+        // checked first.
+        let n = name.to_ascii_lowercase();
+        let is_var = self.script.decls.iter().any(|d| match &d.kind {
+            DeclKind::Variable(v) => v.name.eq_ignore_ascii_case(name),
+            _ => false,
+        });
+        if is_var {
+            return None;
+        }
+        let mut here = self.own_class();
+        for _ in 0..12 {
+            let Some(c) = here else { break };
+            if let Some(spelling) = crate::signatures::auto_property_name(&c, &n) {
+                // Use the spelling the class declares, so `::Name_var` matches
+                // the member the object actually has: the slot is
+                // `::IsTransitionFight_var`, not the lowercased source word.
+                return Some(format!("::{spelling}_var"));
+            }
+            here = crate::signatures::parent(&c).map(str::to_string);
+        }
+        None
     }
 
     /// The type this script `extends`, which is the class a bare `f()` call
@@ -1896,19 +1930,6 @@ impl<'a> Compiler<'a> {
     ///
     /// `AutoReadOnly` is excluded: it has no variable, because its value is a
     /// constant folded into a generated getter.
-    fn is_auto_property(&self, name: &str) -> bool {
-        let n = name.to_ascii_lowercase();
-        self.script.decls.iter().any(|d| match &d.kind {
-            crate::parse::DeclKind::Property(p) => {
-                p.is_auto && !p.is_read_only && {
-                    let pn = p.name.to_ascii_lowercase();
-                    pn == n
-                }
-            }
-            _ => false,
-        })
-    }
-
     /// Whether a value of type `have` converts into a slot of type `want`.
     ///
     /// The exact ladder: same type, int to float (one-way), anything to bool or
