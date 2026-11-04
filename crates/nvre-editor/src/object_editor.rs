@@ -15845,16 +15845,18 @@ pub fn ui(
         // session mutably, so the lookup does not hold a borrow across it.
         let avail_h = (ui.available_height() - 48.0).max(200.0);
         let sig_key = String::from_utf8_lossy(&state.sig).into_owned();
-        // Sections are the more specific answer than a page name: a table that
-        // describes the page is customising it, and a game that wants different
-        // contents writes different sections rather than a new page. A category
-        // that `extends` a template counts, because the template is its body.
-        let described = session.schema.page_is_described(&sig_key);
+        // A page name wins over sections, because a page is the more specific
+        // answer: it exists for the record types whose editing is not "show the
+        // fields" — a leveled list needs rows added and removed, a package needs
+        // its block list — and sections cannot express that. Everything else is
+        // described by its sections, which is the default and the majority.
         let category = session.schema.object_window.categories.get(&sig_key);
+        let named = category.and_then(|c| c.editor.clone());
+        let described = named.is_none() && session.schema.page_is_described(&sig_key);
         let page_name: Option<String> = if described {
             Some("sections".to_string())
         } else {
-            category.and_then(|c| c.editor.clone())
+            named
         };
         let game = session.game.id;
         egui::ScrollArea::vertical()

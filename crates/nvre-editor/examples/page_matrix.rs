@@ -161,12 +161,29 @@ fn run(game: &GameProfile, session: &Session, only_sig: Option<&str>) -> Totals 
             }
         }
         let Ok(subs) = rec.subrecords() else { continue };
-        let n_subs = subs.len();
+        // Distinct signatures, not subrecord count: a record can carry the same
+        // signature several times (`ADDN` repeats `SNAM`), and a page names a
+        // signature once. Counting repeats would report a complete page as
+        // partial.
+        // The **schema's** subrecords for this type, which is what a page names.
+        // Not the record instance's: a record can carry a signature the layout
+        // lists under `common` (`ALCH` instances hold `EDID` and `OBND`, which the
+        // layout does not enumerate), and comparing against the instance would
+        // report a complete page as partial.
+        let distinct: std::collections::BTreeSet<String> = schema
+            .records
+            .get(&key)
+            .map(|r| r.subrecords.keys().cloned().collect())
+            .unwrap_or_else(|| subs.iter().map(|s| s.sig_str()).collect());
+        let n_subs = distinct.len();
         let cat = schema.object_window.categories.get(&key);
         // The flattened page: a template's sections plus this game's own. Asking
         // the category directly would miss everything a page inherits.
-        let described = schema.page_is_described(&key);
         let name = cat.and_then(|c| c.editor.as_deref());
+        // The object editor's own rule: a named page wins, sections are the
+        // default. Reporting them the other way round would hide every page that
+        // exists for behaviour sections cannot express.
+        let described = name.is_none() && schema.page_is_described(&key);
         // `Some(n)` when the number of subrecords a page shows is a property of
         // the schema; `None` when it is a property of the page's code.
         let (kind, page_serves, cover): (&str, bool, Option<usize>) = if described {
@@ -176,9 +193,10 @@ fn run(game: &GameProfile, session: &Session, only_sig: Option<&str>) -> Totals 
             let named = schema
                 .page_sections(&key)
                 .iter()
-                .map(|s| s.subs.len())
-                .sum::<usize>();
-            ("sections", true, Some(named.min(n_subs)))
+                .flat_map(|s| s.subs.iter())
+                .filter(|s| distinct.contains(*s))
+                .count();
+            ("sections", true, Some(named))
         } else if let Some(name) = name {
             match pages.get(name) {
                 Some(page) => {

@@ -1,451 +1,2389 @@
 {
  "format": "fnv.schema/1",
  "object_window": {
-  "groups": [
-   "Actors",
-   "Actor Data",
-   "Items",
-   "Game Effects",
-   "Special Effects",
-   "WorldObjects",
-   "Audio",
-   "Miscellaneous"
-  ],
   "categories": {
    "ACHR": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "NAME"
+      ],
+      "title": "Placement"
+     }
+    ]
    },
    "ACRE": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "NAME"
+      ],
+      "title": "Placement"
+     }
+    ]
    },
    "ACTI": {
     "group": "WorldObjects",
-    "editor": "acti"
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "MODS",
+       "RNAM",
+       "SNAM",
+       "VNAM",
+       "WNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "ADDN": {
     "group": "Special Effects",
-    "editor": "addn"
+    "sections": [
+     {
+      "subs": [
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "ALCH": {
     "group": "Game Effects",
-    "editor": "alch"
+    "sections": [
+     {
+      "subs": [
+       "MODS",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA",
+       "ENIT"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "ALOC": {
+    "editor": "aloc",
     "group": "Audio",
-    "editor": "aloc"
+    "sections": [
+     {
+      "subs": [
+       "FNAM",
+       "NAM1",
+       "NAM2",
+       "NAM3",
+       "NAM4",
+       "NAM5",
+       "NAM6",
+       "NAM7",
+       "RNAM",
+       "XNAM",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "GNAM",
+       "HNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "AMEF": {
     "group": "Items",
-    "editor": "amef"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "AMMO": {
     "group": "Items",
-    "editor": "ammo"
+    "sections": [
+     {
+      "subs": [
+       "ONAM",
+       "QNAM",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "DAT2",
+       "RCIL"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "ANIO": {
     "group": "Miscellaneous",
-    "editor": "anio"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "ARMA": {
     "group": "Items",
-    "editor": "arma"
+    "sections": [
+     {
+      "subs": [
+       "MODS"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "BMDT",
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "ARMO": {
+    "editor": "armo",
     "group": "Items",
-    "editor": "armo"
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "MODS",
+       "SNAM",
+       "TNAM",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "BMCT",
+       "BMDT",
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "ASPC": {
+    "editor": "aspc",
     "group": "Audio",
-    "editor": "aspc"
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "SNAM",
+       "WNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "RDAT"
+      ],
+      "title": "Regions"
+     }
+    ]
    },
    "AVIF": {
     "group": "Actor Data",
-    "editor": "avif"
+    "sections": [
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     }
+    ]
    },
    "BOOK": {
     "group": "Items",
-    "editor": "book"
+    "sections": [
+     {
+      "subs": [
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "BPTD": {
+    "editor": "bptd",
     "group": "Actor Data",
-    "editor": "bptd"
+    "sections": [
+     {
+      "subs": [
+       "NAM1",
+       "NAM4",
+       "NAM5"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "BPND",
+       "BPTN"
+      ],
+      "title": "Body"
+     },
+     {
+      "subs": [
+       "BPNI",
+       "BPNN",
+       "BPNT",
+       "RAGA"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CAMS": {
     "group": "Miscellaneous",
-    "editor": "cams"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "MNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CCRD": {
     "group": "Items",
-    "editor": "ccrd"
+    "sections": [
+     {
+      "subs": [
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "INTV",
+       "TX00",
+       "TX01"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CDCK": {
+    "editor": "cdck",
     "group": "Items",
-    "editor": "cdck"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "CARD"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CELL": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "XNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "IMPF",
+       "LTMP",
+       "XCAS",
+       "XCCM",
+       "XCET",
+       "XCIM",
+       "XCLC",
+       "XCLL",
+       "XCLR",
+       "XCLW",
+       "XCMO",
+       "XCMT",
+       "XCWT"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CHAL": {
     "group": "Miscellaneous",
-    "editor": "chal"
+    "sections": [
+     {
+      "subs": [
+       "SNAM",
+       "XNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "CHIP": {
     "group": "Items",
-    "editor": "chip"
+    "sections": [
+     {
+      "subs": [
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     }
+    ]
    },
    "CLAS": {
     "group": "Actor Data",
-    "editor": "clas"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "ATTR"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CLMT": {
+    "editor": "clmt",
     "group": "WorldObjects",
-    "editor": "clmt"
+    "sections": [
+     {
+      "subs": [
+       "FNAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "GNAM",
+       "WLST"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CMNY": {
     "group": "Items",
-    "editor": "cmny"
+    "sections": [
+     {
+      "subs": [
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "COBJ": {
     "group": "Items",
-    "editor": "cobj"
+    "sections": [
+     {
+      "subs": [
+       "EDID",
+       "FULL",
+       "ICON",
+       "MICO",
+       "MODL",
+       "OBND",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "SCRI"
+      ],
+      "title": "Scripts"
+     }
+    ]
    },
    "CONT": {
     "group": "WorldObjects",
-    "editor": "cont"
+    "sections": [
+     {
+      "subs": [
+       "QNAM",
+       "RNAM",
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "CPTH": {
+    "editor": "cpth",
     "group": "Miscellaneous",
-    "editor": "cpth"
+    "sections": [
+     {
+      "subs": [
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "CREA": {
     "group": "Actors",
-    "editor": "crea"
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "CNAM",
+       "INAM",
+       "NAM4",
+       "NAM5",
+       "PNAM",
+       "RNAM",
+       "SNAM",
+       "TNAM",
+       "WNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ACBS",
+       "AIDT",
+       "PKID",
+       "SPLO",
+       "TPLT",
+       "VTCK"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA",
+       "EAMT"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "CSCR",
+       "CSDC",
+       "CSDI",
+       "CSDT",
+       "KFFZ",
+       "NIFT",
+       "NIFZ"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "CSNO": {
     "group": "Miscellaneous",
-    "editor": "csno"
+    "sections": [
+     {
+      "subs": [
+       "MODT"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "CSTY": {
     "group": "Actor Data",
-    "editor": "csty"
+    "sections": [
+     {
+      "subs": [
+       "CSAD",
+       "CSSD",
+       "CSTD"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "DEBR": {
     "group": "Special Effects",
-    "editor": "debr"
+    "sections": [
+     {
+      "subs": [
+       "MODT"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "DEHY": {
     "group": "Miscellaneous",
-    "editor": "dehy"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "DIAL": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "PNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "QSTI",
+       "QSTR"
+      ],
+      "title": "Dialogue"
+     },
+     {
+      "subs": [
+       "INFC",
+       "INFX",
+       "INOA",
+       "INOM",
+       "TDUM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "DOBJ": {
     "group": "Miscellaneous",
-    "editor": "dobj"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "DOOR": {
     "group": "WorldObjects",
-    "editor": "door"
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "FNAM",
+       "MODS",
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "ECZN": {
     "group": "Miscellaneous",
-    "editor": "eczn"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "EFSH": {
     "group": "Special Effects",
-    "editor": "efsh"
+    "sections": [
+     {
+      "subs": [
+       "ICO2",
+       "ICON",
+       "NAM7"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "ENCH": {
     "group": "Game Effects",
-    "editor": "spell"
+    "sections": [
+     {
+      "subs": [
+       "ENIT"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "EXPL": {
     "group": "Special Effects",
-    "editor": "expl"
+    "sections": [
+     {
+      "subs": [
+       "INAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "MNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "EYES": {
     "group": "Actor Data",
-    "editor": "eyes"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "FACT": {
+    "editor": "fact",
     "group": "Actor Data",
-    "editor": "fact"
+    "sections": [
+     {
+      "subs": [
+       "CNAM",
+       "FNAM",
+       "INAM",
+       "RNAM",
+       "XNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "MNAM",
+       "WMI1"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "FLST": {
+    "editor": "flst",
     "group": "Miscellaneous",
-    "editor": "flst"
+    "sections": [
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     }
+    ]
    },
    "FURN": {
     "group": "WorldObjects",
-    "editor": "furn"
+    "sections": [
+     {
+      "subs": [
+       "MNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "GLOB": {
     "group": "Miscellaneous",
-    "editor": "glob"
+    "sections": [
+     {
+      "subs": [
+       "FNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "FLTV"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "GMST": {
     "group": "Miscellaneous",
-    "editor": "gmst"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "GRAS": {
     "group": "WorldObjects",
-    "editor": "gras"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "HAIR": {
+    "editor": "hair",
     "group": "Actor Data",
-    "editor": "hair"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "HDPT": {
+    "editor": "hdpt",
     "group": "Actor Data",
-    "editor": "hdpt"
+    "sections": [
+     {
+      "subs": [
+       "MODS"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "HNAM",
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "HUNG": {
     "group": "Miscellaneous",
-    "editor": "hung"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "IDLE": {
     "group": "Miscellaneous",
-    "editor": "idle"
+    "sections": [
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "IDLM": {
+    "editor": "idlm",
     "group": "Miscellaneous",
-    "editor": "idlm"
+    "sections": [
+     {
+      "subs": [
+       "IDLA",
+       "IDLC",
+       "IDLF",
+       "IDLT"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "IMAD": {
     "group": "Special Effects",
-    "editor": "imad"
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "NAM1",
+       "NAM2",
+       "NAM3",
+       "NAM4",
+       "RNAM",
+       "SNAM",
+       "TNAM",
+       "UNAM",
+       "VNAM",
+       "WNAM",
+       "XNAM",
+       "YNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "\u0000IAD",
+       "\u0001IAD",
+       "\u0002IAD",
+       "\u0003IAD",
+       "\u0004IAD",
+       "\u0005IAD",
+       "\u0006IAD",
+       "\u0007IAD",
+       "\bIAD",
+       "\tIAD",
+       "\nIAD",
+       "\u000bIAD",
+       "\fIAD",
+       "\rIAD",
+       "\u000eIAD",
+       "\u000fIAD",
+       "\u0010IAD",
+       "\u0011IAD",
+       "\u0012IAD",
+       "\u0013IAD",
+       "\u0014IAD",
+       "@IAD",
+       "AIAD",
+       "BIAD",
+       "CIAD",
+       "DIAD",
+       "EIAD",
+       "FIAD",
+       "GIAD",
+       "HIAD",
+       "IIAD",
+       "JIAD",
+       "KIAD",
+       "LIAD",
+       "MIAD",
+       "NIAD",
+       "OIAD",
+       "PIAD",
+       "QIAD",
+       "RDSD",
+       "RDSI",
+       "RIAD",
+       "SIAD",
+       "TIAD"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "IMGS": {
     "group": "Special Effects",
-    "editor": "imgs"
+    "sections": [
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     }
+    ]
    },
    "IMOD": {
     "group": "Items",
-    "editor": "imod"
+    "sections": [
+     {
+      "subs": [
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "INFO": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "NAM1",
+       "NAM2",
+       "NAM3",
+       "PNAM",
+       "RNAM",
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM",
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "SNDD"
+      ],
+      "title": "Sounds"
+     },
+     {
+      "subs": [
+       "NAME"
+      ],
+      "title": "Placement"
+     },
+     {
+      "subs": [
+       "QSTI",
+       "TRDT"
+      ],
+      "title": "Dialogue"
+     },
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "KNAM",
+       "NEXT",
+       "TCFU",
+       "TCLF",
+       "TCLT",
+       "TPIC"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "INGR": {
     "group": "Items",
-    "editor": "ingr"
+    "sections": [
+     {
+      "subs": [
+       "DATA",
+       "ENIT"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "IPCT": {
     "group": "Special Effects",
-    "editor": "ipct"
+    "sections": [
+     {
+      "subs": [
+       "NAM1",
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "IPDS": {
     "group": "Special Effects",
-    "editor": "ipds"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "KEYM": {
     "group": "Items",
-    "editor": "keym"
+    "sections": [
+     {
+      "subs": [
+       "RNAM",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "LAND": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "ATXT",
+       "BTXT",
+       "VCLR",
+       "VHGT",
+       "VNML",
+       "VTXT"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "LGTM": {
     "group": "Miscellaneous",
-    "editor": "lgtm"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "LIGH": {
     "group": "WorldObjects",
-    "editor": "ligh"
+    "sections": [
+     {
+      "subs": [
+       "FNAM",
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "LSCR": {
+    "editor": "lscr",
     "group": "Miscellaneous",
-    "editor": "lscr"
+    "sections": [
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "WMI1"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "LSCT": {
     "group": "Miscellaneous",
-    "editor": "lsct"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "LTEX": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "SNAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "GNAM",
+       "HNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "LVLC": {
     "group": "Actors",
-    "editor": "lvlc"
+    "sections": [
+     {
+      "subs": [
+       "LVLD",
+       "LVLF",
+       "LVLO"
+      ],
+      "title": "Leveled"
+     }
+    ]
    },
    "LVLI": {
     "group": "Items",
-    "editor": "lvli"
+    "sections": [
+     {
+      "subs": [
+       "LVLD",
+       "LVLF",
+       "LVLO"
+      ],
+      "title": "Leveled"
+     },
+     {
+      "subs": [
+       "LVLG"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "LVLN": {
     "group": "Actors",
-    "editor": "lvln"
+    "sections": [
+     {
+      "subs": [
+       "LVLD",
+       "LVLF",
+       "LVLO"
+      ],
+      "title": "Leveled"
+     }
+    ]
    },
    "MESG": {
     "group": "Miscellaneous",
-    "editor": "mesg"
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "NAM0",
+       "NAM1",
+       "NAM2",
+       "NAM3",
+       "NAM4",
+       "NAM5",
+       "NAM6",
+       "NAM7",
+       "NAM8",
+       "NAM9",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "ITXT"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "MGEF": {
     "group": "Game Effects",
-    "editor": "mgef"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "ESCE"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "MICN": {
     "group": "Miscellaneous",
-    "editor": "micn"
+    "sections": []
    },
    "MISC": {
     "group": "Items",
-    "editor": "misc"
+    "sections": [
+     {
+      "subs": [
+       "RNAM",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "MSET": {
+    "editor": "mset",
     "group": "Audio",
-    "editor": "mset"
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "CNAM",
+       "FNAM",
+       "INAM",
+       "NAM0",
+       "NAM1",
+       "NAM2",
+       "NAM3",
+       "NAM4",
+       "NAM5",
+       "NAM6",
+       "NAM7",
+       "NAM8",
+       "NAM9",
+       "ONAM",
+       "PNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM",
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "ENAM",
+       "GNAM",
+       "HNAM",
+       "JNAM",
+       "KNAM",
+       "MNAM",
+       "NNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "MSTT": {
     "group": "WorldObjects",
-    "editor": "mstt"
+    "sections": [
+     {
+      "subs": [
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "MUSC": {
     "group": "Audio",
-    "editor": "musc"
+    "sections": [
+     {
+      "subs": [
+       "FNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     }
+    ]
    },
    "NAVI": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "NVER",
+       "NVMI"
+      ],
+      "title": "Navmesh"
+     },
+     {
+      "subs": [
+       "NVCI"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "NAVM": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "NVCA",
+       "NVER",
+       "NVTR"
+      ],
+      "title": "Navmesh"
+     },
+     {
+      "subs": [
+       "NVDP",
+       "NVEX",
+       "NVGD",
+       "NVVX"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "NOTE": {
     "group": "Items",
-    "editor": "note"
+    "sections": [
+     {
+      "subs": [
+       "ONAM",
+       "SNAM",
+       "TNAM",
+       "XNAM",
+       "YNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "NPC_": {
     "group": "Actors",
-    "editor": "npc"
+    "sections": [
+     {
+      "subs": [
+       "CNAM",
+       "INAM",
+       "NAM4",
+       "NAM5",
+       "NAM6",
+       "NAM7",
+       "PNAM",
+       "RNAM",
+       "SNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ACBS",
+       "AIDT",
+       "DNAM",
+       "PKID",
+       "SPLO",
+       "TPLT",
+       "VTCK"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA",
+       "EAMT"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "ENAM",
+       "FGGA",
+       "FGGS",
+       "FGTS",
+       "HCLR",
+       "HNAM",
+       "KFFZ"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "PACK": {
+    "editor": "pack",
     "group": "Actor Data",
-    "editor": "pack"
+    "sections": [
+     {
+      "subs": [
+       "CNAM",
+       "INAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "PKW3"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "IDLA",
+       "IDLC",
+       "IDLF",
+       "IDLT",
+       "PKAM",
+       "PKDD",
+       "PKDT",
+       "PKE2",
+       "PKED",
+       "PKFD",
+       "PKPT",
+       "PLD2",
+       "PLDT",
+       "POBA",
+       "POCA",
+       "POEA",
+       "PSDT",
+       "PTD2",
+       "PTDT",
+       "PUID"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "PERK": {
     "group": "Actor Data",
-    "editor": "perk"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "EPF2",
+       "EPF3",
+       "EPFD",
+       "EPFT",
+       "PRKC",
+       "PRKE",
+       "PRKF"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "PGRE": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "NAME"
+      ],
+      "title": "Placement"
+     }
+    ]
    },
    "PROJ": {
     "group": "Special Effects",
-    "editor": "proj"
+    "sections": [
+     {
+      "subs": [
+       "NAM1",
+       "NAM2",
+       "VNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "PWAT": {
     "group": "WorldObjects",
-    "editor": "pwat"
+    "sections": [
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     }
+    ]
    },
    "QUST": {
     "group": "Actor Data",
-    "editor": "qust"
+    "sections": [
+     {
+      "subs": [
+       "CNAM",
+       "NAM0"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "INDX",
+       "QSDT"
+      ],
+      "title": "Dialogue"
+     },
+     {
+      "subs": [
+       "NNAM",
+       "QOBJ",
+       "QSTA"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "RACE": {
     "group": "Actor Data",
-    "editor": "race"
+    "sections": [
+     {
+      "subs": [
+       "CNAM",
+       "FNAM",
+       "NAM0",
+       "NAM1",
+       "NAM2",
+       "ONAM",
+       "PNAM",
+       "SNAM",
+       "UNAM",
+       "XNAM",
+       "YNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM",
+       "VTCK"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "INDX"
+      ],
+      "title": "Dialogue"
+     },
+     {
+      "subs": [
+       "ATTR",
+       "ENAM",
+       "FGGA",
+       "FGGS",
+       "FGTS",
+       "HNAM",
+       "MNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "RADS": {
     "group": "Miscellaneous",
-    "editor": "rads"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "RCCT": {
     "group": "Miscellaneous",
-    "editor": "rcct"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "RCPE": {
     "group": "Miscellaneous",
-    "editor": "rcpe"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "RCIL",
+       "RCOD",
+       "RCQY"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "REFR": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "CNAM",
+       "FNAM",
+       "INAM",
+       "ONAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "XLTW",
+       "XMBO",
+       "XPRM",
+       "XTEL"
+      ],
+      "title": "World"
+     },
+     {
+      "subs": [
+       "NAME"
+      ],
+      "title": "Placement"
+     },
+     {
+      "subs": [
+       "RCLR"
+      ],
+      "title": "Regions"
+     },
+     {
+      "subs": [
+       "MMRK",
+       "MNAM",
+       "NNAM",
+       "WMI1",
+       "XAMC",
+       "XAMT",
+       "XCHG",
+       "XLOC",
+       "XLRM",
+       "XMBP",
+       "XMRK",
+       "XNDP",
+       "XOCP",
+       "XORD",
+       "XPOD",
+       "XPTL",
+       "XRAD",
+       "XRDO",
+       "XRMR",
+       "XSED",
+       "XSRD",
+       "XSRF",
+       "XTRG",
+       "XTRI"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "REGN": {
     "group": "WorldObjects",
-    "editor": "regn"
+    "sections": [
+     {
+      "subs": [
+       "WNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "RCLR",
+       "RDAT",
+       "RDOT",
+       "RDWT",
+       "RPLD",
+       "RPLI"
+      ],
+      "title": "Regions"
+     },
+     {
+      "subs": [
+       "RDID",
+       "RDMO",
+       "RDMP",
+       "RDSB",
+       "RDSD",
+       "RDSI"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "REPU": {
     "group": "Miscellaneous",
-    "editor": "repu"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "RGDL": {
+    "editor": "rgdl",
     "group": "Actor Data",
-    "editor": "rgdl"
+    "sections": [
+     {
+      "subs": [
+       "TNAM",
+       "XNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "NVER"
+      ],
+      "title": "Navmesh"
+     },
+     {
+      "subs": [
+       "RAFB",
+       "RAFD",
+       "RAPS"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "SCOL": {
+    "editor": "scol",
     "group": "WorldObjects",
-    "editor": "scol"
+    "sections": [
+     {
+      "subs": [
+       "ONAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "SCPT": {
     "group": "Miscellaneous",
-    "editor": "scpt"
+    "sections": []
    },
    "SLPD": {
     "group": "Miscellaneous",
-    "editor": "slpd"
+    "sections": [
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     }
+    ]
    },
    "SOUN": {
     "group": "Audio",
-    "editor": "soun"
+    "sections": [
+     {
+      "subs": [
+       "FNAM",
+       "RNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "SNDD",
+       "SNDX"
+      ],
+      "title": "Sounds"
+     },
+     {
+      "subs": [
+       "GNAM",
+       "HNAM"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "SPEL": {
     "group": "Game Effects",
-    "editor": "spel"
+    "sections": [
+     {
+      "subs": [
+       "SPIT"
+      ],
+      "title": "Magic"
+     }
+    ]
    },
    "STAT": {
     "group": "WorldObjects",
-    "editor": "stat"
+    "sections": [
+     {
+      "subs": [
+       "MODS",
+       "RNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "BRUS",
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "TACT": {
     "group": "Actors",
-    "editor": "tact"
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "SNAM",
+       "VNAM"
+      ],
+      "title": "Identity"
+     }
+    ]
    },
    "TERM": {
     "group": "WorldObjects",
-    "editor": "term"
+    "sections": [
+     {
+      "subs": [
+       "INAM",
+       "MODS",
+       "PNAM",
+       "RNAM",
+       "SNAM",
+       "TNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM",
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "ITXT",
+       "MO2S",
+       "MO3S",
+       "MO4S"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "TREE": {
+    "editor": "tree",
     "group": "WorldObjects",
-    "editor": "tree"
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "CNAM",
+       "SNAM"
+      ],
+      "title": "Identity"
+     }
+    ]
    },
    "TXST": {
     "group": "Miscellaneous",
-    "editor": "txst"
+    "sections": [
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "TX00",
+       "TX01",
+       "TX02",
+       "TX03",
+       "TX04",
+       "TX05"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "VTYP": {
     "group": "Actor Data",
-    "editor": "vtyp"
+    "sections": [
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     }
+    ]
    },
    "WATR": {
     "group": "WorldObjects",
-    "editor": "watr"
-   },
-   "WEAP": {
-    "group": "Items",
-    "editor": "weap",
-    "extends": "weap_common",
     "sections": [
      {
-      "title": "Model & Textures",
       "subs": [
-       "MODS"
-      ]
+       "FNAM",
+       "SNAM",
+       "XNAM"
+      ],
+      "title": "Identity"
      },
      {
-      "title": "Damage",
+      "subs": [
+       "ANAM",
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
       "subs": [
        "DATA"
-      ]
+      ],
+      "title": "Combat"
      },
      {
-      "title": "VATS",
+      "subs": [
+       "GNAM",
+       "MNAM",
+       "NNAM"
+      ],
+      "title": "Other"
+     }
+    ]
+   },
+   "WEAP": {
+    "extends": "weap_common",
+    "group": "Items",
+    "sections": [
+     {
+      "subs": [
+       "MODS"
+      ],
+      "title": "Model & Textures"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Damage"
+     },
+     {
       "subs": [
        "VATS"
-      ]
+      ],
+      "title": "VATS"
      },
      {
-      "title": "Sounds",
       "subs": [
        "YNAM",
        "ZNAM",
@@ -456,10 +2394,10 @@
        "XNAM",
        "NAM0",
        "VANM"
-      ]
+      ],
+      "title": "Sounds"
      },
      {
-      "title": "Mods",
       "subs": [
        "WNAM",
        "EFSD",
@@ -468,10 +2406,10 @@
        "WMI3",
        "WMS1",
        "WMS2"
-      ]
+      ],
+      "title": "Mods"
      },
      {
-      "title": "Weapon Mod Slots",
       "subs": [
        "MWD1",
        "MWD2",
@@ -487,34 +2425,130 @@
        "WNM5",
        "WNM6",
        "WNM7"
-      ]
+      ],
+      "title": "Weapon Mod Slots"
      },
      {
-      "title": "Sound Level",
       "subs": [
        "NAM6",
        "NAM7",
        "NAM8",
        "NAM9"
-      ]
+      ],
+      "title": "Sound Level"
      },
      {
-      "title": "Other",
       "subs": [
        "MO2S",
        "MO3S",
        "MO4S"
-      ]
+      ],
+      "title": "Other"
      }
     ]
    },
    "WRLD": {
-    "hidden": true
+    "hidden": true,
+    "sections": [
+     {
+      "subs": [
+       "CNAM",
+       "INAM",
+       "NAM0",
+       "NAM2",
+       "NAM3",
+       "NAM4",
+       "NAM9",
+       "ONAM",
+       "PNAM",
+       "WNAM",
+       "XNAM",
+       "ZNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "IMPF",
+       "IMPS",
+       "MNAM",
+       "NNAM",
+       "OFST"
+      ],
+      "title": "Other"
+     }
+    ]
    },
    "WTHR": {
     "group": "WorldObjects",
-    "editor": "wthr"
+    "sections": [
+     {
+      "subs": [
+       "BNAM",
+       "CNAM",
+       "FNAM",
+       "INAM",
+       "NAM0",
+       "ONAM",
+       "PNAM",
+       "SNAM"
+      ],
+      "title": "Identity"
+     },
+     {
+      "subs": [
+       "ANAM",
+       "DNAM"
+      ],
+      "title": "Behaviour"
+     },
+     {
+      "subs": [
+       "DATA"
+      ],
+      "title": "Combat"
+     },
+     {
+      "subs": [
+       "LNAM"
+      ],
+      "title": "Weather"
+     },
+     {
+      "subs": [
+       "\u0000IAD",
+       "\u0001IAD",
+       "\u0002IAD",
+       "\u0003IAD",
+       "\u0004IAD",
+       "\u0005IAD"
+      ],
+      "title": "Other"
+     }
+    ]
    }
-  }
+  },
+  "groups": [
+   "Actors",
+   "Actor Data",
+   "Items",
+   "Game Effects",
+   "Special Effects",
+   "WorldObjects",
+   "Audio",
+   "Miscellaneous"
+  ]
  }
 }
