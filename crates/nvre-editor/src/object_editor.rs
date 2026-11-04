@@ -15518,6 +15518,7 @@ pub fn ui(
     mut ctx: Query<&mut bevy_egui::EguiContext, With<crate::windows::PanelContext<6>>>,
     mut session: ResMut<crate::session::Session>,
     mut state: ResMut<ObjectEditorState>,
+    mut grid: Local<crate::panels::FieldEdit>,
 ) {
     let Some((fid, sig)) = session.editing_object else {
         return;
@@ -15571,22 +15572,26 @@ pub fn ui(
         ui.add_space(6.0);
 
         // The body is the schema's answer, not the editor's own map: the
-        // object-window table names the editor block for this record type,
-        // and the registry maps that name to a page. A signature the table
-        // names no block for — or names one this build does not register —
-        // shows the header alone.
+        // object-window table names the editor block for this record type, and
+        // the registry maps that name to a page. A signature the table names a
+        // block for gets that page; a signature the table names **no** block for
+        // gets the schema grid, which is every field the layout declares and
+        // nothing a game has to be named to see.
+        //
+        // The name is cloned out of the schema before the grid below borrows the
+        // session mutably, so the lookup does not hold a borrow across it.
         let avail_h = (ui.available_height() - 48.0).max(200.0);
-        let entry = session
+        let block_name: Option<String> = session
             .schema
             .object_window
             .categories
-            .get(String::from_utf8_lossy(&state.sig).as_ref());
-        let block_name = entry.and_then(|c| c.editor.as_deref());
-        let block = block_name.and_then(editor_block);
+            .get(String::from_utf8_lossy(&state.sig).as_ref())
+            .and_then(|c| c.editor.clone());
+        let block = block_name.as_deref().and_then(editor_block);
         egui::ScrollArea::vertical()
             .id_salt("obj_scroll")
             .max_height(avail_h)
-            .show(ui, |ui| match (block, block_name) {
+            .show(ui, |ui| match (block, block_name.as_deref()) {
                 (Some(block), _) => block(ui, &session, &mut state),
                 // A block name the registry does not know is a table typo;
                 // say so rather than silently showing nothing.
@@ -15596,9 +15601,12 @@ pub fn ui(
                         format!("the schema names editor block {name:?}, which is not registered"),
                     );
                 }
-                // A type with no block of its own shows nothing below the
-                // header panel.
-                (None, None) => {}
+                // No page of its own: the schema grid. This is the case for
+                // every record type in a game whose pages have not been written
+                // yet, and for a signature no game has a page for at all.
+                (None, None) => {
+                    crate::panels::schema_grid(ui, &mut session, state.form_id, &mut grid)
+                }
             });
 
         // The object bounds are a shared subrecord: every type that

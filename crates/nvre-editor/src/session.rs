@@ -1711,7 +1711,15 @@ impl Session {
     /// pending inserts, not in the plugin, so it is read from there.
     /// The selected record, either staged, in the active plugin, or in the load order.
     pub fn selected_record(&self) -> Option<StagedRecord<'_>> {
-        let fid = self.selected?;
+        self.record_by_id(self.selected?)
+    }
+
+    /// The record with this FormID, whichever copy of it is current.
+    ///
+    /// FormID 0 is the placeholder a staged record carries until the save
+    /// assigns it one, so it names the most recently staged record rather than
+    /// a record in any plugin.
+    pub fn record_by_id(&self, fid: u32) -> Option<StagedRecord<'_>> {
         if fid == 0 {
             let p = self.doc.inserted().last()?;
             return Some(StagedRecord::Pending(&p.record));
@@ -1913,16 +1921,45 @@ impl Session {
         let Some(fid) = self.selected else {
             return Err("nothing selected".into());
         };
+        self.set_field_on(fid, sig, path, value)
+    }
+
+    /// Set one field of one subrecord on **this** record.
+    ///
+    /// The same write as [`Session::set_selected_field`], addressed by FormID
+    /// rather than by the viewport's selection. The object editor edits the
+    /// record it was opened on, and that record is not necessarily the one the
+    /// viewport has selected — clicking a reference in the 3D view moves the
+    /// selection, and a field typed into an object page must still land on the
+    /// object the page is showing.
+    pub fn set_object_field(
+        &mut self,
+        form_id: u32,
+        sig: &[u8; 4],
+        path: &str,
+        value: serde_json::Value,
+    ) -> Result<(), String> {
+        self.set_field_on(form_id, sig, path, value)
+    }
+
+    /// The write both of the above go through.
+    fn set_field_on(
+        &mut self,
+        fid: u32,
+        sig: &[u8; 4],
+        path: &str,
+        value: serde_json::Value,
+    ) -> Result<(), String> {
         // A staged record is not in the plugin yet, so its subrecords are read
         // from the pending copy rather than from the document.
         let rec_sig = {
-            let Some(rec) = self.selected_record() else {
+            let Some(rec) = self.record_by_id(fid) else {
                 return Err(format!("{fid:08X} not found"));
             };
             rec.record().header.sig
         };
         let subs = {
-            let Some(rec) = self.selected_record() else {
+            let Some(rec) = self.record_by_id(fid) else {
                 return Err(format!("{fid:08X} not found"));
             };
             rec.record().subrecords().map_err(|e| e.to_string())?
@@ -2849,7 +2886,11 @@ static EMPTY_DETAILS: std::sync::LazyLock<RefDetails> =
 /// A path that names no existing field is refused: creating one would add a key
 /// the layout does not declare, which the encoder rejects anyway — better to say
 /// so here, where the message can name the field.
-fn set_path(
+///
+/// Public because the conformance matrix edits fields through this same
+/// function — a matrix with its own path walk would be testing a different
+/// editor than the one that ships.
+pub fn set_path(
     value: &mut serde_json::Value,
     path: &str,
     new: serde_json::Value,
@@ -2860,25 +2901,47 @@ fn set_path(
         *value = new;
         return Ok(());
     }
-    let mut at = value;
-    let mut parts = path.split('.').peekable();
-    while let Some(part) = parts.next() {
-        let last = parts.peek().is_none();
+    set_at(value, path, new)
+}
+
+/// The write, one level at a time.
+///
+/// At each level the **longest** prefix of the remaining path that names a key
+/// wins, because a field name may contain a dot: Fallout 4's `DNAM` carries
+/// `"Assoc. Item"` and `"Explosion - Alt. Trigger - Proximity"`. Splitting at
+/// the first dot would look for a field called `Assoc` and refuse to write a
+/// field the grid is showing. [`nvre_edit::encode::value_at`] reads with the same
+/// rule, so a row the grid can display is a row it can write.
+fn set_at(at: &mut serde_json::Value, rest: &str, new: serde_json::Value) -> Result<(), String> {
+    let cut = {
         let obj = at
-            .as_object_mut()
-            .ok_or_else(|| format!("{part} is not a field"))?;
-        if last {
-            if !obj.contains_key(part) {
-                return Err(format!("no field {part:?} in this subrecord"));
+            .as_object()
+            .ok_or_else(|| format!("{rest:?} is not a field"))?;
+        let mut cut = rest.len();
+        loop {
+            if obj.contains_key(&rest[..cut]) {
+                break Some(cut);
             }
-            obj.insert(part.to_string(), new);
-            return Ok(());
+            match rest[..cut].rfind('.') {
+                Some(i) => cut = i,
+                None => break None,
+            }
         }
-        at = obj
-            .get_mut(part)
-            .ok_or_else(|| format!("no field {part:?} in this subrecord"))?;
+    };
+    let Some(cut) = cut else {
+        return Err(format!("no field {rest:?} in this subrecord"));
+    };
+    let obj = at.as_object_mut().expect("checked above");
+    if cut == rest.len() {
+        obj.insert(rest.to_string(), new);
+        return Ok(());
     }
-    Err("empty field path".into())
+    let key = rest[..cut].to_string();
+    let tail = rest[cut + 1..].to_string();
+    let child = obj
+        .get_mut(&key)
+        .ok_or_else(|| format!("no field {key:?} in this subrecord"))?;
+    set_at(child, &tail, new)
 }
 
 /// A reference's position and rotation from its DATA subrecord.

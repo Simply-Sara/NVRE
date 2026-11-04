@@ -1225,7 +1225,23 @@ pub fn roundtrips_localized(
 /// reference's position and rotation are the most-edited fields in the editor,
 /// and `DATA`'s are two structs deep.
 pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec<String> {
-    let Some(def) = schema.lookup(rec_sig, sub_sig) else {
+    field_names_in_block(schema, rec_sig, sub_sig, None)
+}
+
+/// The same, for a subrecord that sits inside a block of its record's sequence.
+///
+/// A signature can mean one thing at the top of a record and another inside a
+/// block — `DATA` in `PACK`, `FULL` in `FACT` — so the block decides which
+/// layout's fields the grid shows. Without it the grid offers the top-level
+/// layout's rows for a subrecord the record actually stores as the block's, and
+/// every one of those rows writes to the wrong place.
+pub fn field_names_in_block(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+) -> Vec<String> {
+    let Some(def) = schema.lookup_in_block(rec_sig, sub_sig, block) else {
         return Vec::new();
     };
     fn walk(t: &TypeDef, prefix: &str, out: &mut Vec<String>) {
@@ -1268,12 +1284,277 @@ pub fn field_names(schema: &Schema, rec_sig: &[u8; 4], sub_sig: &[u8; 4]) -> Vec
     out
 }
 
+/// One row of the schema grid: a field path, and whether it can be written.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Row {
+    /// The path `set_path` and the encoder address the field by.
+    pub path: String,
+    /// The value is derived from another field — an array's element count — so
+    /// the encoder refuses one that disagrees with the array's own length. The
+    /// row is shown, because hiding it would hide what the record says, but it
+    /// is not editable: a count edited on its own either fails or silently
+    /// resizes nothing.
+    pub derived: bool,
+}
+
+/// The rows the grid shows for one decoded subrecord.
+///
+/// The rows come from **the value**, not from a walk of the layout. That is the
+/// difference between a grid that works in every game and one that does not: a
+/// layout declares union variants the record did not choose, optional fields it
+/// does not carry, and array element shapes the decoder flattens into a list, so
+/// a walk of the type produces rows whose paths are not in the decoded value —
+/// rows the grid then has to skip, leaving the field invisible and uneditable
+/// with nothing said about it.
+///
+/// Reading the rows off the decoded value cannot produce such a row: every path
+/// is a key the decoder actually emitted, so every row is addressable, and the
+/// encoder is given back exactly the shape it produced. A union shows the
+/// variant the record chose; an absent optional field has no row; an array is
+/// one row (a list, which this grid does not edit element by element) rather
+/// than a set of phantom element fields.
+///
+/// The one thing the value cannot say is which fields are *derived*, so that
+/// still comes from the layout ([`derived_paths`]).
+pub fn rows(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    value: &Value,
+) -> Vec<Row> {
+    let mut paths = Vec::new();
+    value_paths(value, "", &mut paths);
+    // An empty struct, or a value the walk produced nothing for, still gets one
+    // row so the subrecord is visible rather than looking absent.
+    if paths.is_empty() {
+        paths.push(String::new());
+    }
+    let derived = derived_paths(schema, rec_sig, sub_sig, block);
+    let selector = selector_path(schema, rec_sig, sub_sig, block, value);
+    paths
+        .into_iter()
+        .map(|path| Row {
+            derived: derived.contains(&path) || selector.as_deref() == Some(path.as_str()),
+            path,
+        })
+        .collect()
+}
+
+/// The field that chooses a peek union's layout, when the subrecord is one.
+///
+/// A `peek` union picks its variant by reading the subrecord's **first word**
+/// and then decoding the whole subrecord as the variant that word names, so that
+/// first field is not a value: it is the choice of layout for everything after
+/// it. Editing it on its own asks the encoder for a layout the rest of the bytes
+/// do not match, which either fails or produces a subrecord that no longer
+/// decodes — `MODT`'s `version` is the case in every game that has one.
+///
+/// The decoder emits the variant's fields in layout order, so the first key of
+/// the decoded object is the word that was peeked.
+fn selector_path(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    value: &Value,
+) -> Option<String> {
+    let def = schema.lookup_in_block(rec_sig, sub_sig, block)?;
+    match schema.resolve_def(&def.ty) {
+        TypeDef::PeekUnion { .. } => value.as_object()?.keys().next().cloned(),
+        _ => None,
+    }
+}
+
+/// The value at a dotted path inside a decoded subrecord.
+///
+/// A field name may itself contain a dot — Fallout 4's `DNAM` carries
+/// `"Assoc. Item"` and `"Explosion - Alt. Trigger - Proximity"` — so the
+/// **longest** prefix that names a key wins at each level, and splitting at the
+/// first dot is only what happens when no longer name matches. Splitting first
+/// would make those fields unreachable, which is what the grid would then
+/// silently skip.
+pub fn value_at<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
+    if path.is_empty() {
+        return Some(value);
+    }
+    let mut at = value;
+    let mut rest = path;
+    loop {
+        let o = at.as_object()?;
+        let mut cut = rest.len();
+        let found = loop {
+            if let Some(v) = o.get(&rest[..cut]) {
+                break Some((cut, v));
+            }
+            match rest[..cut].rfind('.') {
+                Some(i) => cut = i,
+                None => return None,
+            }
+        };
+        let (cut, v) = found?;
+        if cut == rest.len() {
+            return Some(v);
+        }
+        at = v;
+        rest = &rest[cut + 1..];
+        if rest.is_empty() {
+            return None;
+        }
+    }
+}
+
+/// The scalar leaves of a decoded value, as dotted paths.
+///
+/// A struct contributes its keys; a nested struct its dotted path; anything
+/// else — a number, a string, a list, a `null` — is a leaf and is addressed by
+/// its own path. A top-level scalar is the empty path, which is the subrecord's
+/// own value.
+///
+/// A flags word is a leaf even though it decodes to an object: its `value`,
+/// `set` and `unknown_bits` keys are the decoder's representation of one number,
+/// not three fields, and the grid edits the word as one thing.
+fn value_paths(value: &Value, prefix: &str, out: &mut Vec<String>) {
+    match value {
+        Value::Object(o) if !is_word(o) => {
+            for (k, v) in o {
+                let path = if prefix.is_empty() {
+                    k.clone()
+                } else {
+                    format!("{prefix}.{k}")
+                };
+                value_paths(v, &path, out);
+            }
+        }
+        _ => out.push(prefix.to_string()),
+    }
+}
+
+/// Whether a decoded object is a word — a flags set, a bit set or an enum —
+/// rather than a struct.
+///
+/// The decoder writes these as one number plus its reading:
+/// `{"value": n, "fields": {name: bool, …}}` for a flags set, the same shape for
+/// a bit set, and `{"value": n, "name": "…"}` for an enum. The keys after
+/// `value` are the decoder's rendering of that one number, not fields of the
+/// record, so the grid has to edit the word as one thing: recursing into
+/// `fields` would offer a checkbox per named bit, and a checkbox written into the
+/// `fields` map does not change the number the encoder writes, so every one of
+/// them would silently do nothing.
+///
+/// The test is the exact key set, not the presence of `value` alone: a struct
+/// whose only field is called `value` is a struct, and its row is that field.
+fn is_word(o: &serde_json::Map<String, Value>) -> bool {
+    if !o.contains_key("value") {
+        return false;
+    }
+    let rendering = o.contains_key("fields") || o.contains_key("set") || o.contains_key("name");
+    // `value` plus its rendering, and at most the extra bits a flags word
+    // carries (`unknown_bits`).
+    rendering && o.len() <= 3
+}
+
+/// The paths inside a subrecord whose value the encoder derives from another
+/// field.
+///
+/// An array declared as `{"array": T, "count": {"from_field": "n"}}` stores its
+/// length in the sibling `n`; the encoder checks `n` against the array's actual
+/// length and refuses a count that disagrees. Editing `n` alone therefore cannot
+/// work — it would have to resize the array — so the grid shows it read-only.
+/// The same holds for the other derived counts (`count_bits`, `count_sum`,
+/// `count_pow`).
+pub fn derived_paths(
+    schema: &Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+) -> Vec<String> {
+    let Some(def) = schema.lookup_in_block(rec_sig, sub_sig, block) else {
+        return Vec::new();
+    };
+    fn join(prefix: &str, name: &str) -> String {
+        if prefix.is_empty() {
+            name.to_string()
+        } else {
+            format!("{prefix}.{name}")
+        }
+    }
+    fn walk(t: &TypeDef, prefix: &str, out: &mut Vec<String>) {
+        match t {
+            TypeDef::Struct(fields) => {
+                for f in fields {
+                    // A derived count is a **sibling** of the array that owns it,
+                    // so it is named here, at the struct that holds both — not
+                    // inside the array, where the only prefix is the array's own
+                    // path and `references.count` would be recorded instead of
+                    // `count`.
+                    if let TypeDef::Array {
+                        count_field,
+                        count_bits,
+                        count_sum,
+                        count_pow,
+                        ..
+                    } = &f.ty
+                    {
+                        if let Some(n) = count_field {
+                            out.push(join(prefix, n));
+                        }
+                        if let Some((n, _)) = count_bits {
+                            out.push(join(prefix, n));
+                        }
+                        if let Some((a, b)) = count_sum {
+                            out.push(join(prefix, a));
+                            out.push(join(prefix, b));
+                        }
+                        if let Some(n) = count_pow {
+                            out.push(join(prefix, n));
+                        }
+                    }
+                    walk(&f.ty, &join(prefix, &f.name), out);
+                }
+            }
+            TypeDef::Array { elem, .. } => {
+                // An array of structs can carry derived counts one level in;
+                // those belong to the element's own struct, which is walked with
+                // the array's prefix.
+                walk(elem, prefix, out);
+            }
+            TypeDef::Union(variants) => {
+                for (_, vt) in variants {
+                    walk(vt, prefix, out);
+                }
+            }
+            TypeDef::PeekUnion { variants, .. } | TypeDef::ValueUnion { variants, .. } => {
+                for vt in variants {
+                    walk(vt, prefix, out);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(&schema.resolve_def(&def.ty), "", &mut out);
+    out.sort();
+    out.dedup();
+    out
+}
+
 /// A flat, editable view of one record: every subrecord with its signature,
 /// human name, decoded value and whether it can be written back safely.
 #[derive(Debug, Clone)]
 pub struct SubView {
     pub sig: String,
     pub name: String,
+    /// The block of the record's sequence this subrecord was read in, when the
+    /// record is a sequence (`PACK`, `FACT`, `REGN`, …).
+    ///
+    /// A signature can mean one thing at the top of a record and another inside
+    /// a block, so the layout that applies is only known with the block that was
+    /// open. It travels with the view because the grid's field names and the
+    /// write path both need it: reading a subrecord by its top-level layout and
+    /// writing it back the same way is how a block's `DATA` gets a page of rows
+    /// that do not exist in it.
+    pub block: Option<String>,
     pub value: Value,
     /// True when [`roundtrips`] accepts this subrecord's own bytes.
     pub writable: bool,
@@ -1282,19 +1563,37 @@ pub struct SubView {
 }
 
 /// Decode every subrecord of a record for the property grid.
+///
+/// The record's block sequence is walked first, so each subrecord is decoded
+/// with the block that was open when it was read — which is the layout the game
+/// used, and so the layout the editor has to write back.
 pub fn sub_views(schema: &Schema, rec: &nvre_esm::Record) -> Result<Vec<SubView>, String> {
     let subs = rec.subrecords().map_err(|e| e.to_string())?;
+    let rec_sig = rec.header.sig;
+    // One entry per subrecord, in file order: the block it was read in.
+    // `walk_sequence` calls back exactly once per subrecord, so the indices line
+    // up with `subs` even when the record is not a sequence at all.
+    let mut blocks: Vec<Option<String>> = Vec::with_capacity(subs.len());
+    {
+        let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, rec_sig);
+        nvre_esm::decode::walk_sequence(&rec_sig, &subs, schema, &mut ctx, |_, c| {
+            blocks.push(c.block.clone());
+        });
+    }
     let mut out = Vec::with_capacity(subs.len());
-    for s in &subs {
-        let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, rec.header.sig);
-        let d = nvre_esm::decode::decode_sub(&rec.header.sig, s, &mut ctx);
+    for (i, s) in subs.iter().enumerate() {
+        let block = blocks.get(i).cloned().flatten();
+        let mut ctx = nvre_esm::decode::DecodeCtx::new(schema, rec_sig);
+        ctx.block = block.clone();
+        let d = nvre_esm::decode::decode_sub(&rec_sig, s, &mut ctx);
         let name = d.name.clone().unwrap_or_else(|| s.sig_str());
         out.push(SubView {
             sig: s.sig_str(),
             name,
+            block: block.clone(),
             value: d.value.unwrap_or(Value::Null),
             writable: d.status == nvre_esm::decode::SubStatus::Ok
-                && roundtrips(schema, &rec.header.sig, s),
+                && roundtrips_in_block(schema, &rec_sig, s, block.as_deref()),
             problem: match d.status {
                 nvre_esm::decode::SubStatus::Ok => None,
                 other => Some(d.error.unwrap_or_else(|| other.as_str().to_string())),

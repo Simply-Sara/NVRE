@@ -904,28 +904,15 @@ pub fn properties(
             return;
         };
         // Everything the grid shows is read out before the mutable calls below,
-        // so the record's borrow ends here.
-        let Some(staged) = session.selected_record() else {
+        // so the record's borrow ends here. It is the record as the mod will
+        // carry it — queued edits applied — so the header and the grid cannot
+        // disagree about what the record says.
+        let Some(rec) = session.resolved_record(fid) else {
             ui.label(format!("{fid:08X} not found"));
             return;
         };
-        let rec = staged.record();
         let sig_label = rec.sig_str();
-        let rec_sig = rec.header.sig;
-        let pos = crate::session::position_of(rec);
-        let views = sub_views(&session.schema, rec).unwrap_or_default();
-        // A pending edit is not applied to the record in the document, so the
-        // grid reads the queued bytes to show what the field will become.
-        let pending: std::collections::HashMap<[u8; 4], Vec<u8>> = session
-            .doc
-            .edits_for(fid)
-            .unwrap_or_default()
-            .iter()
-            .filter_map(|e| match e {
-                nvre_edit::document::Edit::SetSub { sig, data } => Some((*sig, data.clone())),
-                _ => None,
-            })
-            .collect();
+        let pos = crate::session::position_of(&rec);
         ui.label(format!("{:08X} {}", fid, sig_label));
         if session.pending_edits() > 0 {
             ui.colored_label(
@@ -955,72 +942,143 @@ pub fn properties(
             ui.separator();
         }
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for s in &views {
-                // A subrecord's signature is a `String` in the view, and a
-                // `[u8; 4]` everywhere the schema and the document want it. It
-                // is parsed once here and used for every lookup below.
-                let sig = sig4(&s.sig);
-                // The value the grid edits: the queued bytes when a field of this
-                // subrecord is pending, else the record's own.
-                let shown = match pending.get(&sig) {
-                    Some(bytes) => nvre_edit::encode::decoded(
-                        &session.schema,
-                        &rec_sig,
-                        &nvre_esm::Subrecord {
-                            sig,
-                            data: bytes.clone(),
-                            extended: false,
-                        },
-                    )
-                    .unwrap_or_else(|| s.value.clone()),
-                    None => s.value.clone(),
-                };
-                ui.horizontal(|ui| {
-                    ui.strong(&s.name);
-                    ui.monospace(&s.sig);
-                    if pending.contains_key(&sig) {
-                        ui.colored_label(egui::Color32::LIGHT_BLUE, "edited");
-                    } else if !s.writable {
-                        ui.colored_label(egui::Color32::YELLOW, "read-only");
-                    }
-                });
-                if let Some(p) = &s.problem {
-                    ui.colored_label(egui::Color32::RED, p);
-                }
-                // One row per field, walked out of the decoded value.
-                let fields = nvre_edit::encode::field_names(&session.schema, &rec_sig, &sig);
-                if fields.is_empty() {
-                    ui.label("(no fields)");
-                }
-                egui::Grid::new(("fields", &s.sig))
-                    .num_columns(2)
-                    .striped(true)
-                    .show(ui, |ui| {
-                        for path in &fields {
-                            let Some(current) = get_path(&shown, path) else {
-                                continue;
-                            };
-                            // A bare scalar subrecord is addressed by the empty
-                            // path, so its row says what the value is rather
-                            // than showing an empty field name.
-                            ui.label(if path.is_empty() { "value" } else { path });
-                            field_editor(ui, &mut session, &mut edit, s, &rec_sig, path, current);
-                            ui.end_row();
-                        }
-                    });
-                ui.add_space(4.0);
-            }
+            schema_grid(ui, &mut session, fid, &mut edit);
         });
     });
 }
 
-/// The value at a dotted path inside a decoded subrecord.
-fn get_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a serde_json::Value> {
-    let mut at = value;
-    for part in path.split('.') {
-        at = at.as_object()?.get(part)?;
+/// Every subrecord of a record, as an editable grid.
+///
+/// This is the editor's game-neutral page. What it shows is the schema's answer:
+/// each subrecord decoded through the block sequence the record was read in, and
+/// inside it one row per field the layout declares. A field is editable exactly
+/// when the encoder can write it back byte-exact, which [`sub_views`] decides by
+/// re-encoding the subrecord's own bytes and comparing them — so a layout that
+/// decodes but cannot be written is shown read-only with the reason, rather than
+/// offering a widget that would corrupt the record.
+///
+/// Nothing here names a game, a record type, or a field. That is the point: a
+/// record type no bespoke page has been written for is still editable, and a
+/// game whose pages do not exist yet gets every field its schema describes. The
+/// object editor falls back to this page when the schema's object-window table
+/// names no page for a signature.
+///
+/// Edits go to the document as they are made, the way the reference property
+/// grid's do: a field is one subrecord's worth of re-encoded bytes, which is
+/// exactly what the document's `SetSub` edit holds.
+pub fn schema_grid(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    edit: &mut FieldEdit,
+) {
+    // The record as the mod will carry it: queued edits already applied, so the
+    // grid shows what the field *is* rather than what the file said before.
+    let Some(rec) = session.resolved_record(form_id) else {
+        ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
+        return;
+    };
+    let rec_sig = rec.header.sig;
+    let views = sub_views(&session.schema, &rec).unwrap_or_default();
+    // Which subrecords have a queued edit, for the badge. The values come from
+    // `resolved_record` above, which has the edits applied.
+    let edited: Vec<[u8; 4]> = session
+        .doc
+        .edits_for(form_id)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|e| match e {
+            nvre_edit::document::Edit::SetSub { sig, .. } => Some(*sig),
+            _ => None,
+        })
+        .collect();
+    if views.is_empty() {
+        ui.label("the schema describes no subrecords for this record");
+        return;
     }
-    Some(at)
+    if let Some(err) = &edit.error {
+        ui.colored_label(egui::Color32::RED, err);
+    }
+    for s in &views {
+        // A subrecord's signature is a `String` in the view, and a `[u8; 4]`
+        // everywhere the schema and the document want it.
+        let sig = sig4(&s.sig);
+        ui.horizontal(|ui| {
+            ui.strong(&s.name);
+            ui.monospace(&s.sig);
+            if let Some(block) = &s.block {
+                ui.weak(format!("in {block}"));
+            }
+            if edited.contains(&sig) {
+                ui.colored_label(egui::Color32::LIGHT_BLUE, "edited");
+            } else if !s.writable {
+                ui.colored_label(egui::Color32::YELLOW, "read-only");
+            }
+        });
+        if let Some(p) = &s.problem {
+            ui.colored_label(egui::Color32::RED, p);
+        }
+        // The block is what decides which layout's fields these are: `DATA` at
+        // the top of a `PACK` is not `DATA` inside one of its blocks. The rows
+        // themselves come from the decoded value, so every one of them is a path
+        // the encoder will accept back.
+        let rows = nvre_edit::encode::rows(
+            &session.schema,
+            &rec_sig,
+            &sig,
+            s.block.as_deref(),
+            &s.value,
+        );
+        egui::Grid::new(("fields", &s.sig, &s.block))
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                for row in &rows {
+                    let Some(current) = get_path(&s.value, &row.path) else {
+                        continue;
+                    };
+                    // A bare scalar subrecord is addressed by the empty path, so
+                    // its row says what the value is rather than showing an
+                    // empty field name.
+                    ui.label(if row.path.is_empty() {
+                        "value"
+                    } else {
+                        row.path.as_str()
+                    });
+                    if row.derived {
+                        ui.horizontal(|ui| {
+                            ui.monospace(field_text(current));
+                            ui.weak("(counted)");
+                        });
+                    } else {
+                        field_editor(ui, session, edit, form_id, s, &rec_sig, &row.path, current);
+                    }
+                    ui.end_row();
+                }
+            });
+        ui.add_space(4.0);
+    }
+}
+
+/// A value as text, for the rows the grid shows but does not edit.
+fn field_text(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Array(a) => format!("(list of {})", a.len()),
+        serde_json::Value::Null => "(none)".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// The value at a dotted path inside a decoded subrecord.
+///
+/// The empty path is the whole value: a bare scalar subrecord has no inner
+/// fields, so its own value *is* the field, and returning `None` for it would
+/// leave every scalar subrecord — `XOWN`, `XSCL`, `XRDS` — with no row at all.
+///
+/// The walk itself lives in [`nvre_edit::encode::value_at`], so the grid reads a
+/// path the same way the session writes one.
+fn get_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a serde_json::Value> {
+    nvre_edit::encode::value_at(value, path)
 }
 
 /// A subrecord signature as the `[u8; 4]` the schema and the document want.
@@ -1050,6 +1108,7 @@ fn field_editor(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
     edit: &mut FieldEdit,
+    form_id: u32,
     view: &nvre_edit::encode::SubView,
     rec_sig: &[u8; 4],
     path: &str,
@@ -1091,7 +1150,7 @@ fn field_editor(
         // bits the schema does not name are carried through untouched — a field
         // the editor cannot explain still round-trips byte-exact.
         serde_json::Value::Object(o) => {
-            let bits = flag_bits(&session.schema, rec_sig, &view.sig);
+            let bits = flag_bits(&session.schema, rec_sig, &view.sig, view.block.as_deref());
             if !bits.is_empty() {
                 let raw = o.get("value").and_then(|v| v.as_u64()).unwrap_or(0);
                 let unknown = o
@@ -1162,8 +1221,8 @@ fn field_editor(
     }
     if let Some(value) = changed {
         edit.last = Some((sig, path.to_string()));
-        match session.set_selected_field(&sig, path, value) {
-            Ok(()) => {}
+        match session.set_object_field(form_id, &sig, path, value) {
+            Ok(()) => edit.error = None,
             Err(e) => edit.error = Some(e),
         }
     }
@@ -1177,8 +1236,16 @@ fn field_editor(
 /// makes a checkbox write the right bit: guessing a bit from a name's position
 /// would silently corrupt every flags field whose bits are not declared in
 /// ascending order from zero.
-fn flag_bits(schema: &nvre_esm::Schema, rec_sig: &[u8; 4], sub_sig: &str) -> Vec<(u32, String)> {
-    let Some(def) = schema.lookup(rec_sig, &sig4(sub_sig)) else {
+///
+/// The block matters: a flags word inside a block (`PACK`'s `DATA`, `FACT`'s)
+/// has the block's layout, not the record's top-level one.
+fn flag_bits(
+    schema: &nvre_esm::Schema,
+    rec_sig: &[u8; 4],
+    sub_sig: &str,
+    block: Option<&str>,
+) -> Vec<(u32, String)> {
+    let Some(def) = schema.lookup_in_block(rec_sig, &sig4(sub_sig), block) else {
         return Vec::new();
     };
     match schema.resolve_def(&def.ty) {
