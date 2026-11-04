@@ -2091,20 +2091,66 @@ impl<'a> Compiler<'a> {
                 if op == "+" {
                     let lt = self.value_type(buf, &l);
                     let rt = self.value_type(buf, &r);
-                    if lt.eq_ignore_ascii_case("string") || rt.eq_ignore_ascii_case("string") {
-                        self.release_temp(buf, &l);
-                        let result = self.temp(buf, "String");
-                        let mut ins = Instruction::new(opcode_of("cast"));
-                        ins.args.push(Value::Identifier(result));
-                        ins.args.push(l);
-                        buf.push(ins, line);
+                    let ls = lt.eq_ignore_ascii_case("string");
+                    let rs = rt.eq_ignore_ascii_case("string");
+                    if ls || rs {
+                        // `strcat <dest> <left> <right>` takes the operands in
+                        // SOURCE order, and whichever side is not already a
+                        // String is **cast into the destination** first:
+                        //
+                        //   "a(" + x      -> cast ::temp104 x
+                        //                    strcat ::temp104 "a(" ::temp104
+                        //   self + " b"   -> cast ::temp2 self
+                        //                    strcat ::temp2 ::temp2 " b"
+                        //
+                        // A chain reuses the destination, which is why
+                        // `"a(" + x + ")"` emits a second
+                        // `strcat ::temp104 ::temp104 ")"` rather than a fresh
+                        // slot. Casting the LEFT operand unconditionally put the
+                        // cast on the literal in the first shape, which is a
+                        // different program. Witness: CWScript.IsPlayerInMyFaction.
+                        let l_is_temp = matches!(&l, Value::Identifier(_));
+                        let dest = if ls && l_is_temp {
+                            l.clone()
+                        } else {
+                            Value::Identifier(self.temp(buf, "String"))
+                        };
+                        let mut lv = l.clone();
+                        let mut rv = r.clone();
+                        if !ls {
+                            let mut ins = Instruction::new(opcode_of("cast"));
+                            ins.args.push(dest.clone());
+                            ins.args.push(l.clone());
+                            buf.push(ins, line);
+                            self.release_temp(buf, &l);
+                            lv = dest.clone();
+                        }
+                        if !rs {
+                            if !ls {
+                                // The destination already carries the converted
+                                // left operand, so the right one needs its own.
+                                let t = Value::Identifier(self.temp(buf, "String"));
+                                let mut ins = Instruction::new(opcode_of("cast"));
+                                ins.args.push(t.clone());
+                                ins.args.push(r.clone());
+                                buf.push(ins, line);
+                                self.release_temp(buf, &r);
+                                rv = t;
+                            } else {
+                                let mut ins = Instruction::new(opcode_of("cast"));
+                                ins.args.push(dest.clone());
+                                ins.args.push(r.clone());
+                                buf.push(ins, line);
+                                self.release_temp(buf, &r);
+                                rv = dest.clone();
+                            }
+                        }
                         let mut ins = Instruction::new(opcode_of("strcat"));
-                        ins.args.push(Value::Identifier(result));
-                        ins.args.push(Value::Identifier(result));
-                        ins.args.push(r.clone());
+                        ins.args.push(dest.clone());
+                        ins.args.push(lv);
+                        ins.args.push(rv);
                         buf.push(ins, line);
-                        self.release_temp(buf, &r);
-                        return Ok(Value::Identifier(result));
+                        return Ok(dest);
                     }
                 }
                 let is_cmp = matches!(op.as_str(), "==" | "!=" | "<" | "<=" | ">" | ">=");
