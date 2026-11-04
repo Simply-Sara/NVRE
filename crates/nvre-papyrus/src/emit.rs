@@ -1944,6 +1944,62 @@ impl<'a> Compiler<'a> {
         Value::Identifier(t)
     }
 
+    /// An argument list, evaluated in two phases.
+    ///
+    /// **Phase 1 evaluates every argument, left to right. Phase 2 applies the
+    /// slot conversions, left to right.** Nothing is converted while the list is
+    /// still being walked.
+    ///
+    /// Measured on the shipped corpus, and it is not what the obvious
+    /// implementation does. `AnimalTrainerSystemScript::BuyAnimal`:
+    ///
+    /// ```text
+    /// Game.GetPlayer().RemoveItem(Gold, AnimalGold.value as int)
+    ///   0 callstatic game GetPlayer ::temp0        the receiver
+    ///   1 propget    value ::AnimalGold_var ::temp1   argument 1 evaluates
+    ///   2 cast       ::temp2 ::temp1                  its own `as int`
+    ///   3 cast       ::temp3 ::Gold_var            argument 0's slot cast, LAST
+    ///   4 callmethod RemoveItem ::temp0 ::NoneVar ::temp3 ::temp2 …
+    /// ```
+    ///
+    /// `Gold` is an auto property, so argument 0 emits **nothing** of its own —
+    /// it needs a `cast` to `Form` and nothing else. Converting it inline puts
+    /// that cast at position 1, before argument 1's `propget`, which shifts every
+    /// later temporary in the function. Deferring it reproduces the game.
+    ///
+    /// The order *among* the deferred conversions is left to right, which is
+    /// what settles that the list itself is left-to-right — four witnesses from
+    /// `examples/argwitness` where every argument is a bare name whose only
+    /// instruction is its cast:
+    ///
+    /// ```text
+    /// GhostTrap::onBeginState        cast ::temp3 self    cast ::temp4 hoverDelay
+    /// DLC1dunHarkonShadowShield::OnHit cast ::temp8 aggressor  cast ::temp5 weap
+    /// atronachFrostActorSCRIPT::…    cast ::temp4 self    cast ::temp5 target
+    /// ```
+    ///
+    /// An explicit `x as T` in the source is part of the expression and stays
+    /// where the expression is (`cast ::temp2 ::temp1` above), so this deferral
+    /// applies only to the conversions the *parameter's type* asks for.
+    fn call_args(
+        &mut self,
+        buf: &mut FnBuf,
+        args: &[Expr],
+        line: u16,
+        want: impl Fn(usize) -> Option<&'static str>,
+    ) -> Result<Vec<Value>, Error> {
+        let mut values = Vec::with_capacity(args.len());
+        for a in args {
+            values.push(self.expr(buf, a, line)?);
+        }
+        for (i, v) in values.iter_mut().enumerate() {
+            if let Some(w) = want(i) {
+                *v = self.coerce_arg(buf, v.clone(), w, line);
+            }
+        }
+        Ok(values)
+    }
+
     /// The declared class of a name used as a receiver, looking through the
     /// function scope first and the script scope second.
     fn receiver_class(&self, buf: &FnBuf, name: &str) -> Option<String> {
@@ -2411,23 +2467,13 @@ impl<'a> Compiler<'a> {
                             // `callstatic debug Trace ::NoneVar "a" 0`.
                             let own = self.own_class().unwrap_or_default();
                             let defs = crate::signatures::defaults(name);
-                            // Arguments are evaluated RIGHT TO LEFT: the last
-                            // argument's instructions come before the first's.
-                            // Measured on `ArenaScript.ResolveWager`, where
-                            // `AddItem(Gold, WagerAmount * 2)` emits the `imul`
-                            // for argument 1 before the `cast` for argument 0.
-                            // Positions in the vararg list stay in order; only
-                            // the evaluation order is reversed.
-                            let mut va: Vec<Option<Value>> = vec![None; args.len()];
-                            for (i, a) in args.iter().enumerate().rev() {
-                                let v = self.expr(buf, a, line)?;
-                                let v = match crate::signatures::arg_type(&own, name, i) {
-                                    Some(w) => self.coerce_arg(buf, v, w, line),
-                                    None => v,
-                                };
-                                va[i] = Some(v);
-                            }
-                            let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
+                            // The argument list, evaluated left to right, with
+                            // each argument's slot conversion after the list —
+                            // see `call_args`. Positions in the vararg list stay
+                            // in source order either way.
+                            let va = self.call_args(buf, args, line, |i| {
+                                crate::signatures::arg_type(&own, name, i)
+                            })?;
                             ins.varargs = self.pad_defaults(va, defs, name);
                             let released: Vec<Value> = ins.varargs.clone();
                             buf.push(ins, line);
@@ -2462,16 +2508,9 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::method_signature(cls, name)
                                     .map(|(_, d)| d)
                                     .or_else(|| crate::signatures::defaults(name));
-                                let mut va: Vec<Option<Value>> = vec![None; args.len()];
-                                for (i, a) in args.iter().enumerate() {
-                                    let v = self.expr(buf, a, line)?;
-                                    let v = match crate::signatures::arg_type(cls, name, i) {
-                                        Some(w) => self.coerce_arg(buf, v, w, line),
-                                        None => v,
-                                    };
-                                    va[i] = Some(v);
-                                }
-                                let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
+                                let va = self.call_args(buf, args, line, |i| {
+                                    crate::signatures::arg_type(cls, name, i)
+                                })?;
                                 ins.varargs = self.pad_defaults(va, defs, name);
                                 let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
@@ -2505,19 +2544,12 @@ impl<'a> Compiler<'a> {
                         // functions, because `None` is how Papyrus spells an
                         // unset object.
                         let own = self.own_class().unwrap_or_default();
-                        // NOTE: a bare `f(...)` evaluates its arguments LEFT to
-                        // RIGHT, unlike a member call. Reversing this scores
-                        // 43,603 against 43,605, so the two paths genuinely
-                        // differ.
-                        let mut dealt = Vec::with_capacity(args.len());
-                        for (i, a) in args.iter().enumerate() {
-                            let v = self.expr(buf, a, line)?;
-                            let v = match crate::signatures::arg_type(&own, name, i) {
-                                Some(w) => self.coerce_arg(buf, v, w, line),
-                                None => v,
-                            };
-                            dealt.push(v);
-                        }
+                        // A bare `f(...)` evaluates its arguments left to right
+                        // like every other path — the earlier note that it
+                        // differed was a fitted artifact. See `call_args`.
+                        let dealt = self.call_args(buf, args, line, |i| {
+                            crate::signatures::arg_type(&own, name, i)
+                        })?;
                         let defs = crate::signatures::defaults(name);
                         ins.varargs = self.pad_defaults(dealt, defs, name);
                         let released: Vec<Value> = ins.varargs.clone();
@@ -2560,12 +2592,11 @@ impl<'a> Compiler<'a> {
                                 let mut ins = Instruction::new(opcode_of("callparent"));
                                 ins.args.push(Value::Identifier(m));
                                 ins.args.push(Value::Identifier(tmp));
-                                let mut slots: Vec<Option<Value>> = vec![None; args.len()];
-                                for (i, a) in args.iter().enumerate().rev() {
-                                    slots[i] = Some(self.expr(buf, a, line)?);
+                                // Left to right, like every other call path.
+                                let mut va = Vec::with_capacity(args.len());
+                                for a in args {
+                                    va.push(self.expr(buf, a, line)?);
                                 }
-                                let va: Vec<Value> =
-                                    slots.into_iter().map(|v| v.unwrap()).collect();
                                 // Defaults come from the PARENT class, not the
                                 // unqualified name. `parent.Cleanup()` takes no
                                 // arguments, but `cleanup` is also declared with a
@@ -2609,15 +2640,9 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::defaults(method);
                                 let cls = class.to_ascii_lowercase();
                                 let sig = crate::signatures::method_params(&cls, method);
-                                let mut va = Vec::with_capacity(args.len());
-                                for (i, a) in args.iter().enumerate() {
-                                    let v = self.expr(buf, a, line)?;
-                                    let v = match sig.and_then(|s| s.get(i)) {
-                                        Some(w) => self.coerce_arg(buf, v, w, line),
-                                        None => v,
-                                    };
-                                    va.push(v);
-                                }
+                                let va = self.call_args(buf, args, line, |i| {
+                                    sig.and_then(|s| s.get(i).copied())
+                                })?;
                                 ins.varargs = self.pad_defaults(va, defs, method);
                                 let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
@@ -2691,23 +2716,14 @@ impl<'a> Compiler<'a> {
                         // defaults need looking up here.
                         let defs =
                             crate::signatures::method_signature(class, method).map(|(_, d)| d);
-                        // Arguments are evaluated RIGHT TO LEFT: the last
-                        // argument's instructions are emitted before the first's.
-                        // Measured on `ArenaScript.ResolveWager`, where
-                        // `AddItem(Gold, WagerAmount * 2)` emits the `imul` for
-                        // argument 1 before the `cast` for argument 0, then
-                        // passes them in the correct positions. Only evaluation
-                        // order is reversed; the vararg list keeps source order.
-                        let mut slots: Vec<Option<Value>> = vec![None; args.len()];
-                        for (i, a) in args.iter().enumerate() {
-                            let v = self.expr(buf, a, line)?;
-                            let v = match crate::signatures::arg_type(class, method, i) {
-                                Some(want) => self.coerce_arg(buf, v, want, line),
-                                None => v,
-                            };
-                            slots[i] = Some(v);
-                        }
-                        let va: Vec<Value> = slots.into_iter().map(|v| v.unwrap()).collect();
+                        // The argument list, left to right, with each argument's
+                        // slot conversion emitted after the list — `call_args`.
+                        // Converting inline put a bare property's cast before the
+                        // next argument's `propget`, shifting every later
+                        // temporary: `AnimalTrainerSystemScript::BuyAnimal`.
+                        let va = self.call_args(buf, args, line, |i| {
+                            crate::signatures::arg_type(class, method, i)
+                        })?;
                         // Omitted trailing arguments are written out, not
                         // dropped: the .pex must carry the count the game has.
                         ins.varargs = self.pad_defaults(va, defs, method);
