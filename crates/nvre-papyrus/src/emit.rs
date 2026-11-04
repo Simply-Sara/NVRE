@@ -2668,7 +2668,7 @@ impl<'a> Compiler<'a> {
                         // passes them in the correct positions. Only evaluation
                         // order is reversed; the vararg list keeps source order.
                         let mut slots: Vec<Option<Value>> = vec![None; args.len()];
-                        for (i, a) in args.iter().enumerate().rev() {
+                        for (i, a) in args.iter().enumerate() {
                             let v = self.expr(buf, a, line)?;
                             let v = match crate::signatures::arg_type(class, method, i) {
                                 Some(want) => self.coerce_arg(buf, v, want, line),
