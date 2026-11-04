@@ -1165,7 +1165,7 @@ impl<'a> Compiler<'a> {
                 patch_false.push(at);
             }
             self.block(buf, &b.body)?;
-            // A branch body ends with a jump past the rest of the chain —
+            // Every branch body ends with a jump past the rest of the chain,
             // except that an **empty** branch in a multi-branch construct gets
             // none. Measured with the real compiler on `Actor.MakePlayerFriend`,
             // whose inner and outer `if`s both have a comment-only `else`:
@@ -1206,6 +1206,12 @@ impl<'a> Compiler<'a> {
             // else correctly but the true path skip nothing. A single-branch
             // `if` keeps its jump even when empty (`if c endif`).
             let last_and_empty = is_last && b.body.is_empty() && branches.len() > 1;
+            // NOTE: a tail-position rule was also tried — a nested `if` as the
+            // final statement of an enclosing branch skipping its last jump,
+            // because `ArenaInteriorDoorScript.OnActivate` emits one `jmp` where
+            // this emits two. It scores 5,275 behavioural differences against
+            // 4,602, so the elision is conditional on something not yet
+            // identified and the rule is left out.
             let skip = last_and_empty || last_and_returns;
             if !skip {
                 let mut ins = Instruction::new(opcode_of("jmp"));
@@ -1931,7 +1937,20 @@ impl<'a> Compiler<'a> {
                 // compiles to `cast ::temp2 ::temp1` followed by
                 // `cmp_eq ::temp3 akActivator ::temp2`.
                 let is_cmp = matches!(op.as_str(), "==" | "!=" | "<" | "<=" | ">" | ">=");
-                if is_cmp {
+                // Arithmetic operands are converted the same way. `GameDaysPassed
+                // .Value + 1` casts the int literal to Float before the `fadd`,
+                // because the other operand is a Float — the conversion is not
+                // special to comparisons. Restricted to numeric pairs: `+` on
+                // strings is concatenation and casts nothing.
+                let is_arith = matches!(op.as_str(), "+" | "-" | "*" | "/" | "%");
+                let numeric_pair = {
+                    let lt = self.value_type(buf, &l);
+                    let rt = self.value_type(buf, &r);
+                    let num =
+                        |t: &str| t.eq_ignore_ascii_case("int") || t.eq_ignore_ascii_case("float");
+                    num(&lt) && num(&rt)
+                };
+                if is_cmp || (is_arith && numeric_pair) {
                     let lt = self.value_type(buf, &l);
                     let rt = self.value_type(buf, &r);
                     // Compared case-insensitively: a local's declared type is
