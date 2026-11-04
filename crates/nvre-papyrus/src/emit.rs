@@ -2787,6 +2787,27 @@ impl<'a> Compiler<'a> {
                 //   `Class.f(...)`      — callstatic
                 match callee.as_ref() {
                     Expr::Ident(name) => {
+                        // `New Bool[10]` allocates an array: `array_create dest
+                        // size`, with **no** receiver and no method. The parser
+                        // spells it as a call on `New <Type>`, which the method
+                        // path turned into `callmethod New ObjectReference self
+                        // ::temp0 20` — a call to a function that does not exist.
+                        // Measured on `cchousequestscript::OnInit`, whose
+                        // `New ObjectReference[20]` is the game's
+                        // `array_create ::temp0 20`.
+                        if let Some(base) = name.strip_prefix("New ") {
+                            let size = match args.first() {
+                                Some(e) => self.expr(buf, e, line)?,
+                                None => Value::Int(0),
+                            };
+                            let ty = format!("{}[]", base);
+                            let tmp = self.temp(buf, &ty);
+                            let mut ins = Instruction::new(opcode_of("array_create"));
+                            ins.args.push(Value::Identifier(tmp));
+                            ins.args.push(size);
+                            buf.push(ins, line);
+                            return Ok(Value::Identifier(tmp));
+                        }
                         let fname = self.intern(name);
                         if let Some(target) = self.static_target(name) {
                             let tmp = self.temp(buf, "var");
