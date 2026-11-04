@@ -1968,6 +1968,7 @@ impl<'a> Compiler<'a> {
         buf: &mut FnBuf,
         args: &[Expr],
         line: u16,
+        method: &str,
         want: impl Fn(usize) -> Option<&'static str>,
     ) -> Result<Vec<Value>, Error> {
         let mut values = Vec::with_capacity(args.len());
@@ -2472,7 +2473,7 @@ impl<'a> Compiler<'a> {
                             // each argument's slot conversion after the list —
                             // see `call_args`. Positions in the vararg list stay
                             // in source order either way.
-                            let va = self.call_args(buf, args, line, |i| {
+                            let va = self.call_args(buf, args, line, name, |i| {
                                 crate::signatures::arg_type(&own, name, i)
                             })?;
                             ins.varargs = self.pad_defaults(va, defs, name);
@@ -2534,7 +2535,7 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::method_signature(cls, name)
                                     .map(|(_, d)| d)
                                     .or_else(|| crate::signatures::defaults(name));
-                                let va = self.call_args(buf, args, line, |i| {
+                                let va = self.call_args(buf, args, line, name, |i| {
                                     crate::signatures::arg_type(cls, name, i)
                                 })?;
                                 ins.varargs = self.pad_defaults(va, defs, name);
@@ -2573,7 +2574,7 @@ impl<'a> Compiler<'a> {
                         // A bare `f(...)` evaluates its arguments left to right
                         // like every other path — the earlier note that it
                         // differed was a fitted artifact. See `call_args`.
-                        let dealt = self.call_args(buf, args, line, |i| {
+                        let dealt = self.call_args(buf, args, line, name, |i| {
                             crate::signatures::arg_type(&own, name, i)
                         })?;
                         let defs = crate::signatures::defaults(name);
@@ -2669,7 +2670,7 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::defaults(method);
                                 let cls = class.to_ascii_lowercase();
                                 let sig = crate::signatures::method_params(&cls, method);
-                                let va = self.call_args(buf, args, line, |i| {
+                                let va = self.call_args(buf, args, line, method, |i| {
                                     sig.and_then(|s| s.get(i).copied())
                                 })?;
                                 ins.varargs = self.pad_defaults(va, defs, method);
@@ -2750,7 +2751,7 @@ impl<'a> Compiler<'a> {
                         // Converting inline put a bare property's cast before the
                         // next argument's `propget`, shifting every later
                         // temporary: `AnimalTrainerSystemScript::BuyAnimal`.
-                        let va = self.call_args(buf, args, line, |i| {
+                        let va = self.call_args(buf, args, line, method, |i| {
                             crate::signatures::arg_type(class, method, i)
                         })?;
                         // Omitted trailing arguments are written out, not

@@ -163,6 +163,9 @@ fn main() {
     sources.sort();
 
     let (mut exact, mut numbering_only, mut behavioural) = (0usize, 0usize, 0usize);
+    // Behavioural differences that vanish when case is ignored — a spelling
+    // difference from the string table, not a codegen one.
+    let mut case_only = 0usize;
     let mut funcs = 0usize;
     let mut why: BTreeMap<String, usize> = BTreeMap::new();
     let mut example: BTreeMap<String, String> = BTreeMap::new();
@@ -249,6 +252,23 @@ fn main() {
                 }
                 behavioural += 1;
                 this_script_differs = true;
+                // A difference that vanishes when case is ignored is a
+                // **spelling** difference, not a behavioural one: the string
+                // table folds case and keeps whichever spelling it interned
+                // first, so a state name or a string literal can come back
+                // `pushedposition` where the source wrote `pushedPosition`.
+                // Counted apart, because chasing one as a codegen bug costs a
+                // session and fixing it needs the record order, not a rule.
+                if gn.iter().zip(&mn).all(|(x, y)| x.eq_ignore_ascii_case(y))
+                    && gn.len() == mn.len()
+                {
+                    case_only += 1;
+                    *why.entry("case-only spelling".into()).or_default() += 1;
+                    example
+                        .entry("case-only spelling".into())
+                        .or_insert_with(|| format!("{leaf}::{gname}"));
+                    continue;
+                }
                 // Classify from the NORMALISED text, so the bucket names the
                 // real behavioural difference rather than a temp number.
                 let k = match gn.iter().zip(&mn).position(|(x, y)| x != y) {
@@ -288,6 +308,10 @@ fn main() {
     println!(
         "  BEHAVIOURALLY different:         {behavioural:6}  ({:.1}%)",
         100.0 * behavioural as f64 / funcs as f64
+    );
+    println!(
+        "    of which case-only spelling:   {case_only:6}  ({:.1}% of those)",
+        100.0 * case_only as f64 / behavioural as f64
     );
     println!();
     println!(
