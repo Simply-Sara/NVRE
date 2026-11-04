@@ -966,7 +966,17 @@ impl<'a> Compiler<'a> {
                 // 964 times (the object), and slot 0 never is (the property
                 // name). `examples/propargs.rs` counts it.
                 if let Expr::Member(obj, name) = target {
-                    let o = self.expr(buf, obj, *line)?;
+                    // The VALUE is evaluated before the object: `propset` is
+                    // `name, object, value`, and the operands go right to left
+                    // like a call's. Measured on
+                    // `BYOH_SF_RelationshipAdoption__0101652D.Fragment_0`, where
+                    // `(GetOwningQuest() as …).OrderToConfirm = 1.3` emits
+                    //   assign ::temp1 1.3
+                    //   callmethod GetOwningQuest self ::temp2
+                    //   cast ::temp3 ::temp2
+                    //   propset OrderToConfirm ::temp3 ::temp1
+                    // — the literal is materialised BEFORE the receiver is
+                    // evaluated, not after.
                     let p = self.intern(name);
                     let raw = self.expr(buf, value, *line)?;
                     // The VALUE is materialised into a temporary, always: slot 2
@@ -979,6 +989,7 @@ impl<'a> Compiler<'a> {
                     // next one take the same slot.
                     let ty = self.value_type(buf, &raw);
                     let v = self.materialise(buf, raw, &ty, *line);
+                    let o = self.expr(buf, obj, *line)?;
                     let mut ins = Instruction::new(opcode_of("propset"));
                     ins.args.push(Value::Identifier(p));
                     ins.args.push(o);
