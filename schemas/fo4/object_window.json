@@ -383,7 +383,91 @@
     "group": "World Objects"
    },
    "WEAP": {
-    "group": "Items"
+    "group": "Items",
+    "sections": [
+     {
+      "title": "Identity",
+      "subs": [
+       "EDID",
+       "FULL",
+       "FNAM",
+       "ETYP",
+       "FLTR"
+      ]
+     },
+     {
+      "title": "Damage",
+      "subs": [
+       "DNAM",
+       "CRDT",
+       "DAMA",
+       "MASE"
+      ]
+     },
+     {
+      "title": "Ammunition",
+      "subs": [
+       "INAM",
+       "BIDS",
+       "BAMT",
+       "LNAM"
+      ]
+     },
+     {
+      "title": "Aim & Zoom",
+      "subs": [
+       "WAMD",
+       "WZMD"
+      ]
+     },
+     {
+      "title": "Mods & Naming",
+      "subs": [
+       "CNAM",
+       "INRD",
+       "NNAM",
+       "MICO",
+       "APPR"
+      ]
+     },
+     {
+      "title": "Enchantment",
+      "subs": [
+       "EITM",
+       "EAMT"
+      ]
+     },
+     {
+      "title": "Keywords",
+      "subs": [
+       "KSIZ",
+       "KWDA"
+      ]
+     },
+     {
+      "title": "Sounds & Effects",
+      "subs": [
+       "YNAM",
+       "ZNAM",
+       "PTRN",
+       "STCP"
+      ]
+     },
+     {
+      "title": "Appearance",
+      "subs": [
+       "OBND",
+       "ICON",
+       "DESC"
+      ]
+     },
+     {
+      "title": "Script",
+      "subs": [
+       "VMAD"
+      ]
+     }
+    ]
    },
    "WTHR": {
     "group": "World Objects"

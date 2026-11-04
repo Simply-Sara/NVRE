@@ -539,6 +539,22 @@ pub struct CategoryDef {
     /// under it, and a name no block is registered under is a table typo —
     /// the editor reports it rather than guessing.
     pub editor: Option<String>,
+    /// The page's sections, when the page is described rather than written.
+    ///
+    /// A section is a heading and the subrecords filed under it. The renderer
+    /// draws them in this order and ignores a subrecord the record does not
+    /// carry, which is what lets one section list serve games whose records
+    /// differ: Fallout 4's weapon has no `VATS`, so a `VATS` section is simply
+    /// absent there, and Fallout: New Vegas's weapon has one.
+    ///
+    /// This is what makes a per-game page data rather than code. A game
+    /// customises its object editor by writing its own sections in
+    /// `schemas/<game>/object_window.json`; a page that needs behaviour a
+    /// section cannot express is the exception, and names `editor` instead.
+    ///
+    /// A category with sections uses them whether or not it also names
+    /// `editor`, because the sections are the more specific answer.
+    pub sections: Vec<SectionDef>,
     /// The record type is not listed in the object window.
     ///
     /// Every non-object record type is named here rather than left out: a
@@ -548,6 +564,19 @@ pub struct CategoryDef {
     /// carry an `editor` block, so a type can be reachable without being
     /// listed.
     pub hidden: bool,
+}
+
+/// One section of a described page: a heading, and the subrecords under it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SectionDef {
+    /// The heading the page shows.
+    pub title: String,
+    /// The subrecords under it, by signature, in the order to show them.
+    ///
+    /// A signature the record does not carry has no row: that is how one list
+    /// serves records that differ, and it is why a section naming a subrecord
+    /// only one game has is not an error.
+    pub subs: Vec<String>,
 }
 
 /// Give a struct's repeated field names distinct names.
@@ -935,6 +964,52 @@ impl Schema {
                         ));
                     };
                     cat.hidden = flag;
+                }
+                if let Some(secs) = o.get("sections") {
+                    let Some(list) = secs.as_array() else {
+                        return Err(format!(
+                            "object_window.categories.{sig}.sections is not a list"
+                        ));
+                    };
+                    let mut out = Vec::with_capacity(list.len());
+                    for (i, s) in list.iter().enumerate() {
+                        let Some(sec) = s.as_object() else {
+                            return Err(format!(
+                                "object_window.categories.{sig}.sections[{i}] is not an object"
+                            ));
+                        };
+                        let Some(title) = sec.get("title").and_then(|t| t.as_str()) else {
+                            return Err(format!(
+                                "object_window.categories.{sig}.sections[{i}] has no title"
+                            ));
+                        };
+                        let Some(subs) = sec.get("subs").and_then(|t| t.as_array()) else {
+                            return Err(format!(
+                                "object_window.categories.{sig}.sections[{i}] has no subs list"
+                            ));
+                        };
+                        let mut list = Vec::with_capacity(subs.len());
+                        for sub in subs {
+                            let Some(tag) = sub.as_str() else {
+                                return Err(format!(
+                                    "object_window.categories.{sig}.sections[{i}].subs holds a \
+                                     name that is not a string"
+                                ));
+                            };
+                            if tag.len() != 4 {
+                                return Err(format!(
+                                    "object_window.categories.{sig}.sections[{i}] names {tag:?}, \
+                                     which is not a four-byte subrecord signature"
+                                ));
+                            }
+                            list.push(tag.to_string());
+                        }
+                        out.push(SectionDef {
+                            title: title.to_string(),
+                            subs: list,
+                        });
+                    }
+                    cat.sections = out;
                 }
                 self.object_window.categories.insert(sig.clone(), cat);
             }

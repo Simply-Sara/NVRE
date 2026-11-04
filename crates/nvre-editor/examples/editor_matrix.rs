@@ -126,10 +126,11 @@ fn main() {
 
     println!();
     println!(
-        "{:<9} {:>5} {:>6} {:>5} {:>5} {:>8} {:>8} {:>8} {:>7} {:>8} {:>5} {:>6} {:>6} {:>5}",
+        "{:<9} {:>5} {:>6} {:>6} {:>5} {:>5} {:>8} {:>8} {:>8} {:>7} {:>8} {:>5} {:>6} {:>6} {:>5}",
         "game",
         "sigs",
         "paged",
+        "sects",
         "grid",
         "typo",
         "fields",
@@ -144,10 +145,11 @@ fn main() {
     );
     for (id, t) in &totals {
         println!(
-            "{:<9} {:>5} {:>6} {:>5} {:>5} {:>8} {:>8} {:>8} {:>7} {:>8} {:>5} {:>6} {:>6} {:>5}",
+            "{:<9} {:>5} {:>6} {:>6} {:>5} {:>5} {:>8} {:>8} {:>8} {:>7} {:>8} {:>5} {:>6} {:>6} {:>5}",
             id,
             t.sigs,
             t.paged,
+            t.sectioned,
             t.grid,
             t.broken,
             t.fields,
@@ -163,6 +165,7 @@ fn main() {
     }
     println!();
     println!("paged = a bespoke page the schema names and this build registers");
+    println!("sects = a page described by the schema's sections (data, not code)");
     println!("grid  = no page: the schema grid is what the object editor shows");
     println!("typo  = the schema names a page this build does not register");
     println!("reach = fields whose path is in the decoded value (the grid drops the rest)");
@@ -206,6 +209,8 @@ struct GameTotals {
     paged: usize,
     /// Types the object editor falls back to the schema grid for.
     grid: usize,
+    /// Types whose page is described by the schema's sections rather than code.
+    sectioned: usize,
     /// Types whose schema names a page this build does not register.
     broken: usize,
     fields: usize,
@@ -395,16 +400,25 @@ fn run_game(
                 }
             }
         }
-        // Which page the object editor would show for this type.
+        // Which page the object editor would show for this type. The rule is the
+        // object editor's own: a category with sections is a described page, and
+        // otherwise the `editor` name decides, and a name this build does not
+        // register is a typo.
         let entry = schema.object_window.categories.get(&key);
+        let described = entry.is_some_and(|c| !c.sections.is_empty());
         let page = entry.and_then(|c| c.editor.as_deref());
-        let page_state = match page {
-            Some(name) if nvre_editor::object_editor::editor_block(name).is_some() => "page",
-            Some(_) => "typo",
-            None => "grid",
+        let page_state = if described {
+            "sections"
+        } else {
+            match page {
+                Some(name) if nvre_editor::object_editor::editor_block(name).is_some() => "page",
+                Some(_) => "typo",
+                None => "grid",
+            }
         };
         match page_state {
             "page" => out.paged += 1,
+            "sections" => out.sectioned += 1,
             "grid" => out.grid += 1,
             _ => out.broken += 1,
         }

@@ -15566,6 +15566,63 @@ impl EditorPage for LegacyPage {
     }
 }
 
+/// A page described by its schema sections rather than written in code.
+///
+/// The schema's object-window table gives a category a list of sections — a
+/// heading and the subrecords under it — and this page draws them. That is the
+/// whole page: there is no per-record-type code here, so a game customises its
+/// object editor by writing sections in `schemas/<game>/object_window.json`.
+///
+/// What makes one list serve several games is that a section names a subrecord
+/// and the record decides whether it has one. Fallout: New Vegas's weapon
+/// carries `VATS` and Fallout 4's does not, so the same `VATS` section is
+/// content in one and absent in the other — no branching on the game, and no
+/// second page to keep in step.
+///
+/// A subrecord the sections do not name is still reachable: it is listed under
+/// "Everything else" at the end. A page that quietly dropped a subrecord would
+/// make part of the record uneditable with nothing saying so, which is the one
+/// failure this editor exists not to have.
+#[derive(Default)]
+pub struct SectionPage {
+    /// The grid's own widget state: the last field touched, and why it failed.
+    edit: crate::panels::FieldEdit,
+}
+
+impl EditorPage for SectionPage {
+    fn name(&self) -> &str {
+        "sections"
+    }
+
+    fn games(&self) -> &'static [&'static str] {
+        // The sections come from the game's own table and the layouts from its
+        // own schema, so the page is correct wherever its table is.
+        crate::game::ALL_IDS
+    }
+
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        session: &mut crate::session::Session,
+        shared: &mut ObjectEditorState,
+    ) {
+        let Some(sections) = session
+            .schema
+            .object_window
+            .categories
+            .get(String::from_utf8_lossy(&shared.sig).as_ref())
+            .map(|c| c.sections.clone())
+            .filter(|s| !s.is_empty())
+        else {
+            // A category with no sections is not a described page; the grid is
+            // the honest fallback rather than an empty body.
+            crate::panels::schema_grid(ui, session, shared.form_id, &mut self.edit);
+            return;
+        };
+        crate::panels::sectioned_grid(ui, session, shared.form_id, &sections, &mut self.edit);
+    }
+}
+
 /// Every page the object editor can open, by the name the schema's table uses.
 ///
 /// Built lazily: the first time a name is asked for, the legacy table is
@@ -15580,10 +15637,10 @@ impl Pages {
     /// The page registered under `name`, or `None` when nothing is.
     pub fn get(&mut self, name: &str) -> Option<&mut (dyn EditorPage + '_)> {
         if !self.map.contains_key(name) {
-            let page: Option<Box<dyn EditorPage>> = if name == "grid" {
-                Some(Box::new(GridPage::default()))
-            } else {
-                LegacyPage::for_name(name).map(|p| Box::new(p) as Box<dyn EditorPage>)
+            let page: Option<Box<dyn EditorPage>> = match name {
+                "grid" => Some(Box::new(GridPage::default())),
+                "sections" => Some(Box::new(SectionPage::default())),
+                _ => LegacyPage::for_name(name).map(|p| Box::new(p) as Box<dyn EditorPage>),
             };
             self.map.insert(name.to_string(), page?);
         }
@@ -15593,7 +15650,10 @@ impl Pages {
 
     /// Whether a page is registered under `name`, without creating it.
     pub fn has(&self, name: &str) -> bool {
-        name == "grid" || self.map.contains_key(name) || editor_block(name).is_some()
+        name == "grid"
+            || name == "sections"
+            || self.map.contains_key(name)
+            || editor_block(name).is_some()
     }
 
     /// The pages that have been opened this session, by name.
@@ -15786,12 +15846,20 @@ pub fn ui(
         // The name is cloned out of the schema before the page borrows the
         // session mutably, so the lookup does not hold a borrow across it.
         let avail_h = (ui.available_height() - 48.0).max(200.0);
-        let page_name: Option<String> = session
+        let category = session
             .schema
             .object_window
             .categories
-            .get(String::from_utf8_lossy(&state.sig).as_ref())
-            .and_then(|c| c.editor.clone());
+            .get(String::from_utf8_lossy(&state.sig).as_ref());
+        // Sections are the more specific answer than a page name: a table that
+        // describes the page is customising it, and a game that wants different
+        // contents writes different sections rather than a new page.
+        let described = category.is_some_and(|c| !c.sections.is_empty());
+        let page_name: Option<String> = if described {
+            Some("sections".to_string())
+        } else {
+            category.and_then(|c| c.editor.clone())
+        };
         let game = session.game.id;
         egui::ScrollArea::vertical()
             .id_salt("obj_scroll")

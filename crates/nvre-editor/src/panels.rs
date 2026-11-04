@@ -947,6 +947,159 @@ pub fn properties(
     });
 }
 
+/// The schema grid, with the subrecords grouped under the schema's headings.
+///
+/// A described page: `sections` is the game's own table for this record type,
+/// so what is in it is data. Each section draws the subrecords it names, in the
+/// order it names them, and a subrecord the record does not carry is skipped —
+/// which is how one section list serves games whose records differ.
+///
+/// Everything the sections did **not** name follows under one heading. That is
+/// not a formality: a page that dropped a subrecord would leave part of the
+/// record uneditable with nothing saying so, so the unlisted remainder is shown
+/// rather than trusted not to exist. A record type whose sections cover
+/// everything shows nothing there.
+pub fn sectioned_grid(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    sections: &[nvre_esm::schema::SectionDef],
+    edit: &mut FieldEdit,
+) {
+    let Some(rec) = session.resolved_record(form_id) else {
+        ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
+        return;
+    };
+    let rec_sig = rec.header.sig;
+    let views = sub_views(&session.schema, &rec).unwrap_or_default();
+    if views.is_empty() {
+        ui.label("the schema describes no subrecords for this record");
+        return;
+    }
+    if let Some(err) = &edit.error {
+        ui.colored_label(egui::Color32::RED, err);
+    }
+    let edited: Vec<[u8; 4]> = session
+        .doc
+        .edits_for(form_id)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|e| match e {
+            nvre_edit::document::Edit::SetSub { sig, .. } => Some(*sig),
+            _ => None,
+        })
+        .collect();
+    // Which views a section claimed, so the remainder is what nothing named.
+    let mut claimed: Vec<usize> = Vec::new();
+    for (si, section) in sections.iter().enumerate() {
+        // The subrecords this section names, in the section's order.
+        let mut named: Vec<usize> = Vec::new();
+        for tag in &section.subs {
+            for (i, v) in views.iter().enumerate() {
+                // A record can carry the same signature more than once (a
+                // weather's texture layers, a list's repeated entries), so every
+                // matching view goes under the section rather than the first.
+                if &v.sig == tag && !named.contains(&i) {
+                    named.push(i);
+                }
+            }
+        }
+        if named.is_empty() {
+            // The record does not carry anything this section names — Fallout
+            // 4's weapon has no `VATS`. Nothing to draw, and nothing to say: the
+            // section belongs to the other game's table, not to this record.
+            continue;
+        }
+        claimed.extend(named.iter().copied());
+        ui.add_space(if si == 0 { 0.0 } else { 6.0 });
+        ui.group(|ui| {
+            ui.strong(&section.title);
+            ui.add_space(4.0);
+            for i in named {
+                subrecord_rows(ui, session, form_id, &rec_sig, &views[i], &edited, edit);
+            }
+        });
+    }
+    let rest: Vec<usize> = (0..views.len()).filter(|i| !claimed.contains(i)).collect();
+    if !rest.is_empty() {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Everything else");
+            ui.weak("subrecords the schema's sections do not name");
+            ui.add_space(4.0);
+            for i in rest {
+                subrecord_rows(ui, session, form_id, &rec_sig, &views[i], &edited, edit);
+            }
+        });
+    }
+}
+
+/// One subrecord of a record: its heading, then a row per field.
+///
+/// Shared by the flat grid and the sectioned one so the two cannot drift: a
+/// field that is editable in one is editable in the other, and a subrecord that
+/// cannot be written says why in both.
+fn subrecord_rows(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    rec_sig: &[u8; 4],
+    view: &nvre_edit::encode::SubView,
+    edited: &[[u8; 4]],
+    edit: &mut FieldEdit,
+) {
+    let sig = sig4(&view.sig);
+    ui.horizontal(|ui| {
+        ui.strong(&view.name);
+        ui.monospace(&view.sig);
+        if let Some(block) = &view.block {
+            ui.weak(format!("in {block}"));
+        }
+        if edited.contains(&sig) {
+            ui.colored_label(egui::Color32::LIGHT_BLUE, "edited");
+        } else if !view.writable {
+            ui.colored_label(egui::Color32::YELLOW, "read-only");
+        }
+    });
+    if let Some(p) = &view.problem {
+        ui.colored_label(egui::Color32::RED, p);
+    }
+    let rows = nvre_edit::encode::rows(
+        &session.schema,
+        rec_sig,
+        &sig,
+        view.block.as_deref(),
+        &view.value,
+    );
+    egui::Grid::new(("fields", &view.sig, &view.block))
+        .num_columns(2)
+        .striped(true)
+        .show(ui, |ui| {
+            for row in &rows {
+                let Some(current) = get_path(&view.value, &row.path) else {
+                    continue;
+                };
+                ui.label(if row.path.is_empty() {
+                    "value"
+                } else {
+                    row.path.as_str()
+                });
+                if row.derived {
+                    ui.horizontal(|ui| {
+                        ui.monospace(field_text(current));
+                        ui.weak("(counted)");
+                    });
+                } else {
+                    field_editor(
+                        ui, session, edit, form_id, view, rec_sig, &row.path, current,
+                    );
+                }
+                ui.end_row();
+            }
+        });
+    ui.add_space(4.0);
+}
+
 /// Every subrecord of a record, as an editable grid.
 ///
 /// This is the editor's game-neutral page. What it shows is the schema's answer:
@@ -1000,63 +1153,7 @@ pub fn schema_grid(
         ui.colored_label(egui::Color32::RED, err);
     }
     for s in &views {
-        // A subrecord's signature is a `String` in the view, and a `[u8; 4]`
-        // everywhere the schema and the document want it.
-        let sig = sig4(&s.sig);
-        ui.horizontal(|ui| {
-            ui.strong(&s.name);
-            ui.monospace(&s.sig);
-            if let Some(block) = &s.block {
-                ui.weak(format!("in {block}"));
-            }
-            if edited.contains(&sig) {
-                ui.colored_label(egui::Color32::LIGHT_BLUE, "edited");
-            } else if !s.writable {
-                ui.colored_label(egui::Color32::YELLOW, "read-only");
-            }
-        });
-        if let Some(p) = &s.problem {
-            ui.colored_label(egui::Color32::RED, p);
-        }
-        // The block is what decides which layout's fields these are: `DATA` at
-        // the top of a `PACK` is not `DATA` inside one of its blocks. The rows
-        // themselves come from the decoded value, so every one of them is a path
-        // the encoder will accept back.
-        let rows = nvre_edit::encode::rows(
-            &session.schema,
-            &rec_sig,
-            &sig,
-            s.block.as_deref(),
-            &s.value,
-        );
-        egui::Grid::new(("fields", &s.sig, &s.block))
-            .num_columns(2)
-            .striped(true)
-            .show(ui, |ui| {
-                for row in &rows {
-                    let Some(current) = get_path(&s.value, &row.path) else {
-                        continue;
-                    };
-                    // A bare scalar subrecord is addressed by the empty path, so
-                    // its row says what the value is rather than showing an
-                    // empty field name.
-                    ui.label(if row.path.is_empty() {
-                        "value"
-                    } else {
-                        row.path.as_str()
-                    });
-                    if row.derived {
-                        ui.horizontal(|ui| {
-                            ui.monospace(field_text(current));
-                            ui.weak("(counted)");
-                        });
-                    } else {
-                        field_editor(ui, session, edit, form_id, s, &rec_sig, &row.path, current);
-                    }
-                    ui.end_row();
-                }
-            });
-        ui.add_space(4.0);
+        subrecord_rows(ui, session, form_id, &rec_sig, s, &edited, edit);
     }
 }
 
