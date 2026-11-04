@@ -2550,11 +2550,13 @@ impl<'a> Compiler<'a> {
                         // result type. Without it the temporary is `var`, and
                         // the corpus shows `var` for only a handful of the
                         // 4,000+ call results it records.
-                        let recv_class = match obj.as_ref() {
-                            Expr::Ident(n) => self.type_of(n).map(|t| t.0.clone()),
-                            Expr::Member(..) => None,
-                            _ => None,
-                        };
+                        // The receiver's class, for a CALL as well as a name:
+                        // `FragmentSack.GetReference().GetParentCell().Reset()`
+                        // has a receiver whose type is `cell`, and without it the
+                        // padding fell back to the unqualified `reset` table and
+                        // appended a `None` the game does not pass. Resolving it
+                        // also gives chained calls their result type.
+                        let recv_class = self.receiver_class_of(buf, obj);
                         // NOTE: there is no special "materialise the receiver"
                         // step. `Self.Activate(Self, true)` compiles to
                         //   cast ::temp2 self
