@@ -150,11 +150,15 @@ fn run(game: &GameProfile, session: &mut Session, only_sig: Option<&str>, sample
             .map(|c| (!c.sections.is_empty(), c.editor.clone()))
             .unwrap_or((false, None));
         let Some(name) = editor else { continue };
-        // A described or grid page writes through the schema, not through a
-        // page's own fields, so it is measured by `editor_matrix` instead.
-        if described || name == "grid" {
+        // A page wins over sections in the object editor, so a category that names
+        // one is measured here; everything else is a described page and writes
+        // through the schema, which `editor_matrix` measures instead. Filtering on
+        // "has sections" would now skip every named page, since every category has
+        // sections.
+        if name == "grid" {
             continue;
         }
+        let _ = described;
         if nvre_editor::object_editor::editor_block(&name).is_none() {
             continue;
         }
