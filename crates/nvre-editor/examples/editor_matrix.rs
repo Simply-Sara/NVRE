@@ -562,7 +562,11 @@ fn check_field(
                 break;
             }
             Err(e) => {
-                if e.to_string().contains("out of range") {
+                // A value that does not fit its type is the *sample's* fault, not
+                // the layout's: a `u8` field at 255 cannot take 256. That is
+                // reported as `bound`, and told apart from a real failure by the
+                // error's own kind rather than by searching its text.
+                if e.is_range() {
                     out_of_range = true;
                 } else {
                     return Check::Fail(format!("the changed value does not encode: {e}"));

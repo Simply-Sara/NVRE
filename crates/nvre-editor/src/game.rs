@@ -21,18 +21,17 @@
 //!
 //! What a profile does **not** carry, because it is not implemented yet:
 //!
-//! - the NIF schema, which is still the FNV corpus's
-//!   (`schemas/nif`, versions 20.0.0.4–20.2.0.7, `bs_version` 11–34),
-//!   so a non-FNV game's meshes are decoded with the wrong version's
-//!   conditions until a per-game overlay exists;
-//! - the record schemas for the games other than FNV and Fallout 3: those two
-//!   are measured, so opening another game's master fails with
-//!   `no schema files in ...` rather than silently misreading it;
-//! - archive containers other than BSA v104 (Fallout 4 ships BA2). Skyrim SE's
-//!   BSA v105/LZ4 is readable through NVRE's own [`bsa105`] crate, but the
-//!   editor's VFS reads v104 only — so Skyrim SE
-//!   opens with loose files only and says so through [`GameProfile::notes`]
-//!   until the VFS takes the crate.
+//! - the NIF schema for a game that has no layer of its own. Fallout 4's NIFs are
+//!   `bs_version` 130 and have a directory of their own; Skyrim's share the base.
+//!   A game whose NIF layer is missing decodes meshes with the base's conditions
+//!   rather than failing, so a wrong mesh shows as a wrong mesh, not as an error.
+//!
+//! The record schemas exist for all five games (`schemas/fnv`, `schemas/fo3`,
+//! `schemas/skyrim` + `skyrimle`/`skyrimse`, `schemas/fo4`), and the archive
+//! containers are all readable: BSA v104 and v105 through NVRE's own `bsa105`
+//! crate, BA2 through `ba2`. Skyrim Special Edition is the case the v105 support
+//! exists for — its 22 shipped archives read, with 22,761 `.nif` paths and 32,945
+//! `.dds` paths.
 //!
 //! Every list here is taken from the game's own shipped defaults, cited in the
 //! field's doc comment. None of it is guessed.

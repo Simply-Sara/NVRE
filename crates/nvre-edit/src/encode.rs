@@ -54,6 +54,25 @@ pub enum EncodeError {
     Encoding { path: String, s: String },
 }
 
+impl EncodeError {
+    /// Whether the value did not fit the field's type.
+    ///
+    /// A caller that is *probing* a layout needs to tell "this value is too big
+    /// for a `u8`" from "this value is the wrong shape", because the first means
+    /// the test picked a bad sample and the second means the layout is wrong. The
+    /// distinction used to be a string search for "out of range", which breaks the
+    /// moment the message is wrapped — and a union wraps every variant's error.
+    pub fn is_range(&self) -> bool {
+        match self {
+            EncodeError::Range { .. } => true,
+            // A union reports one variant's failure; if that one was a range, the
+            // value is out of range for the layout, not malformed.
+            EncodeError::Value { msg, .. } => msg.contains("is out of range for"),
+            _ => false,
+        }
+    }
+}
+
 /// What a JSON value is, for error messages.
 fn kind_of(v: &Value) -> &'static str {
     match v {
@@ -549,6 +568,7 @@ pub fn encode_type(
             // value has to say which one it is: each variant is tried in order and
             // the first that encodes without error wins.
             let mut first_err = None;
+            let mut range_err = None;
             for (i, (_, vt)) in variants.iter().enumerate() {
                 let mut probe = Vec::new();
                 match encode_type(schema, vt, value, &mut probe, path) {
@@ -556,8 +576,23 @@ pub fn encode_type(
                         out.extend_from_slice(&probe);
                         return Ok(());
                     }
-                    Err(e) => first_err = first_err.or(Some((i, e))),
+                    Err(e) => {
+                        // A variant that rejects the value because one number is
+                        // too big is saying something different from one that does
+                        // not know the field at all: the first is the caller's
+                        // value, the second is this variant's shape. Keeping the
+                        // range error means a caller probing the layout learns
+                        // "too big" rather than "wrong shape", which the nested
+                        // Skyrim SE `RACE` union used to lose.
+                        if e.is_range() && range_err.is_none() {
+                            range_err = Some(e.clone());
+                        }
+                        first_err = first_err.or(Some((i, e)));
+                    }
                 }
+            }
+            if let Some(e) = range_err {
+                return Err(e);
             }
             match first_err {
                 Some((_, e)) => Err(EncodeError::Value {
