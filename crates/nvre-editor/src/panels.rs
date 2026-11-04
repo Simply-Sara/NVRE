@@ -1641,43 +1641,28 @@ pub fn repeat_widget(
                 }
                 ui.monospace(format!("[{i}]"));
                 match value {
-                    // A struct row: one drag per numeric field, written back
-                    // through the same path the grid uses.
+                    // A struct row: one widget per field, the same widgets the flat
+                    // grid uses. A row that could only show `monospace` would be a
+                    // regression for the pages `repeat` is meant to replace — a
+                    // leveled list's entry is a FormID and two numbers, and a list
+                    // of records (`FLST`) is nothing but FormIDs.
                     serde_json::Value::Object(fields) => {
                         let mut next = value.clone();
                         let mut touched = false;
                         for (name, fv) in fields {
-                            ui.label(name);
-                            if let Some(n) = fv.as_f64() {
-                                let is_int = fv.is_i64() || fv.is_u64();
-                                let mut v = n;
-                                let drag = egui::DragValue::new(&mut v).speed(if is_int {
-                                    1.0
-                                } else {
-                                    0.1
-                                });
-                                if ui.add(drag).changed() {
-                                    if let serde_json::Value::Object(o) = &mut next {
-                                        o.insert(
-                                            name.clone(),
-                                            if is_int {
-                                                serde_json::json!(v.round() as i64)
-                                            } else {
-                                                serde_json::json!(v)
-                                            },
-                                        );
-                                    }
-                                    touched = true;
-                                }
-                            } else if fv.is_string() || fv.is_boolean() {
-                                ui.monospace(fv.to_string());
+                            let path = if name.is_empty() {
+                                String::new()
                             } else {
-                                ui.monospace("…");
+                                name.clone()
+                            };
+                            ui.label(name);
+                            if inline_value(
+                                ui, session, rec_sig, sub_sig, block, &path, fv, &mut next,
+                            ) {
+                                touched = true;
                             }
                         }
                         if touched {
-                            // Re-encode this one row; the list below replaces
-                            // every row of the signature at once.
                             if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
                                 &session.schema,
                                 rec_sig,
@@ -1693,8 +1678,28 @@ pub fn repeat_widget(
                             }
                         }
                     }
+                    // A bare row — a subrecord that is one value, which is what a
+                    // list of FormIDs is.
                     other => {
-                        ui.monospace(other.to_string());
+                        let mut next = other.clone();
+                        if inline_value(ui, session, rec_sig, sub_sig, block, "", other, &mut next)
+                        {
+                            // The whole subrecord is the value, so its path is the
+                            // empty string `set_path` treats as "the value itself".
+                            if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                &session.schema,
+                                rec_sig,
+                                sub_sig,
+                                &next,
+                                Some(bytes.len()),
+                                block,
+                            ) {
+                                let mut list: Vec<Vec<u8>> =
+                                    rows.iter().map(|(b, _)| b.clone()).collect();
+                                list[i] = bytes;
+                                want = Some(list);
+                            }
+                        }
                     }
                 }
             });
@@ -1732,6 +1737,115 @@ pub fn repeat_widget(
         session.doc.set_sub_list(form_id, sub_sig, list);
         session.stale = true;
         edit.error = None;
+    }
+}
+
+/// One value's widget, for a row inside a list.
+///
+/// The same widgets the flat grid offers — a drag for a number, a checkbox for a
+/// bool, a picker for a FormID, a dropdown for an enum — for a value that lives
+/// inside a repeated subrecord instead of a subrecord of its own. Returns whether
+/// the value changed, and writes it into `next` so the caller can re-encode the row.
+///
+/// A row that could only show text would be a regression for the pages `repeat`
+/// exists to replace: a leveled list's entry is a FormID and two numbers, and a
+/// form list is nothing but FormIDs.
+#[allow(clippy::too_many_arguments)]
+fn inline_value(
+    ui: &mut egui::Ui,
+    session: &crate::session::Session,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    path: &str,
+    value: &serde_json::Value,
+    next: &mut serde_json::Value,
+) -> bool {
+    // A FormID gets the filtered picker, the same one the flat grid uses.
+    if nvre_edit::encode::is_formid_field(&session.schema, rec_sig, sub_sig, block, path) {
+        let targets =
+            crate::object_editor::formid_targets_in(&session.schema, rec_sig, sub_sig, block, path);
+        let mut opt = value.as_u64().map(|v| v as u32).filter(|v| *v != 0);
+        let before = opt;
+        let items = session.records_of_any(&targets);
+        crate::object_editor::record_dropdown(ui, &format!("{sub_sig:?}_{path}"), &items, &mut opt);
+        if opt != before {
+            *next = match opt {
+                Some(fid) => serde_json::json!(fid),
+                None => serde_json::json!(0),
+            };
+            return true;
+        }
+        return false;
+    }
+    // An enum gets its dropdown, for the same reason the grid does.
+    let variants =
+        nvre_edit::encode::enum_values_at(&session.schema, rec_sig, sub_sig, block, path);
+    if !variants.is_empty() {
+        if let Some(raw) = value.get("value").and_then(|v| v.as_i64()) {
+            let mut picked = raw;
+            let cur = variants
+                .iter()
+                .find(|(v, _)| *v == raw)
+                .map(|(_, n)| n.clone())
+                .unwrap_or_else(|| raw.to_string());
+            egui::ComboBox::from_id_salt(format!("inline_{sub_sig:?}_{path}"))
+                .selected_text(cur)
+                .show_ui(ui, |ui| {
+                    for (v, n) in &variants {
+                        ui.selectable_value(&mut picked, *v, n);
+                    }
+                });
+            if picked != raw {
+                let mut o = serde_json::Map::new();
+                o.insert("value".into(), serde_json::json!(picked));
+                if let Some((_, n)) = variants.iter().find(|(v, _)| *v == picked) {
+                    o.insert("name".into(), serde_json::json!(n));
+                }
+                *next = serde_json::Value::Object(o);
+                return true;
+            }
+        }
+        return false;
+    }
+    match value {
+        serde_json::Value::Number(n) => {
+            let is_int = n.is_i64() || n.is_u64();
+            let mut v = n.as_f64().unwrap_or(0.0);
+            let drag = egui::DragValue::new(&mut v).speed(if is_int { 1.0 } else { 0.1 });
+            if ui.add(drag).changed() {
+                *next = if is_int {
+                    serde_json::json!(v.round() as i64)
+                } else {
+                    serde_json::json!(v)
+                };
+                return true;
+            }
+            false
+        }
+        serde_json::Value::Bool(b) => {
+            let mut v = *b;
+            if ui.checkbox(&mut v, "").changed() {
+                *next = serde_json::json!(v);
+                return true;
+            }
+            false
+        }
+        serde_json::Value::String(s) => {
+            let mut text = s.clone();
+            if ui
+                .add(egui::TextEdit::singleline(&mut text).desired_width(140.0))
+                .changed()
+            {
+                *next = serde_json::json!(text);
+                return true;
+            }
+            false
+        }
+        other => {
+            ui.monospace(other.to_string());
+            false
+        }
     }
 }
 

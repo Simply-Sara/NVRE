@@ -126,7 +126,6 @@
     ]
    },
    "ALOC": {
-    "editor": "aloc",
     "group": "Audio",
     "sections": [
      {
@@ -150,14 +149,21 @@
       "subs": [
        "LNAM"
       ],
-      "title": "Weather"
+      "title": "Weather",
+      "widget": "repeat"
      },
      {
       "subs": [
-       "GNAM",
+       "GNAM"
+      ],
+      "title": "Other",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
        "HNAM"
       ],
-      "title": "Other"
+      "title": "Other (fields)"
      }
     ]
    },
@@ -243,19 +249,24 @@
     ]
    },
    "ARMO": {
-    "editor": "armo",
     "group": "Items",
     "sections": [
      {
       "subs": [
+       "SNAM"
+      ],
+      "title": "Identity",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
        "BNAM",
        "MODS",
-       "SNAM",
        "TNAM",
        "YNAM",
        "ZNAM"
       ],
-      "title": "Identity"
+      "title": "Identity (fields)"
      },
      {
       "subs": [
@@ -282,16 +293,21 @@
     ]
    },
    "ASPC": {
-    "editor": "aspc",
     "group": "Audio",
     "sections": [
      {
       "subs": [
+       "SNAM"
+      ],
+      "title": "Identity",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
        "INAM",
-       "SNAM",
        "WNAM"
       ],
-      "title": "Identity"
+      "title": "Identity (fields)"
      },
      {
       "subs": [
@@ -337,7 +353,6 @@
     ]
    },
    "BPTD": {
-    "editor": "bptd",
     "group": "Actor Data",
     "sections": [
      {
@@ -346,23 +361,31 @@
        "NAM4",
        "NAM5"
       ],
-      "title": "Identity"
+      "title": "Identity",
+      "widget": "repeat"
      },
      {
       "subs": [
        "BPND",
        "BPTN"
       ],
-      "title": "Body"
+      "title": "Body",
+      "widget": "repeat"
      },
      {
       "subs": [
        "BPNI",
        "BPNN",
-       "BPNT",
+       "BPNT"
+      ],
+      "title": "Other",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
        "RAGA"
       ],
-      "title": "Other"
+      "title": "Other (fields)"
      }
     ]
    },
@@ -410,7 +433,6 @@
     ]
    },
    "CDCK": {
-    "editor": "cdck",
     "group": "Items",
     "sections": [
      {
@@ -423,7 +445,8 @@
       "subs": [
        "CARD"
       ],
-      "title": "Other"
+      "title": "Other",
+      "widget": "repeat"
      }
     ]
    },
@@ -516,7 +539,6 @@
     ]
    },
    "CLMT": {
-    "editor": "clmt",
     "group": "WorldObjects",
     "sections": [
      {
@@ -603,14 +625,14 @@
     ]
    },
    "CPTH": {
-    "editor": "cpth",
     "group": "Miscellaneous",
     "sections": [
      {
       "subs": [
        "SNAM"
       ],
-      "title": "Identity"
+      "title": "Identity",
+      "widget": "repeat"
      },
      {
       "subs": [
@@ -890,18 +912,23 @@
     ]
    },
    "FACT": {
-    "editor": "fact",
     "group": "Actor Data",
     "sections": [
+     {
+      "subs": [
+       "XNAM"
+      ],
+      "title": "Identity",
+      "widget": "repeat"
+     },
      {
       "subs": [
        "CNAM",
        "FNAM",
        "INAM",
-       "RNAM",
-       "XNAM"
+       "RNAM"
       ],
-      "title": "Identity"
+      "title": "Identity (fields)"
      },
      {
       "subs": [
@@ -919,14 +946,14 @@
     ]
    },
    "FLST": {
-    "editor": "flst",
     "group": "Miscellaneous",
     "sections": [
      {
       "subs": [
        "LNAM"
       ],
-      "title": "Weather"
+      "title": "Weather",
+      "widget": "repeat"
      }
     ]
    },
@@ -981,7 +1008,6 @@
     ]
    },
    "HAIR": {
-    "editor": "hair",
     "group": "Actor Data",
     "sections": [
      {
@@ -993,7 +1019,6 @@
     ]
    },
    "HDPT": {
-    "editor": "hdpt",
     "group": "Actor Data",
     "sections": [
      {
@@ -1010,12 +1035,18 @@
      },
      {
       "subs": [
-       "HNAM",
+       "HNAM"
+      ],
+      "title": "Other",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
        "MO2S",
        "MO3S",
        "MO4S"
       ],
-      "title": "Other"
+      "title": "Other (fields)"
      }
     ]
    },
@@ -1048,7 +1079,6 @@
     ]
    },
    "IDLM": {
-    "editor": "idlm",
     "group": "Miscellaneous",
     "sections": [
      {
@@ -1352,14 +1382,14 @@
     ]
    },
    "LSCR": {
-    "editor": "lscr",
     "group": "Miscellaneous",
     "sections": [
      {
       "subs": [
        "LNAM"
       ],
-      "title": "Weather"
+      "title": "Weather",
+      "widget": "repeat"
      },
      {
       "subs": [
@@ -1537,7 +1567,6 @@
     ]
    },
    "MSET": {
-    "editor": "mset",
     "group": "Audio",
     "sections": [
      {
@@ -1754,16 +1783,21 @@
     ]
    },
    "PACK": {
-    "editor": "pack",
     "group": "Actor Data",
     "sections": [
      {
       "subs": [
-       "CNAM",
        "INAM",
        "TNAM"
       ],
-      "title": "Identity"
+      "title": "Identity",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "CNAM"
+      ],
+      "title": "Identity (fields)"
      },
      {
       "subs": [
@@ -2118,7 +2152,6 @@
     ]
    },
    "RGDL": {
-    "editor": "rgdl",
     "group": "Actor Data",
     "sections": [
      {
@@ -2157,20 +2190,21 @@
     ]
    },
    "SCOL": {
-    "editor": "scol",
     "group": "WorldObjects",
     "sections": [
      {
       "subs": [
        "ONAM"
       ],
-      "title": "Identity"
+      "title": "Identity",
+      "widget": "repeat"
      },
      {
       "subs": [
        "DATA"
       ],
-      "title": "Combat"
+      "title": "Combat",
+      "widget": "repeat"
      }
     ]
    },
@@ -2299,7 +2333,6 @@
     ]
    },
    "TREE": {
-    "editor": "tree",
     "group": "WorldObjects",
     "sections": [
      {
