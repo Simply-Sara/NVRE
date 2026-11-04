@@ -38,8 +38,15 @@ PROP = re.compile(
     re.I | re.M,
 )
 
+# `[ \t]` and not `\s`, and no `re.S` on the anchor: with `\s` a newline
+# satisfies the separator, so the optional return-type prefix reaches across a
+# line boundary and swallows the previous declaration's `endFunction` as the
+# next function's return type. That produced 926 entries like
+# ("abortresurrection", "end") — a void function typed as returning `end`, which
+# made the emitter allocate a temporary where the game writes `::NoneVar`.
+# The parameter group keeps `re.S` so a signature may wrap lines.
 CALL = re.compile(
-    r"^\s*(?:[A-Za-z_][\w\[\]]*\s+)?(Function|Event)\s+(\w+)\s*\((.*?)\)",
+    r"^[ \t]*(?:[A-Za-z_][\w\[\]]*[ \t]+)?(Function|Event)[ \t]+(\w+)[ \t]*\((.*?)\)",
     re.I | re.M | re.S,
 )
 
@@ -177,9 +184,11 @@ def main():
             ret = (mm.group(0).split("Function")[0].split("function")[0]).strip()
             if mm.group(1).lower() == "event":
                 ret = "None"
-            elif not ret:
+            elif not ret or not ret.split():
                 ret = "None"
-            elif not ret.split():
+            elif not re.match(r"^[A-Za-z_]\w*(\[\d*\])?$", ret):
+                # A return type is one identifier. Anything else means the
+                # prefix matched something that is not a type.
                 ret = "None"
             ret_of[fn][ret] += 1
             if cls:

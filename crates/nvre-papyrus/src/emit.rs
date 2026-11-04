@@ -773,7 +773,7 @@ impl<'a> Compiler<'a> {
         }
         for l in &f.locals {
             let ln = self.intern(&l.name);
-            let lt = self.intern(&l.type_name.0);
+            let lt = self.var_type(&l.type_name.0);
             buf.locals.push((ln, lt));
             buf.types.push((ln, lt));
             buf.declared.push((l.name.to_ascii_lowercase(), ln));
@@ -856,7 +856,7 @@ impl<'a> Compiler<'a> {
         // `ArenaCrowdQuestScript.MoveEveryoneIntoPlace` still alternates
         // `::temp0 ::temp1` from one statement to the next — that falls out of
         // the ORDER the slots are released in, not out of the list being a stack.
-        let t = self.intern(ty);
+        let t = self.var_type(ty);
         if let Some(at) = buf.free_temps.iter().position(|(_, ft)| *ft == t) {
             let (i, _) = buf.free_temps.remove(at);
             return i;
@@ -884,6 +884,15 @@ impl<'a> Compiler<'a> {
         if !is_temp {
             return;
         }
+        // A slot can be **free once**. Releasing the same temporary twice is not
+        // a numbering curiosity: two entries for one slot let the allocator hand
+        // it out while the first user still holds a value in it, which is a
+        // wrong program rather than a different one. The comparison path did
+        // exactly that — it released the cast's result slot and then released
+        // the same slot again from its operands list.
+        if buf.free_temps.iter().any(|(f, _)| f == i) {
+            return;
+        }
         if let Some((_, t)) = buf.locals.iter().find(|(n, _)| n == i) {
             buf.free_temps.push((*i, *t));
         }
@@ -900,13 +909,20 @@ impl<'a> Compiler<'a> {
         match s {
             Stmt::Local(l) => {
                 let ln = self.intern(&l.name);
-                let lt = self.intern(&l.type_name.0);
-                buf.locals.push((ln, lt));
-                // Also the emitter's type environment, or `value_type` cannot
-                // see it: `int a = 1` followed by `a + 2` chose `fadd` because
-                // `a` was in `locals` but not in `types`.
-                buf.types.push((ln, lt));
-                buf.declared.push((l.name.to_ascii_lowercase(), ln));
+                let lt = self.var_type(&l.type_name.0);
+                // The function's locals were already declared from the
+                // declaration list the parser collected, so declaring again here
+                // put the name in the locals table **twice**: `Actor ref = ...`
+                // in `ArenaTransitionCombatQuest.Cleanup` gave
+                //   game  ref:actor
+                //   mine  ref:Actor, ref:Actor
+                // A duplicated slot is not just a byte difference — the type
+                // multiset is what every later decision reads.
+                if !buf.locals.iter().any(|(n, _)| *n == ln) {
+                    buf.locals.push((ln, lt));
+                    buf.types.push((ln, lt));
+                    buf.declared.push((l.name.to_ascii_lowercase(), ln));
+                }
                 // A declaration with an initial value is an assignment, and —
                 // like any assignment — it releases the temporary it consumed.
                 // Leaving that out meant `int d = a + b` held `::temp0` for the
@@ -1984,8 +2000,16 @@ impl<'a> Compiler<'a> {
                         let tmp = self.temp(buf, &want);
                         let mut ins = Instruction::new(opcode_of("cast"));
                         ins.args.push(Value::Identifier(tmp));
-                        ins.args.push(src);
+                        ins.args.push(src.clone());
                         buf.push(ins, line);
+                        // The cast's operand is consumed by it and is dead
+                        // afterwards. Not releasing it left the slot live for the
+                        // rest of the function, so the next call wanting the same
+                        // type took a fresh number: `Game.GetPlayer()` twice in
+                        // `AltarOfAzuraScript.OnActivate` gives the game
+                        // `::temp0` both times and gave us `::temp0` then
+                        // `::temp4`.
+                        self.release_temp(buf, &src);
                         // The cast's temporary goes back on the free list
                         // BEFORE the result is allocated, so the result reuses
                         // it. That ordering is what the compiler does: it
