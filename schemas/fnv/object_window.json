@@ -1404,11 +1404,17 @@
     "sections": [
      {
       "subs": [
-       "LVLD",
-       "LVLF",
        "LVLO"
       ],
-      "title": "Leveled"
+      "title": "Leveled",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "LVLD",
+       "LVLF"
+      ],
+      "title": "Leveled (fields)"
      }
     ]
    },
@@ -1417,11 +1423,17 @@
     "sections": [
      {
       "subs": [
-       "LVLD",
-       "LVLF",
        "LVLO"
       ],
-      "title": "Leveled"
+      "title": "Leveled",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "LVLD",
+       "LVLF"
+      ],
+      "title": "Leveled (fields)"
      },
      {
       "subs": [
@@ -1436,11 +1448,17 @@
     "sections": [
      {
       "subs": [
-       "LVLD",
-       "LVLF",
        "LVLO"
       ],
-      "title": "Leveled"
+      "title": "Leveled",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "LVLD",
+       "LVLF"
+      ],
+      "title": "Leveled (fields)"
      }
     ]
    },

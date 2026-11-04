@@ -605,6 +605,18 @@ pub struct SectionDef {
     /// serves records that differ, and it is why a section naming a subrecord
     /// only one game has is not an error.
     pub subs: Vec<String>,
+    /// A widget to draw this section's fields with, instead of the default.
+    ///
+    /// The escape hatch, and the reason a page does not have to be code the
+    /// moment it needs something the generic grid cannot guess. A widget is
+    /// registered by name in the editor; a name the build does not register is
+    /// reported on the page rather than silently drawn as the default, so a typo
+    /// is visible.
+    ///
+    /// The default (no widget) is one row per field, with the widget chosen by
+    /// the field's decoded shape: a number, a string, a checkbox for a flag, a
+    /// dropdown for an enum, a filtered picker for a FormID, a list for an array.
+    pub widget: Option<String>,
 }
 
 /// A named set of sections a category can build its page from.
@@ -1760,9 +1772,17 @@ impl Schema {
                 }
                 tags.push(tag.to_string());
             }
+            let widget = match sec.get("widget") {
+                None => None,
+                Some(Json::String(w)) => Some(w.clone()),
+                Some(_) => {
+                    return Err(format!("{owner}.sections[{i}].widget is not a string"));
+                }
+            };
             out.push(SectionDef {
                 title: title.to_string(),
                 subs: tags,
+                widget,
             });
         }
         Ok(out)

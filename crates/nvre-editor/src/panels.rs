@@ -1016,8 +1016,34 @@ pub fn sectioned_grid(
         ui.group(|ui| {
             ui.strong(&section.title);
             ui.add_space(4.0);
-            for i in named {
-                subrecord_rows(ui, session, form_id, &rec_sig, &views[i], &edited, edit);
+            match section.widget.as_deref() {
+                // A named widget draws the section its own way. The name is looked
+                // up here rather than trusted, so a typo is a message on the page
+                // instead of a section that silently looks like the default.
+                Some(name) if name == "repeat" => {
+                    for i in &named {
+                        repeat_widget(
+                            ui,
+                            session,
+                            form_id,
+                            &rec_sig,
+                            &sig4(&views[*i].sig),
+                            views[*i].block.as_deref(),
+                            edit,
+                        );
+                    }
+                }
+                Some(name) => {
+                    ui.colored_label(
+                        egui::Color32::RED,
+                        format!("the schema names widget {name:?}, which this build does not have"),
+                    );
+                }
+                None => {
+                    for i in named {
+                        subrecord_rows(ui, session, form_id, &rec_sig, &views[i], &edited, edit);
+                    }
+                }
             }
         });
     }
@@ -1540,6 +1566,194 @@ fn field_editor(
             Ok(()) => edit.error = None,
             Err(e) => edit.error = Some(e),
         }
+    }
+}
+
+/// Every widget name a section may use.
+///
+/// A section's `widget` is a name looked up here. Keeping the list in one place is
+/// what lets the schema's own tests assert that every name a game's table uses is
+/// one this build has — a typo in a JSON file would otherwise render as the
+/// default and look like it worked.
+pub fn widget_names() -> Vec<&'static str> {
+    vec!["repeat"]
+}
+
+/// A section of repeated subrecords: one row per occurrence, with add and remove.
+///
+/// The widget a leveled list, a container's contents or a spell list needs. The
+/// grid shows one row per *field*, which is right for a struct but wrong for a
+/// record that repeats a subrecord: an `LVLI` with twelve entries is twelve
+/// `LVLO` subrecords, and what a modder does with them is add one, remove one, or
+/// change a row's numbers.
+///
+/// The edit is `Document::set_sub_list`, which replaces every subrecord with the
+/// signature in one queued edit. That is the honest unit: inserting one row
+/// changes the record's subrecord sequence, not a subrecord's bytes, so an edit
+/// that could only set bytes could not add a row at all.
+///
+/// Removing the last row removes the subrecord, which is what `set_sub_list` with
+/// an empty list means — a record whose list is empty has no `LVLO`, and writing
+/// a zero-length one would be a different record.
+pub fn repeat_widget(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    rec_sig: &[u8; 4],
+    sub_sig: &[u8; 4],
+    block: Option<&str>,
+    edit: &mut FieldEdit,
+) {
+    let Some(rec) = session.resolved_record(form_id) else {
+        ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
+        return;
+    };
+    let Ok(subs) = rec.subrecords() else {
+        return;
+    };
+    // Every occurrence of the signature, as decoded values plus their bytes.
+    let mut rows: Vec<(Vec<u8>, serde_json::Value)> = Vec::new();
+    for s in subs.iter().filter(|s| &s.sig == sub_sig) {
+        let v = nvre_edit::encode::decoded_in_block_localized(
+            &session.schema,
+            rec_sig,
+            s,
+            block,
+            session.record_is_localized(form_id),
+        );
+        rows.push((s.data.clone(), v.unwrap_or(serde_json::Value::Null)));
+    }
+
+    let mut want: Option<Vec<Vec<u8>>> = None;
+    let mut remove_at: Option<usize> = None;
+    ui.vertical(|ui| {
+        if rows.is_empty() {
+            ui.weak("(no rows)");
+        }
+        for (i, (bytes, value)) in rows.iter().enumerate() {
+            ui.horizontal(|ui| {
+                if ui
+                    .small_button("✖")
+                    .on_hover_text("remove this row")
+                    .clicked()
+                {
+                    remove_at = Some(i);
+                }
+                ui.monospace(format!("[{i}]"));
+                match value {
+                    // A struct row: one drag per numeric field, written back
+                    // through the same path the grid uses.
+                    serde_json::Value::Object(fields) => {
+                        let mut next = value.clone();
+                        let mut touched = false;
+                        for (name, fv) in fields {
+                            ui.label(name);
+                            if let Some(n) = fv.as_f64() {
+                                let is_int = fv.is_i64() || fv.is_u64();
+                                let mut v = n;
+                                let drag = egui::DragValue::new(&mut v).speed(if is_int {
+                                    1.0
+                                } else {
+                                    0.1
+                                });
+                                if ui.add(drag).changed() {
+                                    if let serde_json::Value::Object(o) = &mut next {
+                                        o.insert(
+                                            name.clone(),
+                                            if is_int {
+                                                serde_json::json!(v.round() as i64)
+                                            } else {
+                                                serde_json::json!(v)
+                                            },
+                                        );
+                                    }
+                                    touched = true;
+                                }
+                            } else if fv.is_string() || fv.is_boolean() {
+                                ui.monospace(fv.to_string());
+                            } else {
+                                ui.monospace("…");
+                            }
+                        }
+                        if touched {
+                            // Re-encode this one row; the list below replaces
+                            // every row of the signature at once.
+                            if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                &session.schema,
+                                rec_sig,
+                                sub_sig,
+                                &next,
+                                Some(bytes.len()),
+                                block,
+                            ) {
+                                let mut list: Vec<Vec<u8>> =
+                                    rows.iter().map(|(b, _)| b.clone()).collect();
+                                list[i] = bytes;
+                                want = Some(list);
+                            }
+                        }
+                    }
+                    other => {
+                        ui.monospace(other.to_string());
+                    }
+                }
+            });
+        }
+        ui.horizontal(|ui| {
+            ui.weak(format!("{} row(s)", rows.len()));
+            if ui.small_button("＋").on_hover_text("add a row").clicked() {
+                // A new row is the layout's zero, encoded — the same rule the
+                // list widget uses for a new element.
+                let zero = match session.schema.lookup_in_block(rec_sig, sub_sig, block) {
+                    Some(def) => zero_value(&session.schema.resolve_def(&def.ty)),
+                    None => serde_json::Value::Null,
+                };
+                if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                    &session.schema,
+                    rec_sig,
+                    sub_sig,
+                    &zero,
+                    None,
+                    block,
+                ) {
+                    let mut list: Vec<Vec<u8>> = rows.iter().map(|(b, _)| b.clone()).collect();
+                    list.push(bytes);
+                    want = Some(list);
+                }
+            }
+        });
+    });
+    if let Some(i) = remove_at {
+        let mut list: Vec<Vec<u8>> = rows.iter().map(|(b, _)| b.clone()).collect();
+        list.remove(i);
+        want = Some(list);
+    }
+    if let Some(list) = want {
+        session.doc.set_sub_list(form_id, sub_sig, list);
+        session.stale = true;
+        edit.error = None;
+    }
+}
+
+/// A type's zero value, for a row or element that is being created.
+fn zero_value(t: &nvre_esm::TypeDef) -> serde_json::Value {
+    use nvre_esm::TypeDef;
+    match t {
+        TypeDef::Prim(nvre_esm::schema::Prim::F32) => serde_json::json!(0.0),
+        TypeDef::Prim(_) | TypeDef::FormIdRef { .. } => serde_json::json!(0),
+        TypeDef::Struct(fields) => {
+            let mut o = serde_json::Map::new();
+            for f in fields {
+                if !f.optional {
+                    o.insert(f.name.clone(), zero_value(&f.ty));
+                }
+            }
+            serde_json::Value::Object(o)
+        }
+        TypeDef::Enum { values, .. } => serde_json::json!({
+            "value": values.first().map(|(v, _)| *v).unwrap_or(0),
+        }),
+        _ => serde_json::json!(0),
     }
 }
 
