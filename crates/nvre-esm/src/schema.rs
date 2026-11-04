@@ -583,6 +583,18 @@ pub struct CategoryDef {
     /// A category with sections uses them whether or not it also names
     /// `editor`, because the sections are the more specific answer.
     pub sections: Vec<SectionDef>,
+    /// The tab strip the page is drawn behind, when the page is tabbed.
+    ///
+    /// The headings of the tabs, in the game's own order. Empty means the page
+    /// is one scrolling column, which is what most record types are. A category
+    /// that names tabs shows a strip above its body and draws only the sections
+    /// whose own tab is the chosen one.
+    ///
+    /// The list is per category rather than per editor, because the tabs a
+    /// creature's dialog has are not the tabs a weapon's has even when both are
+    /// described pages. Nothing here knows what a tab means: a tab is a name,
+    /// and a section says which name it belongs to.
+    pub tabs: Vec<String>,
     /// The record type is not listed in the object window.
     ///
     /// Every non-object record type is named here rather than left out: a
@@ -605,6 +617,31 @@ pub struct SectionDef {
     /// serves records that differ, and it is why a section naming a subrecord
     /// only one game has is not an error.
     pub subs: Vec<String>,
+    /// The tab this section is drawn under, when the page is tabbed.
+    ///
+    /// `None` means the section is not on a tab at all and is shown on every one
+    /// — which is what the record's shared part (its bounds, its model) is. A
+    /// name the category's `tabs` list does not carry is a table typo, and the
+    /// schema reports it rather than filing the section on a tab that does not
+    /// exist and making it unreachable.
+    pub tab: Option<String>,
+    /// The fields to show, per subrecord, for the subrecords that are narrowed.
+    ///
+    /// A subrecord absent from this map shows every field it has, which is what
+    /// most sections want. A subrecord **in** the map shows only the paths listed
+    /// for it, in that order — which is how one subrecord's fields are split
+    /// across two tabs the way the game's own editor splits them: `ACBS`'s flags
+    /// and level sit on Traits, its skills and health on Stats.
+    ///
+    /// The map is keyed by subrecord rather than the section holding one flat
+    /// list because a section can name whole subrecords beside a split one: the
+    /// Stats tab's `ACBS` is narrowed while its `RNAM`, `TNAM` and `BNAM` are
+    /// whole, and one list applying to all of them would hide the three.
+    ///
+    /// A path the decoded subrecord does not have is skipped, the same rule a
+    /// missing subrecord follows — so a `fields` entry may name a field only one
+    /// game stores.
+    pub fields: std::collections::BTreeMap<String, Vec<String>>,
     /// A widget to draw this section's fields with, instead of the default.
     ///
     /// The escape hatch, and the reason a page does not have to be code the
@@ -634,6 +671,11 @@ pub struct SectionDef {
 pub struct PageDef {
     /// The sections, in the order to draw them.
     pub sections: Vec<SectionDef>,
+    /// The tab strip this body starts from, before the category's own tabs.
+    ///
+    /// A template that describes a tabbed dialog names its tabs here, so a game
+    /// that `extends` it inherits the strip as well as the fields.
+    pub tabs: Vec<String>,
 }
 
 /// Give a struct's repeated field names distinct names.
@@ -897,7 +939,8 @@ impl Schema {
         if let Some(pages) = obj.get("pages").and_then(|v| v.as_object()) {
             for (name, def) in pages {
                 let sections = Self::parse_sections(name, def)?;
-                self.pages.insert(name.clone(), PageDef { sections });
+                let tabs = Self::parse_tabs(name, def)?;
+                self.pages.insert(name.clone(), PageDef { sections, tabs });
             }
         }
         Ok(())
@@ -1041,6 +1084,12 @@ impl Schema {
                 }
                 if o.contains_key("sections") {
                     cat.sections = Self::parse_sections(sig, def)?;
+                }
+                // A layer that names the category's tabs replaces the strip; the
+                // list is the whole answer for this page, not a thing to append
+                // to, for the same reason the object window's groups replace.
+                if o.contains_key("tabs") {
+                    cat.tabs = Self::parse_tabs(sig, def)?;
                 }
                 self.object_window.categories.insert(sig.clone(), cat);
             }
@@ -1779,11 +1828,84 @@ impl Schema {
                     return Err(format!("{owner}.sections[{i}].widget is not a string"));
                 }
             };
+            let tab = match sec.get("tab") {
+                None => None,
+                Some(Json::String(t)) => Some(t.clone()),
+                Some(_) => {
+                    return Err(format!("{owner}.sections[{i}].tab is not a string"));
+                }
+            };
+            let fields = match sec.get("fields") {
+                None => std::collections::BTreeMap::new(),
+                Some(Json::Object(map)) => {
+                    let mut out = std::collections::BTreeMap::new();
+                    for (sub, list) in map {
+                        let Some(list) = list.as_array() else {
+                            return Err(format!(
+                                "{owner}.sections[{i}].fields.{sub} is not a list"
+                            ));
+                        };
+                        if sub.len() != 4 {
+                            return Err(format!(
+                                "{owner}.sections[{i}].fields names {sub:?}, which is not a \
+                                 four-byte subrecord signature"
+                            ));
+                        }
+                        let mut paths = Vec::with_capacity(list.len());
+                        for f in list {
+                            let Some(path) = f.as_str() else {
+                                return Err(format!(
+                                    "{owner}.sections[{i}].fields.{sub} holds a name that is not \
+                                     a string"
+                                ));
+                            };
+                            paths.push(path.to_string());
+                        }
+                        out.insert(sub.clone(), paths);
+                    }
+                    out
+                }
+                Some(_) => {
+                    return Err(format!(
+                        "{owner}.sections[{i}].fields is not an object of subrecord -> paths"
+                    ));
+                }
+            };
             out.push(SectionDef {
                 title: title.to_string(),
                 subs: tags,
+                tab,
+                fields,
                 widget,
             });
+        }
+        Ok(out)
+    }
+
+    /// Parse a `tabs` list: the headings of a tabbed page's strip.
+    ///
+    /// Shared by a category and a page template for the same reason
+    /// [`Self::parse_sections`] is, and empty when the block names none — a page
+    /// with no tabs is a page that scrolls as one column.
+    fn parse_tabs(owner: &str, def: &Json) -> Result<Vec<String>, String> {
+        let Some(o) = def.as_object() else {
+            return Err(format!("{owner} is not an object"));
+        };
+        let Some(tabs) = o.get("tabs") else {
+            return Ok(Vec::new());
+        };
+        let Some(list) = tabs.as_array() else {
+            return Err(format!("{owner}.tabs is not a list"));
+        };
+        let mut out = Vec::with_capacity(list.len());
+        for (i, t) in list.iter().enumerate() {
+            let Some(name) = t.as_str() else {
+                return Err(format!("{owner}.tabs[{i}] is not a string"));
+            };
+            if name.trim().is_empty() {
+                return Err(format!("{owner}.tabs[{i}] is empty"));
+            }
+            out.push(name.to_string());
         }
         Ok(out)
     }
@@ -1825,8 +1947,50 @@ impl Schema {
                             existing.subs.push(sub.clone());
                         }
                     }
+                    // The narrowing fields and the tab come from the more
+                    // specific source, because they describe what *this game's*
+                    // section shows rather than what it adds. A game that restates
+                    // a template heading to filter it means the filter; leaving
+                    // the template's map in place would show every field the
+                    // filter exists to hide. Merging per subrecord, because a
+                    // game may narrow one subrecord and leave the rest whole.
+                    for (sub, paths) in &section.fields {
+                        existing.fields.insert(sub.clone(), paths.clone());
+                    }
+                    if section.tab.is_some() {
+                        existing.tab = section.tab.clone();
+                    }
+                    if section.widget.is_some() {
+                        existing.widget = section.widget.clone();
+                    }
                 }
                 None => out.push(section.clone()),
+            }
+        }
+        out
+    }
+
+    /// The tab strip a record type's page draws, or an empty list for a page
+    /// that is one scrolling column.
+    ///
+    /// A template's tabs come first and the category's own are appended, so a
+    /// game that `extends` a tabbed page keeps every tab it does not restate and
+    /// a game that names no tabs of its own still gets the template's strip.
+    pub fn page_tabs(&self, sig: &str) -> Vec<String> {
+        let Some(cat) = self.object_window.categories.get(sig) else {
+            return Vec::new();
+        };
+        let mut out: Vec<String> = match &cat.extends {
+            Some(name) => self
+                .pages
+                .get(name)
+                .map(|p| p.tabs.clone())
+                .unwrap_or_default(),
+            None => Vec::new(),
+        };
+        for tab in &cat.tabs {
+            if !out.contains(tab) {
+                out.push(tab.clone());
             }
         }
         out
@@ -1970,6 +2134,30 @@ impl Schema {
                     errs.push(format!(
                         "object_window.categories.{sig} is filed under {group:?}, which is not one of this game's groups"
                     ));
+                }
+            }
+        }
+        // A section filed on a tab the page does not have would be drawn on no
+        // tab at all — reachable by nobody, which is the failure the "Everything
+        // else" fallback exists to prevent for subrecords. Catching it here names
+        // the typo instead of losing the fields.
+        for sig in self.object_window.categories.keys() {
+            let tabs = self.page_tabs(sig);
+            if tabs.is_empty() {
+                continue;
+            }
+            for section in self.page_sections(sig) {
+                match &section.tab {
+                    Some(tab) if !tabs.contains(tab) => errs.push(format!(
+                        "object_window.categories.{sig} section {:?} is filed on tab {tab:?}, \
+                         which the page's tabs do not carry (tabs: {tabs:?})",
+                        section.title
+                    )),
+                    Some(_) => {}
+                    // A section with no tab is drawn on every tab, which is how
+                    // the part of a record that is not per-tab — its scripts, its
+                    // shared data — stays reachable wherever the modder is.
+                    None => {}
                 }
             }
         }

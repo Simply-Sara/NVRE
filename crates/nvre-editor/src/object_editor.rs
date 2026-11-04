@@ -32,16 +32,37 @@ pub struct ObjectEditorWindow;
 #[derive(Component)]
 pub struct ObjectEditorCamera;
 
-/// Active tab for tabbed editors. Retained because the header sets it; no page
-/// reads it now that pages are data, and the section headings are the grouping.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum EditorTab {
-    #[default]
-    Main,
-    Secondary,
-    Models,
-    Audio,
-    Advanced,
+/// The tab strip a tabbed page is drawn behind.
+///
+/// The strip is a list of headings the schema's object-window table names, so it
+/// is data rather than an enum here: a creature's thirteen tabs and a weapon's
+/// three are the same mechanism with different words, and a game that renames one
+/// changes its table rather than this file.
+///
+/// The heading, not an index, is what the state remembers — a schema edit that
+/// inserts a tab then moves everyone's index by one, and a heading the strip no
+/// longer carries falls back to the first tab instead of drawing a page nobody
+/// asked for.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EditorTab {
+    /// The chosen tab's heading, or `None` for the first tab of the strip.
+    pub chosen: Option<String>,
+}
+
+impl EditorTab {
+    /// The heading the page draws, given the strip.
+    ///
+    /// `None` when the strip is empty — a page with no tabs — and the first tab
+    /// when nothing has been chosen or the choice is not on the strip.
+    pub fn heading<'a>(&'a self, tabs: &'a [String]) -> Option<&'a str> {
+        if tabs.is_empty() {
+            return None;
+        }
+        match &self.chosen {
+            Some(name) if tabs.iter().any(|t| t == name) => Some(name.as_str()),
+            _ => tabs.first().map(String::as_str),
+        }
+    }
 }
 
 /// The object editor's state: the record's header, and which record it is.
@@ -224,16 +245,33 @@ impl EditorPage for SectionPage {
     ) {
         // The flattened page: the template's sections first, then this game's own,
         // with a shared heading merged rather than repeated.
-        let sections = session
-            .schema
-            .page_sections(String::from_utf8_lossy(&shared.sig).as_ref());
+        let sig = String::from_utf8_lossy(&shared.sig).into_owned();
+        let sections = session.schema.page_sections(&sig);
         if sections.is_empty() {
             // A category with no sections is not a described page; the grid is the
             // honest fallback rather than an empty body.
             crate::panels::schema_grid(ui, session, shared.form_id, &mut self.edit);
             return;
         }
-        crate::panels::sectioned_grid(ui, session, shared.form_id, &sections, &mut self.edit);
+        let tabs = session.schema.page_tabs(&sig);
+        // The strip sits inside the page's scroll area, directly above the body it
+        // switches. Outside it the strip would be pinned and the body would scroll
+        // under a control that claims to be part of the page.
+        let chosen = if tabs.is_empty() {
+            None
+        } else {
+            let heading = shared.tab.heading(&tabs).map(str::to_string);
+            crate::panels::tab_strip(ui, &tabs, &mut shared.tab.chosen);
+            heading
+        };
+        crate::panels::sectioned_grid_on_tab(
+            ui,
+            session,
+            shared.form_id,
+            &sections,
+            chosen.as_deref(),
+            &mut self.edit,
+        );
     }
 }
 
@@ -328,7 +366,10 @@ impl ObjectEditorState {
         self.loaded_target = Some((form_id, sig));
         self.form_id = form_id;
         self.sig = sig;
-        self.tab = EditorTab::Main;
+        // Back to the first tab for a new record: leaving the previous record's
+        // tab chosen would open a weapon on "Stats" because the last creature was
+        // being edited there.
+        self.tab = EditorTab::default();
         self.status = format!("Loaded {} {:08X}", nvre_util::tag_str(&sig), form_id);
 
         // The plugin whose strings a localized name is resolved through: the

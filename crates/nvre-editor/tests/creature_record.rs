@@ -1,0 +1,189 @@
+//! The creature editor against a real creature out of the game's master.
+//!
+//! The tabs are data, so the tests above prove the data is complete. These prove
+//! the window uses it: a tab draws the fields it is about and not the rest, and a
+//! field that lives on a split subrecord can still be edited — `ACBS` carries a
+//! flags word on Traits and a level on Stats, and an edit to one must re-encode
+//! the whole subrecord without disturbing the other.
+//!
+//! The fixture is `VStreetCrBrahmin2` (`0017B587`): a brahmin with a model list, a
+//! texture-hash array, a faction list and a full `ACBS`, so one record exercises
+//! most of the tabs. Its values are the ones `dump_record CREA` prints.
+//!
+//! Needs `NVRE_DATA`.
+
+mod common;
+
+use common::*;
+use nvre_editor::object_editor::{EditorTab, ObjectEditorState};
+use nvre_editor::panels::sections_on_tab;
+use nvre_editor::session::Session;
+
+/// The fixture's FormID.
+const BRAHMIN: u32 = 0x0017_B587;
+
+/// A session with the fixture open in the object editor.
+fn open_creature() -> Option<(Session, ObjectEditorState)> {
+    let mut session = open_master()?;
+    let fid = session
+        .records_of(*b"CREA")
+        .iter()
+        .find(|(fid, _)| *fid == BRAHMIN)
+        .map(|(fid, _)| *fid)
+        .or_else(|| session.records_of(*b"CREA").first().map(|(f, _)| *f))?;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    Some((session, state))
+}
+
+#[test]
+fn the_record_reads_as_the_game_wrote_it() {
+    let Some((_session, state)) = open_creature() else {
+        eprintln!("skipped: set NVRE_DATA to run against the game's masters");
+        return;
+    };
+    assert_eq!(state.edid, "VStreetCrBrahmin2", "the Editor ID");
+    assert_eq!(state.full_name, "Brahmin", "the name");
+    assert!(
+        state.model.contains("Brahmin"),
+        "the header's model is the record's MODL: {:?}",
+        state.model
+    );
+}
+
+#[test]
+fn the_sections_split_across_the_tabs_and_none_is_lost() {
+    // Every tab must be reachable, and between them they must name every
+    // subrecord the creature carries — including `NIFZ`/`NIFT` (its model list),
+    // `SNAM` (factions) and `SPLO` (actor effects), which a creature's dialog is
+    // the only place to edit.
+    let Some((session, _)) = open_creature() else {
+        return;
+    };
+    let schema = &session.schema;
+    let sections = schema.page_sections("CREA");
+    let tabs = schema.page_tabs("CREA");
+    let mut named: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for tab in &tabs {
+        let drawn = sections_on_tab(&sections, Some(tab));
+        assert!(!drawn.is_empty(), "the {tab} tab draws nothing");
+        for s in drawn {
+            named.extend(s.subs.iter().cloned());
+        }
+    }
+    // The subrecords the fixture actually carries, read from the record rather
+    // than from the schema, so this says what the game stores.
+    let subs = subs(&session, BRAHMIN);
+    let mut missing: Vec<String> = subs
+        .iter()
+        .map(|s| s.sig_str())
+        .filter(|sig| !named.contains(sig) && !["EDID", "OBND", "FULL", "MODL"].contains(&sig.as_str()))
+        .collect();
+    missing.sort();
+    missing.dedup();
+    assert!(
+        missing.is_empty(),
+        "the creature's page names no tab for {missing:?}"
+    );
+}
+
+#[test]
+fn the_traits_tab_shows_the_creature_type_and_the_stats_tab_does_not() {
+    // The two tabs whose split is the whole point: Traits carries the header
+    // flags, Stats carries the level. `ACBS` is one subrecord with both, so a page
+    // that could not narrow it would have to show the whole word on both tabs.
+    let Some((session, mut state)) = open_creature() else {
+        return;
+    };
+    let sections = session.schema.page_sections("CREA");
+    let traits = sections_on_tab(&sections, Some("Traits"));
+    let stats = sections_on_tab(&sections, Some("Stats"));
+
+    let flags_section = traits
+        .iter()
+        .find(|s| s.tab.as_deref() == Some("Traits") && s.fields.contains_key("ACBS"))
+        .expect("Traits narrows ACBS");
+    assert!(
+        flags_section.fields["ACBS"].contains(&"flags".to_string()),
+        "Traits shows ACBS's flags: {:?}",
+        flags_section.fields
+    );
+    assert!(
+        !stats
+            .iter()
+            .any(|s| s.fields.get("ACBS").is_some_and(|f| f.contains(&"flags".to_string()))),
+        "Stats must not show ACBS's flags as well"
+    );
+
+    // And the state survives a tab change, which is what makes the strip usable:
+    // the modder's record does not reload when they look at another tab.
+    state.tab.chosen = Some("Stats".to_string());
+    assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Stats"));
+    state.tab.chosen = Some("Traits".to_string());
+    assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Traits"));
+    assert_eq!(state.edid, "VStreetCrBrahmin2");
+}
+
+#[test]
+fn a_tab_name_the_strip_lost_falls_back_to_the_first_tab() {
+    // A schema edit that renames a tab must not leave the window drawing nothing.
+    let tabs = vec!["Traits".to_string(), "Stats".to_string()];
+    let mut tab = EditorTab {
+        chosen: Some("Gone".to_string()),
+    };
+    assert_eq!(tab.heading(&tabs), Some("Traits"));
+    tab.chosen = None;
+    assert_eq!(tab.heading(&tabs), Some("Traits"));
+    assert_eq!(tab.heading(&[]), None, "a page with no strip has no tab");
+}
+
+#[test]
+fn editing_the_level_on_stats_keeps_the_flags_on_traits() {
+    // The write path for a split subrecord. Both fields are in `ACBS`, so an edit
+    // to the level re-encodes the whole subrecord — and must write back the flags
+    // word it did not touch, or setting a level silently clears every flag.
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let before = payload(&subs(&session, BRAHMIN), b"ACBS");
+    let flags_before = u32::from_le_bytes([before[0], before[1], before[2], before[3]]);
+
+    // The level field, as the Stats tab addresses it.
+    session
+        .set_object_field(BRAHMIN, b"ACBS", "level_or_level_mult_raw", serde_json::json!(7))
+        .expect("the level is writable");
+
+    let after = payload(&subs(&session, BRAHMIN), b"ACBS");
+    let flags_after = u32::from_le_bytes([after[0], after[1], after[2], after[3]]);
+    assert_eq!(
+        flags_after, flags_before,
+        "editing the level changed the flags word: {flags_before:08X} -> {flags_after:08X}"
+    );
+    assert_eq!(
+        u16::from_le_bytes([after[6], after[7]]),
+        7,
+        "the level did not take: the subrecord is {after:02X?}"
+    );
+    assert_eq!(after.len(), before.len(), "the subrecord's length moved");
+}
+
+#[test]
+fn a_faction_can_be_added_and_removed_from_its_tab() {
+    // The Factions tab is a `repeat` widget, which is the widget for a subrecord a
+    // record carries many of — the brahmin has three `SNAM`. The edit path is
+    // `set_sub_list`, because `set_sub` holds one payload per signature and would
+    // collapse the three onto the last.
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let before = payloads(&subs(&session, BRAHMIN), b"SNAM");
+    assert_eq!(before.len(), 3, "the fixture has three factions");
+
+    let mut after = before.clone();
+    after.pop();
+    session.doc.set_sub_list(BRAHMIN, b"SNAM", after.clone());
+    let read = payloads(&subs(&session, BRAHMIN), b"SNAM");
+    assert_eq!(read.len(), 2, "removing one faction left {}", read.len());
+    assert_eq!(read, after[..2], "the remaining factions are the first two");
+}

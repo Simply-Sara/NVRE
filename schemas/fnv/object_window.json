@@ -650,59 +650,222 @@
    },
    "CREA": {
     "group": "Actors",
+    "name": "Creature",
     "sections": [
      {
+      "fields": {
+       "DATA": [
+        "type"
+       ]
+      },
       "subs": [
-       "BNAM",
-       "CNAM",
-       "INAM",
-       "NAM4",
-       "NAM5",
-       "PNAM",
-       "RNAM",
-       "SNAM",
-       "TNAM",
-       "WNAM",
-       "ZNAM"
+       "DATA"
       ],
-      "title": "Identity"
+      "tab": "Traits",
+      "title": "Creature Type"
      },
      {
+      "fields": {
+       "ACBS": [
+        "flags"
+       ]
+      },
+      "subs": [
+       "ACBS"
+      ],
+      "tab": "Traits",
+      "title": "Flags"
+     },
+     {
+      "fields": {
+       "ACBS": [
+        "karma",
+        "disposition_base",
+        "template_flags"
+       ]
+      },
       "subs": [
        "ACBS",
-       "AIDT",
-       "PKID",
-       "SPLO",
-       "TPLT",
-       "VTCK"
+       "TPLT"
       ],
-      "title": "Behaviour"
+      "tab": "Traits",
+      "title": "Actor Base and Alignment"
      },
      {
       "subs": [
-       "DATA",
+       "INAM",
+       "VTCK",
+       "ZNAM",
+       "LNAM",
+       "PNAM"
+      ],
+      "tab": "Traits",
+      "title": "Links"
+     },
+     {
+      "fields": {
+       "ACBS": [
+        "level_or_level_mult_raw",
+        "calc_min",
+        "calc_max"
+       ]
+      },
+      "subs": [
+       "ACBS"
+      ],
+      "tab": "Stats",
+      "title": "Leveling"
+     },
+     {
+      "fields": {
+       "DATA": [
+        "combat_skill",
+        "magic_skill",
+        "stealth_skill",
+        "health",
+        "damage",
+        "attributes.strength",
+        "attributes.perception",
+        "attributes.endurance",
+        "attributes.charisma",
+        "attributes.intelligence",
+        "attributes.agility",
+        "attributes.luck",
+        "unused"
+       ]
+      },
+      "subs": [
+       "DATA"
+      ],
+      "tab": "Stats",
+      "title": "Attributes and Skills"
+     },
+     {
+      "fields": {
+       "ACBS": [
+        "fatigue",
+        "barter_gold",
+        "speed_multiplier"
+       ]
+      },
+      "subs": [
+       "ACBS",
+       "RNAM",
+       "TNAM",
+       "BNAM",
+       "WNAM",
+       "NAM4",
+       "NAM5",
        "EAMT"
       ],
-      "title": "Combat"
+      "tab": "Stats",
+      "title": "Physical"
      },
      {
       "subs": [
-       "LNAM"
+       "SNAM"
       ],
-      "title": "Weather"
+      "tab": "Factions",
+      "title": "Factions",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "AIDT"
+      ],
+      "tab": "AI Data",
+      "title": "AI Data"
+     },
+     {
+      "subs": [
+       "PKID"
+      ],
+      "tab": "AI Packages",
+      "title": "AI Packages",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "CNTO",
+       "COED"
+      ],
+      "tab": "Inventory",
+      "title": "Inventory",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "SPLO"
+      ],
+      "tab": "Actor Effect List",
+      "title": "Actor Effect List",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "KFFZ"
+      ],
+      "tab": "Animation",
+      "title": "Animations"
+     },
+     {
+      "subs": [
+       "NIFZ",
+       "NIFT"
+      ],
+      "tab": "ModelList",
+      "title": "Model List"
+     },
+     {
+      "subs": [
+       "NAM4",
+       "CNAM"
+      ],
+      "tab": "Blood",
+      "title": "Blood"
      },
      {
       "subs": [
        "CSCR",
-       "CSDC",
-       "CSDI",
        "CSDT",
-       "KFFZ",
-       "NIFT",
-       "NIFZ"
+       "CSDI",
+       "CSDC"
       ],
-      "title": "Other"
+      "tab": "Sounds",
+      "title": "Sounds",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "DEST",
+       "DSTF"
+      ],
+      "tab": "Destruction",
+      "title": "Destruction",
+      "widget": "repeat"
+     },
+     {
+      "subs": [
+       "SCRI"
+      ],
+      "tab": "Scripts",
+      "title": "Scripts"
      }
+    ],
+    "tabs": [
+     "Traits",
+     "Stats",
+     "Factions",
+     "AI Data",
+     "AI Packages",
+     "Inventory",
+     "Actor Effect List",
+     "Animation",
+     "ModelList",
+     "Blood",
+     "Sounds",
+     "Destruction",
+     "Scripts"
     ]
    },
    "CSNO": {

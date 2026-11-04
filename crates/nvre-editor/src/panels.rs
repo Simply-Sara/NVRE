@@ -988,6 +988,83 @@ pub fn sectioned_grid(
     sections: &[nvre_esm::schema::SectionDef],
     edit: &mut FieldEdit,
 ) {
+    sectioned_grid_on_tab(ui, session, form_id, sections, None, edit)
+}
+
+/// The tab strip above a tabbed page's body.
+///
+/// A strip of selectable labels rather than egui's dockable tab panels: these are
+/// not dockable, and a button strip is the lighter thing — the same choice the
+/// cell editor's strip makes, so the editor has one kind of tab strip rather than
+/// two.
+///
+/// `chosen` is the chosen **heading**, and the strip writes it back. A heading the
+/// strip does not carry cannot be chosen through the strip, so `chosen` stays a
+/// valid answer: the fallback in [`crate::object_editor::EditorTab::heading`] is
+/// for a schema that dropped a tab between frames.
+///
+/// The strip wraps rather than scrolls horizontally: a creature has thirteen
+/// tabs, and a strip that ran off the window's edge would hide the last ones with
+/// no way to reach them.
+pub fn tab_strip(ui: &mut egui::Ui, tabs: &[String], chosen: &mut Option<String>) {
+    let current = match chosen {
+        Some(name) if tabs.iter().any(|t| t == name) => name.clone(),
+        _ => tabs.first().cloned().unwrap_or_default(),
+    };
+    ui.horizontal_wrapped(|ui| {
+        for tab in tabs {
+            if ui
+                .selectable_label(current == *tab, egui::RichText::new(tab).strong())
+                .clicked()
+            {
+                *chosen = Some(tab.clone());
+            }
+        }
+    });
+    ui.separator();
+}
+
+/// The sections a tab draws, from a page's full section list.
+///
+/// A page with no strip (`tab == None`) draws them all. A tabbed page draws the
+/// sections filed on the chosen tab plus the ones filed on none — the record's
+/// shared part, which belongs on every tab.
+///
+/// Public because it is the rule the page's rendering follows, and the tests that
+/// keep a split honest call it rather than rendering a window.
+pub fn sections_on_tab<'a>(
+    sections: &'a [nvre_esm::schema::SectionDef],
+    tab: Option<&str>,
+) -> Vec<&'a nvre_esm::schema::SectionDef> {
+    sections
+        .iter()
+        .filter(|s| match (&s.tab, tab) {
+            (None, _) => true,
+            (Some(_), None) => true,
+            (Some(name), Some(chosen)) => name == chosen,
+        })
+        .collect()
+}
+
+/// The same grid, narrowed to one tab of a tabbed page.
+///
+/// `tab` is the chosen tab's heading, or `None` for a page with no strip. A
+/// section filed on another tab is skipped, so the modder sees the part of the
+/// record the tab is about rather than the whole record under a tab that claims
+/// to be about one thing. A section with no tab at all is drawn on every tab: it
+/// is the record's shared part.
+///
+/// The chosen tab is passed in rather than read from the session because the
+/// page's own tab belongs to the window, not to the record — two creature editors
+/// open on two records have two tabs.
+pub fn sectioned_grid_on_tab(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    sections: &[nvre_esm::schema::SectionDef],
+    tab: Option<&str>,
+    edit: &mut FieldEdit,
+) {
     let Some(rec) = session.resolved_record(form_id) else {
         ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
         return;
@@ -1012,9 +1089,24 @@ pub fn sectioned_grid(
             _ => None,
         })
         .collect();
+    // The sections this tab draws. A page with no strip draws them all; a tabbed
+    // page draws the sections filed on the chosen tab plus the ones filed on none.
+    let shown = sections_on_tab(sections, tab);
     // Which views a section claimed, so the remainder is what nothing named.
+    // The remainder is judged against **every** section, not just this tab's: a
+    // subrecord whose section sits on another tab is described, and showing it
+    // again here under "Everything else" would put the same field on two tabs.
     let mut claimed: Vec<usize> = Vec::new();
-    for (si, section) in sections.iter().enumerate() {
+    for section in sections {
+        for tag in &section.subs {
+            for (i, v) in views.iter().enumerate() {
+                if &v.sig == tag && !claimed.contains(&i) {
+                    claimed.push(i);
+                }
+            }
+        }
+    }
+    for (si, section) in shown.iter().enumerate() {
         // The subrecords this section names, in the section's order.
         let mut named: Vec<usize> = Vec::new();
         for tag in &section.subs {
@@ -1063,7 +1155,16 @@ pub fn sectioned_grid(
                 }
                 None => {
                     for i in named {
-                        subrecord_rows(ui, session, form_id, &rec_sig, &views[i], &edited, edit);
+                        subrecord_rows_on_fields(
+                            ui,
+                            session,
+                            form_id,
+                            &rec_sig,
+                            &views[i],
+                            &edited,
+                            section.fields.get(&views[i].sig).map(Vec::as_slice),
+                            edit,
+                        );
                     }
                 }
             }
@@ -1097,6 +1198,31 @@ fn subrecord_rows(
     edited: &[[u8; 4]],
     edit: &mut FieldEdit,
 ) {
+    subrecord_rows_on_fields(ui, session, form_id, rec_sig, view, edited, None, edit);
+}
+
+/// The same, narrowed to the fields a section names.
+///
+/// `fields` is a list of dotted paths for **this** subrecord, or `None` for "every
+/// field it has". Narrowing is what lets one subrecord's fields sit on two tabs:
+/// the game's own editor splits `ACBS` between Traits and Stats, and a page that
+/// cannot split it either shows the flags twice or shows them on neither.
+///
+/// The order is the section's, not the layout's, because a split is a claim about
+/// which fields belong together. A path the decoded subrecord does not carry is
+/// skipped — the same rule a section naming an absent subrecord follows — so a
+/// game whose `ACBS` lacks a field still gets the rest.
+#[allow(clippy::too_many_arguments)]
+fn subrecord_rows_on_fields(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    rec_sig: &[u8; 4],
+    view: &nvre_edit::encode::SubView,
+    edited: &[[u8; 4]],
+    fields: Option<&[String]>,
+    edit: &mut FieldEdit,
+) {
     let sig = sig4(&view.sig);
     ui.horizontal(|ui| {
         ui.strong(&view.name);
@@ -1120,11 +1246,32 @@ fn subrecord_rows(
         view.block.as_deref(),
         &view.value,
     );
+    // The rows this section shows, in the section's order when it narrows and in
+    // the layout's when it does not.
+    let shown: Vec<nvre_edit::encode::Row> = match fields {
+        None => rows,
+        Some(paths) => {
+            let mut out = Vec::new();
+            for path in paths {
+                if let Some(row) = rows.iter().find(|r| &r.path == path) {
+                    out.push(row.clone());
+                }
+            }
+            out
+        }
+    };
+    if shown.is_empty() && fields.is_some() {
+        // Every field the section named is absent from this record. Saying so is
+        // better than an empty group that looks like a rendering bug.
+        ui.weak("none of this section's fields are on this record");
+        ui.add_space(4.0);
+        return;
+    }
     egui::Grid::new(("fields", &view.sig, &view.block))
         .num_columns(2)
         .striped(true)
         .show(ui, |ui| {
-            for row in &rows {
+            for row in &shown {
                 let Some(current) = get_path(&view.value, &row.path) else {
                     continue;
                 };
