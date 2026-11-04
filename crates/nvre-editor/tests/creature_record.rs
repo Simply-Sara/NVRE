@@ -15,7 +15,7 @@
 mod common;
 
 use common::*;
-use nvre_editor::object_editor::{EditorTab, ObjectEditorState};
+use nvre_editor::object_editor::{self, EditorTab, ObjectEditorState, Pages};
 use nvre_editor::panels::sections_on_tab;
 use nvre_editor::session::Session;
 
@@ -296,4 +296,133 @@ fn editing_a_flag_on_general_leaves_the_flags_on_traits_alone() {
         "editing a flag on General cleared a bit that belongs to Traits"
     );
     assert_eq!(after.len(), before.len(), "the subrecord's length moved");
+}
+
+#[test]
+fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
+    // The split is only real if the checkboxes exist. A flags field renders as
+    // `(object)` — no checkboxes at all — when the grid cannot find its bits,
+    // which is what happened to `ACBS.flags` for as long as `flag_bits` resolved
+    // the subrecord's own type: `ACBS` is a struct, so the lookup answered
+    // `Struct` and every flag on every tab was invisible.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let tabs = session.schema.page_tabs("CREA");
+    let schema_bits = |tab: &str, key: &str| -> Vec<u32> {
+        session
+            .schema
+            .page_sections("CREA")
+            .iter()
+            .filter(|s| s.tab.as_deref() == Some(tab))
+            .filter_map(|s| s.flags_bits.get(key).cloned())
+            .next()
+            .unwrap_or_default()
+    };
+    let expected_general = schema_bits("General", "ACBS.flags");
+    let expected_traits = schema_bits("Traits", "ACBS.flags");
+    assert_eq!(expected_general.len(), 10, "General names ten flags");
+    assert_eq!(expected_traits.len(), 17, "Traits keeps the other seventeen");
+
+    // The schema's own name for each bit, so the assertion is about the labels a
+    // modder reads rather than about a count. Resolved before the loop, because
+    // rendering needs the session mutably and the names come from its schema.
+    let acbs = session
+        .schema
+        .records
+        .get("CREA")
+        .and_then(|r| r.subrecords.get("ACBS"))
+        .expect("ACBS is a subrecord of CREA");
+    let nvre_esm::TypeDef::Struct(acbs_fields) = session.schema.resolve_def(&acbs.ty) else {
+        panic!("ACBS is a struct");
+    };
+    let nvre_esm::TypeDef::Flags { bits, .. } = &acbs_fields
+        .iter()
+        .find(|f| f.name == "flags")
+        .expect("ACBS.flags")
+        .ty
+    else {
+        panic!("ACBS.flags is a flags word");
+    };
+    let named: std::collections::BTreeMap<u32, String> = bits
+        .iter()
+        .map(|(bit, name)| (*bit, name.clone()))
+        .collect();
+
+    for (tab, expected) in [("General", &expected_general), ("Traits", &expected_traits)] {
+        state.tab.chosen = Some(tab.to_string());
+        assert_eq!(state.tab.heading(&tabs), Some(tab));
+        let names = checkbox_labels(&mut session, &mut state);
+        // Every bit the section names must be a checkbox the tab draws, under
+        // the schema's own name for it.
+        let missing: Vec<String> = expected
+            .iter()
+            .filter_map(|bit| named.get(bit).cloned())
+            .filter(|name| !names.iter().any(|n| n == name))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "{tab} draws no checkbox for {missing:?}. A flags field whose bits the \\
+             grid cannot find renders as `(object)` — no checkboxes at all — so \\
+             the flags are invisible and uneditable on this tab"
+        );
+        // And no flag the section does *not* name leaks onto this tab, which is
+        // the other half of the split: the same checkbox on two tabs is not a
+        // split, it is a duplicate.
+        let other = if tab == "General" {
+            &expected_traits
+        } else {
+            &expected_general
+        };
+        let leaked: Vec<String> = other
+            .iter()
+            .filter_map(|bit| named.get(bit).cloned())
+            .filter(|name| names.iter().any(|n| n == name))
+            .collect();
+        assert!(
+            leaked.is_empty(),
+            "{tab} draws checkboxes for flags it does not own: {leaked:?}"
+        );
+    }
+}
+
+/// The labels of every checkbox the creature editor draws, via egui's
+/// accessibility tree.
+///
+/// The tree is the only way to see what a widget *rendered*: the schema says
+/// which bits a section names, and the grid is what decides whether a checkbox
+/// exists for them. A flags field with no bits renders `(object)` — no checkbox
+/// at all — and the schema's answer would not say so.
+fn checkbox_labels(session: &mut Session, state: &mut ObjectEditorState) -> Vec<String> {
+    use nvre_editor::egui;
+    let mut pages = Pages::default();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let size = egui::vec2(900.0, 2400.0);
+    let mut labels = Vec::new();
+    for _ in 0..3 {
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                ..Default::default()
+            },
+            |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
+                    object_editor::body(ui, session, state, &mut pages);
+                });
+            },
+        );
+        out.textures_delta.clear();
+        labels = out
+            .platform_output
+            .accesskit_update
+            .map(|u| {
+                u.nodes
+                    .into_iter()
+                    .filter_map(|(_, node)| node.label().map(str::to_owned))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+    }
+    labels
 }

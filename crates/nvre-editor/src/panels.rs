@@ -1575,7 +1575,13 @@ fn field_editor(
         // bits the schema does not name are carried through untouched — a field
         // the editor cannot explain still round-trips byte-exact.
         serde_json::Value::Object(o) => {
-            let bits = flag_bits(&session.schema, rec_sig, &view.sig, view.block.as_deref());
+            let bits = flag_bits(
+                &session.schema,
+                rec_sig,
+                &view.sig,
+                view.block.as_deref(),
+                path,
+            );
             if !bits.is_empty() {
                 let raw = o.get("value").and_then(|v| v.as_u64()).unwrap_or(0);
                 let unknown = o
@@ -2083,7 +2089,7 @@ fn zero_value(t: &nvre_esm::TypeDef) -> serde_json::Value {
     }
 }
 
-/// The bits a subrecord's schema names, as `(bit, name)` in bit order.
+/// The bits a flags field's schema names, as `(bit, name)` in bit order.
 ///
 /// The decoder emits a flags field as `{"value": n, "set": [names], ...}` and
 /// drops the bit numbers, so the only place they exist is the schema's
@@ -2092,6 +2098,14 @@ fn zero_value(t: &nvre_esm::TypeDef) -> serde_json::Value {
 /// would silently corrupt every flags field whose bits are not declared in
 /// ascending order from zero.
 ///
+/// `path` is the field's dotted path inside the subrecord, and it has to be
+/// walked: a subrecord is usually a **struct**, and the flags word is one of its
+/// fields. `ACBS` is a struct whose `flags` and `template_flags` fields are flags
+/// words, so resolving the subrecord's own type answers `Struct` and finds
+/// nothing — which is how a creature's flag checkboxes came to render as
+/// `(object)` on every tab. The path is empty only for a subrecord that *is* a
+/// flags word outright, which is what a top-level one is.
+///
 /// The block matters: a flags word inside a block (`PACK`'s `DATA`, `FACT`'s)
 /// has the block's layout, not the record's top-level one.
 fn flag_bits(
@@ -2099,12 +2113,58 @@ fn flag_bits(
     rec_sig: &[u8; 4],
     sub_sig: &str,
     block: Option<&str>,
+    path: &str,
 ) -> Vec<(u32, String)> {
     let Some(def) = schema.lookup_in_block(rec_sig, &sig4(sub_sig), block) else {
         return Vec::new();
     };
-    match schema.resolve_def(&def.ty) {
-        nvre_esm::typedef::TypeDef::Flags { bits, .. } => bits.clone(),
+    /// The type at a dotted path inside a resolved struct.
+    fn at(resolved: &nvre_esm::TypeDef, parts: &[&str]) -> Option<nvre_esm::TypeDef> {
+        let Some((part, rest)) = parts.split_first() else {
+            return Some(resolved.clone());
+        };
+        match resolved {
+            nvre_esm::TypeDef::Struct(fields) => {
+                // The longest prefix that names a field, so a field whose own
+                // name holds a dot is reachable rather than split.
+                let mut best: Option<&nvre_esm::typedef::FieldDef> = None;
+                for f in fields {
+                    if part.len() >= f.name.len()
+                        && part.starts_with(&f.name)
+                        && best.is_none_or(|b| f.name.len() > b.name.len())
+                    {
+                        best = Some(f);
+                    }
+                }
+                let f = best?;
+                let tail = &part[f.name.len()..];
+                let next: Vec<&str> = if tail.is_empty() {
+                    rest.to_vec()
+                } else {
+                    let mut v = vec![tail.trim_start_matches('.')];
+                    v.extend_from_slice(rest);
+                    v
+                };
+                at(&f.ty, &next)
+            }
+            nvre_esm::TypeDef::Union(variants) => {
+                for (_, v) in variants {
+                    if let Some(found) = at(v, parts) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    match at(&schema.resolve_def(&def.ty), &parts) {
+        Some(nvre_esm::typedef::TypeDef::Flags { bits, .. }) => bits,
         _ => Vec::new(),
     }
 }
