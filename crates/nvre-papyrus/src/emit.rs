@@ -1731,6 +1731,21 @@ impl<'a> Compiler<'a> {
         Value::Identifier(t)
     }
 
+    /// The declared class of a name used as a receiver, looking through the
+    /// function scope first and the script scope second.
+    fn receiver_class(&self, buf: &FnBuf, name: &str) -> Option<String> {
+        let lower = name.to_ascii_lowercase();
+        if let Some((_, i)) = buf
+            .params
+            .iter()
+            .chain(&buf.declared)
+            .find(|(p, _)| p == &lower)
+        {
+            return self.declared_type(buf, *i);
+        }
+        self.type_of(name).map(|t| t.0.clone())
+    }
+
     /// Whether `name` is an `auto` property, whose storage is a backing variable.
     ///
     /// `AutoReadOnly` is excluded: it has no variable, because its value is a
@@ -2277,7 +2292,13 @@ impl<'a> Compiler<'a> {
                 // emits would be missing.
                 let pty = match obj.as_ref() {
                     Expr::Ident(n) => {
-                        let cls = self.type_of(n).map(|t| t.0.clone()).unwrap_or_default();
+                        // The receiver may be a LOCAL (`ArenaScript aScript`,
+                        // declared inside the function) as well as a script-level
+                        // variable. Asking only the script-level table left
+                        // `aScript.NextWagerFight` untyped, so the value it
+                        // produced could not be converted into the `quest` slot it
+                        // was assigned to and the cast the game emits was missing.
+                        let cls = self.receiver_class(buf, n).unwrap_or_default();
                         crate::signatures::property_type(&cls, name)
                             .unwrap_or_else(|| self.property_type(name))
                     }
