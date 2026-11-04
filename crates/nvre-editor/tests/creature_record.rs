@@ -640,3 +640,132 @@ fn the_identity_section_draws_no_title_and_no_bare_signature_labels() {
         );
     }
 }
+
+#[test]
+fn the_template_picker_comes_before_the_template_checkboxes() {
+    // GECK puts the ActorBase picker at the top of the Template group, above the
+    // checkboxes that say what the chosen template contributes. The section used
+    // to list `ACBS` first, which drew the ten checkboxes and the picker below
+    // them — the picker is the entry point to the section, not its footnote.
+    //
+    // The assertion reads where each widget landed, because the section's `subs`
+    // order is only a claim about what the renderer does with it.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("General".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    // Everything below the "Template Data" heading and above the next group, so
+    // the assertion is about this section and not about the Identity section's
+    // own picker — which reports "NONE" too, because it is empty as well.
+    let heading = rows
+        .iter()
+        .find(|(text, _)| text == "Template Data")
+        .map(|(_, y)| *y)
+        .unwrap_or_else(|| panic!("the Template Data heading is not drawn: {rows:?}"));
+    let section: Vec<&(String, f32)> = rows
+        .iter()
+        .filter(|(_, y)| *y > heading)
+        .take_while(|(text, _)| text != "Everything else")
+        .collect();
+    let at = |want: &str| -> f32 {
+        section
+            .iter()
+            .find(|(text, _)| text == want)
+            .map(|(_, y)| *y)
+            .unwrap_or_else(|| {
+                panic!("{want:?} is not drawn in the Template Data section: {section:?}")
+            })
+    };
+    let picker = at("NONE");
+    let template_row_y = at("Traits");
+    assert!(
+        picker < template_row_y,
+        "the template picker is at y={picker}, below the first template checkbox at \
+         y={template_row_y}. It must come first: {section:?}"
+    );
+}
+
+#[test]
+fn a_flags_field_draws_no_row_label_of_its_own() {
+    // The section heading already says "Actor Flags" and the checkboxes name
+    // themselves, so the field's path was a third name for the same thing. What
+    // a modder saw was a lone line reading "flags" above ten checkboxes, and
+    // "template_flags" above ten more.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("General".to_string());
+    let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    for path in ["flags", "template_flags"] {
+        assert!(
+            !drawn.iter().any(|l| l == path),
+            "the {path:?} field still draws its own row label: {drawn:?}"
+        );
+    }
+    // The headings stay — it is the redundant per-field label that goes.
+    for keep in ["Actor Flags", "Template Data"] {
+        assert!(
+            drawn.iter().any(|l| l == keep),
+            "General no longer draws its {keep:?} heading: {drawn:?}"
+        );
+    }
+}
+
+/// Every drawn widget's text and its vertical position, top to bottom.
+///
+/// The position is what proves an ordering: a section's `subs` list says which
+/// subrecords it names and in what order, and this says whether the renderer
+/// put them where that order claims. Labels, checkboxes and combo boxes are
+/// read, which covers the identity rows, the flag checkboxes and the pickers.
+fn placed_widgets(
+    session: &mut Session,
+    state: &mut ObjectEditorState,
+    size: nvre_editor::egui::Vec2,
+) -> Vec<(String, f32)> {
+    use nvre_editor::egui;
+    let mut pages = Pages::default();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let mut rows: Vec<(String, f32)> = Vec::new();
+    for _ in 0..3 {
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                ..Default::default()
+            },
+            |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
+                    object_editor::body(ui, session, state, &mut pages);
+                });
+            },
+        );
+        out.textures_delta.clear();
+        rows = out
+            .platform_output
+            .accesskit_update
+            .map(|u| {
+                let mut v: Vec<(String, f32)> = u
+                    .nodes
+                    .into_iter()
+                    .filter(|(_, n)| {
+                        matches!(
+                            n.role(),
+                            egui::accesskit::Role::Label
+                                | egui::accesskit::Role::CheckBox
+                                | egui::accesskit::Role::ComboBox
+                        )
+                    })
+                    .filter_map(|(_, n)| {
+                        let text = n.label().or_else(|| n.value())?;
+                        let rect = n.bounds()?;
+                        Some((text.to_string(), rect.y0 as f32))
+                    })
+                    .collect();
+                v.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+                v
+            })
+            .unwrap_or_default();
+    }
+    rows
+}

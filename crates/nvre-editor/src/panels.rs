@@ -1308,86 +1308,156 @@ fn subrecord_rows_on_fields(
         ui.add_space(4.0);
         return;
     }
-    egui::Grid::new(("fields", &view.sig, &view.block))
-        .num_columns(2)
-        .striped(true)
-        .show(ui, |ui| {
-            for row in &shown {
+    // The rows are walked in the section's own order — `TPLT` before `ACBS` puts
+    // the picker above the checkboxes, which is where GECK puts it, and a
+    // section that names them the other way round gets the other way round.
+    //
+    // A flags field is drawn **outside** the grid. The grid is two columns — a
+    // label and a value — and a flags field's value is a list of checkboxes.
+    // Left inside, it is one cell holding ten widgets: either they run off the
+    // row with their labels truncated, or `end_row` before them puts them in a
+    // cell the grid then stretches to the remaining height, scattering them
+    // hundreds of points apart.
+    //
+    // So the rows are split into **runs** of one kind and each run gets the
+    // container that fits it. Splitting into runs rather than grouping by kind
+    // keeps the section's order: "all flags, then everything else" would
+    // silently reorder every section that mixes the two, which is exactly what
+    // the template group does.
+    let mut runs: Vec<Vec<&nvre_edit::encode::Row>> = Vec::new();
+    for row in &shown {
+        let Some(current) = get_path(&view.value, &row.path) else {
+            continue;
+        };
+        let flags = flag_bits(
+            &session.schema,
+            rec_sig,
+            &view.sig,
+            view.block.as_deref(),
+            &row.path,
+        );
+        let is_flags = matches!(current, serde_json::Value::Object(_)) && !flags.is_empty();
+        match runs.last_mut() {
+            Some(run) if run_is_flags(run, view) == is_flags => run.push(row),
+            _ => runs.push(vec![row]),
+        }
+    }
+    for (ri, run) in runs.iter().enumerate() {
+        if ri > 0 {
+            ui.add_space(6.0);
+        }
+        if run_is_flags(run, view) {
+            for row in run {
                 let Some(current) = get_path(&view.value, &row.path) else {
                     continue;
                 };
-                // The row label. A field inside a subrecord is named by its
-                // path; a subrecord that *is* one field — `EDID`, `FULL`, `SCRI`
-                // — has an empty path, and printing the word "value" for it
-                // said nothing a modder could use. The subrecord's own name
-                // from the schema is the answer: "Editor ID", "Name", "Script".
-                let label = if row.path.is_empty() {
-                    view.name.as_str()
-                } else {
-                    row.path.as_str()
-                };
-                ui.label(label);
-                if row.derived {
-                    ui.horizontal(|ui| {
-                        ui.monospace(field_text(current));
-                        ui.weak("(counted)");
-                    });
-                } else {
-                    // A flags field draws many checkboxes, so it gets the row to
-                    // itself: inside a two-column grid the ten of a creature's
-                    // `ACBS.flags` are one cell holding ten widgets, laid out
-                    // side by side until the labels are cut off. Handing it the
-                    // row lets them wrap down it.
-                    let flags = flag_bits(
-                        &session.schema,
-                        rec_sig,
-                        &view.sig,
-                        view.block.as_deref(),
-                        &row.path,
-                    );
-                    let is_flags = matches!(current, serde_json::Value::Object(_))
-                        && !flags.is_empty();
-                    if is_flags {
-                        ui.end_row();
-                        ui.label("");
-                        field_editor(
+                field_editor(
+                    ui,
+                    session,
+                    edit,
+                    form_id,
+                    view,
+                    rec_sig,
+                    &row.path,
+                    current,
+                    // The bits this section shows for this field, when the section
+                    // split the flags word. `None` is the whole word.
+                    flags_bits
+                        .get(&format!("{}.{}", view.sig, row.path))
+                        .map(Vec::as_slice),
+                );
+            }
+        } else {
+            egui::Grid::new(("fields", &view.sig, &view.block))
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    for row in run {
+                        let Some(current) = get_path(&view.value, &row.path) else {
+                            continue;
+                        };
+                        draw_field_row(
                             ui,
                             session,
                             edit,
                             form_id,
                             view,
                             rec_sig,
-                            &row.path,
+                            row,
                             current,
-                            // The bits this section shows for this field, when the
-                            // section split a flags word. `None` is the whole word.
-                            flags_bits
-                                .get(&format!("{}.{}", view.sig, row.path))
-                                .map(Vec::as_slice),
-                        );
-                        ui.end_row();
-                    } else {
-                        field_editor(
-                            ui,
-                            session,
-                            edit,
-                            form_id,
-                            view,
-                            rec_sig,
-                            &row.path,
-                            current,
-                            // The bits this section shows for this field, when the
-                            // section split a flags word. `None` is the whole word.
-                            flags_bits
-                                .get(&format!("{}.{}", view.sig, row.path))
-                                .map(Vec::as_slice),
+                            flags_bits,
                         );
                     }
-                }
-                ui.end_row();
-            }
-        });
+                });
+        }
+    }
     ui.add_space(4.0);
+}
+
+/// Whether a run of rows is a run of flags fields.
+///
+/// The caller built each run from one kind, so the first row is the answer. A
+/// flags word decodes to an object and every other field does not, which is the
+/// same test [`field_editor`] makes to choose its widget.
+fn run_is_flags(run: &[&nvre_edit::encode::Row], view: &nvre_edit::encode::SubView) -> bool {
+    run.first().is_some_and(|row| {
+        matches!(
+            get_path(&view.value, &row.path),
+            Some(serde_json::Value::Object(_))
+        )
+    })
+}
+
+/// One row of the field grid: the label, then the widget that fits the value.
+///
+/// Split out of [`subrecord_rows_on_fields`] because a section can switch
+/// between the grid and a free-standing flags block part way through, and the
+/// grid has to be open in both places without duplicating the row.
+fn draw_field_row(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    edit: &mut FieldEdit,
+    form_id: u32,
+    view: &nvre_edit::encode::SubView,
+    rec_sig: &[u8; 4],
+    row: &nvre_edit::encode::Row,
+    current: &serde_json::Value,
+    flags_bits: &std::collections::BTreeMap<String, Vec<u32>>,
+) {
+    // The row label. A field inside a subrecord is named by its path; a
+    // subrecord that *is* one field — `EDID`, `FULL`, `SCRI` — has an empty
+    // path, and printing the word "value" for it said nothing a modder could
+    // use. The subrecord's own name from the schema is the answer: "Editor ID",
+    // "Name", "Script".
+    let label = if row.path.is_empty() {
+        view.name.as_str()
+    } else {
+        row.path.as_str()
+    };
+    ui.label(label);
+    if row.derived {
+        ui.horizontal(|ui| {
+            ui.monospace(field_text(current));
+            ui.weak("(counted)");
+        });
+    } else {
+        field_editor(
+            ui,
+            session,
+            edit,
+            form_id,
+            view,
+            rec_sig,
+            &row.path,
+            current,
+            // The bits this section shows for this field, when the section split
+            // the flags word. `None` is the whole word.
+            flags_bits
+                .get(&format!("{}.{}", view.sig, row.path))
+                .map(Vec::as_slice),
+        );
+    }
+    ui.end_row();
 }
 
 /// Every subrecord of a record, as an editable grid.
