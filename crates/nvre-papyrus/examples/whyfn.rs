@@ -9,7 +9,10 @@
 //! one of them actually is. Each line is `index  mine  |  game`, with the first
 //! disagreeing index marked, and the locals table printed on both sides because
 //! a wrong slot type shows up there first.
-use nvre_papyrus::emit::{Compiler, Symbols};
+#[path = "support/mod.rs"]
+mod support;
+
+use nvre_papyrus::emit::Compiler;
 use nvre_papyrus::{lex, opcodes, parse, PexFile, Value};
 
 fn render(f: &PexFile, ins: &nvre_papyrus::pex::Instruction) -> String {
@@ -88,13 +91,20 @@ fn main() {
             return;
         }
     };
-    let symbols = Symbols {
-        script: script.name.clone(),
-        parent: script.parent.clone().unwrap_or_default(),
-        variables: Vec::new(),
-        properties: Vec::new(),
-        states: Vec::new(),
+    // The class table from every source — the same environment `behaviour` and
+    // the editor use. Without it an inherited name has no type, no conversion
+    // fires at a slot it types, and the probe shows a difference the emitter does
+    // not actually have.
+    let table = {
+        let names: Vec<String> = (0..zip.len())
+            .filter_map(|i| {
+                let n = zip.by_index(i).ok()?.name().to_string();
+                n.ends_with(".psc").then_some(n)
+            })
+            .collect();
+        support::class_table(&mut zip, &names)
     };
+    let symbols = nvre_papyrus::emit::Symbols::for_script(&script, &table);
     let mine = match Compiler::new(&script, symbols).compile() {
         Ok(c) => c,
         Err(e) => {

@@ -7,10 +7,10 @@
 use nvre_papyrus::parse::Script;
 use nvre_papyrus::symbols::ClassTable;
 use nvre_papyrus::{lex, parse};
-use std::io::Read;
+use std::io::{Read, Seek};
 
 /// Decode one `.psc` from the CK's own archive.
-pub fn source_of(zip: &mut zip::ZipArchive<std::fs::File>, name: &str) -> Option<String> {
+pub fn source_of<R: Read + Seek>(zip: &mut zip::ZipArchive<R>, name: &str) -> Option<String> {
     let mut f = zip.by_name(name).ok()?;
     let mut b = Vec::new();
     f.read_to_end(&mut b).ok()?;
@@ -18,7 +18,7 @@ pub fn source_of(zip: &mut zip::ZipArchive<std::fs::File>, name: &str) -> Option
 }
 
 /// Every source in the archive, parsed — the input to a [`ClassTable`].
-pub fn parse_all(zip: &mut zip::ZipArchive<std::fs::File>, sources: &[String]) -> Vec<Script> {
+pub fn parse_all<R: Read + Seek>(zip: &mut zip::ZipArchive<R>, sources: &[String]) -> Vec<Script> {
     let mut out = Vec::with_capacity(sources.len());
     for name in sources {
         if let Some(src) = source_of(zip, name) {
@@ -39,7 +39,7 @@ pub fn parse_all(zip: &mut zip::ZipArchive<std::fs::File>, sources: &[String]) -
 /// `byohbuildingobjectexteriorscript::OnContainerChanged`, where the game writes
 /// `cast ::temp5 ::mySelf_var` for `myself` — inherited from
 /// `BYOHBuildingObjectScript`.
-pub fn class_table(zip: &mut zip::ZipArchive<std::fs::File>, sources: &[String]) -> ClassTable {
+pub fn class_table<R: Read + Seek>(zip: &mut zip::ZipArchive<R>, sources: &[String]) -> ClassTable {
     let parsed = parse_all(zip, sources);
     ClassTable::new(parsed.iter())
 }

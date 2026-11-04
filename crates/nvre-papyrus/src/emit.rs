@@ -335,17 +335,39 @@ impl<'a> Compiler<'a> {
     /// `#[allow(dead_code)]` as a marker of that.
     fn type_of(&self, name: &str) -> Option<&TypeName> {
         let lower = name.to_ascii_lowercase();
-        if let Some((_, t)) = self.types.iter().find(|(n, _)| n == &lower) {
-            return Some(t);
+        // A property's **backing member** carries the property's own type.
+        // `::mySelf_var` IS the storage the declaration made, so it is a
+        // `miscobject` and nothing else is. Reading it as `var` means no
+        // conversion fires at a slot it fills: `BYOHBuildingObjectExteriorScript
+        // .OnContainerChanged` passes `myself` — `MiscObject Property mySelf
+        // Auto`, inherited from `BYOHBuildingObjectScript` — where the parameter
+        // wants a `Form`, and the game writes `cast ::temp5 ::mySelf_var` where
+        // this wrote the variable bare, one operand short.
+        //
+        // The search covers both lists because which one a name lands in depends
+        // on where it was declared: an ancestor's members arrive through
+        // `ClassTable` as `variables`, a script's own declarations as
+        // `properties` or `types`. The type is the same either way.
+        let bare = lower
+            .strip_prefix("::")
+            .and_then(|n| n.strip_suffix("_var"))
+            .unwrap_or(&lower);
+        let mut keys: Vec<&str> = vec![&lower];
+        if bare != lower {
+            keys.push(bare);
         }
-        if let Some((_, t)) = self.symbols.variables.iter().find(|(n, _)| n == &lower) {
-            return Some(t);
+        for key in keys {
+            if let Some((_, t)) = self.types.iter().find(|(n, _)| n == key) {
+                return Some(t);
+            }
+            if let Some((_, t)) = self.symbols.variables.iter().find(|(n, _)| n == key) {
+                return Some(t);
+            }
+            if let Some((_, t)) = self.symbols.properties.iter().find(|(n, _)| n == key) {
+                return Some(t);
+            }
         }
-        self.symbols
-            .properties
-            .iter()
-            .find(|(n, _)| n == &lower)
-            .map(|(_, t)| t)
+        None
     }
 
     /// Whether a name is an integer-typed value the compiler knows.
@@ -2669,10 +2691,22 @@ impl<'a> Compiler<'a> {
                     "!" => opcode_of("not"),
                     "-" => {
                         // Integer negation is `ineg`; float is `fneg`. The
-                        // operand's own type decides, and a literal is int.
+                        // operand's type decides, and it is the DECLARED type —
+                        // not merely "is this a float literal". Measured on
+                        // `CWArrowVolleyParentScript.FireSelfAndLinkedRefs`,
+                        // whose `AimDevianceVertical` is a `float property`:
+                        //   game:  fneg ::temp10 ::AimDevianceVertical_var
+                        //   ours:  ineg ::temp10 ::AimDevianceVertical_var
+                        // An untyped operand falls back to int, which is the
+                        // safer reading: a wrong `fneg` on an int is the same
+                        // class of error in the other direction, and `ineg` on a
+                        // `var` is what the corpus shows for an unresolvable name.
                         match &v {
                             Value::Float(_) => opcode_of("fneg"),
-                            _ => opcode_of("ineg"),
+                            _ => match self.known_type(buf, &v) {
+                                Some(t) if t.eq_ignore_ascii_case("float") => opcode_of("fneg"),
+                                _ => opcode_of("ineg"),
+                            },
                         }
                     }
                     other => {
@@ -2822,7 +2856,13 @@ impl<'a> Compiler<'a> {
                         // A bare `f(...)` evaluates its arguments left to right
                         // like every other path — the earlier note that it
                         // differed was a fitted artifact. See `call_args`.
-                        let defs = crate::signatures::defaults(name);
+                        // The defaults come from `self`'s class chain, not from the
+                        // unqualified table: `SetRestrained()` on an `Actor` pads
+                        // `true` from `actor.psc`, and the unqualified table has no
+                        // default for the name at all.
+                        let defs = self
+                            .method_defaults_in_chain(name)
+                            .or_else(|| crate::signatures::defaults(name));
                         let dealt = self.call_args(buf, args, names, line, &own, name, defs, |i| {
                             crate::signatures::arg_type(&own, name, i)
                         })?;
@@ -3175,6 +3215,37 @@ impl<'a> Compiler<'a> {
     /// game writes `callstatic CWScript log`. Treating "the script declares this
     /// name" as "it is a method on self" emitted `callmethod log self`, a member
     /// the VM has no slot for.
+    /// The parameter defaults of `method`, found by walking the script's own
+    /// class and then its ancestors.
+    ///
+    /// A bare call `f(...)` is a call on `self`, so the defaults come from
+    /// `self`'s class — not from the **unqualified** table, which has one entry
+    /// per name across the whole corpus and is therefore often a different
+    /// declaration. Measured on `CWFortSoldierWoundedScript.OnCellLoad`, whose
+    /// `SetRestrained()` is a call on an `Actor`:
+    ///
+    ///   source:  SetRestrained()
+    ///   game:    callmethod SetRestrained self ::NoneVar true
+    ///   ours:    callmethod SetRestrained self ::NoneVar
+    ///
+    /// `actor.psc` declares `SetRestrained(bool abRestrained = true)`, so the
+    /// default is `true` and the call is one operand short. The unqualified
+    /// table carries no default for the name at all.
+    fn method_defaults_in_chain(
+        &self,
+        method: &str,
+    ) -> Option<&'static [Option<(&'static str, &'static str)>]> {
+        let mut here = Some(self.script.name.to_ascii_lowercase());
+        for _ in 0..12 {
+            let Some(c) = here else { break };
+            if let Some(d) = crate::signatures::method_defaults(&c, method) {
+                return Some(d);
+            }
+            here = crate::signatures::parent(&c).map(str::to_string);
+        }
+        None
+    }
+
     fn class_is_self_or_ancestor(&self, class: &str) -> bool {
         if self.script.name.eq_ignore_ascii_case(class) {
             return true;
