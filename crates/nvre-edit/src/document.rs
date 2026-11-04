@@ -539,9 +539,22 @@ fn visit_mut<F: FnMut(&mut Node)>(node: &mut Node, f: &mut F) {
 fn apply_edits(r: &mut Record, edits: &[Edit]) {
     // Only touch the payload when a subrecord edit is queued: rebuilding the
     // subrecord list would re-serialize XXXX handling and could change bytes.
-    let needs_subs = edits
-        .iter()
-        .any(|e| matches!(e, Edit::SetSub { .. } | Edit::RemoveSub { .. }));
+    //
+    // Every variant that changes the subrecord *sequence*, not just one
+    // subrecord's bytes: `SetSubList` replaces every subrecord with a signature
+    // (a leveled list's entries, a creature's factions) and
+    // `SetSubrecordSequence` replaces a whole block. Missing one here would
+    // queue an edit the resolved record never shows — the edit would look lost
+    // in the editor and only appear on save.
+    let needs_subs = edits.iter().any(|e| {
+        matches!(
+            e,
+            Edit::SetSub { .. }
+                | Edit::RemoveSub { .. }
+                | Edit::SetSubList { .. }
+                | Edit::SetSubrecordSequence { .. }
+        )
+    });
     if needs_subs {
         match r.subrecords() {
             Ok(mut subs) => {

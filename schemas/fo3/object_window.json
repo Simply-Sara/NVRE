@@ -626,6 +626,68 @@
     "name": "Creature",
     "sections": [
      {
+      "subs": [
+       "EDID",
+       "FULL",
+       "SCRI"
+      ],
+      "tab": "General",
+      "title": "Identity"
+     },
+     {
+      "fields": {
+       "ACBS": [
+        "flags"
+       ]
+      },
+      "flags_bits": {
+       "ACBS.flags": [
+        9,
+        22,
+        26,
+        3,
+        20,
+        21,
+        27,
+        28,
+        30,
+        1
+       ]
+      },
+      "subs": [
+       "ACBS"
+      ],
+      "tab": "General",
+      "title": "Actor Flags"
+     },
+     {
+      "fields": {
+       "ACBS": [
+        "template_flags"
+       ]
+      },
+      "flags_bits": {
+       "ACBS.template_flags": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ]
+      },
+      "subs": [
+       "ACBS",
+       "TPLT"
+      ],
+      "tab": "General",
+      "title": "Template Data"
+     },
+     {
       "fields": {
        "DATA": [
         "type"
@@ -643,6 +705,27 @@
         "flags"
        ]
       },
+      "flags_bits": {
+       "ACBS.flags": [
+        0,
+        2,
+        4,
+        5,
+        6,
+        7,
+        11,
+        12,
+        15,
+        16,
+        17,
+        18,
+        19,
+        23,
+        24,
+        25,
+        29
+       ]
+      },
       "subs": [
        "ACBS"
       ],
@@ -653,13 +736,11 @@
       "fields": {
        "ACBS": [
         "karma",
-        "disposition_base",
-        "template_flags"
+        "disposition_base"
        ]
       },
       "subs": [
-       "ACBS",
-       "TPLT"
+       "ACBS"
       ],
       "tab": "Traits",
       "title": "Actor Base and Alignment"
@@ -826,6 +907,7 @@
      }
     ],
     "tabs": [
+     "General",
      "Traits",
      "Stats",
      "Factions",

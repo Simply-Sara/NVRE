@@ -16,7 +16,28 @@ use nvre_editor::game::GameProfile;
 use nvre_editor::panels::sections_on_tab;
 
 /// GECK's creature dialog, from geckwiki.com's Category:Creatures.
+///
+/// Thirteen tabs in GECK; the editor adds **General** in front of them, which is
+/// where GECK puts the identity and the flags a modder reaches for first.
 const GECK_TABS: [&str; 13] = [
+    "Traits",
+    "Stats",
+    "Factions",
+    "AI Data",
+    "AI Packages",
+    "Inventory",
+    "Actor Effect List",
+    "Animation",
+    "ModelList",
+    "Blood",
+    "Sounds",
+    "Destruction",
+    "Scripts",
+];
+
+/// The strip the editor draws: GECK's thirteen, with General in front.
+const EDITOR_TABS: [&str; 14] = [
+    "General",
     "Traits",
     "Stats",
     "Factions",
@@ -35,16 +56,23 @@ const GECK_TABS: [&str; 13] = [
 #[test]
 fn the_creature_page_has_gecks_tabs_in_gecks_order() {
     // The order is part of the answer: a modder looking for Factions looks between
-    // Stats and AI Data because that is where it has always been.
+    // Stats and AI Data because that is where it has always been. General is the
+    // one heading that is not GECK's, and it goes first.
     for id in ["fnv", "fo3"] {
         let schema = GameProfile::by_id(id)
             .unwrap_or_else(|| panic!("{id}"))
             .load_schema()
             .expect("the schema loads");
+        let tabs = schema.page_tabs("CREA");
         assert_eq!(
-            schema.page_tabs("CREA"),
-            GECK_TABS.to_vec(),
+            tabs,
+            EDITOR_TABS.to_vec(),
             "{id}: the creature page's tab strip"
+        );
+        assert_eq!(
+            &tabs[1..],
+            &GECK_TABS[..],
+            "{id}: GECK's own tabs, in GECK's order, behind General"
         );
     }
 }
@@ -234,6 +262,15 @@ fn every_field_of_a_narrowed_subrecord_is_named_somewhere_on_the_page() {
                 );
                 let named = narrowed.entry(sub.as_str()).or_default();
                 for p in paths {
+                    // A flags word is one leaf, so two tabs narrowing it is the
+                    // split itself — `ACBS.flags` on General and on Traits is how
+                    // the bits are divided, and the bit-level rule is what keeps
+                    // that honest. It still counts as named: the word is on the
+                    // page, and its bits are checked one level down.
+                    if flag_bits_of(&schema.resolve_def(&def_of(&schema, sub).ty), p).is_some() {
+                        named.insert(p.as_str());
+                        continue;
+                    }
                     assert!(
                         named.insert(p.as_str()),
                         "{id}: {sub}.{p} is named by more than one section on the same page"
@@ -266,6 +303,131 @@ fn every_field_of_a_narrowed_subrecord_is_named_somewhere_on_the_page() {
         checked > 0,
         "no page narrows a subrecord, so this proves nothing"
     );
+}
+
+/// Every bit of every split flags word is on exactly one tab.
+///
+/// The rule that replaces "a narrowed field is on one section" for a flags word,
+/// because a flags word is one leaf and can only be split by its **bits**. Two
+/// tabs may both narrow `ACBS.flags` — that is the split — but a bit named by
+/// both would be a checkbox on two tabs, and a bit named by neither would be
+/// uneditable everywhere with no "Everything else" band to catch it: the
+/// subrecord *is* named, so the band never fires.
+#[test]
+fn every_bit_of_a_split_flags_word_is_on_exactly_one_tab() {
+    for id in ["fnv", "fo3"] {
+        let schema = GameProfile::by_id(id)
+            .unwrap_or_else(|| panic!("{id}"))
+            .load_schema()
+            .expect("the schema loads");
+        let sections = schema.page_sections("CREA");
+        let record = schema.records.get("CREA").expect("CREA is in the schema");
+        // `subrecord.field` -> (bit, the tabs that name it).
+        let mut seen: std::collections::BTreeMap<String, Vec<(u32, String)>> =
+            std::collections::BTreeMap::new();
+        for section in &sections {
+            for (key, bits) in &section.flags_bits {
+                for bit in bits {
+                    seen.entry(key.clone()).or_default().push((
+                        *bit,
+                        section
+                            .tab
+                            .clone()
+                            .unwrap_or_else(|| "(every tab)".to_string()),
+                    ));
+                }
+            }
+        }
+        assert!(
+            !seen.is_empty(),
+            "{id}: the creature page splits no flags word, so this proves nothing"
+        );
+        for (key, hits) in &seen {
+            let (sub, path) = key.split_once('.').expect("a subrecord and a field");
+            let def = record
+                .subrecords
+                .get(sub)
+                .or_else(|| schema.common_subrecords.get(sub))
+                .unwrap_or_else(|| panic!("{id}: {sub}"));
+            let resolved = schema.resolve_def(&def.ty);
+            let all = flag_bits_of(&resolved, path)
+                .unwrap_or_else(|| panic!("{id}: {key} is not a flags field"));
+            let named: std::collections::BTreeSet<u32> =
+                hits.iter().map(|(bit, _)| *bit).collect();
+            let missing: Vec<u32> = all
+                .iter()
+                .map(|(bit, _)| *bit)
+                .filter(|bit| !named.contains(bit))
+                .collect();
+            assert!(
+                missing.is_empty(),
+                "{id}: {key} is split across tabs but bits {missing:?} are on none of \
+                 them — those checkboxes would be uneditable everywhere"
+            );
+            // And no bit on two tabs, which would be the same checkbox twice.
+            let mut dupes: Vec<u32> = Vec::new();
+            for bit in &named {
+                let tabs: Vec<&String> = hits
+                    .iter()
+                    .filter(|(b, _)| b == bit)
+                    .map(|(_, t)| t)
+                    .collect();
+                if tabs.len() > 1 {
+                    dupes.push(*bit);
+                }
+            }
+            assert!(
+                dupes.is_empty(),
+                "{id}: {key} puts bits {dupes:?} on more than one tab"
+            );
+        }
+    }
+}
+
+/// A subrecord's definition, from the record's own map or the shared one.
+fn def_of<'a>(
+    schema: &'a nvre_esm::Schema,
+    sub: &str,
+) -> &'a nvre_esm::schema::SubDef {
+    schema
+        .records
+        .get("CREA")
+        .and_then(|r| r.subrecords.get(sub))
+        .or_else(|| schema.common_subrecords.get(sub))
+        .unwrap_or_else(|| panic!("{sub} is not a subrecord of CREA"))
+}
+
+/// The named bits of the flags field at `path`, as `(bit, name)`.
+fn flag_bits_of(resolved: &nvre_esm::TypeDef, path: &str) -> Option<Vec<(u32, String)>> {
+    fn at(t: &nvre_esm::TypeDef, parts: &[&str]) -> Option<nvre_esm::TypeDef> {
+        let Some((part, rest)) = parts.split_first() else {
+            return Some(t.clone());
+        };
+        match t {
+            nvre_esm::TypeDef::Struct(fields) => {
+                let f = fields.iter().find(|f| f.name == *part)?;
+                at(&f.ty, rest)
+            }
+            nvre_esm::TypeDef::Union(variants) => {
+                for (_, v) in variants {
+                    if let Some(found) = at(v, parts) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    match at(resolved, &parts)? {
+        nvre_esm::TypeDef::Flags { bits, .. } => Some(bits),
+        _ => None,
+    }
 }
 
 /// Every dotted field path a type has, the way the grid addresses them.

@@ -1163,6 +1163,7 @@ pub fn sectioned_grid_on_tab(
                             &views[i],
                             &edited,
                             section.fields.get(&views[i].sig).map(Vec::as_slice),
+                            &section.flags_bits,
                             edit,
                         );
                     }
@@ -1198,7 +1199,17 @@ fn subrecord_rows(
     edited: &[[u8; 4]],
     edit: &mut FieldEdit,
 ) {
-    subrecord_rows_on_fields(ui, session, form_id, rec_sig, view, edited, None, edit);
+    subrecord_rows_on_fields(
+        ui,
+        session,
+        form_id,
+        rec_sig,
+        view,
+        edited,
+        None,
+        &std::collections::BTreeMap::new(),
+        edit,
+    );
 }
 
 /// The same, narrowed to the fields a section names.
@@ -1221,6 +1232,7 @@ fn subrecord_rows_on_fields(
     view: &nvre_edit::encode::SubView,
     edited: &[[u8; 4]],
     fields: Option<&[String]>,
+    flags_bits: &std::collections::BTreeMap<String, Vec<u32>>,
     edit: &mut FieldEdit,
 ) {
     let sig = sig4(&view.sig);
@@ -1287,7 +1299,19 @@ fn subrecord_rows_on_fields(
                     });
                 } else {
                     field_editor(
-                        ui, session, edit, form_id, view, rec_sig, &row.path, current,
+                        ui,
+                        session,
+                        edit,
+                        form_id,
+                        view,
+                        rec_sig,
+                        &row.path,
+                        current,
+                        // The bits this section shows for this field, when the
+                        // section split a flags word. `None` is the whole word.
+                        flags_bits
+                            .get(&format!("{}.{}", view.sig, row.path))
+                            .map(Vec::as_slice),
                     );
                 }
                 ui.end_row();
@@ -1398,6 +1422,7 @@ fn sig4(s: &str) -> [u8; 4] {
 /// flags object to a map of bit → bool. Editing goes through
 /// [`crate::session::Session::set_selected_field`], which re-encodes the whole
 /// subrecord; a refusal is shown in place and nothing is written.
+#[allow(clippy::too_many_arguments)]
 fn field_editor(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
@@ -1407,6 +1432,14 @@ fn field_editor(
     rec_sig: &[u8; 4],
     path: &str,
     current: &serde_json::Value,
+    // The bits of a flags field to draw, when the section split the word.
+    //
+    // `None` draws every named bit — the whole word, which is what every section
+    // that is not splitting one wants. `Some` draws only the listed bits, in the
+    // order listed, and a bit the section does not name is carried through
+    // untouched on the write: the number is re-derived from the checkboxes that
+    // *were* drawn, so a hidden bit survives on whichever tab owns it.
+    bits_shown: Option<&[u32]>,
 ) {
     // A field of a read-only subrecord is not editable either: the bytes cannot
     // be written back, so offering a widget would only mislead.
@@ -1551,7 +1584,17 @@ fn field_editor(
                     .map(str::to_string);
                 let mut next = raw;
                 let mut touched = false;
-                for (bit, name) in &bits {
+                // The bits this section draws. A section that split the word
+                // names its own subset, in its own order; every other section
+                // draws the whole word in bit order.
+                let shown: Vec<(u32, String)> = match bits_shown {
+                    Some(want) => want
+                        .iter()
+                        .filter_map(|b| bits.iter().find(|(bit, _)| bit == b).cloned())
+                        .collect(),
+                    None => bits.clone(),
+                };
+                for (bit, name) in &shown {
                     let on = next & (1 << bit) != 0;
                     let mut want = on;
                     if ui.checkbox(&mut want, name).changed() {

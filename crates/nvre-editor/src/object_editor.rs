@@ -606,18 +606,15 @@ pub fn ui(
     }
 
     egui::CentralPanel::default().show(&mut crate::panels::root_ui(ctx, "object_editor"), |ui| {
-        // Top Header
+        // Top Header: the record's identity, which every page shares and no page
+        // owns. The Editor ID, the name and the script are on the General tab
+        // rather than here — GECK puts them on the first tab of the dialog, and a
+        // header that repeated them would be two answers to the same question.
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 ui.strong(format!("Type: {}", nvre_util::tag_str(&state.sig)));
                 ui.separator();
                 ui.label(format!("FormID: {:08X}", state.form_id));
-                ui.separator();
-                ui.label("Editor ID:");
-                ui.add(egui::TextEdit::singleline(&mut state.edid).desired_width(180.0));
-                ui.separator();
-                ui.label("Name:");
-                ui.add(egui::TextEdit::singleline(&mut state.full_name).desired_width(170.0));
                 ui.separator();
                 header_flags_menu(ui, &mut state);
             });
@@ -627,11 +624,8 @@ pub fn ui(
                 ui.label("Model Path (.nif):");
                 ui.add(
                     egui::TextEdit::singleline(&mut state.model)
-                        .desired_width(ui.available_width() - 140.0),
+                        .desired_width(ui.available_width() - 20.0),
                 );
-                ui.separator();
-                ui.label("Script:");
-                formid_field(ui, "obj_script", &mut state.script);
             });
         });
 

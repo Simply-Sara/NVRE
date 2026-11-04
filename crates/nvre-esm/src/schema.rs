@@ -642,6 +642,22 @@ pub struct SectionDef {
     /// missing subrecord follows — so a `fields` entry may name a field only one
     /// game stores.
     pub fields: std::collections::BTreeMap<String, Vec<String>>,
+    /// Which bits of a flags field to show, per `subrecord.field` path.
+    ///
+    /// A flags word is **one leaf**: `ACBS.flags` is a single u32 that decodes to
+    /// `{value, set, unknown_bits}`, and `fields` can only name the whole leaf or
+    /// nothing. So a flags field narrowed on two tabs is the whole word on both,
+    /// with every checkbox on each — which is not a split, it is a duplicate.
+    ///
+    /// This map is what splits it. The key is `"<SUB>.<path>"` — `"ACBS.flags"` —
+    /// and the value is the list of bit numbers the section shows, in the order to
+    /// show them. A bit absent from the list is not drawn, and a bit the section
+    /// does not name is carried through untouched: the write re-derives the word
+    /// from the number, so a hidden bit survives on the tab that owns it.
+    ///
+    /// A section that names no bits for a path draws all of them, which is what
+    /// every section that is not splitting a flags word wants.
+    pub flags_bits: std::collections::BTreeMap<String, Vec<u32>>,
     /// A widget to draw this section's fields with, instead of the default.
     ///
     /// The escape hatch, and the reason a page does not have to be code the
@@ -1871,11 +1887,67 @@ impl Schema {
                     ));
                 }
             };
+            let flags_bits = match sec.get("flags_bits") {
+                None => std::collections::BTreeMap::new(),
+                Some(Json::Object(map)) => {
+                    let mut out = std::collections::BTreeMap::new();
+                    for (key, list) in map {
+                        // The key is `<SUB>.<path>`, so the split is at the first
+                        // dot — a subrecord signature is four bytes and a field
+                        // path may itself contain dots.
+                        let Some((sub, path)) = key.split_once('.') else {
+                            return Err(format!(
+                                "{owner}.sections[{i}].flags_bits names {key:?}, which is not \
+                                 a subrecord signature and a field path"
+                            ));
+                        };
+                        if sub.len() != 4 {
+                            return Err(format!(
+                                "{owner}.sections[{i}].flags_bits names {sub:?} in {key:?}, \
+                                 which is not a four-byte subrecord signature"
+                            ));
+                        }
+                        let Some(list) = list.as_array() else {
+                            return Err(format!(
+                                "{owner}.sections[{i}].flags_bits.{key} is not a list"
+                            ));
+                        };
+                        let mut bits = Vec::with_capacity(list.len());
+                        for b in list {
+                            let Some(bit) = b.as_u64() else {
+                                return Err(format!(
+                                    "{owner}.sections[{i}].flags_bits.{key} holds {b}, \
+                                     which is not a bit number"
+                                ));
+                            };
+                            if bit > 63 {
+                                return Err(format!(
+                                    "{owner}.sections[{i}].flags_bits.{key} names bit {bit}, \
+                                     which is past the end of a 64-bit word"
+                                ));
+                            }
+                            bits.push(bit as u32);
+                        }
+                        // The path is stored without its signature: the grid
+                        // addresses the field inside the subrecord it already
+                        // has, the same way `fields` does.
+                        out.insert(format!("{sub}.{path}"), bits);
+                    }
+                    out
+                }
+                Some(_) => {
+                    return Err(format!(
+                        "{owner}.sections[{i}].flags_bits is not an object of \
+                         subrecord.field -> bits"
+                    ));
+                }
+            };
             out.push(SectionDef {
                 title: title.to_string(),
                 subs: tags,
                 tab,
                 fields,
+                flags_bits,
                 widget,
             });
         }
@@ -1956,6 +2028,12 @@ impl Schema {
                     // game may narrow one subrecord and leave the rest whole.
                     for (sub, paths) in &section.fields {
                         existing.fields.insert(sub.clone(), paths.clone());
+                    }
+                    // The same for a flags word's bits: a game that splits one
+                    // across two tabs means its own subset on this tab, and
+                    // inheriting the template's would draw every checkbox twice.
+                    for (path, bits) in &section.flags_bits {
+                        existing.flags_bits.insert(path.clone(), bits.clone());
                     }
                     if section.tab.is_some() {
                         existing.tab = section.tab.clone();
@@ -2161,6 +2239,41 @@ impl Schema {
                 }
             }
         }
+        // A `flags_bits` key has to name a field the record actually has, and
+        // that field has to be a flags word. A typo — `ACBS.flag` for `ACBS.flags`,
+        // or `DATA.type` which is an enum — would silently draw nothing, and the
+        // section would look like it split a word it never touched.
+        for sig in self.object_window.categories.keys() {
+            let sig_bytes = sig4(sig);
+            for section in self.page_sections(sig) {
+                for key in section.flags_bits.keys() {
+                    let Some((sub, path)) = key.split_once('.') else {
+                        errs.push(format!(
+                            "object_window.categories.{sig} section {:?} names {key:?} in \
+                             flags_bits, which is not a subrecord and a field",
+                            section.title
+                        ));
+                        continue;
+                    };
+                    let sub_bytes = sig4(sub);
+                    let Some(def) = self.lookup_in_block(&sig_bytes, &sub_bytes, None) else {
+                        errs.push(format!(
+                            "object_window.categories.{sig} section {:?} names {sub} in \
+                             flags_bits, which is not a subrecord of {sig}",
+                            section.title
+                        ));
+                        continue;
+                    };
+                    if flags_at_path(&self.resolve_def(&def.ty), path).is_none() {
+                        errs.push(format!(
+                            "object_window.categories.{sig} section {:?} names {key:?} in \
+                             flags_bits, which is not a flags field of {sig}.{sub}",
+                            section.title
+                        ));
+                    }
+                }
+            }
+        }
         if errs.is_empty() {
             Ok(())
         } else {
@@ -2291,5 +2404,78 @@ mod tests {
         let r = s.records.get("ACHR").unwrap();
         assert_eq!(r.subrecords.len(), 1);
         assert!(r.subrecords.contains_key("OTHER"));
+    }
+}
+
+/// A four-byte subrecord signature, as the `[u8; 4]` the schema's lookups take.
+///
+/// A name that is not four bytes decodes to zeros, so every lookup below misses
+/// — the correct outcome for a name that should never occur.
+fn sig4(s: &str) -> [u8; 4] {
+    let b = s.as_bytes();
+    [
+        b.first().copied().unwrap_or(0),
+        b.get(1).copied().unwrap_or(0),
+        b.get(2).copied().unwrap_or(0),
+        b.get(3).copied().unwrap_or(0),
+    ]
+}
+
+/// The named bits of the flags field at `path` inside a resolved subrecord type.
+///
+/// `None` when the path does not name a flags field — which is what makes a
+/// `flags_bits` key a typo the schema can report rather than a section that
+/// silently draws nothing. The path is dotted, the same way the grid addresses
+/// a field, and a field name may itself contain a dot, so the **longest**
+/// matching prefix wins at each level.
+fn flags_at_path(resolved: &crate::TypeDef, path: &str) -> Option<Vec<(u32, String)>> {
+    fn at(t: &crate::TypeDef, parts: &[&str]) -> Option<crate::TypeDef> {
+        let Some((part, rest)) = parts.split_first() else {
+            return Some(t.clone());
+        };
+        match t {
+            crate::TypeDef::Struct(fields) => {
+                // The longest prefix that names a field, so a field whose own
+                // name holds a dot is reachable rather than split.
+                let mut best: Option<&crate::typedef::FieldDef> = None;
+                for f in fields {
+                    let n = f.name.len();
+                    if part.len() >= n
+                        && part.starts_with(&f.name)
+                        && best.is_none_or(|b| f.name.len() > b.name.len())
+                    {
+                        best = Some(f);
+                    }
+                }
+                let f = best?;
+                let rest_of_part = &part[f.name.len()..];
+                let next: Vec<&str> = if rest_of_part.is_empty() {
+                    rest.to_vec()
+                } else {
+                    let mut v = vec![rest_of_part.trim_start_matches('.')];
+                    v.extend_from_slice(rest);
+                    v
+                };
+                at(&f.ty, &next)
+            }
+            crate::TypeDef::Union(variants) => {
+                for (_, v) in variants {
+                    if let Some(found) = at(v, parts) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    match at(resolved, &parts)? {
+        crate::TypeDef::Flags { bits, .. } => Some(bits),
+        _ => None,
     }
 }

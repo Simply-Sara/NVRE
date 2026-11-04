@@ -31,8 +31,16 @@ pub fn open_master() -> Option<nvre_editor::session::Session> {
 }
 
 /// The record's subrecords, in file order.
+///
+/// Read through the session's **resolved** record, not the document's own: an
+/// edit made in the object editor is queued on the document rather than written
+/// into the record the file holds, so reading `doc.record()` directly sees the
+/// bytes as they were and never the edit. A test that asserts "the edit took"
+/// through this path fails against a correct editor.
 pub fn subs(s: &nvre_editor::session::Session, fid: u32) -> Vec<nvre_esm::Subrecord> {
-    let rec = s.doc.record(fid).expect("the record");
+    let rec = s
+        .resolved_record(fid)
+        .expect("the record resolves with its queued edits applied");
     rec.subrecords().expect("subrecords parse")
 }
 
