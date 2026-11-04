@@ -15,15 +15,17 @@ property that makes a new game cheap to add.
 
 The bucket table is the only judgement in here, and it is deliberately coarse: a
 signature whose meaning is obvious goes in its obvious bucket, and everything else
-falls into "Other" — which is where a hand-written page can improve on this one,
-and the reason the tool takes `--only` to regenerate a single type after someone
-edits its sections by hand.
+falls into "Other" — which is where a hand-edited page improves on this one.
+
+**This is a bootstrapper, not an owner.** It writes a page only for a record type
+that has no sections yet, so a page you have edited is never overwritten. Name a
+type with `--only` (or pass `--force`) to regenerate one on purpose.
 
 Usage:
 
-    tools/pages_from_schema.py --game fnv  --write
-    tools/pages_from_schema.py --game fo4  --write --only WEAP
     tools/pages_from_schema.py --game fnv          # report, change nothing
+    tools/pages_from_schema.py --game fnv --write  # fill in the pages that have none
+    tools/pages_from_schema.py --game fo4 --only WEAP --force --write  # redo one
 """
 
 import argparse
@@ -138,10 +140,10 @@ def main():
     ap.add_argument("--game", required=True,
                     choices=["fnv", "fo3", "skyrim", "skyrimse", "fo4"])
     ap.add_argument("--write", action="store_true")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite pages that already have sections")
     ap.add_argument("--only", action="append", default=None,
-                    help="regenerate only these signatures (repeatable)")
-    ap.add_argument("--keep", action="append", default=None,
-                    help="leave these signatures' sections alone (repeatable)")
+                    help="restrict to these signatures (repeatable)")
     args = ap.parse_args()
 
     table, order = buckets()
@@ -152,26 +154,37 @@ def main():
         return 1
     doc = json.loads(path.read_text())
     cats = doc.setdefault("object_window", {}).setdefault("categories", {})
-    keep = set(args.keep or []) | set(args.only or [])
+    only = set(args.only or [])
 
-    written = skipped = 0
+    written, kept = [], 0
     for sig, subs in sorted(records.items()):
+        if only and sig not in only:
+            continue
         cat = cats.setdefault(sig, {"group": "Miscellaneous"})
-        if args.only and sig not in keep:
+        # A page that already has sections was written by someone — an earlier run,
+        # or a person improving the headings. Overwriting it would throw that work
+        # away, which is the opposite of the point of moving pages into data. It is
+        # kept unless the run names the type or says `--force`.
+        if cat.get("sections") and not args.force and sig not in only:
+            kept += 1
             continue
-        if args.keep and sig in set(args.keep):
-            skipped += 1
-            continue
-        if sig in keep and args.only:
-            pass
         cat["sections"] = sections_for(subs, table, order)
-        written += 1
+        written.append(sig)
 
     if args.write:
         path.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
-        print(f"wrote {path}: {written} record types given sections", file=sys.stderr)
+        print(
+            f"wrote {path}: {len(written)} record types given sections, "
+            f"{kept} kept as they were",
+            file=sys.stderr,
+        )
     else:
-        print(f"would write {written} record types ({skipped} kept)", file=sys.stderr)
+        print(
+            f"would write {len(written)} record types, keep {kept}"
+            + (f": {', '.join(written[:8])}{'...' if len(written) > 8 else ''}"
+               if written else ""),
+            file=sys.stderr,
+        )
     return 0
 
 
