@@ -878,17 +878,21 @@ fn a_creature_with_no_template_still_gets_the_picker() {
 }
 
 #[test]
-fn the_object_bounds_are_edited_in_one_place_not_two() {
-    // `OBND` is drawn twice: the object editor's header owns it — the
-    // "Object Bounds (OBND)" group with its Min/Max drag values, shared by every
-    // record type that carries one — and the schema grid drew it again under
-    // "Everything else", because no section named it. Two widgets writing one
-    // subrecord is the failure this editor exists not to have: they can disagree,
-    // and whichever wrote last wins.
+fn the_object_bounds_and_the_model_path_live_on_the_model_list_tab() {
+    // The header used to carry the model path and the object bounds. Both are
+    // properties of the model rather than of the record, and a header is drawn
+    // on every tab of every record type that carries one — so both were on
+    // every page of the dialog. They are on the Model List tab now, beside the
+    // model's other subrecords.
     //
-    // The grid now leaves the header's own subrecords to the header. The bounds
-    // are still editable, exactly once, and the six numbers are not on the page
-    // twice.
+    // The header no longer writes them either, which is the part that matters
+    // more than the layout: the Model List tab edits them straight into the
+    // document, and `set_sub` *replaces* an existing edit for a subrecord. A
+    // header that still queued its own copy would overwrite whatever the tab
+    // had just changed, with the value it was loaded with — silently, on Apply.
+    //
+    // So the test is not only that they moved. It is that an edit made on the
+    // Model List tab survives an Apply that follows it.
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
@@ -896,43 +900,77 @@ fn the_object_bounds_are_edited_in_one_place_not_two() {
         state.raw_subs.contains_key(b"OBND"),
         "the fixture carries no OBND, so this proves nothing"
     );
-    state.tab.chosen = Some("General".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
-    // The header's own editor, which is where the bounds are edited.
-    assert!(
-        rows.iter().any(|(t, _)| t == "Object Bounds (OBND)"),
-        "the header's bounds editor is gone: {rows:?}"
-    );
-    assert!(
-        rows.iter().any(|(t, _)| t == "Min:") && rows.iter().any(|(t, _)| t == "Max:"),
-        "the Min/Max drag values are gone: {rows:?}"
-    );
-    // And the grid's copy is not. `min.x` and `max.z` are the field paths the
-    // schema's ObjectBounds struct produces, so they are what the duplicate
-    // looked like.
-    for path in ["min.x", "min.y", "min.z", "max.x", "max.y", "max.z"] {
+    // On the Model List tab, and not on any other.
+    state.tab.chosen = Some("ModelList".to_string());
+    let on_model_list =
+        placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    for want in [
+        "Model FileName",
+        "min.x",
+        "min.y",
+        "min.z",
+        "max.x",
+        "max.y",
+        "max.z",
+    ] {
         assert!(
-            !rows.iter().any(|(t, _)| t == path),
-            "the schema grid still draws {path:?} — the bounds are editable twice: {rows:?}"
+            on_model_list.iter().any(|(t, _)| t == want),
+            "{want:?} is not on the Model List tab: {on_model_list:?}"
         );
     }
-    // The subrecord is still writable through the header, which is the point:
-    // excluding it from the grid must not have made it read-only.
+
+    // The header is drawn above every page, so every other tab's rows include
+    // it. None of them may show the path or the bounds.
+    for tab in ["General", "Scripts", "Traits"] {
+        state.tab.chosen = Some(tab.to_string());
+        let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+        for gone in ["Model Path (.nif):", "Object Bounds (OBND)", "Min:", "Max:"] {
+            assert!(
+                !rows.iter().any(|(t, _)| t == gone),
+                "the {tab} tab still draws {gone:?} in the header: {rows:?}"
+            );
+        }
+    }
+
+    // And the header's own copy of the six numbers does not come back on Apply.
+    // `state.obnd_min` is loaded from the record and nothing draws it now, so
+    // its value is whatever the record already had — writing it would be a
+    // no-op on the bytes but would *replace* the Model List tab's edit in the
+    // document, which is the bug being ruled out.
+    state.tab.chosen = Some("ModelList".to_string());
     let before = payload(&subs(&session, BRAHMIN), b"OBND");
     assert_eq!(before.len(), 12, "OBND is twelve bytes: two Vec3i16");
-    state.obnd_min[0] = -1234;
-    state.obnd_max[2] = 4321;
+    let mut edited = before.clone();
+    edited[0..2].copy_from_slice(&(-1234i16).to_le_bytes());
+    edited[10..12].copy_from_slice(&(4321i16).to_le_bytes());
+    session.doc.set_sub(BRAHMIN, b"OBND", edited.clone());
+    // A model path edit, queued the same way the tab queues it.
+    let original_model = payload(&subs(&session, BRAHMIN), b"MODL");
+    session
+        .doc
+        .set_sub(BRAHMIN, b"MODL", b"foo\\bar.nif\0".to_vec());
+    // Now apply, which is what the Apply button does.
     state.save_to_session(&mut session);
+
     let after = payload(&subs(&session, BRAHMIN), b"OBND");
     assert_eq!(
         i16::from_le_bytes([after[0], after[1]]),
         -1234,
-        "min.x did not take: {after:02X?}"
+        "the bounds edit on the Model List tab was overwritten by the header: {after:02X?}"
     );
     assert_eq!(
         i16::from_le_bytes([after[10], after[11]]),
         4321,
-        "max.z did not take: {after:02X?}"
+        "max.z was overwritten by the header: {after:02X?}"
     );
+    let model_after = payload(&subs(&session, BRAHMIN), b"MODL");
+    assert_eq!(
+        model_after,
+        b"foo\\bar.nif\0".to_vec(),
+        "the model path edit on the Model List tab was overwritten by the header"
+    );
+    // And the subrecord is still writable at all — excluding it from the header
+    // must not have made it read-only.
+    assert_ne!(model_after, original_model, "the MODL edit did not take");
 }

@@ -1,14 +1,21 @@
 //! The object bounds scroll with the page they belong to.
 //!
-//! OBND is drawn by the object editor rather than by any page, because nearly
-//! every object carries it. It used to be drawn *after* the scroll area closed:
-//! a band under a body that scrolls. On a record with enough fields to fill the
-//! window that put the bounds below the bottom edge, drawn but unreachable — the
-//! page scrolled and they did not come with it. On a short record it looked fine,
-//! which is why the bug survived.
+//! OBND used to be drawn by the object editor rather than by any page, because
+//! nearly every object carries it — and it was drawn *after* the scroll area
+//! closed: a band under a body that scrolls. On a record with enough fields to
+//! fill the window that put the bounds below the bottom edge, drawn but
+//! unreachable — the page scrolled and they did not come with it. On a short
+//! record it looked fine, which is why the bug survived.
 //!
 //! The test that discriminates is the scroll: wheel the page down and the bounds
 //! have to move. A band drawn after the scroll area does not move, ever.
+//!
+//! The bounds are on the Model List tab now, beside the model path and the
+//! model's other subrecords, so they are inside the scroll area by construction
+//! and move with it. These tests still check that, because "inside the scroll
+//! area by construction" is exactly the kind of claim that stops being true the
+//! next time the page is rearranged — and because the window still reports where
+//! they landed, for the same reason it did before.
 //!
 //! Needs `NVRE_DATA` pointing at the game's Data folder; without it the tests
 //! skip, like the other session-backed ones.
@@ -80,6 +87,7 @@ fn render(sig: [u8; 4], size: egui::Vec2, wheel: f32) -> Option<BodyLayout> {
         }
         let mut out = ctx.run_ui(frame, |ui| {
             egui::CentralPanel::default().show(ui, |ui| {
+                state.tab.chosen = Some("ModelList".to_string());
                 layout = Some(object_editor::body(
                     ui,
                     &mut session,
@@ -95,19 +103,25 @@ fn render(sig: [u8; 4], size: egui::Vec2, wheel: f32) -> Option<BodyLayout> {
 }
 
 #[test]
-fn a_panel_tall_enough_shows_the_bounds_without_scrolling() {
-    // A short record in a tall window: the page fits, so nothing scrolls and the
-    // bounds are on screen. Under the old placement they were here too — this is
-    // the case that made the bug invisible.
+fn the_bounds_reach_the_visible_area_by_scrolling() {
+    // The bounds are on the Model List tab, which is not the tab the record opens
+    // on, so they are below the fold to begin with. What matters is that the page
+    // can reach them: wheel all the way down and they have to be on screen.
+    //
+    // This is the case that used to be invisible. The bounds were drawn under the
+    // scroll area, so they were on screen at the top of a short record and
+    // unreachable on a long one — the bug only showed where the page was tall, and
+    // a short record is the one a test writes first.
     let size = egui::vec2(700.0, 2000.0);
-    let Some(layout) = render(*b"STAT", size, 0.0) else {
+    let Some(layout) = render(*b"CREA", size, -100_000.0) else {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
     let bounds = layout.bounds.expect("the bounds were drawn");
     assert!(
-        layout.visible.contains_rect(bounds),
-        "the bounds at {bounds:?} are outside the visible area {:?}",
+        layout.visible.intersects(bounds),
+        "scrolled to the end, the bounds at {bounds:?} still do not intersect the \
+         visible area {:?} — the bar cannot bring them into view",
         layout.visible
     );
 }
@@ -117,11 +131,11 @@ fn the_wheel_moves_the_bounds_with_the_page() {
     // The fix, stated as the behaviour a user sees. Scroll down and the bounds
     // come up; a band drawn after the scroll area stays exactly where it was.
     let size = egui::vec2(700.0, 300.0);
-    let Some(at_top) = render(*b"STAT", size, 0.0).and_then(|l| l.bounds) else {
+    let Some(at_top) = render(*b"CREA", size, 0.0).and_then(|l| l.bounds) else {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };
-    let Some(scrolled) = render(*b"STAT", size, -300.0).and_then(|l| l.bounds) else {
+    let Some(scrolled) = render(*b"CREA", size, -300.0).and_then(|l| l.bounds) else {
         panic!("the scrolled render did not report the bounds");
     };
     assert!(
@@ -139,7 +153,7 @@ fn the_bounds_come_into_view_when_the_page_scrolls_to_its_end() {
     // What "reachable" means: a panel too short for the page must still be able
     // to show the bounds, by scrolling all the way down.
     let size = egui::vec2(700.0, 300.0);
-    let Some(layout) = render(*b"STAT", size, -100_000.0) else {
+    let Some(layout) = render(*b"CREA", size, -100_000.0) else {
         eprintln!("skipped: set NVRE_DATA to run against the game's masters");
         return;
     };

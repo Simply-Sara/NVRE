@@ -988,7 +988,7 @@ pub fn sectioned_grid(
     sections: &[nvre_esm::schema::SectionDef],
     edit: &mut FieldEdit,
 ) {
-    sectioned_grid_on_tab(ui, session, form_id, sections, None, edit)
+    sectioned_grid_on_tab(ui, session, form_id, sections, None, edit, None)
 }
 
 /// The tab strip above a tabbed page's body.
@@ -1064,6 +1064,7 @@ pub fn sectioned_grid_on_tab(
     sections: &[nvre_esm::schema::SectionDef],
     tab: Option<&str>,
     edit: &mut FieldEdit,
+    bounds_out: Option<&std::sync::Mutex<Option<egui::Rect>>>,
 ) {
     let Some(rec) = session.resolved_record(form_id) else {
         ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
@@ -1148,7 +1149,7 @@ pub fn sectioned_grid_on_tab(
             .collect();
         claimed.extend(named.iter().copied());
         ui.add_space(if si == 0 { 0.0 } else { 6.0 });
-        ui.group(|ui| {
+        let group = ui.group(|ui| {
             // The heading, unless the section says its rows name themselves.
             // The creature's Identity section is the case: "Editor ID", "Name"
             // and "Script" are already labels, so a heading reading "Identity"
@@ -1228,6 +1229,15 @@ pub fn sectioned_grid_on_tab(
                 }
             }
         });
+        // The object bounds live on the Model List tab now, and the window
+        // still wants to know where they landed — the same reason it knew
+        // before: a caller that needs to bring them into view should not have
+        // to search the page for them.
+        if section.subs.iter().any(|t| t == "OBND") {
+            if let Some(out) = bounds_out {
+                *out.lock().unwrap_or_else(|e| e.into_inner()) = Some(group.response.rect);
+            }
+        }
     }
     // "Everything else" is the subrecords no section names. The object editor's
     // header owns a few of them — the object bounds, the model, the script — and
@@ -1235,9 +1245,15 @@ pub fn sectioned_grid_on_tab(
     // be two widgets writing one subrecord. They are excluded rather than
     // hidden: a record whose page names nothing still gets everything else it
     // carries, and the header's own editor is where these are edited.
-    let header_owned: [&str; 3] = ["OBND", "MODL", "SCRI"];
+    // A subrecord is only left out of "Everything else" when some section
+    // already draws it — otherwise it would be unreachable. The creature's
+    // `MODL` and `OBND` are on its Model List tab, so a second copy under
+    // "Everything else" would be two widgets writing one subrecord. A `STAT`
+    // has no such tab and names neither, so hiding them would leave them
+    // uneditable with nothing saying so, which is the one failure this editor
+    // exists not to have.
     let rest: Vec<usize> = (0..views.len())
-        .filter(|i| !claimed.contains(i) && !header_owned.contains(&views[*i].sig.as_str()))
+        .filter(|i| !claimed.contains(i))
         .collect();
     if !rest.is_empty() {
         ui.add_space(6.0);

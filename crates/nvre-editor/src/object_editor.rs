@@ -151,6 +151,16 @@ pub trait EditorPage: Send + Sync {
     /// Called when the object editor opens a record, and again after a revert.
     fn load(&mut self, _session: &crate::session::Session, _form_id: u32, _sig: [u8; 4]) {}
 
+    /// Where the object bounds landed on screen, when this page drew them.
+    ///
+    /// The header used to draw them and report the rect; the Model List tab
+    /// draws them now, and a caller that wants to bring them into view should
+    /// not have to search the page to find them. `None` means the page did not
+    /// draw the bounds, which is the answer for every page but Model List.
+    fn bounds(&self) -> Option<egui::Rect> {
+        None
+    }
+
     /// Draw the page.
     ///
     /// `session` is mutable because a field edit goes straight into the document
@@ -224,11 +234,20 @@ impl EditorPage for GridPage {
 pub struct SectionPage {
     /// The grid's own widget state: the last field touched, and why it failed.
     edit: crate::panels::FieldEdit,
+    /// Where the object bounds landed, so the window can report it the way it
+    /// did when the header drew them. The page is a trait object, so the rect
+    /// travels out through this rather than a return value — and the trait is
+    /// `Sync`, so the cell is a `Mutex` rather than a `Cell`.
+    bounds: std::sync::Mutex<Option<egui::Rect>>,
 }
 
 impl EditorPage for SectionPage {
     fn name(&self) -> &str {
         "sections"
+    }
+
+    fn bounds(&self) -> Option<egui::Rect> {
+        *self.bounds.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     fn games(&self) -> &'static [&'static str] {
@@ -271,6 +290,7 @@ impl EditorPage for SectionPage {
             &sections,
             chosen.as_deref(),
             &mut self.edit,
+            Some(&self.bounds),
         );
     }
 }
@@ -530,21 +550,13 @@ impl ObjectEditorState {
                 .doc
                 .set_sub(fid, b"FULL", encode_zstring(&self.full_name));
         }
-        // The race's MODL belongs to its head-part collection rather than to the
-        // record's own model, so the header panel's model field does not apply.
-        if self.sig != *b"RACE" {
-            if self.raw_subs.contains_key(b"MODL") {
-                session.doc.set_sub(
-                    fid,
-                    b"MODL",
-                    encode_text_kept(self.raw_subs.get(b"MODL").map(|v| v.as_slice()), &self.model),
-                );
-            } else if !self.model.trim().is_empty() {
-                session
-                    .doc
-                    .set_sub(fid, b"MODL", encode_zstring(&self.model));
-            }
-        }
+        // Neither the model path nor the object bounds is written here. Both are
+        // edited on the Model List tab, and `set_sub` replaces an existing edit
+        // for a subrecord — so a save path that queued its own copy of either
+        // would overwrite what the tab had just changed, with the value it was
+        // loaded with. The header no longer draws them, so it no longer owns
+        // them. A `RACE`'s MODL belongs to its head-part collection rather than
+        // to the record's own model, which is a second reason it is not here.
         if let Some(s) = self.script {
             session.doc.set_sub(fid, b"SCRI", s.to_le_bytes().to_vec());
         }
@@ -566,16 +578,6 @@ impl ObjectEditorState {
         }
         session.doc.set_flags(fid, flags);
 
-        if self.raw_subs.contains_key(b"OBND") {
-            let mut obnd = vec![0u8; 12];
-            obnd[0..2].copy_from_slice(&self.obnd_min[0].to_le_bytes());
-            obnd[2..4].copy_from_slice(&self.obnd_min[1].to_le_bytes());
-            obnd[4..6].copy_from_slice(&self.obnd_min[2].to_le_bytes());
-            obnd[6..8].copy_from_slice(&self.obnd_max[0].to_le_bytes());
-            obnd[8..10].copy_from_slice(&self.obnd_max[1].to_le_bytes());
-            obnd[10..12].copy_from_slice(&self.obnd_max[2].to_le_bytes());
-            session.doc.set_sub(fid, b"OBND", obnd);
-        }
     }
 }
 
@@ -620,13 +622,18 @@ pub fn ui(
             });
 
             ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Model Path (.nif):");
-                ui.add(
-                    egui::TextEdit::singleline(&mut state.model)
-                        .desired_width(ui.available_width() - 20.0),
-                );
-            });
+            // The model path and the object bounds are not here. They are on the
+            // Model List tab, where the model's other subrecords live: a header
+            // that carried the path and the bounds beside the Type and FormID
+            // meant both were on every tab of every record type that has one,
+            // and both are properties of the model rather than of the record.
+            //
+            // The save path does not write them either. The Model List tab edits
+            // them straight into the document, and `set_sub` *replaces* an
+            // existing edit for a subrecord — so a header that still queued its
+            // own copy of the path would overwrite whatever the tab had just
+            // changed, with the value it was loaded with. The header no longer
+            // draws them, so it no longer owns them.
         });
 
         ui.add_space(6.0);
@@ -735,7 +742,6 @@ pub fn body(
     state: &mut ObjectEditorState,
     pages: &mut Pages,
 ) -> BodyLayout {
-    let mut bounds = None;
     let avail_h = (ui.available_height() - 48.0).max(200.0);
     let sig_key = String::from_utf8_lossy(&state.sig).into_owned();
     // A page name wins over sections, because a page is the more specific
@@ -754,9 +760,15 @@ pub fn body(
     let game = session.game.id;
     // The bar sits at the panel's right edge, not at the end of the widest
     // row — see [`crate::panels::vertical_scroll`].
+    let mut bounds = None;
     let shown = crate::panels::vertical_scroll("obj_scroll")
         .max_height(avail_h)
         .show(ui, |ui| {
+            let page: Option<&mut (dyn EditorPage + '_)> = match page_name.as_deref() {
+                Some(name) => pages.get(name),
+                None => pages.get("grid"),
+            };
+            bounds = page.and_then(|p| p.bounds());
             match page_name.as_deref() {
                 Some(name) => match pages.get(name) {
                     Some(page) if page.games().contains(&game) => {
@@ -801,33 +813,10 @@ pub fn body(
                 },
             }
 
-            // The object bounds are a shared subrecord: every type that carries
-            // one shows them here, so no page has to repeat them.
-            if state.raw_subs.contains_key(b"OBND") {
-                ui.add_space(6.0);
-                let group = ui.group(|ui| {
-                    ui.strong("Object Bounds (OBND)");
-                    ui.add_space(4.0);
-                    ui.horizontal(|ui| {
-                        ui.label("Min:");
-                        for i in 0..3 {
-                            ui.add(
-                                egui::DragValue::new(&mut state.obnd_min[i])
-                                    .range(-32768..=32767),
-                            );
-                        }
-                        ui.separator();
-                        ui.label("Max:");
-                        for i in 0..3 {
-                            ui.add(
-                                egui::DragValue::new(&mut state.obnd_max[i])
-                                    .range(-32768..=32767),
-                            );
-                        }
-                    });
-                });
-                bounds = Some(group.response.rect);
-            }
+            // The object bounds are not here. They are on the Model List tab,
+            // with the model path and the model's other subrecords, and the save
+            // path no longer queues them: `set_sub` replaces an existing edit,
+            // so a header writing its own copy would clobber the tab's.
         });
     BodyLayout {
         bounds,
