@@ -1125,6 +1125,27 @@ pub fn sectioned_grid_on_tab(
             // section belongs to the other game's table, not to this record.
             continue;
         }
+        // A subrecord the section names but the record does not carry still gets
+        // a row, because the game's own editor shows it: GECK's creature dialog
+        // is a fixed form, and the Template dropdown is there on a creature that
+        // has no `TPLT` — 428 of Fallout: New Vegas's 1,578 creatures, mostly
+        // the `AudioTemplate*` records — where a modder picks a template to give
+        // it one. Skipping it made the subrecord uneditable for them, since a
+        // subrecord nobody draws is a subrecord nobody can set.
+        //
+        // The rows are drawn inside the section's own group rather than in a
+        // group of their own: a creature without `TPLT` still has its ten
+        // template checkboxes to edit, and a second "Template Data" heading
+        // above one dropdown made the section look like it appeared twice.
+        //
+        // `set_sub` appends a subrecord the record does not have yet, so the
+        // write path already works once there is a widget to drive it.
+        let absent: Vec<[u8; 4]> = section
+            .subs
+            .iter()
+            .filter(|tag| !named.iter().any(|i| &views[*i].sig == *tag))
+            .filter_map(|tag| Some(sig4(tag)))
+            .collect();
         claimed.extend(named.iter().copied());
         ui.add_space(if si == 0 { 0.0 } else { 6.0 });
         ui.group(|ui| {
@@ -1134,6 +1155,37 @@ pub fn sectioned_grid_on_tab(
             // above them says nothing they did not.
             if !section.untitled {
                 ui.strong(&section.title);
+                ui.add_space(4.0);
+            }
+            // The subrecords the section names that this record does not carry,
+            // in the section's order, so the picker sits where the section puts
+            // it — above the template checkboxes it introduces.
+            for tag in &absent {
+                ui.horizontal(|ui| {
+                    ui.monospace(nvre_util::tag_str(tag));
+                    ui.weak("is not on this record");
+                });
+                // The picker for a subrecord the record does not carry yet, so a
+                // modder can give it one. The target list comes from the schema,
+                // the same way a present subrecord's does.
+                let targets = crate::object_editor::formid_targets_in(
+                    &session.schema,
+                    &rec_sig,
+                    tag,
+                    None,
+                    "",
+                );
+                let items = session.records_of_any(&targets);
+                let mut chosen: Option<u32> = None;
+                crate::object_editor::record_dropdown(
+                    ui,
+                    &format!("absent_{}", nvre_util::tag_str(tag)),
+                    &items,
+                    &mut chosen,
+                );
+                if let Some(fid) = chosen {
+                    session.doc.set_sub(form_id, tag, fid.to_le_bytes().to_vec());
+                }
                 ui.add_space(4.0);
             }
             match section.widget.as_deref() {

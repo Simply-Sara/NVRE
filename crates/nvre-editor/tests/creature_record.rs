@@ -769,3 +769,94 @@ fn placed_widgets(
     }
     rows
 }
+
+#[test]
+fn a_creature_with_no_template_still_gets_the_picker() {
+    // 428 of Fallout: New Vegas's 1,578 creatures carry no `TPLT` — mostly the
+    // `AudioTemplate*` records. The sectioned grid skips a subrecord the record
+    // does not carry, which is right for `VATS` on a Fallout 4 weapon and wrong
+    // here: GECK's creature dialog is a fixed form, and the Template dropdown is
+    // there on a creature with no template precisely so a modder can give it
+    // one. A subrecord nobody draws is a subrecord nobody can set, so those
+    // creatures had no way to gain a template at all.
+    //
+    // The picker is drawn, the record's other fields are still drawn, and
+    // picking one writes the subrecord the record did not have.
+    let Some((mut session, _)) = open_creature() else {
+        return;
+    };
+    // A creature with no TPLT, so the test is about the absent case rather than
+    // about the fixture, which happens to carry one.
+    let fid = session
+        .records_of(*b"CREA")
+        .iter()
+        .find(|(f, _)| {
+            session
+                .resolved_record(*f)
+                .and_then(|r| r.subrecords().ok())
+                .is_some_and(|s| !s.iter().any(|x| &x.sig == b"TPLT"))
+        })
+        .map(|(f, _)| *f)
+        .unwrap_or_else(|| panic!("every creature in the master carries a TPLT"));
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("General".to_string());
+
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let heading = rows
+        .iter()
+        .find(|(text, _)| text == "Template Data")
+        .map(|(_, y)| *y)
+        .unwrap_or_else(|| panic!("the Template Data section is not drawn: {rows:?}"));
+    let section: Vec<&(String, f32)> = rows
+        .iter()
+        .filter(|(_, y)| *y > heading)
+        .take_while(|(text, _)| text != "Everything else")
+        .collect();
+
+    // The picker is there, and it says why the row is unusual.
+    assert!(
+        section.iter().any(|(t, _)| t == "NONE"),
+        "no template picker on a creature with no TPLT: {section:?}"
+    );
+    assert!(
+        section.iter().any(|(t, _)| t == "is not on this record"),
+        "the absent subrecord is not marked as such: {section:?}"
+    );
+    // And the ten template checkboxes are still drawn — skipping the section
+    // would have taken them with it.
+    for want in ["Traits", "Stats", "Script", "Inventory"] {
+        assert!(
+            section.iter().any(|(t, _)| t == want),
+            "the template checkbox {want:?} is gone: {section:?}"
+        );
+    }
+
+    // Picking one writes the subrecord the record did not have.
+    let donor = session
+        .records_of(*b"CREA")
+        .iter()
+        .find(|(f, _)| {
+            session
+                .resolved_record(*f)
+                .and_then(|r| r.subrecords().ok())
+                .is_some_and(|s| s.iter().any(|x| &x.sig == b"TPLT"))
+        })
+        .map(|(f, _)| *f)
+        .expect("a creature that carries a TPLT");
+    session.doc.set_sub(fid, b"TPLT", donor.to_le_bytes().to_vec());
+    let written = session
+        .resolved_record(fid)
+        .expect("the record resolves")
+        .subrecords()
+        .expect("subrecords parse")
+        .iter()
+        .find(|s| &s.sig == b"TPLT")
+        .map(|s| u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]));
+    assert_eq!(
+        written,
+        Some(donor),
+        "the picker's choice did not land on the record"
+    );
+}
