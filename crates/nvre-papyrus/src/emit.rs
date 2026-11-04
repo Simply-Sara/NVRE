@@ -1333,7 +1333,7 @@ impl<'a> Compiler<'a> {
                 let start = buf.here();
                 let c = self.expr(buf, cond, *line)?;
                 let mut ins = Instruction::new(opcode_of("jmpf"));
-                ins.args.push(c);
+                ins.args.push(c.clone());
                 let at = buf.here();
                 ins.args.push(Value::Int(0));
                 buf.push(ins, *line);
@@ -1350,6 +1350,15 @@ impl<'a> Compiler<'a> {
                 if let Value::Int(v) = &mut buf.instructions[at].args[1] {
                     *v = after as i32 - at as i32;
                 }
+                // The condition's temporary is dead once the loop is emitted, and
+                // the CK hands it straight back out: measured on
+                // `ArenaScript.PickNextWagerFight`, where the loop's second
+                // condition test reuses the `RandomInt` result's slot
+                // (`cmp_eq ::temp24 fightIndex lastFightIndex`) rather than taking
+                // a fresh one. Not releasing it left the counter one high for the
+                // rest of the function — and, because the counter is script-wide,
+                // for every function after it in the file.
+                self.release_temp(buf, &c);
                 Ok(())
             }
         }
