@@ -596,104 +596,7 @@ pub fn ui(
 
         ui.add_space(6.0);
 
-        // The body is the schema's answer, not the editor's own map: the
-        // object-window table names the page for this record type, and the
-        // registry holds it. A signature the table names a page for gets that
-        // page; a signature it names **no** page for gets the schema grid, which
-        // is every field the layout declares and nothing a game has to be named
-        // to see.
-        //
-        // A page also declares which games it is correct for, and a page served
-        // to a game it does not fit is a message rather than a silently wrong
-        // form: a page written against Fallout: New Vegas's byte offsets would
-        // read garbage from Fallout 4's record of the same signature.
-        //
-        // The name is cloned out of the schema before the page borrows the
-        // session mutably, so the lookup does not hold a borrow across it.
-        let avail_h = (ui.available_height() - 48.0).max(200.0);
-        let sig_key = String::from_utf8_lossy(&state.sig).into_owned();
-        // A page name wins over sections, because a page is the more specific
-        // answer: it exists for the record types whose editing is not "show the
-        // fields" — a leveled list needs rows added and removed, a package needs
-        // its block list — and sections cannot express that. Everything else is
-        // described by its sections, which is the default and the majority.
-        let category = session.schema.object_window.categories.get(&sig_key);
-        let named = category.and_then(|c| c.editor.clone());
-        let described = named.is_none() && session.schema.page_is_described(&sig_key);
-        let page_name: Option<String> = if described {
-            Some("sections".to_string())
-        } else {
-            named
-        };
-        let game = session.game.id;
-        // The bar sits at the panel's right edge, not at the end of the widest
-        // row — see [`crate::panels::vertical_scroll`].
-        crate::panels::vertical_scroll("obj_scroll")
-            .max_height(avail_h)
-            .show(ui, |ui| match page_name.as_deref() {
-                Some(name) => match pages.get(name) {
-                    Some(page) if page.games().contains(&game) => {
-                        page.ui(ui, &mut session, &mut state)
-                    }
-                    // The page exists but is not for this game. Say which games
-                    // it is for, so the fix (name a page this game has, or write
-                    // one) is visible in the message.
-                    Some(page) => {
-                        ui.colored_label(
-                            ui.visuals().error_fg_color,
-                            format!(
-                                "the schema names page {name:?} for {}, and that page is \
-                                 only for {}",
-                                session.game.name,
-                                page.games().join(", ")
-                            ),
-                        );
-                    }
-                    // A page name the registry does not know is a table typo;
-                    // say so rather than silently showing nothing.
-                    None => {
-                        ui.colored_label(
-                            ui.visuals().error_fg_color,
-                            format!(
-                                "the schema names editor block {name:?}, which is not registered"
-                            ),
-                        );
-                    }
-                },
-                // No page named: the schema grid. This is the case for every
-                // record type in a game whose pages have not been written yet,
-                // and for a signature no game has a page for at all.
-                None => match pages.get("grid") {
-                    Some(page) => page.ui(ui, &mut session, &mut state),
-                    None => {
-                        ui.colored_label(
-                            ui.visuals().error_fg_color,
-                            "the schema grid is not registered",
-                        );
-                    }
-                },
-            });
-
-        // The object bounds are a shared subrecord: every type that
-        // carries one shows them here, so no page has to repeat them.
-        if state.raw_subs.contains_key(b"OBND") {
-            ui.add_space(6.0);
-            ui.group(|ui| {
-                ui.strong("Object Bounds (OBND)");
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.label("Min:");
-                    for i in 0..3 {
-                        ui.add(egui::DragValue::new(&mut state.obnd_min[i]).range(-32768..=32767));
-                    }
-                    ui.separator();
-                    ui.label("Max:");
-                    for i in 0..3 {
-                        ui.add(egui::DragValue::new(&mut state.obnd_max[i]).range(-32768..=32767));
-                    }
-                });
-            });
-        }
+        let _ = body(ui, &mut session, &mut state, &mut pages);
 
         ui.separator();
 
@@ -733,6 +636,169 @@ pub fn ui(
             }
         }
     });
+}
+
+/// What [`body`] drew, so a caller can act on it without reaching into egui's
+/// widget store for an id it would have to guess.
+///
+/// The window ignores this; the tests use it. It is also the natural place for a
+/// future "scroll to the bounds" button that does not want to search the page.
+#[derive(Clone, Copy, Debug)]
+pub struct BodyLayout {
+    /// Where the bounds group landed on screen, when the record carries one.
+    pub bounds: Option<egui::Rect>,
+    /// The window's visible part of the scroll area, on screen.
+    ///
+    /// A widget whose rect is outside this is drawn but cannot be seen: it is
+    /// scrolled out of view, above or below. That is the difference between a
+    /// group inside the page — reachable by scrolling — and one drawn under the
+    /// page, which no scroll ever brings into view.
+    pub visible: egui::Rect,
+    /// The page's full size, including the part scrolled out of view.
+    ///
+    /// This is what the scroll bar's handle is proportional to, and — the reason
+    /// it is reported — it is what proves a widget is *in* the page. A group
+    /// drawn after the scroll area closed is not counted in the page's height at
+    /// all, so it sits below this rect and the bar never scrolls to it.
+    pub content_size: egui::Vec2,
+}
+
+impl Default for BodyLayout {
+    fn default() -> Self {
+        Self {
+            bounds: None,
+            visible: egui::Rect::ZERO,
+            content_size: egui::Vec2::ZERO,
+        }
+    }
+}
+
+/// The record's body: the page for its type, then the object bounds.
+///
+/// The body is the schema's answer, not the editor's own map: the
+/// object-window table names the page for this record type, and the registry
+/// holds it. A signature the table names a page for gets that page; a signature
+/// it names **no** page for gets the schema grid, which is every field the
+/// layout declares and nothing a game has to be named to see.
+///
+/// A page also declares which games it is correct for, and a page served to a
+/// game it does not fit is a message rather than a silently wrong form: a page
+/// written against Fallout: New Vegas's byte offsets would read garbage from
+/// Fallout 4's record of the same signature.
+///
+/// **Everything here scrolls together.** The object bounds are the last thing
+/// *inside* the scroll area, not a band pinned under it. Pinned, a page with many
+/// sections pushed them past the window's bottom edge, where they were drawn but
+/// unreachable: the page scrolled and the bounds stayed put, out of view. Inside,
+/// they follow the fields they belong to.
+///
+/// Broader than the window's own `ui` so a test can render the body into a bare
+/// `egui::Context` and read back where the bounds landed.
+pub fn body(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    state: &mut ObjectEditorState,
+    pages: &mut Pages,
+) -> BodyLayout {
+    let mut bounds = None;
+    let avail_h = (ui.available_height() - 48.0).max(200.0);
+    let sig_key = String::from_utf8_lossy(&state.sig).into_owned();
+    // A page name wins over sections, because a page is the more specific
+    // answer: it exists for the record types whose editing is not "show the
+    // fields" — a leveled list needs rows added and removed, a package needs its
+    // block list — and sections cannot express that. Everything else is
+    // described by its sections, which is the default and the majority.
+    let category = session.schema.object_window.categories.get(&sig_key);
+    let named = category.and_then(|c| c.editor.clone());
+    let described = named.is_none() && session.schema.page_is_described(&sig_key);
+    let page_name: Option<String> = if described {
+        Some("sections".to_string())
+    } else {
+        named
+    };
+    let game = session.game.id;
+    // The bar sits at the panel's right edge, not at the end of the widest
+    // row — see [`crate::panels::vertical_scroll`].
+    let shown = crate::panels::vertical_scroll("obj_scroll")
+        .max_height(avail_h)
+        .show(ui, |ui| {
+            match page_name.as_deref() {
+                Some(name) => match pages.get(name) {
+                    Some(page) if page.games().contains(&game) => {
+                        page.ui(ui, session, state)
+                    }
+                    // The page exists but is not for this game. Say which games
+                    // it is for, so the fix (name a page this game has, or write
+                    // one) is visible in the message.
+                    Some(page) => {
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            format!(
+                                "the schema names page {name:?} for {}, and that page is \
+                                 only for {}",
+                                session.game.name,
+                                page.games().join(", ")
+                            ),
+                        );
+                    }
+                    // A page name the registry does not know is a table typo;
+                    // say so rather than silently showing nothing.
+                    None => {
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            format!(
+                                "the schema names editor block {name:?}, which is not registered"
+                            ),
+                        );
+                    }
+                },
+                // No page named: the schema grid. This is the case for every
+                // record type in a game whose pages have not been written yet,
+                // and for a signature no game has a page for at all.
+                None => match pages.get("grid") {
+                    Some(page) => page.ui(ui, session, state),
+                    None => {
+                        ui.colored_label(
+                            ui.visuals().error_fg_color,
+                            "the schema grid is not registered",
+                        );
+                    }
+                },
+            }
+
+            // The object bounds are a shared subrecord: every type that carries
+            // one shows them here, so no page has to repeat them.
+            if state.raw_subs.contains_key(b"OBND") {
+                ui.add_space(6.0);
+                let group = ui.group(|ui| {
+                    ui.strong("Object Bounds (OBND)");
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        ui.label("Min:");
+                        for i in 0..3 {
+                            ui.add(
+                                egui::DragValue::new(&mut state.obnd_min[i])
+                                    .range(-32768..=32767),
+                            );
+                        }
+                        ui.separator();
+                        ui.label("Max:");
+                        for i in 0..3 {
+                            ui.add(
+                                egui::DragValue::new(&mut state.obnd_max[i])
+                                    .range(-32768..=32767),
+                            );
+                        }
+                    });
+                });
+                bounds = Some(group.response.rect);
+            }
+        });
+    BodyLayout {
+        bounds,
+        visible: shown.inner_rect,
+        content_size: shown.content_size,
+    }
 }
 
 /// The record header's flags, as a menu of the bits the schema names.
