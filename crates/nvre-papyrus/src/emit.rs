@@ -1812,6 +1812,22 @@ impl<'a> Compiler<'a> {
     ///
     /// A parameter with **no** default is never padded: the source was required
     /// to supply it, and filling in a value there would be invention.
+    /// A declared default as the value the instruction carries.
+    ///
+    /// `bool abMovement = true` becomes `Value::Bool(true)`; a `str` default is
+    /// interned. `None` for a kind this does not know, so the caller can stop
+    /// rather than emit a wrong literal.
+    fn default_value(&mut self, kind: &str, text: &str) -> Option<Value> {
+        Some(match kind {
+            "bool" => Value::Bool(text == "true"),
+            "none" => Value::None,
+            "int" => Value::Int(text.parse::<i32>().ok()?),
+            "float" => Value::Float(text.parse::<f32>().ok()?),
+            "str" => Value::String(self.intern(text)),
+            _ => return None,
+        })
+    }
+
     fn pad_defaults(
         &mut self,
         mut args: Vec<Value>,
@@ -1846,19 +1862,8 @@ impl<'a> Compiler<'a> {
         for slot in slots.iter().skip(args.len()) {
             let Some((kind, text)) = slot else { break };
             let (kind, text) = (kind.as_str(), text.as_str());
-            let v = match kind {
-                "bool" => Value::Bool(text == "true"),
-                "none" => Value::None,
-                "int" => match text.parse::<i32>() {
-                    Ok(n) => Value::Int(n),
-                    Err(_) => break,
-                },
-                "float" => match text.parse::<f32>() {
-                    Ok(f) => Value::Float(f),
-                    Err(_) => break,
-                },
-                "str" => Value::String(self.intern(text)),
-                _ => break,
+            let Some(v) = self.default_value(kind, text) else {
+                break;
             };
             args.push(v);
         }
@@ -1925,7 +1930,13 @@ impl<'a> Compiler<'a> {
             buf.push(ins, line);
             return Value::Identifier(t);
         }
-        let have = self.value_type(buf, &value);
+        // An unknown source type is not evidence of a conversion — see
+        // `known_type`. The fallback `value_type` gives for an undeclared name
+        // is `Int`/`Float`, and reading that as knowledge invents casts the CK
+        // does not emit.
+        let Some(have) = self.known_type(buf, &value) else {
+            return value;
+        };
         if have.eq_ignore_ascii_case(want) || have.eq_ignore_ascii_case("var") {
             return value;
         }
@@ -1991,6 +2002,103 @@ impl<'a> Compiler<'a> {
         Value::Identifier(t)
     }
 
+    /// Where each argument goes, when the source named some of them.
+    ///
+    /// `Game.DisablePlayerControls(abMovement = false, abMenu = false,
+    /// abActivate = false, abFighting = true)` writes **all nine** parameters of
+    /// the declaration: the four named values at their declared slots and the
+    /// other five at their defaults. Passing the four positionally puts `false`
+    /// in `abMovement` and `false` in `abFighting`, so the call runs with the
+    /// wrong booleans — a behaviour bug, not a numbering one.
+    ///
+    /// Returns `None` when no argument is named (the common case, and the one
+    /// that must not pay for a table lookup), or when the callee's parameter
+    /// names are unknown — in which case the positional reading is the only one
+    /// available and is left alone rather than guessed at.
+    ///
+    /// An unnamed argument fills the lowest slot not already taken by a name, in
+    /// source order, which is what the language specifies and what the corpus
+    /// shows: `ShowGiftMenu(abGivingGift = true, akSpeaker = None, …)` mixes the
+    /// two.
+    fn named_positions(
+        names: &[Option<String>],
+        class: &str,
+        function: &str,
+    ) -> Option<Vec<usize>> {
+        if names.iter().all(Option::is_none) {
+            return None;
+        }
+        let declared = crate::paramnames::param_names(class, function)?;
+        let mut slots: Vec<Option<usize>> = vec![None; names.len()];
+        let mut taken = vec![false; declared.len()];
+        for (i, name) in names.iter().enumerate() {
+            if let Some(n) = name {
+                let lower = n.to_ascii_lowercase();
+                let at = declared.iter().position(|d| *d == lower)?;
+                if taken[at] {
+                    return None;
+                }
+                taken[at] = true;
+                slots[i] = Some(at);
+            }
+        }
+        let mut next = 0usize;
+        for slot in slots.iter_mut() {
+            if slot.is_some() {
+                continue;
+            }
+            while next < taken.len() && taken[next] {
+                next += 1;
+            }
+            if next >= taken.len() {
+                return None;
+            }
+            taken[next] = true;
+            *slot = Some(next);
+            next += 1;
+        }
+        slots.into_iter().collect()
+    }
+
+    /// Reorder `values` so slot `k` holds the argument the source put there,
+    /// filling any skipped slot from the declaration's default.
+    ///
+    /// A named argument can skip over parameters, and the `.pex` still writes
+    /// them: `DisablePlayerControls(abMovement = false, abMenu = false,
+    /// abActivate = false, abFighting = true)` writes nine values, five of them
+    /// defaults. So the hole is not "no value" — it is the declared default, and
+    /// inserting `None` there produced `cast ::temp10 None` into a `bool` slot.
+    ///
+    /// `None` means the call cannot be placed this way — an unknown parameter
+    /// name, a repeated one, or a skipped parameter with no default to fill it —
+    /// and the caller keeps the positional reading rather than guessing.
+    fn place_named(
+        &mut self,
+        values: Vec<Value>,
+        names: &[Option<String>],
+        class: &str,
+        function: &str,
+        defaults: Option<&'static [Option<(&'static str, &'static str)>]>,
+    ) -> Option<Vec<Value>> {
+        let slots = Self::named_positions(names, class, function)?;
+        let width = slots.iter().copied().max().map(|m| m + 1).unwrap_or(0);
+        let mut out: Vec<Option<Value>> = vec![None; width];
+        for (v, at) in values.into_iter().zip(slots) {
+            out[at] = Some(v);
+        }
+        let mut filled = Vec::with_capacity(width);
+        for (i, slot) in out.into_iter().enumerate() {
+            match slot {
+                Some(v) => filled.push(v),
+                None => {
+                    let (kind, text) = defaults?.get(i).copied().flatten()?;
+                    filled.push(self.default_value(kind, text)?);
+                }
+            }
+        }
+        Some(filled)
+    }
+
     /// An argument list, evaluated in two phases.
     ///
     /// **Phase 1 evaluates every argument, left to right. Phase 2 applies the
@@ -2032,14 +2140,27 @@ impl<'a> Compiler<'a> {
         &mut self,
         buf: &mut FnBuf,
         args: &[Expr],
+        names: &[Option<String>],
         line: u16,
+        class: &str,
         method: &str,
+        defaults: Option<&'static [Option<(&'static str, &'static str)>]>,
         want: impl Fn(usize) -> Option<&'static str>,
     ) -> Result<Vec<Value>, Error> {
         let mut values = Vec::with_capacity(args.len());
         for a in args {
             values.push(self.expr(buf, a, line)?);
         }
+        // Named arguments go to their DECLARED slots, so the reordering happens
+        // before the conversions — `want(i)` is the type at position `i` of the
+        // declaration, and after this the value at `i` is the one that belongs
+        // there.
+        let mut values = match self.place_named(values.clone(), names, class, method, defaults) {
+            Some(placed) => placed,
+            // Unplaceable: keep the positional reading, which is what the
+            // source looks like when no name was written.
+            None => values,
+        };
         for (i, v) in values.iter_mut().enumerate() {
             if let Some(w) = want(i) {
                 *v = self.coerce_arg(buf, v.clone(), w, line);
@@ -2048,7 +2169,41 @@ impl<'a> Compiler<'a> {
         Ok(values)
     }
 
-    /// The declared class of a name used as a receiver, looking through the
+    /// A value's type when the compiler actually **knows** it, or `None`.
+    ///
+    /// [`Self::value_type`] has to answer *something* — it feeds opcode choice
+    /// and the arithmetic result type — so an identifier with no declaration
+    /// falls back to `Int`/`Float`. A conversion must not read that fallback as
+    /// knowledge: the CK casts only when it can see a conversion is needed, and
+    /// guessing from a made-up type invents casts.
+    ///
+    /// Measured on `batteringtrap::fireTrap`, `if fireOnlyOnce` where
+    /// `fireOnlyOnce` is a `bool` property the type table does not carry: the
+    /// game writes `cmp_eq ::temp2 ::fireOnlyOnce_var true` with no cast, and
+    /// treating the fallback `Float` as the source type emitted
+    /// `cast ::temp2 ::fireOnlyOnce_var` first — which also consumed a slot.
+    fn known_type(&self, buf: &FnBuf, v: &Value) -> Option<String> {
+        match v {
+            Value::Float(_) => Some("Float".to_string()),
+            Value::Int(_) => Some("Int".to_string()),
+            Value::Bool(_) => Some("Bool".to_string()),
+            Value::String(_) => Some("String".to_string()),
+            Value::Identifier(i) => {
+                if self
+                    .strings
+                    .get(*i as usize)
+                    .map(|s| s.eq_ignore_ascii_case("self"))
+                    .unwrap_or(false)
+                {
+                    return Some(self.script.name.clone());
+                }
+                self.declared_type(buf, *i)
+            }
+            _ => None,
+        }
+    }
+
+    /// The declared type of a name used as a receiver, looking through the
     /// function scope first and the script scope second.
     fn receiver_class(&self, buf: &FnBuf, name: &str) -> Option<String> {
         let lower = name.to_ascii_lowercase();
@@ -2325,9 +2480,18 @@ impl<'a> Compiler<'a> {
                         |t: &str| t.eq_ignore_ascii_case("int") || t.eq_ignore_ascii_case("float");
                     num(&lt) && num(&rt)
                 };
-                if is_cmp || (is_arith && numeric_pair) {
-                    let lt = self.value_type(buf, &l);
-                    let rt = self.value_type(buf, &r);
+                // A comparison or a numeric operation converts an operand only
+                // when both sides' types are **known**. `value_type` has to
+                // answer something and falls back to `Int`/`Float`, so an
+                // untyped operand (a property the tables do not carry) used to
+                // look numeric and got a `cast` the CK does not emit:
+                // `if fireOnlyOnce` in `batteringtrap::fireTrap` is
+                // `cmp_eq ::temp2 ::fireOnlyOnce_var true`, and casting the
+                // variable to Bool first both invented an instruction and took a
+                // slot.
+                let known = self.known_type(buf, &l).zip(self.known_type(buf, &r));
+                if (is_cmp || (is_arith && numeric_pair)) && known.is_some() {
+                    let (lt, rt) = known.unwrap();
                     // Compared case-insensitively: a local's declared type is
                     // interned as the source spelled it (`int`) while a literal
                     // yields the canonical `Int`, and an exact compare made
@@ -2514,7 +2678,7 @@ impl<'a> Compiler<'a> {
                 let _ = ty;
                 Value::Identifier(tmp)
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, names } => {
                 // Three shapes, and which one it is decides the opcode:
                 //   `f(...)`            — callmethod on self
                 //   `a.f(...)`          — callmethod on `a`
@@ -2538,7 +2702,7 @@ impl<'a> Compiler<'a> {
                             // each argument's slot conversion after the list —
                             // see `call_args`. Positions in the vararg list stay
                             // in source order either way.
-                            let va = self.call_args(buf, args, line, name, |i| {
+                            let va = self.call_args(buf, args, names, line, &own, name, defs, |i| {
                                 crate::signatures::arg_type(&own, name, i)
                             })?;
                             ins.varargs = self.pad_defaults(va, defs, name);
@@ -2600,7 +2764,7 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::method_signature(cls, name)
                                     .map(|(_, d)| d)
                                     .or_else(|| crate::signatures::defaults(name));
-                                let va = self.call_args(buf, args, line, name, |i| {
+                                let va = self.call_args(buf, args, names, line, cls, name, defs, |i| {
                                     crate::signatures::arg_type(cls, name, i)
                                 })?;
                                 ins.varargs = self.pad_defaults(va, defs, name);
@@ -2639,10 +2803,10 @@ impl<'a> Compiler<'a> {
                         // A bare `f(...)` evaluates its arguments left to right
                         // like every other path — the earlier note that it
                         // differed was a fitted artifact. See `call_args`.
-                        let dealt = self.call_args(buf, args, line, name, |i| {
+                        let defs = crate::signatures::defaults(name);
+                        let dealt = self.call_args(buf, args, names, line, &own, name, defs, |i| {
                             crate::signatures::arg_type(&own, name, i)
                         })?;
-                        let defs = crate::signatures::defaults(name);
                         ins.varargs = self.pad_defaults(dealt, defs, name);
                         let released: Vec<Value> = ins.varargs.clone();
                         buf.push(ins, line);
@@ -2735,7 +2899,7 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::defaults(method);
                                 let cls = class.to_ascii_lowercase();
                                 let sig = crate::signatures::method_params(&cls, method);
-                                let va = self.call_args(buf, args, line, method, |i| {
+                                let va = self.call_args(buf, args, names, line, &cls, method, defs, |i| {
                                     sig.and_then(|s| s.get(i).copied())
                                 })?;
                                 ins.varargs = self.pad_defaults(va, defs, method);
@@ -2816,7 +2980,7 @@ impl<'a> Compiler<'a> {
                         // Converting inline put a bare property's cast before the
                         // next argument's `propget`, shifting every later
                         // temporary: `AnimalTrainerSystemScript::BuyAnimal`.
-                        let va = self.call_args(buf, args, line, method, |i| {
+                        let va = self.call_args(buf, args, names, line, class, method, defs, |i| {
                             crate::signatures::arg_type(class, method, i)
                         })?;
                         // Omitted trailing arguments are written out, not

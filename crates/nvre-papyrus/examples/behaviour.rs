@@ -226,9 +226,17 @@ fn main() {
                             .unwrap_or(false)
                     })
                     .and_then(|(_, fs)| {
+                        // Case-insensitively: Papyrus resolves names that way, and
+                        // the string table keeps whichever spelling it interned
+                        // first, so a function declared `OnActivate` can be stored
+                        // as `onActivate`. A case-sensitive match reported 62 of
+                        // the 92 "function absent" as missing when they were
+                        // present under the other spelling.
                         fs.iter().find(|f| {
-                            c.strings.get(f.name as usize).map(String::as_str)
-                                == Some(gname.as_str())
+                            c.strings
+                                .get(f.name as usize)
+                                .map(|n| n.eq_ignore_ascii_case(&gname))
+                                .unwrap_or(false)
                         })
                     });
                 funcs += 1;

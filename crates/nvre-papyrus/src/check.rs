@@ -402,7 +402,7 @@ pub fn check(script: &Script, ctx: &Context<'_>) -> Vec<Diagnostic> {
                 check_expr(target, line, params, locals, script, ctx, out);
                 check_expr(index, line, params, locals, script, ctx, out);
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, .. } => {
                 // More arguments than any declaration accepts. Only fires when a
                 // signature is known, and only when the call exceeds every one of
                 // them — a shorter call is legal because the compiler pads.

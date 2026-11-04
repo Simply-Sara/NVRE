@@ -197,6 +197,7 @@ pub mod emit;
 pub mod globals;
 pub mod lex;
 pub mod opcodes;
+pub mod paramnames;
 pub mod parse;
 pub mod pex;
 pub mod returns;
