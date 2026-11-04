@@ -3162,9 +3162,24 @@ impl<'a> Compiler<'a> {
                 Value::Identifier(tmp)
             }
             Expr::Index(arr, idx) => {
+                // The element's type is the **array's** element type, and it
+                // decides both the slot's type and whether the value converts on
+                // the way into wherever it goes. Measured on
+                // `BYOHHouseBuildingScript.InitializeDLC`, whose
+                // `CrimeFactions` is a `Faction[]`: the game types the read
+                // `::temp60:faction` and casts it to `form` for `AddForm`, while
+                // a `var` slot could not convert at all and the call lost its
+                // `cast` — then every later temporary with it.
+                let elem = match arr.as_ref() {
+                    Expr::Ident(n) => self
+                        .type_of(n)
+                        .map(|t| t.base())
+                        .unwrap_or_else(|| "var".to_string()),
+                    _ => "var".to_string(),
+                };
                 let a = self.expr(buf, arr, line)?;
                 let i = self.expr(buf, idx, line)?;
-                let tmp = self.temp(buf, "var");
+                let tmp = self.temp(buf, &elem);
                 let mut ins = Instruction::new(opcode_of("array_getelement"));
                 ins.args.push(Value::Identifier(tmp));
                 ins.args.push(a);
