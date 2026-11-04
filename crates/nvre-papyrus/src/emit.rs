@@ -1110,8 +1110,24 @@ impl<'a> Compiler<'a> {
                         Some(t) => t.clone(),
                         None => self.value_type(buf, &raw),
                     };
+                    // The cast's own destination, when the value needed
+                    // converting: it is dead once the copy into the value slot is
+                    // emitted, and freeing it there is what makes the NEXT
+                    // property write reuse it.
+                    let mut cast_slot = None;
                     let v = match pre_slot {
                         Some(slot) => {
+                            if let Value::Identifier(r) = &raw {
+                                if r != &slot
+                                    && self
+                                        .strings
+                                        .get(*r as usize)
+                                        .map(|n| n.starts_with("::temp"))
+                                        .unwrap_or(false)
+                                {
+                                    cast_slot = Some(*r);
+                                }
+                            }
                             let mut ins = Instruction::new(opcode_of("assign"));
                             ins.args.push(Value::Identifier(slot));
                             ins.args.push(raw);
@@ -1129,6 +1145,22 @@ impl<'a> Compiler<'a> {
                     // The materialised value is dead once the property is
                     // written, and the CK reuses that one slot for consecutive
                     // propsets (`assign ::temp17 true` … `assign ::temp17 true`).
+                    //
+                    // The CAST's slot is released FIRST, and both go back before
+                    // the next statement allocates. Measured on `CWScript.OnInit`,
+                    // where `baseSalary = 100` (a Float property, an Int literal)
+                    // is followed two statements later by another Float cast:
+                    //
+                    //   cast ::temp1 100 / assign ::temp0 ::temp1 / propset …
+                    //   … cast ::temp1 100          <- the CAST's slot, reused
+                    //
+                    // The free list is FIFO per type, so freeing the cast before
+                    // the value slot is what hands `::temp1` back out. Not
+                    // releasing the cast slot at all gave `cast ::temp0 100`, and
+                    // every later Float temporary in a 400-function script moved.
+                    if let Some(c) = cast_slot {
+                        self.release_temp(buf, &Value::Identifier(c));
+                    }
                     self.release_temp(buf, &v);
                     return Ok(());
                 }
