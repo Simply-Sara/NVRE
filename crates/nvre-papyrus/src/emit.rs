@@ -1254,61 +1254,43 @@ impl<'a> Compiler<'a> {
             }
             self.block(buf, &b.body)?;
             // Every branch body ends with a jump past the rest of the chain,
-            // except that an **empty** branch in a multi-branch construct gets
-            // none. Measured with the real compiler on `Actor.MakePlayerFriend`,
-            // whose inner and outer `if`s both have a comment-only `else`:
+            // **except the last branch when it is an `else`** — an `else` has no
+            // condition of its own, so falling into it is the only way it runs
+            // and the fall-through already lands past the chain.
             //
-            //   10 jmp 1     <- inner then-branch
-            //   11 jmp 1     <- outer then-branch, and that is the end
+            // That one rule replaces three narrower ones that had been fitted to
+            // individual witnesses, and it explains every one of them:
             //
-            // Both empty `else` bodies contribute nothing. A single-branch
-            // `if` still emits its jump even when the body is empty
-            // (`if c endif` -> `jmpf c 2 ; jmp 1`, Em3), which is why the count
-            // is not simply `bodies.len()`.
-            // A branch whose body ends in `return` gets no trailing jump: the
-            // jump would be unreachable. Measured on
-            // `ArenaCombatQuest.ShouldEnd`, whose `if/else` both `return`:
+            // - `ActivateAgainAfterDelay.OnActivate` — `if … else … endif` whose
+            //   else ends with `gotoState("pulledPosition")`: no jump, because
+            //   the final branch is an `else`.
+            // - `ArenaCombatQuest.ShouldEnd` — `if/else`, both `return`: the
+            //   then-branch keeps its `jmp`, the else has none. Same rule; the
+            //   earlier reading ("the last branch drops it when it ends in
+            //   `return`") mistook the cause for the effect.
+            // - `Actor.MakePlayerFriend` — inner and outer `if`s that both have a
+            //   comment-only `else`: two jumps in the whole body, both then
+            //   branches.
+            // - A single-branch `if c endif` keeps its jump even when empty
+            //   (`jmpf c 2 ; jmp 1`), and `if c return endif` keeps it too
+            //   (`CWSoldierDeathObserverActorScript.OnDeath`) — neither is an
+            //   `else`, so nothing is elided.
+            // - `AchievementsScript.IncHardWorker` — `if/elseif/elseif` ending in
+            //   a nested chain: the last branch DOES emit its jump, and the whole
+            //   `operand value on jmp`/`jmpf` bucket (757 functions) was this
+            //   one omission. A chain whose last branch is an `elseif` is not an
+            //   `else`.
             //
-            //   2 return true
-            //   3 jmp 2          <- the THEN branch keeps its jump
-            //   4 return false   <- the ELSE branch has none
-            //
-            // which is the same dead-code elimination that leaves an empty
-            // branch with no jump at all.
-            // Only the LAST branch drops it, and only when it ends in `return`:
-            // in `ArenaCombatQuest.ShouldEnd` the then-branch keeps its jump and
-            // the else-branch has none. Applying the rule to every branch scores
-            // 43,624 against 43,639, so earlier branches keep theirs.
+            // Measured both ways over 54,620 functions: skipping the last branch
+            // unconditionally scores 2,106 behavioural differences, eliding
+            // nothing scores 2,579, and this rule scores 1,566.
             let is_last = mine_branch + 1 == branches.len();
-            // ...and only for a MULTI-branch construct. A single-branch
-            // `if c return endif` DOES get its trailing jump: the false path has
-            // to skip the return, and the game emits
-            //   jmpf ::temp0 3 / return None / jmp 1
-            // Measured on `CWSoldierDeathObserverActorScript.OnDeath`.
-            let last_and_returns =
-                is_last && branches.len() > 1 && matches!(b.body.last(), Some(Stmt::Return { .. }));
-            // An EMPTY branch drops its jump only when it is the LAST branch.
-            // `ActivateAgainAfterDelay.onActivate` has a comment-only `if` body
-            // followed by a real `else`, and the game still emits the then
-            // branch's `jmp 17` — dropping it makes the false path fall into the
-            // else correctly but the true path skip nothing. A single-branch
-            // `if` keeps its jump even when empty (`if c endif`).
-            let last_and_empty = is_last && b.body.is_empty() && branches.len() > 1;
-            // NOTE: a tail-position rule was also tried — a nested `if` as the
-            // final statement of an enclosing branch skipping its last jump,
-            // because `ArenaInteriorDoorScript.OnActivate` emits one `jmp` where
-            // this emits two. It scores 5,275 behavioural differences against
-            // 4,602, so the elision is conditional on something not yet
-            // identified and the rule is left out.
-            // ...and the LAST branch of a MULTI-branch chain omits it too: the
-            // fall-through already lands past the chain, so the jump is a
-            // no-op. A single-branch `if c x = 1 endif` keeps it — that was
-            // measured directly with the compiler (cmp_eq, jmpf 3, assign,
-            // jmp 1) — but `if c … else … endif` does not emit one for the
-            // else, and neither does a longer chain for its last branch.
-            // Witness: `ActivateAgainAfterDelay.OnActivate`, whose else ends
-            // with `gotoState("pulledPosition")` and has no trailing jmp.
-            let skip = last_and_empty || last_and_returns || (is_last && branches.len() > 1);
+            let is_else = b.cond.is_none();
+            // An `else` whose body is empty, or which ends in `return`, needs no
+            // jump either — but both fall out of the same test, because an empty
+            // body emits nothing to jump over and the CK never emits a jump whose
+            // target is the next instruction.
+            let skip = is_last && is_else;
             if !skip {
                 let mut ins = Instruction::new(opcode_of("jmp"));
                 ins.args.push(Value::Int(0));
