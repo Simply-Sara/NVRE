@@ -1190,8 +1190,16 @@ impl<'a> Compiler<'a> {
                         })
                         .or_else(|| Some(self.property_type(name)));
                     let ty = pty.unwrap_or_else(|| "var".to_string());
-                    let v_slot = self.temp(buf, &ty);
+                    // The receiver is evaluated FIRST, then the value slot, then
+                    // the read's destination. Measured on `TIF__0004E4C8
+                    // .Fragment_0`, `(GetOwningQuest() as DA09Script)
+                    // .GemSceneStage += 1`, whose locals run
+                    // `::temp1:quest  ::temp2:da09script  ::temp3:Int
+                    //  ::temp4:Int` — receiver, cast, value slot, propget
+                    // destination. Allocating the value slot before the receiver
+                    // put it in `::temp1` and displaced the other three.
                     let o = self.expr(buf, obj, *line)?;
+                    let v_slot = self.temp(buf, &ty);
                     let cur = self.temp(buf, &ty);
                     let mut ins = Instruction::new(opcode_of("propget"));
                     ins.args.push(Value::Identifier(p));
@@ -1203,7 +1211,14 @@ impl<'a> Compiler<'a> {
                     // The cast's slot goes back on the free list before the sum
                     // is allocated, so the sum lands in it — the same ordering
                     // the comparison path needs.
+                    // Both operands are released before the sum's destination is
+                    // chosen, so the sum lands in one of their slots — the same
+                    // release-before-allocate ordering the comparison path needs.
+                    // `GemSceneStage += 1` writes `iadd ::temp4 ::temp4 1`: the
+                    // read's own slot, rewritten in place. Allocating after only
+                    // the cast was released gave `iadd ::temp5 ::temp4 1`.
                     self.release_temp(buf, &rhs);
+                    self.release_temp(buf, &Value::Identifier(cur));
                     let dest = self.temp(buf, &ty);
                     let arith = self.arith_op(buf, op, &Value::Identifier(cur));
                     let mut ins = Instruction::new(arith);
