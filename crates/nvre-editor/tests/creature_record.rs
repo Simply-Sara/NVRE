@@ -386,15 +386,66 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     }
 }
 
-/// The labels and screen rects of every checkbox the creature editor draws, via
-/// egui's accessibility tree.
+/// The text of every **label** the creature editor draws, via egui's
+/// accessibility tree.
 ///
-/// The tree is the only way to see what a widget *rendered*: the schema says
-/// which bits a section names, and the grid is what decides whether a checkbox
-/// exists for them. A flags field with no bits renders `(object)` — no checkbox
-/// at all — and the schema's answer would not say so. The rect is what says
-/// whether they are laid out as checkboxes a modder can read or crammed into one
-/// cell until their labels are cut off.
+/// The tree is the only way to see what a page *rendered*: the schema says what
+/// a section describes, and the grid is what decides what appears. A plain
+/// `ui.label` carries its text as the node's **value** with role `Label`, and a
+/// checkbox carries it as the node's label with role `CheckBox` — egui's own
+/// mapping in `Response::write_accesskit_node`. This reads the `Label` role
+/// only, which is what "one label per text box" is about: a checkbox named
+/// "Script" is a different widget from a text box labelled "Script", and
+/// counting both would report a duplicate where a modder sees two unrelated
+/// controls.
+///
+/// A galley also emits a `TextRun` node holding the same words — that is how
+/// egui supports text selection, and it exists for every piece of rendered
+/// text, headings included. It is excluded for the same reason.
+fn label_text(
+    session: &mut Session,
+    state: &mut ObjectEditorState,
+    size: nvre_editor::egui::Vec2,
+) -> Vec<String> {
+    use nvre_editor::egui;
+    let mut pages = Pages::default();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let mut out_text = Vec::new();
+    for _ in 0..3 {
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                ..Default::default()
+            },
+            |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
+                    object_editor::body(ui, session, state, &mut pages);
+                });
+            },
+        );
+        out.textures_delta.clear();
+        out_text = out
+            .platform_output
+            .accesskit_update
+            .map(|u| {
+                u.nodes
+                    .into_iter()
+                    .filter(|(_, node)| {
+                        node.role() == nvre_editor::egui::accesskit::Role::Label
+                    })
+                    .filter_map(|(_, node)| node.value().map(str::to_owned))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+    }
+    out_text
+}
+
+/// The labels and screen rects of every checkbox the creature editor draws.
+///
+/// The rect is what says whether the checkboxes are laid out as checkboxes a
+/// modder can read or crammed into one cell until their labels are cut off.
 fn checkbox_rects(
     session: &mut Session,
     state: &mut ObjectEditorState,
@@ -530,4 +581,62 @@ fn the_flag_checkboxes_wrap_onto_their_own_rows() {
         "the ten flag checkboxes all sit on one row ({flags:?}) at 760pt wide — they \\
          are crammed into one cell and their labels are truncated. They must wrap"
     );
+}
+
+#[test]
+fn the_identity_section_draws_no_title_and_no_bare_signature_labels() {
+    // The Identity section used to print a bold "Identity" heading and, inside
+    // it, three rows labelled with the literal word "value" — a scalar
+    // subrecord's row label was its empty field path rendered as text. What a
+    // modder needs is the schema's own name for each subrecord.
+    //
+    // The assertion reads what the page actually drew, through egui's
+    // accessibility tree, rather than what the schema describes.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("General".to_string());
+    let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let drawn: Vec<&str> = drawn.iter().map(String::as_str).collect();
+
+    // The heading is gone: nothing on the tab says "Identity".
+    assert!(
+        !drawn.contains(&"Identity"),
+        "the Identity section still draws its heading: {drawn:?}"
+    );
+    // The three rows name themselves, under the schema's own names.
+    for want in ["Editor ID", "Name", "Script"] {
+        assert!(
+            drawn.contains(&want),
+            "the identity section draws no {want:?} row: {drawn:?}"
+        );
+    }
+    // **One** label per text box. Each of the three used to carry three: the
+    // subrecord's heading ("Editor ID EDID"), the row label ("Editor ID"), and
+    // the box. The subrecord heading is gone, so each name appears exactly
+    // once — and the redundant signature beside it is gone with it.
+    for want in ["Editor ID", "Name", "Script"] {
+        let count = drawn.iter().filter(|l| **l == want).count();
+        assert_eq!(
+            count, 1,
+            "{want:?} is drawn {count} times — one label per text box, not three: {drawn:?}"
+        );
+    }
+    // And the bare signature / placeholder labels are gone. `value` is what an
+    // empty field path used to print; the four-byte tags are what a subrecord
+    // with no name would fall back to.
+    for junk in ["value", "EDID", "FULL", "SCRI"] {
+        assert!(
+            !drawn.contains(&junk),
+            "the identity section still draws the raw label {junk:?}: {drawn:?}"
+        );
+    }
+    // The other sections on General still carry their headings — the change is
+    // per section, not a page-wide removal.
+    for keep in ["Actor Flags", "Template Data"] {
+        assert!(
+            drawn.contains(&keep),
+            "General no longer draws its {keep:?} heading: {drawn:?}"
+        );
+    }
 }

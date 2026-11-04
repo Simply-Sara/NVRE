@@ -1128,8 +1128,14 @@ pub fn sectioned_grid_on_tab(
         claimed.extend(named.iter().copied());
         ui.add_space(if si == 0 { 0.0 } else { 6.0 });
         ui.group(|ui| {
-            ui.strong(&section.title);
-            ui.add_space(4.0);
+            // The heading, unless the section says its rows name themselves.
+            // The creature's Identity section is the case: "Editor ID", "Name"
+            // and "Script" are already labels, so a heading reading "Identity"
+            // above them says nothing they did not.
+            if !section.untitled {
+                ui.strong(&section.title);
+                ui.add_space(4.0);
+            }
             match section.widget.as_deref() {
                 // A named widget draws the section its own way. The name is looked
                 // up here rather than trusted, so a typo is a message on the page
@@ -1236,21 +1242,6 @@ fn subrecord_rows_on_fields(
     edit: &mut FieldEdit,
 ) {
     let sig = sig4(&view.sig);
-    ui.horizontal(|ui| {
-        ui.strong(&view.name);
-        ui.monospace(&view.sig);
-        if let Some(block) = &view.block {
-            ui.weak(format!("in {block}"));
-        }
-        if edited.contains(&sig) {
-            ui.colored_label(egui::Color32::LIGHT_BLUE, "edited");
-        } else if !view.writable {
-            ui.colored_label(egui::Color32::YELLOW, "read-only");
-        }
-    });
-    if let Some(p) = &view.problem {
-        ui.colored_label(egui::Color32::RED, p);
-    }
     let rows = nvre_edit::encode::rows(
         &session.schema,
         rec_sig,
@@ -1258,6 +1249,44 @@ fn subrecord_rows_on_fields(
         view.block.as_deref(),
         &view.value,
     );
+    // The subrecord's heading: its name, its signature, and where it sits. A
+    // subrecord that is **one** field — `EDID`, `FULL`, `SCRI`, a bare FormID —
+    // does not need it: the row below already carries the field's own name, and
+    // the heading would repeat it with the signature bolted on. Three labels
+    // for one text box is what the creature's Identity section looked like.
+    //
+    // A subrecord with several fields keeps its heading, because that is what
+    // groups them: `ACBS` under "Configuration ACBS" is one heading for the
+    // flags, the level and the rest.
+    //
+    // The count is of the rows the section **shows**, not the ones the subrecord
+    // has: a section that narrows `ACBS` to its flags alone shows one row, and
+    // a heading reading "Configuration ACBS" above a lone checkbox row is the
+    // same redundancy.
+    let shown_count = match fields {
+        None => rows.len(),
+        Some(paths) => paths
+            .iter()
+            .filter(|p| rows.iter().any(|r| &r.path == *p))
+            .count(),
+    };
+    if shown_count > 1 {
+        ui.horizontal(|ui| {
+            ui.strong(&view.name);
+            ui.monospace(&view.sig);
+            if let Some(block) = &view.block {
+                ui.weak(format!("in {block}"));
+            }
+            if edited.contains(&sig) {
+                ui.colored_label(egui::Color32::LIGHT_BLUE, "edited");
+            } else if !view.writable {
+                ui.colored_label(egui::Color32::YELLOW, "read-only");
+            }
+        });
+    }
+    if let Some(p) = &view.problem {
+        ui.colored_label(egui::Color32::RED, p);
+    }
     // The rows this section shows, in the section's order when it narrows and in
     // the layout's when it does not.
     let shown: Vec<nvre_edit::encode::Row> = match fields {
@@ -1287,11 +1316,17 @@ fn subrecord_rows_on_fields(
                 let Some(current) = get_path(&view.value, &row.path) else {
                     continue;
                 };
-                ui.label(if row.path.is_empty() {
-                    "value"
+                // The row label. A field inside a subrecord is named by its
+                // path; a subrecord that *is* one field — `EDID`, `FULL`, `SCRI`
+                // — has an empty path, and printing the word "value" for it
+                // said nothing a modder could use. The subrecord's own name
+                // from the schema is the answer: "Editor ID", "Name", "Script".
+                let label = if row.path.is_empty() {
+                    view.name.as_str()
                 } else {
                     row.path.as_str()
-                });
+                };
+                ui.label(label);
                 if row.derived {
                     ui.horizontal(|ui| {
                         ui.monospace(field_text(current));

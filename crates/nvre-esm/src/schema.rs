@@ -670,6 +670,19 @@ pub struct SectionDef {
     /// the field's decoded shape: a number, a string, a checkbox for a flag, a
     /// dropdown for an enum, a filtered picker for a FormID, a list for an array.
     pub widget: Option<String>,
+    /// Whether the section draws its heading.
+    ///
+    /// `true` — the default — draws [`Self::title`] as a bold line above the
+    /// group. `false` draws the group with no heading at all, which is what a
+    /// section whose rows name themselves wants: the creature's Identity
+    /// section shows "Editor ID", "Name" and "Script", and a heading reading
+    /// "Identity" above three self-describing rows is a fourth label saying
+    /// nothing the three did not.
+    ///
+    /// A section still has to carry a title: it is how the page merges a game's
+    /// restatement of a shared heading, and a heading that is never drawn is
+    /// not a heading that can be dropped from the schema.
+    pub untitled: bool,
 }
 
 /// A named set of sections a category can build its page from.
@@ -1942,6 +1955,15 @@ impl Schema {
                     ));
                 }
             };
+            let untitled = match sec.get("untitled") {
+                None => false,
+                Some(Json::Bool(b)) => *b,
+                Some(_) => {
+                    return Err(format!(
+                        "{owner}.sections[{i}].untitled is not a boolean"
+                    ));
+                }
+            };
             out.push(SectionDef {
                 title: title.to_string(),
                 subs: tags,
@@ -1949,6 +1971,7 @@ impl Schema {
                 fields,
                 flags_bits,
                 widget,
+                untitled,
             });
         }
         Ok(out)
@@ -2040,6 +2063,12 @@ impl Schema {
                     }
                     if section.widget.is_some() {
                         existing.widget = section.widget.clone();
+                    }
+                    // A heading that is not drawn is the game's answer about
+                    // this section, the same way a filter is: inheriting the
+                    // template's would draw a heading the game removed.
+                    if section.untitled {
+                        existing.untitled = true;
                     }
                 }
                 None => out.push(section.clone()),
