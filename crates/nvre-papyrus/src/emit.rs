@@ -145,11 +145,9 @@ pub struct Compiler<'a> {
     /// The script's own names plus whatever the caller supplied about its
     /// parent.
     ///
-    /// The emitter does not need it yet — every name it resolves is declared in
-    /// this one file — but the parent's members are what a call like
-    /// `Parent.SomeFunc()` has to be checked against, so it is carried from the
-    /// start rather than threaded through every call site later.
-    #[allow(dead_code)]
+    /// Consulted by [`Compiler::type_of`] after the function and script scopes,
+    /// so a name the caller knows about — an inherited member, or anything from
+    /// another script in the same mod — resolves to a type instead of `None`.
     symbols: Symbols,
     /// The string table being built, in first-use order.
     strings: Vec<String>,
@@ -316,10 +314,37 @@ impl<'a> Compiler<'a> {
         (self.strings.len() - 1) as StrIndex
     }
 
+    /// The declared type of a name, or `None`.
+    ///
+    /// Lookup order, and the order matters:
+    ///
+    /// 1. **This function's** scope — parameters and locals, which shadow
+    ///    everything else.
+    /// 2. **This script's** declarations, which are in `self.types`.
+    /// 3. **The caller-supplied symbol table** — the script's own variables and
+    ///    properties as the *caller* declared them.
+    ///
+    /// Step 3 is what an editor needs and what compiling a single file cannot
+    /// supply. Compiling one `.psc` in isolation, a name inherited from a parent
+    /// class is invisible, so it types as nothing, no conversion fires at the
+    /// slot it is written to, and the arithmetic opcode is chosen from `var`.
+    /// Compiling a mod as one unit fills the table from every script in the mod.
+    ///
+    /// Measured before this existed: with `Symbols` never read, the emitter's
+    /// answer for an inherited name was always `None`, and `Symbols` carried
+    /// `#[allow(dead_code)]` as a marker of that.
     fn type_of(&self, name: &str) -> Option<&TypeName> {
-        self.types
+        let lower = name.to_ascii_lowercase();
+        if let Some((_, t)) = self.types.iter().find(|(n, _)| n == &lower) {
+            return Some(t);
+        }
+        if let Some((_, t)) = self.symbols.variables.iter().find(|(n, _)| n == &lower) {
+            return Some(t);
+        }
+        self.symbols
+            .properties
             .iter()
-            .find(|(n, _)| n == &name.to_ascii_lowercase())
+            .find(|(n, _)| n == &lower)
             .map(|(_, t)| t)
     }
 
@@ -1613,7 +1638,13 @@ impl<'a> Compiler<'a> {
     /// The type this script `extends`, which is the class a bare `f()` call
     /// implicitly dispatches through.
     fn own_class(&self) -> Option<String> {
-        self.script.parent.clone()
+        // The source's own `extends` first; then whatever the caller supplied,
+        // which is how an editor compiling a script whose parent is declared
+        // elsewhere still gets the chain.
+        self.script
+            .parent
+            .clone()
+            .or_else(|| Some(self.symbols.parent.clone()).filter(|p| !p.is_empty()))
     }
 
     /// The declared type of a property, for its `propget` temporary.

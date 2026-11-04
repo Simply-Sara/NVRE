@@ -182,6 +182,7 @@
 //! 4. **The debug block**, which records a source line per instruction.
 //!
 
+pub mod check;
 pub mod emit;
 pub mod lex;
 pub mod opcodes;
@@ -189,6 +190,7 @@ pub mod parse;
 pub mod pex;
 pub mod returns;
 pub mod signatures;
+pub mod symbols;
 
 pub use lex::lex;
 pub use parse::parse;
