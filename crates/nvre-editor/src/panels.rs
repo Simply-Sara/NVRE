@@ -1298,21 +1298,56 @@ fn subrecord_rows_on_fields(
                         ui.weak("(counted)");
                     });
                 } else {
-                    field_editor(
-                        ui,
-                        session,
-                        edit,
-                        form_id,
-                        view,
+                    // A flags field draws many checkboxes, so it gets the row to
+                    // itself: inside a two-column grid the ten of a creature's
+                    // `ACBS.flags` are one cell holding ten widgets, laid out
+                    // side by side until the labels are cut off. Handing it the
+                    // row lets them wrap down it.
+                    let flags = flag_bits(
+                        &session.schema,
                         rec_sig,
+                        &view.sig,
+                        view.block.as_deref(),
                         &row.path,
-                        current,
-                        // The bits this section shows for this field, when the
-                        // section split a flags word. `None` is the whole word.
-                        flags_bits
-                            .get(&format!("{}.{}", view.sig, row.path))
-                            .map(Vec::as_slice),
                     );
+                    let is_flags = matches!(current, serde_json::Value::Object(_))
+                        && !flags.is_empty();
+                    if is_flags {
+                        ui.end_row();
+                        ui.label("");
+                        field_editor(
+                            ui,
+                            session,
+                            edit,
+                            form_id,
+                            view,
+                            rec_sig,
+                            &row.path,
+                            current,
+                            // The bits this section shows for this field, when the
+                            // section split a flags word. `None` is the whole word.
+                            flags_bits
+                                .get(&format!("{}.{}", view.sig, row.path))
+                                .map(Vec::as_slice),
+                        );
+                        ui.end_row();
+                    } else {
+                        field_editor(
+                            ui,
+                            session,
+                            edit,
+                            form_id,
+                            view,
+                            rec_sig,
+                            &row.path,
+                            current,
+                            // The bits this section shows for this field, when the
+                            // section split a flags word. `None` is the whole word.
+                            flags_bits
+                                .get(&format!("{}.{}", view.sig, row.path))
+                                .map(Vec::as_slice),
+                        );
+                    }
                 }
                 ui.end_row();
             }
@@ -1600,18 +1635,25 @@ fn field_editor(
                         .collect(),
                     None => bits.clone(),
                 };
-                for (bit, name) in &shown {
-                    let on = next & (1 << bit) != 0;
-                    let mut want = on;
-                    if ui.checkbox(&mut want, name).changed() {
-                        touched = true;
-                        if want {
-                            next |= 1 << bit;
-                        } else {
-                            next &= !(1 << bit);
+                // One checkbox per bit, wrapping rather than running off the
+                // row: a creature's `ACBS.flags` is ten long names, and a row
+                // that cannot hold them all truncates every label instead of
+                // showing them. `horizontal_wrapped` starts a new line when the
+                // next checkbox would not fit.
+                ui.horizontal_wrapped(|ui| {
+                    for (bit, name) in &shown {
+                        let on = next & (1 << bit) != 0;
+                        let mut want = on;
+                        if ui.checkbox(&mut want, name).changed() {
+                            touched = true;
+                            if want {
+                                next |= 1 << bit;
+                            } else {
+                                next &= !(1 << bit);
+                            }
                         }
                     }
-                }
+                });
                 // The named bits are re-derived from the number, so the set list
                 // cannot disagree with it. A bit that is on but unnamed is not
                 // lost: it is preserved in `unknown_bits`.

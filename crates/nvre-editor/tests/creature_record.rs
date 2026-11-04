@@ -386,20 +386,25 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     }
 }
 
-/// The labels of every checkbox the creature editor draws, via egui's
-/// accessibility tree.
+/// The labels and screen rects of every checkbox the creature editor draws, via
+/// egui's accessibility tree.
 ///
 /// The tree is the only way to see what a widget *rendered*: the schema says
 /// which bits a section names, and the grid is what decides whether a checkbox
 /// exists for them. A flags field with no bits renders `(object)` — no checkbox
-/// at all — and the schema's answer would not say so.
-fn checkbox_labels(session: &mut Session, state: &mut ObjectEditorState) -> Vec<String> {
+/// at all — and the schema's answer would not say so. The rect is what says
+/// whether they are laid out as checkboxes a modder can read or crammed into one
+/// cell until their labels are cut off.
+fn checkbox_rects(
+    session: &mut Session,
+    state: &mut ObjectEditorState,
+    size: nvre_editor::egui::Vec2,
+) -> Vec<(String, nvre_editor::egui::Rect)> {
     use nvre_editor::egui;
     let mut pages = Pages::default();
     let ctx = egui::Context::default();
     ctx.enable_accesskit();
-    let size = egui::vec2(900.0, 2400.0);
-    let mut labels = Vec::new();
+    let mut out_boxes = Vec::new();
     for _ in 0..3 {
         let mut out = ctx.run_ui(
             egui::RawInput {
@@ -413,16 +418,116 @@ fn checkbox_labels(session: &mut Session, state: &mut ObjectEditorState) -> Vec<
             },
         );
         out.textures_delta.clear();
-        labels = out
+        out_boxes = out
             .platform_output
             .accesskit_update
             .map(|u| {
                 u.nodes
                     .into_iter()
-                    .filter_map(|(_, node)| node.label().map(str::to_owned))
+                    .filter_map(|(_, node)| {
+                        let label = node.label()?;
+                        let rect = node.bounds()?;
+                        let r = egui::Rect::from_min_max(
+                            egui::pos2(rect.x0 as f32, rect.y0 as f32),
+                            egui::pos2(rect.x1 as f32, rect.y1 as f32),
+                        );
+                        Some((label.to_string(), r))
+                    })
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
     }
-    labels
+    out_boxes
+}
+
+/// The labels of every checkbox the creature editor draws.
+fn checkbox_labels(session: &mut Session, state: &mut ObjectEditorState) -> Vec<String> {
+    checkbox_rects(session, state, nvre_editor::egui::vec2(900.0, 2400.0))
+        .into_iter()
+        .map(|(label, _)| label)
+        .collect()
+}
+
+#[test]
+fn the_flag_checkboxes_wrap_onto_their_own_rows() {
+    // Ten long flag names do not fit one row in a window a third of the old
+    // size. Drawn inside the two-column field grid they were a single cell
+    // holding ten widgets side by side, and every label was truncated to fit.
+    // The checkboxes now take the row and wrap down it.
+    //
+    // The assertion is geometric: at a width that cannot hold all ten on one
+    // line, the flag checkboxes must occupy more than one distinct y. A single
+    // over-wide row — the old layout — has one y for all of them.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("General".to_string());
+    let bits = |key: &str| -> Vec<u32> {
+        session
+            .schema
+            .page_sections("CREA")
+            .iter()
+            .filter(|s| s.tab.as_deref() == Some("General"))
+            .filter_map(|s| s.flags_bits.get(key).cloned())
+            .next()
+            .unwrap_or_default()
+    };
+    let flag_bits = bits("ACBS.flags");
+    assert_eq!(flag_bits.len(), 10, "General names ten flags");
+
+    let acbs = session
+        .schema
+        .records
+        .get("CREA")
+        .and_then(|r| r.subrecords.get("ACBS"))
+        .expect("ACBS");
+    let nvre_esm::TypeDef::Struct(fields) = session.schema.resolve_def(&acbs.ty) else {
+        panic!("ACBS is a struct");
+    };
+    let nvre_esm::TypeDef::Flags { bits: named, .. } = &fields
+        .iter()
+        .find(|f| f.name == "flags")
+        .expect("ACBS.flags")
+        .ty
+    else {
+        panic!("ACBS.flags is a flags word");
+    };
+    let flag_names: Vec<String> = flag_bits
+        .iter()
+        .filter_map(|b| named.iter().find(|(bit, _)| bit == b).map(|(_, n)| n.clone()))
+        .collect();
+
+    // Narrow enough that ten long names cannot share a line.
+    let boxes = checkbox_rects(&mut session, &mut state, nvre_editor::egui::vec2(760.0, 2400.0));
+    let flags: Vec<&nvre_editor::egui::Rect> = boxes
+        .iter()
+        .filter(|(label, _)| flag_names.iter().any(|n| n == label))
+        .map(|(_, r)| r)
+        .collect();
+    assert_eq!(
+        flags.len(),
+        flag_names.len(),
+        "every flag on General is a checkbox: found {} of {}",
+        flags.len(),
+        flag_names.len()
+    );
+    // Distinct rows, counting a y as the same line when it is within a line
+    // height: the ten names have different heights only by their own glyphs.
+    let mut rows: Vec<f32> = flags.iter().map(|r| r.min.y).collect();
+    rows.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let distinct = rows
+        .iter()
+        .fold((0usize, f32::NEG_INFINITY), |(n, last), y| {
+            if y - last > 8.0 {
+                (n + 1, *y)
+            } else {
+                (n, last)
+            }
+        })
+        .0;
+    assert!(
+        distinct > 1,
+        "the ten flag checkboxes all sit on one row ({flags:?}) at 760pt wide — they \\
+         are crammed into one cell and their labels are truncated. They must wrap"
+    );
 }
