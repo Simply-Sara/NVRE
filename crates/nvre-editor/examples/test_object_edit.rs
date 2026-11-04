@@ -2,6 +2,18 @@ use nvre_editor::object_editor::ObjectEditorState;
 use nvre_editor::session::Session;
 use std::path::Path;
 
+/// Whether a named header flag bit is set on the loaded record.
+///
+/// The header's named bits come from the schema now, per game and per record
+/// type, so a test reads them by name rather than by a constant bit number.
+fn header_bit(state: &ObjectEditorState, name: &str) -> Option<bool> {
+    state
+        .header_flag_bits
+        .iter()
+        .find(|(_, n, _)| n == name)
+        .map(|(_, _, on)| *on)
+}
+
 fn main() {
     let data_dir = std::env::var("NVRE_DATA")
         .map(std::path::PathBuf::from)
@@ -276,18 +288,22 @@ fn main() {
     let mut sm_state = ObjectEditorState::default();
     sm_state.load_from_session(&session, sm_fid, *b"CREA");
     println!(
-        "Loaded CREA 0x{:08X}: EDID='{}', WeaponList={:08X?}, QuestItem={}, Pickpocket={}, NoLowLevelProc={}",
+        "Loaded CREA 0x{:08X}: EDID='{}', WeaponList={:08X?}, QuestItem={:?}, Pickpocket={}, NoLowLevelProc={}",
         sm_state.form_id,
         sm_state.edid,
         sm_state.crea_weapon_list,
-        sm_state.quest_item,
+        header_bit(&sm_state, "Quest Item"),
         sm_state.actor_allow_pickpocket,
         sm_state.actor_no_low_level_proc
     );
     assert_eq!(sm_state.edid, "CrSuperMutantDeadMinigunRubyHill");
     assert_eq!(sm_state.crea_weapon_list, Some(0x0003A15E));
     assert_eq!(sm_state.actor_template, Some(0x00027FB3));
-    assert!(sm_state.quest_item);
+    assert_eq!(
+        header_bit(&sm_state, "Quest Item"),
+        Some(true),
+        "CREA's header names bit 10 Quest Item and this record sets it"
+    );
     assert!(sm_state.actor_allow_pickpocket);
     assert!(sm_state.actor_no_low_level_proc);
 

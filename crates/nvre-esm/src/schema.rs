@@ -459,6 +459,38 @@ pub struct Schema {
     pub common_subrecords: BTreeMap<String, SubDef>,
     /// How this game's own editor files its records into the object window.
     pub object_window: ObjectWindow,
+    /// The named bits of each record type's `Record Flags` header word.
+    ///
+    /// A record header is a fixed shape — signature, data size, flags, FormID,
+    /// version — but the *names* of the flag bits are per game and per record
+    /// type: bit 10 is "Quest Item" on a Fallout weapon and unnamed on Fallout
+    /// 4's armour, bit 6 is "Shield" on armour, bit 2 is "Non-Playable", and
+    /// Skyrim names bit 15 "Visible When Distant" where Fallout 4 leaves it
+    /// unknown. The editor's header used to render Fallout: New Vegas's bit 10
+    /// as "Quest Item" for every game and every record type, which was wrong in
+    /// four of the five games.
+    ///
+    /// A record with no entry has no named flags — xEdit names none for it —
+    /// and its header shows the raw word only.
+    pub header_flags: BTreeMap<String, HeaderFlags>,
+}
+
+/// The named bits of one record type's header flag word.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HeaderFlags {
+    /// The bits, by number, in bit order.
+    pub bits: Vec<(u32, String)>,
+}
+
+impl HeaderFlags {
+    /// The names of the bits that are set in `word`, in bit order.
+    pub fn set_in(&self, word: u32) -> Vec<(u32, &str)> {
+        self.bits
+            .iter()
+            .filter(|(bit, _)| *bit < 32 && word & (1 << bit) != 0)
+            .map(|(bit, name)| (*bit, name.as_str()))
+            .collect()
+    }
 }
 
 /// How a game's object window is laid out: the groups down the side, and the
@@ -772,6 +804,52 @@ impl Schema {
         }
         if let Some(ow) = obj.get("object_window").and_then(|v| v.as_object()) {
             self.merge_object_window(ow)?;
+        }
+        if let Some(hf) = obj.get("header_flags").and_then(|v| v.as_object()) {
+            self.merge_header_flags(hf)?;
+        }
+        Ok(())
+    }
+
+    /// Merge a `header_flags` block: the named bits of each record's header word.
+    ///
+    /// This is a top-level table rather than a field of `records` because a
+    /// record definition is *replaced* whole by a later layer, and the flags a
+    /// game names are not a layout: Fallout 3's overlay restates four records and
+    /// names no flags at all, and it must not drop the names it inherited. A
+    /// signature here replaces its own entry and leaves every other signature
+    /// alone, so a game's table can be complete without restating FNV's.
+    fn merge_header_flags(&mut self, hf: &serde_json::Map<String, Json>) -> Result<(), String> {
+        for (sig, def) in hf {
+            if sig.len() != 4 {
+                return Err(format!(
+                    "header_flags names {sig:?}, which is not a four-byte signature"
+                ));
+            }
+            let Some(o) = def.as_object() else {
+                return Err(format!("header_flags.{sig} is not an object"));
+            };
+            let Some(bits) = o.get("bits").and_then(|v| v.as_object()) else {
+                return Err(format!("header_flags.{sig} has no bits"));
+            };
+            let mut out: Vec<(u32, String)> = Vec::with_capacity(bits.len());
+            for (bit, name) in bits {
+                let b: u32 = bit.parse().map_err(|_| {
+                    format!("header_flags.{sig} names bit {bit:?}, which is not a number")
+                })?;
+                if b > 31 {
+                    return Err(format!(
+                        "header_flags.{sig} names bit {b}, and a header flag word is 32 bits"
+                    ));
+                }
+                let Some(name) = name.as_str() else {
+                    return Err(format!("header_flags.{sig}.{bit} is not a string"));
+                };
+                out.push((b, name.to_string()));
+            }
+            out.sort_by_key(|(b, _)| *b);
+            self.header_flags
+                .insert(sig.clone(), HeaderFlags { bits: out });
         }
         Ok(())
     }
@@ -1508,6 +1586,23 @@ impl Schema {
     pub fn merge_str(&mut self, text: &str) -> Result<(), String> {
         let j: Json = serde_json::from_str(text).map_err(|e| e.to_string())?;
         self.merge(&j)
+    }
+
+    /// The named bits of a record type's header flag word, if the schema names
+    /// any.
+    ///
+    /// Empty for a record xEdit names no flags for, which is the honest answer:
+    /// the header then shows the raw word and no checkboxes rather than
+    /// borrowing another record type's names.
+    pub fn header_flags_for(&self, sig: &[u8; 4]) -> &[(u32, String)] {
+        const EMPTY: &[(u32, String)] = &[];
+        // The same key space [`Schema::lookup`] uses, so a signature that finds
+        // a record finds that record's flags too.
+        let key = String::from_utf8_lossy(sig);
+        self.header_flags
+            .get(key.as_ref())
+            .map(|h| h.bits.as_slice())
+            .unwrap_or(EMPTY)
     }
 
     /// Check the schema: every type it names must be one it knows.

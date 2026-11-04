@@ -53,8 +53,24 @@ pub struct ObjectEditorState {
     pub full_name_localized: bool,
     pub model: String,
     pub script: Option<u32>,
+    /// The record header's flag word, as loaded.
+    ///
+    /// The word is a header field, not a subrecord: its named bits differ per
+    /// game *and per record type* (bit 10 is "Quest Item" on a Fallout weapon
+    /// and unnamed on Fallout 4's; Skyrim names bit 0 of a `CELL`), so the
+    /// header renders [`Self::header_flag_bits`] from the schema rather than a
+    /// constant. This field holds the whole word so a bit the schema does not
+    /// name is carried through untouched.
     pub record_flags: u32,
-    pub quest_item: bool,
+    /// The schema-named header flag bits for this record type: the bit, its
+    /// name, and whether it is set.
+    ///
+    /// Rebuilt on every load from `Schema::header_flags_for`, and the save
+    /// writes the named bits back into [`Self::record_flags`]. Empty for a
+    /// record type the schema names no flags for, which is the honest answer:
+    /// the header then shows the raw word and no checkboxes rather than
+    /// borrowing another type's names.
+    pub header_flag_bits: Vec<(u32, String, bool)>,
 
     // Object Bounds (OBND)
     pub obnd_min: [i16; 3],
@@ -4698,7 +4714,15 @@ impl ObjectEditorState {
         }
 
         self.record_flags = flags;
-        self.quest_item = (flags & (1 << 10)) != 0;
+        // The header's named bits, from this game's and this record type's own
+        // table. A bit the table does not name stays in the word but has no
+        // checkbox, which is what keeps the header honest in all five games.
+        self.header_flag_bits = session
+            .schema
+            .header_flags_for(&sig)
+            .iter()
+            .map(|(bit, name)| (*bit, name.clone(), flags & (1 << bit) != 0))
+            .collect();
 
         self.raw_subs.clear();
         self.actor_splo.clear();
@@ -9444,11 +9468,20 @@ impl ObjectEditorState {
             session.doc.set_sub(fid, b"SCRI", s.to_le_bytes().to_vec());
         }
 
+        // The named header bits go back into the word the record was loaded
+        // with. A bit the schema does not name is not touched: the word is a
+        // header field, and rewriting it from a table that names 3 of 32 bits
+        // would clear the other 29.
         let mut flags = self.record_flags;
-        if self.quest_item {
-            flags |= 1 << 10;
-        } else {
-            flags &= !(1 << 10);
+        for (bit, _, set) in &self.header_flag_bits {
+            if *bit >= 32 {
+                continue;
+            }
+            if *set {
+                flags |= 1 << bit;
+            } else {
+                flags &= !(1 << bit);
+            }
         }
         session.doc.set_flags(fid, flags);
 
@@ -15553,7 +15586,7 @@ pub fn ui(
                 ui.label("Name:");
                 ui.add(egui::TextEdit::singleline(&mut state.full_name).desired_width(170.0));
                 ui.separator();
-                ui.checkbox(&mut state.quest_item, "Quest Item");
+                header_flags_menu(ui, &mut state);
             });
 
             ui.add_space(4.0);
@@ -15667,6 +15700,53 @@ pub fn ui(
                 state.status = "Reverted changes to disk/mod state.".to_string();
             }
         }
+    });
+}
+
+/// The record header's flags, as a menu of the bits the schema names.
+///
+/// A menu rather than a row of checkboxes because the count is per record type:
+/// Fallout 4's `ACTI` names 19 bits and Fallout: New Vegas's `WEAP` names 3, so a
+/// row would either wrap into the header's second line or leave a gap. The
+/// button's label says how many of the named bits are set, which is the one
+/// thing worth reading at a glance; the popup is where they are edited.
+///
+/// A record type the schema names no flags for gets no menu at all. That is the
+/// honest answer rather than an empty popup: it means xEdit names no flag for
+/// that type, not that the record has no flags.
+fn header_flags_menu(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
+    if state.header_flag_bits.is_empty() {
+        return;
+    }
+    let set = state
+        .header_flag_bits
+        .iter()
+        .filter(|(_, _, on)| *on)
+        .count();
+    let label = if set == 0 {
+        format!("Flags ({})", state.header_flag_bits.len())
+    } else {
+        format!("Flags: {set} of {}", state.header_flag_bits.len())
+    };
+    ui.menu_button(label, |ui| {
+        ui.set_min_width(260.0);
+        egui::ScrollArea::vertical()
+            .max_height(320.0)
+            .show(ui, |ui| {
+                for (bit, name, on) in state.header_flag_bits.iter_mut() {
+                    // The bit number is shown beside the name: the schema's names
+                    // are what xEdit calls a bit, and xEdit leaves some unnamed
+                    // ("Unknown 27"), so the number is how a modder reconciles
+                    // the two.
+                    let mut want = *on;
+                    if ui
+                        .checkbox(&mut want, format!("{name}  (bit {bit})"))
+                        .changed()
+                    {
+                        *on = want;
+                    }
+                }
+            });
     });
 }
 
@@ -17392,7 +17472,6 @@ fn draw_crea_flags(ui: &mut egui::Ui, state: &mut ObjectEditorState) {
         ui.horizontal_wrapped(|ui| {
             ui.checkbox(&mut state.actor_essential, "Essential");
             ui.checkbox(&mut state.actor_respawn, "Respawn");
-            ui.checkbox(&mut state.quest_item, "Quest Item");
             ui.checkbox(&mut state.actor_invulnerable, "Invulnerable");
             ui.checkbox(&mut state.actor_is_ghost, "Is Ghost");
             ui.checkbox(&mut state.actor_no_knockdowns, "No Knockdowns");
@@ -17430,7 +17509,6 @@ fn draw_npc_flags(
         ui.horizontal_wrapped(|ui| {
             ui.checkbox(&mut state.actor_essential, "Essential");
             ui.checkbox(&mut state.actor_respawn, "Respawn");
-            ui.checkbox(&mut state.quest_item, "Quest Item");
             ui.checkbox(&mut state.actor_invulnerable, "Invulnerable");
             ui.checkbox(&mut state.actor_is_ghost, "Is Ghost");
             ui.checkbox(&mut state.actor_no_knockdowns, "No Knockdowns");
