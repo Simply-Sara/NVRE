@@ -2422,47 +2422,66 @@ impl<'a> Compiler<'a> {
                         // slot. Casting the LEFT operand unconditionally put the
                         // cast on the literal in the first shape, which is a
                         // different program. Witness: CWScript.IsPlayerInMyFaction.
-                        let l_is_temp = matches!(&l, Value::Identifier(_));
-                        let dest = if ls && l_is_temp {
-                            l.clone()
-                        } else {
-                            Value::Identifier(self.temp(buf, "String"))
-                        };
+                        // Which slot the result takes. Measured on
+                        // `CWScript.setOwnerFalkreath`, a chain of five:
+                        //
+                        //   0 strcat ::temp363 "CW …" "FactionToOwn: "
+                        //   1 cast   ::temp364 FactionToOwn
+                        //   2 strcat ::temp364 ::temp363 ::temp364
+                        //   3 strcat ::temp363 ::temp364 ", DiplomaticVictory: "
+                        //   4 cast   ::temp364 DiplomaticVictory
+                        //   5 strcat ::temp364 ::temp363 ::temp364
+                        //
+                        // So the destination is the CAST's slot when exactly one
+                        // side needs converting (`strcat ::temp364 ::temp363
+                        // ::temp364` — destination and right operand are the same
+                        // slot), and a slot off the free list when neither does
+                        // (step 3 writes `::temp363`, which step 2 had freed).
+                        //
+                        // Reusing the LEFT operand unconditionally, which is what
+                        // this did, puts every step of a chain in one slot and
+                        // shifts everything after it. The left operand is still
+                        // live while the destination is chosen, so it is released
+                        // afterwards — and never when it IS the destination.
                         let mut lv = l.clone();
                         let mut rv = r.clone();
+                        let mut dest: Option<Value> = None;
                         if !ls {
+                            let t = Value::Identifier(self.temp(buf, "String"));
                             let mut ins = Instruction::new(opcode_of("cast"));
-                            ins.args.push(dest.clone());
+                            ins.args.push(t.clone());
                             ins.args.push(l.clone());
                             buf.push(ins, line);
                             self.release_temp(buf, &l);
-                            lv = dest.clone();
+                            lv = t.clone();
+                            dest = Some(t);
                         }
                         if !rs {
-                            if !ls {
-                                // The destination already carries the converted
-                                // left operand, so the right one needs its own.
-                                let t = Value::Identifier(self.temp(buf, "String"));
-                                let mut ins = Instruction::new(opcode_of("cast"));
-                                ins.args.push(t.clone());
-                                ins.args.push(r.clone());
-                                buf.push(ins, line);
-                                self.release_temp(buf, &r);
-                                rv = t;
-                            } else {
-                                let mut ins = Instruction::new(opcode_of("cast"));
-                                ins.args.push(dest.clone());
-                                ins.args.push(r.clone());
-                                buf.push(ins, line);
-                                self.release_temp(buf, &r);
-                                rv = dest.clone();
+                            let t = Value::Identifier(self.temp(buf, "String"));
+                            let mut ins = Instruction::new(opcode_of("cast"));
+                            ins.args.push(t.clone());
+                            ins.args.push(r.clone());
+                            buf.push(ins, line);
+                            self.release_temp(buf, &r);
+                            rv = t.clone();
+                            if dest.is_none() {
+                                dest = Some(t);
                             }
                         }
+                        let dest = dest.unwrap_or_else(|| Value::Identifier(self.temp(buf, "String")));
                         let mut ins = Instruction::new(opcode_of("strcat"));
                         ins.args.push(dest.clone());
-                        ins.args.push(lv);
-                        ins.args.push(rv);
+                        ins.args.push(lv.clone());
+                        ins.args.push(rv.clone());
                         buf.push(ins, line);
+                        // The operands are dead; the destination is not, and in
+                        // the converted shapes it IS one of them.
+                        if lv != dest {
+                            self.release_temp(buf, &lv);
+                        }
+                        if rv != dest {
+                            self.release_temp(buf, &rv);
+                        }
                         return Ok(dest);
                     }
                 }
@@ -2756,17 +2775,19 @@ impl<'a> Compiler<'a> {
                             {
                                 let target = self.intern(cls);
                                 let ty = self.static_result_type(cls, name);
-                                let tmp = self.temp(buf, ty);
-                                let mut ins = Instruction::new(opcode_of("callstatic"));
-                                ins.args.push(Value::Identifier(target));
-                                ins.args.push(Value::Identifier(fname));
-                                ins.args.push(Value::Identifier(tmp));
                                 let defs = crate::signatures::method_signature(cls, name)
                                     .map(|(_, d)| d)
                                     .or_else(|| crate::signatures::defaults(name));
                                 let va = self.call_args(buf, args, names, line, cls, name, defs, |i| {
                                     crate::signatures::arg_type(cls, name, i)
                                 })?;
+                                // Destination after the arguments — see the
+                                // member-call path.
+                                let tmp = self.temp(buf, ty);
+                                let mut ins = Instruction::new(opcode_of("callstatic"));
+                                ins.args.push(Value::Identifier(target));
+                                ins.args.push(Value::Identifier(fname));
+                                ins.args.push(Value::Identifier(tmp));
                                 ins.varargs = self.pad_defaults(va, defs, name);
                                 let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
@@ -2787,11 +2808,9 @@ impl<'a> Compiler<'a> {
                         } else {
                             ty
                         };
-                        let tmp = self.temp(buf, ty);
                         let mut ins = Instruction::new(opcode_of("callmethod"));
                         ins.args.push(Value::Identifier(fname));
                         ins.args.push(Value::Identifier(self_i));
-                        ins.args.push(Value::Identifier(tmp));
                         // A bare `f(...)` is a call on `self`, and its arguments
                         // are converted exactly like a member call's. This path
                         // had padding but no coercion, so `SetForcedLandingMarker(None)`
@@ -2807,8 +2826,13 @@ impl<'a> Compiler<'a> {
                         let dealt = self.call_args(buf, args, names, line, &own, name, defs, |i| {
                             crate::signatures::arg_type(&own, name, i)
                         })?;
-                        ins.varargs = self.pad_defaults(dealt, defs, name);
-                        let released: Vec<Value> = ins.varargs.clone();
+                        let dealt = self.pad_defaults(dealt, defs, name);
+                        let released: Vec<Value> = dealt.clone();
+                        // Destination after the arguments — see the member-call
+                        // path.
+                        let tmp = self.temp(buf, ty);
+                        ins.args.push(Value::Identifier(tmp));
+                        ins.varargs = dealt;
                         buf.push(ins, line);
                         // A temporary consumed as an argument is released once
                         // the call is emitted. The member-call path did this and
@@ -2844,10 +2868,6 @@ impl<'a> Compiler<'a> {
                             if n.eq_ignore_ascii_case("parent") {
                                 let m = self.intern(method);
                                 let ty = self.call_result_type(method);
-                                let tmp = self.temp(buf, ty);
-                                let mut ins = Instruction::new(opcode_of("callparent"));
-                                ins.args.push(Value::Identifier(m));
-                                ins.args.push(Value::Identifier(tmp));
                                 // Left to right, like every other call path.
                                 let mut va = Vec::with_capacity(args.len());
                                 for a in args {
@@ -2872,8 +2892,15 @@ impl<'a> Compiler<'a> {
                                     }
                                     here = crate::signatures::parent(&c).map(str::to_string);
                                 }
-                                ins.varargs = self.pad_defaults(va, defs, method);
-                                let released: Vec<Value> = ins.varargs.clone();
+                                let va = self.pad_defaults(va, defs, method);
+                                let released: Vec<Value> = va.clone();
+                                // Destination after the arguments — see the
+                                // member-call path.
+                                let tmp = self.temp(buf, ty);
+                                let mut ins = Instruction::new(opcode_of("callparent"));
+                                ins.args.push(Value::Identifier(m));
+                                ins.args.push(Value::Identifier(tmp));
+                                ins.varargs = va;
                                 buf.push(ins, line);
                                 for a in &released {
                                     self.release_temp(buf, a);
@@ -2891,17 +2918,19 @@ impl<'a> Compiler<'a> {
                                 // that decides whether a later comparison needs
                                 // a `cast`. Measured, not guessed.
                                 let ty = self.static_result_type(class, method);
-                                let tmp = self.temp(buf, ty);
-                                let mut ins = Instruction::new(opcode_of("callstatic"));
-                                ins.args.push(Value::Identifier(target));
-                                ins.args.push(Value::Identifier(m));
-                                ins.args.push(Value::Identifier(tmp));
                                 let defs = crate::signatures::defaults(method);
                                 let cls = class.to_ascii_lowercase();
                                 let sig = crate::signatures::method_params(&cls, method);
                                 let va = self.call_args(buf, args, names, line, &cls, method, defs, |i| {
                                     sig.and_then(|s| s.get(i).copied())
                                 })?;
+                                // Destination after the arguments — see the
+                                // member-call path.
+                                let tmp = self.temp(buf, ty);
+                                let mut ins = Instruction::new(opcode_of("callstatic"));
+                                ins.args.push(Value::Identifier(target));
+                                ins.args.push(Value::Identifier(m));
+                                ins.args.push(Value::Identifier(tmp));
                                 ins.varargs = self.pad_defaults(va, defs, method);
                                 let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
@@ -2953,11 +2982,15 @@ impl<'a> Compiler<'a> {
                             }
                             None => self.call_result_type(method),
                         };
-                        let tmp = self.temp(buf, ty);
-                        let mut ins = Instruction::new(opcode_of("callmethod"));
-                        ins.args.push(Value::Identifier(m));
-                        ins.args.push(recv.clone());
-                        ins.args.push(Value::Identifier(tmp));
+                        // The destination is allocated AFTER the arguments: the
+                        // argument's own `cast` takes the lower slot. Measured on
+                        // `DLC1ChaurusCocoonScript.Ready.onEndState`, whose
+                        // `Self.Activate(Self)` is
+                        //   cast ::temp0 self
+                        //   callmethod Activate self ::temp1 ::temp0 false
+                        // — allocating the destination first gave
+                        // `cast ::temp1 self` / `callmethod … ::temp0 ::temp1`,
+                        // the same instructions with the two slots exchanged.
                         // Arguments are converted type-directed: an int in a
                         // float slot gets a `cast`, everything else is left
                         // alone. Measured with the real compiler, not guessed.
@@ -2985,8 +3018,17 @@ impl<'a> Compiler<'a> {
                         })?;
                         // Omitted trailing arguments are written out, not
                         // dropped: the .pex must carry the count the game has.
-                        ins.varargs = self.pad_defaults(va, defs, method);
-                        let released: Vec<Value> = ins.varargs.clone();
+                        let va = self.pad_defaults(va, defs, method);
+                        let released: Vec<Value> = va.clone();
+                        // The destination is allocated AFTER the argument list,
+                        // so an argument's own `cast` takes the lower slot. See
+                        // the `DLC1ChaurusCocoonScript` measurement above.
+                        let tmp = self.temp(buf, ty);
+                        let mut ins = Instruction::new(opcode_of("callmethod"));
+                        ins.args.push(Value::Identifier(m));
+                        ins.args.push(recv.clone());
+                        ins.args.push(Value::Identifier(tmp));
+                        ins.varargs = va;
                         buf.push(ins, line);
                         // A temporary consumed as an argument or receiver is
                         // released once the call is emitted. The CK frees the

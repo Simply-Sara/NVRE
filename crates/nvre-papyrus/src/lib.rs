@@ -66,15 +66,15 @@
 //!
 //! ```text
 //! examples/behaviour   (54,620 functions, Skyrim SE)
-//!     byte-identical                  48,415   88.6%
-//!     identical up to temp NUMBERING   4,690    8.6%
-//!     behaviourally different          1,515    2.8%
-//!       of which case-only spelling      566   (a spelling difference, not code)
-//!   scripts with a behavioural difference     857 / 14,026    6.1%
+//!     byte-identical                  49,117   89.9%
+//!     identical up to temp NUMBERING   4,249    7.8%
+//!     behaviourally different          1,254    2.3%
+//!       of which case-only spelling      587   (a spelling difference, not code)
+//!   scripts with a behavioural difference     769 / 14,026    5.5%
 //!
-//! examples/structural  49,902 / 54,528 structurally identical after
-//!                      renumbering both sides (91.5%)
-//! examples/typecensus  52,137 / 54,528 locals type multisets identical (95.6%)
+//! examples/structural  50,661 / 54,528 structurally identical after
+//!                      renumbering both sides (92.9%)
+//! examples/typecensus  52,248 / 54,528 locals type multisets identical (95.8%)
 //! examples/parse_census 14,301 / 14,301 .psc parse
 //! ```
 //!
