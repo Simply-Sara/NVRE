@@ -42,7 +42,7 @@ fn walk<'a>(
         line: u16,
     ) {
         match e {
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, .. } => {
                 if let Expr::Member(obj, method) = callee.as_ref() {
                     if let Some(cls) = receiver_class(obj, script, table) {
                         out.push((cls, method.clone(), line));

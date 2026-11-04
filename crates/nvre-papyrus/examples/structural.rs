@@ -15,7 +15,10 @@
 //! cargo run --release --example structural -- Scripts.zip "Misc.bsa"
 //! ```
 
-use nvre_papyrus::emit::{Compiler, Symbols};
+#[path = "support/mod.rs"]
+mod support;
+
+use nvre_papyrus::emit::Compiler;
 use nvre_papyrus::pex::Function;
 use nvre_papyrus::{lex, opcodes, parse, PexFile, Value};
 use std::collections::BTreeMap;
@@ -98,6 +101,7 @@ fn main() {
         }
     }
     sources.sort();
+    let table = support::class_table(&mut zip, &sources);
 
     let mut total = 0usize;
     let mut same = 0usize;
@@ -126,13 +130,9 @@ fn main() {
         let Ok(script) = parse(&lex(&src)) else {
             continue;
         };
-        let symbols = Symbols {
-            script: script.name.clone(),
-            parent: script.parent.clone().unwrap_or_default(),
-            variables: Vec::new(),
-            properties: Vec::new(),
-            states: Vec::new(),
-        };
+        // The class table from every source, so an inherited name has a type —
+        // see `support::class_table`.
+        let symbols = nvre_papyrus::emit::Symbols::for_script(&script, &table);
         let Ok(c) = Compiler::new(&script, symbols).compile() else {
             continue;
         };

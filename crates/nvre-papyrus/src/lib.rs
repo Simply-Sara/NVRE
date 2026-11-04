@@ -66,14 +66,15 @@
 //!
 //! ```text
 //! examples/behaviour   (54,620 functions, Skyrim SE)
-//!     byte-identical                  47,640   87.2%
-//!     identical up to temp NUMBERING   4,299    7.9%
-//!     behaviourally different          2,681    4.9%
-//!   scripts with a behavioural difference   1,546 / 14,026   11.0%
+//!     byte-identical                  49,607   90.8%
+//!     identical up to temp NUMBERING   3,987    7.3%
+//!     behaviourally different          1,026    1.9%
+//!       of which case-only spelling      676   (a spelling difference, not code)
+//!   scripts with a behavioural difference     640 / 14,026    4.6%
 //!
-//! examples/structural  48,232 / 54,528 structurally identical after
-//!                      renumbering both sides (88.5%)
-//! examples/typecensus  51,912 / 54,528 locals type multisets identical (95.2%)
+//! examples/structural  51,003 / 54,528 structurally identical after
+//!                      renumbering both sides (93.5%)
+//! examples/typecensus  52,863 / 54,528 locals type multisets identical (96.9%)
 //! examples/parse_census 14,301 / 14,301 .psc parse
 //! ```
 //!
@@ -81,6 +82,15 @@
 //! value came from**, so `::temp3` and `::temp7` around the same instructions
 //! are the same program, and only a different opcode, operand, branch target or
 //! length counts as different.
+//!
+//! It also reports, separately, the differences that vanish when operands are
+//! compared **ignoring case**. Those are the string table's first-spelling rule,
+//! not code: the table folds case and keeps whichever spelling it interned
+//! first, so a state name can come back `pushedposition` where the source wrote
+//! `pushedPosition`. Both alternatives measured worse than leaving it alone —
+//! interning state literals lowercase scored 1,877 behavioural and pre-interning
+//! state declarations 1,575, against 1,566 for doing nothing — so the fix needs
+//! the compiler's interning order, which is the same wall as the record order.
 //!
 //! `structural` is the work list `behaviour` cannot give. It renumbers both
 //! sides relative to their own temporary base and reports the first instruction
@@ -184,8 +194,10 @@
 
 pub mod check;
 pub mod emit;
+pub mod globals;
 pub mod lex;
 pub mod opcodes;
+pub mod paramnames;
 pub mod parse;
 pub mod pex;
 pub mod returns;

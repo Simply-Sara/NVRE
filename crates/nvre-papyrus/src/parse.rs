@@ -311,6 +311,17 @@ pub enum Expr {
         callee: Box<Expr>,
         /// The arguments.
         args: Vec<Expr>,
+        /// Each argument's name when the source wrote one, parallel to `args`.
+        ///
+        /// `Game.DisablePlayerControls(abMovement = false, abMenu = false, …)`
+        /// names two of nine parameters, and the `.pex` still writes **all
+        /// nine** — each named value at its declared position and the rest at
+        /// their defaults. Dropping the name and passing positionally put
+        /// `false` in `abMovement`'s slot and `false` in `abFighting`'s, so the
+        /// call ran with four wrong booleans: a silent behaviour bug, not a
+        /// numbering one. 384 such calls across 176 of the 14,301 shipped
+        /// sources.
+        names: Vec<Option<String>>,
     },
     /// `a + b` and the other binary operators.
     Binary {
@@ -1528,25 +1539,31 @@ impl<'a> Parser<'a> {
             } else if self.peek().map(|t| &t.kind) == Some(&Kind::LParen) {
                 self.i += 1;
                 let mut args = Vec::new();
+                let mut names: Vec<Option<String>> = Vec::new();
                 if !self.eat(&Kind::RParen) {
                     loop {
-                        // `f(akSource := self)` names the argument; the name
-                        // is what the parser drops, because the `.pex` call
-                        // record passes arguments by position.
+                        // `f(akSource := self)` names the argument. The name is
+                        // kept, because it decides the POSITION the value lands
+                        // in: the `.pex` writes every parameter of the
+                        // declaration, so a named argument goes to its declared
+                        // slot and the unnamed ones fill the rest in order.
                         // The CK's own sources use both `name := value` and
                         // `name = value` for a named argument: measured in
                         // `BYOHHouseFishHatcheryScript.psc`, whose
                         // `ShowGiftMenu(abGivingGift = true, …)` is three
                         // `=`-named arguments.
-                        if matches!(self.peek().map(|t| &t.kind), Some(Kind::Word(_)))
-                            && matches!(
+                        let mut name = None;
+                        if let Some(Kind::Word(w)) = self.peek().map(|t| t.kind.clone()) {
+                            if matches!(
                                 self.t.get(self.i + 1).map(|t| &t.kind),
                                 Some(Kind::ColonAssign) | Some(Kind::Assign)
-                            )
-                        {
-                            self.i += 2;
+                            ) {
+                                name = Some(w);
+                                self.i += 2;
+                            }
                         }
                         args.push(self.expr()?);
+                        names.push(name);
                         if !self.eat(&Kind::Comma) {
                             break;
                         }
@@ -1558,6 +1575,7 @@ impl<'a> Parser<'a> {
                 e = Expr::Call {
                     callee: Box::new(e),
                     args,
+                    names,
                 };
             } else if self.eat(&Kind::LBracket) {
                 let idx = self.expr()?;
@@ -1618,6 +1636,7 @@ impl<'a> Parser<'a> {
                 Ok(Expr::Call {
                     callee: Box::new(Expr::Ident(format!("New {}", base.0))),
                     args: vec![size],
+                    names: vec![None],
                 })
             }
             Some(Kind::Word(w)) => {

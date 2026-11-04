@@ -346,8 +346,27 @@ pub fn lex(src: &str) -> Vec<Token> {
                         col: start_col,
                     });
                 } else {
+                    // A literal wider than `i32` **saturates**, it does not wrap
+                    // and does not become zero. Measured on
+                    // `DLC1ChaurusCocoonScript.onEndState`, whose
+                    // `Self.DamageObject(10000000000)` compiles to
+                    // `cast ::temp2 2147483647`: the compiler clamps to
+                    // `i32::MAX`. Parsing into `i32` and falling back to `0`
+                    // emitted `cast ::temp2 0` — a damage call of zero instead of
+                    // the maximum. One witness, so the clamp is recorded rather
+                    // than generalised: `i32::MIN` is the same rule on the other
+                    // end.
+                    let v = text
+                        .parse::<i64>()
+                        .map(|n| n.clamp(i32::MIN as i64, i32::MAX as i64) as i32)
+                        .or_else(|_| {
+                            text.parse::<f64>().map(|f| {
+                                f.clamp(i32::MIN as f64, i32::MAX as f64) as i32
+                            })
+                        })
+                        .unwrap_or(0);
                     out.push(Token {
-                        kind: Kind::Int(text.parse().unwrap_or(0)),
+                        kind: Kind::Int(v),
                         line: start_line,
                         col: start_col,
                     });

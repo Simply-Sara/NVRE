@@ -335,17 +335,39 @@ impl<'a> Compiler<'a> {
     /// `#[allow(dead_code)]` as a marker of that.
     fn type_of(&self, name: &str) -> Option<&TypeName> {
         let lower = name.to_ascii_lowercase();
-        if let Some((_, t)) = self.types.iter().find(|(n, _)| n == &lower) {
-            return Some(t);
+        // A property's **backing member** carries the property's own type.
+        // `::mySelf_var` IS the storage the declaration made, so it is a
+        // `miscobject` and nothing else is. Reading it as `var` means no
+        // conversion fires at a slot it fills: `BYOHBuildingObjectExteriorScript
+        // .OnContainerChanged` passes `myself` — `MiscObject Property mySelf
+        // Auto`, inherited from `BYOHBuildingObjectScript` — where the parameter
+        // wants a `Form`, and the game writes `cast ::temp5 ::mySelf_var` where
+        // this wrote the variable bare, one operand short.
+        //
+        // The search covers both lists because which one a name lands in depends
+        // on where it was declared: an ancestor's members arrive through
+        // `ClassTable` as `variables`, a script's own declarations as
+        // `properties` or `types`. The type is the same either way.
+        let bare = lower
+            .strip_prefix("::")
+            .and_then(|n| n.strip_suffix("_var"))
+            .unwrap_or(&lower);
+        let mut keys: Vec<&str> = vec![&lower];
+        if bare != lower {
+            keys.push(bare);
         }
-        if let Some((_, t)) = self.symbols.variables.iter().find(|(n, _)| n == &lower) {
-            return Some(t);
+        for key in keys {
+            if let Some((_, t)) = self.types.iter().find(|(n, _)| n == key) {
+                return Some(t);
+            }
+            if let Some((_, t)) = self.symbols.variables.iter().find(|(n, _)| n == key) {
+                return Some(t);
+            }
+            if let Some((_, t)) = self.symbols.properties.iter().find(|(n, _)| n == key) {
+                return Some(t);
+            }
         }
-        self.symbols
-            .properties
-            .iter()
-            .find(|(n, _)| n == &lower)
-            .map(|(_, t)| t)
+        None
     }
 
     /// Whether a name is an integer-typed value the compiler knows.
@@ -775,31 +797,27 @@ impl<'a> Compiler<'a> {
         let _self_idx = self.intern("self");
 
         let mut params = Vec::new();
-        // A parameter the body never reads **still consumes two temporary
-        // numbers**. Measured across five functions that differ only in their
-        // parameter list and body order:
+        // A parameter costs the temporary counter **nothing**, read or unread.
         //
-        //   Function Zero()                    -> first temp ::temp0
-        //   Function One(int n)   (n unused)   -> first temp ::temp2
-        //   Function Two(int n, int k)         -> first temp ::temp4
-        //   Function Three(int n, int k, int j)-> first temp ::temp6
-        //   Function ReadsParam(int n) { int m = n ... } -> ::temp0 (n is read)
+        // An earlier note here claimed an unread parameter consumes two numbers,
+        // from five hand-built probes that seemed to show
+        // `Function One(int n)` starting at `::temp2`. `examples/parambase`
+        // measures the relation over the 12,432 shipped functions that have both
+        // parameters and temporaries, and the base is `0` in the overwhelming
+        // majority for EVERY (params, unread) combination — including 1,047
+        // one-parameter functions (638 at base 0) and 8 six-parameter functions
+        // with five unread (all 8 at base 0). The spread around it is the
+        // script-wide counter, not a parameter effect.
         //
-        // So it is two slots per **unread** parameter, not one per parameter,
-        // and a read parameter consumes none. The slots are never declared in
-        // the locals table, which is why the numbers look like they skip.
+        // So the probes were reading a neighbour's drift: the counter is
+        // per-script and monotonic, so a hand-built file with one function cannot
+        // show the rule at all. Do not reintroduce an offset here without
+        // re-running that probe.
         for p in &f.params {
             let pn = self.intern(&p.name);
             let pt = self.intern(&p.type_name.0);
             buf.types.push((pn, pt));
             buf.params.push((p.name.to_ascii_lowercase(), pn));
-            // NOTE: parameters do seem to consume temporary *numbers* — a
-            // function with one unused parameter starts at `::temp2` and one
-            // with two at `::temp4` — but the rule is not `2 * params` and not
-            // `2 * (index of the first read parameter)` either: both fit the
-            // hand-built probes and both cost corpus-wide (`semcensus` reads
-            // 0.216 instead of 0.220). Left unmodelled rather than fitted,
-            // because a wrong offset shifts every temporary in the function.
             params.push(crate::pex::TypedName {
                 name: pn,
                 type_name: pt,
@@ -1058,7 +1076,23 @@ impl<'a> Compiler<'a> {
                         .and_then(|cls| {
                             crate::signatures::property_type(&cls, name).map(str::to_string)
                         })
-                        .or_else(|| self.property_type(name).to_string().into());
+                        .or_else(|| Some(self.property_type(name)));
+                    // The value slot is allocated BEFORE the conversion, so the
+                    // cast's own temporary takes the HIGHER number. Measured on
+                    // `CWScript.OnInit`, `debugOn = 0` where `debugOn` is a
+                    // Float property and the literal an Int:
+                    //
+                    //   game:  cast ::temp1 0                 <- cast allocated second
+                    //          assign ::temp0 ::temp1
+                    //          propset value ::debugOn_var ::temp0
+                    //   ours:  cast ::temp0 0                 <- cast allocated first
+                    //          assign ::temp1 ::temp0
+                    //          propset value ::debugOn_var ::temp1
+                    //
+                    // Same three instructions, both slots exchanged — and because
+                    // the counter is script-wide, every later function in a
+                    // 400-function script inherited the swap.
+                    let pre_slot = pty.as_ref().map(|t| self.temp(buf, t));
                     let raw = self.expr(buf, value, *line)?;
                     let raw = match &pty {
                         Some(t) => self.coerce_arg(buf, raw, t, *line),
@@ -1076,7 +1110,32 @@ impl<'a> Compiler<'a> {
                         Some(t) => t.clone(),
                         None => self.value_type(buf, &raw),
                     };
-                    let v = self.materialise_copy(buf, raw, &ty, *line);
+                    // The cast's own destination, when the value needed
+                    // converting: it is dead once the copy into the value slot is
+                    // emitted, and freeing it there is what makes the NEXT
+                    // property write reuse it.
+                    let mut cast_slot = None;
+                    let v = match pre_slot {
+                        Some(slot) => {
+                            if let Value::Identifier(r) = &raw {
+                                if r != &slot
+                                    && self
+                                        .strings
+                                        .get(*r as usize)
+                                        .map(|n| n.starts_with("::temp"))
+                                        .unwrap_or(false)
+                                {
+                                    cast_slot = Some(*r);
+                                }
+                            }
+                            let mut ins = Instruction::new(opcode_of("assign"));
+                            ins.args.push(Value::Identifier(slot));
+                            ins.args.push(raw);
+                            buf.push(ins, *line);
+                            Value::Identifier(slot)
+                        }
+                        None => self.materialise_copy(buf, raw, &ty, *line),
+                    };
                     let o = self.expr(buf, obj, *line)?;
                     let mut ins = Instruction::new(opcode_of("propset"));
                     ins.args.push(Value::Identifier(p));
@@ -1086,6 +1145,22 @@ impl<'a> Compiler<'a> {
                     // The materialised value is dead once the property is
                     // written, and the CK reuses that one slot for consecutive
                     // propsets (`assign ::temp17 true` … `assign ::temp17 true`).
+                    //
+                    // The CAST's slot is released FIRST, and both go back before
+                    // the next statement allocates. Measured on `CWScript.OnInit`,
+                    // where `baseSalary = 100` (a Float property, an Int literal)
+                    // is followed two statements later by another Float cast:
+                    //
+                    //   cast ::temp1 100 / assign ::temp0 ::temp1 / propset …
+                    //   … cast ::temp1 100          <- the CAST's slot, reused
+                    //
+                    // The free list is FIFO per type, so freeing the cast before
+                    // the value slot is what hands `::temp1` back out. Not
+                    // releasing the cast slot at all gave `cast ::temp0 100`, and
+                    // every later Float temporary in a 400-function script moved.
+                    if let Some(c) = cast_slot {
+                        self.release_temp(buf, &Value::Identifier(c));
+                    }
                     self.release_temp(buf, &v);
                     return Ok(());
                 }
@@ -1116,6 +1191,86 @@ impl<'a> Compiler<'a> {
                 value,
                 line,
             } => {
+                // `a.b += v` is not a plain read-modify-write of a name: the
+                // property is read with `propget`, the sum stored in a
+                // temporary, and the result written back with `propset`.
+                // `lvalue` answers a member target with the property NAME, which
+                // is right for `propset`'s first operand and useless as an
+                // arithmetic operand — taking it emitted
+                // `fadd ::temp0 Value 1 ; assign Value ::temp0`, an assignment to
+                // a name the VM has no slot for.
+                //
+                // Measured on `AbTGTrapsightScript.OnEffectStart`, whose whole
+                // body is `pTSight.Value += 1`:
+                //
+                //   0 propget value ::pTSight_var ::temp1   the read
+                //   1 cast    ::temp2 1                     the int literal, widened
+                //   2 fadd    ::temp2 ::temp1 ::temp2       the sum reuses the cast's slot
+                //   3 assign  ::temp0 ::temp2               into the propset value slot
+                //   4 propset value ::pTSight_var ::temp0
+                //
+                // `::temp0` is the LOWEST number in the function, so the value
+                // slot is allocated before the expression is evaluated — the same
+                // "materialise the value first" rule the plain `a.b = v` path
+                // already follows.
+                if let Expr::Member(obj, name) = target {
+                    let p = self.intern(name);
+                    let pty = self
+                        .receiver_class_of(buf, obj)
+                        .and_then(|cls| {
+                            crate::signatures::property_type(&cls, name).map(str::to_string)
+                        })
+                        .or_else(|| Some(self.property_type(name)));
+                    let ty = pty.unwrap_or_else(|| "var".to_string());
+                    // The receiver is evaluated FIRST, then the value slot, then
+                    // the read's destination. Measured on `TIF__0004E4C8
+                    // .Fragment_0`, `(GetOwningQuest() as DA09Script)
+                    // .GemSceneStage += 1`, whose locals run
+                    // `::temp1:quest  ::temp2:da09script  ::temp3:Int
+                    //  ::temp4:Int` — receiver, cast, value slot, propget
+                    // destination. Allocating the value slot before the receiver
+                    // put it in `::temp1` and displaced the other three.
+                    let o = self.expr(buf, obj, *line)?;
+                    let v_slot = self.temp(buf, &ty);
+                    let cur = self.temp(buf, &ty);
+                    let mut ins = Instruction::new(opcode_of("propget"));
+                    ins.args.push(Value::Identifier(p));
+                    ins.args.push(o.clone());
+                    ins.args.push(Value::Identifier(cur));
+                    buf.push(ins, *line);
+                    let rhs = self.expr(buf, value, *line)?;
+                    let rhs = self.coerce_arg(buf, rhs, &ty, *line);
+                    // The cast's slot goes back on the free list before the sum
+                    // is allocated, so the sum lands in it — the same ordering
+                    // the comparison path needs.
+                    // Both operands are released before the sum's destination is
+                    // chosen, so the sum lands in one of their slots — the same
+                    // release-before-allocate ordering the comparison path needs.
+                    // `GemSceneStage += 1` writes `iadd ::temp4 ::temp4 1`: the
+                    // read's own slot, rewritten in place. Allocating after only
+                    // the cast was released gave `iadd ::temp5 ::temp4 1`.
+                    self.release_temp(buf, &rhs);
+                    self.release_temp(buf, &Value::Identifier(cur));
+                    let dest = self.temp(buf, &ty);
+                    let arith = self.arith_op(buf, op, &Value::Identifier(cur));
+                    let mut ins = Instruction::new(arith);
+                    ins.args.push(Value::Identifier(dest));
+                    ins.args.push(Value::Identifier(cur));
+                    ins.args.push(rhs);
+                    buf.push(ins, *line);
+                    let mut ins = Instruction::new(opcode_of("assign"));
+                    ins.args.push(Value::Identifier(v_slot));
+                    ins.args.push(Value::Identifier(dest));
+                    buf.push(ins, *line);
+                    let mut ins = Instruction::new(opcode_of("propset"));
+                    ins.args.push(Value::Identifier(p));
+                    ins.args.push(o);
+                    ins.args.push(Value::Identifier(v_slot));
+                    buf.push(ins, *line);
+                    self.release_temp(buf, &Value::Identifier(dest));
+                    self.release_temp(buf, &Value::Identifier(v_slot));
+                    return Ok(());
+                }
                 // `x += 1` is `x = x + 1` and the compiler emits exactly that:
                 // a read, an arithmetic instruction, and an assign.
                 let dest = self.lvalue(buf, target)?;
@@ -1178,7 +1333,7 @@ impl<'a> Compiler<'a> {
                 let start = buf.here();
                 let c = self.expr(buf, cond, *line)?;
                 let mut ins = Instruction::new(opcode_of("jmpf"));
-                ins.args.push(c);
+                ins.args.push(c.clone());
                 let at = buf.here();
                 ins.args.push(Value::Int(0));
                 buf.push(ins, *line);
@@ -1195,6 +1350,15 @@ impl<'a> Compiler<'a> {
                 if let Value::Int(v) = &mut buf.instructions[at].args[1] {
                     *v = after as i32 - at as i32;
                 }
+                // The condition's temporary is dead once the loop is emitted, and
+                // the CK hands it straight back out: measured on
+                // `ArenaScript.PickNextWagerFight`, where the loop's second
+                // condition test reuses the `RandomInt` result's slot
+                // (`cmp_eq ::temp24 fightIndex lastFightIndex`) rather than taking
+                // a fresh one. Not releasing it left the counter one high for the
+                // rest of the function — and, because the counter is script-wide,
+                // for every function after it in the file.
+                self.release_temp(buf, &c);
                 Ok(())
             }
         }
@@ -1254,61 +1418,43 @@ impl<'a> Compiler<'a> {
             }
             self.block(buf, &b.body)?;
             // Every branch body ends with a jump past the rest of the chain,
-            // except that an **empty** branch in a multi-branch construct gets
-            // none. Measured with the real compiler on `Actor.MakePlayerFriend`,
-            // whose inner and outer `if`s both have a comment-only `else`:
+            // **except the last branch when it is an `else`** — an `else` has no
+            // condition of its own, so falling into it is the only way it runs
+            // and the fall-through already lands past the chain.
             //
-            //   10 jmp 1     <- inner then-branch
-            //   11 jmp 1     <- outer then-branch, and that is the end
+            // That one rule replaces three narrower ones that had been fitted to
+            // individual witnesses, and it explains every one of them:
             //
-            // Both empty `else` bodies contribute nothing. A single-branch
-            // `if` still emits its jump even when the body is empty
-            // (`if c endif` -> `jmpf c 2 ; jmp 1`, Em3), which is why the count
-            // is not simply `bodies.len()`.
-            // A branch whose body ends in `return` gets no trailing jump: the
-            // jump would be unreachable. Measured on
-            // `ArenaCombatQuest.ShouldEnd`, whose `if/else` both `return`:
+            // - `ActivateAgainAfterDelay.OnActivate` — `if … else … endif` whose
+            //   else ends with `gotoState("pulledPosition")`: no jump, because
+            //   the final branch is an `else`.
+            // - `ArenaCombatQuest.ShouldEnd` — `if/else`, both `return`: the
+            //   then-branch keeps its `jmp`, the else has none. Same rule; the
+            //   earlier reading ("the last branch drops it when it ends in
+            //   `return`") mistook the cause for the effect.
+            // - `Actor.MakePlayerFriend` — inner and outer `if`s that both have a
+            //   comment-only `else`: two jumps in the whole body, both then
+            //   branches.
+            // - A single-branch `if c endif` keeps its jump even when empty
+            //   (`jmpf c 2 ; jmp 1`), and `if c return endif` keeps it too
+            //   (`CWSoldierDeathObserverActorScript.OnDeath`) — neither is an
+            //   `else`, so nothing is elided.
+            // - `AchievementsScript.IncHardWorker` — `if/elseif/elseif` ending in
+            //   a nested chain: the last branch DOES emit its jump, and the whole
+            //   `operand value on jmp`/`jmpf` bucket (757 functions) was this
+            //   one omission. A chain whose last branch is an `elseif` is not an
+            //   `else`.
             //
-            //   2 return true
-            //   3 jmp 2          <- the THEN branch keeps its jump
-            //   4 return false   <- the ELSE branch has none
-            //
-            // which is the same dead-code elimination that leaves an empty
-            // branch with no jump at all.
-            // Only the LAST branch drops it, and only when it ends in `return`:
-            // in `ArenaCombatQuest.ShouldEnd` the then-branch keeps its jump and
-            // the else-branch has none. Applying the rule to every branch scores
-            // 43,624 against 43,639, so earlier branches keep theirs.
+            // Measured both ways over 54,620 functions: skipping the last branch
+            // unconditionally scores 2,106 behavioural differences, eliding
+            // nothing scores 2,579, and this rule scores 1,566.
             let is_last = mine_branch + 1 == branches.len();
-            // ...and only for a MULTI-branch construct. A single-branch
-            // `if c return endif` DOES get its trailing jump: the false path has
-            // to skip the return, and the game emits
-            //   jmpf ::temp0 3 / return None / jmp 1
-            // Measured on `CWSoldierDeathObserverActorScript.OnDeath`.
-            let last_and_returns =
-                is_last && branches.len() > 1 && matches!(b.body.last(), Some(Stmt::Return { .. }));
-            // An EMPTY branch drops its jump only when it is the LAST branch.
-            // `ActivateAgainAfterDelay.onActivate` has a comment-only `if` body
-            // followed by a real `else`, and the game still emits the then
-            // branch's `jmp 17` — dropping it makes the false path fall into the
-            // else correctly but the true path skip nothing. A single-branch
-            // `if` keeps its jump even when empty (`if c endif`).
-            let last_and_empty = is_last && b.body.is_empty() && branches.len() > 1;
-            // NOTE: a tail-position rule was also tried — a nested `if` as the
-            // final statement of an enclosing branch skipping its last jump,
-            // because `ArenaInteriorDoorScript.OnActivate` emits one `jmp` where
-            // this emits two. It scores 5,275 behavioural differences against
-            // 4,602, so the elision is conditional on something not yet
-            // identified and the rule is left out.
-            // ...and the LAST branch of a MULTI-branch chain omits it too: the
-            // fall-through already lands past the chain, so the jump is a
-            // no-op. A single-branch `if c x = 1 endif` keeps it — that was
-            // measured directly with the compiler (cmp_eq, jmpf 3, assign,
-            // jmp 1) — but `if c … else … endif` does not emit one for the
-            // else, and neither does a longer chain for its last branch.
-            // Witness: `ActivateAgainAfterDelay.OnActivate`, whose else ends
-            // with `gotoState("pulledPosition")` and has no trailing jmp.
-            let skip = last_and_empty || last_and_returns || (is_last && branches.len() > 1);
+            let is_else = b.cond.is_none();
+            // An `else` whose body is empty, or which ends in `return`, needs no
+            // jump either — but both fall out of the same test, because an empty
+            // body emits nothing to jump over and the CK never emits a jump whose
+            // target is the next instruction.
+            let skip = is_last && is_else;
             if !skip {
                 let mut ins = Instruction::new(opcode_of("jmp"));
                 ins.args.push(Value::Int(0));
@@ -1438,7 +1584,7 @@ impl<'a> Compiler<'a> {
                 }
                 self.type_of(n).map(|t| t.0.clone())
             }
-            Expr::Member(_, name) => Some(self.property_type(name).to_string()),
+            Expr::Member(_, name) => Some(self.property_type(name)),
             _ => None,
         }
     }
@@ -1648,16 +1794,33 @@ impl<'a> Compiler<'a> {
     }
 
     /// The declared type of a property, for its `propget` temporary.
-    fn property_type(&self, name: &str) -> &'static str {
+    /// A property's declared type as a slot type.
+    ///
+    /// The eight words this returns are the ones the corpus spells in a locals
+    /// table: the four primitives capitalised, and the class name **as declared**.
+    /// An earlier version mapped every class to `var`, which is the same
+    /// "typed slot answering var" defect that cost conversions at call arguments
+    /// and array reads: `kmyquest.CWs.WhiterunLocation` is a
+    /// `Location Property WhiterunLocation` on `CWScript`, the game types the
+    /// `propget` destination `::temp17:location`, and a `var` slot could not be
+    /// compared against `cityVar` (a `location` parameter) without an extra cast
+    /// — and it took a different temporary, displacing the rest of a 900-line
+    /// quest fragment.
+    ///
+    /// A class name is normalised to lowercase, which is how the corpus spells a
+    /// class in a slot; primitives stay capitalised. That split is measured, not
+    /// cosmetic — see `var_type`.
+    fn property_type(&self, name: &str) -> String {
         match self.type_of(name) {
             Some(t) => match t.base().as_str() {
-                "int" => "Int",
-                "float" => "Float",
-                "bool" => "Bool",
-                "string" => "String",
-                _ => "var",
+                "int" => "Int".to_string(),
+                "float" => "Float".to_string(),
+                "bool" => "Bool".to_string(),
+                "string" => "String".to_string(),
+                "none" | "var" => "var".to_string(),
+                other => other.to_ascii_lowercase(),
             },
-            None => "var",
+            None => "var".to_string(),
         }
     }
 
@@ -1765,6 +1928,22 @@ impl<'a> Compiler<'a> {
     ///
     /// A parameter with **no** default is never padded: the source was required
     /// to supply it, and filling in a value there would be invention.
+    /// A declared default as the value the instruction carries.
+    ///
+    /// `bool abMovement = true` becomes `Value::Bool(true)`; a `str` default is
+    /// interned. `None` for a kind this does not know, so the caller can stop
+    /// rather than emit a wrong literal.
+    fn default_value(&mut self, kind: &str, text: &str) -> Option<Value> {
+        Some(match kind {
+            "bool" => Value::Bool(text == "true"),
+            "none" => Value::None,
+            "int" => Value::Int(text.parse::<i32>().ok()?),
+            "float" => Value::Float(text.parse::<f32>().ok()?),
+            "str" => Value::String(self.intern(text)),
+            _ => return None,
+        })
+    }
+
     fn pad_defaults(
         &mut self,
         mut args: Vec<Value>,
@@ -1799,19 +1978,8 @@ impl<'a> Compiler<'a> {
         for slot in slots.iter().skip(args.len()) {
             let Some((kind, text)) = slot else { break };
             let (kind, text) = (kind.as_str(), text.as_str());
-            let v = match kind {
-                "bool" => Value::Bool(text == "true"),
-                "none" => Value::None,
-                "int" => match text.parse::<i32>() {
-                    Ok(n) => Value::Int(n),
-                    Err(_) => break,
-                },
-                "float" => match text.parse::<f32>() {
-                    Ok(f) => Value::Float(f),
-                    Err(_) => break,
-                },
-                "str" => Value::String(self.intern(text)),
-                _ => break,
+            let Some(v) = self.default_value(kind, text) else {
+                break;
             };
             args.push(v);
         }
@@ -1878,7 +2046,13 @@ impl<'a> Compiler<'a> {
             buf.push(ins, line);
             return Value::Identifier(t);
         }
-        let have = self.value_type(buf, &value);
+        // An unknown source type is not evidence of a conversion — see
+        // `known_type`. The fallback `value_type` gives for an undeclared name
+        // is `Int`/`Float`, and reading that as knowledge invents casts the CK
+        // does not emit.
+        let Some(have) = self.known_type(buf, &value) else {
+            return value;
+        };
         if have.eq_ignore_ascii_case(want) || have.eq_ignore_ascii_case("var") {
             return value;
         }
@@ -1944,7 +2118,208 @@ impl<'a> Compiler<'a> {
         Value::Identifier(t)
     }
 
-    /// The declared class of a name used as a receiver, looking through the
+    /// Where each argument goes, when the source named some of them.
+    ///
+    /// `Game.DisablePlayerControls(abMovement = false, abMenu = false,
+    /// abActivate = false, abFighting = true)` writes **all nine** parameters of
+    /// the declaration: the four named values at their declared slots and the
+    /// other five at their defaults. Passing the four positionally puts `false`
+    /// in `abMovement` and `false` in `abFighting`, so the call runs with the
+    /// wrong booleans — a behaviour bug, not a numbering one.
+    ///
+    /// Returns `None` when no argument is named (the common case, and the one
+    /// that must not pay for a table lookup), or when the callee's parameter
+    /// names are unknown — in which case the positional reading is the only one
+    /// available and is left alone rather than guessed at.
+    ///
+    /// An unnamed argument fills the lowest slot not already taken by a name, in
+    /// source order, which is what the language specifies and what the corpus
+    /// shows: `ShowGiftMenu(abGivingGift = true, akSpeaker = None, …)` mixes the
+    /// two.
+    fn named_positions(
+        names: &[Option<String>],
+        class: &str,
+        function: &str,
+    ) -> Option<Vec<usize>> {
+        if names.iter().all(Option::is_none) {
+            return None;
+        }
+        let declared = crate::paramnames::param_names(class, function)?;
+        let mut slots: Vec<Option<usize>> = vec![None; names.len()];
+        let mut taken = vec![false; declared.len()];
+        for (i, name) in names.iter().enumerate() {
+            if let Some(n) = name {
+                let lower = n.to_ascii_lowercase();
+                let at = declared.iter().position(|d| *d == lower)?;
+                if taken[at] {
+                    return None;
+                }
+                taken[at] = true;
+                slots[i] = Some(at);
+            }
+        }
+        let mut next = 0usize;
+        for slot in slots.iter_mut() {
+            if slot.is_some() {
+                continue;
+            }
+            while next < taken.len() && taken[next] {
+                next += 1;
+            }
+            if next >= taken.len() {
+                return None;
+            }
+            taken[next] = true;
+            *slot = Some(next);
+            next += 1;
+        }
+        slots.into_iter().collect()
+    }
+
+    /// Reorder `values` so slot `k` holds the argument the source put there,
+    /// filling any skipped slot from the declaration's default.
+    ///
+    /// A named argument can skip over parameters, and the `.pex` still writes
+    /// them: `DisablePlayerControls(abMovement = false, abMenu = false,
+    /// abActivate = false, abFighting = true)` writes nine values, five of them
+    /// defaults. So the hole is not "no value" — it is the declared default, and
+    /// inserting `None` there produced `cast ::temp10 None` into a `bool` slot.
+    ///
+    /// `None` means the call cannot be placed this way — an unknown parameter
+    /// name, a repeated one, or a skipped parameter with no default to fill it —
+    /// and the caller keeps the positional reading rather than guessing.
+    fn place_named(
+        &mut self,
+        values: Vec<Value>,
+        names: &[Option<String>],
+        class: &str,
+        function: &str,
+        defaults: Option<&'static [Option<(&'static str, &'static str)>]>,
+    ) -> Option<Vec<Value>> {
+        let slots = Self::named_positions(names, class, function)?;
+        let width = slots.iter().copied().max().map(|m| m + 1).unwrap_or(0);
+        let mut out: Vec<Option<Value>> = vec![None; width];
+        for (v, at) in values.into_iter().zip(slots) {
+            out[at] = Some(v);
+        }
+        let mut filled = Vec::with_capacity(width);
+        for (i, slot) in out.into_iter().enumerate() {
+            match slot {
+                Some(v) => filled.push(v),
+                None => {
+                    let (kind, text) = defaults?.get(i).copied().flatten()?;
+                    filled.push(self.default_value(kind, text)?);
+                }
+            }
+        }
+        Some(filled)
+    }
+
+    /// An argument list, evaluated in two phases.
+    ///
+    /// **Phase 1 evaluates every argument, left to right. Phase 2 applies the
+    /// slot conversions, left to right.** Nothing is converted while the list is
+    /// still being walked.
+    ///
+    /// Measured on the shipped corpus, and it is not what the obvious
+    /// implementation does. `AnimalTrainerSystemScript::BuyAnimal`:
+    ///
+    /// ```text
+    /// Game.GetPlayer().RemoveItem(Gold, AnimalGold.value as int)
+    ///   0 callstatic game GetPlayer ::temp0        the receiver
+    ///   1 propget    value ::AnimalGold_var ::temp1   argument 1 evaluates
+    ///   2 cast       ::temp2 ::temp1                  its own `as int`
+    ///   3 cast       ::temp3 ::Gold_var            argument 0's slot cast, LAST
+    ///   4 callmethod RemoveItem ::temp0 ::NoneVar ::temp3 ::temp2 …
+    /// ```
+    ///
+    /// `Gold` is an auto property, so argument 0 emits **nothing** of its own —
+    /// it needs a `cast` to `Form` and nothing else. Converting it inline puts
+    /// that cast at position 1, before argument 1's `propget`, which shifts every
+    /// later temporary in the function. Deferring it reproduces the game.
+    ///
+    /// The order *among* the deferred conversions is left to right, which is
+    /// what settles that the list itself is left-to-right — four witnesses from
+    /// `examples/argwitness` where every argument is a bare name whose only
+    /// instruction is its cast:
+    ///
+    /// ```text
+    /// GhostTrap::onBeginState        cast ::temp3 self    cast ::temp4 hoverDelay
+    /// DLC1dunHarkonShadowShield::OnHit cast ::temp8 aggressor  cast ::temp5 weap
+    /// atronachFrostActorSCRIPT::…    cast ::temp4 self    cast ::temp5 target
+    /// ```
+    ///
+    /// An explicit `x as T` in the source is part of the expression and stays
+    /// where the expression is (`cast ::temp2 ::temp1` above), so this deferral
+    /// applies only to the conversions the *parameter's type* asks for.
+    fn call_args(
+        &mut self,
+        buf: &mut FnBuf,
+        args: &[Expr],
+        names: &[Option<String>],
+        line: u16,
+        class: &str,
+        method: &str,
+        defaults: Option<&'static [Option<(&'static str, &'static str)>]>,
+        want: impl Fn(usize) -> Option<&'static str>,
+    ) -> Result<Vec<Value>, Error> {
+        let mut values = Vec::with_capacity(args.len());
+        for a in args {
+            values.push(self.expr(buf, a, line)?);
+        }
+        // Named arguments go to their DECLARED slots, so the reordering happens
+        // before the conversions — `want(i)` is the type at position `i` of the
+        // declaration, and after this the value at `i` is the one that belongs
+        // there.
+        let mut values = match self.place_named(values.clone(), names, class, method, defaults) {
+            Some(placed) => placed,
+            // Unplaceable: keep the positional reading, which is what the
+            // source looks like when no name was written.
+            None => values,
+        };
+        for (i, v) in values.iter_mut().enumerate() {
+            if let Some(w) = want(i) {
+                *v = self.coerce_arg(buf, v.clone(), w, line);
+            }
+        }
+        Ok(values)
+    }
+
+    /// A value's type when the compiler actually **knows** it, or `None`.
+    ///
+    /// [`Self::value_type`] has to answer *something* — it feeds opcode choice
+    /// and the arithmetic result type — so an identifier with no declaration
+    /// falls back to `Int`/`Float`. A conversion must not read that fallback as
+    /// knowledge: the CK casts only when it can see a conversion is needed, and
+    /// guessing from a made-up type invents casts.
+    ///
+    /// Measured on `batteringtrap::fireTrap`, `if fireOnlyOnce` where
+    /// `fireOnlyOnce` is a `bool` property the type table does not carry: the
+    /// game writes `cmp_eq ::temp2 ::fireOnlyOnce_var true` with no cast, and
+    /// treating the fallback `Float` as the source type emitted
+    /// `cast ::temp2 ::fireOnlyOnce_var` first — which also consumed a slot.
+    fn known_type(&self, buf: &FnBuf, v: &Value) -> Option<String> {
+        match v {
+            Value::Float(_) => Some("Float".to_string()),
+            Value::Int(_) => Some("Int".to_string()),
+            Value::Bool(_) => Some("Bool".to_string()),
+            Value::String(_) => Some("String".to_string()),
+            Value::Identifier(i) => {
+                if self
+                    .strings
+                    .get(*i as usize)
+                    .map(|s| s.eq_ignore_ascii_case("self"))
+                    .unwrap_or(false)
+                {
+                    return Some(self.script.name.clone());
+                }
+                self.declared_type(buf, *i)
+            }
+            _ => None,
+        }
+    }
+
+    /// The declared type of a name used as a receiver, looking through the
     /// function scope first and the script scope second.
     fn receiver_class(&self, buf: &FnBuf, name: &str) -> Option<String> {
         let lower = name.to_ascii_lowercase();
@@ -1976,6 +2351,17 @@ impl<'a> Compiler<'a> {
                 Expr::Ident(n) => self.call_result_type(n).to_string().into(),
                 _ => None,
             },
+            // A **chained** member: `kmyquest.CWs.WhiterunLocation`. The
+            // receiver's class is the type of the property read before it, so
+            // `CWScript.CWs` is a `CWScript` and the property asked of it is
+            // `cwscript.whiterunlocation`. Without this arm the read fell through
+            // to `var`, and `cityVar == kmyquest.CWs.WhiterunLocation` (cityVar a
+            // `location`) needed an extra cast — then took a different temporary,
+            // displacing the rest of a 900-line quest fragment.
+            Expr::Member(obj, name) => {
+                let c = self.receiver_class_of(buf, obj)?;
+                crate::signatures::property_type(&c, name).map(str::to_string)
+            }
             _ => None,
         }
     }
@@ -2163,47 +2549,104 @@ impl<'a> Compiler<'a> {
                         // slot. Casting the LEFT operand unconditionally put the
                         // cast on the literal in the first shape, which is a
                         // different program. Witness: CWScript.IsPlayerInMyFaction.
-                        let l_is_temp = matches!(&l, Value::Identifier(_));
-                        let dest = if ls && l_is_temp {
-                            l.clone()
-                        } else {
-                            Value::Identifier(self.temp(buf, "String"))
-                        };
+                        // Which slot the result takes. Measured on
+                        // `CWScript.setOwnerFalkreath`, a chain of five:
+                        //
+                        //   0 strcat ::temp363 "CW …" "FactionToOwn: "
+                        //   1 cast   ::temp364 FactionToOwn
+                        //   2 strcat ::temp364 ::temp363 ::temp364
+                        //   3 strcat ::temp363 ::temp364 ", DiplomaticVictory: "
+                        //   4 cast   ::temp364 DiplomaticVictory
+                        //   5 strcat ::temp364 ::temp363 ::temp364
+                        //
+                        // So the destination is the CAST's slot when exactly one
+                        // side needs converting (`strcat ::temp364 ::temp363
+                        // ::temp364` — destination and right operand are the same
+                        // slot), and a slot off the free list when neither does
+                        // (step 3 writes `::temp363`, which step 2 had freed).
+                        //
+                        // Reusing the LEFT operand unconditionally, which is what
+                        // this did, puts every step of a chain in one slot and
+                        // shifts everything after it. The left operand is still
+                        // live while the destination is chosen, so it is released
+                        // afterwards — and never when it IS the destination.
                         let mut lv = l.clone();
                         let mut rv = r.clone();
+                        let mut dest: Option<Value> = None;
                         if !ls {
+                            let t = Value::Identifier(self.temp(buf, "String"));
                             let mut ins = Instruction::new(opcode_of("cast"));
-                            ins.args.push(dest.clone());
+                            ins.args.push(t.clone());
                             ins.args.push(l.clone());
                             buf.push(ins, line);
                             self.release_temp(buf, &l);
-                            lv = dest.clone();
+                            lv = t.clone();
+                            dest = Some(t);
                         }
                         if !rs {
-                            if !ls {
-                                // The destination already carries the converted
-                                // left operand, so the right one needs its own.
-                                let t = Value::Identifier(self.temp(buf, "String"));
-                                let mut ins = Instruction::new(opcode_of("cast"));
-                                ins.args.push(t.clone());
-                                ins.args.push(r.clone());
-                                buf.push(ins, line);
-                                self.release_temp(buf, &r);
-                                rv = t;
-                            } else {
-                                let mut ins = Instruction::new(opcode_of("cast"));
-                                ins.args.push(dest.clone());
-                                ins.args.push(r.clone());
-                                buf.push(ins, line);
-                                self.release_temp(buf, &r);
-                                rv = dest.clone();
+                            let t = Value::Identifier(self.temp(buf, "String"));
+                            let mut ins = Instruction::new(opcode_of("cast"));
+                            ins.args.push(t.clone());
+                            ins.args.push(r.clone());
+                            buf.push(ins, line);
+                            self.release_temp(buf, &r);
+                            rv = t.clone();
+                            if dest.is_none() {
+                                dest = Some(t);
                             }
                         }
+                        let dest = match dest {
+                            Some(d) => d,
+                            None => {
+                                // Neither side converts, so the destination is a
+                                // fresh slot — and the CK reuses the LEFT
+                                // operand's. Measured on
+                                // `CWScript.AddCivilWarAchievment`, where
+                                // `"AddCivilWarAchievment(" + x + ")"` is
+                                // `strcat ::temp9 … ::temp9` then
+                                // `strcat ::temp9 ::temp9 ")"`: the second
+                                // concatenation writes the slot the first read.
+                                // Releasing the left operand before allocating is
+                                // what the FIFO free list needs to hand it back.
+                                let left_is_temp = match &l {
+                                    Value::Identifier(i) => self
+                                        .strings
+                                        .get(*i as usize)
+                                        .map(|n| n.starts_with("::temp"))
+                                        .unwrap_or(false),
+                                    _ => false,
+                                };
+                                if left_is_temp {
+                                    self.release_temp(buf, &l);
+                                }
+                                Value::Identifier(self.temp(buf, "String"))
+                            }
+                        };
                         let mut ins = Instruction::new(opcode_of("strcat"));
                         ins.args.push(dest.clone());
-                        ins.args.push(lv);
-                        ins.args.push(rv);
+                        ins.args.push(lv.clone());
+                        ins.args.push(rv.clone());
                         buf.push(ins, line);
+                        // The operands are dead; the destination is not, and in
+                        // the converted shapes it IS one of them.
+                        //
+                        // The LEFT operand is released FIRST, and it is what a
+                        // chain reuses. Measured on
+                        // `CWScript.AddCivilWarAchievment`, whose
+                        // `"AddCivilWarAchievment(" + whichCivilWarAchivement + ")"`
+                        // is `strcat ::temp9 … ::temp9` then
+                        // `strcat ::temp9 ::temp9 ")"` — the second concatenation
+                        // writes the SAME slot. The free list is FIFO per type, so
+                        // only the left operand being freed before the right hands
+                        // that slot back out; freeing neither gave
+                        // `strcat ::temp10 ::temp9 ")"` and displaced the rest of
+                        // the function.
+                        if lv != dest {
+                            self.release_temp(buf, &lv);
+                        }
+                        if rv != dest {
+                            self.release_temp(buf, &rv);
+                        }
                         return Ok(dest);
                     }
                 }
@@ -2221,9 +2664,18 @@ impl<'a> Compiler<'a> {
                         |t: &str| t.eq_ignore_ascii_case("int") || t.eq_ignore_ascii_case("float");
                     num(&lt) && num(&rt)
                 };
-                if is_cmp || (is_arith && numeric_pair) {
-                    let lt = self.value_type(buf, &l);
-                    let rt = self.value_type(buf, &r);
+                // A comparison or a numeric operation converts an operand only
+                // when both sides' types are **known**. `value_type` has to
+                // answer something and falls back to `Int`/`Float`, so an
+                // untyped operand (a property the tables do not carry) used to
+                // look numeric and got a `cast` the CK does not emit:
+                // `if fireOnlyOnce` in `batteringtrap::fireTrap` is
+                // `cmp_eq ::temp2 ::fireOnlyOnce_var true`, and casting the
+                // variable to Bool first both invented an instruction and took a
+                // slot.
+                let known = self.known_type(buf, &l).zip(self.known_type(buf, &r));
+                if (is_cmp || (is_arith && numeric_pair)) && known.is_some() {
+                    let (lt, rt) = known.unwrap();
                     // Compared case-insensitively: a local's declared type is
                     // interned as the source spelled it (`int`) while a literal
                     // yields the canonical `Int`, and an exact compare made
@@ -2345,6 +2797,25 @@ impl<'a> Compiler<'a> {
             }
             Expr::Unary { op, operand } => {
                 let v = self.expr(buf, operand, line)?;
+                // A minus applied **directly to a numeric literal** is a negative
+                // literal, not a negation instruction. Measured,
+                // `ArenaScript::PickNextFight`:
+                //
+                //   source: minFight = -1
+                //   game:   assign minFight -1
+                //   ours:   ineg ::temp39 1        <- one instruction too many
+                //           assign minFight ::temp39
+                //
+                // The extra instruction displaces every later temporary in the
+                // function, which is why the buckets it produced read as
+                // `ineg vs assign`, `ineg vs callmethod`, `ineg vs cmp_eq` and
+                // so on: the game's stream at that index is whatever legitimately
+                // follows. Folding costs nothing and is what the compiler writes.
+                match (op.as_str(), &v) {
+                    ("-", Value::Int(n)) => return Ok(Value::Int(-*n)),
+                    ("-", Value::Float(f)) => return Ok(Value::Float(-*f)),
+                    _ => {}
+                }
                 let result_ty = match op.as_str() {
                     "!" => "Bool".to_string(),
                     _ => self.value_type(buf, &v),
@@ -2363,10 +2834,22 @@ impl<'a> Compiler<'a> {
                     "!" => opcode_of("not"),
                     "-" => {
                         // Integer negation is `ineg`; float is `fneg`. The
-                        // operand's own type decides, and a literal is int.
+                        // operand's type decides, and it is the DECLARED type —
+                        // not merely "is this a float literal". Measured on
+                        // `CWArrowVolleyParentScript.FireSelfAndLinkedRefs`,
+                        // whose `AimDevianceVertical` is a `float property`:
+                        //   game:  fneg ::temp10 ::AimDevianceVertical_var
+                        //   ours:  ineg ::temp10 ::AimDevianceVertical_var
+                        // An untyped operand falls back to int, which is the
+                        // safer reading: a wrong `fneg` on an int is the same
+                        // class of error in the other direction, and `ineg` on a
+                        // `var` is what the corpus shows for an unresolvable name.
                         match &v {
                             Value::Float(_) => opcode_of("fneg"),
-                            _ => opcode_of("ineg"),
+                            _ => match self.known_type(buf, &v) {
+                                Some(t) if t.eq_ignore_ascii_case("float") => opcode_of("fneg"),
+                                _ => opcode_of("ineg"),
+                            },
                         }
                     }
                     other => {
@@ -2391,13 +2874,34 @@ impl<'a> Compiler<'a> {
                 let _ = ty;
                 Value::Identifier(tmp)
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, names } => {
                 // Three shapes, and which one it is decides the opcode:
                 //   `f(...)`            — callmethod on self
                 //   `a.f(...)`          — callmethod on `a`
                 //   `Class.f(...)`      — callstatic
                 match callee.as_ref() {
                     Expr::Ident(name) => {
+                        // `New Bool[10]` allocates an array: `array_create dest
+                        // size`, with **no** receiver and no method. The parser
+                        // spells it as a call on `New <Type>`, which the method
+                        // path turned into `callmethod New ObjectReference self
+                        // ::temp0 20` — a call to a function that does not exist.
+                        // Measured on `cchousequestscript::OnInit`, whose
+                        // `New ObjectReference[20]` is the game's
+                        // `array_create ::temp0 20`.
+                        if let Some(base) = name.strip_prefix("New ") {
+                            let size = match args.first() {
+                                Some(e) => self.expr(buf, e, line)?,
+                                None => Value::Int(0),
+                            };
+                            let ty = format!("{}[]", base);
+                            let tmp = self.temp(buf, &ty);
+                            let mut ins = Instruction::new(opcode_of("array_create"));
+                            ins.args.push(Value::Identifier(tmp));
+                            ins.args.push(size);
+                            buf.push(ins, line);
+                            return Ok(Value::Identifier(tmp));
+                        }
                         let fname = self.intern(name);
                         if let Some(target) = self.static_target(name) {
                             let tmp = self.temp(buf, "var");
@@ -2411,23 +2915,13 @@ impl<'a> Compiler<'a> {
                             // `callstatic debug Trace ::NoneVar "a" 0`.
                             let own = self.own_class().unwrap_or_default();
                             let defs = crate::signatures::defaults(name);
-                            // Arguments are evaluated RIGHT TO LEFT: the last
-                            // argument's instructions come before the first's.
-                            // Measured on `ArenaScript.ResolveWager`, where
-                            // `AddItem(Gold, WagerAmount * 2)` emits the `imul`
-                            // for argument 1 before the `cast` for argument 0.
-                            // Positions in the vararg list stay in order; only
-                            // the evaluation order is reversed.
-                            let mut va: Vec<Option<Value>> = vec![None; args.len()];
-                            for (i, a) in args.iter().enumerate().rev() {
-                                let v = self.expr(buf, a, line)?;
-                                let v = match crate::signatures::arg_type(&own, name, i) {
-                                    Some(w) => self.coerce_arg(buf, v, w, line),
-                                    None => v,
-                                };
-                                va[i] = Some(v);
-                            }
-                            let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
+                            // The argument list, evaluated left to right, with
+                            // each argument's slot conversion after the list —
+                            // see `call_args`. Positions in the vararg list stay
+                            // in source order either way.
+                            let va = self.call_args(buf, args, names, line, &own, name, defs, |i| {
+                                crate::signatures::arg_type(&own, name, i)
+                            })?;
                             ins.varargs = self.pad_defaults(va, defs, name);
                             let released: Vec<Value> = ins.varargs.clone();
                             buf.push(ins, line);
@@ -2440,38 +2934,58 @@ impl<'a> Compiler<'a> {
                             }
                             return Ok(Value::Identifier(tmp));
                         }
-                        // A bare call resolves against the implicitly-imported
-                        // engine classes BEFORE it resolves as a method on
-                        // `self`, because `Game`, `Utility`, `Math` and `Debug`
-                        // are in scope in every script without an `Import`:
+                        // A bare call resolves against a `global` function
+                        // BEFORE it resolves as a method on `self`. `Game`,
+                        // `Utility`, `Math` and `Debug` are in scope in every
+                        // script without an `Import`, and so are the globals of
+                        // any other class the corpus declares one on:
                         //   wait (RandomFloat (DelayMin, DelayMax))
                         //   -> callstatic utility RandomFloat ::temp3 …
                         //   -> callstatic utility wait ::NoneVar ::temp3
-                        // Emitting `callmethod RandomFloat self` is accepted by
-                        // the loader and fails at run time, because `self` has no
-                        // such member. The script's own declarations win.
-                        if !self.declares_own_function(name) {
-                            if let Some(cls) = crate::signatures::imported_class(name) {
+                        //   log("CWScript", "…")            in CWScript
+                        //   -> callstatic CWScript log ::NoneVar …
+                        //   StopInstance(instance)          anywhere
+                        //   -> callstatic sound stopinstance ::NoneVar …
+                        // Emitting `callmethod f self` is accepted by the loader
+                        // and fails at run time, because `self` has no such
+                        // member. The script's own declarations win.
+                        //
+                        // `globals::GLOBALS` is the whole set, measured: over the
+                        // corpus no function is `global` on more than one class,
+                        // so the name alone decides the class. It supersedes
+                        // `signatures::imported_class`, which covers only the
+                        // four always-imported classes and so missed
+                        // `CWScript.log`, `Sound.StopInstance`,
+                        // `Weather.ReleaseOverride`, `ImageSpaceModifier.
+                        // RemoveCrossfade`, `Message.ResetHelpMessage` and the
+                        // rest — 455 call sites that were emitted as
+                        // `callmethod` on a receiver with no such member.
+                        if let Some(cls) = crate::globals::global_class(name)
+                            .or_else(|| crate::signatures::imported_class(name))
+                        {
+                            // A `global` on the script's own class is a
+                            // `callstatic` even though the script declares it —
+                            // `CWScript.log` is the witness. Elsewhere the
+                            // script's own declaration wins, because it shadows
+                            // the imported name.
+                            if self.class_is_self_or_ancestor(cls)
+                                || !self.declares_own_function(name)
+                            {
                                 let target = self.intern(cls);
                                 let ty = self.static_result_type(cls, name);
+                                let defs = crate::signatures::method_signature(cls, name)
+                                    .map(|(_, d)| d)
+                                    .or_else(|| crate::signatures::defaults(name));
+                                let va = self.call_args(buf, args, names, line, cls, name, defs, |i| {
+                                    crate::signatures::arg_type(cls, name, i)
+                                })?;
+                                // Destination after the arguments — see the
+                                // member-call path.
                                 let tmp = self.temp(buf, ty);
                                 let mut ins = Instruction::new(opcode_of("callstatic"));
                                 ins.args.push(Value::Identifier(target));
                                 ins.args.push(Value::Identifier(fname));
                                 ins.args.push(Value::Identifier(tmp));
-                                let defs = crate::signatures::method_signature(cls, name)
-                                    .map(|(_, d)| d)
-                                    .or_else(|| crate::signatures::defaults(name));
-                                let mut va: Vec<Option<Value>> = vec![None; args.len()];
-                                for (i, a) in args.iter().enumerate() {
-                                    let v = self.expr(buf, a, line)?;
-                                    let v = match crate::signatures::arg_type(cls, name, i) {
-                                        Some(w) => self.coerce_arg(buf, v, w, line),
-                                        None => v,
-                                    };
-                                    va[i] = Some(v);
-                                }
-                                let va: Vec<Value> = va.into_iter().map(|v| v.unwrap()).collect();
                                 ins.varargs = self.pad_defaults(va, defs, name);
                                 let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
@@ -2492,11 +3006,9 @@ impl<'a> Compiler<'a> {
                         } else {
                             ty
                         };
-                        let tmp = self.temp(buf, ty);
                         let mut ins = Instruction::new(opcode_of("callmethod"));
                         ins.args.push(Value::Identifier(fname));
                         ins.args.push(Value::Identifier(self_i));
-                        ins.args.push(Value::Identifier(tmp));
                         // A bare `f(...)` is a call on `self`, and its arguments
                         // are converted exactly like a member call's. This path
                         // had padding but no coercion, so `SetForcedLandingMarker(None)`
@@ -2505,22 +3017,26 @@ impl<'a> Compiler<'a> {
                         // functions, because `None` is how Papyrus spells an
                         // unset object.
                         let own = self.own_class().unwrap_or_default();
-                        // NOTE: a bare `f(...)` evaluates its arguments LEFT to
-                        // RIGHT, unlike a member call. Reversing this scores
-                        // 43,603 against 43,605, so the two paths genuinely
-                        // differ.
-                        let mut dealt = Vec::with_capacity(args.len());
-                        for (i, a) in args.iter().enumerate() {
-                            let v = self.expr(buf, a, line)?;
-                            let v = match crate::signatures::arg_type(&own, name, i) {
-                                Some(w) => self.coerce_arg(buf, v, w, line),
-                                None => v,
-                            };
-                            dealt.push(v);
-                        }
-                        let defs = crate::signatures::defaults(name);
-                        ins.varargs = self.pad_defaults(dealt, defs, name);
-                        let released: Vec<Value> = ins.varargs.clone();
+                        // A bare `f(...)` evaluates its arguments left to right
+                        // like every other path — the earlier note that it
+                        // differed was a fitted artifact. See `call_args`.
+                        // The defaults come from `self`'s class chain, not from the
+                        // unqualified table: `SetRestrained()` on an `Actor` pads
+                        // `true` from `actor.psc`, and the unqualified table has no
+                        // default for the name at all.
+                        let defs = self
+                            .method_defaults_in_chain(name)
+                            .or_else(|| crate::signatures::defaults(name));
+                        let dealt = self.call_args(buf, args, names, line, &own, name, defs, |i| {
+                            crate::signatures::arg_type(&own, name, i)
+                        })?;
+                        let dealt = self.pad_defaults(dealt, defs, name);
+                        let released: Vec<Value> = dealt.clone();
+                        // Destination after the arguments — see the member-call
+                        // path.
+                        let tmp = self.temp(buf, ty);
+                        ins.args.push(Value::Identifier(tmp));
+                        ins.varargs = dealt;
                         buf.push(ins, line);
                         // A temporary consumed as an argument is released once
                         // the call is emitted. The member-call path did this and
@@ -2556,16 +3072,11 @@ impl<'a> Compiler<'a> {
                             if n.eq_ignore_ascii_case("parent") {
                                 let m = self.intern(method);
                                 let ty = self.call_result_type(method);
-                                let tmp = self.temp(buf, ty);
-                                let mut ins = Instruction::new(opcode_of("callparent"));
-                                ins.args.push(Value::Identifier(m));
-                                ins.args.push(Value::Identifier(tmp));
-                                let mut slots: Vec<Option<Value>> = vec![None; args.len()];
-                                for (i, a) in args.iter().enumerate().rev() {
-                                    slots[i] = Some(self.expr(buf, a, line)?);
+                                // Left to right, like every other call path.
+                                let mut va = Vec::with_capacity(args.len());
+                                for a in args {
+                                    va.push(self.expr(buf, a, line)?);
                                 }
-                                let va: Vec<Value> =
-                                    slots.into_iter().map(|v| v.unwrap()).collect();
                                 // Defaults come from the PARENT class, not the
                                 // unqualified name. `parent.Cleanup()` takes no
                                 // arguments, but `cleanup` is also declared with a
@@ -2585,8 +3096,15 @@ impl<'a> Compiler<'a> {
                                     }
                                     here = crate::signatures::parent(&c).map(str::to_string);
                                 }
-                                ins.varargs = self.pad_defaults(va, defs, method);
-                                let released: Vec<Value> = ins.varargs.clone();
+                                let va = self.pad_defaults(va, defs, method);
+                                let released: Vec<Value> = va.clone();
+                                // Destination after the arguments — see the
+                                // member-call path.
+                                let tmp = self.temp(buf, ty);
+                                let mut ins = Instruction::new(opcode_of("callparent"));
+                                ins.args.push(Value::Identifier(m));
+                                ins.args.push(Value::Identifier(tmp));
+                                ins.varargs = va;
                                 buf.push(ins, line);
                                 for a in &released {
                                     self.release_temp(buf, a);
@@ -2595,29 +3113,28 @@ impl<'a> Compiler<'a> {
                             }
                         }
                         if let Expr::Ident(class) = obj.as_ref() {
-                            if let Some(target) = self.static_target(class) {
+                            if let Some(target) = self
+                                .static_target(class)
+                                .or_else(|| self.class_global_target(buf, class))
+                            {
                                 let m = self.intern(method);
                                 // The result's type decides the temporary, and
                                 // that decides whether a later comparison needs
                                 // a `cast`. Measured, not guessed.
                                 let ty = self.static_result_type(class, method);
+                                let defs = crate::signatures::defaults(method);
+                                let cls = class.to_ascii_lowercase();
+                                let sig = crate::signatures::method_params(&cls, method);
+                                let va = self.call_args(buf, args, names, line, &cls, method, defs, |i| {
+                                    sig.and_then(|s| s.get(i).copied())
+                                })?;
+                                // Destination after the arguments — see the
+                                // member-call path.
                                 let tmp = self.temp(buf, ty);
                                 let mut ins = Instruction::new(opcode_of("callstatic"));
                                 ins.args.push(Value::Identifier(target));
                                 ins.args.push(Value::Identifier(m));
                                 ins.args.push(Value::Identifier(tmp));
-                                let defs = crate::signatures::defaults(method);
-                                let cls = class.to_ascii_lowercase();
-                                let sig = crate::signatures::method_params(&cls, method);
-                                let mut va = Vec::with_capacity(args.len());
-                                for (i, a) in args.iter().enumerate() {
-                                    let v = self.expr(buf, a, line)?;
-                                    let v = match sig.and_then(|s| s.get(i)) {
-                                        Some(w) => self.coerce_arg(buf, v, w, line),
-                                        None => v,
-                                    };
-                                    va.push(v);
-                                }
                                 ins.varargs = self.pad_defaults(va, defs, method);
                                 let released: Vec<Value> = ins.varargs.clone();
                                 buf.push(ins, line);
@@ -2669,11 +3186,15 @@ impl<'a> Compiler<'a> {
                             }
                             None => self.call_result_type(method),
                         };
-                        let tmp = self.temp(buf, ty);
-                        let mut ins = Instruction::new(opcode_of("callmethod"));
-                        ins.args.push(Value::Identifier(m));
-                        ins.args.push(recv.clone());
-                        ins.args.push(Value::Identifier(tmp));
+                        // The destination is allocated AFTER the arguments: the
+                        // argument's own `cast` takes the lower slot. Measured on
+                        // `DLC1ChaurusCocoonScript.Ready.onEndState`, whose
+                        // `Self.Activate(Self)` is
+                        //   cast ::temp0 self
+                        //   callmethod Activate self ::temp1 ::temp0 false
+                        // — allocating the destination first gave
+                        // `cast ::temp1 self` / `callmethod … ::temp0 ::temp1`,
+                        // the same instructions with the two slots exchanged.
                         // Arguments are converted type-directed: an int in a
                         // float slot gets a `cast`, everything else is left
                         // alone. Measured with the real compiler, not guessed.
@@ -2691,27 +3212,27 @@ impl<'a> Compiler<'a> {
                         // defaults need looking up here.
                         let defs =
                             crate::signatures::method_signature(class, method).map(|(_, d)| d);
-                        // Arguments are evaluated RIGHT TO LEFT: the last
-                        // argument's instructions are emitted before the first's.
-                        // Measured on `ArenaScript.ResolveWager`, where
-                        // `AddItem(Gold, WagerAmount * 2)` emits the `imul` for
-                        // argument 1 before the `cast` for argument 0, then
-                        // passes them in the correct positions. Only evaluation
-                        // order is reversed; the vararg list keeps source order.
-                        let mut slots: Vec<Option<Value>> = vec![None; args.len()];
-                        for (i, a) in args.iter().enumerate() {
-                            let v = self.expr(buf, a, line)?;
-                            let v = match crate::signatures::arg_type(class, method, i) {
-                                Some(want) => self.coerce_arg(buf, v, want, line),
-                                None => v,
-                            };
-                            slots[i] = Some(v);
-                        }
-                        let va: Vec<Value> = slots.into_iter().map(|v| v.unwrap()).collect();
+                        // The argument list, left to right, with each argument's
+                        // slot conversion emitted after the list — `call_args`.
+                        // Converting inline put a bare property's cast before the
+                        // next argument's `propget`, shifting every later
+                        // temporary: `AnimalTrainerSystemScript::BuyAnimal`.
+                        let va = self.call_args(buf, args, names, line, class, method, defs, |i| {
+                            crate::signatures::arg_type(class, method, i)
+                        })?;
                         // Omitted trailing arguments are written out, not
                         // dropped: the .pex must carry the count the game has.
-                        ins.varargs = self.pad_defaults(va, defs, method);
-                        let released: Vec<Value> = ins.varargs.clone();
+                        let va = self.pad_defaults(va, defs, method);
+                        let released: Vec<Value> = va.clone();
+                        // The destination is allocated AFTER the argument list,
+                        // so an argument's own `cast` takes the lower slot. See
+                        // the `DLC1ChaurusCocoonScript` measurement above.
+                        let tmp = self.temp(buf, ty);
+                        let mut ins = Instruction::new(opcode_of("callmethod"));
+                        ins.args.push(Value::Identifier(m));
+                        ins.args.push(recv.clone());
+                        ins.args.push(Value::Identifier(tmp));
+                        ins.varargs = va;
                         buf.push(ins, line);
                         // A temporary consumed as an argument or receiver is
                         // released once the call is emitted. The CK frees the
@@ -2779,6 +3300,17 @@ impl<'a> Compiler<'a> {
                 // converted into the slot it is written to, so the cast the game
                 // emits would be missing.
                 let pty = match obj.as_ref() {
+                    // A CHAINED receiver — `kmyquest.CWs.WhiterunLocation` — is
+                    // the case the `Ident` arm cannot reach: the property asked
+                    // of `kmyquest.CWs` is `cwscript.whiterunlocation`, and
+                    // `CWScript` is what the first read's type says. Without this
+                    // the read typed `var` and the comparison against a
+                    // `location` variable gained a cast.
+                    Expr::Member(..) | Expr::Call { .. } | Expr::Cast(..) => self
+                        .receiver_class_of(buf, obj)
+                        .and_then(|cls| crate::signatures::property_type(&cls, name))
+                        .map(slot_type)
+                        .unwrap_or_else(|| self.property_type(name)),
                     Expr::Ident(n) => {
                         // The receiver may be a LOCAL (`ArenaScript aScript`,
                         // declared inside the function) as well as a script-level
@@ -2787,12 +3319,17 @@ impl<'a> Compiler<'a> {
                         // produced could not be converted into the `quest` slot it
                         // was assigned to and the cast the game emits was missing.
                         let cls = self.receiver_class(buf, n).unwrap_or_default();
+                        // The corpus table keeps the `.psc` spelling of a class;
+                        // a slot stores it lowercase. Normalise both sources the
+                        // same way, or the destination is typed `Location` where
+                        // the corpus writes `location`.
                         crate::signatures::property_type(&cls, name)
+                            .map(slot_type)
                             .unwrap_or_else(|| self.property_type(name))
                     }
                     _ => self.property_type(name),
                 };
-                let tmp = self.temp(buf, pty);
+                let tmp = self.temp(buf, &pty);
                 let mut ins = Instruction::new(opcode_of("propget"));
                 ins.args.push(Value::Identifier(p));
                 ins.args.push(o);
@@ -2805,9 +3342,24 @@ impl<'a> Compiler<'a> {
                 Value::Identifier(tmp)
             }
             Expr::Index(arr, idx) => {
+                // The element's type is the **array's** element type, and it
+                // decides both the slot's type and whether the value converts on
+                // the way into wherever it goes. Measured on
+                // `BYOHHouseBuildingScript.InitializeDLC`, whose
+                // `CrimeFactions` is a `Faction[]`: the game types the read
+                // `::temp60:faction` and casts it to `form` for `AddForm`, while
+                // a `var` slot could not convert at all and the call lost its
+                // `cast` — then every later temporary with it.
+                let elem = match arr.as_ref() {
+                    Expr::Ident(n) => self
+                        .type_of(n)
+                        .map(|t| t.base())
+                        .unwrap_or_else(|| "var".to_string()),
+                    _ => "var".to_string(),
+                };
                 let a = self.expr(buf, arr, line)?;
                 let i = self.expr(buf, idx, line)?;
-                let tmp = self.temp(buf, "var");
+                let tmp = self.temp(buf, &elem);
                 let mut ins = Instruction::new(opcode_of("array_getelement"));
                 ins.args.push(Value::Identifier(tmp));
                 ins.args.push(a);
@@ -2833,6 +3385,9 @@ impl<'a> Compiler<'a> {
     /// Needed because a script's OWN function shadows an implicitly-imported
     /// engine function of the same name: a script that declares `abs(...)`
     /// calls its own, not `Math.Abs`.
+    ///
+    /// A `global` declaration on the script's own class is the exception — see
+    /// [`Self::class_is_self_or_ancestor`].
     fn declares_own_function(&self, name: &str) -> bool {
         fn walk(d: &crate::parse::DeclKind, want: &str) -> bool {
             match d {
@@ -2845,6 +3400,107 @@ impl<'a> Compiler<'a> {
             }
         }
         self.script.decls.iter().any(|d| walk(&d.kind, name))
+    }
+
+    /// Whether `class` is this script's own class or one of its ancestors.
+    ///
+    /// Needed because a `global` function declared on the script's **own** class
+    /// is a `callstatic` on that class even though the script declares it:
+    /// `CWScript` declares `Function log(...) Global` and calls it bare, and the
+    /// game writes `callstatic CWScript log`. Treating "the script declares this
+    /// name" as "it is a method on self" emitted `callmethod log self`, a member
+    /// the VM has no slot for.
+    /// The parameter defaults of `method`, found by walking the script's own
+    /// class and then its ancestors.
+    ///
+    /// A bare call `f(...)` is a call on `self`, so the defaults come from
+    /// `self`'s class — not from the **unqualified** table, which has one entry
+    /// per name across the whole corpus and is therefore often a different
+    /// declaration. Measured on `CWFortSoldierWoundedScript.OnCellLoad`, whose
+    /// `SetRestrained()` is a call on an `Actor`:
+    ///
+    ///   source:  SetRestrained()
+    ///   game:    callmethod SetRestrained self ::NoneVar true
+    ///   ours:    callmethod SetRestrained self ::NoneVar
+    ///
+    /// `actor.psc` declares `SetRestrained(bool abRestrained = true)`, so the
+    /// default is `true` and the call is one operand short. The unqualified
+    /// table carries no default for the name at all.
+    fn method_defaults_in_chain(
+        &self,
+        method: &str,
+    ) -> Option<&'static [Option<(&'static str, &'static str)>]> {
+        let mut here = Some(self.script.name.to_ascii_lowercase());
+        for _ in 0..12 {
+            let Some(c) = here else { break };
+            if let Some(d) = crate::signatures::method_defaults(&c, method) {
+                return Some(d);
+            }
+            here = crate::signatures::parent(&c).map(str::to_string);
+        }
+        None
+    }
+
+    fn class_is_self_or_ancestor(&self, class: &str) -> bool {
+        if self.script.name.eq_ignore_ascii_case(class) {
+            return true;
+        }
+        let mut here = self
+            .script
+            .parent
+            .clone()
+            .or_else(|| Some(self.symbols.parent.clone()).filter(|p| !p.is_empty()));
+        let mut hops = 0;
+        while let Some(c) = here {
+            if c.eq_ignore_ascii_case(class) {
+                return true;
+            }
+            if hops > 12 {
+                break;
+            }
+            hops += 1;
+            here = crate::signatures::parent(&c).map(str::to_string);
+        }
+        false
+    }
+
+    /// The interned name of a class whose functions can be called statically,
+    /// or `None`.
+    ///
+    /// [`Self::static_target`] covers the four classes that are in scope in
+    /// every script. This adds the rest: a class that declares `global`
+    /// functions is a receiver you can call on by class name —
+    /// `Sound.StopInstance(x)` compiles to `callstatic sound StopInstance`, and
+    /// reading `Sound` as a variable emits `callmethod StopInstance sound`, a
+    /// call on a member the VM has no slot for. Measured on
+    /// `CWSiegeScript::StopCombatSoundsLoop`.
+    ///
+    /// A name that is a parameter, a local or a declared property is a VALUE
+    /// however it is spelled, so it is never a class here: `Sound Property sfx
+    /// auto` makes `sfx.Play(...)` a call on the instance, and an earlier
+    /// version treated exactly that as `callstatic` and ran against the wrong
+    /// receiver.
+    fn class_global_target(&mut self, buf: &FnBuf, name: &str) -> Option<StrIndex> {
+        if !crate::globals::is_global_class(name) {
+            return None;
+        }
+        let lower = name.to_ascii_lowercase();
+        if buf
+            .params
+            .iter()
+            .chain(&buf.declared)
+            .any(|(p, _)| *p == lower)
+        {
+            return None;
+        }
+        if self.type_of(name).is_some() {
+            return None;
+        }
+        // `self` is the script's own object, never a class.
+        if lower == "self" {
+            return None;
+        }
+        Some(self.intern(&lower))
     }
 
     fn static_target(&mut self, name: &str) -> Option<StrIndex> {
@@ -2865,6 +3521,27 @@ impl<'a> Compiler<'a> {
         // DLC2ThirskDoorScript, where the game emits
         // `callmethod IsPlaying ::ExileScene_var ::temp5`.
         None
+    }
+}
+
+/// A declared type name as a **locals-table** slot type.
+///
+/// The four primitives are capitalised in a slot and a class name is lowercase:
+/// measured over the corpus, a class return type is capitalised in 297 cases and
+/// lowercase in 89, while `::X_var` slots are lowercase 91% of the time. The
+/// corpus tables in `signatures.rs` keep the `.psc` spelling, so anything read
+/// from them has to pass through here before it becomes a slot — otherwise a
+/// `propget` destination is typed `Location` where the file writes `location`,
+/// and the slot type disagreeing with the corpus shows up as a `cast` that should
+/// not be there.
+fn slot_type(declared: &str) -> String {
+    match declared.trim_end_matches("[]") {
+        t if t.eq_ignore_ascii_case("int") => "Int".to_string(),
+        t if t.eq_ignore_ascii_case("float") => "Float".to_string(),
+        t if t.eq_ignore_ascii_case("bool") => "Bool".to_string(),
+        t if t.eq_ignore_ascii_case("string") => "String".to_string(),
+        t if t.eq_ignore_ascii_case("none") => "var".to_string(),
+        t => t.to_ascii_lowercase(),
     }
 }
 
