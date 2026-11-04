@@ -708,7 +708,6 @@
       "flags_bits": {
        "ACBS.flags": [
         2,
-        7,
         11,
         12
        ]
@@ -746,9 +745,15 @@
      {
       "fields": {
        "ACBS": [
+        "flags",
         "level_or_level_mult_raw",
         "calc_min",
         "calc_max"
+       ]
+      },
+      "flags_bits": {
+       "ACBS.flags": [
+        7
        ]
       },
       "subs": [

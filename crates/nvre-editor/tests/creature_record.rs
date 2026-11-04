@@ -109,11 +109,23 @@ fn the_traits_tab_shows_the_creature_type_and_the_stats_tab_does_not() {
         "Traits shows ACBS's flags: {:?}",
         flags_section.fields
     );
+    // Stats does not show the same flags. It does show one of them — PC Level
+    // Mult, on the Leveling section, beside the level field it governs — so the
+    // assertion is that the two tabs do not *overlap*, not that only one of them
+    // touches the word at all.
+    let stats_flags: Vec<u32> = stats
+        .iter()
+        .filter_map(|s| s.flags_bits.get("ACBS.flags").cloned())
+        .flatten()
+        .collect();
+    let traits_flags: Vec<u32> = traits
+        .iter()
+        .filter_map(|s| s.flags_bits.get("ACBS.flags").cloned())
+        .flatten()
+        .collect();
     assert!(
-        !stats
-            .iter()
-            .any(|s| s.fields.get("ACBS").is_some_and(|f| f.contains(&"flags".to_string()))),
-        "Stats must not show ACBS's flags as well"
+        !stats_flags.iter().any(|b| traits_flags.contains(b)),
+        "Stats and Traits both show ACBS bits {stats_flags:?} / {traits_flags:?}"
     );
 
     // And the state survives a tab change, which is what makes the strip usable:
@@ -339,12 +351,18 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     let expected_traits = schema_bits("Traits", "ACBS.flags");
     assert_eq!(expected_general.len(), 10, "General names ten flags");
     assert_eq!(expected_animation.len(), 8, "Animation names the eight movement flags");
-    assert_eq!(expected_traits.len(), 4, "Traits keeps the four that are about the actor");
+    assert_eq!(expected_traits.len(), 3, "Traits keeps the three that are about the actor");
     let expected_model = schema_bits("ModelList", "ACBS.flags");
     assert_eq!(
         expected_model.len(),
         6,
         "ModelList names the six that are about the model"
+    );
+    let expected_stats = schema_bits("Stats", "ACBS.flags");
+    assert_eq!(
+        expected_stats.len(),
+        1,
+        "Stats names PC Level Mult, which governs its own level field"
     );
     // Every named bit is on at least one tab, and on exactly one: the word is
     // split three ways and the same checkbox on two tabs is not a split but a
@@ -354,6 +372,7 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         .iter()
         .chain(&expected_animation)
         .chain(&expected_model)
+        .chain(&expected_stats)
         .chain(&expected_traits)
         .copied()
         .collect();
@@ -386,10 +405,11 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         assert!(all.contains(bit), "bit {bit} is on no tab at all");
     }
 
-    let split: [(&str, &Vec<u32>); 4] = [
+    let split: [(&str, &Vec<u32>); 5] = [
         ("General", &expected_general),
         ("Animation", &expected_animation),
         ("ModelList", &expected_model),
+        ("Stats", &expected_stats),
         ("Traits", &expected_traits),
     ];
     for (tab, expected) in split {
@@ -1177,4 +1197,67 @@ fn the_model_list_tab_carries_the_model_flags() {
             "the Model Flags section also draws {gone:?}: {rows:?}"
         );
     }
+}
+
+#[test]
+fn pc_level_mult_sits_on_the_leveling_section() {
+    // Bit 7, PC Level Mult, was on Traits' Flags section. It decides how
+    // `ACBS`'s level field is read — a plain level, or a level multiplier over
+    // 1000 — and that field is on the Leveling section of the Stats tab. A flag
+    // that governs a number belongs beside the number, or a modder editing the
+    // level has to know to look at another tab for the switch that changes what
+    // the level even means.
+    //
+    // The Leveling section already narrowed `ACBS` to the level and the two
+    // calc values, so it had to start naming `flags` too — a section that lists
+    // a bit but not the field the bit lives in draws nothing at all.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let titles = |v: &[&nvre_esm::schema::SectionDef]| -> Vec<String> {
+        v.iter().map(|s| s.title.clone()).collect()
+    };
+    let sections = session.schema.page_sections("CREA");
+    let stats = sections_on_tab(&sections, Some("Stats"));
+    let leveling = stats
+        .iter()
+        .find(|s| s.title == "Leveling")
+        .unwrap_or_else(|| panic!("the Stats tab has no Leveling section: {:?}", titles(&stats)));
+    assert_eq!(
+        leveling.flags_bits.get("ACBS.flags").map(Vec::as_slice),
+        Some(&[7u32][..]),
+        "Leveling shows PC Level Mult and nothing else: {:?}",
+        leveling.flags_bits.get("ACBS.flags")
+    );
+    // And the field the bit lives in, or the checkbox is unreachable.
+    assert!(
+        leveling
+            .fields
+            .get("ACBS")
+            .is_some_and(|f| f.iter().any(|p| p == "flags")),
+        "Leveling does not name the flags field, so the checkbox would not draw: {:?}",
+        leveling.fields
+    );
+    assert!(
+        leveling
+            .fields
+            .get("ACBS")
+            .is_some_and(|f| f.iter().any(|p| p == "level_or_level_mult_raw")),
+        "Leveling does not show the level field the flag governs: {:?}",
+        leveling.fields
+    );
+
+    // Drawn: the checkbox, and it is not on Traits any more.
+    state.tab.chosen = Some("Stats".to_string());
+    let stats_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        stats_rows.iter().any(|(t, _)| t == "PC Level Mult"),
+        "no PC Level Mult checkbox on the Stats tab: {stats_rows:?}"
+    );
+    state.tab.chosen = Some("Traits".to_string());
+    let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        !traits_rows.iter().any(|(t, _)| t == "PC Level Mult"),
+        "PC Level Mult is still on the Traits tab: {traits_rows:?}"
+    );
 }
