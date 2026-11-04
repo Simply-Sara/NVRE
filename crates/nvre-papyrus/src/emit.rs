@@ -993,8 +993,12 @@ impl<'a> Compiler<'a> {
                     let mut ins = Instruction::new(opcode_of("propset"));
                     ins.args.push(Value::Identifier(p));
                     ins.args.push(o);
-                    ins.args.push(v);
+                    ins.args.push(v.clone());
                     buf.push(ins, *line);
+                    // The materialised value is dead once the property is
+                    // written, and the CK reuses that one slot for consecutive
+                    // propsets (`assign ::temp17 true` … `assign ::temp17 true`).
+                    self.release_temp(buf, &v);
                     return Ok(());
                 }
                 let want = self.target_type(buf, target);
