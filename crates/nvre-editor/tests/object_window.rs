@@ -51,7 +51,7 @@ fn the_palette_is_grouped_into_gecks_categories() {
                 "Actors",
                 "Actor Data",
                 "Items",
-                "Magic",
+                "Game Effects",
                 "Special Effects",
                 "WorldObjects",
                 "Audio",
@@ -259,17 +259,26 @@ fn fnv_schema_lists_every_record_type_and_names_a_registered_block() {
         "record types with no object-window entry: {missing:?}"
     );
 
+    // A category is now **described** rather than named: a page is data, so what
+    // a shown category needs is its sections — or a named page this build
+    // registers, which is the exception for behaviour sections cannot express.
+    let mut pages = nvre_editor::object_editor::Pages::default();
     let mut wrong: Vec<String> = schema
         .object_window
         .categories
         .iter()
         .filter(|(_, c)| !c.hidden)
-        .filter_map(|(sig, c)| match c.editor.as_deref() {
-            None => Some(format!("{sig} is shown but names no editor block")),
-            Some(name) if nvre_editor::object_editor::editor_block(name).is_none() => Some(
-                format!("{sig} names editor block {name:?}, which is not registered"),
-            ),
-            Some(_) => None,
+        .filter_map(|(sig, c)| {
+            let described = schema.page_is_described(sig);
+            let named = c.editor.as_deref();
+            match (described, named) {
+                (true, _) => None,
+                (false, Some(name)) if pages.has(name) => None,
+                (false, Some(name)) => Some(format!(
+                    "{sig} names page {name:?}, which is not registered"
+                )),
+                (false, None) => Some(format!("{sig} is shown but has no page and no sections")),
+            }
         })
         .collect();
     wrong.sort();

@@ -1544,8 +1544,9 @@
     ]
    },
    "MICN": {
+    "editor": "grid",
     "group": "Miscellaneous",
-    "sections": []
+    "name": "Menu Icon"
    },
    "MISC": {
     "group": "Items",
@@ -2209,8 +2210,9 @@
     ]
    },
    "SCPT": {
+    "editor": "grid",
     "group": "Miscellaneous",
-    "sections": []
+    "name": "Script"
    },
    "SLPD": {
     "group": "Miscellaneous",

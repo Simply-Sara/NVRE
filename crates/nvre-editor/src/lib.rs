@@ -55,3 +55,10 @@ pub struct FrameRequested {
 /// Why the last attempt to open a plugin failed, for the launcher to show.
 #[derive(Resource)]
 pub struct OpenFailed(pub String);
+
+/// `egui`, re-exported so a page outside this crate can draw itself.
+///
+/// [`object_editor::EditorPage`] takes an `egui::Ui`, and a trait whose method
+/// signatures name a type the implementer cannot import is a trait nobody outside
+/// this crate can implement. This is the same pattern bevy_egui itself uses.
+pub use bevy_egui::egui;
