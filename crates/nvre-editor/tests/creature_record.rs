@@ -1779,14 +1779,16 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
     state.tab.chosen = Some("Factions".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
-    // Headers:
-    assert!(
-        rows.iter().any(|(t, _)| t == "Faction"),
-        "Factions tab is missing 'Faction' column header: {rows:?}"
+    // Headers (must appear exactly once, not duplicated per row):
+    let faction_headers = rows.iter().filter(|(t, _)| t == "Faction").count();
+    assert_eq!(
+        faction_headers, 1,
+        "Factions tab should have exactly 1 'Faction' header, not {faction_headers}"
     );
-    assert!(
-        rows.iter().any(|(t, _)| t == "Rank"),
-        "Factions tab is missing 'Rank' column header: {rows:?}"
+    let rank_headers = rows.iter().filter(|(t, _)| t == "Rank").count();
+    assert_eq!(
+        rank_headers, 1,
+        "Factions tab should have exactly 1 'Rank' header, not {rank_headers}"
     );
 
     // No compiler padding or raw byte dumps:
@@ -1838,6 +1840,13 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
     );
     out.textures_delta.clear();
     let u = out.platform_output.accesskit_update.unwrap();
+    let add_buttons = u.nodes.iter().filter(|(_, n)| {
+        n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction")
+    }).count();
+    assert_eq!(
+        add_buttons, 1,
+        "Factions tab should have exactly 1 '+ Add Faction' button, not {add_buttons}"
+    );
     let btn_rect = u.nodes.iter().find_map(|(_, n)| {
         if n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction") {
             n.bounds()

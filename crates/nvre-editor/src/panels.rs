@@ -1437,14 +1437,18 @@ fn render_single_section(
         }
         match section.widget.as_deref() {
             Some(name) if name == "repeat" => {
-                for i in &named {
+                for tag_str in &section.subs {
+                    let block = views
+                        .iter()
+                        .find(|v| v.sig == *tag_str)
+                        .and_then(|v| v.block.as_deref());
                     repeat_widget(
                         ui,
                         session,
                         form_id,
                         &rec_sig,
-                        &sig4(&views[*i].sig),
-                        views[*i].block.as_deref(),
+                        &sig4(tag_str),
+                        block,
                         edit,
                     );
                 }
