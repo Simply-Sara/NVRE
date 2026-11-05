@@ -722,6 +722,12 @@ fn the_template_picker_comes_before_the_template_checkboxes() {
     //
     // The assertion reads where each widget landed, because the section's `subs`
     // order is only a claim about what the renderer does with it.
+    //
+    // The fixture is a creature that carries a `TPLT`, so the picker shows that
+    // template's name rather than "NONE". The old test looked for "NONE", which
+    // was only ever correct while every FormID dropdown read "NONE": a FormID
+    // decodes to the *string* `"0x0014D1FD"`, and the picker parsed it with
+    // `as_u64()`, which a string never satisfies.
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
@@ -749,12 +755,64 @@ fn the_template_picker_comes_before_the_template_checkboxes() {
                 panic!("{want:?} is not drawn in the Template Data section: {section:?}")
             })
     };
-    let picker = at("NONE");
+    // The picker shows the record's own template, and its FormID.
+    let picker = at("VStreetCrBrahmin");
     let template_row_y = at("Traits");
     assert!(
         picker < template_row_y,
         "the template picker is at y={picker}, below the first template checkbox at \
          y={template_row_y}. It must come first: {section:?}"
+    );
+    // And the target types are shown too, so the row is not just a name.
+    at("CREA, LVLC");
+}
+
+/// The picker reads "NONE" for a creature that carries no `TPLT`, which is the
+/// state the old test was written against — and which the general case had been
+/// mis-generalised from.
+///
+/// `000B037F` is one of only six creatures in `FalloutNV.esm` with neither a
+/// `TPLT` nor a `ZNAM`; the usual fixtures (`VStreetCrBrahmin2`,
+/// `VNiptonLegionMongrelAttack`) carry both, which is why the old assertions
+/// passed at all.
+#[test]
+fn a_creature_with_no_template_shows_none() {
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    // A creature with no `TPLT`: the unset case.
+    let fid = 0x000B_037Fu32;
+    session.open_object(fid, *b"CREA");
+    assert!(
+        subs(&session, fid).iter().all(|s| &s.sig != b"TPLT"),
+        "the fixture carries no template"
+    );
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("General".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let heading = rows
+        .iter()
+        .find(|(text, _)| text == "Template Data")
+        .map(|(_, y)| *y)
+        .expect("the Template Data heading is drawn");
+    let section: Vec<&(String, f32)> = rows
+        .iter()
+        .filter(|(_, y)| *y > heading)
+        .take_while(|(text, _)| text != "Everything else")
+        .collect();
+    let at = |want: &str| -> f32 {
+        section
+            .iter()
+            .find(|(text, _)| text == want)
+            .map(|(_, y)| *y)
+            .unwrap_or_else(|| {
+                panic!("{want:?} is not drawn in the Template Data section: {section:?}")
+            })
+    };
+    assert!(
+        at("NONE") < at("Traits"),
+        "an unset template picker reads NONE and still leads the section: {section:?}"
     );
 }
 
@@ -1520,26 +1578,74 @@ fn the_traits_tab_draws_an_alignment_dropdown_for_acbs_karma() {
 }
 
 #[test]
-fn combat_style_dropdown_shows_default_when_unset() {
-    // In GECK, an unset Combat Style displays "Default" rather than "NONE"
-    // (it falls back to the default combat style for its class/race).
-    // All other unset link dropdowns still display "NONE".
+fn combat_style_dropdown_shows_the_records_combat_style() {
+    // In GECK, an *unset* Combat Style displays "Default" rather than "NONE"
+    // (it falls back to the default combat style for its class/race). A combat
+    // style the record does carry shows that record's name.
+    //
+    // `VStreetCrBrahmin2` carries `ZNAM` = `0003A371` (`CSBrahmin`), so this is
+    // the set case: the row must show the record's own combat style, not the
+    // "Default" an unset one would show.
+    //
+    // The assertion is on the name, not on "not NONE": the row used to read
+    // "NONE" for every creature, because a FormID decodes to the *string*
+    // `"0x0003A371"` and the picker parsed it with `as_u64()` — which a string
+    // never satisfies. Every FormID dropdown in the object editor therefore
+    // showed "NONE" whatever the record held, and clicking an option was a
+    // no-op because the picker compared the click against `None`.
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
     state.tab.chosen = Some("Traits".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
-    // The Combat Style dropdown displays "Default".
+    // The Combat Style row shows the record's combat style, and its target type.
     assert!(
-        rows.iter().any(|(t, _)| t == "Default"),
-        "Combat Style does not display 'Default' when unset: {rows:?}"
+        rows.iter().any(|(t, _)| t == "CSBrahmin"),
+        "Combat Style does not show the record's own combat style: {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "CSTY"),
+        "Combat Style does not show its target type: {rows:?}"
+    );
+    // The label is still there, and the row is not showing the unset "Default".
+    assert!(
+        rows.iter().any(|(t, _)| t == "Combat Style"),
+        "the Combat Style label is missing: {rows:?}"
     );
 
     // Other unset dropdowns still display "NONE".
     assert!(
         rows.iter().any(|(t, _)| t == "NONE"),
         "Other dropdowns should still display 'NONE': {rows:?}"
+    );
+}
+
+/// The "Default" label is for an *unset* Combat Style, not for every one: a
+/// creature whose `ZNAM` is absent shows "Default", and one that carries a
+/// combat style shows that style's name.
+///
+/// `000B037F` has no `ZNAM`, which is the state the old test was written for —
+/// and which the general case had been mis-generalised from.
+#[test]
+fn an_unset_combat_style_shows_default() {
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    // A creature with no `ZNAM`: the unset case.
+    let fid = 0x000B_037Fu32;
+    session.open_object(fid, *b"CREA");
+    assert!(
+        subs(&session, fid).iter().all(|s| &s.sig != b"ZNAM"),
+        "the fixture carries no combat style"
+    );
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Traits".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        rows.iter().any(|(t, _)| t == "Default"),
+        "an unset Combat Style must show 'Default': {rows:?}"
     );
 }
 
