@@ -1518,3 +1518,27 @@ fn the_traits_tab_draws_an_alignment_dropdown_for_acbs_karma() {
         "the Disposition Base label is missing: {rows:?}"
     );
 }
+
+#[test]
+fn combat_style_dropdown_shows_default_when_unset() {
+    // In GECK, an unset Combat Style displays "Default" rather than "NONE"
+    // (it falls back to the default combat style for its class/race).
+    // All other unset link dropdowns still display "NONE".
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("Traits".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    // The Combat Style dropdown displays "Default".
+    assert!(
+        rows.iter().any(|(t, _)| t == "Default"),
+        "Combat Style does not display 'Default' when unset: {rows:?}"
+    );
+
+    // Other unset dropdowns still display "NONE".
+    assert!(
+        rows.iter().any(|(t, _)| t == "NONE"),
+        "Other dropdowns should still display 'NONE': {rows:?}"
+    );
+}

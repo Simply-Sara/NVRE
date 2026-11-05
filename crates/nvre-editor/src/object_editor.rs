@@ -960,13 +960,23 @@ pub fn record_dropdown(
     items: &[(u32, String)],
     opt: &mut Option<u32>,
 ) {
+    record_dropdown_with_none(ui, id_salt, items, opt, "NONE");
+}
+
+pub fn record_dropdown_with_none(
+    ui: &mut egui::Ui,
+    id_salt: &str,
+    items: &[(u32, String)],
+    opt: &mut Option<u32>,
+    none_label: &str,
+) {
     let cur_name = match opt {
         Some(fid) => items
             .iter()
             .find(|(id, _)| *id == *fid)
             .map(|(_, name)| name.as_str())
             .unwrap_or("Custom / FormID"),
-        None => "NONE",
+        None => none_label,
     };
 
     let search_id = ui.make_persistent_id(id_salt).with("search");
@@ -1015,7 +1025,7 @@ pub fn record_dropdown(
                 let clip = ui.clip_rect();
                 let start_y = ui.cursor().top();
 
-                let total_rows = filtered.len() + 1; // +1 for "NONE"
+                let total_rows = filtered.len() + 1;
                 let min_row = if clip.min.y > start_y {
                     ((clip.min.y - start_y) / step).floor() as usize
                 } else {
@@ -1037,7 +1047,7 @@ pub fn record_dropdown(
                 for r in min_row..max_row {
                     ui.push_id(r, |ui| {
                         if r == 0 {
-                            if ui.selectable_label(opt.is_none(), "NONE").clicked() {
+                            if ui.selectable_label(opt.is_none(), none_label).clicked() {
                                 *opt = None;
                                 ui.data_mut(|d| {
                                     *d.get_temp_mut_or_default::<String>(search_id) = String::new()

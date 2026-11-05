@@ -1211,11 +1211,13 @@ pub fn sectioned_grid_on_tab(
                             let mut chosen: Option<u32> = None;
                             ui.horizontal(|ui| {
                                 ui.label(&name);
-                                crate::object_editor::record_dropdown(
+                                let none_label = if tag == *b"ZNAM" { "Default" } else { "NONE" };
+                                crate::object_editor::record_dropdown_with_none(
                                     ui,
                                     &format!("absent_{}", nvre_util::tag_str(&tag)),
                                     &items,
                                     &mut chosen,
+                                    none_label,
                                 );
                             });
                             if let Some(fid) = chosen {
@@ -1702,11 +1704,13 @@ fn field_editor(
         let mut opt = current.as_u64().map(|v| v as u32).filter(|v| *v != 0);
         let items = session.records_of_any(&targets);
         ui.horizontal(|ui| {
-            crate::object_editor::record_dropdown(
+            let none_label = if view.sig == "ZNAM" { "Default" } else { "NONE" };
+            crate::object_editor::record_dropdown_with_none(
                 ui,
                 &format!("{}_{}", view.sig, path),
                 &items,
                 &mut opt,
+                none_label,
             );
             // Which record types the dropdown is filtered to. Shown only when
             // there is a filter: "LVLI, SPEL" tells a modder what may go here,
