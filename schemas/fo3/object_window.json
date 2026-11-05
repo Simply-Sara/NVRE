@@ -842,7 +842,7 @@
       ],
       "tab": "Inventory",
       "title": "Inventory",
-      "widget": "repeat"
+      "widget": "inventory"
      },
      {
       "subs": [

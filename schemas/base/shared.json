@@ -9,12 +9,33 @@
   "CNTO": {
    "confidence": "documented",
    "name": "Item",
-   "note": "xEdit wbDefinitionsFNV.pas wbCNTO helper record",
+   "note": "xEdit wbDefinitionsFNV.pas wbCNTO helper record; fopdoc FalloutNV Records/Subrecords/Item: Item may point at ARMO, AMMO, MISC, WEAP, BOOK, LVLI, KEYM, ALCH, NOTE, IMOD, CMNY, CCRD, LIGH, CHIP, MSTT or STAT",
    "type": {
     "struct": [
      {
       "name": "item",
-      "type": "formid"
+      "type": {
+       "formid": {
+        "of": [
+         "ARMO",
+         "AMMO",
+         "MISC",
+         "WEAP",
+         "BOOK",
+         "LVLI",
+         "KEYM",
+         "ALCH",
+         "NOTE",
+         "IMOD",
+         "CMNY",
+         "CCRD",
+         "LIGH",
+         "CHIP",
+         "MSTT",
+         "STAT"
+        ]
+       }
+      }
      },
      {
       "name": "count",
@@ -26,12 +47,19 @@
   "COED": {
    "confidence": "documented",
    "name": "Item Extra Data",
-   "note": "xEdit wbDefinitionsFNV.pas wbCOED helper record; field 2 is an xEdit union (unused / GLOB FormID / s32 required rank, chosen by owner type), decoded as raw u32",
+   "note": "xEdit wbDefinitionsFNV.pas wbCOED helper record; fopdoc FalloutNV Records/Subrecords/COED: Owner is a NPC_ or FACT FormID (or null); Global Variable / Required Rank is a GLOB FormID when the owner is an actor and an integer rank when the owner is a faction; Item Condition is a float32",
    "type": {
     "struct": [
      {
       "name": "owner",
-      "type": "formid"
+      "type": {
+       "formid": {
+        "of": [
+         "NPC_",
+         "FACT"
+        ]
+       }
+      }
      },
      {
       "name": "global_or_rank_raw",

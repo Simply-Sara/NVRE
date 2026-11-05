@@ -2232,3 +2232,317 @@ fn the_ai_packages_tab_renders_empty_state_and_adds_first_package() {
     let pk_count = rec1.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").count();
     assert_eq!(pk_count, 1, "+ Add Package must add the first package row!");
 }
+
+/// The inventory fixture: a creature whose items include one with a `COED`, so
+/// the table has to show the pairing and not just the list.
+const INVENTORY_FIXTURE: u32 = 0x0017_AF40;
+
+/// The run's `CNTO`/`COED` payloads, in file order.
+fn inventory_run(session: &Session, fid: u32) -> Vec<(String, Vec<u8>)> {
+    subs(session, fid)
+        .iter()
+        .filter(|s| &s.sig == b"CNTO" || &s.sig == b"COED")
+        .map(|s| (nvre_util::tag_str(&s.sig).to_string(), s.data.clone()))
+        .collect()
+}
+
+/// The inventory table renders one row per `CNTO`, with the `COED` that follows
+/// it folded into the same row: the condition column reads the stored value
+/// (12%) rather than the 100% a row with no `COED` defaults to.
+#[test]
+fn the_inventory_tab_folds_each_coed_into_its_cnto_row() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    session.open_object(INVENTORY_FIXTURE, *b"CREA");
+    state.load_from_session(&session, INVENTORY_FIXTURE, *b"CREA");
+    state.tab.chosen = Some("Inventory".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    // The fixture's first CNTO is the one with a COED.
+    let run = inventory_run(&session, INVENTORY_FIXTURE);
+    assert_eq!(run[0].0, "CNTO", "the first entry is a CNTO");
+    assert_eq!(run[1].0, "COED", "its COED follows it");
+    assert_eq!(run.len(), 10, "9 CNTO and 1 COED");
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 3000.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+
+    let u = out.platform_output.accesskit_update.unwrap();
+    let labels: Vec<&str> = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.label().or_else(|| n.value()))
+        .filter(|l| !l.is_empty())
+        .collect();
+    // One row per CNTO: nine remove buttons, nine Up and nine Down.
+    assert_eq!(labels.iter().filter(|l| **l == "✖").count(), 9, "one ✖ per item: {labels:?}");
+    assert_eq!(labels.iter().filter(|l| **l == "Up").count(), 9, "one Up per item");
+    assert_eq!(labels.iter().filter(|l| **l == "Down").count(), 9, "one Down per item");
+    // The table's headers, the way the Cell Window's list shows them.
+    for header in ["Item", "Count", "Condition", "Owner (NPC / Faction)", "Rank / Global"] {
+        assert!(labels.contains(&header), "missing the {header:?} column header: {labels:?}");
+    }
+    // The first row shows the stored 12%, and the rest default to 100%.
+    assert!(labels.iter().any(|l| *l == "12%"), "the row with a COED shows its 12%: {labels:?}");
+    assert_eq!(labels.iter().filter(|l| **l == "100%").count(), 8, "the eight rows without one default to 100%");
+    assert!(labels.contains(&"+ Add Item"), "the add button reads '+ Add Item'");
+}
+
+/// Reordering a row keeps its `COED` attached: the extras belong to the item, so
+/// they have to move with it. Two `set_sub_list` calls would hoist every `COED`
+/// above every `CNTO` and silently reassign every item's condition.
+#[test]
+fn the_inventory_tab_reorders_without_detaching_its_coed() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    session.open_object(INVENTORY_FIXTURE, *b"CREA");
+    state.load_from_session(&session, INVENTORY_FIXTURE, *b"CREA");
+    state.tab.chosen = Some("Inventory".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let first = inventory_run(&session, INVENTORY_FIXTURE)[0].1.clone();
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 3000.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+
+    // The topmost "Down" button: row 0's.
+    let downs: Vec<_> = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| if n.label() == Some("Down") { n.bounds() } else { None })
+        .collect();
+    let d0 = downs.iter().min_by_key(|b| b.y0 as i64).expect("a Down button");
+    let click = nvre_editor::egui::pos2(d0.x0 as f32 + 5.0, d0.y0 as f32 + 5.0);
+    let _ = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 3000.0),
+            )),
+            events: vec![
+                nvre_editor::egui::Event::PointerMoved(click),
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+
+    // The row that was first is now second, and its COED moved with it: the
+    // COED is still the subrecord right after that CNTO, not the first one.
+    let run = inventory_run(&session, INVENTORY_FIXTURE);
+    assert_eq!(run.len(), 10, "no subrecord was lost");
+    // The old row 0 is now row 1, and its COED is still the subrecord right
+    // after it — not hoisted above the whole run, which is what two
+    // `set_sub_list` calls would have done.
+    assert_eq!(run[1].1, first, "the old row 0 is now row 1");
+    assert_eq!(run[2].0, "COED", "the moved row's COED still follows its CNTO");
+    assert_eq!(run[0].0, "CNTO", "the old row 1 is now row 0");
+}
+
+/// A creature with no items still shows the table and can add the first one.
+#[test]
+fn the_inventory_tab_adds_the_first_item_to_a_creature_with_none() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    // VStreetCrBrahmin2 carries no items at all.
+    let fid = 0x0017_B587u32;
+    session.open_object(fid, *b"CREA");
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Inventory".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    assert!(inventory_run(&session, fid).is_empty(), "the fixture has no items");
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 3000.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+    let labels: Vec<&str> = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.label().or_else(|| n.value()))
+        .collect();
+    for header in ["Item", "Count", "Condition", "Owner (NPC / Faction)", "Rank / Global"] {
+        assert!(labels.contains(&header), "the empty table still shows its {header:?} header");
+    }
+    assert!(labels.contains(&"No items"), "the empty table says 'No items'");
+
+    let btn = u
+        .nodes
+        .iter()
+        .find_map(|(_, n)| {
+            if n.label() == Some("+ Add Item") || n.value() == Some("+ Add Item") {
+                n.bounds()
+            } else {
+                None
+            }
+        })
+        .expect("+ Add Item button");
+    let click = nvre_editor::egui::pos2(btn.x0 as f32 + 5.0, btn.y0 as f32 + 5.0);
+    let _ = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 3000.0),
+            )),
+            events: vec![
+                nvre_editor::egui::Event::PointerMoved(click),
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+
+    let run = inventory_run(&session, fid);
+    assert_eq!(run.len(), 1, "+ Add Item adds the first item: {run:?}");
+    assert_eq!(run[0].0, "CNTO", "and it is a CNTO");
+}
+
+/// With no owner set the Rank / Global cell is inert: a rank with no faction to
+/// be a rank *of*, and a global with no owner to gate it, are both meaningless,
+/// so the cell shows what the bytes hold as disabled text rather than a picker.
+/// The Owner column is still a live picker — that is the cell that has to be set
+/// first.
+#[test]
+fn the_inventory_tab_locks_rank_global_until_an_owner_is_set() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    session.open_object(INVENTORY_FIXTURE, *b"CREA");
+    state.load_from_session(&session, INVENTORY_FIXTURE, *b"CREA");
+    state.tab.chosen = Some("Inventory".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 3000.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::egui::ScrollArea::vertical()
+                    .id_salt("obj_scroll")
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        object_editor::body(ui, &mut session, &mut state, &mut pages);
+                    });
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+
+    // The fixture's only COED has a zero owner, so every row's Rank / Global is
+    // locked. The rows without a COED have no extras at all and are locked too.
+    let combos: Vec<(f32, f32, &str)> = u
+        .nodes
+        .iter()
+        .filter(|(_, n)| n.role() == nvre_editor::egui::accesskit::Role::ComboBox)
+        .filter_map(|(_, n)| {
+            let v = n.value()?;
+            let b = n.bounds()?;
+            Some((b.x0 as f32, b.y0 as f32, v))
+        })
+        .collect();
+    // Every combobox on the table sits in the Item, Owner or Rank columns; none
+    // of the Rank column's is openable, so its cells are the disabled text boxes
+    // rather than comboboxes.
+    let owner_col = combos
+        .iter()
+        .filter(|(x, _, _)| *x > 860.0 && *x < 900.0)
+        .count();
+    assert_eq!(
+        owner_col, 9,
+        "the Owner column is a live picker on every row: {combos:?}"
+    );
+
+    // No combobox sits past the Owner column's x: that is the locked cell.
+    assert!(
+        !combos.iter().any(|(x, _, _)| *x > 1050.0),
+        "the Rank / Global column must not be a picker with no owner set: {combos:?}"
+    );
+}

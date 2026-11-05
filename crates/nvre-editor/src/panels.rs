@@ -1114,8 +1114,13 @@ pub fn sectioned_grid_on_tab(
     let mut chunks: Vec<SecChunk> = Vec::new();
     for (si, section) in shown.iter().enumerate() {
         let has_subs = section.subs.iter().any(|tag| views.iter().any(|v| &v.sig == tag));
+        // A widget that owns its own list has to draw even when the list is
+        // empty: `repeat` shows its "+ Add Faction" button on a record with no
+        // factions, and `inventory` shows "+ Add Item" on a record with no
+        // items. Skipping them would make an empty list unaddable.
         let is_repeat = section.widget.as_deref() == Some("repeat");
-        if !has_subs && !is_repeat {
+        let is_inventory = section.widget.as_deref() == Some("inventory");
+        if !has_subs && !is_repeat && !is_inventory {
             continue;
         }
         if section.side_by_side {
@@ -1453,6 +1458,12 @@ fn render_single_section(
                         edit,
                     );
                 }
+            }
+            // The inventory list is one table per actor, not one per subrecord:
+            // a `COED` belongs to the `CNTO` before it, so the two are zipped by
+            // position rather than rendered as two unrelated lists.
+            Some(name) if name == "inventory" => {
+                inventory_widget(ui, session, form_id, &rec_sig, edit);
             }
             Some(name) => {
                 ui.colored_label(
@@ -2661,6 +2672,559 @@ pub fn repeat_widget(
     }
     if let Some(list) = want {
         session.doc.set_sub_list(form_id, sub_sig, list);
+        session.stale = true;
+        edit.error = None;
+    }
+}
+
+/// The inventory table: one row per `CNTO`, with the `COED` that follows it
+/// folded into the same row.
+///
+/// GECK shows an actor's inventory as a single table — item, count, and the
+/// per-item extras (condition, ownership) on the same row. `CNTO` and `COED` are
+/// *separate subrecords*, and the `COED` applies to the `CNTO` immediately
+/// before it, so the two lists have to be zipped by position rather than by
+/// signature. Two `set_sub_list` calls would do that wrong: the encoder appends
+/// each signature's list at the first occurrence of that signature, which would
+/// hoist every `COED` above every `CNTO` and destroy the pairing.
+///
+/// So the whole `CNTO`/`COED` run is rewritten as one interleaved sequence via
+/// [`nvre_edit::document::Document::set_sub_sequence`], which preserves the
+/// original interleaving and leaves every other subrecord in place.
+///
+/// The table is a real [`egui_extras::TableBuilder`] — the same widget the Cell
+/// Window's and Object Window's lists use — so the rows virtualize: a creature
+/// with 8,000 items draws only the ones on screen.
+pub fn inventory_widget(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    rec_sig: &[u8; 4],
+    edit: &mut FieldEdit,
+) {
+    let Some(rec) = session.resolved_record(form_id) else {
+        ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
+        return;
+    };
+    let Ok(subs) = rec.subrecords() else {
+        return;
+    };
+    // The CNTO/COED run, in file order, with every other subrecord dropped: this
+    // is exactly what `set_sub_sequence` rewrites, so an add/remove/move writes
+    // the run back in the order the table shows it.
+    let mut run: Vec<([u8; 4], Vec<u8>)> = subs
+        .iter()
+        .filter(|s| &s.sig == b"CNTO" || &s.sig == b"COED")
+        .map(|s| (s.sig, s.data.clone()))
+        .collect();
+
+    // One row per CNTO, carrying the COED that follows it (if any).
+    struct InvRow {
+        cnto_bytes: Vec<u8>,
+        coed_bytes: Option<Vec<u8>>,
+        item: serde_json::Value,
+        count: serde_json::Value,
+        condition: Option<f32>,
+        owner: Option<u32>,
+        rank_or_global: Option<u32>,
+    }
+    let mut rows: Vec<InvRow> = Vec::new();
+    {
+        let mut pending: Option<InvRow> = None;
+        for (sig, data) in &run {
+            let sub = nvre_esm::Subrecord {
+                sig: *sig,
+                data: data.clone(),
+                extended: false,
+            };
+            let decoded = nvre_edit::encode::decoded_in_block_localized(
+                &session.schema,
+                rec_sig,
+                &sub,
+                None,
+                session.record_is_localized(form_id),
+            )
+            .unwrap_or(serde_json::Value::Null);
+            if sig == b"CNTO" {
+                if let Some(r) = pending.take() {
+                    rows.push(r);
+                }
+                pending = Some(InvRow {
+                    cnto_bytes: data.clone(),
+                    coed_bytes: None,
+                    item: decoded.get("item").cloned().unwrap_or(serde_json::json!(0)),
+                    count: decoded.get("count").cloned().unwrap_or(serde_json::json!(1)),
+                    condition: None,
+                    owner: None,
+                    rank_or_global: None,
+                });
+            } else if let Some(r) = pending.as_mut() {
+                r.coed_bytes = Some(data.clone());
+                r.condition = decoded
+                    .get("item_condition")
+                    .and_then(|v| v.as_f64())
+                    .map(|f| f as f32);
+                r.owner =
+                    formid_from_json(decoded.get("owner").unwrap_or(&serde_json::Value::Null));
+                r.rank_or_global = decoded
+                    .get("global_or_rank_raw")
+                    .and_then(|v| v.as_u64())
+                    .map(|u| u as u32);
+            }
+        }
+        if let Some(r) = pending.take() {
+            rows.push(r);
+        }
+    }
+
+    // What the table chose. `want` is the whole run to write back; the others
+    // are rebuilt into a run after the table has been drawn.
+    let mut want: Option<Vec<([u8; 4], Vec<u8>)>> = None;
+    let mut remove_at: Option<usize> = None;
+    let mut move_up: Option<usize> = None;
+    let mut move_down: Option<usize> = None;
+    // What the row's extras became, per row: the owner, the rank-or-global and
+    // the condition in percent. The table's cells write into these as they are
+    // drawn, and the COED is re-encoded from them once the row is complete —
+    // reading the values back out of `rows` instead would write the *pre-edit*
+    // bytes and silently discard the change.
+    let mut pending_owner: Vec<Option<u32>> = rows.iter().map(|r| r.owner.filter(|o| *o != 0)).collect();
+    let mut pending_rank: Vec<u32> = rows.iter().map(|r| r.rank_or_global.unwrap_or(0)).collect();
+    let mut pending_cond: Vec<i64> = rows
+        .iter()
+        .map(|r| (r.condition.unwrap_or(1.0) * 100.0).round() as i64)
+        .collect();
+    let mut extras_changed: Vec<bool> = vec![false; rows.len()];
+
+    // The rank titles of every faction, in the order `RNAM` gives them: a
+    // faction's ranks are named by its own records, so the dropdown can offer
+    // "Squire" rather than a bare 0..7 and a modder can see which rank is
+    // which. The titles repeat once per rank, so the list is walked in order.
+    let faction_ranks: std::collections::HashMap<u32, Vec<(i32, String)>> = {
+        let mut out: std::collections::HashMap<u32, Vec<(i32, String)>> =
+            std::collections::HashMap::new();
+        for (fid, _) in session.records_of(*b"FACT").iter() {
+            let Some(rec) = session.resolved_record(*fid) else {
+                continue;
+            };
+            let Ok(subs) = rec.subrecords() else {
+                continue;
+            };
+            let mut ranks: Vec<(i32, String)> = Vec::new();
+            let mut last_rank: Option<i32> = None;
+            for s in subs.iter() {
+                match &s.sig {
+                    b"RNAM" if s.data.len() >= 4 => {
+                        last_rank = Some(i32::from_le_bytes(s.data[..4].try_into().unwrap()));
+                    }
+                    b"MNAM" if last_rank.is_some() => {
+                        ranks.push((
+                            last_rank.take().unwrap(),
+                            String::from_utf8_lossy(&s.data).trim_end_matches('\0').to_string(),
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+            if !ranks.is_empty() {
+                out.insert(*fid, ranks);
+            }
+        }
+        out
+    };
+
+    // Not resizable, and the columns fill the panel's width rather than
+    // stopping at their initial widths: this table is nested inside the record
+    // editor's scroll area, where a resizable table's handles fight the scroll
+    // and its initial widths leave a dead strip to the right of the last
+    // column. `Item` is the remainder column, so the space a long item name
+    // needs comes out of the slack instead of being clipped.
+    egui_extras::TableBuilder::new(ui)
+        .striped(true)
+        .id_salt(("inventory_table", rec_sig))
+        // Actions, Item, Count, Condition, Owner, Rank / Global.
+        .column(egui_extras::Column::initial(88.0).at_least(88.0).clip(true))
+        .column(egui_extras::Column::remainder().at_least(120.0).clip(true))
+        .column(egui_extras::Column::initial(60.0).at_least(56.0))
+        .column(egui_extras::Column::initial(72.0).at_least(60.0))
+        .column(egui_extras::Column::initial(180.0).at_least(120.0).clip(true))
+        .column(egui_extras::Column::initial(120.0).at_least(90.0).clip(true))
+        .header(18.0, |mut header| {
+            header.col(|ui| {
+                ui.strong("");
+            });
+            header.col(|ui| {
+                ui.strong("Item");
+            });
+            header.col(|ui| {
+                ui.strong("Count");
+            });
+            header.col(|ui| {
+                ui.strong("Condition");
+            });
+            header.col(|ui| {
+                // The owner may be an actor or a faction, and which one it is
+                // decides what the last column means: a `FACT` owner makes it a
+                // Required Rank, an `NPC_` owner makes it a Global Variable.
+                ui.strong("Owner (NPC / Faction)");
+            });
+            header.col(|ui| {
+                ui.strong("Rank / Global");
+            });
+        })
+        .body(|body| {
+            body.rows(20.0, rows.len(), |mut row_ui| {
+                let i = row_ui.index();
+                let Some(row) = rows.get(i) else {
+                    return;
+                };
+                row_ui.col(|ui| {
+                    ui.push_id(i, |ui| {
+                        ui.horizontal(|ui| {
+                            if ui
+                                .small_button("✖")
+                                .on_hover_text("remove this item")
+                                .clicked()
+                            {
+                                remove_at = Some(i);
+                            }
+                            let up = ui.add_enabled(i > 0, egui::Button::new("Up").small());
+                            if up.on_hover_text("move up").clicked() {
+                                move_up = Some(i);
+                            }
+                            let down = ui
+                                .add_enabled(i + 1 < rows.len(), egui::Button::new("Down").small());
+                            if down.on_hover_text("move down").clicked() {
+                                move_down = Some(i);
+                            }
+                        });
+                    });
+                });
+
+                // Item — the filtered picker, over the item types fopdoc names.
+                //
+                // `next` and `touched` are declared here and used by the Count
+                // column below, so both columns have to be drawn before the row
+                // writes the CNTO back — which happens after the last cell.
+                let mut next =
+                    serde_json::json!({"item": formid_from_json(&row.item).unwrap_or(0), "count": row.count.clone()});
+                let mut touched = false;
+                row_ui.col(|ui| {
+                    let targets = crate::object_editor::formid_targets_in(
+                        &session.schema,
+                        rec_sig,
+                        b"CNTO",
+                        None,
+                        "item",
+                    );
+                    let mut opt = formid_from_json(&row.item);
+                    let before = opt;
+                    let items = session.records_of_any(&targets);
+                    crate::object_editor::record_dropdown(
+                        ui,
+                        &format!("inv_{i}_item"),
+                        &items,
+                        &mut opt,
+                    );
+                    touched = opt != before;
+                    if touched {
+                        set_inline_field(&mut next, "item", serde_json::json!(opt.unwrap_or(0)));
+                    }
+                });
+
+                // Count. Its own column: the item picker fills the Item column's
+                // whole height, so a Count left inside it would sit under the
+                // Item header and shift every column after it left by one.
+                row_ui.col(|ui| {
+                    let mut cnt = row.count.as_i64().unwrap_or(1);
+                    if ui
+                        .add_sized(
+                            [56.0, 18.0],
+                            egui::DragValue::new(&mut cnt).range(0..=1_000_000),
+                        )
+                        .changed()
+                    {
+                        set_inline_field(&mut next, "count", serde_json::json!(cnt));
+                        touched = true;
+                    }
+                });
+
+                // Item Condition — percent, the way GECK shows it. A row with no
+                // COED has no stored condition and reads 100%.
+                row_ui.col(|ui| {
+                    let mut cond_pct = pending_cond[i];
+                    if ui
+                        .add_sized(
+                            [64.0, 18.0],
+                            egui::DragValue::new(&mut cond_pct).range(0..=100).suffix("%"),
+                        )
+                        .changed()
+                    {
+                        pending_cond[i] = cond_pct;
+                        extras_changed[i] = true;
+                    }
+                });
+
+                // Owner — a NPC_ or FACT FormID.
+                row_ui.col(|ui| {
+                    let mut owner_opt = pending_owner[i];
+                    let owner_before = owner_opt;
+                    let owner_items =
+                        session.records_of_any(&["NPC_".to_string(), "FACT".to_string()]);
+                    crate::object_editor::record_dropdown_with_none(
+                        ui,
+                        &format!("inv_{i}_owner"),
+                        &owner_items,
+                        &mut owner_opt,
+                        "Nobody",
+                    );
+                    if owner_opt != owner_before {
+                        pending_owner[i] = owner_opt;
+                        extras_changed[i] = true;
+                    }
+                });
+
+                // Global Variable / Required Rank — a GLOB FormID when the owner
+                // is an actor, an integer rank when the owner is a faction.
+                //
+                // With no owner set the field is inert: a rank with no faction
+                // to be a rank *of*, and a global with no owner to gate it, are
+                // both meaningless, and the only way to make either meaningful
+                // is to set the owner first. The cell still shows what the bytes
+                // hold, so a hand-written value is visible — it just cannot be
+                // changed until the owner says which of the two it is.
+                row_ui.col(|ui| {
+                    let Some(owner) = pending_owner[i] else {
+                        let shown = if pending_rank[i] == 0 {
+                            "—".to_string()
+                        } else {
+                            format!("{:08X}", pending_rank[i])
+                        };
+                        ui.add_enabled(
+                            false,
+                            egui::TextEdit::singleline(&mut shown.clone())
+                                .id_salt(format!("inv_{i}_rank_locked"))
+                                .desired_width(100.0),
+                        );
+                        return;
+                    };
+                    let is_faction = session.record_sig(owner) == Some(*b"FACT");
+                    if is_faction {
+                        // Faction mode: a rank out of that faction's own ranks,
+                        // so the dropdown names them ("Squire", "Knight") and
+                        // cannot offer a rank the faction does not have.
+                        let ranks = faction_ranks.get(&owner);
+                        if let Some(ranks) = ranks {
+                            let mut picked = pending_rank[i] as i32;
+                            let cur = ranks
+                                .iter()
+                                .find(|(v, _)| *v == picked)
+                                .map(|(_, n)| format!("{picked} - {n}"))
+                                .unwrap_or_else(|| picked.to_string());
+                            egui::ComboBox::from_id_salt(format!("inv_{i}_rank"))
+                                .selected_text(cur)
+                                .width(110.0)
+                                .show_ui(ui, |ui| {
+                                    for (v, n) in ranks {
+                                        ui.selectable_value(&mut picked, *v, format!("{v} - {n}"));
+                                    }
+                                });
+                            if picked.max(0) as u32 != pending_rank[i] {
+                                pending_rank[i] = picked.max(0) as u32;
+                                extras_changed[i] = true;
+                            }
+                        } else {
+                            // A faction the schema gives no named ranks for: fall
+                            // back to the raw number rather than blocking the edit.
+                            let mut rank = pending_rank[i];
+                            if ui
+                                .add_sized(
+                                    [56.0, 18.0],
+                                    egui::DragValue::new(&mut rank).range(0..=255),
+                                )
+                                .changed()
+                            {
+                                pending_rank[i] = rank;
+                                extras_changed[i] = true;
+                            }
+                        }
+                    } else {
+                        let mut glob_opt = (pending_rank[i] != 0).then_some(pending_rank[i]);
+                        let glob_before = glob_opt;
+                        let glob_items = session.records_of_any(&["GLOB".to_string()]);
+                        crate::object_editor::record_dropdown_with_none(
+                            ui,
+                            &format!("inv_{i}_glob"),
+                            &glob_items,
+                            &mut glob_opt,
+                            "NONE",
+                        );
+                        if glob_opt != glob_before {
+                            pending_rank[i] = glob_opt.unwrap_or(0);
+                            extras_changed[i] = true;
+                        }
+                    }
+                });
+
+                // Write the CNTO back if either of its own fields changed. The
+                // Nth CNTO in the run is this row's, so the position is found by
+                // counting rather than by matching bytes (two identical items
+                // exist).
+                if touched {
+                    if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                        &session.schema,
+                        rec_sig,
+                        b"CNTO",
+                        &next,
+                        Some(row.cnto_bytes.len()),
+                        None,
+                    ) {
+                        let mut list: Vec<([u8; 4], Vec<u8>)> = run.iter().cloned().collect();
+                        let mut seen = 0usize;
+                        for (pos, (s, _)) in list.iter_mut().enumerate() {
+                            if s == b"CNTO" {
+                                if seen == i {
+                                    list[pos].1 = bytes;
+                                    want = Some(list);
+                                    break;
+                                }
+                                seen += 1;
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+    if rows.is_empty() {
+        ui.add_space(4.0);
+        ui.weak("No items");
+    }
+
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        if ui.button("+ Add Item").clicked() {
+            let zero = match session.schema.lookup(rec_sig, b"CNTO") {
+                Some(def) => zero_value(&session.schema.resolve_def(&def.ty)),
+                None => serde_json::json!({"item": 0, "count": 1}),
+            };
+            if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                &session.schema,
+                rec_sig,
+                b"CNTO",
+                &zero,
+                None,
+                None,
+            ) {
+                let mut list = run.clone();
+                list.push((*b"CNTO", bytes));
+                want = Some(list);
+            }
+        }
+    });
+
+    // A structural edit rebuilds the run from the rows, so a remove or move
+    // writes the pairing back the way the table showed it.
+    let rebuilt: Option<Vec<([u8; 4], Vec<u8>)>> = if let Some(i) = remove_at {
+        let mut out: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for (ri, row) in rows.iter().enumerate() {
+            if ri == i {
+                continue;
+            }
+            out.push((*b"CNTO", row.cnto_bytes.clone()));
+            if let Some(c) = &row.coed_bytes {
+                out.push((*b"COED", c.clone()));
+            }
+        }
+        Some(out)
+    } else if move_up.is_some() || move_down.is_some() {
+        let mut order: Vec<usize> = (0..rows.len()).collect();
+        if let Some(i) = move_up {
+            if i > 0 {
+                order.swap(i, i - 1);
+            }
+        }
+        if let Some(i) = move_down {
+            if i + 1 < rows.len() {
+                order.swap(i, i + 1);
+            }
+        }
+        let mut out: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for ri in order {
+            let row = &rows[ri];
+            out.push((*b"CNTO", row.cnto_bytes.clone()));
+            if let Some(c) = &row.coed_bytes {
+                out.push((*b"COED", c.clone()));
+            }
+        }
+        Some(out)
+    } else {
+        None
+    };
+    if let Some(list) = rebuilt {
+        want = Some(list);
+    }
+
+// The extras that changed: re-encode each of those rows' COED in place,
+    // creating the subrecord when the row had none.
+    //
+    // One write per changed row, from `pending_*` — the values the table's
+    // cells actually ended on — rather than from `rows`, which still holds the
+    // bytes as they were read and would discard the edit.
+    for i in 0..rows.len() {
+        if !extras_changed.get(i).copied().unwrap_or(false) {
+            continue;
+        }
+        let Some(row) = rows.get(i) else {
+            continue;
+        };
+        let cond_pct = pending_cond[i];
+        let owner_opt = pending_owner[i];
+        let rank = pending_rank[i];
+        let coed = serde_json::json!({
+            "owner": owner_opt.unwrap_or(0),
+            "global_or_rank_raw": rank,
+            "item_condition": cond_pct as f64 / 100.0,
+        });
+        // The row had no COED and every extra is now the default: there is
+        // nothing to store, and a zero COED is a different record from none.
+        let all_default = cond_pct == 100 && owner_opt.is_none() && rank == 0;
+        if row.coed_bytes.is_none() && all_default {
+            continue;
+        }
+        let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+            &session.schema,
+            rec_sig,
+            b"COED",
+            &coed,
+            row.coed_bytes.as_ref().map(|b| b.len()),
+            None,
+        ) else {
+            continue;
+        };
+        let mut list = run.clone();
+        let cnto_positions: Vec<usize> = list
+            .iter()
+            .enumerate()
+            .filter(|(_, (s, _))| s == b"CNTO")
+            .map(|(p, _)| p)
+            .collect();
+        let Some(&cpos) = cnto_positions.get(i) else {
+            return;
+        };
+        // Replace the COED right after this CNTO, or insert one.
+        match list.get(cpos + 1) {
+            Some((s, _)) if s == b"COED" => list[cpos + 1].1 = bytes,
+            _ => list.insert(cpos + 1, (*b"COED", bytes)),
+        }
+        want = Some(list.clone());
+        run = list;
+    }
+
+    if let Some(list) = want {
+        session
+            .doc
+            .set_sub_sequence(form_id, vec![*b"CNTO", *b"COED"], list);
         session.stale = true;
         edit.error = None;
     }
