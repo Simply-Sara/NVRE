@@ -2410,8 +2410,11 @@ pub fn repeat_widget(
 
     let mut want: Option<Vec<Vec<u8>>> = None;
     let mut remove_at: Option<usize> = None;
+    let mut move_up: Option<usize> = None;
+    let mut move_down: Option<usize> = None;
     ui.vertical(|ui| {
         let is_snam = sub_sig == b"SNAM";
+        let is_pkid = sub_sig == b"PKID";
         let schema_keys: Option<Vec<String>> = session
             .schema
             .lookup_in_block(rec_sig, sub_sig, block)
@@ -2512,6 +2515,64 @@ pub fn repeat_widget(
                         }
                     }
                 });
+        } else if is_pkid {
+            egui::Grid::new(("repeat_table", sub_sig))
+                .num_columns(3)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label(""); // Actions
+                    ui.strong("Priority");
+                    ui.strong("Package");
+                    ui.end_row();
+
+                    if rows.is_empty() {
+                        ui.label("");
+                        ui.label("");
+                        ui.weak("No AI packages assigned");
+                        ui.end_row();
+                    } else {
+                        let len = rows.len();
+                        for (i, (bytes, value)) in rows.iter().enumerate() {
+                            ui.push_id(i, |ui| {
+                                ui.horizontal(|ui| {
+                                    if ui
+                                        .small_button("✖")
+                                        .on_hover_text("remove this package")
+                                        .clicked()
+                                    {
+                                        remove_at = Some(i);
+                                    }
+                                    let up_btn = ui.add_enabled(i > 0, egui::Button::new("▲").small());
+                                    if up_btn.on_hover_text("move up (higher priority)").clicked() {
+                                        move_up = Some(i);
+                                    }
+                                    let down_btn = ui.add_enabled(i + 1 < len, egui::Button::new("▼").small());
+                                    if down_btn.on_hover_text("move down (lower priority)").clicked() {
+                                        move_down = Some(i);
+                                    }
+                                });
+                            });
+                            ui.monospace(format!("[{i}]"));
+                            let mut next = value.clone();
+                            if inline_value(ui, session, rec_sig, sub_sig, block, i, "", value, &mut next) {
+                                if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                    &session.schema,
+                                    rec_sig,
+                                    sub_sig,
+                                    &next,
+                                    Some(bytes.len()),
+                                    block,
+                                ) {
+                                    let mut list: Vec<Vec<u8>> =
+                                        rows.iter().map(|(b, _)| b.clone()).collect();
+                                    list[i] = bytes;
+                                    want = Some(list);
+                                }
+                            }
+                            ui.end_row();
+                        }
+                    }
+                });
         } else if rows.is_empty() {
             ui.weak("(no rows)");
         } else {
@@ -2550,7 +2611,13 @@ pub fn repeat_widget(
 
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            let add_label = if is_snam { "+ Add Faction" } else { "+ Add Row" };
+            let add_label = if is_snam {
+                "+ Add Faction"
+            } else if is_pkid {
+                "+ Add Package"
+            } else {
+                "+ Add Row"
+            };
             if ui.button(add_label).clicked() {
                 // A new row is the layout's zero, encoded — the same rule the
                 // list widget uses for a new element.
@@ -2577,6 +2644,20 @@ pub fn repeat_widget(
         let mut list: Vec<Vec<u8>> = rows.iter().map(|(b, _)| b.clone()).collect();
         list.remove(i);
         want = Some(list);
+    }
+    if let Some(i) = move_up {
+        if i > 0 && i < rows.len() {
+            let mut list: Vec<Vec<u8>> = rows.iter().map(|(b, _)| b.clone()).collect();
+            list.swap(i, i - 1);
+            want = Some(list);
+        }
+    }
+    if let Some(i) = move_down {
+        if i + 1 < rows.len() {
+            let mut list: Vec<Vec<u8>> = rows.iter().map(|(b, _)| b.clone()).collect();
+            list.swap(i, i + 1);
+            want = Some(list);
+        }
     }
     if let Some(list) = want {
         session.doc.set_sub_list(form_id, sub_sig, list);

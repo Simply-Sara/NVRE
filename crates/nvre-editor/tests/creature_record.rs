@@ -2047,3 +2047,188 @@ fn the_ai_data_tab_renders_sections_geck_labels_and_checkbox() {
     assert!(!rows.iter().any(|(t, _)| t == "maximum_training_level"), "snake_case 'maximum_training_level' should be 'Max Training Level'");
     assert!(!rows.iter().any(|(t, _)| t == "aggro_radius_behavior"), "snake_case 'aggro_radius_behavior' should be 'Aggro Radius Behavior'");
 }
+
+#[test]
+fn the_ai_packages_tab_renders_table_priority_reordering_and_add() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("AI Packages".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    // Frame 1: Measure layout
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+
+    let u = out.platform_output.accesskit_update.unwrap();
+    let has_prio = u.nodes.iter().any(|(_, n)| n.label() == Some("Priority") || n.value() == Some("Priority"));
+    let has_pkg = u.nodes.iter().any(|(_, n)| n.label() == Some("Package") || n.value() == Some("Package"));
+    let has_add = u.nodes.iter().any(|(_, n)| n.label() == Some("+ Add Package") || n.value() == Some("+ Add Package"));
+    assert!(has_prio, "Should show Priority column header");
+    assert!(has_pkg, "Should show Package column header");
+    assert!(has_add, "Button must read '+ Add Package'");
+
+    // Check initial order on Brahmin (0x0014D1FF, 0x000200D5)
+    let rec0 = session.resolved_record(BRAHMIN).unwrap();
+    let pk0: Vec<u32> = rec0.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").map(|s| {
+        u32::from_le_bytes(s.data.as_slice().try_into().unwrap())
+    }).collect();
+    assert_eq!(pk0, vec![0x0014_D1FF, 0x0002_00D5]);
+
+    // Click ▲ on row 1 to move DefaultStayAtEditorLocation to row 0
+    let up_btns: Vec<_> = u.nodes.iter().filter_map(|(_, n)| {
+        if n.label() == Some("▲") || n.value() == Some("▲") {
+            n.bounds()
+        } else {
+            None
+        }
+    }).collect();
+    assert_eq!(up_btns.len(), 2, "There should be 2 up buttons for 2 rows");
+    let up_btn_row1 = if up_btns[0].y0 > up_btns[1].y0 { up_btns[0] } else { up_btns[1] };
+    let click_pos = nvre_editor::egui::pos2(up_btn_row1.x0 as f32 + 5.0, up_btn_row1.y0 as f32 + 5.0);
+
+    let mut out2 = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            events: vec![
+                nvre_editor::egui::Event::PointerMoved(click_pos),
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out2.textures_delta.clear();
+
+    let rec1 = session.resolved_record(BRAHMIN).unwrap();
+    let pk1: Vec<u32> = rec1.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").map(|s| {
+        u32::from_le_bytes(s.data.as_slice().try_into().unwrap())
+    }).collect();
+    assert_eq!(pk1, vec![0x0002_00D5, 0x0014_D1FF], "Clicking ▲ on row 1 must swap package priority!");
+}
+
+#[test]
+fn the_ai_packages_tab_renders_empty_state_and_adds_first_package() {
+    let data = match std::env::var("NVRE_DATA") {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    let mut session = Session::open(
+        std::path::Path::new(&format!("{data}/FalloutNV.esm")),
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")),
+        vec!["FalloutNV.esm".to_string()],
+    )
+    .expect("session");
+
+    // CrSuperMutantDeadMinigunRubyHill (0x0017AF62) has 0 packages.
+    let fid = 0x0017_AF62u32;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("AI Packages".to_string());
+    let mut pages = Pages::default();
+
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+
+    let u = out.platform_output.accesskit_update.unwrap();
+    let has_prio = u.nodes.iter().any(|(_, n)| n.label() == Some("Priority") || n.value() == Some("Priority"));
+    let has_pkg = u.nodes.iter().any(|(_, n)| n.label() == Some("Package") || n.value() == Some("Package"));
+    let has_notice = u.nodes.iter().any(|(_, n)| n.label() == Some("No AI packages assigned") || n.value() == Some("No AI packages assigned"));
+    assert!(has_prio, "Should show Priority header even with 0 packages");
+    assert!(has_pkg, "Should show Package header even with 0 packages");
+    assert!(has_notice, "Should show 'No AI packages assigned'");
+
+    let btn_rect = u.nodes.iter().find_map(|(_, n)| {
+        if n.label() == Some("+ Add Package") || n.value() == Some("+ Add Package") {
+            n.bounds()
+        } else {
+            None
+        }
+    }).expect("+ Add Package button");
+
+    let click_pos = nvre_editor::egui::pos2(btn_rect.x0 as f32 + 5.0, btn_rect.y0 as f32 + 5.0);
+    let mut out2 = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            events: vec![
+                nvre_editor::egui::Event::PointerMoved(click_pos),
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out2.textures_delta.clear();
+
+    let rec1 = session.resolved_record(fid).unwrap();
+    let pk_count = rec1.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").count();
+    assert_eq!(pk_count, 1, "+ Add Package must add the first package row!");
+}
