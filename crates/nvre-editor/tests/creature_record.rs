@@ -2037,12 +2037,12 @@ fn the_ai_data_tab_renders_sections_geck_labels_and_checkbox() {
     assert!(rows.iter().any(|(t, _)| t == "Mood"), "missing 'Mood': {rows:?}");
     assert!(rows.iter().any(|(t, _)| t == "Assistance"), "missing 'Assistance': {rows:?}");
     assert!(rows.iter().any(|(t, _)| t == "Aggro Radius Behavior"), "missing 'Aggro Radius Behavior': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Barter Gold"), "missing 'Barter Gold': {rows:?}");
     assert!(rows.iter().any(|(t, _)| t == "Teaches"), "missing 'Teaches': {rows:?}");
     assert!(rows.iter().any(|(t, _)| t == "Max Training Level"), "missing 'Max Training Level': {rows:?}");
 
     // No raw snake_case or padding:
     assert!(!rows.iter().any(|(t, _)| t == "unused"), "compiler padding 'unused' must be hidden: {rows:?}");
+    assert!(!rows.iter().any(|(t, _)| t == "Barter Gold" || t == "barter_gold"), "Barter Gold is NPC-only and should not be on Creature AI Data: {rows:?}");
     assert!(!rows.iter().any(|(t, _)| t == "energy_level"), "snake_case 'energy_level' should be 'Energy Level'");
     assert!(!rows.iter().any(|(t, _)| t == "maximum_training_level"), "snake_case 'maximum_training_level' should be 'Max Training Level'");
     assert!(!rows.iter().any(|(t, _)| t == "aggro_radius_behavior"), "snake_case 'aggro_radius_behavior' should be 'Aggro Radius Behavior'");

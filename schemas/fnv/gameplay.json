@@ -142,7 +142,7 @@
         "type": "u16"
        },
        {
-        "name": "barter_gold",
+        "name": "unused",
         "type": "u16"
        },
        {

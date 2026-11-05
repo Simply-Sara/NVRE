@@ -842,9 +842,6 @@
      },
      {
       "fields": {
-       "ACBS": [
-        "barter_gold"
-       ],
        "AIDT": [
         "services",
         "teaches",
@@ -852,7 +849,6 @@
        ]
       },
       "subs": [
-       "ACBS",
        "AIDT"
       ],
       "tab": "AI Data",
