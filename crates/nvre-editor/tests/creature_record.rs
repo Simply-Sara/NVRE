@@ -1767,3 +1767,45 @@ fn the_skills_and_health_section_aligns_all_its_controls_in_one_grid() {
         );
     }
 }
+
+#[test]
+fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
+    // The Factions tab renders repeated SNAM entries. It should render as a clean
+    // table with Faction and Rank column headers, a "+ Add Faction" button, no
+    // compiler padding (`unused [73, 70, 90]`), and dropdowns targeted strictly to FACT.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("Factions".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    // Headers:
+    assert!(
+        rows.iter().any(|(t, _)| t == "Faction"),
+        "Factions tab is missing 'Faction' column header: {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Rank"),
+        "Factions tab is missing 'Rank' column header: {rows:?}"
+    );
+
+    // No compiler padding or raw byte dumps:
+    assert!(
+        !rows.iter().any(|(t, _)| t == "unused" || t.contains("[73,70,90]") || t.contains("[73, 70, 90]")),
+        "Factions tab still exposes raw compiler padding: {rows:?}"
+    );
+
+    // FormID targeting:
+    let targets = nvre_editor::object_editor::formid_targets_in(
+        &session.schema,
+        b"CREA",
+        b"SNAM",
+        None,
+        "faction",
+    );
+    assert_eq!(
+        targets,
+        vec!["FACT".to_string()],
+        "SNAM.faction must target FACT"
+    );
+}

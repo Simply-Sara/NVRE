@@ -2352,86 +2352,113 @@ pub fn repeat_widget(
     let mut want: Option<Vec<Vec<u8>>> = None;
     let mut remove_at: Option<usize> = None;
     ui.vertical(|ui| {
+        let is_struct = rows.first().is_some_and(|(_, v)| matches!(v, serde_json::Value::Object(_)));
+        let is_snam = sub_sig == b"SNAM";
+
         if rows.is_empty() {
-            ui.weak("(no rows)");
-        }
-        for (i, (bytes, value)) in rows.iter().enumerate() {
-            ui.horizontal(|ui| {
-                if ui
-                    .small_button("✖")
-                    .on_hover_text("remove this row")
-                    .clicked()
-                {
-                    remove_at = Some(i);
-                }
-                ui.monospace(format!("[{i}]"));
-                match value {
-                    // A struct row: one widget per field, the same widgets the flat
-                    // grid uses. A row that could only show `monospace` would be a
-                    // regression for the pages `repeat` is meant to replace — a
-                    // leveled list's entry is a FormID and two numbers, and a list
-                    // of records (`FLST`) is nothing but FormIDs.
-                    serde_json::Value::Object(fields) => {
-                        let mut next = value.clone();
-                        let mut touched = false;
-                        for (name, fv) in fields {
-                            let path = if name.is_empty() {
-                                String::new()
-                            } else {
-                                name.clone()
-                            };
-                            ui.label(name);
-                            if inline_value(
-                                ui, session, rec_sig, sub_sig, block, &path, fv, &mut next,
-                            ) {
-                                touched = true;
-                            }
-                        }
-                        if touched {
-                            if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
-                                &session.schema,
-                                rec_sig,
-                                sub_sig,
-                                &next,
-                                Some(bytes.len()),
-                                block,
-                            ) {
-                                let mut list: Vec<Vec<u8>> =
-                                    rows.iter().map(|(b, _)| b.clone()).collect();
-                                list[i] = bytes;
-                                want = Some(list);
-                            }
-                        }
+            ui.weak(if is_snam { "No factions assigned" } else { "(no rows)" });
+        } else if is_struct {
+            // Render as a clean table with column headers rather than repeating
+            // field names on every single row.
+            let first_obj = rows[0].1.as_object().unwrap();
+            let visible_keys: Vec<&String> = first_obj.keys().filter(|k| *k != "unused").collect();
+
+            egui::Grid::new(("repeat_table", sub_sig))
+                .num_columns(visible_keys.len() + 1)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label(""); // blank for remove button
+                    for key in &visible_keys {
+                        let header = match key.as_str() {
+                            "faction" => "Faction",
+                            "rank" => "Rank",
+                            other => other,
+                        };
+                        ui.strong(header);
                     }
-                    // A bare row — a subrecord that is one value, which is what a
-                    // list of FormIDs is.
-                    other => {
-                        let mut next = other.clone();
-                        if inline_value(ui, session, rec_sig, sub_sig, block, "", other, &mut next)
+                    ui.end_row();
+
+                    for (i, (bytes, value)) in rows.iter().enumerate() {
+                        if ui
+                            .small_button("✖")
+                            .on_hover_text("remove this row")
+                            .clicked()
                         {
-                            // The whole subrecord is the value, so its path is the
-                            // empty string `set_path` treats as "the value itself".
-                            if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
-                                &session.schema,
-                                rec_sig,
-                                sub_sig,
-                                &next,
-                                Some(bytes.len()),
-                                block,
-                            ) {
-                                let mut list: Vec<Vec<u8>> =
-                                    rows.iter().map(|(b, _)| b.clone()).collect();
-                                list[i] = bytes;
-                                want = Some(list);
+                            remove_at = Some(i);
+                        }
+                        if let serde_json::Value::Object(fields) = value {
+                            let mut next = value.clone();
+                            let mut touched = false;
+                            for (name, fv) in fields {
+                                if name == "unused" {
+                                    continue;
+                                }
+                                let path = if name.is_empty() {
+                                    String::new()
+                                } else {
+                                    name.clone()
+                                };
+                                if inline_value(
+                                    ui, session, rec_sig, sub_sig, block, &path, fv, &mut next,
+                                ) {
+                                    touched = true;
+                                }
+                            }
+                            ui.end_row();
+                            if touched {
+                                if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                    &session.schema,
+                                    rec_sig,
+                                    sub_sig,
+                                    &next,
+                                    Some(bytes.len()),
+                                    block,
+                                ) {
+                                    let mut list: Vec<Vec<u8>> =
+                                        rows.iter().map(|(b, _)| b.clone()).collect();
+                                    list[i] = bytes;
+                                    want = Some(list);
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+        } else {
+            // Bare rows (e.g. list of FormIDs)
+            for (i, (bytes, value)) in rows.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui
+                        .small_button("✖")
+                        .on_hover_text("remove this row")
+                        .clicked()
+                    {
+                        remove_at = Some(i);
+                    }
+                    ui.monospace(format!("[{i}]"));
+                    let mut next = value.clone();
+                    if inline_value(ui, session, rec_sig, sub_sig, block, "", value, &mut next) {
+                        if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                            &session.schema,
+                            rec_sig,
+                            sub_sig,
+                            &next,
+                            Some(bytes.len()),
+                            block,
+                        ) {
+                            let mut list: Vec<Vec<u8>> =
+                                rows.iter().map(|(b, _)| b.clone()).collect();
+                            list[i] = bytes;
+                            want = Some(list);
+                        }
+                    }
+                });
+            }
         }
+
+        ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.weak(format!("{} row(s)", rows.len()));
-            if ui.small_button("＋").on_hover_text("add a row").clicked() {
+            let add_label = if is_snam { "+ Add Faction" } else { "+ Add Row" };
+            if ui.button(add_label).clicked() {
                 // A new row is the layout's zero, encoded — the same rule the
                 // list widget uses for a new element.
                 let zero = match session.schema.lookup_in_block(rec_sig, sub_sig, block) {

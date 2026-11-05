@@ -2084,7 +2084,13 @@
    "struct": [
     {
      "name": "faction",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FACT"
+       ]
+      }
+     }
     },
     {
      "name": "rank",
