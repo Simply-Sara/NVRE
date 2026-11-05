@@ -376,7 +376,13 @@
      "confidence": "documented",
      "name": "Body Part Data",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "BPTD"
+       ]
+      }
+     }
     },
     "RNAM": {
      "confidence": "documented",

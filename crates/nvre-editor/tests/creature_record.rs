@@ -1419,7 +1419,6 @@ fn every_link_dropdown_has_one_clear_label() {
         "Voice",
         "Combat Style",
         "Melee Weapon List",
-        "Body Part Data",
     ] {
         let count = rows.iter().filter(|(t, _)| t == want).count();
         assert_eq!(
@@ -1427,13 +1426,26 @@ fn every_link_dropdown_has_one_clear_label() {
             "{want:?} is drawn {count} times — one label per dropdown: {rows:?}"
         );
     }
+    // Body Part Data moved to ModelList and must not be on Traits.
+    assert!(
+        !rows.iter().any(|(t, _)| t == "Body Part Data"),
+        "Body Part Data is still on Traits: {rows:?}"
+    );
     // No raw signatures standing in for a name.
-    for tag in ["INAM", "VTCK", "ZNAM", "LNAM", "PNAM"] {
+    for tag in ["INAM", "VTCK", "ZNAM", "LNAM"] {
         assert!(
             !rows.iter().any(|(t, _)| t == tag),
             "the Links section shows the bare signature {tag:?} instead of its name: {rows:?}"
         );
     }
+
+    // And verify Body Part Data is drawn on ModelList.
+    state.tab.chosen = Some("ModelList".to_string());
+    let model_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        model_rows.iter().any(|(t, _)| t == "Body Part Data"),
+        "Body Part Data is not drawn on ModelList: {model_rows:?}"
+    );
     // And no unfiltered hint. "LVLI, SPEL" beside a filtered dropdown stays: that
     // one says what may go here.
     assert!(

@@ -745,8 +745,7 @@
        "INAM",
        "VTCK",
        "ZNAM",
-       "LNAM",
-       "PNAM"
+       "LNAM"
       ],
       "tab": "Traits",
       "title": "Links"
@@ -892,6 +891,7 @@
        "MODL",
        "NIFZ",
        "NIFT",
+       "PNAM",
        "OBND"
       ],
       "tab": "ModelList",
