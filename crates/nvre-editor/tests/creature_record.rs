@@ -3306,65 +3306,84 @@ fn the_animation_tab_has_one_scrollbar_and_it_is_the_tables() {
     };
     let fid = 0x000E_84A2u32;
     session.open_object(fid, *b"CREA");
-    let mut state = ObjectEditorState::default();
-    state.load_from_session(&session, fid, *b"CREA");
-    state.tab.chosen = Some("Animation".to_string());
-    let mut pages = Pages::default();
-    let ctx = egui::Context::default();
-    ctx.enable_accesskit();
 
-    // A short viewport, the way the editor's panel actually is: the tab's 32 rows
-    // cannot all fit, so something has to scroll.
-    let mut out = ctx.run_ui(
-        egui::RawInput {
-            screen_rect: Some(egui::Rect::from_min_size(
-                egui::Pos2::ZERO,
-                egui::vec2(1200.0, 500.0),
-            )),
-            ..Default::default()
-        },
-        |ui| {
-            egui::CentralPanel::default().show(ui, |ui| {
-                object_editor::body(ui, &mut session, &mut state, &mut pages);
-            });
-        },
-    );
-    out.textures_delta.clear();
-    let update = std::mem::take(&mut out.platform_output.accesskit_update).unwrap();
+    let mut probe = |h: f32| -> (usize, Vec<egui::accesskit::Rect>) {
+        let mut state = ObjectEditorState::default();
+        state.load_from_session(&session, fid, *b"CREA");
+        state.tab.chosen = Some("Animation".to_string());
+        let mut pages = Pages::default();
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
 
-    // The animation rows: the table's "In use" checkboxes.
-    let rows: Vec<(f32, f32)> = update
-        .nodes
-        .iter()
-        .filter(|(_, n)| n.role() == egui::accesskit::Role::CheckBox)
-        .filter_map(|(_, n)| {
-            let b = n.bounds()?;
-            (b.x0 >= 80.0 && b.x1 <= 120.0).then(|| (b.y0 as f32, b.y1 as f32))
-        })
-        .collect();
-    drop(update);
-    // 32 rows in a 500px viewport: not all of them are drawn, which is the table
-    // scrolling its own rows rather than the page scrolling a full-height table.
-    let first = rows.first().expect("the table draws rows").0;
-    let last = rows.last().expect("the table draws rows").1;
-    // 32 rows in a 500px viewport: the table scrolls its own rows, so not all
-    // are drawn at once.
-    assert!(
-        rows.len() < 32,
-        "the table scrolls its own rows, so not all 32 are drawn at once: {}",
-        rows.len()
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1200.0, h),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
+                    object_editor::body(ui, &mut session, &mut state, &mut pages);
+                });
+            },
+        );
+        out.textures_delta.clear();
+        let update = std::mem::take(&mut out.platform_output.accesskit_update).unwrap();
+
+        let scrollbars: Vec<egui::accesskit::Rect> = update
+            .nodes
+            .iter()
+            .filter(|(_, n)| matches!(n.role(), egui::accesskit::Role::ScrollBar))
+            .filter_map(|(_, n)| n.bounds())
+            .collect();
+
+        let rows: Vec<(f32, f32)> = update
+            .nodes
+            .iter()
+            .filter(|(_, n)| n.role() == egui::accesskit::Role::CheckBox)
+            .filter_map(|(_, n)| {
+                let b = n.bounds()?;
+                (b.x0 >= 80.0 && b.x1 <= 120.0).then(|| (b.y0 as f32, b.y1 as f32))
+            })
+            .collect();
+        (rows.len(), scrollbars)
+    };
+
+    let (rows_500, sb_500) = probe(500.0);
+    let (rows_800, sb_800) = probe(800.0);
+
+    // Exactly one scrollbar on the page: the table's scrollbar. The outer page
+    // scrollbar must not exist on this tab.
+    assert_eq!(
+        sb_500.len(),
+        1,
+        "there must be exactly one scrollbar on the Animation tab (the table's), but got: {sb_500:?}"
     );
-    // And the rows it does draw run to the bottom of the tab, so the page's
-    // scroll area has nothing left over to scroll. Without the fix the table is
-    // sized to its content inside a scroll area that is itself scrolled, and the
-    // rows stop well short of the tab's bottom edge.
+    assert_eq!(
+        sb_800.len(),
+        1,
+        "there must be exactly one scrollbar on the Animation tab (the table's), but got: {sb_800:?}"
+    );
+
+    // The single scrollbar is the table's (starts where the table starts, below the tab strip).
     assert!(
-        last > 455.0,
-        "the table's rows fill the tab: the last drawn row ends at {last} of 500, \
-         so the page's scroll area is not the one scrolling"
+        sb_500[0].y0 > 100.0,
+        "the scrollbar belongs to the table, not the outer page (starts at y={}): {sb_500:?}",
+        sb_500[0].y0
+    );
+
+    // The table resizes with window height: taller window draws a taller scrollbar
+    // and displays more rows.
+    let h_500 = sb_500[0].y1 - sb_500[0].y0;
+    let h_800 = sb_800[0].y1 - sb_800[0].y0;
+    assert!(
+        h_800 > h_500 + 200.0,
+        "table scrollbar should expand as window height grows (500px: {h_500}, 800px: {h_800})"
     );
     assert!(
-        last - first > 70.0,
-        "the table uses the tab's height rather than a sliver of it: {first}..{last}"
+        rows_800 > rows_500,
+        "more rows should be visible when window is taller (500px: {rows_500}, 800px: {rows_800})"
     );
 }

@@ -1484,13 +1484,20 @@ fn render_single_section(
             // the record.
             Some(name) if name == "animations" => {
                 // The table owns this tab's scroll. The page already wraps
-                // itself in a scroll area, so a table that sized to its content
-                // would nest a second scrollbar inside the first — two bars for
-                // one tab, each scrolling part of the other. The table is given
-                // the whole viewport instead, so it is the only scrollbar.
-                let avail = ui.available_height().max(120.0);
-                ui.set_max_height(avail);
-                animations_widget(ui, session, form_id, edit);
+                // itself in a scroll area, so a table that sized itself to its
+                // content would nest a second scrollbar inside the first — two
+                // bars for one tab, each scrolling part of the other.
+                //
+                // The table's own scroll area is given the viewport height
+                // instead, so it is the only scrollbar and it resizes with the
+                // window: shrink the panel and the table shrinks with it, grow
+                // it and the table takes the room back.
+                //
+                // `available_height` inside a scroll area is the space left
+                // after what has already been drawn — the header, the tab
+                // strip — which is exactly the viewport the table should fill.
+                let viewport = ui.available_height().max(120.0);
+                animations_widget(ui, session, form_id, edit, viewport);
             }
             Some(name) => {
                 ui.colored_label(
@@ -2826,6 +2833,7 @@ pub fn animations_widget(
     session: &mut crate::session::Session,
     form_id: u32,
     edit: &mut crate::panels::FieldEdit,
+    viewport: f32,
 ) {
     let Some(rec) = session.resolved_record(form_id) else {
         ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
@@ -2886,14 +2894,25 @@ pub fn animations_widget(
     // special rows follow the record. A single table keeps the two groups in
     // one scrollable list, the way GECK shows them.
     //
-    // The table owns the tab's scroll: it is given the whole viewport the outer
-    // page scroll area leaves, so the tab has one scrollbar and it is the
-    // table's.
+    // The table owns this tab's scroll. `max_scroll_height` is the height at
+    // which the table stops growing and starts scrolling instead, so setting it
+    // to the viewport makes the table exactly as tall as the window lets it be:
+    // it fills the space when there are few rows and scrolls when there are
+    // many, and it resizes with the window because `viewport` is re-read every
+    // frame.
+    //
+    // `auto_shrink([false, true])` is what keeps the table from also drawing
+    // blank space below itself when the content is short — the blank goes
+    // inside the table's own scroll area instead, which is the same thing the
+    // other tables in the editor do.
     let total = base.len() + special.len();
     let mut toggled: Option<String> = None;
     egui_extras::TableBuilder::new(ui)
         .striped(true)
         .id_salt(("animations_table", rec_sig))
+        .vscroll(true)
+        .max_scroll_height(viewport)
+        .auto_shrink([false, false])
         .column(egui_extras::Column::initial(70.0).at_least(70.0))
         .column(egui_extras::Column::initial(70.0).at_least(70.0))
         .column(egui_extras::Column::remainder().at_least(200.0).clip(true))

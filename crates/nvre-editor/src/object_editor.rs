@@ -760,8 +760,16 @@ pub fn body(
     let game = session.game.id;
     // The bar sits at the panel's right edge, not at the end of the widest
     // row — see [`crate::panels::vertical_scroll`].
+    //
+    // On tabs that own their own scrolling (the Animation tab's table), the
+    // outer scroll area must not draw a scrollbar or consume mouse wheel
+    // scrolls. The inner table owns the scroll wheel and resizes to the window.
+    let tabs = session.schema.page_tabs(&sig_key);
+    let is_animation_tab = matches!(state.tab.heading(&tabs), Some("Animation"));
+    let scroll_page = !is_animation_tab;
     let mut bounds = None;
     let shown = crate::panels::vertical_scroll("obj_scroll")
+        .vscroll(scroll_page)
         .max_height(avail_h)
         .show(ui, |ui| {
             let page: Option<&mut (dyn EditorPage + '_)> = match page_name.as_deref() {
