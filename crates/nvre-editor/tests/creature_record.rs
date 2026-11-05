@@ -1417,7 +1417,7 @@ fn every_link_dropdown_has_one_clear_label() {
         "Death item",
         "Voice",
         "Combat Style",
-        "Melee Weapon List",
+        "Weapon List",
     ] {
         let count = rows.iter().filter(|(t, _)| t == want).count();
         assert_eq!(

@@ -157,7 +157,7 @@ fn creature_traits_references_are_targeted() {
     // - INAM (Death item) -> LVLI
     // - VTCK (Voice) -> VTYP
     // - ZNAM (Combat Style) -> CSTY
-    // - LNAM (Melee Weapon List) -> FLST
+    // - LNAM (Weapon List) -> FLST
     // - PNAM (Body Part Data) -> BPTD
     let fnv = targets("fnv");
     let check = |sub: &str, expected: &[&str]| {

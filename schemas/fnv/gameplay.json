@@ -353,7 +353,7 @@
     },
     "LNAM": {
      "confidence": "documented",
-     "name": "Melee Weapon List",
+     "name": "Weapon List",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
      "type": {
       "formid": {
