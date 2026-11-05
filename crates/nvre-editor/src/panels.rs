@@ -1141,12 +1141,6 @@ pub fn sectioned_grid_on_tab(
         //
         // `set_sub` appends a subrecord the record does not have yet, so the
         // write path already works once there is a widget to drive it.
-        let absent: Vec<[u8; 4]> = section
-            .subs
-            .iter()
-            .filter(|tag| !named.iter().any(|i| &views[*i].sig == *tag))
-            .filter_map(|tag| Some(sig4(tag)))
-            .collect();
         claimed.extend(named.iter().copied());
         ui.add_space(if si == 0 { 0.0 } else { 6.0 });
         let group = ui.group(|ui| {
@@ -1156,46 +1150,6 @@ pub fn sectioned_grid_on_tab(
             // above them says nothing they did not.
             if !section.untitled {
                 ui.strong(&section.title);
-                ui.add_space(4.0);
-            }
-            // The subrecords the section names that this record does not carry,
-            // in the section's order, so the picker sits where the section puts
-            // it — above the template checkboxes it introduces.
-            for tag in &absent {
-                // The subrecord's own name, the same one a present row would
-                // carry. A bare signature says "LNAM" to a modder who wants to
-                // know which link is missing, and the signature is the one thing
-                // they already have.
-                let name = session
-                    .schema
-                    .lookup(&rec_sig, tag)
-                    .map(|d| d.name.clone())
-                    .unwrap_or_else(|| nvre_util::tag_str(tag));
-                // The name alone. A subrecord the record does not carry is
-                // shown by a picker reading NONE, which says it better than a
-                // note under the label does.
-                ui.label(&name);
-                // The picker for a subrecord the record does not carry yet, so a
-                // modder can give it one. The target list comes from the schema,
-                // the same way a present subrecord's does.
-                let targets = crate::object_editor::formid_targets_in(
-                    &session.schema,
-                    &rec_sig,
-                    tag,
-                    None,
-                    "",
-                );
-                let items = session.records_of_any(&targets);
-                let mut chosen: Option<u32> = None;
-                crate::object_editor::record_dropdown(
-                    ui,
-                    &format!("absent_{}", nvre_util::tag_str(tag)),
-                    &items,
-                    &mut chosen,
-                );
-                if let Some(fid) = chosen {
-                    session.doc.set_sub(form_id, tag, fid.to_le_bytes().to_vec());
-                }
                 ui.add_space(4.0);
             }
             match section.widget.as_deref() {
@@ -1222,18 +1176,53 @@ pub fn sectioned_grid_on_tab(
                     );
                 }
                 None => {
-                    for i in named {
-                        subrecord_rows_on_fields(
-                            ui,
-                            session,
-                            form_id,
-                            &rec_sig,
-                            &views[i],
-                            &edited,
-                            section.fields.get(&views[i].sig).map(Vec::as_slice),
-                            &section.flags_bits,
-                            edit,
-                        );
+                    // Iterate in the declared order of `section.subs`.
+                    // Present subrecords render their fields; absent subrecords
+                    // render an absent-subrecord picker in place.
+                    for tag_str in &section.subs {
+                        let tag = sig4(tag_str);
+                        if let Some(i) = views.iter().position(|v| v.sig == *tag_str) {
+                            subrecord_rows_on_fields(
+                                ui,
+                                session,
+                                form_id,
+                                &rec_sig,
+                                &views[i],
+                                &edited,
+                                section.fields.get(&views[i].sig).map(Vec::as_slice),
+                                &section.flags_bits,
+                                section.untitled,
+                                edit,
+                            );
+                        } else {
+                            let name = session
+                                .schema
+                                .lookup(&rec_sig, &tag)
+                                .map(|d| d.name.clone())
+                                .unwrap_or_else(|| nvre_util::tag_str(&tag));
+                            let targets = crate::object_editor::formid_targets_in(
+                                &session.schema,
+                                &rec_sig,
+                                &tag,
+                                None,
+                                "",
+                            );
+                            let items = session.records_of_any(&targets);
+                            let mut chosen: Option<u32> = None;
+                            ui.horizontal(|ui| {
+                                ui.label(&name);
+                                crate::object_editor::record_dropdown(
+                                    ui,
+                                    &format!("absent_{}", nvre_util::tag_str(&tag)),
+                                    &items,
+                                    &mut chosen,
+                                );
+                            });
+                            if let Some(fid) = chosen {
+                                session.doc.set_sub(form_id, &tag, fid.to_le_bytes().to_vec());
+                            }
+                            ui.add_space(4.0);
+                        }
                     }
                 }
             }
@@ -1300,6 +1289,7 @@ fn subrecord_rows(
         edited,
         None,
         &std::collections::BTreeMap::new(),
+        false,
         edit,
     );
 }
@@ -1325,6 +1315,7 @@ fn subrecord_rows_on_fields(
     edited: &[[u8; 4]],
     fields: Option<&[String]>,
     flags_bits: &std::collections::BTreeMap<String, Vec<u32>>,
+    untitled: bool,
     edit: &mut FieldEdit,
 ) {
     let sig = sig4(&view.sig);
@@ -1356,7 +1347,7 @@ fn subrecord_rows_on_fields(
             .filter(|p| rows.iter().any(|r| &r.path == *p))
             .count(),
     };
-    if shown_count > 1 {
+    if !untitled && shown_count > 1 {
         ui.horizontal(|ui| {
             ui.strong(&view.name);
             ui.monospace(&view.sig);
@@ -1424,7 +1415,7 @@ fn subrecord_rows_on_fields(
         );
         let is_flags = matches!(current, serde_json::Value::Object(_)) && !flags.is_empty();
         match runs.last_mut() {
-            Some(run) if run_is_flags(run, view) == is_flags => run.push(row),
+            Some(run) if run_is_flags(run, view, session, rec_sig) == is_flags => run.push(row),
             _ => runs.push(vec![row]),
         }
     }
@@ -1432,7 +1423,7 @@ fn subrecord_rows_on_fields(
         if ri > 0 {
             ui.add_space(6.0);
         }
-        if run_is_flags(run, view) {
+        if run_is_flags(run, view, session, rec_sig) {
             for row in run {
                 let Some(current) = get_path(&view.value, &row.path) else {
                     continue;
@@ -1485,12 +1476,21 @@ fn subrecord_rows_on_fields(
 /// The caller built each run from one kind, so the first row is the answer. A
 /// flags word decodes to an object and every other field does not, which is the
 /// same test [`field_editor`] makes to choose its widget.
-fn run_is_flags(run: &[&nvre_edit::encode::Row], view: &nvre_edit::encode::SubView) -> bool {
+fn run_is_flags(
+    run: &[&nvre_edit::encode::Row],
+    view: &nvre_edit::encode::SubView,
+    session: &crate::session::Session,
+    rec_sig: &[u8; 4],
+) -> bool {
     run.first().is_some_and(|row| {
-        matches!(
-            get_path(&view.value, &row.path),
-            Some(serde_json::Value::Object(_))
-        )
+        let flags = flag_bits(
+            &session.schema,
+            rec_sig,
+            &view.sig,
+            view.block.as_deref(),
+            &row.path,
+        );
+        !flags.is_empty()
     })
 }
 
@@ -1521,6 +1521,8 @@ fn draw_field_row(
         "Alignment"
     } else if view.sig == "ACBS" && row.path == "disposition_base" {
         "Disposition Base"
+    } else if view.sig == "DATA" && row.path == "type" {
+        "Creature Type"
     } else {
         row.path.as_str()
     };

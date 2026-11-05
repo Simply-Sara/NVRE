@@ -113,8 +113,8 @@ fn a_section_on_another_tab_is_not_drawn() {
         v.iter().map(|s| s.title.clone()).collect::<Vec<_>>()
     };
     assert!(
-        traits.iter().any(|s| s.title == "Actor Base and Alignment"),
-        "Traits draws its own Actor Base and Alignment section: {:?}",
+        traits.iter().any(|s| s.title == "Traits"),
+        "Traits draws its own flat Traits section: {:?}",
         titles(&traits)
     );
     assert!(

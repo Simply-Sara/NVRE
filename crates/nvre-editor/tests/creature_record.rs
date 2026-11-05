@@ -100,19 +100,17 @@ fn the_traits_tab_shows_the_creature_type_and_the_stats_tab_does_not() {
     let traits = sections_on_tab(&sections, Some("Traits"));
     let stats = sections_on_tab(&sections, Some("Stats"));
 
-    let flags_section = traits
+    let acbs_section = traits
         .iter()
         .find(|s| s.tab.as_deref() == Some("Traits") && s.fields.contains_key("ACBS"))
         .expect("Traits narrows ACBS");
     assert!(
-        flags_section.fields["ACBS"].contains(&"flags".to_string()),
-        "Traits shows ACBS's flags: {:?}",
-        flags_section.fields
+        acbs_section.fields["ACBS"].contains(&"karma".to_string()),
+        "Traits shows ACBS's karma: {:?}",
+        acbs_section.fields
     );
-    // Stats does not show the same flags. It does show one of them — PC Level
-    // Mult, on the Leveling section, beside the level field it governs — so the
-    // assertion is that the two tabs do not *overlap*, not that only one of them
-    // touches the word at all.
+    // ACBS flags have all moved to their respective tabs (General, Animation,
+    // ModelList, Stats, Blood), so Traits carries 0 flags.
     let stats_flags: Vec<u32> = stats
         .iter()
         .filter_map(|s| s.flags_bits.get("ACBS.flags").cloned())
@@ -123,6 +121,7 @@ fn the_traits_tab_shows_the_creature_type_and_the_stats_tab_does_not() {
         .filter_map(|s| s.flags_bits.get("ACBS.flags").cloned())
         .flatten()
         .collect();
+    assert_eq!(traits_flags.len(), 0, "Traits has no ACBS flags remaining");
     assert!(
         !stats_flags.iter().any(|b| traits_flags.contains(b)),
         "Stats and Traits both show ACBS bits {stats_flags:?} / {traits_flags:?}"
@@ -592,7 +591,7 @@ fn the_flag_checkboxes_wrap_onto_their_own_rows() {
             .unwrap_or_default()
     };
     let flag_bits = bits("ACBS.flags");
-    assert_eq!(flag_bits.len(), 10, "General names ten flags");
+    assert_eq!(flag_bits.len(), 11, "General names eleven flags");
 
     let acbs = session
         .schema

@@ -690,38 +690,25 @@
      },
      {
       "fields": {
+       "ACBS": [
+        "karma",
+        "disposition_base"
+       ],
        "DATA": [
         "type"
        ]
       },
       "subs": [
-       "DATA"
-      ],
-      "tab": "Traits",
-      "title": "Creature Type"
-     },
-     {
-      "fields": {
-       "ACBS": [
-        "karma",
-        "disposition_base"
-       ]
-      },
-      "subs": [
-       "ACBS"
-      ],
-      "tab": "Traits",
-      "title": "Actor Base and Alignment"
-     },
-     {
-      "subs": [
+       "DATA",
+       "ACBS",
        "INAM",
        "VTCK",
        "ZNAM",
        "LNAM"
       ],
       "tab": "Traits",
-      "title": "Links"
+      "title": "Traits",
+      "untitled": true
      },
      {
       "fields": {
