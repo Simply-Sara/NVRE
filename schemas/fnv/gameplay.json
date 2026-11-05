@@ -206,13 +206,25 @@
      "confidence": "documented",
      "name": "Impact Dataset",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "IPDS"
+       ]
+      }
+     }
     },
     "CSCR": {
      "confidence": "documented",
      "name": "Inherits Sounds from",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CREA"
+       ]
+      }
+     }
     },
     "CSDC": {
      "confidence": "documented",
@@ -325,7 +337,13 @@
      "confidence": "documented",
      "name": "Death item",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLI"
+       ]
+      }
+     }
     },
     "KFFZ": {
      "confidence": "documented",
@@ -337,7 +355,13 @@
      "confidence": "documented",
      "name": "Melee Weapon List",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "FLST"
+       ]
+      }
+     }
     },
     "NAM4": {
      "confidence": "documented",
@@ -370,7 +394,13 @@
      "confidence": "documented",
      "name": "Package",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "PACK"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
@@ -425,7 +455,13 @@
      "confidence": "documented",
      "name": "Voice",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "VTYP"
+       ]
+      }
+     }
     },
     "WNAM": {
      "confidence": "documented",
@@ -437,7 +473,13 @@
      "confidence": "documented",
      "name": "Combat Style",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CSTY"
+       ]
+      }
+     }
     }
    }
   },
@@ -1380,7 +1422,13 @@
      "confidence": "documented",
      "name": "Death item",
      "note": "xEdit wbDefinitionsFNV.pas NPC_ record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLI"
+       ]
+      }
+     }
     },
     "KFFZ": {
      "confidence": "documented",
@@ -1422,7 +1470,13 @@
      "confidence": "documented",
      "name": "Package",
      "note": "xEdit wbDefinitionsFNV.pas NPC_ record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "PACK"
+       ]
+      }
+     }
     },
     "PNAM": {
      "confidence": "documented",
@@ -1465,13 +1519,25 @@
      "confidence": "documented",
      "name": "Voice",
      "note": "xEdit wbDefinitionsFNV.pas NPC_ record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "VTYP"
+       ]
+      }
+     }
     },
     "ZNAM": {
      "confidence": "documented",
      "name": "Combat Style",
      "note": "xEdit wbDefinitionsFNV.pas NPC_ record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CSTY"
+       ]
+      }
+     }
     }
    }
   },

@@ -149,3 +149,31 @@ fn creature_and_npc_template_references_are_targeted() {
         "NPC_.TPLT must target LVLN and NPC_"
     );
 }
+
+#[test]
+fn creature_traits_references_are_targeted() {
+    // The dropdowns on Traits (and ModelList for PNAM) must be targeted to their
+    // specific record signatures (`wbDefinitionsFNV.pas`):
+    // - INAM (Death item) -> LVLI
+    // - VTCK (Voice) -> VTYP
+    // - ZNAM (Combat Style) -> CSTY
+    // - LNAM (Melee Weapon List) -> FLST
+    // - PNAM (Body Part Data) -> BPTD
+    let fnv = targets("fnv");
+    let check = |sub: &str, expected: &[&str]| {
+        let key = format!("CREA.{sub}");
+        let hit = fnv
+            .iter()
+            .find(|(at, _)| at == &key)
+            .map(|(_, of)| of.clone())
+            .unwrap_or_else(|| panic!("{key} is not targeted in FNV"));
+        let exp: Vec<String> = expected.iter().map(|s| s.to_string()).collect();
+        assert_eq!(hit, exp, "{key} targets mismatch");
+    };
+
+    check("INAM", &["LVLI"]);
+    check("VTCK", &["VTYP"]);
+    check("ZNAM", &["CSTY"]);
+    check("LNAM", &["FLST"]);
+    check("PNAM", &["BPTD"]);
+}
