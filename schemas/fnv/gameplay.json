@@ -406,7 +406,14 @@
      "confidence": "documented",
      "name": "Template",
      "note": "xEdit wbDefinitionsFNV.pas CREA record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "CREA",
+        "LVLC"
+       ]
+      }
+     }
     },
     "VTCK": {
      "confidence": "documented",
@@ -1439,7 +1446,14 @@
      "confidence": "documented",
      "name": "Template",
      "note": "xEdit wbDefinitionsFNV.pas NPC_ record",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLN",
+        "NPC_"
+       ]
+      }
+     }
     },
     "VTCK": {
      "confidence": "documented",

@@ -974,17 +974,54 @@ pub fn record_dropdown(
             .selected_text(cur_name)
             .width(200.0)
             .show_ui(ui, |ui| {
-                if ui.selectable_label(opt.is_none(), "NONE").clicked() {
-                    *opt = None;
+                // Virtualized item rendering: only lay out the rows visible in
+                // the popup's clip rectangle. When a dropdown holds hundreds or
+                // thousands of records, instantiating all of them every frame
+                // causes massive stutter and drops FPS to single digits.
+                let row_h = ui.spacing().interact_size.y;
+                let spacing_y = ui.spacing().item_spacing.y;
+                let step = row_h + spacing_y;
+                let clip = ui.clip_rect();
+                let start_y = ui.cursor().top();
+
+                let total_rows = items.len() + 1; // +1 for "NONE"
+                let min_row = if clip.min.y > start_y {
+                    ((clip.min.y - start_y) / step).floor() as usize
+                } else {
+                    0
+                }.min(total_rows);
+
+                let max_row = if clip.max.y > start_y {
+                    (((clip.max.y - start_y) / step).ceil() as usize + 1).min(total_rows)
+                } else {
+                    0
+                }.max(min_row);
+
+                if min_row > 0 {
+                    ui.add_space(min_row as f32 * step);
                 }
-                for (fid, name) in items {
-                    let is_sel = *opt == Some(*fid);
-                    if ui
-                        .selectable_label(is_sel, format!("{name} ({fid:08X})"))
-                        .clicked()
-                    {
-                        *opt = Some(*fid);
-                    }
+
+                for r in min_row..max_row {
+                    ui.push_id(r, |ui| {
+                        if r == 0 {
+                            if ui.selectable_label(opt.is_none(), "NONE").clicked() {
+                                *opt = None;
+                            }
+                        } else {
+                            let (fid, name) = &items[r - 1];
+                            let is_sel = *opt == Some(*fid);
+                            if ui
+                                .selectable_label(is_sel, format!("{name} ({fid:08X})"))
+                                .clicked()
+                            {
+                                *opt = Some(*fid);
+                            }
+                        }
+                    });
+                }
+
+                if max_row < total_rows {
+                    ui.add_space((total_rows - max_row) as f32 * step);
                 }
             });
         formid_field(ui, &format!("{id_salt}_fid"), opt);

@@ -118,3 +118,34 @@ fn a_target_naming_a_record_type_the_schema_lacks_is_still_kept() {
     // code. The assertion is that reading the list does not panic or lose entries.
     eprintln!("{unknown} targets name a record type the schema does not define");
 }
+
+#[test]
+fn creature_and_npc_template_references_are_targeted() {
+    // A creature's TPLT subrecord can only target another creature or a
+    // leveled creature list (`wbFormIDCk(TPLT, 'Template', [CREA, LVLC])`).
+    // Without targets, the template dropdown falls back to `all_objects()`,
+    // loading tens of thousands of unrelated records (weapons, dialogue, cells)
+    // and stalling the editor when opened.
+    let fnv = targets("fnv");
+    let crea_tplt = fnv
+        .iter()
+        .find(|(at, _)| at == "CREA.TPLT")
+        .map(|(_, of)| of.clone())
+        .expect("CREA.TPLT is targeted in FNV");
+    assert_eq!(
+        crea_tplt,
+        vec!["CREA".to_string(), "LVLC".to_string()],
+        "CREA.TPLT must target CREA and LVLC"
+    );
+
+    let npc_tplt = fnv
+        .iter()
+        .find(|(at, _)| at == "NPC_.TPLT")
+        .map(|(_, of)| of.clone())
+        .expect("NPC_.TPLT is targeted in FNV");
+    assert_eq!(
+        npc_tplt,
+        vec!["LVLN".to_string(), "NPC_".to_string()],
+        "NPC_.TPLT must target LVLN and NPC_"
+    );
+}

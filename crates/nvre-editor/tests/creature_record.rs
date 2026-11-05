@@ -1447,3 +1447,28 @@ fn every_link_dropdown_has_one_clear_label() {
         "the absent-subrecord note is back: {rows:?}"
     );
 }
+
+#[test]
+fn the_template_dropdown_targets_creatures_and_leveled_creatures() {
+    // TPLT was previously an untargeted FormID, so its dropdown loaded
+    // all_objects() — 44,550 records across every record type in the game.
+    // That made opening the dropdown crawl and killed framerates.
+    //
+    // The schema now targets CREA and LVLC, matching xEdit and engine rules,
+    // so the dropdown offers creature templates only.
+    let Some((session, _)) = open_creature() else {
+        return;
+    };
+    let targets = nvre_editor::object_editor::formid_targets_in(
+        &session.schema,
+        b"CREA",
+        b"TPLT",
+        None,
+        "",
+    );
+    assert_eq!(
+        targets,
+        vec!["CREA".to_string(), "LVLC".to_string()],
+        "CREA TPLT must only offer creatures and leveled creature lists"
+    );
+}

@@ -368,7 +368,14 @@
      "confidence": "documented",
      "name": "Template",
      "note": "The base template (NPC_ or LVLN).",
-     "type": "formid"
+     "type": {
+      "formid": {
+       "of": [
+        "LVLN",
+        "NPC_"
+       ]
+      }
+     }
     },
     "VMAD": {
      "confidence": "documented",
