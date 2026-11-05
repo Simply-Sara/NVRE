@@ -1922,3 +1922,96 @@ fn cralien_faction_displays_named_faction_not_none() {
         "CrAlien has a valid faction and should not show 'NONE': {rows:?}"
     );
 }
+
+#[test]
+fn the_factions_tab_renders_and_adds_when_actor_has_no_factions() {
+    let data = match std::env::var("NVRE_DATA") {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    let mut session = Session::open(
+        std::path::Path::new(&format!("{data}/FalloutNV.esm")),
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")),
+        vec!["FalloutNV.esm".to_string()],
+    )
+    .expect("session");
+
+    // ARCHIMEDESTurret (0x000E07D6) has 0 factions.
+    let fid = 0x000E07D6u32;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Factions".to_string());
+    let mut pages = Pages::default();
+
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+
+    let u = out.platform_output.accesskit_update.expect("accesskit update");
+    let has_faction_hdr = u.nodes.iter().any(|(_, n)| n.label() == Some("Faction") || n.value() == Some("Faction"));
+    let has_rank_hdr = u.nodes.iter().any(|(_, n)| n.label() == Some("Rank") || n.value() == Some("Rank"));
+    let has_empty_notice = u.nodes.iter().any(|(_, n)| n.label() == Some("No factions assigned") || n.value() == Some("No factions assigned"));
+    assert!(has_faction_hdr, "Table must show 'Faction' column header even with 0 factions");
+    assert!(has_rank_hdr, "Table must show 'Rank' column header even with 0 factions");
+    assert!(has_empty_notice, "Table must display 'No factions assigned' notice");
+
+    let btn_rect = u.nodes.iter().find_map(|(_, n)| {
+        if n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction") {
+            n.bounds()
+        } else {
+            None
+        }
+    }).expect("+ Add Faction button must be present when actor has 0 factions");
+
+    let click_pos = nvre_editor::egui::pos2(btn_rect.x0 as f32 + 5.0, btn_rect.y0 as f32 + 5.0);
+    let mut out2 = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            events: vec![
+                nvre_editor::egui::Event::PointerMoved(click_pos),
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out2.textures_delta.clear();
+
+    let rec_after = session.resolved_record(fid).unwrap();
+    let snams_after = rec_after.subrecords().unwrap().iter().filter(|s| &s.sig == b"SNAM").count();
+    assert_eq!(snams_after, 1, "+ Add Faction must add the first SNAM row to an actor with 0 factions");
+}

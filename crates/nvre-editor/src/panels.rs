@@ -1114,7 +1114,8 @@ pub fn sectioned_grid_on_tab(
     let mut chunks: Vec<SecChunk> = Vec::new();
     for (si, section) in shown.iter().enumerate() {
         let has_subs = section.subs.iter().any(|tag| views.iter().any(|v| &v.sig == tag));
-        if !has_subs {
+        let is_repeat = section.widget.as_deref() == Some("repeat");
+        if !has_subs && !is_repeat {
             continue;
         }
         if section.side_by_side {
@@ -2368,17 +2369,34 @@ pub fn repeat_widget(
     let mut want: Option<Vec<Vec<u8>>> = None;
     let mut remove_at: Option<usize> = None;
     ui.vertical(|ui| {
-        let is_struct = rows.first().is_some_and(|(_, v)| matches!(v, serde_json::Value::Object(_)));
         let is_snam = sub_sig == b"SNAM";
+        let schema_keys: Option<Vec<String>> = session
+            .schema
+            .lookup_in_block(rec_sig, sub_sig, block)
+            .and_then(|def| match session.schema.resolve_def(&def.ty) {
+                nvre_esm::typedef::TypeDef::Struct(fields) => Some(
+                    fields
+                        .iter()
+                        .map(|f| f.name.clone())
+                        .filter(|n| n != "unused")
+                        .collect(),
+                ),
+                _ => None,
+            });
+        let visible_keys: Option<Vec<String>> = schema_keys.or_else(|| {
+            rows.first().and_then(|(_, v)| {
+                v.as_object().map(|obj| {
+                    obj.keys()
+                        .filter(|k| *k != "unused")
+                        .cloned()
+                        .collect()
+                })
+            })
+        });
 
-        if rows.is_empty() {
-            ui.weak(if is_snam { "No factions assigned" } else { "(no rows)" });
-        } else if is_struct {
+        if let Some(visible_keys) = visible_keys {
             // Render as a clean table with column headers rather than repeating
             // field names on every single row.
-            let first_obj = rows[0].1.as_object().unwrap();
-            let visible_keys: Vec<&String> = first_obj.keys().filter(|k| *k != "unused").collect();
-
             egui::Grid::new(("repeat_table", sub_sig))
                 .num_columns(visible_keys.len() + 1)
                 .striped(true)
@@ -2394,53 +2412,66 @@ pub fn repeat_widget(
                     }
                     ui.end_row();
 
-                    for (i, (bytes, value)) in rows.iter().enumerate() {
-                        ui.push_id(i, |ui| {
-                            if ui
-                                .small_button("✖")
-                                .on_hover_text("remove this row")
-                                .clicked()
-                            {
-                                remove_at = Some(i);
-                            }
+                    if rows.is_empty() {
+                        ui.label("");
+                        ui.weak(if is_snam {
+                            "No factions assigned"
+                        } else {
+                            "(no rows)"
                         });
-                        if let serde_json::Value::Object(fields) = value {
-                            let mut next = value.clone();
-                            let mut touched = false;
-                            for (name, fv) in fields {
-                                if name == "unused" {
-                                    continue;
-                                }
-                                let path = if name.is_empty() {
-                                    String::new()
-                                } else {
-                                    name.clone()
-                                };
-                                if inline_value(
-                                    ui, session, rec_sig, sub_sig, block, i, &path, fv, &mut next,
-                                ) {
-                                    touched = true;
-                                }
-                            }
-                            if touched {
-                                if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
-                                    &session.schema,
-                                    rec_sig,
-                                    sub_sig,
-                                    &next,
-                                    Some(bytes.len()),
-                                    block,
-                                ) {
-                                    let mut list: Vec<Vec<u8>> =
-                                        rows.iter().map(|(b, _)| b.clone()).collect();
-                                    list[i] = bytes;
-                                    want = Some(list);
-                                }
-                            }
-                        }
+                        ui.label("");
                         ui.end_row();
+                    } else {
+                        for (i, (bytes, value)) in rows.iter().enumerate() {
+                            ui.push_id(i, |ui| {
+                                if ui
+                                    .small_button("✖")
+                                    .on_hover_text("remove this row")
+                                    .clicked()
+                                {
+                                    remove_at = Some(i);
+                                }
+                            });
+                            if let serde_json::Value::Object(fields) = value {
+                                let mut next = value.clone();
+                                let mut touched = false;
+                                for (name, fv) in fields {
+                                    if name == "unused" {
+                                        continue;
+                                    }
+                                    let path = if name.is_empty() {
+                                        String::new()
+                                    } else {
+                                        name.clone()
+                                    };
+                                    if inline_value(
+                                        ui, session, rec_sig, sub_sig, block, i, &path, fv, &mut next,
+                                    ) {
+                                        touched = true;
+                                    }
+                                }
+                                if touched {
+                                    if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                        &session.schema,
+                                        rec_sig,
+                                        sub_sig,
+                                        &next,
+                                        Some(bytes.len()),
+                                        block,
+                                    ) {
+                                        let mut list: Vec<Vec<u8>> =
+                                            rows.iter().map(|(b, _)| b.clone()).collect();
+                                        list[i] = bytes;
+                                        want = Some(list);
+                                    }
+                                }
+                            }
+                            ui.end_row();
+                        }
                     }
                 });
+        } else if rows.is_empty() {
+            ui.weak("(no rows)");
         } else {
             // Bare rows (e.g. list of FormIDs)
             for (i, (bytes, value)) in rows.iter().enumerate() {
