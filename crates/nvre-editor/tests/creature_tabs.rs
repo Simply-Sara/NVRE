@@ -113,8 +113,13 @@ fn a_section_on_another_tab_is_not_drawn() {
         v.iter().map(|s| s.title.clone()).collect::<Vec<_>>()
     };
     assert!(
-        traits.iter().any(|s| s.title == "Flags"),
-        "Traits draws its own Flags section: {:?}",
+        traits.iter().any(|s| s.title == "Actor Base and Alignment"),
+        "Traits draws its own Actor Base and Alignment section: {:?}",
+        titles(&traits)
+    );
+    assert!(
+        !traits.iter().any(|s| s.title == "Flags"),
+        "Flags moved to General and must not linger on Traits: {:?}",
         titles(&traits)
     );
     assert!(

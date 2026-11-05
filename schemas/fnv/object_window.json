@@ -678,7 +678,8 @@
         29,
         31,
         1,
-        28
+        28,
+        2
        ]
       },
       "subs": [
@@ -725,23 +726,6 @@
       ],
       "tab": "Traits",
       "title": "Creature Type"
-     },
-     {
-      "fields": {
-       "ACBS": [
-        "flags"
-       ]
-      },
-      "flags_bits": {
-       "ACBS.flags": [
-        2
-       ]
-      },
-      "subs": [
-       "ACBS"
-      ],
-      "tab": "Traits",
-      "title": "Flags"
      },
      {
       "fields": {

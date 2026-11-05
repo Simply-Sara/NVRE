@@ -349,9 +349,9 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     let expected_general = schema_bits("General", "ACBS.flags");
     let expected_animation = schema_bits("Animation", "ACBS.flags");
     let expected_traits = schema_bits("Traits", "ACBS.flags");
-    assert_eq!(expected_general.len(), 10, "General names ten flags");
+    assert_eq!(expected_general.len(), 11, "General names eleven flags");
     assert_eq!(expected_animation.len(), 8, "Animation names the eight movement flags");
-    assert_eq!(expected_traits.len(), 1, "Traits keeps Weapon & Shield?");
+    assert_eq!(expected_traits.len(), 0, "Traits has no ACBS flags left");
     let expected_model = schema_bits("ModelList", "ACBS.flags");
     assert_eq!(
         expected_model.len(),
