@@ -2900,3 +2900,46 @@ fn the_animation_tab_shows_nothing_selected_when_the_record_has_no_kffz() {
         set.special
     );
 }
+
+/// Typing a record's Editor ID into the object window's filter finds it, even
+/// when the record has a full name the Editor ID never appears in.
+///
+/// `BMRhonda` (`000E84A2`) is named "Broken Mr. Handy", so a filter that
+/// matched the label alone — the name where there is one — could not find it by
+/// what the record is called everywhere else. The window's own hint promises
+/// the Editor ID; this is the test that holds it to that.
+#[test]
+fn the_object_window_filter_matches_the_editor_id_as_well_as_the_name() {
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let groups = session.object_groups("bmrhonda", &[]);
+    let crea: Vec<_> = groups.iter().filter(|g| g.sig == *b"CREA").collect();
+    assert_eq!(
+        crea.len(),
+        1,
+        "the Editor ID names exactly one creature: {:?}",
+        groups.iter().map(|g| (g.sig, g.objects.len())).collect::<Vec<_>>()
+    );
+    let row = crea[0]
+        .objects
+        .iter()
+        .find(|r| r.fid == 0x000E_84A2)
+        .expect("BMRhonda is found by its Editor ID");
+    assert_eq!(row.edid, "BMRhonda");
+    assert_eq!(row.name, "Broken Mr. Handy");
+
+    // The name still finds it, and the FormID still finds it: the filter is a
+    // match on any of the three columns, not a switch between them.
+    for (filter, what) in [
+        ("broken mr. handy", "the full name"),
+        ("000e84a2", "the FormID"),
+    ] {
+        let groups = session.object_groups(filter, &[]);
+        let found = groups
+            .iter()
+            .filter(|g| g.sig == *b"CREA")
+            .any(|g| g.objects.iter().any(|r| r.fid == 0x000E_84A2));
+        assert!(found, "the {what} finds it too: {filter}");
+    }
+}

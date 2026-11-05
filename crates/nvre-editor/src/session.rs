@@ -466,10 +466,7 @@ impl Session {
             .into_iter()
             .filter(|p| p.to_lowercase().ends_with(".kf"))
             .collect();
-        Some(AnimationSet {
-            base,
-            special,
-        })
+        Some(AnimationSet { base, special })
     }
 
     /// Every path in the game's archives, filtered.
@@ -485,10 +482,7 @@ impl Session {
             let order = nvre_vfs::Vfs::archive_order(&self.data_dir, &self.game.archives, &names);
             self.vfs = nvre_vfs::Vfs::open(&self.data_dir, &order).ok();
         }
-        self.vfs
-            .as_ref()
-            .map(|v| v.paths(pred))
-            .unwrap_or_default()
+        self.vfs.as_ref().map(|v| v.paths(pred)).unwrap_or_default()
     }
 
     /// Resolve many base objects against one `LoadOrder`.
@@ -3605,6 +3599,7 @@ pub fn load_order_objects(
             };
             if !filter.is_empty()
                 && !row.label().to_lowercase().contains(&filter)
+                && !row.edid.to_lowercase().contains(&filter)
                 && !format!("{global:08X}").to_lowercase().contains(&filter)
             {
                 continue;
@@ -3647,8 +3642,21 @@ pub fn placeable_base_objects(
             };
             let (edid, full) =
                 nvre_esm::inventory::names(r, plugin_strings).unwrap_or((None, None));
-            let label = full.or(edid).unwrap_or_else(|| format!("{global:08X}"));
-            if !filter.is_empty() && !label.to_lowercase().contains(&filter) {
+            let label = full.or_else(|| edid.clone()).unwrap_or_else(|| format!("{global:08X}"));
+            // The Editor ID is matched as well as the label, which is the name
+            // where there is one. `label` alone would hide every named record
+            // behind its full name: a creature whose Editor ID is `BMRhonda`
+            // and whose name is "Broken Mr. Handy" would not be found by
+            // typing what the record is called everywhere else.
+            if !filter.is_empty()
+                && !label.to_lowercase().contains(&filter)
+                && !edid
+                    .as_deref()
+                    .unwrap_or("")
+                    .to_lowercase()
+                    .contains(&filter)
+                && !format!("{global:08X}").to_lowercase().contains(&filter)
+            {
                 continue;
             }
             match seen.get(&global) {
