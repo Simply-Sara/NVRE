@@ -2391,6 +2391,57 @@ pub fn repeat_widget(
                     ui.end_row();
 
                     for (i, (bytes, value)) in rows.iter().enumerate() {
+                        ui.push_id(i, |ui| {
+                            if ui
+                                .small_button("✖")
+                                .on_hover_text("remove this row")
+                                .clicked()
+                            {
+                                remove_at = Some(i);
+                            }
+                            if let serde_json::Value::Object(fields) = value {
+                                let mut next = value.clone();
+                                let mut touched = false;
+                                for (name, fv) in fields {
+                                    if name == "unused" {
+                                        continue;
+                                    }
+                                    let path = if name.is_empty() {
+                                        String::new()
+                                    } else {
+                                        name.clone()
+                                    };
+                                    if inline_value(
+                                        ui, session, rec_sig, sub_sig, block, i, &path, fv, &mut next,
+                                    ) {
+                                        touched = true;
+                                    }
+                                }
+                                ui.end_row();
+                                if touched {
+                                    if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                        &session.schema,
+                                        rec_sig,
+                                        sub_sig,
+                                        &next,
+                                        Some(bytes.len()),
+                                        block,
+                                    ) {
+                                        let mut list: Vec<Vec<u8>> =
+                                            rows.iter().map(|(b, _)| b.clone()).collect();
+                                        list[i] = bytes;
+                                        want = Some(list);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+        } else {
+            // Bare rows (e.g. list of FormIDs)
+            for (i, (bytes, value)) in rows.iter().enumerate() {
+                ui.push_id(i, |ui| {
+                    ui.horizontal(|ui| {
                         if ui
                             .small_button("✖")
                             .on_hover_text("remove this row")
@@ -2398,71 +2449,24 @@ pub fn repeat_widget(
                         {
                             remove_at = Some(i);
                         }
-                        if let serde_json::Value::Object(fields) = value {
-                            let mut next = value.clone();
-                            let mut touched = false;
-                            for (name, fv) in fields {
-                                if name == "unused" {
-                                    continue;
-                                }
-                                let path = if name.is_empty() {
-                                    String::new()
-                                } else {
-                                    name.clone()
-                                };
-                                if inline_value(
-                                    ui, session, rec_sig, sub_sig, block, &path, fv, &mut next,
-                                ) {
-                                    touched = true;
-                                }
-                            }
-                            ui.end_row();
-                            if touched {
-                                if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
-                                    &session.schema,
-                                    rec_sig,
-                                    sub_sig,
-                                    &next,
-                                    Some(bytes.len()),
-                                    block,
-                                ) {
-                                    let mut list: Vec<Vec<u8>> =
-                                        rows.iter().map(|(b, _)| b.clone()).collect();
-                                    list[i] = bytes;
-                                    want = Some(list);
-                                }
+                        ui.monospace(format!("[{i}]"));
+                        let mut next = value.clone();
+                        if inline_value(ui, session, rec_sig, sub_sig, block, i, "", value, &mut next) {
+                            if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                &session.schema,
+                                rec_sig,
+                                sub_sig,
+                                &next,
+                                Some(bytes.len()),
+                                block,
+                            ) {
+                                let mut list: Vec<Vec<u8>> =
+                                    rows.iter().map(|(b, _)| b.clone()).collect();
+                                list[i] = bytes;
+                                want = Some(list);
                             }
                         }
-                    }
-                });
-        } else {
-            // Bare rows (e.g. list of FormIDs)
-            for (i, (bytes, value)) in rows.iter().enumerate() {
-                ui.horizontal(|ui| {
-                    if ui
-                        .small_button("✖")
-                        .on_hover_text("remove this row")
-                        .clicked()
-                    {
-                        remove_at = Some(i);
-                    }
-                    ui.monospace(format!("[{i}]"));
-                    let mut next = value.clone();
-                    if inline_value(ui, session, rec_sig, sub_sig, block, "", value, &mut next) {
-                        if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
-                            &session.schema,
-                            rec_sig,
-                            sub_sig,
-                            &next,
-                            Some(bytes.len()),
-                            block,
-                        ) {
-                            let mut list: Vec<Vec<u8>> =
-                                rows.iter().map(|(b, _)| b.clone()).collect();
-                            list[i] = bytes;
-                            want = Some(list);
-                        }
-                    }
+                    });
                 });
             }
         }
@@ -2514,6 +2518,14 @@ pub fn repeat_widget(
 /// A row that could only show text would be a regression for the pages `repeat`
 /// exists to replace: a leveled list's entry is a FormID and two numbers, and a
 /// form list is nothing but FormIDs.
+fn set_inline_field(next: &mut serde_json::Value, path: &str, val: serde_json::Value) {
+    if path.is_empty() {
+        *next = val;
+    } else if let serde_json::Value::Object(map) = next {
+        map.insert(path.to_string(), val);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn inline_value(
     ui: &mut egui::Ui,
@@ -2521,6 +2533,7 @@ fn inline_value(
     rec_sig: &[u8; 4],
     sub_sig: &[u8; 4],
     block: Option<&str>,
+    row_idx: usize,
     path: &str,
     value: &serde_json::Value,
     next: &mut serde_json::Value,
@@ -2532,12 +2545,14 @@ fn inline_value(
         let mut opt = formid_from_json(value);
         let before = opt;
         let items = session.records_of_any(&targets);
-        crate::object_editor::record_dropdown(ui, &format!("{sub_sig:?}_{path}"), &items, &mut opt);
+        let id_salt = format!("{}_{}_{path}", nvre_util::tag_str(sub_sig), row_idx);
+        crate::object_editor::record_dropdown(ui, &id_salt, &items, &mut opt);
         if opt != before {
-            *next = match opt {
+            let val = match opt {
                 Some(fid) => serde_json::json!(fid),
                 None => serde_json::json!(0),
             };
+            set_inline_field(next, path, val);
             return true;
         }
         return false;
@@ -2553,7 +2568,8 @@ fn inline_value(
                 .find(|(v, _)| *v == raw)
                 .map(|(_, n)| n.clone())
                 .unwrap_or_else(|| raw.to_string());
-            egui::ComboBox::from_id_salt(format!("inline_{sub_sig:?}_{path}"))
+            let id_salt = format!("inline_{}_{}_{path}", nvre_util::tag_str(sub_sig), row_idx);
+            egui::ComboBox::from_id_salt(id_salt)
                 .selected_text(cur)
                 .show_ui(ui, |ui| {
                     for (v, n) in &variants {
@@ -2566,7 +2582,7 @@ fn inline_value(
                 if let Some((_, n)) = variants.iter().find(|(v, _)| *v == picked) {
                     o.insert("name".into(), serde_json::json!(n));
                 }
-                *next = serde_json::Value::Object(o);
+                set_inline_field(next, path, serde_json::Value::Object(o));
                 return true;
             }
         }
@@ -2577,12 +2593,13 @@ fn inline_value(
             let is_int = n.is_i64() || n.is_u64();
             let mut v = n.as_f64().unwrap_or(0.0);
             let drag = egui::DragValue::new(&mut v).speed(if is_int { 1.0 } else { 0.1 });
-            if ui.add(drag).changed() {
-                *next = if is_int {
+            if ui.add_sized([70.0, 18.0], drag).changed() {
+                let val = if is_int {
                     serde_json::json!(v.round() as i64)
                 } else {
                     serde_json::json!(v)
                 };
+                set_inline_field(next, path, val);
                 return true;
             }
             false
@@ -2601,7 +2618,7 @@ fn inline_value(
                 .add(egui::TextEdit::singleline(&mut text).desired_width(140.0))
                 .changed()
             {
-                *next = serde_json::json!(text);
+                set_inline_field(next, path, serde_json::json!(text));
                 return true;
             }
             false
@@ -2627,6 +2644,11 @@ fn zero_value(t: &nvre_esm::TypeDef) -> serde_json::Value {
                 }
             }
             serde_json::Value::Object(o)
+        }
+        TypeDef::Array { elem, count, .. } => {
+            let n = count.unwrap_or(0);
+            let elem_zero = zero_value(elem);
+            serde_json::Value::Array(vec![elem_zero; n])
         }
         TypeDef::Enum { values, .. } => serde_json::json!({
             "value": values.first().map(|(v, _)| *v).unwrap_or(0),

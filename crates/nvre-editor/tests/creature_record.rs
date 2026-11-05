@@ -1808,6 +1808,70 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
         vec!["FACT".to_string()],
         "SNAM.faction must target FACT"
     );
+
+    // Verify adding a faction via UI button increments subrecord count
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    let pages = &mut nvre_editor::object_editor::Pages::default();
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::object_editor::body(ui, &mut session, &mut state, pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+    let btn_rect = u.nodes.iter().find_map(|(_, n)| {
+        if n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction") {
+            n.bounds()
+        } else {
+            None
+        }
+    }).expect("+ Add Faction button must exist");
+    let click_pos = nvre_editor::egui::pos2(btn_rect.x0 as f32 + 5.0, btn_rect.y0 as f32 + 5.0);
+
+    let mut out2 = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            events: vec![
+                nvre_editor::egui::Event::PointerMoved(click_pos),
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                nvre_editor::egui::Event::PointerButton {
+                    pos: click_pos,
+                    button: nvre_editor::egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::object_editor::body(ui, &mut session, &mut state, pages);
+            });
+        },
+    );
+    out2.textures_delta.clear();
+
+    let rec_after = session.resolved_record(BRAHMIN).unwrap();
+    let snams_after = rec_after.subrecords().unwrap().iter().filter(|s| &s.sig == b"SNAM").count();
+    assert_eq!(snams_after, 4, "+ Add Faction must increment SNAM rows from 3 to 4");
 }
 
 #[test]
