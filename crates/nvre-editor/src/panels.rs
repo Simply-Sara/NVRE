@@ -1120,6 +1120,7 @@ pub fn sectioned_grid_on_tab(
         // items. Skipping them would make an empty list unaddable.
         let is_repeat = section.widget.as_deref() == Some("repeat");
         let is_inventory = section.widget.as_deref() == Some("inventory");
+        let is_animations = section.widget.as_deref() == Some("animations");
         // A section whose every subrecord is absent still has something to
         // draw: the absent-subrecord picker, which is how a field the record
         // does not carry yet gets set. `EITM` is a FormID and `EAMT` an enum,
@@ -1132,7 +1133,7 @@ pub fn sectioned_grid_on_tab(
                 .subs
                 .iter()
                 .all(|tag| session.schema.lookup(&rec_sig, &sig4(tag)).is_some());
-        if !has_subs && !is_repeat && !is_inventory && !all_described {
+        if !has_subs && !is_repeat && !is_inventory && !is_animations && !all_described {
             continue;
         }
         if section.side_by_side {
@@ -1476,6 +1477,13 @@ fn render_single_section(
             // position rather than rendered as two unrelated lists.
             Some(name) if name == "inventory" => {
                 inventory_widget(ui, session, form_id, &rec_sig, edit);
+            }
+            // The animation list is read-only and is not a subrecord list at
+            // all: the base animations come from the model's folder in the
+            // game's archives, and only the specialanims selection is read from
+            // the record.
+            Some(name) if name == "animations" => {
+                animations_widget(ui, session, form_id);
             }
             Some(name) => {
                 ui.colored_label(
@@ -2786,6 +2794,146 @@ pub fn repeat_widget(
         edit.error = None;
     }
 }
+
+/// The animation list: every `.kf` the actor can play, in the two groups the
+/// engine gives them.
+///
+/// The **base** animations come from the folder the model's skeleton sits in.
+/// The engine discovers them at runtime by scanning that folder, so they are
+/// never written to the record and are always on — hence the checkboxes are
+/// drawn disabled, not absent: a modder looking at a creature's animation list
+/// needs to see that `mtidle.kf` is there and cannot be turned off.
+///
+/// The **special** overrides come from the `specialanims` subfolder. These *are*
+/// written to the record — `KFFZ` holds exactly the ones selected — so they are
+/// read back from the bytes and a creature with no `KFFZ` shows none selected.
+///
+/// Read-only throughout. Editing `KFFZ` by hand is possible in xEdit, but the
+/// list is a *selection* from a folder the engine owns, so offering add/remove
+/// would let a record name a file that does not exist.
+pub fn animations_widget(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+) {
+    let Some(rec) = session.resolved_record(form_id) else {
+        ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
+        return;
+    };
+    let rec_sig = rec.header.sig;
+    // The record's own selection. `KFFZ` is **one** subrecord holding every
+    // selected file name, NUL-separated, with a trailing NUL — not one
+    // subrecord per name.
+    let selected: Vec<String> = rec
+        .subrecords()
+        .map(|subs| {
+            subs.iter()
+                .filter(|s| &s.sig == b"KFFZ")
+                .flat_map(|s| {
+                    String::from_utf8_lossy(&s.data)
+                        .split('\0')
+                        .map(str::to_string)
+                        .collect::<Vec<_>>()
+                })
+                .filter(|n| !n.is_empty())
+                .map(|n| n.to_lowercase())
+                .collect()
+        })
+        .unwrap_or_default();
+    // The actor inherits its animations from its template, in which case this
+    // list is not what the game uses and editing it does nothing.
+    let inherits = rec
+        .subrecords()
+        .ok()
+        .and_then(|subs| {
+            subs.iter()
+                .find(|s| &s.sig == b"ACBS")
+                .map(|s| s.data.len() >= 8 && (s.data[6] & 0x40) != 0)
+        })
+        .unwrap_or(false);
+
+    let anims = session.animation_set_for(form_id);
+    let base = anims.as_ref().map(|a| a.base.clone()).unwrap_or_default();
+    let special = anims.as_ref().map(|a| a.special.clone()).unwrap_or_default();
+
+    if inherits {
+        ui.label(
+            egui::RichText::new(
+                "This actor inherits its animations from its template (ACBS: Use Model/Animation), so this list is not used in game.",
+            )
+            .color(egui::Color32::YELLOW),
+        );
+        ui.add_space(4.0);
+    }
+
+    if base.is_empty() && special.is_empty() {
+        ui.weak("no animations found for this actor's model");
+        return;
+    }
+
+    // One table for both groups: the base rows are checked and disabled, the
+    // special rows follow the record. A single table keeps the two groups in
+    // one scrollable list, the way GECK shows them.
+    let total = base.len() + special.len();
+    egui_extras::TableBuilder::new(ui)
+        .striped(true)
+        .id_salt(("animations_table", rec_sig))
+        .column(egui_extras::Column::initial(70.0).at_least(70.0))
+        .column(egui_extras::Column::initial(70.0).at_least(70.0))
+        .column(egui_extras::Column::remainder().at_least(200.0).clip(true))
+        .header(18.0, |mut header| {
+            header.col(|ui| {
+                ui.strong("");
+            });
+            header.col(|ui| {
+                ui.strong("In use");
+            });
+            header.col(|ui| {
+                ui.strong("Animation");
+            });
+        })
+        .body(|body| {
+            body.rows(20.0, total, |mut row_ui| {
+                let i = row_ui.index();
+                let (path, is_special) = match i < base.len() {
+                    true => (&base[i], false),
+                    false => (&special[i - base.len()], true),
+                };
+                row_ui.col(|ui| {
+                    ui.weak(if is_special { "special" } else { "" });
+                });
+                row_ui.col(|ui| {
+                    // Base animations are always on and cannot be turned off.
+                    // Special ones follow what the record selected.
+                    let on = if is_special {
+                        let name = path
+                            .rsplit('\\')
+                            .next()
+                            .unwrap_or(path.as_str())
+                            .to_lowercase();
+                        selected.iter().any(|s| s == &name)
+                    } else {
+                        true
+                    };
+                    let mut on_mut = on;
+                    ui.add_enabled(false, egui::Checkbox::new(&mut on_mut, ""));
+                });
+                row_ui.col(|ui| {
+                    ui.label(path.rsplit('\\').next().unwrap_or(path.as_str()))
+                        .on_hover_text(path.as_str());
+                });
+            });
+        });
+
+    ui.add_space(4.0);
+    ui.weak(format!(
+        "{} base animation(s), always on; {} special override(s), {} selected by this record",
+        base.len(),
+        special.len(),
+        selected.len()
+    ));
+}
+
 
 /// The inventory table: one row per `CNTO`, with the `COED` that follows it
 /// folded into the same row.

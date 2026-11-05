@@ -2812,3 +2812,91 @@ fn an_absent_eamt_can_be_set_from_the_actor_effect_tab() {
         "the picked value is written as the enum's u16"
     );
 }
+
+/// The Animation tab lists a creature's animations in the two groups the engine
+/// gives them, and the specialanims half is read back from the record.
+///
+/// `BMRhonda` (`000E84A2`) is the fixture: its model's folder holds 10 base
+/// animations, its `specialanims` folder holds 22, and its record selects 15 of
+/// them — every one except the seven `1hp*` pistol animations.
+#[test]
+fn the_animation_tab_lists_base_and_specialanims_with_the_records_selection() {
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let fid = 0x000E_84A2u32;
+    session.open_object(fid, *b"CREA");
+
+    let set = session
+        .animation_set_for(fid)
+        .expect("the fixture's model resolves");
+    // Base animations: the folder the skeleton sits in, always on.
+    assert_eq!(set.base.len(), 10, "10 base animations: {:?}", set.base);
+    assert!(
+        set.base.iter().any(|p| p.ends_with("mtidle.kf")),
+        "mtidle.kf is a base animation: {:?}",
+        set.base
+    );
+    // Special overrides: the specialanims subfolder.
+    assert_eq!(
+        set.special.len(),
+        22,
+        "22 special overrides: {:?}",
+        set.special
+    );
+    assert!(
+        set.special.iter().all(|p| p.contains("specialanims")),
+        "every special override lives in specialanims: {:?}",
+        set.special
+    );
+
+    // The record's own selection, read out of `KFFZ`. It is **one** subrecord
+    // holding every selected name, NUL-separated with a trailing NUL — not one
+    // subrecord per name.
+    let kffz = subs(&session, fid)
+        .iter()
+        .find(|s| &s.sig == b"KFFZ")
+        .map(|s| s.data.clone())
+        .expect("the fixture carries a KFFZ");
+    let selected: Vec<String> = String::from_utf8_lossy(&kffz)
+        .split('\0')
+        .filter(|n| !n.is_empty())
+        .map(|n| n.to_lowercase())
+        .collect();
+    assert_eq!(selected.len(), 15, "15 of the 22 are selected: {selected:?}");
+    assert!(
+        selected.iter().any(|n| n == "1hmaim.kf"),
+        "the hand-to-hand animations are selected: {selected:?}"
+    );
+    assert!(
+        selected.iter().all(|n| n != "1hpaim.kf"),
+        "the pistol animations are not: {selected:?}"
+    );
+}
+
+/// A creature with no `specialanims` folder and no `KFFZ` has nothing selected
+/// — the base animations still list, because the engine discovers them from the
+/// model's folder regardless.
+#[test]
+fn the_animation_tab_shows_nothing_selected_when_the_record_has_no_kffz() {
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    // VStreetCrBrahmin2: 9 base animations, no specialanims, no KFFZ.
+    let fid = BRAHMIN;
+    session.open_object(fid, *b"CREA");
+    assert!(
+        subs(&session, fid).iter().all(|s| &s.sig != b"KFFZ"),
+        "the fixture carries no KFFZ"
+    );
+
+    let set = session
+        .animation_set_for(fid)
+        .expect("the brahmin's model resolves");
+    assert_eq!(set.base.len(), 9, "9 base animations: {:?}", set.base);
+    assert!(
+        set.special.is_empty(),
+        "no specialanims folder: {:?}",
+        set.special
+    );
+}

@@ -42,6 +42,22 @@ fn load_schema(
 
 type CachedRecordList = Arc<[(u32, String)]>;
 
+/// The animation set of a base object: what its model's folder holds, and what
+/// the record selected from its `specialanims` folder.
+///
+/// The two halves behave differently. The **base** animations are discovered by
+/// the engine at runtime from the folder the skeleton sits in, so they are never
+/// written to the record and are always on. The **special** overrides *are*
+/// written — `KFFZ` holds exactly the ones the record selected — so they are a
+/// subset of what the folder offers, and a record with no `KFFZ` has none.
+pub struct AnimationSet {
+    /// The `.kf` files directly in the model's folder, always on.
+    pub base: Vec<String>,
+    /// The `.kf` files in the model's `specialanims` folder, selected per
+    /// record.
+    pub special: Vec<String>,
+}
+
 /// The open editing session.
 #[derive(Resource)]
 pub struct Session {
@@ -108,6 +124,12 @@ pub struct Session {
     /// per second while a cell was open.
     palette_groups: Vec<ObjectGroup>,
     palette_filter: String,
+    /// The game's archives, opened once.
+    ///
+    /// Reading it builds every archive's index, which is the expensive part;
+    /// the Animation tab needs it to list a creature's `.kf` files, and the
+    /// viewport needs it for textures, so one handle is shared.
+    vfs: Option<nvre_vfs::Vfs>,
     /// Which plugins the object window lists, one flag per plugin in load
     /// order, parallel to [`Session::lo`]'s plugins.
     ///
@@ -271,6 +293,7 @@ impl Session {
             details_cell: None,
             palette_groups: Vec::new(),
             palette_filter: String::new(),
+            vfs: None,
             palette_sources: vec![true; source_count],
             palette_sources_built: Vec::new(),
             editing_cell: None,
@@ -364,6 +387,7 @@ impl Session {
             details_cell: None,
             palette_groups: Vec::new(),
             palette_filter: String::new(),
+            vfs: None,
             palette_sources: vec![true; source_count],
             palette_sources_built: Vec::new(),
             editing_cell: None,
@@ -407,6 +431,64 @@ impl Session {
         let found = self.resolve_model_path(base);
         self.models.insert(base, found.clone());
         found
+    }
+
+    /// The animation set of a base object: the base animations its model's
+    /// folder holds, and the `specialanims` overrides with the ones the record
+    /// selects.
+    ///
+    /// The engine discovers the base animations at runtime by scanning the
+    /// folder the skeleton sits in, so they are never written to the record and
+    /// are always on. The `specialanims` overrides *are* written — `KFFZ` holds
+    /// exactly the ones the record selected — so a subset is read back from the
+    /// bytes, and a creature whose record has no `KFFZ` has none selected.
+    ///
+    /// Returns `None` when the object has no model path, which is the honest
+    /// answer for a record whose model cannot be resolved.
+    pub fn animation_set_for(&mut self, base: u32) -> Option<AnimationSet> {
+        let model = self.model_path_for(base)?;
+        // The folder the skeleton sits in. `model_path_for` already returns a
+        // VFS path — `meshes\creatures\mistergutsy\skeleton.nif` — so it is
+        // normalized but not re-prefixed.
+        let model = nvre_vfs::normalize(&model);
+        let folder = match model.rsplit_once('\\') {
+            Some((dir, _)) => format!("{dir}\\"),
+            None => return None,
+        };
+        let base: Vec<String> = self
+            .vfs_paths(|p| p.starts_with(&folder) && !p[folder.len()..].contains('\\'))
+            .into_iter()
+            .filter(|p| p.to_lowercase().ends_with(".kf"))
+            .collect();
+        let special_folder = format!("{folder}specialanims\\");
+        let special: Vec<String> = self
+            .vfs_paths(|p| p.starts_with(&special_folder))
+            .into_iter()
+            .filter(|p| p.to_lowercase().ends_with(".kf"))
+            .collect();
+        Some(AnimationSet {
+            base,
+            special,
+        })
+    }
+
+    /// Every path in the game's archives, filtered.
+    ///
+    /// The VFS is opened once and cached: building it reads every archive's
+    /// index, which is the expensive part.
+    fn vfs_paths(&mut self, pred: impl Fn(&str) -> bool) -> Vec<String> {
+        if self.vfs.is_none() {
+            // The game's own archive list, in the order the game loads them.
+            // No plugin names: the object editor reads the archives for what
+            // the *game* ships, not for what a mod adds.
+            let names: Vec<&str> = self.game.archives.to_vec();
+            let order = nvre_vfs::Vfs::archive_order(&self.data_dir, &self.game.archives, &names);
+            self.vfs = nvre_vfs::Vfs::open(&self.data_dir, &order).ok();
+        }
+        self.vfs
+            .as_ref()
+            .map(|v| v.paths(pred))
+            .unwrap_or_default()
     }
 
     /// Resolve many base objects against one `LoadOrder`.
