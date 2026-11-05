@@ -1542,3 +1542,74 @@ fn combat_style_dropdown_shows_default_when_unset() {
         "Other dropdowns should still display 'NONE': {rows:?}"
     );
 }
+
+#[test]
+fn the_stats_tab_has_clean_geck_style_labels_and_sections() {
+    // The Stats tab should have clean human labels matching GECK, not internal
+    // schema identifiers, no compiler padding (`unused`), and no duplicate
+    // subrecord headers.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("Stats".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    // Clean GECK labels:
+    for want in [
+        "Level",
+        "Calc Min",
+        "Calc Max",
+        "Strength",
+        "Perception",
+        "Endurance",
+        "Charisma",
+        "Intelligence",
+        "Agility",
+        "Luck",
+        "Health",
+        "Damage",
+        "Combat Skill",
+        "Magic Skill",
+        "Stealth Skill",
+        "Fatigue",
+        "Speed Multiplier",
+    ] {
+        assert!(
+            rows.iter().any(|(t, _)| t == want),
+            "Stats tab is missing clean label {want:?}: {rows:?}"
+        );
+    }
+
+    // No raw internal schema identifiers:
+    for bad in [
+        "level_or_level_mult_raw",
+        "calc_min",
+        "calc_max",
+        "combat_skill",
+        "magic_skill",
+        "stealth_skill",
+        "health",
+        "damage",
+        "fatigue",
+        "speed_multiplier",
+        "attributes.strength",
+        "unused",
+    ] {
+        assert!(
+            !rows.iter().any(|(t, _)| t == bad),
+            "Stats tab still displays raw identifier {bad:?}: {rows:?}"
+        );
+    }
+
+    // No duplicate subrecord headers:
+    assert!(
+        !rows.iter().any(|(t, _)| t == "Configuration" || t == "ACBS"),
+        "redundant Configuration ACBS heading should not be drawn: {rows:?}"
+    );
+
+    // barter_gold moved to AI Data:
+    assert!(
+        !rows.iter().any(|(t, _)| t == "Barter Gold" || t == "barter_gold"),
+        "barter_gold should not be on Stats: {rows:?}"
+    );
+}

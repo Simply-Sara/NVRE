@@ -451,7 +451,9 @@ fn field_paths(resolved: &nvre_esm::TypeDef) -> Vec<String> {
         match t {
             TypeDef::Struct(fields) => {
                 for f in fields {
-                    if f.optional {
+                    // Binary padding fields (`wbUnused` in xEdit) are not authored
+                    // game properties, so sections do not name them.
+                    if f.optional || f.name == "unused" {
                         continue;
                     }
                     let path = if prefix.is_empty() {

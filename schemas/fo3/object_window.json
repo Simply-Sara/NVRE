@@ -733,32 +733,44 @@
      {
       "fields": {
        "DATA": [
-        "combat_skill",
-        "magic_skill",
-        "stealth_skill",
-        "health",
-        "damage",
         "attributes.strength",
         "attributes.perception",
         "attributes.endurance",
         "attributes.charisma",
         "attributes.intelligence",
         "attributes.agility",
-        "attributes.luck",
-        "unused"
+        "attributes.luck"
        ]
       },
       "subs": [
        "DATA"
       ],
       "tab": "Stats",
-      "title": "Attributes and Skills"
+      "title": "Attributes"
      },
      {
       "fields": {
        "ACBS": [
-        "fatigue",
-        "barter_gold",
+        "fatigue"
+       ],
+       "DATA": [
+        "health",
+        "damage",
+        "combat_skill",
+        "magic_skill",
+        "stealth_skill"
+       ]
+      },
+      "subs": [
+       "DATA",
+       "ACBS"
+      ],
+      "tab": "Stats",
+      "title": "Skills & Health"
+     },
+     {
+      "fields": {
+       "ACBS": [
         "speed_multiplier"
        ]
       },
@@ -768,7 +780,6 @@
        "TNAM",
        "BNAM",
        "WNAM",
-       "NAM4",
        "NAM5",
        "EAMT"
       ],
@@ -784,7 +795,13 @@
       "widget": "repeat"
      },
      {
+      "fields": {
+       "ACBS": [
+        "barter_gold"
+       ]
+      },
       "subs": [
+       "ACBS",
        "AIDT"
       ],
       "tab": "AI Data",

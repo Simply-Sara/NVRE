@@ -1349,7 +1349,7 @@ fn subrecord_rows_on_fields(
             .filter(|p| rows.iter().any(|r| &r.path == *p))
             .count(),
     };
-    if !untitled && shown_count > 1 {
+    if !untitled && fields.is_none() && shown_count > 1 {
         ui.horizontal(|ui| {
             ui.strong(&view.name);
             ui.monospace(&view.sig);
@@ -1519,14 +1519,35 @@ fn draw_field_row(
     // "Name", "Script".
     let label = if row.path.is_empty() {
         view.name.as_str()
-    } else if view.sig == "ACBS" && row.path == "karma" {
-        "Alignment"
-    } else if view.sig == "ACBS" && row.path == "disposition_base" {
-        "Disposition Base"
-    } else if view.sig == "DATA" && row.path == "type" {
-        "Creature Type"
+    } else if let Some(attr) = row.path.strip_prefix("attributes.") {
+        match attr {
+            "strength" => "Strength",
+            "perception" => "Perception",
+            "endurance" => "Endurance",
+            "charisma" => "Charisma",
+            "intelligence" => "Intelligence",
+            "agility" => "Agility",
+            "luck" => "Luck",
+            _ => attr,
+        }
     } else {
-        row.path.as_str()
+        match row.path.as_str() {
+            "karma" if view.sig == "ACBS" => "Alignment",
+            "disposition_base" if view.sig == "ACBS" => "Disposition Base",
+            "type" if view.sig == "DATA" => "Creature Type",
+            "level_or_level_mult_raw" => "Level",
+            "calc_min" => "Calc Min",
+            "calc_max" => "Calc Max",
+            "combat_skill" => "Combat Skill",
+            "magic_skill" => "Magic Skill",
+            "stealth_skill" => "Stealth Skill",
+            "health" => "Health",
+            "damage" => "Damage",
+            "fatigue" => "Fatigue",
+            "speed_multiplier" => "Speed Multiplier",
+            "barter_gold" => "Barter Gold",
+            other => other,
+        }
     };
     ui.label(label);
     if row.derived {
