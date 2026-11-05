@@ -1613,3 +1613,53 @@ fn the_stats_tab_has_clean_geck_style_labels_and_sections() {
         "barter_gold should not be on Stats: {rows:?}"
     );
 }
+
+#[test]
+fn pc_level_mult_changes_level_label_and_calc_min_max_editability() {
+    // When PC Level Mult is unticked:
+    // - The level label says "Level"
+    // - Calc Min and Calc Max are not editable (disabled)
+    // When PC Level Mult is ticked:
+    // - The level label changes to "Level Mult 1.0000"
+    // - Calc Min and Calc Max are editable (enabled)
+    let data = std::env::var("NVRE_DATA").expect("NVRE_DATA");
+    let mut session = Session::open(
+        std::path::Path::new(&format!("{data}/FalloutNV.esm")),
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")),
+        vec!["FalloutNV.esm".to_string()],
+    )
+    .expect("session");
+
+    // 1. Unticked creature: Brahmin (0x0017_B587)
+    let fid_unticked = 0x0017_B587u32;
+    session.open_object(fid_unticked, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid_unticked, *b"CREA");
+    state.tab.chosen = Some("Stats".to_string());
+    let rows_unticked = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        rows_unticked.iter().any(|(t, _)| t == "Level"),
+        "Unticked creature should have 'Level' label: {rows_unticked:?}"
+    );
+    assert!(
+        !rows_unticked.iter().any(|(t, _)| t == "Level Mult"),
+        "Unticked creature should not have 'Level Mult' label: {rows_unticked:?}"
+    );
+
+    // 2. Ticked creature: BMNeil (0x000E_60F0)
+    let fid_ticked = 0x000E_60F0u32;
+    session.open_object(fid_ticked, *b"CREA");
+    let mut state_ticked = ObjectEditorState::default();
+    state_ticked.load_from_session(&session, fid_ticked, *b"CREA");
+    state_ticked.tab.chosen = Some("Stats".to_string());
+    let rows_ticked = placed_widgets(&mut session, &mut state_ticked, nvre_editor::egui::vec2(900.0, 2400.0));
+    assert!(
+        rows_ticked.iter().any(|(t, _)| t == "Level Mult"),
+        "Ticked creature should have 'Level Mult' label: {rows_ticked:?}"
+    );
+    assert!(
+        !rows_ticked.iter().any(|(t, _)| t == "Level"),
+        "Ticked creature should not have bare 'Level' label: {rows_ticked:?}"
+    );
+
+}

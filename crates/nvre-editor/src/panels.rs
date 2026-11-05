@@ -1517,6 +1517,16 @@ fn draw_field_row(
     // path, and printing the word "value" for it said nothing a modder could
     // use. The subrecord's own name from the schema is the answer: "Editor ID",
     // "Name", "Script".
+    let is_pc_level_mult = if view.sig == "ACBS" {
+        view.value
+            .get("flags")
+            .and_then(|f| f.get("value"))
+            .and_then(|v| v.as_u64())
+            .map(|f| f & (1 << 7) != 0)
+            .unwrap_or(false)
+    } else {
+        false
+    };
     let label = if row.path.is_empty() {
         view.name.as_str()
     } else if let Some(attr) = row.path.strip_prefix("attributes.") {
@@ -1535,7 +1545,13 @@ fn draw_field_row(
             "karma" if view.sig == "ACBS" => "Alignment",
             "disposition_base" if view.sig == "ACBS" => "Disposition Base",
             "type" if view.sig == "DATA" => "Creature Type",
-            "level_or_level_mult_raw" => "Level",
+            "level_or_level_mult_raw" => {
+                if is_pc_level_mult {
+                    "Level Mult"
+                } else {
+                    "Level"
+                }
+            }
             "calc_min" => "Calc Min",
             "calc_max" => "Calc Max",
             "combat_skill" => "Combat Skill",
@@ -1550,28 +1566,32 @@ fn draw_field_row(
         }
     };
     ui.label(label);
-    if row.derived {
-        ui.horizontal(|ui| {
-            ui.monospace(field_text(current));
-            ui.weak("(counted)");
-        });
-    } else {
-        field_editor(
-            ui,
-            session,
-            edit,
-            form_id,
-            view,
-            rec_sig,
-            &row.path,
-            current,
-            // The bits this section shows for this field, when the section split
-            // the flags word. `None` is the whole word.
-            flags_bits
-                .get(&format!("{}.{}", view.sig, row.path))
-                .map(Vec::as_slice),
-        );
-    }
+    let is_calc_min_max = view.sig == "ACBS" && (row.path == "calc_min" || row.path == "calc_max");
+    let enabled = !is_calc_min_max || is_pc_level_mult;
+    ui.add_enabled_ui(enabled, |ui| {
+        if row.derived {
+            ui.horizontal(|ui| {
+                ui.monospace(field_text(current));
+                ui.weak("(counted)");
+            });
+        } else {
+            field_editor(
+                ui,
+                session,
+                edit,
+                form_id,
+                view,
+                rec_sig,
+                &row.path,
+                current,
+                // The bits this section shows for this field, when the section split
+                // the flags word. `None` is the whole word.
+                flags_bits
+                    .get(&format!("{}.{}", view.sig, row.path))
+                    .map(Vec::as_slice),
+            );
+        }
+    });
     ui.end_row();
 }
 
@@ -1770,6 +1790,37 @@ fn field_editor(
     );
     // Alignment dropdown for ACBS karma (Very Good, Good, Neutral, Evil, Very Evil).
     // GECK presents this as an "Alignment" dropdown rather than a raw float input.
+    if sig == *b"ACBS" && path == "level_or_level_mult_raw" {
+        let is_pc_level_mult = view
+            .value
+            .get("flags")
+            .and_then(|f| f.get("value"))
+            .and_then(|v| v.as_u64())
+            .map(|f| f & (1 << 7) != 0)
+            .unwrap_or(false);
+        if is_pc_level_mult {
+            let raw = current.as_u64().unwrap_or(1000);
+            let mut mult = if raw == 0 || raw == 1 {
+                1.0
+            } else {
+                (raw as f64 / 1000.0).max(0.001)
+            };
+            let drag = egui::DragValue::new(&mut mult)
+                .speed(0.05)
+                .range(0.001..=65.0)
+                .custom_formatter(|n, _| format!("{:.4}", n));
+            if ui.add(drag).changed() {
+                let next_raw = (mult * 1000.0).round() as u64;
+                edit.last = Some((sig, path.to_string()));
+                match session.set_object_field(form_id, &sig, path, serde_json::json!(next_raw)) {
+                    Ok(()) => edit.error = None,
+                    Err(e) => edit.error = Some(e),
+                }
+            }
+            return;
+        }
+    }
+
     if sig == *b"ACBS" && path == "karma" {
         let current_karma = current.as_f64().unwrap_or(0.0) as f32;
         let alignments: [(&str, f32); 5] = [
