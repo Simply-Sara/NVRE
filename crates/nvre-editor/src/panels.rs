@@ -2542,11 +2542,11 @@ pub fn repeat_widget(
                                     {
                                         remove_at = Some(i);
                                     }
-                                    let up_btn = ui.add_enabled(i > 0, egui::Button::new("▲").small());
+                                    let up_btn = ui.add_enabled(i > 0, egui::Button::new("Up").small());
                                     if up_btn.on_hover_text("move up (higher priority)").clicked() {
                                         move_up = Some(i);
                                     }
-                                    let down_btn = ui.add_enabled(i + 1 < len, egui::Button::new("▼").small());
+                                    let down_btn = ui.add_enabled(i + 1 < len, egui::Button::new("Down").small());
                                     if down_btn.on_hover_text("move down (lower priority)").clicked() {
                                         move_down = Some(i);
                                     }

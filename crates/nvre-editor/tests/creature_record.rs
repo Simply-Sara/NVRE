@@ -2090,9 +2090,9 @@ fn the_ai_packages_tab_renders_table_priority_reordering_and_add() {
     }).collect();
     assert_eq!(pk0, vec![0x0014_D1FF, 0x0002_00D5]);
 
-    // Click ▲ on row 1 to move DefaultStayAtEditorLocation to row 0
+    // Click Up on row 1 to move DefaultStayAtEditorLocation to row 0
     let up_btns: Vec<_> = u.nodes.iter().filter_map(|(_, n)| {
-        if n.label() == Some("▲") || n.value() == Some("▲") {
+        if n.label() == Some("Up") || n.value() == Some("Up") {
             n.bounds()
         } else {
             None
@@ -2137,7 +2137,7 @@ fn the_ai_packages_tab_renders_table_priority_reordering_and_add() {
     let pk1: Vec<u32> = rec1.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").map(|s| {
         u32::from_le_bytes(s.data.as_slice().try_into().unwrap())
     }).collect();
-    assert_eq!(pk1, vec![0x0002_00D5, 0x0014_D1FF], "Clicking ▲ on row 1 must swap package priority!");
+    assert_eq!(pk1, vec![0x0002_00D5, 0x0014_D1FF], "Clicking Up on row 1 must swap package priority!");
 }
 
 #[test]
