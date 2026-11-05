@@ -1483,7 +1483,14 @@ fn render_single_section(
             // game's archives, and only the specialanims selection is read from
             // the record.
             Some(name) if name == "animations" => {
-                animations_widget(ui, session, form_id);
+                // The table owns this tab's scroll. The page already wraps
+                // itself in a scroll area, so a table that sized to its content
+                // would nest a second scrollbar inside the first — two bars for
+                // one tab, each scrolling part of the other. The table is given
+                // the whole viewport instead, so it is the only scrollbar.
+                let avail = ui.available_height().max(120.0);
+                ui.set_max_height(avail);
+                animations_widget(ui, session, form_id, edit);
             }
             Some(name) => {
                 ui.colored_label(
@@ -2806,15 +2813,19 @@ pub fn repeat_widget(
 ///
 /// The **special** overrides come from the `specialanims` subfolder. These *are*
 /// written to the record — `KFFZ` holds exactly the ones selected — so they are
-/// read back from the bytes and a creature with no `KFFZ` shows none selected.
+/// read back from the bytes, and a creature with no `KFFZ` shows none selected.
+/// Ticking one rewrites `KFFZ`; unticking the last one drops the subrecord,
+/// which is the same state the record would have had if it had never carried it.
 ///
-/// Read-only throughout. Editing `KFFZ` by hand is possible in xEdit, but the
-/// list is a *selection* from a folder the engine owns, so offering add/remove
-/// would let a record name a file that does not exist.
+/// There is deliberately no add or remove. The list is a *selection* from a
+/// folder the engine owns, so an arbitrary string would let a record name a file
+/// that does not exist; adding an animation means putting a `.kf` in the folder,
+/// which is not something the record editor can do.
 pub fn animations_widget(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
     form_id: u32,
+    edit: &mut crate::panels::FieldEdit,
 ) {
     let Some(rec) = session.resolved_record(form_id) else {
         ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
@@ -2874,7 +2885,12 @@ pub fn animations_widget(
     // One table for both groups: the base rows are checked and disabled, the
     // special rows follow the record. A single table keeps the two groups in
     // one scrollable list, the way GECK shows them.
+    //
+    // The table owns the tab's scroll: it is given the whole viewport the outer
+    // page scroll area leaves, so the tab has one scrollbar and it is the
+    // table's.
     let total = base.len() + special.len();
+    let mut toggled: Option<String> = None;
     egui_extras::TableBuilder::new(ui)
         .striped(true)
         .id_salt(("animations_table", rec_sig))
@@ -2905,18 +2921,20 @@ pub fn animations_widget(
                 row_ui.col(|ui| {
                     // Base animations are always on and cannot be turned off.
                     // Special ones follow what the record selected.
-                    let on = if is_special {
+                    if is_special {
                         let name = path
                             .rsplit('\\')
                             .next()
                             .unwrap_or(path.as_str())
                             .to_lowercase();
-                        selected.iter().any(|s| s == &name)
+                        let mut on = selected.iter().any(|s| s == &name);
+                        if ui.checkbox(&mut on, "").changed() {
+                            toggled = Some(name);
+                        }
                     } else {
-                        true
-                    };
-                    let mut on_mut = on;
-                    ui.add_enabled(false, egui::Checkbox::new(&mut on_mut, ""));
+                        let mut on_mut = true;
+                        ui.add_enabled(false, egui::Checkbox::new(&mut on_mut, ""));
+                    }
                 });
                 row_ui.col(|ui| {
                     ui.label(path.rsplit('\\').next().unwrap_or(path.as_str()))
@@ -2924,6 +2942,43 @@ pub fn animations_widget(
                 });
             });
         });
+
+    // A special override was ticked or unticked: rewrite `KFFZ` as the whole
+    // selection, so the subrecord holds exactly what the table shows. The name
+    // is stored as the record stored it — the file's name, not its folder —
+    // which is what the engine reads back.
+    if let Some(name) = toggled {
+        let mut names: Vec<String> = selected
+            .iter()
+            .filter(|n| n.as_str() != name)
+            .cloned()
+            .collect();
+        if !selected.iter().any(|s| s == &name) {
+            names.push(name);
+        }
+        let arr = serde_json::Value::Array(
+            names
+                .into_iter()
+                .map(serde_json::Value::String)
+                .collect(),
+        );
+        match nvre_edit::encode::encode_sub(&session.schema, &rec_sig, b"KFFZ", &arr) {
+            // An empty selection is not an empty `KFFZ`: the subrecord is
+            // dropped, which is the state the record would have had if it had
+            // never carried one. The encoder writes the closing NUL only for a
+            // non-empty list, so this is the one case the bytes would differ.
+            Ok(bytes) if !arr.as_array().is_some_and(|a| a.is_empty()) => {
+                session.doc.set_sub(form_id, b"KFFZ", bytes);
+                session.stale = true;
+                edit.error = None;
+            }
+            _ => {
+                session.doc.remove_sub(form_id, b"KFFZ");
+                session.stale = true;
+                edit.error = None;
+            }
+        }
+    }
 
     ui.add_space(4.0);
     ui.weak(format!(

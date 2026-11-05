@@ -2943,3 +2943,322 @@ fn the_object_window_filter_matches_the_editor_id_as_well_as_the_name() {
         assert!(found, "the {what} finds it too: {filter}");
     }
 }
+
+/// The specialanims checkboxes are live: ticking one rewrites `KFFZ` with the
+/// whole selection, unticking it removes just that name.
+///
+/// `BMRhonda` (`000E84A2`) selects 15 of the 22 in its `specialanims` folder, so
+/// there is an unchecked special row to tick and a checked one to untick — the
+/// same fixture the read-only test uses, exercised in both directions.
+#[test]
+fn the_specialanims_checkboxes_rewrite_kffz_in_both_directions() {
+    use nvre_editor::egui;
+    use nvre_editor::object_editor::{self, ObjectEditorState, Pages};
+
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let fid = 0x000E_84A2u32;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Animation".to_string());
+    let mut pages = Pages::default();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+
+    /// What the record's `KFFZ` holds: one subrecord, every selected name,
+    /// NUL-separated with a trailing NUL.
+    fn selection(session: &nvre_editor::session::Session, fid: u32) -> Vec<String> {
+        let rec = session.resolved_record(fid).unwrap();
+        rec.subrecords()
+            .unwrap()
+            .iter()
+            .filter(|s| &s.sig == b"KFFZ")
+            .flat_map(|s| {
+                String::from_utf8_lossy(&s.data)
+                    .split('\0')
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|n| !n.is_empty())
+            .collect()
+    }
+
+    let render = |ctx: &egui::Context,
+                  session: &mut nvre_editor::session::Session,
+                  state: &mut ObjectEditorState,
+                  pages: &mut Pages,
+                  events: Vec<egui::Event>| {
+        ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1200.0, 2400.0),
+                )),
+                events,
+                ..Default::default()
+            },
+            |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
+                    object_editor::body(ui, session, state, pages);
+                });
+            },
+        )
+    };
+
+    // One frame to lay the tab out, then click the last unchecked special row.
+    // `toggled()` is the node's own state, so the probe does not guess which row
+    // is which — and a row that is already selected is skipped, which is what
+    // keeps the test from clicking a base animation.
+    let mut out = render(&ctx, &mut session, &mut state, &mut pages, vec![]);
+    out.textures_delta.clear();
+    let update = std::mem::take(&mut out.platform_output.accesskit_update).unwrap();
+    let unchecked: Vec<(f32, f32)> = update
+        .nodes
+        .iter()
+        .filter(|(_, n)| n.role() == egui::accesskit::Role::CheckBox)
+        .filter(|(_, n)| {
+            n.toggled() == Some(egui::accesskit::Toggled::False) && !n.is_disabled()
+        })
+        .filter_map(|(_, n)| {
+            let b = n.bounds()?;
+            // The table's "In use" column, not the flag checkboxes above it.
+            (b.x0 >= 80.0 && b.x1 <= 120.0).then(|| (b.x0 as f32, b.y0 as f32))
+        })
+        .collect();
+    let last = unchecked.last().expect("an unchecked special row exists");
+    drop(update);
+    let click_pos = egui::pos2(last.0 + 5.0, last.1 + 5.0);
+    let click = vec![
+        egui::Event::PointerMoved(click_pos),
+        egui::Event::PointerButton {
+            pos: click_pos,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: Default::default(),
+        },
+        egui::Event::PointerButton {
+            pos: click_pos,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: Default::default(),
+        },
+    ];
+
+    let before = selection(&session, fid);
+    let mut out = render(&ctx, &mut session, &mut state, &mut pages, click);
+    out.textures_delta.clear();
+    drop(out);
+
+    let after = selection(&session, fid);
+    let added: Vec<&String> = after.iter().filter(|n| !before.contains(n)).collect();
+    assert_eq!(
+        added.len(),
+        1,
+        "ticking an unchecked special row adds exactly one name: {added:?}"
+    );
+    let added_name = added[0].clone();
+    assert!(
+        added_name.ends_with(".kf") && !added_name.contains('\\'),
+        "the name is stored as the file's own name, not its folder: {added_name}"
+    );
+    // The write is a whole-`KFFZ` rewrite, not an append: the new selection is
+    // the old one plus the one name.
+    let expected: Vec<String> = before.iter().cloned().chain([added_name.clone()]).collect();
+    assert_eq!(after, expected, "the selection is the old one plus the ticked name");
+
+    // And back the other way: click the row that holds the name just added.
+    // The row is found by its label — the file name the row draws — so the test
+    // clicks the row it means to rather than whichever row happens to be last.
+    let mut out = render(&ctx, &mut session, &mut state, &mut pages, vec![]);
+    out.textures_delta.clear();
+    let update = std::mem::take(&mut out.platform_output.accesskit_update).unwrap();
+    // The row for the name just added, then the checkbox on that row: the row's
+    // y is the checkbox's y, and the column is the one the base rows use.
+    let target = update
+        .nodes
+        .iter()
+        .find(|(_, n)| {
+            (n.label() == Some(added_name.as_str())
+                || n.value() == Some(added_name.as_str()))
+                && n.role() == egui::accesskit::Role::Label
+        })
+        .and_then(|(_, n)| n.bounds())
+        .unwrap_or_else(|| panic!("the row for {added_name} is drawn"));
+    let checkbox = update
+        .nodes
+        .iter()
+        .filter(|(_, n)| n.role() == egui::accesskit::Role::CheckBox)
+        .filter_map(|(_, n)| n.bounds())
+        .find(|b| (b.y0 - target.y0).abs() < 2.0 && b.x0 >= 80.0 && b.x1 <= 120.0)
+        .unwrap_or_else(|| panic!("the row for {added_name} has a checkbox"));
+    let click_pos = egui::pos2(checkbox.x0 as f32 + 5.0, checkbox.y0 as f32 + 5.0);
+    let click = vec![
+        egui::Event::PointerMoved(click_pos),
+        egui::Event::PointerButton {
+            pos: click_pos,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: Default::default(),
+        },
+        egui::Event::PointerButton {
+            pos: click_pos,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: Default::default(),
+        },
+    ];
+    let mut out = render(&ctx, &mut session, &mut state, &mut pages, click);
+    out.textures_delta.clear();
+    drop(out);
+
+    let back = selection(&session, fid);
+    assert_eq!(
+        back, before,
+        "unticking the same row removes exactly the name it added"
+    );
+}
+
+/// A base animation's checkbox is drawn disabled, so the tab shows the base
+/// animations without letting them be turned off — the engine discovers them at
+/// runtime and never reads them from the record.
+#[test]
+fn the_base_animation_checkboxes_are_disabled() {
+    use nvre_editor::egui;
+    use nvre_editor::object_editor::{self, ObjectEditorState, Pages};
+
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let fid = 0x000E_84A2u32;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Animation".to_string());
+    let mut pages = Pages::default();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+
+    let mut out = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1200.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let update = std::mem::take(&mut out.platform_output.accesskit_update).unwrap();
+    // Every checkbox in the table's column, split by whether it is disabled.
+    let mut disabled = 0usize;
+    let mut enabled = 0usize;
+    for (_, n) in update.nodes.iter() {
+        if n.role() != egui::accesskit::Role::CheckBox {
+            continue;
+        }
+        let Some(b) = n.bounds() else { continue };
+        if !(b.x0 >= 80.0 && b.x1 <= 120.0) {
+            continue;
+        }
+        if n.is_disabled() {
+            disabled += 1;
+        } else {
+            enabled += 1;
+        }
+    }
+    drop(update);
+    // 10 base, always disabled; 22 special, selectable. All 32 fit in 2400px.
+    assert_eq!(disabled, 10, "10 base animations, all disabled: {disabled}");
+    assert_eq!(enabled, 22, "22 special overrides, all selectable: {enabled}");
+}
+
+/// The Animation tab has one scrollbar, and it is the table's.
+///
+/// The page wraps its body in a scroll area. A table that sized itself to its
+/// content would nest a second scrollbar inside the first, so the tab showed two
+/// bars — each scrolling part of the other — and the rows were reachable only by
+/// finding the right one. The table is given the viewport instead.
+///
+/// The assertion is on the geometry, not on a scrollbar's existence: with the
+/// fix, the table's own scroll area spans the whole tab and the rows it does not
+/// draw are the ones its own bar reaches. Without it, the table is shorter than
+/// the tab and the page's bar is the only one that can reach them.
+#[test]
+fn the_animation_tab_has_one_scrollbar_and_it_is_the_tables() {
+    use nvre_editor::egui;
+    use nvre_editor::object_editor::{self, ObjectEditorState, Pages};
+
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let fid = 0x000E_84A2u32;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Animation".to_string());
+    let mut pages = Pages::default();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+
+    // A short viewport, the way the editor's panel actually is: the tab's 32 rows
+    // cannot all fit, so something has to scroll.
+    let mut out = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1200.0, 500.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let update = std::mem::take(&mut out.platform_output.accesskit_update).unwrap();
+
+    // The animation rows: the table's "In use" checkboxes.
+    let rows: Vec<(f32, f32)> = update
+        .nodes
+        .iter()
+        .filter(|(_, n)| n.role() == egui::accesskit::Role::CheckBox)
+        .filter_map(|(_, n)| {
+            let b = n.bounds()?;
+            (b.x0 >= 80.0 && b.x1 <= 120.0).then(|| (b.y0 as f32, b.y1 as f32))
+        })
+        .collect();
+    drop(update);
+    // 32 rows in a 500px viewport: not all of them are drawn, which is the table
+    // scrolling its own rows rather than the page scrolling a full-height table.
+    let first = rows.first().expect("the table draws rows").0;
+    let last = rows.last().expect("the table draws rows").1;
+    // 32 rows in a 500px viewport: the table scrolls its own rows, so not all
+    // are drawn at once.
+    assert!(
+        rows.len() < 32,
+        "the table scrolls its own rows, so not all 32 are drawn at once: {}",
+        rows.len()
+    );
+    // And the rows it does draw run to the bottom of the tab, so the page's
+    // scroll area has nothing left over to scroll. Without the fix the table is
+    // sized to its content inside a scroll area that is itself scrolled, and the
+    // rows stop well short of the tab's bottom edge.
+    assert!(
+        last > 455.0,
+        "the table's rows fill the tab: the last drawn row ends at {last} of 500, \
+         so the page's scroll area is not the one scrolling"
+    );
+    assert!(
+        last - first > 70.0,
+        "the table uses the tab's height rather than a sliver of it: {first}..{last}"
+    );
+}
