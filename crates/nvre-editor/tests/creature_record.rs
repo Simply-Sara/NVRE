@@ -1612,6 +1612,16 @@ fn the_stats_tab_has_clean_geck_style_labels_and_sections() {
         !rows.iter().any(|(t, _)| t == "Barter Gold" || t == "barter_gold"),
         "barter_gold should not be on Stats: {rows:?}"
     );
+
+    // Sound Level moved to Sounds tab, Unarmed Attack Animation to Actor Effect List:
+    assert!(
+        !rows.iter().any(|(t, _)| t == "Sound Level" || t == "Unarmed Attack Animation"),
+        "Sound Level and Unarmed Attack Animation should not be on Stats: {rows:?}"
+    );
+    assert!(
+        !rows.iter().any(|(t, _)| t == "Physical"),
+        "Physical section should no longer exist on Stats: {rows:?}"
+    );
 }
 
 #[test]

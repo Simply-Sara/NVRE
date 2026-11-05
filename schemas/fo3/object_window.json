@@ -775,14 +775,6 @@
      },
      {
       "subs": [
-       "NAM5",
-       "EAMT"
-      ],
-      "tab": "Stats",
-      "title": "Physical"
-     },
-     {
-      "subs": [
        "SNAM"
       ],
       "tab": "Factions",
@@ -821,6 +813,7 @@
      },
      {
       "subs": [
+       "EAMT",
        "SPLO"
       ],
       "tab": "Actor Effect List",
@@ -913,6 +906,7 @@
      },
      {
       "subs": [
+       "NAM5",
        "CSCR",
        "CSDT",
        "CSDI",
