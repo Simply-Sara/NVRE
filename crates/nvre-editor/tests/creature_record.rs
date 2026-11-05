@@ -1663,3 +1663,91 @@ fn pc_level_mult_changes_level_label_and_calc_min_max_editability() {
     );
 
 }
+
+#[test]
+fn the_skills_and_health_section_aligns_all_its_controls_in_one_grid() {
+    // When a section groups multiple subrecords (DATA, ACBS, RNAM, TNAM, BNAM, WNAM),
+    // rendering each subrecord in its own separate grid causes the text boxes to
+    // zigzag at different X coordinates because each subrecord computes column width
+    // independently.
+    //
+    // All rows in the section now share a single grid, so every text box starts
+    // at the exact same X coordinate and has the exact same width.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("Stats".to_string());
+    let pages = &mut nvre_editor::object_editor::Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    // Run 2 passes to stabilize grid layout
+    for _ in 0..2 {
+        let mut out = ctx.run_ui(
+            nvre_editor::egui::RawInput {
+                screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                    nvre_editor::egui::Pos2::ZERO,
+                    nvre_editor::egui::vec2(900.0, 2400.0),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                    nvre_editor::object_editor::body(ui, &mut session, &mut state, pages);
+                });
+            },
+        );
+        out.textures_delta.clear();
+    }
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::object_editor::body(ui, &mut session, &mut state, pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+
+    let u = out.platform_output.accesskit_update.expect("accesskit update");
+    let mut spinbuttons: Vec<(f32, f32, f32)> = u
+        .nodes
+        .into_iter()
+        .filter_map(|(_, n)| {
+            if n.role() == nvre_editor::egui::accesskit::Role::SpinButton {
+                let r = n.bounds()?;
+                Some((r.y0 as f32, r.x0 as f32, (r.x1 - r.x0) as f32))
+            } else {
+                None
+            }
+        })
+        .filter(|(y, _, _)| *y >= 400.0 && *y < 650.0) // Skills & Health region
+        .collect();
+    spinbuttons.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+    assert_eq!(
+        spinbuttons.len(),
+        11,
+        "Skills & Health must have exactly 11 spinbuttons: {spinbuttons:?}"
+    );
+
+    let first_x0 = spinbuttons[0].1;
+    let first_w = spinbuttons[0].2;
+    for (i, (y, x0, w)) in spinbuttons.iter().enumerate() {
+        assert!(
+            (x0 - first_x0).abs() < 1.0,
+            "SpinButton {i} at y={y} has x0={x0}, but first has x0={first_x0}. All text boxes must align vertically!"
+        );
+        assert!(
+            (w - first_w).abs() < 1.0,
+            "SpinButton {i} at y={y} has width={w}, but first has width={first_w}. All text boxes must have uniform width!"
+        );
+    }
+}

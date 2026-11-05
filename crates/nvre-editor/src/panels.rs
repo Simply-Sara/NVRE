@@ -1176,54 +1176,163 @@ pub fn sectioned_grid_on_tab(
                     );
                 }
                 None => {
-                    // Iterate in the declared order of `section.subs`.
-                    // Present subrecords render their fields; absent subrecords
-                    // render an absent-subrecord picker in place.
+                    enum SecItem {
+                        Row {
+                            view_idx: usize,
+                            row: nvre_edit::encode::Row,
+                            is_flags: bool,
+                        },
+                        Absent([u8; 4]),
+                    }
+                    let mut items = Vec::new();
                     for tag_str in &section.subs {
                         let tag = sig4(tag_str);
                         if let Some(i) = views.iter().position(|v| v.sig == *tag_str) {
-                            subrecord_rows_on_fields(
-                                ui,
-                                session,
-                                form_id,
-                                &rec_sig,
-                                &views[i],
-                                &edited,
-                                section.fields.get(&views[i].sig).map(Vec::as_slice),
-                                &section.flags_bits,
-                                section.untitled,
-                                edit,
-                            );
-                        } else {
-                            let name = session
-                                .schema
-                                .lookup(&rec_sig, &tag)
-                                .map(|d| d.name.clone())
-                                .unwrap_or_else(|| nvre_util::tag_str(&tag));
-                            let targets = crate::object_editor::formid_targets_in(
+                            let rows = nvre_edit::encode::rows(
                                 &session.schema,
                                 &rec_sig,
                                 &tag,
-                                None,
-                                "",
+                                views[i].block.as_deref(),
+                                &views[i].value,
                             );
-                            let items = session.records_of_any(&targets);
-                            let mut chosen: Option<u32> = None;
-                            ui.horizontal(|ui| {
-                                ui.label(&name);
-                                let none_label = if tag == *b"ZNAM" { "Default" } else { "NONE" };
-                                crate::object_editor::record_dropdown_with_none(
-                                    ui,
-                                    &format!("absent_{}", nvre_util::tag_str(&tag)),
-                                    &items,
-                                    &mut chosen,
-                                    none_label,
-                                );
-                            });
-                            if let Some(fid) = chosen {
-                                session.doc.set_sub(form_id, &tag, fid.to_le_bytes().to_vec());
+                            let shown: Vec<nvre_edit::encode::Row> = match section.fields.get(&views[i].sig) {
+                                None => rows,
+                                Some(paths) => {
+                                    let mut out = Vec::new();
+                                    for path in paths {
+                                        if let Some(row) = rows.iter().find(|r| &r.path == path) {
+                                            out.push(row.clone());
+                                        }
+                                    }
+                                    out
+                                }
+                            };
+                            for row in shown {
+                                let is_flags = get_path(&views[i].value, &row.path).is_some_and(|current| {
+                                    let flags = flag_bits(
+                                        &session.schema,
+                                        &rec_sig,
+                                        &views[i].sig,
+                                        views[i].block.as_deref(),
+                                        &row.path,
+                                    );
+                                    matches!(current, serde_json::Value::Object(_)) && !flags.is_empty()
+                                });
+                                items.push(SecItem::Row {
+                                    view_idx: i,
+                                    row,
+                                    is_flags,
+                                });
                             }
-                            ui.add_space(4.0);
+                        } else {
+                            items.push(SecItem::Absent(tag));
+                        }
+                    }
+
+                    let mut runs: Vec<Vec<SecItem>> = Vec::new();
+                    for item in items {
+                        let is_flags = match &item {
+                            SecItem::Row { is_flags, .. } => *is_flags,
+                            SecItem::Absent(_) => false,
+                        };
+                        match runs.last_mut() {
+                            Some(run) => {
+                                let run_flags = match &run[0] {
+                                    SecItem::Row { is_flags, .. } => *is_flags,
+                                    SecItem::Absent(_) => false,
+                                };
+                                if run_flags == is_flags {
+                                    run.push(item);
+                                } else {
+                                    runs.push(vec![item]);
+                                }
+                            }
+                            None => runs.push(vec![item]),
+                        }
+                    }
+
+                    for (ri, run) in runs.iter().enumerate() {
+                        if ri > 0 {
+                            ui.add_space(6.0);
+                        }
+                        let run_flags = match &run[0] {
+                            SecItem::Row { is_flags, .. } => *is_flags,
+                            SecItem::Absent(_) => false,
+                        };
+                        if run_flags {
+                            for item in run {
+                                if let SecItem::Row { view_idx, row, .. } = item {
+                                    let view = &views[*view_idx];
+                                    let Some(current) = get_path(&view.value, &row.path) else { continue };
+                                    field_editor(
+                                        ui,
+                                        session,
+                                        edit,
+                                        form_id,
+                                        view,
+                                        &rec_sig,
+                                        &row.path,
+                                        current,
+                                        section.flags_bits
+                                            .get(&format!("{}.{}", view.sig, row.path))
+                                            .map(Vec::as_slice),
+                                    );
+                                }
+                            }
+                        } else {
+                            egui::Grid::new(("sec_grid", si, ri))
+                                .num_columns(2)
+                                .striped(true)
+                                .show(ui, |ui| {
+                                    for item in run {
+                                        match item {
+                                            SecItem::Row { view_idx, row, .. } => {
+                                                let view = &views[*view_idx];
+                                                let Some(current) = get_path(&view.value, &row.path) else { continue };
+                                                draw_field_row(
+                                                    ui,
+                                                    session,
+                                                    edit,
+                                                    form_id,
+                                                    view,
+                                                    &rec_sig,
+                                                    row,
+                                                    current,
+                                                    &section.flags_bits,
+                                                );
+                                            }
+                                            SecItem::Absent(tag) => {
+                                                let name = session
+                                                    .schema
+                                                    .lookup(&rec_sig, tag)
+                                                    .map(|d| d.name.clone())
+                                                    .unwrap_or_else(|| nvre_util::tag_str(tag));
+                                                ui.label(&name);
+                                                let targets = crate::object_editor::formid_targets_in(
+                                                    &session.schema,
+                                                    &rec_sig,
+                                                    tag,
+                                                    None,
+                                                    "",
+                                                );
+                                                let items = session.records_of_any(&targets);
+                                                let mut chosen: Option<u32> = None;
+                                                let none_label = if *tag == *b"ZNAM" { "Default" } else { "NONE" };
+                                                crate::object_editor::record_dropdown_with_none(
+                                                    ui,
+                                                    &format!("absent_{}", nvre_util::tag_str(tag)),
+                                                    &items,
+                                                    &mut chosen,
+                                                    none_label,
+                                                );
+                                                if let Some(fid) = chosen {
+                                                    session.doc.set_sub(form_id, tag, fid.to_le_bytes().to_vec());
+                                                }
+                                                ui.end_row();
+                                            }
+                                        }
+                                    }
+                                });
                         }
                     }
                 }
@@ -1809,7 +1918,7 @@ fn field_editor(
                 .speed(0.05)
                 .range(0.001..=65.0)
                 .custom_formatter(|n, _| format!("{:.4}", n));
-            if ui.add(drag).changed() {
+            if ui.add_sized([70.0, 18.0], drag).changed() {
                 let next_raw = (mult * 1000.0).round() as u64;
                 edit.last = Some((sig, path.to_string()));
                 match session.set_object_field(form_id, &sig, path, serde_json::json!(next_raw)) {
@@ -1905,7 +2014,7 @@ fn field_editor(
             let mut v = n.as_f64().unwrap_or(0.0);
             let is_int = n.is_i64() || n.is_u64();
             let drag = egui::DragValue::new(&mut v).speed(if is_int { 1.0 } else { 0.1 });
-            if ui.add(drag).changed() {
+            if ui.add_sized([70.0, 18.0], drag).changed() {
                 changed = Some(if is_int {
                     serde_json::json!(v.round() as i64)
                 } else {
