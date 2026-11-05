@@ -1572,7 +1572,7 @@ fn the_stats_tab_has_clean_geck_style_labels_and_sections() {
         "Magic Skill",
         "Stealth Skill",
         "Fatigue",
-        "Speed Multiplier",
+        "Speed Mult %",
     ] {
         assert!(
             rows.iter().any(|(t, _)| t == want),

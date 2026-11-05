@@ -778,7 +778,8 @@
      {
       "fields": {
        "ACBS": [
-        "fatigue"
+        "fatigue",
+        "speed_multiplier"
        ],
        "DATA": [
         "health",
@@ -790,23 +791,17 @@
       },
       "subs": [
        "DATA",
-       "ACBS"
+       "ACBS",
+       "RNAM",
+       "TNAM",
+       "BNAM",
+       "WNAM"
       ],
       "tab": "Stats",
       "title": "Skills & Health"
      },
      {
-      "fields": {
-       "ACBS": [
-        "speed_multiplier"
-       ]
-      },
       "subs": [
-       "ACBS",
-       "RNAM",
-       "TNAM",
-       "BNAM",
-       "WNAM",
        "NAM5",
        "EAMT"
       ],

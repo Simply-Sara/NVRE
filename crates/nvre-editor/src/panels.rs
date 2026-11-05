@@ -1560,7 +1560,7 @@ fn draw_field_row(
             "health" => "Health",
             "damage" => "Damage",
             "fatigue" => "Fatigue",
-            "speed_multiplier" => "Speed Multiplier",
+            "speed_multiplier" => "Speed Mult %",
             "barter_gold" => "Barter Gold",
             other => other,
         }
