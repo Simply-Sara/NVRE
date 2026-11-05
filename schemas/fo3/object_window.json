@@ -846,11 +846,24 @@
      },
      {
       "subs": [
-       "EAMT",
+       "EITM"
+      ],
+      "tab": "Actor Effect List",
+      "title": "Unarmed Attack Effect"
+     },
+     {
+      "subs": [
+       "EAMT"
+      ],
+      "tab": "Actor Effect List",
+      "title": "Unarmed Attack Animation"
+     },
+     {
+      "subs": [
        "SPLO"
       ],
       "tab": "Actor Effect List",
-      "title": "Actor Effect List",
+      "title": "Actor Effects",
       "widget": "repeat"
      },
      {

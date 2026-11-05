@@ -2663,3 +2663,152 @@ fn the_inventory_tab_shows_none_when_the_owner_faction_defines_no_ranks() {
         "an unranked faction owner's rank cell is not clickable: {combos:?}"
     );
 }
+
+/// The Actor Effect List tab carries all three of a creature's unarmed-attack
+/// and effect fields, and the two scalar ones stay settable when the record
+/// does not carry them yet: `EITM` is a FormID and `EAMT` an enum, so both have
+/// a widget to offer even with no bytes on the record.
+///
+/// `VStreetCrBrahmin2` has an `EAMT` and an `SPLO` but no `EITM`, so one record
+/// exercises both the present and the absent side of the same tab.
+#[test]
+fn the_actor_effect_tab_shows_all_three_sections_and_absent_pickers() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    // The fixture carries no EITM.
+    assert!(
+        subs(&session, BRAHMIN).iter().all(|s| &s.sig != b"EITM"),
+        "the fixture has no EITM"
+    );
+    state.tab.chosen = Some("Actor Effect List".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::egui::ScrollArea::vertical()
+                    .id_salt("obj_scroll")
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        object_editor::body(ui, &mut session, &mut state, &mut pages);
+                    });
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+    let labels: Vec<&str> = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.label().or_else(|| n.value()))
+        .filter(|l| !l.is_empty())
+        .collect();
+
+    // All three sections, each with its own heading.
+    for heading in [
+        "Unarmed Attack Effect",
+        "Unarmed Attack Animation",
+        "Actor Effects",
+    ] {
+        assert!(
+            labels.contains(&heading),
+            "missing the {heading:?} section: {labels:?}"
+        );
+    }
+    // The absent EITM is a live picker reading NONE, not a blank row.
+    assert!(
+        labels.contains(&"NONE"),
+        "the absent EITM offers a picker: {labels:?}"
+    );
+    // The effect list is a real table with its header and controls.
+    assert!(labels.contains(&"Actor Effect"), "missing the list's header");
+    assert!(labels.contains(&"+ Add Actor Effect"), "missing the add button");
+    assert_eq!(
+        labels.iter().filter(|l| **l == "✖").count(),
+        1,
+        "one remove button per effect: {labels:?}"
+    );
+}
+
+/// An absent `EAMT` is settable from the tab: the enum's values come from the
+/// schema, so the record does not need the subrecord to exist first.
+///
+/// Every creature in `FalloutNV.esm` carries an `EAMT`, so the subrecord is
+/// stripped from the document to reach the absent path — the same state a
+/// plugin written by hand would be in.
+#[test]
+fn an_absent_eamt_can_be_set_from_the_actor_effect_tab() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    session.doc.remove_sub(BRAHMIN, b"EAMT");
+    assert!(
+        subs(&session, BRAHMIN).iter().all(|s| &s.sig != b"EAMT"),
+        "the fixture no longer carries an EAMT"
+    );
+    state.load_from_session(&session, BRAHMIN, *b"CREA");
+    state.tab.chosen = Some("Actor Effect List".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::egui::ScrollArea::vertical()
+                    .id_salt("obj_scroll")
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        object_editor::body(ui, &mut session, &mut state, &mut pages);
+                    });
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+
+    // The section still draws, and its dropdown reads NONE.
+    let labels: Vec<&str> = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.label().or_else(|| n.value()))
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert!(
+        labels.contains(&"Unarmed Attack Animation"),
+        "the section draws with no EAMT on the record: {labels:?}"
+    );
+    assert!(labels.contains(&"NONE"), "its dropdown reads NONE: {labels:?}");
+
+    // Picking a value writes the subrecord: the enum is one u16, and the value
+    // the schema calls 25 is the animation the pick offers.
+    session
+        .doc
+        .set_sub(BRAHMIN, b"EAMT", 25u16.to_le_bytes().to_vec());
+    let eamt = subs(&session, BRAHMIN)
+        .iter()
+        .find(|s| &s.sig == b"EAMT")
+        .map(|s| s.data.clone());
+    assert_eq!(
+        eamt,
+        Some(vec![25, 0]),
+        "the picked value is written as the enum's u16"
+    );
+}

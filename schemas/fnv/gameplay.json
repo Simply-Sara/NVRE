@@ -429,8 +429,14 @@
     "SPLO": {
      "confidence": "documented",
      "name": "Actor Effect",
-     "note": "xEdit wbDefinitionsFNV.pas wbSPLO helper record",
-     "type": "formid"
+     "note": "xEdit wbDefinitionsFNV.pas wbSPLO helper record; fopdoc FalloutNV Records/CREA: FormID of a SPEL record",
+     "type": {
+      "formid": {
+       "of": [
+        "SPEL"
+       ]
+      }
+     }
     },
     "TNAM": {
      "confidence": "documented",
@@ -1499,8 +1505,14 @@
     "SPLO": {
      "confidence": "documented",
      "name": "Actor Effect",
-     "note": "xEdit wbDefinitionsFNV.pas wbSPLO helper record",
-     "type": "formid"
+     "note": "xEdit wbDefinitionsFNV.pas wbSPLO helper record; fopdoc FalloutNV Records/NPC_: FormID of a SPEL record",
+     "type": {
+      "formid": {
+       "of": [
+        "SPEL"
+       ]
+      }
+     }
     },
     "TPLT": {
      "confidence": "documented",

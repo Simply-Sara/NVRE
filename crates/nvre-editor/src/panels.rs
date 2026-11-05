@@ -1120,7 +1120,19 @@ pub fn sectioned_grid_on_tab(
         // items. Skipping them would make an empty list unaddable.
         let is_repeat = section.widget.as_deref() == Some("repeat");
         let is_inventory = section.widget.as_deref() == Some("inventory");
-        if !has_subs && !is_repeat && !is_inventory {
+        // A section whose every subrecord is absent still has something to
+        // draw: the absent-subrecord picker, which is how a field the record
+        // does not carry yet gets set. `EITM` is a FormID and `EAMT` an enum,
+        // so both have a widget to offer even with no bytes on the record —
+        // but only when the schema describes the subrecord for this record
+        // type at all, which is what separates "not on this record" from "not
+        // a subrecord this record has".
+        let all_described = !section.subs.is_empty()
+            && section
+                .subs
+                .iter()
+                .all(|tag| session.schema.lookup(&rec_sig, &sig4(tag)).is_some());
+        if !has_subs && !is_repeat && !is_inventory && !all_described {
             continue;
         }
         if section.side_by_side {
@@ -1610,6 +1622,46 @@ fn render_single_section(
                                                 .map(|d| d.name.clone())
                                                 .unwrap_or_else(|| nvre_util::tag_str(tag));
                                             ui.label(&name);
+                                            // An enum subrecord the record does not
+                                            // carry still gets its dropdown: the
+                                            // list of values comes from the
+                                            // schema, so a creature with no
+                                            // `EAMT` can be given an unarmed
+                                            // attack animation without the
+                                            // subrecord existing first.
+                                            let variants = nvre_edit::encode::enum_values_at(
+                                                &session.schema,
+                                                &rec_sig,
+                                                tag,
+                                                None,
+                                                "",
+                                            );
+                                            if !variants.is_empty() {
+                                                let mut picked: i64 = -1;
+                                                egui::ComboBox::from_id_salt(format!(
+                                                    "absent_enum_{}",
+                                                    nvre_util::tag_str(tag)
+                                                ))
+                                                .selected_text("NONE")
+                                                .width(200.0)
+                                                .show_ui(ui, |ui| {
+                                                    for (v, n) in &variants {
+                                                        ui.selectable_value(
+                                                            &mut picked,
+                                                            *v,
+                                                            n,
+                                                        );
+                                                    }
+                                                });
+                                                if picked >= 0 {
+                                                    let bytes = (picked as u16)
+                                                        .to_le_bytes()
+                                                        .to_vec();
+                                                    session.doc.set_sub(form_id, tag, bytes);
+                                                }
+                                                ui.end_row();
+                                                continue;
+                                            }
                                             let targets = crate::object_editor::formid_targets_in(
                                                 &session.schema,
                                                 &rec_sig,
@@ -2584,39 +2636,95 @@ pub fn repeat_widget(
                         }
                     }
                 });
-        } else if rows.is_empty() {
-            ui.weak("(no rows)");
         } else {
-            // Bare rows (e.g. list of FormIDs)
-            for (i, (bytes, value)) in rows.iter().enumerate() {
-                ui.push_id(i, |ui| {
-                    ui.horizontal(|ui| {
-                        if ui
-                            .small_button("✖")
-                            .on_hover_text("remove this row")
-                            .clicked()
-                        {
-                            remove_at = Some(i);
-                        }
-                        ui.monospace(format!("[{i}]"));
-                        let mut next = value.clone();
-                        if inline_value(ui, session, rec_sig, sub_sig, block, i, "", value, &mut next) {
-                            if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
-                                &session.schema,
+            // Bare rows: a list of one value each, with no struct to give it a
+            // name — `SPLO` is a FormID and nothing else, and a form list is
+            // nothing but FormIDs. A real table, so the rows virtualize and the
+            // header says what the column holds.
+            let header = match sub_sig {
+                b"SPLO" => "Actor Effect",
+                _ => "Value",
+            };
+            let empty_note = match sub_sig {
+                b"SPLO" => "No actor effects",
+                _ => "(no rows)",
+            };
+            egui_extras::TableBuilder::new(ui)
+                .striped(true)
+                .id_salt(("bare_table", sub_sig))
+                .column(egui_extras::Column::initial(88.0).at_least(88.0).clip(true))
+                .column(egui_extras::Column::remainder().at_least(120.0).clip(true))
+                .header(18.0, |mut header_ui| {
+                    header_ui.col(|ui| {
+                        ui.strong("");
+                    });
+                    header_ui.col(|ui| {
+                        ui.strong(header);
+                    });
+                })
+                .body(|body| {
+                    body.rows(20.0, rows.len(), |mut row_ui| {
+                        let i = row_ui.index();
+                        let Some((bytes, value)) = rows.get(i) else {
+                            return;
+                        };
+                        row_ui.col(|ui| {
+                            ui.push_id(i, |ui| {
+                                ui.horizontal(|ui| {
+                                    if ui
+                                        .small_button("✖")
+                                        .on_hover_text("remove this row")
+                                        .clicked()
+                                    {
+                                        remove_at = Some(i);
+                                    }
+                                    let up = ui.add_enabled(i > 0, egui::Button::new("Up").small());
+                                    if up.on_hover_text("move up").clicked() {
+                                        move_up = Some(i);
+                                    }
+                                    let down = ui.add_enabled(
+                                        i + 1 < rows.len(),
+                                        egui::Button::new("Down").small(),
+                                    );
+                                    if down.on_hover_text("move down").clicked() {
+                                        move_down = Some(i);
+                                    }
+                                });
+                            });
+                        });
+                        row_ui.col(|ui| {
+                            let mut next = value.clone();
+                            if inline_value(
+                                ui,
+                                session,
                                 rec_sig,
                                 sub_sig,
-                                &next,
-                                Some(bytes.len()),
                                 block,
+                                i,
+                                "",
+                                value,
+                                &mut next,
                             ) {
-                                let mut list: Vec<Vec<u8>> =
-                                    rows.iter().map(|(b, _)| b.clone()).collect();
-                                list[i] = bytes;
-                                want = Some(list);
+                                if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                    &session.schema,
+                                    rec_sig,
+                                    sub_sig,
+                                    &next,
+                                    Some(bytes.len()),
+                                    block,
+                                ) {
+                                    let mut list: Vec<Vec<u8>> =
+                                        rows.iter().map(|(b, _)| b.clone()).collect();
+                                    list[i] = bytes;
+                                    want = Some(list);
+                                }
                             }
-                        }
+                        });
                     });
                 });
+            if rows.is_empty() {
+                ui.add_space(4.0);
+                ui.weak(empty_note);
             }
         }
 
@@ -2626,6 +2734,8 @@ pub fn repeat_widget(
                 "+ Add Faction"
             } else if is_pkid {
                 "+ Add Package"
+            } else if sub_sig == b"SPLO" {
+                "+ Add Actor Effect"
             } else {
                 "+ Add Row"
             };

@@ -293,8 +293,15 @@
   "EITM": {
    "confidence": "documented",
    "name": "Unarmed Attack Effect",
-   "note": "xEdit wbDefinitionsFNV.pas NPC_/CREA record; only FNV use of EITM",
-   "type": "formid"
+   "note": "xEdit wbDefinitionsFNV.pas NPC_/CREA record; only FNV use of EITM; fopdoc FalloutNV Records/CREA: FormID of a ENCH or SPEL record",
+   "type": {
+    "formid": {
+     "of": [
+      "ENCH",
+      "SPEL"
+     ]
+    }
+   }
   },
   "ETYP": {
    "confidence": "documented",
