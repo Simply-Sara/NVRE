@@ -1517,6 +1517,10 @@ fn draw_field_row(
     // "Name", "Script".
     let label = if row.path.is_empty() {
         view.name.as_str()
+    } else if view.sig == "ACBS" && row.path == "karma" {
+        "Alignment"
+    } else if view.sig == "ACBS" && row.path == "disposition_base" {
+        "Disposition Base"
     } else {
         row.path.as_str()
     };
@@ -1737,6 +1741,50 @@ fn field_editor(
         view.block.as_deref(),
         path,
     );
+    // Alignment dropdown for ACBS karma (Very Good, Good, Neutral, Evil, Very Evil).
+    // GECK presents this as an "Alignment" dropdown rather than a raw float input.
+    if sig == *b"ACBS" && path == "karma" {
+        let current_karma = current.as_f64().unwrap_or(0.0) as f32;
+        let alignments: [(&str, f32); 5] = [
+            ("Very Good", 900.0),
+            ("Good", 500.0),
+            ("Neutral", 0.0),
+            ("Evil", -500.0),
+            ("Very Evil", -900.0),
+        ];
+        let cur_align = if current_karma >= 750.0 {
+            "Very Good"
+        } else if current_karma >= 250.0 {
+            "Good"
+        } else if current_karma <= -750.0 {
+            "Very Evil"
+        } else if current_karma <= -250.0 {
+            "Evil"
+        } else {
+            "Neutral"
+        };
+        let mut picked_karma = current_karma;
+        egui::ComboBox::from_id_salt(format!("align_{}_{}", view.sig, path))
+            .selected_text(cur_align)
+            .width(160.0)
+            .show_ui(ui, |ui| {
+                for (name, val) in alignments {
+                    let is_sel = cur_align == name;
+                    if ui.selectable_label(is_sel, name).clicked() {
+                        picked_karma = val;
+                    }
+                }
+            });
+        if (picked_karma - current_karma).abs() > f32::EPSILON {
+            edit.last = Some((sig, path.to_string()));
+            match session.set_object_field(form_id, &sig, path, serde_json::json!(picked_karma)) {
+                Ok(()) => edit.error = None,
+                Err(e) => edit.error = Some(e),
+            }
+        }
+        return;
+    }
+
     if !variants.is_empty() {
         if let Some(raw) = current.get("value").and_then(|v| v.as_i64()) {
             let cur_name = variants

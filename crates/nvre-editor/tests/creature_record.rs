@@ -1472,3 +1472,38 @@ fn the_template_dropdown_targets_creatures_and_leveled_creatures() {
         "CREA TPLT must only offer creatures and leveled creature lists"
     );
 }
+
+#[test]
+fn the_traits_tab_draws_an_alignment_dropdown_for_acbs_karma() {
+    // In Bethesda engines, karma is stored as a 4-byte float in ACBS.
+    // GECK presents this as an "Alignment" dropdown (Very Good, Good,
+    // Neutral, Evil, Very Evil) mapping to standard karma values (+900, +500,
+    // 0, -500, -900) rather than a raw float spinner.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("Traits".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    // The field label is "Alignment", not the raw field name "karma".
+    assert!(
+        rows.iter().any(|(t, _)| t == "Alignment"),
+        "the Traits tab has no Alignment label: {rows:?}"
+    );
+    assert!(
+        !rows.iter().any(|(t, _)| t == "karma"),
+        "the Traits tab still shows the raw 'karma' field label: {rows:?}"
+    );
+
+    // The brahmin has karma 0.0, so the dropdown displays "Neutral".
+    assert!(
+        rows.iter().any(|(t, _)| t == "Neutral"),
+        "the Alignment dropdown does not display Neutral for the brahmin: {rows:?}"
+    );
+
+    // The sibling field is properly labeled "Disposition Base".
+    assert!(
+        rows.iter().any(|(t, _)| t == "Disposition Base"),
+        "the Disposition Base label is missing: {rows:?}"
+    );
+}
