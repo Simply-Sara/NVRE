@@ -907,6 +907,28 @@
       "title": "Base Model"
      },
      {
+      "fields": {
+       "ACBS": [
+        "flags"
+       ]
+      },
+      "flags_bits": {
+       "ACBS.flags": [
+        17,
+        16,
+        15,
+        19,
+        24,
+        25
+       ]
+      },
+      "subs": [
+       "ACBS"
+      ],
+      "tab": "ModelList",
+      "title": "Model Flags"
+     },
+     {
       "subs": [
        "NIFZ"
       ],
@@ -928,28 +950,6 @@
       ],
       "tab": "ModelList",
       "title": "Model List Textures (NIFT)"
-     },
-     {
-      "fields": {
-       "ACBS": [
-        "flags"
-       ]
-      },
-      "flags_bits": {
-       "ACBS.flags": [
-        15,
-        16,
-        17,
-        19,
-        24,
-        25
-       ]
-      },
-      "subs": [
-       "ACBS"
-      ],
-      "tab": "ModelList",
-      "title": "Model Flags"
      },
      {
       "fields": {

@@ -2222,13 +2222,40 @@ fn field_editor(
         serde_json::Value::String(s) => {
             let mut text = s.clone();
             let is_model = view.sig == "MODL";
-            let width = if is_model { 280.0 } else { 120.0 };
+            let width = if is_model { 260.0 } else { 120.0 };
             ui.horizontal(|ui| {
                 if ui
                     .add(egui::TextEdit::singleline(&mut text).desired_width(width))
                     .changed()
                 {
                     changed = Some(serde_json::json!(text));
+                }
+                if is_model {
+                    if ui
+                        .button("Edit...")
+                        .on_hover_text("Browse for a .nif model file")
+                        .clicked()
+                    {
+                        let meshes_dir = session.data_dir.join("meshes");
+                        let mut dialog = rfd::FileDialog::new()
+                            .set_title("Select Model File")
+                            .add_filter("NIF Model (*.nif)", &["nif", "NIF"]);
+                        if meshes_dir.is_dir() {
+                            dialog = dialog.set_directory(&meshes_dir);
+                        } else if session.data_dir.is_dir() {
+                            dialog = dialog.set_directory(&session.data_dir);
+                        }
+                        if let Some(chosen) = dialog.pick_file() {
+                            let rel = if let Ok(rel_path) = chosen.strip_prefix(&session.data_dir) {
+                                rel_path.to_string_lossy().to_string()
+                            } else {
+                                chosen.to_string_lossy().to_string()
+                            };
+                            let norm = nvre_vfs::normalize(&rel);
+                            text = norm.clone();
+                            changed = Some(serde_json::json!(norm));
+                        }
+                    }
                 }
                 if is_model && !text.is_empty() {
                     let norm = nvre_vfs::normalize(&text);
@@ -3148,6 +3175,32 @@ pub fn model_list_widget(
                 nifs.push(trimmed.to_string());
                 touched = true;
                 new_nif.clear();
+            }
+        }
+        if ui
+            .button("Browse...")
+            .on_hover_text("Browse for a mesh file to add to the model list")
+            .clicked()
+        {
+            let start_dir = session.data_dir.join(&folder);
+            let mut dialog = rfd::FileDialog::new()
+                .set_title("Select Mesh to Add")
+                .add_filter("NIF Mesh (*.nif)", &["nif", "NIF"]);
+            if start_dir.is_dir() {
+                dialog = dialog.set_directory(&start_dir);
+            } else if session.data_dir.join("meshes").is_dir() {
+                dialog = dialog.set_directory(session.data_dir.join("meshes"));
+            }
+            if let Some(chosen) = dialog.pick_file() {
+                let filename = chosen
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                if !filename.is_empty() {
+                    nifs.push(filename);
+                    touched = true;
+                }
             }
         }
     });
