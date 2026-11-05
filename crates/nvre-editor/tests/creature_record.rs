@@ -131,7 +131,7 @@ fn the_traits_tab_shows_the_creature_type_and_the_stats_tab_does_not() {
     // the modder's record does not reload when they look at another tab.
     state.tab.chosen = Some("Stats".to_string());
     assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Stats"));
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("Traits".to_string());
     assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Traits"));
     assert_eq!(state.edid, "VStreetCrBrahmin2");
 }
@@ -579,7 +579,7 @@ fn the_flag_checkboxes_wrap_onto_their_own_rows() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("General".to_string());
     let bits = |key: &str| -> Vec<u32> {
         session
             .schema
@@ -662,7 +662,7 @@ fn the_identity_section_draws_no_title_and_no_bare_signature_labels() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("General".to_string());
     let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     let drawn: Vec<&str> = drawn.iter().map(String::as_str).collect();
 
@@ -731,7 +731,7 @@ fn the_template_picker_comes_before_the_template_checkboxes() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("General".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     // Everything below the "Template Data" heading and above the next group, so
     // the assertion is about this section and not about the Identity section's
@@ -789,7 +789,7 @@ fn a_creature_with_no_template_shows_none() {
     );
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("General".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     let heading = rows
         .iter()
@@ -825,7 +825,7 @@ fn a_flags_field_draws_no_row_label_of_its_own() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("General".to_string());
     let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     for path in ["flags", "template_flags"] {
         assert!(
@@ -931,7 +931,7 @@ fn a_creature_with_no_template_still_gets_the_picker() {
     session.open_object(fid, *b"CREA");
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("General".to_string());
 
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     let heading = rows
@@ -1315,7 +1315,7 @@ fn pc_level_mult_sits_on_the_leveling_section() {
         stats_rows.iter().any(|(t, _)| t == "PC Level Mult"),
         "no PC Level Mult checkbox on the Stats tab: {stats_rows:?}"
     );
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("Traits".to_string());
     let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     assert!(
         !traits_rows.iter().any(|(t, _)| t == "PC Level Mult"),
@@ -1377,7 +1377,7 @@ fn the_blood_flags_sit_on_the_blood_section() {
         blood_rows.iter().any(|(t, _)| t == "Impact Dataset"),
         "the Blood section lost its other subrecords: {blood_rows:?}"
     );
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("Traits".to_string());
     let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     for gone in ["No Blood Spray", "No Blood Decal"] {
         assert!(
@@ -1467,7 +1467,7 @@ fn every_link_dropdown_has_one_clear_label() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("Traits".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
     // One label each, under the schema's own names.
@@ -1551,7 +1551,7 @@ fn the_traits_tab_draws_an_alignment_dropdown_for_acbs_karma() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("Traits".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
     // The field label is "Alignment", not the raw field name "karma".
@@ -1596,7 +1596,7 @@ fn combat_style_dropdown_shows_the_records_combat_style() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("Traits".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
     // The Combat Style row shows the record's combat style, and its target type.
@@ -1641,7 +1641,7 @@ fn an_unset_combat_style_shows_default() {
     );
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
-    state.tab.chosen = Some("Animation".to_string());
+    state.tab.chosen = Some("Traits".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     assert!(
         rows.iter().any(|(t, _)| t == "Default"),
@@ -3456,5 +3456,105 @@ fn the_footer_buttons_fit_within_the_window_and_are_not_cut_off() {
     assert_eq!(
         checked_buttons, 3,
         "all three footer buttons must be present and checked"
+    );
+}
+
+/// The Model List tab organizes the creature's model into distinct, editable sections:
+/// - Base Model (`MODL` and `PNAM` Body Part Data)
+/// - Model List (`NIFZ`) table with VFS existence status, reordering, and add/remove
+/// - Object Bounds (`OBND`) with manual min/max XYZ editing and a Calculate Bounds button
+/// - Model Flags (`ACBS` flags)
+/// - Model List Textures (`NIFT`)
+#[test]
+fn the_model_list_tab_has_structured_sections_with_nif_table_and_bounds_calculation() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let fid = 0x000E_84A2u32; // BMRhonda
+    session.open_object(fid, *b"CREA");
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("ModelList".to_string());
+
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let labels: Vec<&str> = rows.iter().map(|(t, _)| t.as_str()).collect();
+
+    // Section headings are drawn
+    assert!(labels.contains(&"Base Model"), "missing Base Model heading: {labels:?}");
+    assert!(labels.contains(&"Model List"), "missing Model List heading: {labels:?}");
+    assert!(labels.contains(&"Object Bounds"), "missing Object Bounds heading: {labels:?}");
+    assert!(labels.contains(&"Model Flags"), "missing Model Flags heading: {labels:?}");
+    assert!(
+        labels.contains(&"Model List Textures (NIFT)"),
+        "missing Model List Textures (NIFT) heading: {labels:?}"
+    );
+
+        // Base Model contents: Model FileName and Body Part Data
+    assert!(labels.contains(&"Model FileName"), "missing Model FileName: {labels:?}");
+    assert!(labels.contains(&"Body Part Data"), "missing Body Part Data: {labels:?}");
+
+    // Table columns
+    assert!(labels.contains(&"Model Mesh (.nif)"), "missing table column Model Mesh: {labels:?}");
+    assert!(labels.contains(&"Status"), "missing table column Status: {labels:?}");
+    assert!(labels.contains(&"Actions"), "missing table column Actions: {labels:?}");
+
+    // Object bounds: coordinates
+    assert!(labels.contains(&"min.x"), "missing min.x: {labels:?}");
+    assert!(labels.contains(&"max.x"), "missing max.x: {labels:?}");
+
+    // AccessKit inspection for buttons and text inputs
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    let mut pages = Pages::default();
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(900.0, 2400.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+
+    let all_text: Vec<String> = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.value().or_else(|| n.label()).map(str::to_string))
+        .collect();
+
+    assert!(
+        all_text.iter().any(|t| t == "+ Add Model"),
+        "missing '+ Add Model' button: {all_text:?}"
+    );
+    assert!(
+        all_text.iter().any(|t| t == "Calculate Bounds from Model"),
+        "missing 'Calculate Bounds from Model' button: {all_text:?}"
+    );
+    assert!(
+        all_text.iter().any(|t| t.contains("MisterHandy.NIF")),
+        "MisterHandy.NIF should be present in table inputs: {all_text:?}"
+    );
+
+    // Calculate bounds engine test:
+    let bounds = session
+        .calculate_bounds_for(fid)
+        .expect("should compute bounds from NIFs");
+    assert!(
+        bounds.0[0] < bounds.1[0],
+        "min X must be less than max X: {bounds:?}"
+    );
+    assert!(
+        bounds.0[1] < bounds.1[1],
+        "min Y must be less than max Y: {bounds:?}"
+    );
+    assert!(
+        bounds.0[2] < bounds.1[2],
+        "min Z must be less than max Z: {bounds:?}"
     );
 }

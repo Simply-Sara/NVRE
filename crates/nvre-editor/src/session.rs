@@ -469,20 +469,103 @@ impl Session {
         Some(AnimationSet { base, special })
     }
 
-    /// Every path in the game's archives, filtered.
-    ///
-    /// The VFS is opened once and cached: building it reads every archive's
-    /// index, which is the expensive part.
-    fn vfs_paths(&mut self, pred: impl Fn(&str) -> bool) -> Vec<String> {
+    /// Ensure the VFS is open and return a reference to it.
+    pub fn ensure_vfs(&mut self) -> Option<&nvre_vfs::Vfs> {
         if self.vfs.is_none() {
-            // The game's own archive list, in the order the game loads them.
-            // No plugin names: the object editor reads the archives for what
-            // the *game* ships, not for what a mod adds.
             let names: Vec<&str> = self.game.archives.to_vec();
             let order = nvre_vfs::Vfs::archive_order(&self.data_dir, &self.game.archives, &names);
             self.vfs = nvre_vfs::Vfs::open(&self.data_dir, &order).ok();
         }
-        self.vfs.as_ref().map(|v| v.paths(pred)).unwrap_or_default()
+        self.vfs.as_ref()
+    }
+
+    /// Check whether a path exists in the game's VFS.
+    pub fn vfs_exists(&mut self, path: &str) -> bool {
+        self.ensure_vfs().map(|v| v.exists(path)).unwrap_or(false)
+    }
+
+    /// Every path in the game's archives, filtered.
+    ///
+    /// The VFS is opened once and cached: building it reads every archive's
+    /// index, which is the expensive part.
+    pub fn vfs_paths(&mut self, pred: impl Fn(&str) -> bool) -> Vec<String> {
+        self.ensure_vfs().map(|v| v.paths(pred)).unwrap_or_default()
+    }
+
+    /// Calculate the 3D bounding box for an actor or object from its NIF geometry.
+    ///
+    /// Reads the record's `NIFZ` meshes (or its `MODL` mesh), reads the vertex
+    /// positions out of the NIFs via VFS, and computes the aggregate `[min_x, min_y, min_z]`
+    /// and `[max_x, max_y, max_z]` in points (rounded to `i16` for `OBND`).
+    pub fn calculate_bounds_for(&mut self, form_id: u32) -> Option<([i16; 3], [i16; 3])> {
+        let model_path = self.model_path_for(form_id)?;
+        let folder = match model_path.rsplit_once('\\') {
+            Some((d, _)) => d.to_string(),
+            None => "meshes".to_string(),
+        };
+
+        let mut nif_paths = Vec::new();
+        if let Some(rec) = self.resolved_record(form_id) {
+            if let Ok(subs) = rec.subrecords() {
+                if let Some(nifz) = subs.iter().find(|s| &s.sig == b"NIFZ") {
+                    for s in String::from_utf8_lossy(&nifz.data).split('\0') {
+                        let trimmed = s.trim();
+                        if !trimmed.is_empty() {
+                            let path = if trimmed.contains('\\') || trimmed.contains('/') {
+                                nvre_vfs::normalize(trimmed)
+                            } else {
+                                format!("{folder}\\{trimmed}")
+                            };
+                            nif_paths.push(path);
+                        }
+                    }
+                }
+            }
+        }
+        if nif_paths.is_empty() {
+            nif_paths.push(nvre_vfs::normalize(&model_path));
+        }
+
+        self.ensure_vfs();
+        let vfs = self.vfs.as_ref()?;
+        let nif_schema = self.game.load_nif_schema().ok()?;
+
+        let mut min = [f32::MAX; 3];
+        let mut max = [f32::MIN; 3];
+        let mut total_verts = 0;
+
+        for path in &nif_paths {
+            let Some(Ok(bytes)) = vfs.read(path) else { continue };
+            let Ok(nif) = nvre_nif::NifFile::parse(&bytes, Some(&nif_schema)) else { continue };
+            let dec = nvre_nif::scene::Decoded::new(&nif, &bytes, &nif_schema);
+            let objects = nvre_nif::scene::scene_objects(&nif, &dec);
+            for o in &objects {
+                if o.is_node { continue; }
+                let Some(Ok(block)) = dec.blocks.get(o.block) else { continue };
+                let data = block
+                    .ref_at("data")
+                    .and_then(|r| dec.get(r))
+                    .or_else(|| dec.get(o.block as i32));
+                let Some(d) = data else { continue };
+                let md = nvre_nif::scene::mesh_data(d, nif.header.bs_version());
+                for v in &md.positions {
+                    total_verts += 1;
+                    for k in 0..3 {
+                        min[k] = min[k].min(v[k]);
+                        max[k] = max[k].max(v[k]);
+                    }
+                }
+            }
+        }
+
+        if total_verts > 0 {
+            Some((
+                [min[0].round() as i16, min[1].round() as i16, min[2].round() as i16],
+                [max[0].round() as i16, max[1].round() as i16, max[2].round() as i16],
+            ))
+        } else {
+            None
+        }
     }
 
     /// Resolve many base objects against one `LoadOrder`.

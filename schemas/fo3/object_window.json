@@ -901,13 +901,33 @@
      {
       "subs": [
        "MODL",
-       "NIFZ",
-       "NIFT",
-       "PNAM",
+       "PNAM"
+      ],
+      "tab": "ModelList",
+      "title": "Base Model"
+     },
+     {
+      "subs": [
+       "NIFZ"
+      ],
+      "tab": "ModelList",
+      "title": "Model List",
+      "widget": "model_list"
+     },
+     {
+      "subs": [
        "OBND"
       ],
       "tab": "ModelList",
-      "title": "Model List"
+      "title": "Object Bounds",
+      "widget": "object_bounds"
+     },
+     {
+      "subs": [
+       "NIFT"
+      ],
+      "tab": "ModelList",
+      "title": "Model List Textures (NIFT)"
      },
      {
       "fields": {

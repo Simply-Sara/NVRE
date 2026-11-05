@@ -1121,6 +1121,8 @@ pub fn sectioned_grid_on_tab(
         let is_repeat = section.widget.as_deref() == Some("repeat");
         let is_inventory = section.widget.as_deref() == Some("inventory");
         let is_animations = section.widget.as_deref() == Some("animations");
+        let is_model_list = section.widget.as_deref() == Some("model_list");
+        let is_object_bounds = section.widget.as_deref() == Some("object_bounds");
         // A section whose every subrecord is absent still has something to
         // draw: the absent-subrecord picker, which is how a field the record
         // does not carry yet gets set. `EITM` is a FormID and `EAMT` an enum,
@@ -1133,7 +1135,14 @@ pub fn sectioned_grid_on_tab(
                 .subs
                 .iter()
                 .all(|tag| session.schema.lookup(&rec_sig, &sig4(tag)).is_some());
-        if !has_subs && !is_repeat && !is_inventory && !is_animations && !all_described {
+        if !has_subs
+            && !is_repeat
+            && !is_inventory
+            && !is_animations
+            && !is_model_list
+            && !is_object_bounds
+            && !all_described
+        {
             continue;
         }
         if section.side_by_side {
@@ -1498,6 +1507,12 @@ fn render_single_section(
                 // strip — which is exactly the viewport the table should fill.
                 let viewport = (ui.available_height() - 28.0).max(100.0);
                 animations_widget(ui, session, form_id, edit, viewport);
+            }
+            Some(name) if name == "model_list" => {
+                model_list_widget(ui, session, form_id, &rec_sig, edit);
+            }
+            Some(name) if name == "object_bounds" => {
+                object_bounds_widget(ui, session, form_id, &rec_sig, edit);
             }
             Some(name) => {
                 ui.colored_label(
@@ -2206,12 +2221,24 @@ fn field_editor(
         }
         serde_json::Value::String(s) => {
             let mut text = s.clone();
-            if ui
-                .add(egui::TextEdit::singleline(&mut text).desired_width(120.0))
-                .changed()
-            {
-                changed = Some(serde_json::json!(text));
-            }
+            let is_model = view.sig == "MODL";
+            let width = if is_model { 280.0 } else { 120.0 };
+            ui.horizontal(|ui| {
+                if ui
+                    .add(egui::TextEdit::singleline(&mut text).desired_width(width))
+                    .changed()
+                {
+                    changed = Some(serde_json::json!(text));
+                }
+                if is_model && !text.is_empty() {
+                    let norm = nvre_vfs::normalize(&text);
+                    if session.vfs_exists(&norm) {
+                        ui.colored_label(egui::Color32::from_rgb(100, 200, 120), "✔ Found");
+                    } else {
+                        ui.colored_label(egui::Color32::from_rgb(220, 100, 100), "⚠ Missing");
+                    }
+                }
+            });
         }
         // A flags field decodes to `{"value": n, "set": [names], "unknown_bits":
         // hex}`: the raw number, the names of the bits that are on, and any bit
@@ -3006,6 +3033,232 @@ pub fn animations_widget(
         special.len(),
         selected.len()
     ));
+}
+
+/// The Model List (`NIFZ`) table: additional body part meshes (heads, horns, claws,
+/// armor) attached to a creature.
+///
+/// Modders can add, remove, and reorder `.nif` filenames in the list. Each row
+/// displays whether the mesh file is found in the game's VFS archives or loose files.
+pub fn model_list_widget(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    _rec_sig: &[u8; 4],
+    _edit: &mut crate::panels::FieldEdit,
+) {
+    let mut nifs: Vec<String> = session
+        .resolved_record(form_id)
+        .and_then(|r| r.subrecords().ok())
+        .and_then(|subs| subs.into_iter().find(|s| &s.sig == b"NIFZ"))
+        .map(|s| {
+            String::from_utf8_lossy(&s.data)
+                .split('\0')
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let folder = session
+        .model_path_for(form_id)
+        .and_then(|p| p.rsplit_once('\\').map(|(d, _)| d.to_string()))
+        .unwrap_or_else(|| "meshes".to_string());
+
+    let mut touched = false;
+    let mut remove_idx = None;
+    let mut swap_idx = None;
+
+    if nifs.is_empty() {
+        ui.label("No model meshes in list.");
+    } else {
+        let len = nifs.len();
+        egui::Grid::new("model_list_grid")
+            .striped(true)
+            .spacing([8.0, 4.0])
+            .show(ui, |ui| {
+                ui.strong("#");
+                ui.strong("Model Mesh (.nif)");
+                ui.strong("Status");
+                ui.strong("Actions");
+                ui.end_row();
+
+                for (i, name) in nifs.iter_mut().enumerate() {
+                    ui.monospace(format!("[{i}]"));
+
+                    let mut current_name = name.clone();
+                    if ui
+                        .add(egui::TextEdit::singleline(&mut current_name).desired_width(240.0))
+                        .changed()
+                    {
+                        *name = current_name.clone();
+                        touched = true;
+                    }
+
+                    let full_path = if current_name.contains('\\') || current_name.contains('/') {
+                        nvre_vfs::normalize(&current_name)
+                    } else {
+                        format!("{folder}\\{current_name}")
+                    };
+
+                    if session.vfs_exists(&full_path) {
+                        ui.colored_label(egui::Color32::from_rgb(100, 200, 120), "✔ Found");
+                    } else {
+                        ui.colored_label(egui::Color32::from_rgb(220, 100, 100), "⚠ Missing");
+                    }
+
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(i > 0, egui::Button::new("Up").small())
+                            .clicked()
+                        {
+                            swap_idx = Some((i, i - 1));
+                        }
+                        if ui
+                            .add_enabled(i + 1 < len, egui::Button::new("Down").small())
+                            .clicked()
+                        {
+                            swap_idx = Some((i, i + 1));
+                        }
+                        if ui.small_button("✖").on_hover_text("Remove this mesh").clicked() {
+                            remove_idx = Some(i);
+                        }
+                    });
+                    ui.end_row();
+                }
+            });
+    }
+
+    ui.add_space(4.0);
+    let new_nif_id = ui.make_persistent_id("new_nif_input");
+    let mut new_nif = ui
+        .ctx()
+        .data_mut(|d| d.get_temp::<String>(new_nif_id))
+        .unwrap_or_default();
+
+    ui.horizontal(|ui| {
+        ui.add(
+            egui::TextEdit::singleline(&mut new_nif)
+                .hint_text("NewMesh.nif")
+                .desired_width(200.0),
+        );
+        if ui.button("+ Add Model").clicked() {
+            let trimmed = new_nif.trim();
+            if !trimmed.is_empty() {
+                nifs.push(trimmed.to_string());
+                touched = true;
+                new_nif.clear();
+            }
+        }
+    });
+    ui.ctx().data_mut(|d| d.insert_temp(new_nif_id, new_nif));
+
+    if let Some((a, b)) = swap_idx {
+        nifs.swap(a, b);
+        touched = true;
+    }
+    if let Some(idx) = remove_idx {
+        nifs.remove(idx);
+        touched = true;
+    }
+    if touched {
+        if nifs.is_empty() {
+            session.doc.remove_sub(form_id, b"NIFZ");
+        } else {
+            let mut bytes = Vec::new();
+            for n in &nifs {
+                bytes.extend_from_slice(n.as_bytes());
+                bytes.push(0);
+            }
+            bytes.push(0);
+            session.doc.set_sub(form_id, b"NIFZ", bytes);
+        }
+    }
+}
+
+/// The Object Bounds (`OBND`) editor: 3D bounding box for collision and placement.
+///
+/// Provides manual DragValue numeric editing for `min` and `max` (X, Y, Z), as well
+/// as a "Calculate Bounds from Model" button that automatically parses the actor's
+/// NIF geometry from the VFS to compute exact bounds.
+pub fn object_bounds_widget(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    _rec_sig: &[u8; 4],
+    _edit: &mut crate::panels::FieldEdit,
+) {
+    let obnd = session
+        .resolved_record(form_id)
+        .and_then(|r| r.subrecords().ok())
+        .and_then(|subs| subs.into_iter().find(|s| &s.sig == b"OBND"))
+        .map(|s| s.data)
+        .unwrap_or_else(|| vec![0; 12]);
+
+    let i16_at = |o: usize| -> i16 {
+        if obnd.len() >= o + 2 {
+            i16::from_le_bytes([obnd[o], obnd[o + 1]])
+        } else {
+            0
+        }
+    };
+
+    let mut min = [i16_at(0), i16_at(2), i16_at(4)];
+    let mut max = [i16_at(6), i16_at(8), i16_at(10)];
+    let mut changed = false;
+
+    ui.horizontal(|ui| {
+        ui.strong("Min:");
+        ui.label("min.x");
+        if ui.add(egui::DragValue::new(&mut min[0])).changed() {
+            changed = true;
+        }
+        ui.label("min.y");
+        if ui.add(egui::DragValue::new(&mut min[1])).changed() {
+            changed = true;
+        }
+        ui.label("min.z");
+        if ui.add(egui::DragValue::new(&mut min[2])).changed() {
+            changed = true;
+        }
+    });
+
+    ui.horizontal(|ui| {
+        ui.strong("Max:");
+        ui.label("max.x");
+        if ui.add(egui::DragValue::new(&mut max[0])).changed() {
+            changed = true;
+        }
+        ui.label("max.y");
+        if ui.add(egui::DragValue::new(&mut max[1])).changed() {
+            changed = true;
+        }
+        ui.label("max.z");
+        if ui.add(egui::DragValue::new(&mut max[2])).changed() {
+            changed = true;
+        }
+
+        ui.add_space(16.0);
+        if ui
+            .button("Calculate Bounds from Model")
+            .on_hover_text("Compute 3D bounding box from NIF geometry in VFS")
+            .clicked()
+        {
+            if let Some((calc_min, calc_max)) = session.calculate_bounds_for(form_id) {
+                min = calc_min;
+                max = calc_max;
+                changed = true;
+            }
+        }
+    });
+
+    if changed {
+        let mut bytes = Vec::with_capacity(12);
+        for v in min.iter().chain(max.iter()) {
+            bytes.extend_from_slice(&v.to_le_bytes());
+        }
+        session.doc.set_sub(form_id, b"OBND", bytes);
+    }
 }
 
 
