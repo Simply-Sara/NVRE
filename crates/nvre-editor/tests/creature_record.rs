@@ -1727,9 +1727,9 @@ fn the_skills_and_health_section_aligns_all_its_controls_in_one_grid() {
     out.textures_delta.clear();
 
     let u = out.platform_output.accesskit_update.expect("accesskit update");
-    let mut spinbuttons: Vec<(f32, f32, f32)> = u
-        .nodes
-        .into_iter()
+    let nodes = u.nodes;
+    let mut spinbuttons: Vec<(f32, f32, f32)> = nodes
+        .iter()
         .filter_map(|(_, n)| {
             if n.role() == nvre_editor::egui::accesskit::Role::SpinButton {
                 let r = n.bounds()?;
@@ -1738,15 +1738,21 @@ fn the_skills_and_health_section_aligns_all_its_controls_in_one_grid() {
                 None
             }
         })
-        .filter(|(y, _, _)| *y >= 400.0 && *y < 650.0) // Skills & Health region
+        .filter(|(_, x0, _)| *x0 > 200.0) // Skills & Health column (side by side on the right)
         .collect();
     spinbuttons.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
     assert_eq!(
         spinbuttons.len(),
         11,
-        "Skills & Health must have exactly 11 spinbuttons: {spinbuttons:?}"
+        "Skills & Health must have exactly 11 spinbuttons in the right column: {spinbuttons:?}"
     );
+
+    // And verify Attributes and Skills & Health are side by side at the same Y
+    let attrs = nodes.iter().map(|(_, n)| n).find(|n| n.label() == Some("Attributes") || n.value() == Some("Attributes")).unwrap().bounds().unwrap();
+    let skills = nodes.iter().map(|(_, n)| n).find(|n| n.label() == Some("Skills & Health") || n.value() == Some("Skills & Health")).unwrap().bounds().unwrap();
+    assert_eq!(attrs.y0, skills.y0, "Attributes and Skills & Health must start at the exact same Y position!");
+    assert!(skills.x0 > attrs.x0, "Skills & Health must be to the right of Attributes!");
 
     let first_x0 = spinbuttons[0].1;
     let first_w = spinbuttons[0].2;

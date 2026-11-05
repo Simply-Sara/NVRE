@@ -1107,244 +1107,67 @@ pub fn sectioned_grid_on_tab(
             }
         }
     }
+    enum SecChunk<'a> {
+        Single((usize, &'a nvre_esm::schema::SectionDef)),
+        SideBySide(Vec<(usize, &'a nvre_esm::schema::SectionDef)>),
+    }
+    let mut chunks: Vec<SecChunk> = Vec::new();
     for (si, section) in shown.iter().enumerate() {
-        // The subrecords this section names, in the section's order.
-        let mut named: Vec<usize> = Vec::new();
-        for tag in &section.subs {
-            for (i, v) in views.iter().enumerate() {
-                // A record can carry the same signature more than once (a
-                // weather's texture layers, a list's repeated entries), so every
-                // matching view goes under the section rather than the first.
-                if &v.sig == tag && !named.contains(&i) {
-                    named.push(i);
-                }
-            }
-        }
-        if named.is_empty() {
-            // The record does not carry anything this section names — Fallout
-            // 4's weapon has no `VATS`. Nothing to draw, and nothing to say: the
-            // section belongs to the other game's table, not to this record.
+        let has_subs = section.subs.iter().any(|tag| views.iter().any(|v| &v.sig == tag));
+        if !has_subs {
             continue;
         }
-        // A subrecord the section names but the record does not carry still gets
-        // a row, because the game's own editor shows it: GECK's creature dialog
-        // is a fixed form, and the Template dropdown is there on a creature that
-        // has no `TPLT` — 428 of Fallout: New Vegas's 1,578 creatures, mostly
-        // the `AudioTemplate*` records — where a modder picks a template to give
-        // it one. Skipping it made the subrecord uneditable for them, since a
-        // subrecord nobody draws is a subrecord nobody can set.
-        //
-        // The rows are drawn inside the section's own group rather than in a
-        // group of their own: a creature without `TPLT` still has its ten
-        // template checkboxes to edit, and a second "Template Data" heading
-        // above one dropdown made the section look like it appeared twice.
-        //
-        // `set_sub` appends a subrecord the record does not have yet, so the
-        // write path already works once there is a widget to drive it.
-        claimed.extend(named.iter().copied());
-        ui.add_space(if si == 0 { 0.0 } else { 6.0 });
-        let group = ui.group(|ui| {
-            // The heading, unless the section says its rows name themselves.
-            // The creature's Identity section is the case: "Editor ID", "Name"
-            // and "Script" are already labels, so a heading reading "Identity"
-            // above them says nothing they did not.
-            if !section.untitled {
-                ui.strong(&section.title);
-                ui.add_space(4.0);
+        if section.side_by_side {
+            match chunks.last_mut() {
+                Some(SecChunk::SideBySide(list)) => list.push((si, section)),
+                _ => chunks.push(SecChunk::SideBySide(vec![(si, section)])),
             }
-            match section.widget.as_deref() {
-                // A named widget draws the section its own way. The name is looked
-                // up here rather than trusted, so a typo is a message on the page
-                // instead of a section that silently looks like the default.
-                Some(name) if name == "repeat" => {
-                    for i in &named {
-                        repeat_widget(
-                            ui,
-                            session,
-                            form_id,
-                            &rec_sig,
-                            &sig4(&views[*i].sig),
-                            views[*i].block.as_deref(),
-                            edit,
-                        );
-                    }
-                }
-                Some(name) => {
-                    ui.colored_label(
-                        egui::Color32::RED,
-                        format!("the schema names widget {name:?}, which this build does not have"),
-                    );
-                }
-                None => {
-                    enum SecItem {
-                        Row {
-                            view_idx: usize,
-                            row: nvre_edit::encode::Row,
-                            is_flags: bool,
-                        },
-                        Absent([u8; 4]),
-                    }
-                    let mut items = Vec::new();
-                    for tag_str in &section.subs {
-                        let tag = sig4(tag_str);
-                        if let Some(i) = views.iter().position(|v| v.sig == *tag_str) {
-                            let rows = nvre_edit::encode::rows(
-                                &session.schema,
-                                &rec_sig,
-                                &tag,
-                                views[i].block.as_deref(),
-                                &views[i].value,
+        } else {
+            chunks.push(SecChunk::Single((si, section)));
+        }
+    }
+
+    for (ci, chunk) in chunks.iter().enumerate() {
+        if ci > 0 {
+            ui.add_space(6.0);
+        }
+        match chunk {
+            SecChunk::Single((si, section)) => {
+                render_single_section(
+                    ui,
+                    session,
+                    form_id,
+                    rec_sig,
+                    &views,
+                    &edited,
+                    edit,
+                    *si,
+                    section,
+                    bounds_out,
+                );
+            }
+            SecChunk::SideBySide(list) => {
+                ui.horizontal_top(|ui| {
+                    for (idx, (si, section)) in list.iter().enumerate() {
+                        if idx > 0 {
+                            ui.add_space(8.0);
+                        }
+                        ui.vertical(|ui| {
+                            render_single_section(
+                                ui,
+                                session,
+                                form_id,
+                                rec_sig,
+                                &views,
+                                &edited,
+                                edit,
+                                *si,
+                                section,
+                                bounds_out,
                             );
-                            let shown: Vec<nvre_edit::encode::Row> = match section.fields.get(&views[i].sig) {
-                                None => rows,
-                                Some(paths) => {
-                                    let mut out = Vec::new();
-                                    for path in paths {
-                                        if let Some(row) = rows.iter().find(|r| &r.path == path) {
-                                            out.push(row.clone());
-                                        }
-                                    }
-                                    out
-                                }
-                            };
-                            for row in shown {
-                                let is_flags = get_path(&views[i].value, &row.path).is_some_and(|current| {
-                                    let flags = flag_bits(
-                                        &session.schema,
-                                        &rec_sig,
-                                        &views[i].sig,
-                                        views[i].block.as_deref(),
-                                        &row.path,
-                                    );
-                                    matches!(current, serde_json::Value::Object(_)) && !flags.is_empty()
-                                });
-                                items.push(SecItem::Row {
-                                    view_idx: i,
-                                    row,
-                                    is_flags,
-                                });
-                            }
-                        } else {
-                            items.push(SecItem::Absent(tag));
-                        }
+                        });
                     }
-
-                    let mut runs: Vec<Vec<SecItem>> = Vec::new();
-                    for item in items {
-                        let is_flags = match &item {
-                            SecItem::Row { is_flags, .. } => *is_flags,
-                            SecItem::Absent(_) => false,
-                        };
-                        match runs.last_mut() {
-                            Some(run) => {
-                                let run_flags = match &run[0] {
-                                    SecItem::Row { is_flags, .. } => *is_flags,
-                                    SecItem::Absent(_) => false,
-                                };
-                                if run_flags == is_flags {
-                                    run.push(item);
-                                } else {
-                                    runs.push(vec![item]);
-                                }
-                            }
-                            None => runs.push(vec![item]),
-                        }
-                    }
-
-                    for (ri, run) in runs.iter().enumerate() {
-                        if ri > 0 {
-                            ui.add_space(6.0);
-                        }
-                        let run_flags = match &run[0] {
-                            SecItem::Row { is_flags, .. } => *is_flags,
-                            SecItem::Absent(_) => false,
-                        };
-                        if run_flags {
-                            for item in run {
-                                if let SecItem::Row { view_idx, row, .. } = item {
-                                    let view = &views[*view_idx];
-                                    let Some(current) = get_path(&view.value, &row.path) else { continue };
-                                    field_editor(
-                                        ui,
-                                        session,
-                                        edit,
-                                        form_id,
-                                        view,
-                                        &rec_sig,
-                                        &row.path,
-                                        current,
-                                        section.flags_bits
-                                            .get(&format!("{}.{}", view.sig, row.path))
-                                            .map(Vec::as_slice),
-                                    );
-                                }
-                            }
-                        } else {
-                            egui::Grid::new(("sec_grid", si, ri))
-                                .num_columns(2)
-                                .striped(true)
-                                .show(ui, |ui| {
-                                    for item in run {
-                                        match item {
-                                            SecItem::Row { view_idx, row, .. } => {
-                                                let view = &views[*view_idx];
-                                                let Some(current) = get_path(&view.value, &row.path) else { continue };
-                                                draw_field_row(
-                                                    ui,
-                                                    session,
-                                                    edit,
-                                                    form_id,
-                                                    view,
-                                                    &rec_sig,
-                                                    row,
-                                                    current,
-                                                    &section.flags_bits,
-                                                );
-                                            }
-                                            SecItem::Absent(tag) => {
-                                                let name = session
-                                                    .schema
-                                                    .lookup(&rec_sig, tag)
-                                                    .map(|d| d.name.clone())
-                                                    .unwrap_or_else(|| nvre_util::tag_str(tag));
-                                                ui.label(&name);
-                                                let targets = crate::object_editor::formid_targets_in(
-                                                    &session.schema,
-                                                    &rec_sig,
-                                                    tag,
-                                                    None,
-                                                    "",
-                                                );
-                                                let items = session.records_of_any(&targets);
-                                                let mut chosen: Option<u32> = None;
-                                                let none_label = if *tag == *b"ZNAM" { "Default" } else { "NONE" };
-                                                crate::object_editor::record_dropdown_with_none(
-                                                    ui,
-                                                    &format!("absent_{}", nvre_util::tag_str(tag)),
-                                                    &items,
-                                                    &mut chosen,
-                                                    none_label,
-                                                );
-                                                if let Some(fid) = chosen {
-                                                    session.doc.set_sub(form_id, tag, fid.to_le_bytes().to_vec());
-                                                }
-                                                ui.end_row();
-                                            }
-                                        }
-                                    }
-                                });
-                        }
-                    }
-                }
-            }
-        });
-        // The object bounds live on the Model List tab now, and the window
-        // still wants to know where they landed — the same reason it knew
-        // before: a caller that needs to bring them into view should not have
-        // to search the page for them.
-        if section.subs.iter().any(|t| t == "OBND") {
-            if let Some(out) = bounds_out {
-                *out.lock().unwrap_or_else(|e| e.into_inner()) = Some(group.response.rect);
+                });
             }
         }
     }
@@ -1587,6 +1410,221 @@ fn subrecord_rows_on_fields(
 /// The caller built each run from one kind, so the first row is the answer. A
 /// flags word decodes to an object and every other field does not, which is the
 /// same test [`field_editor`] makes to choose its widget.
+fn render_single_section(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    rec_sig: [u8; 4],
+    views: &[nvre_edit::encode::SubView],
+    edited: &[[u8; 4]],
+    edit: &mut FieldEdit,
+    si: usize,
+    section: &nvre_esm::schema::SectionDef,
+    bounds_out: Option<&std::sync::Mutex<Option<egui::Rect>>>,
+) {
+    let mut named: Vec<usize> = Vec::new();
+    for tag in &section.subs {
+        for (i, v) in views.iter().enumerate() {
+            if &v.sig == tag && !named.contains(&i) {
+                named.push(i);
+            }
+        }
+    }
+    let group = ui.group(|ui| {
+        if !section.untitled {
+            ui.strong(&section.title);
+            ui.add_space(4.0);
+        }
+        match section.widget.as_deref() {
+            Some(name) if name == "repeat" => {
+                for i in &named {
+                    repeat_widget(
+                        ui,
+                        session,
+                        form_id,
+                        &rec_sig,
+                        &sig4(&views[*i].sig),
+                        views[*i].block.as_deref(),
+                        edit,
+                    );
+                }
+            }
+            Some(name) => {
+                ui.colored_label(
+                    egui::Color32::RED,
+                    format!("the schema names widget {name:?}, which this build does not have"),
+                );
+            }
+            None => {
+                enum SecItem {
+                    Row {
+                        view_idx: usize,
+                        row: nvre_edit::encode::Row,
+                        is_flags: bool,
+                    },
+                    Absent([u8; 4]),
+                }
+                let mut items = Vec::new();
+                for tag_str in &section.subs {
+                    let tag = sig4(tag_str);
+                    if let Some(i) = views.iter().position(|v| v.sig == *tag_str) {
+                        let rows = nvre_edit::encode::rows(
+                            &session.schema,
+                            &rec_sig,
+                            &tag,
+                            views[i].block.as_deref(),
+                            &views[i].value,
+                        );
+                        let shown: Vec<nvre_edit::encode::Row> = match section.fields.get(&views[i].sig) {
+                            None => rows,
+                            Some(paths) => {
+                                let mut out = Vec::new();
+                                for path in paths {
+                                    if let Some(row) = rows.iter().find(|r| &r.path == path) {
+                                        out.push(row.clone());
+                                    }
+                                }
+                                out
+                            }
+                        };
+                        for row in shown {
+                            let is_flags = get_path(&views[i].value, &row.path).is_some_and(|current| {
+                                let flags = flag_bits(
+                                    &session.schema,
+                                    &rec_sig,
+                                    &views[i].sig,
+                                    views[i].block.as_deref(),
+                                    &row.path,
+                                );
+                                matches!(current, serde_json::Value::Object(_)) && !flags.is_empty()
+                            });
+                            items.push(SecItem::Row {
+                                view_idx: i,
+                                row,
+                                is_flags,
+                            });
+                        }
+                    } else {
+                        items.push(SecItem::Absent(tag));
+                    }
+                }
+
+                let mut runs: Vec<Vec<SecItem>> = Vec::new();
+                for item in items {
+                    let is_flags = match &item {
+                        SecItem::Row { is_flags, .. } => *is_flags,
+                        SecItem::Absent(_) => false,
+                    };
+                    match runs.last_mut() {
+                        Some(run) => {
+                            let run_flags = match &run[0] {
+                                SecItem::Row { is_flags, .. } => *is_flags,
+                                SecItem::Absent(_) => false,
+                            };
+                            if run_flags == is_flags {
+                                run.push(item);
+                            } else {
+                                runs.push(vec![item]);
+                            }
+                        }
+                        None => runs.push(vec![item]),
+                    }
+                }
+
+                for (ri, run) in runs.iter().enumerate() {
+                    if ri > 0 {
+                        ui.add_space(6.0);
+                    }
+                    let run_flags = match &run[0] {
+                        SecItem::Row { is_flags, .. } => *is_flags,
+                        SecItem::Absent(_) => false,
+                    };
+                    if run_flags {
+                        for item in run {
+                            if let SecItem::Row { view_idx, row, .. } = item {
+                                let view = &views[*view_idx];
+                                let Some(current) = get_path(&view.value, &row.path) else { continue };
+                                field_editor(
+                                    ui,
+                                    session,
+                                    edit,
+                                    form_id,
+                                    view,
+                                    &rec_sig,
+                                    &row.path,
+                                    current,
+                                    section.flags_bits
+                                        .get(&format!("{}.{}", view.sig, row.path))
+                                        .map(Vec::as_slice),
+                                );
+                            }
+                        }
+                    } else {
+                        egui::Grid::new(("sec_grid", si, ri))
+                            .num_columns(2)
+                            .striped(true)
+                            .show(ui, |ui| {
+                                for item in run {
+                                    match item {
+                                        SecItem::Row { view_idx, row, .. } => {
+                                            let view = &views[*view_idx];
+                                            let Some(current) = get_path(&view.value, &row.path) else { continue };
+                                            draw_field_row(
+                                                ui,
+                                                session,
+                                                edit,
+                                                form_id,
+                                                view,
+                                                &rec_sig,
+                                                row,
+                                                current,
+                                                &section.flags_bits,
+                                            );
+                                        }
+                                        SecItem::Absent(tag) => {
+                                            let name = session
+                                                .schema
+                                                .lookup(&rec_sig, tag)
+                                                .map(|d| d.name.clone())
+                                                .unwrap_or_else(|| nvre_util::tag_str(tag));
+                                            ui.label(&name);
+                                            let targets = crate::object_editor::formid_targets_in(
+                                                &session.schema,
+                                                &rec_sig,
+                                                tag,
+                                                None,
+                                                "",
+                                            );
+                                            let items = session.records_of_any(&targets);
+                                            let mut chosen: Option<u32> = None;
+                                            let none_label = if *tag == *b"ZNAM" { "Default" } else { "NONE" };
+                                            crate::object_editor::record_dropdown_with_none(
+                                                ui,
+                                                &format!("absent_{}", nvre_util::tag_str(tag)),
+                                                &items,
+                                                &mut chosen,
+                                                none_label,
+                                            );
+                                            if let Some(fid) = chosen {
+                                                session.doc.set_sub(form_id, tag, fid.to_le_bytes().to_vec());
+                                            }
+                                            ui.end_row();
+                                        }
+                                    }
+                                }
+                            });
+                    }
+                }
+            }
+        }
+    });
+    if section.subs.iter().any(|t| t == "OBND") {
+        if let Some(out) = bounds_out {
+            *out.lock().unwrap_or_else(|e| e.into_inner()) = Some(group.response.rect);
+        }
+    }
+}
+
 fn run_is_flags(
     run: &[&nvre_edit::encode::Row],
     view: &nvre_edit::encode::SubView,

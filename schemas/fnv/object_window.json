@@ -769,6 +769,7 @@
         "attributes.luck"
        ]
       },
+      "side_by_side": true,
       "subs": [
        "DATA"
       ],
@@ -789,6 +790,7 @@
         "stealth_skill"
        ]
       },
+      "side_by_side": true,
       "subs": [
        "DATA",
        "ACBS",

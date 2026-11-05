@@ -683,6 +683,9 @@ pub struct SectionDef {
     /// restatement of a shared heading, and a heading that is never drawn is
     /// not a heading that can be dropped from the schema.
     pub untitled: bool,
+    /// Whether this section is laid out side-by-side with adjacent sections
+    /// declaring `side_by_side: true` (e.g. Attributes and Skills & Health on Stats).
+    pub side_by_side: bool,
 }
 
 /// A named set of sections a category can build its page from.
@@ -1964,6 +1967,15 @@ impl Schema {
                     ));
                 }
             };
+            let side_by_side = match sec.get("side_by_side") {
+                None => false,
+                Some(Json::Bool(b)) => *b,
+                Some(_) => {
+                    return Err(format!(
+                        "{owner}.sections[{i}].side_by_side is not a boolean"
+                    ));
+                }
+            };
             out.push(SectionDef {
                 title: title.to_string(),
                 subs: tags,
@@ -1972,6 +1984,7 @@ impl Schema {
                 flags_bits,
                 widget,
                 untitled,
+                side_by_side,
             });
         }
         Ok(out)
@@ -2069,6 +2082,9 @@ impl Schema {
                     // template's would draw a heading the game removed.
                     if section.untitled {
                         existing.untitled = true;
+                    }
+                    if section.side_by_side {
+                        existing.side_by_side = true;
                     }
                 }
                 None => out.push(section.clone()),
