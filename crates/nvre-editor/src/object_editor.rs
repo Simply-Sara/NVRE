@@ -742,7 +742,7 @@ pub fn body(
     state: &mut ObjectEditorState,
     pages: &mut Pages,
 ) -> BodyLayout {
-    let avail_h = (ui.available_height() - 48.0).max(200.0);
+    let avail_h = (ui.available_height() - 56.0).max(200.0);
     let sig_key = String::from_utf8_lossy(&state.sig).into_owned();
     // A page name wins over sections, because a page is the more specific
     // answer: it exists for the record types whose editing is not "show the

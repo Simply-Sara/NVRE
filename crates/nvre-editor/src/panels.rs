@@ -1496,7 +1496,7 @@ fn render_single_section(
                 // `available_height` inside a scroll area is the space left
                 // after what has already been drawn — the header, the tab
                 // strip — which is exactly the viewport the table should fill.
-                let viewport = ui.available_height().max(120.0);
+                let viewport = (ui.available_height() - 28.0).max(100.0);
                 animations_widget(ui, session, form_id, edit, viewport);
             }
             Some(name) => {

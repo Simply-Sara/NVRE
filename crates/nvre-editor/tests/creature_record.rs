@@ -131,7 +131,7 @@ fn the_traits_tab_shows_the_creature_type_and_the_stats_tab_does_not() {
     // the modder's record does not reload when they look at another tab.
     state.tab.chosen = Some("Stats".to_string());
     assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Stats"));
-    state.tab.chosen = Some("Traits".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Traits"));
     assert_eq!(state.edid, "VStreetCrBrahmin2");
 }
@@ -579,7 +579,7 @@ fn the_flag_checkboxes_wrap_onto_their_own_rows() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("General".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let bits = |key: &str| -> Vec<u32> {
         session
             .schema
@@ -662,7 +662,7 @@ fn the_identity_section_draws_no_title_and_no_bare_signature_labels() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("General".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     let drawn: Vec<&str> = drawn.iter().map(String::as_str).collect();
 
@@ -731,7 +731,7 @@ fn the_template_picker_comes_before_the_template_checkboxes() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("General".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     // Everything below the "Template Data" heading and above the next group, so
     // the assertion is about this section and not about the Identity section's
@@ -789,7 +789,7 @@ fn a_creature_with_no_template_shows_none() {
     );
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
-    state.tab.chosen = Some("General".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     let heading = rows
         .iter()
@@ -825,7 +825,7 @@ fn a_flags_field_draws_no_row_label_of_its_own() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("General".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     for path in ["flags", "template_flags"] {
         assert!(
@@ -931,7 +931,7 @@ fn a_creature_with_no_template_still_gets_the_picker() {
     session.open_object(fid, *b"CREA");
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
-    state.tab.chosen = Some("General".to_string());
+    state.tab.chosen = Some("Animation".to_string());
 
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     let heading = rows
@@ -1315,7 +1315,7 @@ fn pc_level_mult_sits_on_the_leveling_section() {
         stats_rows.iter().any(|(t, _)| t == "PC Level Mult"),
         "no PC Level Mult checkbox on the Stats tab: {stats_rows:?}"
     );
-    state.tab.chosen = Some("Traits".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     assert!(
         !traits_rows.iter().any(|(t, _)| t == "PC Level Mult"),
@@ -1377,7 +1377,7 @@ fn the_blood_flags_sit_on_the_blood_section() {
         blood_rows.iter().any(|(t, _)| t == "Impact Dataset"),
         "the Blood section lost its other subrecords: {blood_rows:?}"
     );
-    state.tab.chosen = Some("Traits".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     for gone in ["No Blood Spray", "No Blood Decal"] {
         assert!(
@@ -1467,7 +1467,7 @@ fn every_link_dropdown_has_one_clear_label() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Traits".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
     // One label each, under the schema's own names.
@@ -1551,7 +1551,7 @@ fn the_traits_tab_draws_an_alignment_dropdown_for_acbs_karma() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Traits".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
     // The field label is "Alignment", not the raw field name "karma".
@@ -1596,7 +1596,7 @@ fn combat_style_dropdown_shows_the_records_combat_style() {
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
-    state.tab.chosen = Some("Traits".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
 
     // The Combat Style row shows the record's combat style, and its target type.
@@ -1641,7 +1641,7 @@ fn an_unset_combat_style_shows_default() {
     );
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
-    state.tab.chosen = Some("Traits".to_string());
+    state.tab.chosen = Some("Animation".to_string());
     let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     assert!(
         rows.iter().any(|(t, _)| t == "Default"),
@@ -3385,5 +3385,76 @@ fn the_animation_tab_has_one_scrollbar_and_it_is_the_tables() {
     assert!(
         rows_800 > rows_500,
         "more rows should be visible when window is taller (500px: {rows_500}, 800px: {rows_800})"
+    );
+}
+
+/// The footer actions (Apply Changes to Mod, Revert, Close) must fit cleanly
+/// inside the bottom of the window and not be cut off by the window's bottom edge.
+#[test]
+fn the_footer_buttons_fit_within_the_window_and_are_not_cut_off() {
+    let Some((mut session, _state)) = open_creature() else {
+        return;
+    };
+    let fid = 0x000E_84A2u32;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Animation".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let win_h = 500.0;
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, win_h),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                ui.group(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.strong("Type: CREA");
+                        ui.separator();
+                        ui.label("FormID: 000E84A2");
+                    });
+                    ui.add_space(4.0);
+                });
+                ui.add_space(6.0);
+                let _ = object_editor::body(ui, &mut session, &mut state, &mut pages);
+                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.add_sized(
+                        [160.0, 28.0],
+                        nvre_editor::egui::Button::new("Apply Changes to Mod"),
+                    );
+                    ui.add_sized([100.0, 28.0], nvre_editor::egui::Button::new("Revert"));
+                    ui.add_sized([100.0, 28.0], nvre_editor::egui::Button::new("Close"));
+                });
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+    let mut checked_buttons = 0;
+    for (_, n) in u.nodes.iter() {
+        if let Some(lbl) = n.label() {
+            if lbl == "Apply Changes to Mod" || lbl == "Close" || lbl == "Revert" {
+                let b = n.bounds().expect("footer button has bounds");
+                assert!(
+                    b.y1 <= (win_h - 4.0) as f64,
+                    "{lbl} button is cut off: ends at y1={}, window height is {win_h}",
+                    b.y1
+                );
+                checked_buttons += 1;
+            }
+        }
+    }
+    assert_eq!(
+        checked_buttons, 3,
+        "all three footer buttons must be present and checked"
     );
 }
