@@ -2546,3 +2546,120 @@ fn the_inventory_tab_locks_rank_global_until_an_owner_is_set() {
         "the Rank / Global column must not be a picker with no owner set: {combos:?}"
     );
 }
+
+/// A faction that defines no ranks has nothing to offer, so the Rank / Global
+/// cell reads None and is inert rather than falling back to a raw 0..255 number
+/// the faction does not define.
+///
+/// No creature in `FalloutNV.esm` carries a `COED` with a faction owner, so the
+/// owner is written onto the document first and the table is drawn against it —
+/// the same path an edit through the table itself would take.
+#[test]
+fn the_inventory_tab_shows_none_when_the_owner_faction_defines_no_ranks() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let fid = INVENTORY_FIXTURE;
+    session.open_object(fid, *b"CREA");
+    // EJunkieFaction: a FACT with no RNAM.
+    let unranked = session
+        .records_of(*b"FACT")
+        .iter()
+        .find(|(f, name)| *f == 0x000F_E89A || name.contains("EJunkie"))
+        .map(|(f, _)| *f)
+        .expect("a faction with no ranks");
+    assert!(
+        session
+            .resolved_record(unranked)
+            .and_then(|r| r.subrecords().ok())
+            .map(|s| s.iter().filter(|s| &s.sig == b"RNAM").count())
+            .unwrap_or(0)
+            == 0,
+        "the fixture faction really has no ranks"
+    );
+
+    // Point the fixture's COED owner at it.
+    let run: Vec<([u8; 4], Vec<u8>)> = subs(&session, fid)
+        .iter()
+        .filter(|s| &s.sig == b"CNTO" || &s.sig == b"COED")
+        .map(|s| (s.sig, s.data.clone()))
+        .collect();
+    let mut new_run = run.clone();
+    let coed_in_run = new_run
+        .iter()
+        .position(|(s, _)| s == b"COED")
+        .expect("the fixture has a COED");
+    new_run[coed_in_run].1[..4].copy_from_slice(&unranked.to_le_bytes());
+    session
+        .doc
+        .set_sub_sequence(fid, vec![*b"CNTO", *b"COED"], new_run);
+
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Inventory".to_string());
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1200.0, 3000.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                nvre_editor::egui::ScrollArea::vertical()
+                    .id_salt("obj_scroll")
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        object_editor::body(ui, &mut session, &mut state, &mut pages);
+                    });
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let u = out.platform_output.accesskit_update.unwrap();
+
+    let top_y = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.label().filter(|l| *l == "✖").and_then(|_| n.bounds()))
+        .map(|b| b.y0 as f32)
+        .fold(f32::INFINITY, f32::min);
+
+    // Row 0's Rank / Global cell reads None.
+    let rank_cell = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| {
+            let l = n.label().or_else(|| n.value())?;
+            let b = n.bounds()?;
+            Some((l, b.x0 as f32, b.y0 as f32))
+        })
+        .find(|(l, x, y)| *x > 1050.0 && (*y - top_y).abs() < 10.0);
+    assert!(
+        matches!(rank_cell, Some((l, _, _)) if l == "None"),
+        "an unranked faction owner reads None: {rank_cell:?}"
+    );
+
+    // And it is not a picker.
+    let combos: Vec<&str> = u
+        .nodes
+        .iter()
+        .filter(|(_, n)| n.role() == nvre_editor::egui::accesskit::Role::ComboBox)
+        .filter_map(|(_, n)| {
+            let b = n.bounds()?;
+            if b.x0 as f32 > 1050.0 && (b.y0 as f32 - top_y).abs() < 10.0 {
+                n.value()
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert!(
+        combos.is_empty(),
+        "an unranked faction owner's rank cell is not clickable: {combos:?}"
+    );
+}

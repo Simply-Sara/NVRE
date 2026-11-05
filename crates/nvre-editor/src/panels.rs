@@ -3034,19 +3034,18 @@ pub fn inventory_widget(
                                 extras_changed[i] = true;
                             }
                         } else {
-                            // A faction the schema gives no named ranks for: fall
-                            // back to the raw number rather than blocking the edit.
-                            let mut rank = pending_rank[i];
-                            if ui
-                                .add_sized(
-                                    [56.0, 18.0],
-                                    egui::DragValue::new(&mut rank).range(0..=255),
-                                )
-                                .changed()
-                            {
-                                pending_rank[i] = rank;
-                                extras_changed[i] = true;
-                            }
+                            // A faction the schema gives no named ranks for: there is
+                            // nothing to pick, so the cell reads None and is inert.
+                            // (The rank itself still lives in the bytes and still
+                            // round-trips — this only refuses to offer a choice
+                            // between values the faction does not define.)
+                            let mut none_label = "None".to_string();
+                            ui.add_enabled(
+                                false,
+                                egui::TextEdit::singleline(&mut none_label)
+                                    .id_salt(format!("inv_{i}_rank_none"))
+                                    .desired_width(100.0),
+                            );
                         }
                     } else {
                         let mut glob_opt = (pending_rank[i] != 0).then_some(pending_rank[i]);
