@@ -1795,6 +1795,15 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
         "Factions tab still exposes raw compiler padding: {rows:?}"
     );
 
+    // Each faction row must be stacked vertically on its own line (not stretched horizontally):
+    let y_animal = rows.iter().find(|(t, _)| t == "AnimalFriendFaction").map(|(_, y)| *y).expect("AnimalFriendFaction");
+    let y_brahmin = rows.iter().find(|(t, _)| t == "BrahminFaction").map(|(_, y)| *y).expect("BrahminFaction");
+    let y_hit = rows.iter().find(|(t, _)| t == "CreatureHitBrahmin").map(|(_, y)| *y).expect("CreatureHitBrahmin");
+    assert!(
+        y_animal < y_brahmin && y_brahmin < y_hit,
+        "Faction rows must be on separate lines: animal={y_animal}, brahmin={y_brahmin}, hit={y_hit}"
+    );
+
     // FormID targeting:
     let targets = nvre_editor::object_editor::formid_targets_in(
         &session.schema,

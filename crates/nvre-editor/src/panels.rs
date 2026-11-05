@@ -2399,42 +2399,42 @@ pub fn repeat_widget(
                             {
                                 remove_at = Some(i);
                             }
-                            if let serde_json::Value::Object(fields) = value {
-                                let mut next = value.clone();
-                                let mut touched = false;
-                                for (name, fv) in fields {
-                                    if name == "unused" {
-                                        continue;
-                                    }
-                                    let path = if name.is_empty() {
-                                        String::new()
-                                    } else {
-                                        name.clone()
-                                    };
-                                    if inline_value(
-                                        ui, session, rec_sig, sub_sig, block, i, &path, fv, &mut next,
-                                    ) {
-                                        touched = true;
-                                    }
+                        });
+                        if let serde_json::Value::Object(fields) = value {
+                            let mut next = value.clone();
+                            let mut touched = false;
+                            for (name, fv) in fields {
+                                if name == "unused" {
+                                    continue;
                                 }
-                                ui.end_row();
-                                if touched {
-                                    if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
-                                        &session.schema,
-                                        rec_sig,
-                                        sub_sig,
-                                        &next,
-                                        Some(bytes.len()),
-                                        block,
-                                    ) {
-                                        let mut list: Vec<Vec<u8>> =
-                                            rows.iter().map(|(b, _)| b.clone()).collect();
-                                        list[i] = bytes;
-                                        want = Some(list);
-                                    }
+                                let path = if name.is_empty() {
+                                    String::new()
+                                } else {
+                                    name.clone()
+                                };
+                                if inline_value(
+                                    ui, session, rec_sig, sub_sig, block, i, &path, fv, &mut next,
+                                ) {
+                                    touched = true;
                                 }
                             }
-                        });
+                            if touched {
+                                if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
+                                    &session.schema,
+                                    rec_sig,
+                                    sub_sig,
+                                    &next,
+                                    Some(bytes.len()),
+                                    block,
+                                ) {
+                                    let mut list: Vec<Vec<u8>> =
+                                        rows.iter().map(|(b, _)| b.clone()).collect();
+                                    list[i] = bytes;
+                                    want = Some(list);
+                                }
+                            }
+                        }
+                        ui.end_row();
                     }
                 });
         } else {
