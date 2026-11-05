@@ -785,8 +785,43 @@
      },
      {
       "fields": {
+       "AIDT": [
+        "aggression",
+        "confidence",
+        "energy_level",
+        "responsibility",
+        "mood",
+        "assistance"
+       ]
+      },
+      "subs": [
+       "AIDT"
+      ],
+      "tab": "AI Data",
+      "title": "AI Attributes"
+     },
+     {
+      "fields": {
+       "AIDT": [
+        "aggro_radius_behavior",
+        "aggro_radius"
+       ]
+      },
+      "subs": [
+       "AIDT"
+      ],
+      "tab": "AI Data",
+      "title": "Aggro Radius"
+     },
+     {
+      "fields": {
        "ACBS": [
         "barter_gold"
+       ],
+       "AIDT": [
+        "services",
+        "teaches",
+        "maximum_training_level"
        ]
       },
       "subs": [
@@ -794,7 +829,7 @@
        "AIDT"
       ],
       "tab": "AI Data",
-      "title": "AI Data"
+      "title": "Services"
      },
      {
       "subs": [

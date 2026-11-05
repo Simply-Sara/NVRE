@@ -1481,7 +1481,10 @@ fn render_single_section(
                             &views[i].value,
                         );
                         let shown: Vec<nvre_edit::encode::Row> = match section.fields.get(&views[i].sig) {
-                            None => rows,
+                            None => rows
+                                .into_iter()
+                                .filter(|r| r.path != "unused" && !r.path.ends_with(".unused"))
+                                .collect(),
                             Some(paths) => {
                                 let mut out = Vec::new();
                                 for path in paths {
@@ -1549,6 +1552,9 @@ fn render_single_section(
                             if let SecItem::Row { view_idx, row, .. } = item {
                                 let view = &views[*view_idx];
                                 let Some(current) = get_path(&view.value, &row.path) else { continue };
+                                if row.path == "services" {
+                                    ui.label("Buys / Sells and Services:");
+                                }
                                 field_editor(
                                     ui,
                                     session,
@@ -1714,6 +1720,16 @@ fn draw_field_row(
             "fatigue" => "Fatigue",
             "speed_multiplier" => "Speed Mult %",
             "barter_gold" => "Barter Gold",
+            "aggression" => "Aggression",
+            "confidence" => "Confidence",
+            "energy_level" => "Energy Level",
+            "responsibility" => "Responsibility",
+            "mood" => "Mood",
+            "assistance" => "Assistance",
+            "aggro_radius_behavior" => "Aggro Radius Behavior",
+            "aggro_radius" => "Aggro Radius",
+            "teaches" => "Teaches",
+            "maximum_training_level" => "Max Training Level",
             other => other,
         }
     };
@@ -2029,6 +2045,32 @@ fn field_editor(
 
     if !variants.is_empty() {
         if let Some(raw) = current.get("value").and_then(|v| v.as_i64()) {
+            let is_bool_enum = variants.len() == 2
+                && variants.iter().any(|(v, n)| *v == 0 && n == "False")
+                && variants.iter().any(|(v, n)| *v == 1 && n == "True");
+            if is_bool_enum {
+                let mut checked = raw != 0;
+                if ui.checkbox(&mut checked, "").changed() {
+                    let picked = if checked { 1 } else { 0 };
+                    let mut obj = serde_json::Map::new();
+                    obj.insert("value".into(), serde_json::json!(picked));
+                    obj.insert(
+                        "name".into(),
+                        serde_json::json!(if checked { "True" } else { "False" }),
+                    );
+                    edit.last = Some((sig, path.to_string()));
+                    match session.set_object_field(
+                        form_id,
+                        &sig,
+                        path,
+                        serde_json::Value::Object(obj),
+                    ) {
+                        Ok(()) => edit.error = None,
+                        Err(e) => edit.error = Some(e),
+                    }
+                }
+                return;
+            }
             let cur_name = variants
                 .iter()
                 .find(|(v, _)| *v == raw)
@@ -2597,6 +2639,24 @@ fn inline_value(
         nvre_edit::encode::enum_values_at(&session.schema, rec_sig, sub_sig, block, path);
     if !variants.is_empty() {
         if let Some(raw) = value.get("value").and_then(|v| v.as_i64()) {
+            let is_bool_enum = variants.len() == 2
+                && variants.iter().any(|(v, n)| *v == 0 && n == "False")
+                && variants.iter().any(|(v, n)| *v == 1 && n == "True");
+            if is_bool_enum {
+                let mut checked = raw != 0;
+                if ui.checkbox(&mut checked, "").changed() {
+                    let picked = if checked { 1 } else { 0 };
+                    let mut o = serde_json::Map::new();
+                    o.insert("value".into(), serde_json::json!(picked));
+                    o.insert(
+                        "name".into(),
+                        serde_json::json!(if checked { "True" } else { "False" }),
+                    );
+                    set_inline_field(next, path, serde_json::Value::Object(o));
+                    return true;
+                }
+                return false;
+            }
             let mut picked = raw;
             let cur = variants
                 .iter()

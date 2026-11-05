@@ -2015,3 +2015,35 @@ fn the_factions_tab_renders_and_adds_when_actor_has_no_factions() {
     let snams_after = rec_after.subrecords().unwrap().iter().filter(|s| &s.sig == b"SNAM").count();
     assert_eq!(snams_after, 1, "+ Add Faction must add the first SNAM row to an actor with 0 factions");
 }
+
+#[test]
+fn the_ai_data_tab_renders_sections_geck_labels_and_checkbox() {
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    state.tab.chosen = Some("AI Data".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    // Section headers:
+    assert!(rows.iter().any(|(t, _)| t == "AI Attributes"), "missing 'AI Attributes' section: {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Aggro Radius"), "missing 'Aggro Radius' section: {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Services"), "missing 'Services' section: {rows:?}");
+
+    // GECK field labels:
+    assert!(rows.iter().any(|(t, _)| t == "Aggression"), "missing 'Aggression': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Confidence"), "missing 'Confidence': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Energy Level"), "missing 'Energy Level': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Responsibility"), "missing 'Responsibility': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Mood"), "missing 'Mood': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Assistance"), "missing 'Assistance': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Aggro Radius Behavior"), "missing 'Aggro Radius Behavior': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Barter Gold"), "missing 'Barter Gold': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Teaches"), "missing 'Teaches': {rows:?}");
+    assert!(rows.iter().any(|(t, _)| t == "Max Training Level"), "missing 'Max Training Level': {rows:?}");
+
+    // No raw snake_case or padding:
+    assert!(!rows.iter().any(|(t, _)| t == "unused"), "compiler padding 'unused' must be hidden: {rows:?}");
+    assert!(!rows.iter().any(|(t, _)| t == "energy_level"), "snake_case 'energy_level' should be 'Energy Level'");
+    assert!(!rows.iter().any(|(t, _)| t == "maximum_training_level"), "snake_case 'maximum_training_level' should be 'Max Training Level'");
+    assert!(!rows.iter().any(|(t, _)| t == "aggro_radius_behavior"), "snake_case 'aggro_radius_behavior' should be 'Aggro Radius Behavior'");
+}
