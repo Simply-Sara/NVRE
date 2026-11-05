@@ -1809,3 +1809,34 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
         "SNAM.faction must target FACT"
     );
 }
+
+#[test]
+fn cralien_faction_displays_named_faction_not_none() {
+    // CrAlien (0x0016_90AC) belongs to WWAlienFaction (0x0017_4363).
+    // In raw ESM bytes, FormIDs in subrecords decode as hex strings ("0x00174363").
+    // If the editor only checks `as_u64()`, the FormID parser fails, causing the
+    // dropdown to resolve to `None` and display "NONE" instead of the faction name.
+    let data = std::env::var("NVRE_DATA").expect("NVRE_DATA");
+    let mut session = Session::open(
+        std::path::Path::new(&format!("{data}/FalloutNV.esm")),
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../schemas/fnv")),
+        vec!["FalloutNV.esm".to_string()],
+    )
+    .expect("session");
+
+    let fid = 0x0016_90ACu32; // CrAlien
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Factions".to_string());
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+
+    assert!(
+        rows.iter().any(|(t, _)| t == "WWAlienFaction"),
+        "CrAlien should display 'WWAlienFaction' in Factions table: {rows:?}"
+    );
+    assert!(
+        !rows.iter().any(|(t, _)| t == "NONE"),
+        "CrAlien has a valid faction and should not show 'NONE': {rows:?}"
+    );
+}

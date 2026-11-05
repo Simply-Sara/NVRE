@@ -1845,6 +1845,18 @@ fn sig4(s: &str) -> [u8; 4] {
 /// [`crate::session::Session::set_selected_field`], which re-encodes the whole
 /// subrecord; a refusal is shown in place and nothing is written.
 #[allow(clippy::too_many_arguments)]
+/// Extract a FormID (as a non-zero u32) from either a JSON integer or a hex string ("0x00174363").
+fn formid_from_json(v: &serde_json::Value) -> Option<u32> {
+    match v {
+        serde_json::Value::Number(n) => n.as_u64().map(|v| v as u32).filter(|fid| *fid != 0),
+        serde_json::Value::String(s) => {
+            let hex = s.strip_prefix("0x").unwrap_or(s.as_str());
+            u32::from_str_radix(hex, 16).ok().filter(|fid| *fid != 0)
+        }
+        _ => None,
+    }
+}
+
 fn field_editor(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
@@ -1889,7 +1901,7 @@ fn field_editor(
         path,
     );
     if is_formid {
-        let mut opt = current.as_u64().map(|v| v as u32).filter(|v| *v != 0);
+        let mut opt = formid_from_json(current);
         let items = session.records_of_any(&targets);
         ui.horizontal(|ui| {
             let none_label = if view.sig == "ZNAM" { "Default" } else { "NONE" };
@@ -1908,7 +1920,7 @@ fn field_editor(
                 ui.weak(targets.join(", "));
             }
         });
-        if opt != current.as_u64().map(|v| v as u32).filter(|v| *v != 0) {
+        if opt != formid_from_json(current) {
             changed = Some(match opt {
                 Some(fid) => serde_json::json!(fid),
                 None => serde_json::json!(0),
@@ -2517,7 +2529,7 @@ fn inline_value(
     if nvre_edit::encode::is_formid_field(&session.schema, rec_sig, sub_sig, block, path) {
         let targets =
             crate::object_editor::formid_targets_in(&session.schema, rec_sig, sub_sig, block, path);
-        let mut opt = value.as_u64().map(|v| v as u32).filter(|v| *v != 0);
+        let mut opt = formid_from_json(value);
         let before = opt;
         let items = session.records_of_any(&targets);
         crate::object_editor::record_dropdown(ui, &format!("{sub_sig:?}_{path}"), &items, &mut opt);
