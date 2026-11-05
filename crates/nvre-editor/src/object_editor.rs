@@ -969,11 +969,42 @@ pub fn record_dropdown(
         None => "NONE",
     };
 
+    let search_id = ui.make_persistent_id(id_salt).with("search");
+    let mut search: String =
+        ui.data_mut(|d| d.get_temp_mut_or_default::<String>(search_id).clone());
+
     ui.horizontal(|ui| {
         egui::ComboBox::from_id_salt(id_salt)
             .selected_text(cur_name)
             .width(200.0)
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
             .show_ui(ui, |ui| {
+                // Search filter box at the top of the dropdown.
+                let edit_resp = ui.add(
+                    egui::TextEdit::singleline(&mut search)
+                        .hint_text("Search...")
+                        .desired_width(190.0),
+                );
+                if edit_resp.changed() {
+                    ui.data_mut(|d| {
+                        *d.get_temp_mut_or_default::<String>(search_id) = search.clone()
+                    });
+                }
+                ui.add_space(2.0);
+
+                let query = search.trim().to_lowercase();
+                let filtered: Vec<&(u32, String)> = if query.is_empty() {
+                    items.iter().collect()
+                } else {
+                    items
+                        .iter()
+                        .filter(|(fid, name)| {
+                            name.to_lowercase().contains(&query)
+                                || format!("{fid:08X}").to_lowercase().contains(&query)
+                        })
+                        .collect()
+                };
+
                 // Virtualized item rendering: only lay out the rows visible in
                 // the popup's clip rectangle. When a dropdown holds hundreds or
                 // thousands of records, instantiating all of them every frame
@@ -984,18 +1015,20 @@ pub fn record_dropdown(
                 let clip = ui.clip_rect();
                 let start_y = ui.cursor().top();
 
-                let total_rows = items.len() + 1; // +1 for "NONE"
+                let total_rows = filtered.len() + 1; // +1 for "NONE"
                 let min_row = if clip.min.y > start_y {
                     ((clip.min.y - start_y) / step).floor() as usize
                 } else {
                     0
-                }.min(total_rows);
+                }
+                .min(total_rows);
 
                 let max_row = if clip.max.y > start_y {
                     (((clip.max.y - start_y) / step).ceil() as usize + 1).min(total_rows)
                 } else {
                     0
-                }.max(min_row);
+                }
+                .max(min_row);
 
                 if min_row > 0 {
                     ui.add_space(min_row as f32 * step);
@@ -1006,15 +1039,23 @@ pub fn record_dropdown(
                         if r == 0 {
                             if ui.selectable_label(opt.is_none(), "NONE").clicked() {
                                 *opt = None;
+                                ui.data_mut(|d| {
+                                    *d.get_temp_mut_or_default::<String>(search_id) = String::new()
+                                });
+                                ui.close();
                             }
                         } else {
-                            let (fid, name) = &items[r - 1];
+                            let (fid, name) = filtered[r - 1];
                             let is_sel = *opt == Some(*fid);
                             if ui
                                 .selectable_label(is_sel, format!("{name} ({fid:08X})"))
                                 .clicked()
                             {
                                 *opt = Some(*fid);
+                                ui.data_mut(|d| {
+                                    *d.get_temp_mut_or_default::<String>(search_id) = String::new()
+                                });
+                                ui.close();
                             }
                         }
                     });
