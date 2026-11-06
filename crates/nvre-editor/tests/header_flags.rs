@@ -60,10 +60,7 @@ fn the_same_bit_has_a_different_name_in_different_games() {
 fn a_quote_in_a_flag_name_survives() {
     // xEdit writes "Can''t Wait" (Pascal doubles a quote); the doubled quote has
     // to come back as one character, not truncate the name at the apostrophe.
-    assert_eq!(
-        bit_name("fnv", "CELL", 19).as_deref(),
-        Some("Can't Wait")
-    );
+    assert_eq!(bit_name("fnv", "CELL", 19).as_deref(), Some("Can't Wait"));
 }
 
 #[test]

@@ -128,9 +128,9 @@ fn main() {
                                 .args
                                 .get(1)
                                 .map(|s| match s {
-                                    Value::Identifier(x) => !f
-                                        .text_or_empty(*x)
-                                        .starts_with("::temp"),
+                                    Value::Identifier(x) => {
+                                        !f.text_or_empty(*x).starts_with("::temp")
+                                    }
                                     Value::None => true,
                                     _ => false,
                                 })
@@ -159,10 +159,9 @@ fn main() {
                             }
                         }
                         for k in 0..ins[i].varargs.len() - 1 {
-                            let (Some(d0), Some(d1)) = (
-                                def_of(&ins[i].varargs[k]),
-                                def_of(&ins[i].varargs[k + 1]),
-                            ) else {
+                            let (Some(d0), Some(d1)) =
+                                (def_of(&ins[i].varargs[k]), def_of(&ins[i].varargs[k + 1]))
+                            else {
                                 continue;
                             };
                             if d0 < d1 {

@@ -48,7 +48,11 @@ fn main() {
             let edid = subs
                 .iter()
                 .find(|x| x.sig == *b"EDID")
-                .map(|x| String::from_utf8_lossy(&x.data).trim_end_matches('\0').to_string())
+                .map(|x| {
+                    String::from_utf8_lossy(&x.data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                })
                 .unwrap_or_default();
             let source = subs
                 .iter()

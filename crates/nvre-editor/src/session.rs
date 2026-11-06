@@ -535,13 +535,21 @@ impl Session {
         let mut total_verts = 0;
 
         for path in &nif_paths {
-            let Some(Ok(bytes)) = vfs.read(path) else { continue };
-            let Ok(nif) = nvre_nif::NifFile::parse(&bytes, Some(&nif_schema)) else { continue };
+            let Some(Ok(bytes)) = vfs.read(path) else {
+                continue;
+            };
+            let Ok(nif) = nvre_nif::NifFile::parse(&bytes, Some(&nif_schema)) else {
+                continue;
+            };
             let dec = nvre_nif::scene::Decoded::new(&nif, &bytes, &nif_schema);
             let objects = nvre_nif::scene::scene_objects(&nif, &dec);
             for o in &objects {
-                if o.is_node { continue; }
-                let Some(Ok(block)) = dec.blocks.get(o.block) else { continue };
+                if o.is_node {
+                    continue;
+                }
+                let Some(Ok(block)) = dec.blocks.get(o.block) else {
+                    continue;
+                };
                 let data = block
                     .ref_at("data")
                     .and_then(|r| dec.get(r))
@@ -560,8 +568,16 @@ impl Session {
 
         if total_verts > 0 {
             Some((
-                [min[0].round() as i16, min[1].round() as i16, min[2].round() as i16],
-                [max[0].round() as i16, max[1].round() as i16, max[2].round() as i16],
+                [
+                    min[0].round() as i16,
+                    min[1].round() as i16,
+                    min[2].round() as i16,
+                ],
+                [
+                    max[0].round() as i16,
+                    max[1].round() as i16,
+                    max[2].round() as i16,
+                ],
             ))
         } else {
             None
@@ -3725,7 +3741,9 @@ pub fn placeable_base_objects(
             };
             let (edid, full) =
                 nvre_esm::inventory::names(r, plugin_strings).unwrap_or((None, None));
-            let label = full.or_else(|| edid.clone()).unwrap_or_else(|| format!("{global:08X}"));
+            let label = full
+                .or_else(|| edid.clone())
+                .unwrap_or_else(|| format!("{global:08X}"));
             // The Editor ID is matched as well as the label, which is the name
             // where there is one. `label` alone would hide every named record
             // behind its full name: a creature whose Editor ID is `BMRhonda`

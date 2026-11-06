@@ -144,7 +144,10 @@ fn main() {
     }
 
     println!("functions with parameters and temporaries: {seen}\n");
-    println!("{:>7} {:>7}  {:>6}  base distribution", "params", "unread", "n");
+    println!(
+        "{:>7} {:>7}  {:>6}  base distribution",
+        "params", "unread", "n"
+    );
     let mut keys: Vec<(&(usize, usize), &BTreeMap<i32, usize>)> = table.iter().collect();
     keys.sort_by_key(|(k, _)| **k);
     for ((params, unread), bases) in keys.iter().take(rows) {

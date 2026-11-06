@@ -72,7 +72,12 @@ fn main() {
         let Ok(mut entry) = zip.by_index(i) else {
             continue;
         };
-        if entry.name().to_ascii_lowercase().replace('\\', "/").ends_with(&needle) {
+        if entry
+            .name()
+            .to_ascii_lowercase()
+            .replace('\\', "/")
+            .ends_with(&needle)
+        {
             let mut buf = Vec::new();
             if std::io::Read::read_to_end(&mut entry, &mut buf).is_ok() {
                 source = Some(nvre_util::cp1252::decode(&buf));
@@ -167,8 +172,14 @@ fn main() {
                     .iter()
                     .map(|l| format!(
                         "{}:{}",
-                        mine.strings.get(l.name as usize).map(String::as_str).unwrap_or(""),
-                        mine.strings.get(l.type_name as usize).map(String::as_str).unwrap_or("")
+                        mine.strings
+                            .get(l.name as usize)
+                            .map(String::as_str)
+                            .unwrap_or(""),
+                        mine.strings
+                            .get(l.type_name as usize)
+                            .map(String::as_str)
+                            .unwrap_or("")
                     ))
                     .collect::<Vec<_>>()
             );

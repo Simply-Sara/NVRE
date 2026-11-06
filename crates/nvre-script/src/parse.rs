@@ -445,12 +445,10 @@ fn parse_line(line: usize, toks: &[Token]) -> Vec<Stmt> {
     // same reason a blank line is. The "refuse rather than guess" rule is
     // about a line that has a statement and cannot be read, not about one that
     // has none.
-    if words.iter().all(|t| {
-        !matches!(
-            t.kind,
-            Kind::Word | Kind::Number | Kind::String
-        )
-    }) {
+    if words
+        .iter()
+        .all(|t| !matches!(t.kind, Kind::Word | Kind::Number | Kind::String))
+    {
         return Vec::new();
     }
 

@@ -11,9 +11,13 @@ fn main() {
 
     let mut lens = std::collections::BTreeSet::new();
     for (fid, _) in session.records_of(*b"CREA").iter() {
-        let Some(rec) = session.resolved_record(*fid) else { continue };
+        let Some(rec) = session.resolved_record(*fid) else {
+            continue;
+        };
         let Ok(subs) = rec.subrecords() else { continue };
-        let Some(data_sub) = subs.iter().find(|s| &s.sig == b"DATA") else { continue };
+        let Some(data_sub) = subs.iter().find(|s| &s.sig == b"DATA") else {
+            continue;
+        };
         lens.insert(data_sub.data.len());
     }
     println!("CREA DATA lengths: {:?}", lens);

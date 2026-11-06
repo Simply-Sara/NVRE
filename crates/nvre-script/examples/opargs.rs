@@ -45,7 +45,11 @@ fn main() {
         let edid = subs
             .iter()
             .find(|x| x.sig == *b"EDID")
-            .map(|x| String::from_utf8_lossy(&x.data).trim_end_matches('\0').to_string())
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
             .unwrap_or_default();
         let Some(compiled) = subs.iter().find(|x| x.sig == *b"SCDA") else {
             return;
@@ -94,7 +98,10 @@ fn main() {
             .unwrap_or("");
         let mut rows: Vec<(&Vec<u8>, &(usize, String))> = args.iter().collect();
         rows.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
-        println!("{op:#06X} {name} — {} distinct argument strings", rows.len());
+        println!(
+            "{op:#06X} {name} — {} distinct argument strings",
+            rows.len()
+        );
         for (a, (n, unit)) in rows.iter().take(30) {
             println!("  {n:>5}  {:02X?}  ({unit})", a);
         }

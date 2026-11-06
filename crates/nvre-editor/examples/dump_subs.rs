@@ -54,10 +54,7 @@ fn main() {
             }
         }
         let subs: Vec<&str> = rec.subrecords.keys().map(String::as_str).collect();
-        println!(
-            "{}",
-            serde_json::json!({"sig": sig, "subs": subs})
-        );
+        println!("{}", serde_json::json!({"sig": sig, "subs": subs}));
     }
     let _ = ALL;
 }

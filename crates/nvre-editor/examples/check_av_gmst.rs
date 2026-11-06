@@ -10,11 +10,20 @@ fn main() {
     .expect("session");
 
     for (fid, _) in session.records_of(*b"GMST").iter() {
-        let Some(rec) = session.resolved_record(*fid) else { continue };
+        let Some(rec) = session.resolved_record(*fid) else {
+            continue;
+        };
         let Ok(subs) = rec.subrecords() else { continue };
-        let Some(edid) = subs.iter().find(|s| &s.sig == b"EDID") else { continue };
+        let Some(edid) = subs.iter().find(|s| &s.sig == b"EDID") else {
+            continue;
+        };
         let name = String::from_utf8_lossy(&edid.data);
-        if name.to_lowercase().contains("crit") || name.to_lowercase().contains("melee") || name.to_lowercase().contains("poison") || name.to_lowercase().contains("radresist") || name.to_lowercase().contains("unarm") {
+        if name.to_lowercase().contains("crit")
+            || name.to_lowercase().contains("melee")
+            || name.to_lowercase().contains("poison")
+            || name.to_lowercase().contains("radresist")
+            || name.to_lowercase().contains("unarm")
+        {
             println!("  GMST {name}");
         }
     }

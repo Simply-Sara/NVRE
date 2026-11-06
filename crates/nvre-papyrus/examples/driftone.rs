@@ -152,7 +152,10 @@ fn main() {
     }
     pairs.sort_by_key(|(b, _, _, _)| *b);
 
-    println!("{:>4} {:>4} {:>4}  {:<9} {}", "game", "mine", "k", "aligned", "function");
+    println!(
+        "{:>4} {:>4} {:>4}  {:<9} {}",
+        "game", "mine", "k", "aligned", "function"
+    );
     for (gb, gf, m, gname) in &pairs {
         let mb = base_of(&g, Some(&c.strings), m);
         let aligned = canonical(&g, None, gf, *gb) == canonical(&g, Some(&c.strings), m, mb);

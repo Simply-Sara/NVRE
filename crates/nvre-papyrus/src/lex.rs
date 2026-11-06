@@ -360,9 +360,8 @@ pub fn lex(src: &str) -> Vec<Token> {
                         .parse::<i64>()
                         .map(|n| n.clamp(i32::MIN as i64, i32::MAX as i64) as i32)
                         .or_else(|_| {
-                            text.parse::<f64>().map(|f| {
-                                f.clamp(i32::MIN as f64, i32::MAX as f64) as i32
-                            })
+                            text.parse::<f64>()
+                                .map(|f| f.clamp(i32::MIN as f64, i32::MAX as f64) as i32)
                         })
                         .unwrap_or(0);
                     out.push(Token {

@@ -49,7 +49,11 @@ fn main() {
                             Value::None => "None".to_string(),
                         })
                         .collect();
-                    println!("      {i:4} {:<14} {}", opcodes::name(ins.opcode), args.join(" "));
+                    println!(
+                        "      {i:4} {:<14} {}",
+                        opcodes::name(ins.opcode),
+                        args.join(" ")
+                    );
                 }
             }
         }

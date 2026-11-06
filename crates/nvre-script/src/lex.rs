@@ -189,10 +189,8 @@ pub fn lex(source: &str) -> Vec<Token> {
         // .1stFloorAlarm` (written without the space in the source) would
         // otherwise lex as the word `REPCONHQFreeform` and the number
         // `.1stFloorAlarm`, losing the separator.
-        let dot_is_separator = c == '.'
-            && preceded_by_operand
-            && i > 0
-            && !chars[i - 1].is_whitespace();
+        let dot_is_separator =
+            c == '.' && preceded_by_operand && i > 0 && !chars[i - 1].is_whitespace();
         let starts_number = !is_sign_operator
             && !dot_is_separator
             && (c.is_ascii_digit()

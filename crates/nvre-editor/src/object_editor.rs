@@ -408,89 +408,88 @@ impl ObjectEditorState {
                 })
                 .or_else(|| Some(session.doc.name().to_string()))
         };
-        let (raw_subs, flags, found) = match (session.resolved_record(form_id), source_name.as_deref())
-        {
-            (Some(rec), Some(name)) => {
-                let localized = session
-                    .load_order()
-                    .ok()
-                    .and_then(|lo| {
-                        lo.plugins
-                            .iter()
-                            .find(|p| p.name.eq_ignore_ascii_case(name))
-                            .map(|p| p.header.is_localized())
-                    })
-                    .unwrap_or(false);
-                let strings = session.strings.for_plugin(name, localized);
-                let subs = rec.subrecords().unwrap_or_default();
-                let edid = subs
-                    .iter()
-                    .find(|s| &s.sig == b"EDID")
-                    .map(|s| zstring(&s.data))
-                    .unwrap_or_default();
-                let (full_name, full_name_localized) = match subs.iter().find(|s| &s.sig == b"FULL") {
-                    Some(s) if localized => (
-                        // `for_plugin` answers `None` for a plugin that is not
-                        // localized, so a localized record always has a table —
-                        // possibly an empty one, which yields no name rather than
-                        // four bytes of decoded noise.
-                        strings
-                            .and_then(|t| {
-                                t.get(u32::from_le_bytes([
-                                    s.data[0], s.data[1], s.data[2], s.data[3],
-                                ]))
-                            })
-                            .unwrap_or_default()
-                            .to_string(),
-                        true,
-                    ),
-                    Some(s) => (zstring(&s.data), false),
-                    None => (String::new(), false),
-                };
-                let model = subs
-                    .iter()
-                    .find(|s| &s.sig == b"MODL")
-                    .map(|s| zstring(&s.data))
-                    .unwrap_or_default();
-                let script = subs
-                    .iter()
-                    .find(|s| &s.sig == b"SCRI")
-                    .and_then(|s| {
-                        (s.data.len() >= 4).then(|| {
-                            u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]])
+        let (raw_subs, flags, found) =
+            match (session.resolved_record(form_id), source_name.as_deref()) {
+                (Some(rec), Some(name)) => {
+                    let localized = session
+                        .load_order()
+                        .ok()
+                        .and_then(|lo| {
+                            lo.plugins
+                                .iter()
+                                .find(|p| p.name.eq_ignore_ascii_case(name))
+                                .map(|p| p.header.is_localized())
                         })
-                    })
-                    .filter(|f| *f != 0);
-                let mut raw: HashMap<[u8; 4], Vec<u8>> = HashMap::new();
-                for s in &subs {
-                    raw.entry(s.sig).or_insert_with(|| s.data.clone());
-                }
-                // The object bounds are the one subrecord the header edits in
-                // place rather than through the grid, because they are on nearly
-                // every object and are three pairs of numbers.
-                let (obnd_min, obnd_max) = match subs.iter().find(|s| &s.sig == b"OBND") {
-                    Some(s) if s.data.len() >= 12 => {
-                        let i16_at = |o: usize| {
-                            i16::from_le_bytes([s.data[o], s.data[o + 1]])
+                        .unwrap_or(false);
+                    let strings = session.strings.for_plugin(name, localized);
+                    let subs = rec.subrecords().unwrap_or_default();
+                    let edid = subs
+                        .iter()
+                        .find(|s| &s.sig == b"EDID")
+                        .map(|s| zstring(&s.data))
+                        .unwrap_or_default();
+                    let (full_name, full_name_localized) =
+                        match subs.iter().find(|s| &s.sig == b"FULL") {
+                            Some(s) if localized => (
+                                // `for_plugin` answers `None` for a plugin that is not
+                                // localized, so a localized record always has a table —
+                                // possibly an empty one, which yields no name rather than
+                                // four bytes of decoded noise.
+                                strings
+                                    .and_then(|t| {
+                                        t.get(u32::from_le_bytes([
+                                            s.data[0], s.data[1], s.data[2], s.data[3],
+                                        ]))
+                                    })
+                                    .unwrap_or_default()
+                                    .to_string(),
+                                true,
+                            ),
+                            Some(s) => (zstring(&s.data), false),
+                            None => (String::new(), false),
                         };
-                        (
-                            [i16_at(0), i16_at(2), i16_at(4)],
-                            [i16_at(6), i16_at(8), i16_at(10)],
-                        )
+                    let model = subs
+                        .iter()
+                        .find(|s| &s.sig == b"MODL")
+                        .map(|s| zstring(&s.data))
+                        .unwrap_or_default();
+                    let script = subs
+                        .iter()
+                        .find(|s| &s.sig == b"SCRI")
+                        .and_then(|s| {
+                            (s.data.len() >= 4).then(|| {
+                                u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]])
+                            })
+                        })
+                        .filter(|f| *f != 0);
+                    let mut raw: HashMap<[u8; 4], Vec<u8>> = HashMap::new();
+                    for s in &subs {
+                        raw.entry(s.sig).or_insert_with(|| s.data.clone());
                     }
-                    _ => ([0; 3], [0; 3]),
-                };
-                self.edid = edid;
-                self.full_name = full_name;
-                self.full_name_localized = full_name_localized;
-                self.model = model;
-                self.script = script;
-                self.obnd_min = obnd_min;
-                self.obnd_max = obnd_max;
-                (raw, rec.header.flags, true)
-            }
-            _ => (HashMap::new(), 0, false),
-        };
+                    // The object bounds are the one subrecord the header edits in
+                    // place rather than through the grid, because they are on nearly
+                    // every object and are three pairs of numbers.
+                    let (obnd_min, obnd_max) = match subs.iter().find(|s| &s.sig == b"OBND") {
+                        Some(s) if s.data.len() >= 12 => {
+                            let i16_at = |o: usize| i16::from_le_bytes([s.data[o], s.data[o + 1]]);
+                            (
+                                [i16_at(0), i16_at(2), i16_at(4)],
+                                [i16_at(6), i16_at(8), i16_at(10)],
+                            )
+                        }
+                        _ => ([0; 3], [0; 3]),
+                    };
+                    self.edid = edid;
+                    self.full_name = full_name;
+                    self.full_name_localized = full_name_localized;
+                    self.model = model;
+                    self.script = script;
+                    self.obnd_min = obnd_min;
+                    self.obnd_max = obnd_max;
+                    (raw, rec.header.flags, true)
+                }
+                _ => (HashMap::new(), 0, false),
+            };
 
         if !found {
             return;
@@ -577,7 +576,6 @@ impl ObjectEditorState {
             }
         }
         session.doc.set_flags(fid, flags);
-
     }
 }
 
@@ -779,9 +777,7 @@ pub fn body(
             bounds = page.and_then(|p| p.bounds());
             match page_name.as_deref() {
                 Some(name) => match pages.get(name) {
-                    Some(page) if page.games().contains(&game) => {
-                        page.ui(ui, session, state)
-                    }
+                    Some(page) if page.games().contains(&game) => page.ui(ui, session, state),
                     // The page exists but is not for this game. Say which games
                     // it is for, so the fix (name a page this game has, or write
                     // one) is visible in the message.

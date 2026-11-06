@@ -30,9 +30,8 @@ fn main() {
     };
     let needle = needle.to_ascii_lowercase();
 
-    let mut plugins: Vec<String> = vec![
-        std::env::var("NVRE_PLUGIN").unwrap_or_else(|_| "FalloutNV.esm".to_string()),
-    ];
+    let mut plugins: Vec<String> =
+        vec![std::env::var("NVRE_PLUGIN").unwrap_or_else(|_| "FalloutNV.esm".to_string())];
     // The plugin's own masters, so a name that lives in the master is not
     // reported as absent.
     if let Ok(bytes) = std::fs::read(std::path::Path::new(&data).join(&plugins[0])) {

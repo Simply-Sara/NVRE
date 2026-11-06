@@ -1962,9 +1962,7 @@ impl Schema {
                 None => false,
                 Some(Json::Bool(b)) => *b,
                 Some(_) => {
-                    return Err(format!(
-                        "{owner}.sections[{i}].untitled is not a boolean"
-                    ));
+                    return Err(format!("{owner}.sections[{i}].untitled is not a boolean"));
                 }
             };
             let side_by_side = match sec.get("side_by_side") {

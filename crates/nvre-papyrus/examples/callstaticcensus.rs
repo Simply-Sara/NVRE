@@ -75,11 +75,7 @@ fn main() {
         let fns = &by_class[c];
         let mut v: Vec<(&String, &usize)> = fns.iter().collect();
         v.sort_by(|a, b| b.1.cmp(a.1));
-        let names: Vec<String> = v
-            .iter()
-            .take(12)
-            .map(|(n, k)| format!("{n}×{k}"))
-            .collect();
+        let names: Vec<String> = v.iter().take(12).map(|(n, k)| format!("{n}×{k}")).collect();
         println!("  {c}  ({calls} calls): {}", names.join(", "));
     }
 }

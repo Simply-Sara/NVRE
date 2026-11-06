@@ -38,7 +38,9 @@ fn main() {
         let Ok(subs) = rec.subrecords() else { return };
         if let Some(e) = subs.iter().find(|x| x.sig == *b"EDID") {
             by_edid.insert(
-                String::from_utf8_lossy(&e.data).trim_end_matches('\0').to_string(),
+                String::from_utf8_lossy(&e.data)
+                    .trim_end_matches('\0')
+                    .to_string(),
                 rec.header.form_id,
             );
         }
@@ -60,18 +62,19 @@ fn main() {
             let edid = subs
                 .iter()
                 .find(|x| x.sig == *b"EDID")
-                .map(|x| String::from_utf8_lossy(&x.data).trim_end_matches('\0').to_string())
+                .map(|x| {
+                    String::from_utf8_lossy(&x.data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                })
                 .unwrap_or_default();
             println!(
                 "{label} {id:08X} {sig} {edid}{}",
                 if subs.iter().any(|x| x.sig == *b"SCRI") {
-                    format!(
-                        "  SCRI -> {:08X}",
-                        {
-                            let s = subs.iter().find(|x| x.sig == *b"SCRI").unwrap();
-                            u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]])
-                        }
-                    )
+                    format!("  SCRI -> {:08X}", {
+                        let s = subs.iter().find(|x| x.sig == *b"SCRI").unwrap();
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]])
+                    })
                 } else {
                     String::new()
                 }
@@ -109,10 +112,7 @@ fn main() {
                             names
                                 .iter()
                                 .zip(slsd.iter())
-                                .map(|(n, d)| format!(
-                                    "{n}={}",
-                                    u16::from_le_bytes([d[0], d[1]])
-                                ))
+                                .map(|(n, d)| format!("{n}={}", u16::from_le_bytes([d[0], d[1]])))
                                 .collect::<Vec<_>>()
                                 .join(" ")
                         );
@@ -138,9 +138,11 @@ fn main() {
                                         .trim_end_matches('\0')
                                         .to_string())
                                     .unwrap_or_default(),
-                                bs.iter().find(|x| x.sig == *b"SCRI").map(|x| u32::from_le_bytes([
-                                    x.data[0], x.data[1], x.data[2], x.data[3]
-                                ]))
+                                bs.iter()
+                                    .find(|x| x.sig == *b"SCRI")
+                                    .map(|x| u32::from_le_bytes([
+                                        x.data[0], x.data[1], x.data[2], x.data[3]
+                                    ]))
                             );
                         });
                     }

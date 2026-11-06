@@ -298,7 +298,6 @@ pub fn encode_expr(
     let mut output: Vec<Vec<u8>> = Vec::new();
     let mut op_stack: Vec<Item> = Vec::new();
 
-
     let mut i = 0;
     while i < filtered.len() {
         let t = &filtered[i];
@@ -830,7 +829,13 @@ fn source_spellings(name: &str, script: &crate::parse::Script) -> Vec<String> {
     // (spelling, first use, used in a Begin parameter)
     let mut found: Vec<(String, usize, bool)> = Vec::new();
     let mut at = 0usize;
-    fn push(found: &mut Vec<(String, usize, bool)>, at: &mut usize, name: &str, t: &str, in_begin: bool) {
+    fn push(
+        found: &mut Vec<(String, usize, bool)>,
+        at: &mut usize,
+        name: &str,
+        t: &str,
+        in_begin: bool,
+    ) {
         let matches = t.eq_ignore_ascii_case(name)
             || (name.eq_ignore_ascii_case("Player") && t.eq_ignore_ascii_case("PlayerRef"));
         if !matches {
@@ -891,10 +896,7 @@ fn source_spellings(name: &str, script: &crate::parse::Script) -> Vec<String> {
     found.into_iter().map(|(s, _, _)| s).collect()
 }
 
-fn resolve_ref_index_where(
-    name: &str,
-    script: &crate::parse::Script,
-) -> Result<u16, crate::Error> {
+fn resolve_ref_index_where(name: &str, script: &crate::parse::Script) -> Result<u16, crate::Error> {
     // The entries a spelling can name. `PlayerRef` is the source's other
     // spelling of the record's `Player` entry, exactly as the engine treats it.
     let matches_name = |r: &crate::parse::RefEntry| {
@@ -1181,8 +1183,8 @@ mod tests {
         assert_eq!(
             bytes,
             vec![
-                0x20, 0x58, 0x8E, 0x11, 0x0C, 0x00, 0x02, 0x00, 0x6E, 0x00, 0x00, 0x00, 0x00,
-                0x6E, 0x0A, 0x00, 0x00, 0x00, 0x20, 0x31, 0x20, 0x21, 0x3D
+                0x20, 0x58, 0x8E, 0x11, 0x0C, 0x00, 0x02, 0x00, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x6E,
+                0x0A, 0x00, 0x00, 0x00, 0x20, 0x31, 0x20, 0x21, 0x3D
             ]
         );
         // And the same command with one argument still passes one.

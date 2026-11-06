@@ -18,12 +18,19 @@ fn subs_of(rec: &nvre_esm::raw::Record) -> Vec<(String, Vec<u8>)> {
         return Vec::new();
     };
     subs.iter()
-        .map(|s| (String::from_utf8_lossy(&s.sig).into_owned(), s.data.to_vec()))
+        .map(|s| {
+            (
+                String::from_utf8_lossy(&s.sig).into_owned(),
+                s.data.to_vec(),
+            )
+        })
         .collect()
 }
 
 fn text(d: &[u8]) -> String {
-    String::from_utf8_lossy(d).trim_end_matches('\0').to_string()
+    String::from_utf8_lossy(d)
+        .trim_end_matches('\0')
+        .to_string()
 }
 
 fn main() {
@@ -140,7 +147,8 @@ fn main() {
                 let tagged = matches!(a[k], 0x72 | 0x47 | 0x5A | 0x1C);
                 if tagged {
                     let idx = u16::from_le_bytes([a[k + 1], a[k + 2]]);
-                    if let Some((name, slots)) = dups.iter().find(|(_, s)| s.contains(&(idx as usize)))
+                    if let Some((name, slots)) =
+                        dups.iter().find(|(_, s)| s.contains(&(idx as usize)))
                     {
                         let which = if slots.first() == Some(&(idx as usize)) {
                             "first"
@@ -163,7 +171,8 @@ fn main() {
             .enumerate()
             .filter(|(_, l)| {
                 let l = String::from_utf8_lossy(l).to_lowercase();
-                dups.iter().any(|(name, _)| l.contains(&name.to_lowercase()))
+                dups.iter()
+                    .any(|(name, _)| l.contains(&name.to_lowercase()))
             })
             .take(6)
         {

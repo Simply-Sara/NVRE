@@ -39,7 +39,11 @@ fn main() {
         let edid = subs
             .iter()
             .find(|x| x.sig == *b"EDID")
-            .map(|x| String::from_utf8_lossy(&x.data).trim_end_matches('\0').to_string())
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
             .unwrap_or_default();
         if !edid.eq_ignore_ascii_case(&wanted) {
             return;
@@ -47,7 +51,11 @@ fn main() {
         let names: Vec<String> = subs
             .iter()
             .filter(|x| x.sig == *b"SCVR")
-            .map(|x| String::from_utf8_lossy(&x.data).trim_end_matches('\0').to_string())
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
             .collect();
         let slsd: Vec<&[u8]> = subs
             .iter()
@@ -56,7 +64,10 @@ fn main() {
             .collect();
         println!("{edid}: {} SCVR, {} SLSD", names.len(), slsd.len());
         for i in 0..names.len().max(slsd.len()) {
-            let name = names.get(i).cloned().unwrap_or_else(|| "<none>".to_string());
+            let name = names
+                .get(i)
+                .cloned()
+                .unwrap_or_else(|| "<none>".to_string());
             match slsd.get(i) {
                 Some(d) if d.len() >= 20 => println!(
                     "  {i:>3}  id {:>5}  flags {:02X}  len {:>2}  {name}",

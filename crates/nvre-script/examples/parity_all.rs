@@ -114,74 +114,74 @@ fn main() {
     let mut script_tables: std::collections::HashMap<String, Vec<nvre_script::VarEntry>> =
         Default::default();
     for source in masters.iter().chain(std::iter::once(&plugin)) {
-    visit_nodes(&source.nodes, &mut |rec, _| {
-        let Ok(subs) = rec.subrecords() else { return };
-        let sig = String::from_utf8_lossy(&rec.header.sig).into_owned();
-        sig_of.insert(rec.header.form_id, sig.clone());
-        let edid = subs
-            .iter()
-            .find(|x| x.sig == *b"EDID")
-            .map(|x| {
-                String::from_utf8_lossy(&x.data)
-                    .trim_end_matches('\0')
-                    .to_string()
-            })
-            .unwrap_or_default();
-        edid_of.insert(rec.header.form_id, edid.clone());
-        if let Some(s) = subs.iter().find(|x| x.sig == *b"SCRI") {
-            if s.data.len() == 4 {
-                scri.insert(
-                    rec.header.form_id,
-                    u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]),
-                );
-            }
-        }
-        if matches!(sig.as_str(), "ACHR" | "REFR" | "ACRE") {
-            if let Some(name) = subs.iter().find(|x| x.sig == *b"NAME") {
-                if name.data.len() == 4 {
-                    base_of.insert(
+        visit_nodes(&source.nodes, &mut |rec, _| {
+            let Ok(subs) = rec.subrecords() else { return };
+            let sig = String::from_utf8_lossy(&rec.header.sig).into_owned();
+            sig_of.insert(rec.header.form_id, sig.clone());
+            let edid = subs
+                .iter()
+                .find(|x| x.sig == *b"EDID")
+                .map(|x| {
+                    String::from_utf8_lossy(&x.data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                })
+                .unwrap_or_default();
+            edid_of.insert(rec.header.form_id, edid.clone());
+            if let Some(s) = subs.iter().find(|x| x.sig == *b"SCRI") {
+                if s.data.len() == 4 {
+                    scri.insert(
                         rec.header.form_id,
-                        u32::from_le_bytes([
-                            name.data[0],
-                            name.data[1],
-                            name.data[2],
-                            name.data[3],
-                        ]),
+                        u32::from_le_bytes([s.data[0], s.data[1], s.data[2], s.data[3]]),
                     );
                 }
             }
-        }
-        if rec.header.sig != *b"SCPT" {
-            return;
-        }
-        let names: Vec<String> = subs
-            .iter()
-            .filter(|x| x.sig == *b"SCVR")
-            .map(|x| {
-                String::from_utf8_lossy(&x.data)
-                    .trim_end_matches('\0')
-                    .to_string()
-            })
-            .collect();
-        let slcds: Vec<&[u8]> = subs
-            .iter()
-            .filter(|x| x.sig == *b"SLSD" && x.data.len() >= 20)
-            .map(|x| x.data.as_slice())
-            .collect();
-        if names.len() != slcds.len() || names.is_empty() {
-            return;
-        }
-        let table: Vec<nvre_script::VarEntry> = names
-            .iter()
-            .zip(slcds.iter())
-            .map(|(n, d)| nvre_script::VarEntry {
-                name: n.clone(),
-                id: u16::from_le_bytes([d[0], d[1]]),
-                is_int: d[16] == 1,
-            })
-            .collect();
-        script_tables.insert(edid, table);
-    });
+            if matches!(sig.as_str(), "ACHR" | "REFR" | "ACRE") {
+                if let Some(name) = subs.iter().find(|x| x.sig == *b"NAME") {
+                    if name.data.len() == 4 {
+                        base_of.insert(
+                            rec.header.form_id,
+                            u32::from_le_bytes([
+                                name.data[0],
+                                name.data[1],
+                                name.data[2],
+                                name.data[3],
+                            ]),
+                        );
+                    }
+                }
+            }
+            if rec.header.sig != *b"SCPT" {
+                return;
+            }
+            let names: Vec<String> = subs
+                .iter()
+                .filter(|x| x.sig == *b"SCVR")
+                .map(|x| {
+                    String::from_utf8_lossy(&x.data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                })
+                .collect();
+            let slcds: Vec<&[u8]> = subs
+                .iter()
+                .filter(|x| x.sig == *b"SLSD" && x.data.len() >= 20)
+                .map(|x| x.data.as_slice())
+                .collect();
+            if names.len() != slcds.len() || names.is_empty() {
+                return;
+            }
+            let table: Vec<nvre_script::VarEntry> = names
+                .iter()
+                .zip(slcds.iter())
+                .map(|(n, d)| nvre_script::VarEntry {
+                    name: n.clone(),
+                    id: u16::from_le_bytes([d[0], d[1]]),
+                    is_int: d[16] == 1,
+                })
+                .collect();
+            script_tables.insert(edid, table);
+        });
     }
     // Player reference FormID 0x14
     edid_of.insert(0x00000014, "Player".to_string());

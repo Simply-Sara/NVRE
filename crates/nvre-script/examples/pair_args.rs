@@ -36,10 +36,7 @@ fn main() {
     // A declared-parameter command frames its arguments as `[count:u16]
     // [args…]`, so the first parameter starts at offset 2. The width is what
     // decides how to read it: a code is 2 bytes, an `n`-tagged integer 5.
-    let param: usize = args
-        .get(2)
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
+    let param: usize = args.get(2).and_then(|v| v.parse().ok()).unwrap_or(0);
     let width: usize = args.get(3).and_then(|v| v.parse().ok()).unwrap_or(2);
     let plugin_name = std::env::var("NVRE_PLUGIN").unwrap_or_else(|_| "FalloutNV.esm".to_string());
     let Ok(bytes) = std::fs::read(std::path::Path::new(&data).join(&plugin_name)) else {
@@ -63,7 +60,11 @@ fn main() {
         let edid = subs
             .iter()
             .find(|x| x.sig == *b"EDID")
-            .map(|x| String::from_utf8_lossy(&x.data).trim_end_matches('\0').to_string())
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
             .unwrap_or_default();
         let Some(source) = subs.iter().find(|x| x.sig == *b"SCTX") else {
             return;
@@ -94,7 +95,10 @@ fn main() {
             };
             // `Ref.Command <arg>`, `Command <arg>` — but not `IsAnimPlaying`,
             // whose name merely contains the command's.
-            if line[..at].trim_end().ends_with(|c: char| c.is_alphanumeric() || c == '_') {
+            if line[..at]
+                .trim_end()
+                .ends_with(|c: char| c.is_alphanumeric() || c == '_')
+            {
                 continue;
             }
             names.push(first.trim_end_matches([',', ';']).to_string());

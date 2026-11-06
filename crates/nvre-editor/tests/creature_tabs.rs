@@ -90,10 +90,7 @@ fn every_tab_on_the_strip_carries_at_least_one_section() {
         let sections = schema.page_sections("CREA");
         for tab in schema.page_tabs("CREA") {
             let drawn = sections_on_tab(&sections, Some(&tab));
-            assert!(
-                !drawn.is_empty(),
-                "{id}: the {tab:?} tab draws no section"
-            );
+            assert!(!drawn.is_empty(), "{id}: the {tab:?} tab draws no section");
         }
     }
 }
@@ -226,9 +223,8 @@ fn a_section_on_another_tab_is_not_drawn() {
     let sections = schema.page_sections("CREA");
     let traits = sections_on_tab(&sections, Some("Traits"));
     let stats = sections_on_tab(&sections, Some("Stats"));
-    let titles = |v: &[&nvre_esm::schema::SectionDef]| {
-        v.iter().map(|s| s.title.clone()).collect::<Vec<_>>()
-    };
+    let titles =
+        |v: &[&nvre_esm::schema::SectionDef]| v.iter().map(|s| s.title.clone()).collect::<Vec<_>>();
     assert!(
         traits.iter().any(|s| s.title == "Traits"),
         "Traits draws its own flat Traits section: {:?}",
@@ -408,10 +404,8 @@ fn every_field_of_a_narrowed_subrecord_is_named_somewhere_on_the_page() {
                 .unwrap_or_else(|| panic!("{id}: {sub}"));
             let resolved = schema.resolve_def(&def.ty);
             let all = field_paths(&resolved);
-            let mut missing: Vec<&String> = all
-                .iter()
-                .filter(|p| !named.contains(p.as_str()))
-                .collect();
+            let mut missing: Vec<&String> =
+                all.iter().filter(|p| !named.contains(p.as_str())).collect();
             missing.sort();
             assert!(
                 missing.is_empty(),
@@ -474,8 +468,7 @@ fn every_bit_of_a_split_flags_word_is_on_exactly_one_tab() {
             let resolved = schema.resolve_def(&def.ty);
             let all = flag_bits_of(&resolved, path)
                 .unwrap_or_else(|| panic!("{id}: {key} is not a flags field"));
-            let named: std::collections::BTreeSet<u32> =
-                hits.iter().map(|(bit, _)| *bit).collect();
+            let named: std::collections::BTreeSet<u32> = hits.iter().map(|(bit, _)| *bit).collect();
             let missing: Vec<u32> = all
                 .iter()
                 .map(|(bit, _)| *bit)
@@ -516,10 +509,7 @@ fn every_bit_of_a_split_flags_word_is_on_exactly_one_tab() {
 }
 
 /// A subrecord's definition, from the record's own map or the shared one.
-fn def_of<'a>(
-    schema: &'a nvre_esm::Schema,
-    sub: &str,
-) -> &'a nvre_esm::schema::SubDef {
+fn def_of<'a>(schema: &'a nvre_esm::Schema, sub: &str) -> &'a nvre_esm::schema::SubDef {
     schema
         .records
         .get("CREA")

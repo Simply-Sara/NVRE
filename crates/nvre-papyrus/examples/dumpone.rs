@@ -21,9 +21,27 @@ fn main() {
     for o in &f.objects {
         println!("object {}", s(o.name));
         for pr in &o.properties {
-            let g = pr.getter.as_ref().map(|f| format!("getter {} instrs {:?}", s(f.name), f.locals.iter().map(|l| s(l.name)).collect::<Vec<_>>()));
-            let st = pr.setter.as_ref().map(|f| format!("setter {} instrs {:?}", s(f.name), f.locals.iter().map(|l| s(l.name)).collect::<Vec<_>>()));
-            println!("  prop {} auto={} {:?} {:?}", s(pr.name), pr.is_auto(), g, st);
+            let g = pr.getter.as_ref().map(|f| {
+                format!(
+                    "getter {} instrs {:?}",
+                    s(f.name),
+                    f.locals.iter().map(|l| s(l.name)).collect::<Vec<_>>()
+                )
+            });
+            let st = pr.setter.as_ref().map(|f| {
+                format!(
+                    "setter {} instrs {:?}",
+                    s(f.name),
+                    f.locals.iter().map(|l| s(l.name)).collect::<Vec<_>>()
+                )
+            });
+            println!(
+                "  prop {} auto={} {:?} {:?}",
+                s(pr.name),
+                pr.is_auto(),
+                g,
+                st
+            );
         }
         for st in &o.states {
             println!("  state {:?}", s(st.name));

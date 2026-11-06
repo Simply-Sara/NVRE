@@ -78,7 +78,9 @@ fn the_sections_split_across_the_tabs_and_none_is_lost() {
     let mut missing: Vec<String> = subs
         .iter()
         .map(|s| s.sig_str())
-        .filter(|sig| !named.contains(sig) && !["EDID", "OBND", "FULL", "MODL"].contains(&sig.as_str()))
+        .filter(|sig| {
+            !named.contains(sig) && !["EDID", "OBND", "FULL", "MODL"].contains(&sig.as_str())
+        })
         .collect();
     missing.sort();
     missing.dedup();
@@ -130,9 +132,15 @@ fn the_traits_tab_shows_the_creature_type_and_the_stats_tab_does_not() {
     // And the state survives a tab change, which is what makes the strip usable:
     // the modder's record does not reload when they look at another tab.
     state.tab.chosen = Some("Stats".to_string());
-    assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Stats"));
+    assert_eq!(
+        state.tab.heading(&session.schema.page_tabs("CREA")),
+        Some("Stats")
+    );
     state.tab.chosen = Some("Traits".to_string());
-    assert_eq!(state.tab.heading(&session.schema.page_tabs("CREA")), Some("Traits"));
+    assert_eq!(
+        state.tab.heading(&session.schema.page_tabs("CREA")),
+        Some("Traits")
+    );
     assert_eq!(state.edid, "VStreetCrBrahmin2");
 }
 
@@ -162,7 +170,12 @@ fn editing_the_level_on_stats_keeps_the_flags_on_traits() {
 
     // The level field, as the Stats tab addresses it.
     session
-        .set_object_field(BRAHMIN, b"ACBS", "level_or_level_mult_raw", serde_json::json!(7))
+        .set_object_field(
+            BRAHMIN,
+            b"ACBS",
+            "level_or_level_mult_raw",
+            serde_json::json!(7),
+        )
         .expect("the level is writable");
 
     let after = payload(&subs(&session, BRAHMIN), b"ACBS");
@@ -210,9 +223,8 @@ fn the_general_tab_holds_the_identity_and_the_flags_the_editor_puts_there() {
     let schema = &session.schema;
     let sections = schema.page_sections("CREA");
     let general = sections_on_tab(&sections, Some("General"));
-    let titles = |v: &[&nvre_esm::schema::SectionDef]| {
-        v.iter().map(|s| s.title.clone()).collect::<Vec<_>>()
-    };
+    let titles =
+        |v: &[&nvre_esm::schema::SectionDef]| v.iter().map(|s| s.title.clone()).collect::<Vec<_>>();
     assert_eq!(
         schema.page_tabs("CREA").first().map(String::as_str),
         Some("General"),
@@ -239,9 +251,7 @@ fn the_general_tab_holds_the_identity_and_the_flags_the_editor_puts_there() {
     // record's whole header rather than its name.
     let scripts = sections_on_tab(&sections, Some("Scripts"));
     assert!(
-        scripts
-            .iter()
-            .any(|s| s.subs.contains(&"SCRI".to_string())),
+        scripts.iter().any(|s| s.subs.contains(&"SCRI".to_string())),
         "SCRI is not on the Scripts tab: {:?}",
         titles(&scripts)
     );
@@ -349,7 +359,11 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
     let expected_animation = schema_bits("Animation", "ACBS.flags");
     let expected_traits = schema_bits("Traits", "ACBS.flags");
     assert_eq!(expected_general.len(), 11, "General names eleven flags");
-    assert_eq!(expected_animation.len(), 8, "Animation names the eight movement flags");
+    assert_eq!(
+        expected_animation.len(),
+        8,
+        "Animation names the eight movement flags"
+    );
     assert_eq!(expected_traits.len(), 0, "Traits has no ACBS flags left");
     let expected_model = schema_bits("ModelList", "ACBS.flags");
     assert_eq!(
@@ -364,11 +378,7 @@ fn the_general_tab_draws_a_checkbox_for_every_flag_it_names() {
         "Stats names PC Level Mult, which governs its own level field"
     );
     let expected_blood = schema_bits("Blood", "ACBS.flags");
-    assert_eq!(
-        expected_blood.len(),
-        2,
-        "Blood names the two blood flags"
-    );
+    assert_eq!(expected_blood.len(), 2, "Blood names the two blood flags");
     // Every named bit is on at least one tab, and on exactly one: the word is
     // split three ways and the same checkbox on two tabs is not a split but a
     // duplicate. A checkbox on no tab is the failure that matters — it would be
@@ -498,9 +508,7 @@ fn label_text(
             .map(|u| {
                 u.nodes
                     .into_iter()
-                    .filter(|(_, node)| {
-                        node.role() == nvre_editor::egui::accesskit::Role::Label
-                    })
+                    .filter(|(_, node)| node.role() == nvre_editor::egui::accesskit::Role::Label)
                     .filter_map(|(_, node)| node.value().map(str::to_owned))
                     .collect::<Vec<_>>()
             })
@@ -612,11 +620,20 @@ fn the_flag_checkboxes_wrap_onto_their_own_rows() {
     };
     let flag_names: Vec<String> = flag_bits
         .iter()
-        .filter_map(|b| named.iter().find(|(bit, _)| bit == b).map(|(_, n)| n.clone()))
+        .filter_map(|b| {
+            named
+                .iter()
+                .find(|(bit, _)| bit == b)
+                .map(|(_, n)| n.clone())
+        })
         .collect();
 
     // Narrow enough that ten long names cannot share a line.
-    let boxes = checkbox_rects(&mut session, &mut state, nvre_editor::egui::vec2(760.0, 2400.0));
+    let boxes = checkbox_rects(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(760.0, 2400.0),
+    );
     let flags: Vec<&nvre_editor::egui::Rect> = boxes
         .iter()
         .filter(|(label, _)| flag_names.iter().any(|n| n == label))
@@ -663,7 +680,11 @@ fn the_identity_section_draws_no_title_and_no_bare_signature_labels() {
         return;
     };
     state.tab.chosen = Some("General".to_string());
-    let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let drawn = label_text(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     let drawn: Vec<&str> = drawn.iter().map(String::as_str).collect();
 
     // The heading is gone: nothing on the tab says "Identity".
@@ -732,7 +753,11 @@ fn the_template_picker_comes_before_the_template_checkboxes() {
         return;
     };
     state.tab.chosen = Some("General".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     // Everything below the "Template Data" heading and above the next group, so
     // the assertion is about this section and not about the Identity section's
     // own picker — which reports "NONE" too, because it is empty as well.
@@ -790,7 +815,11 @@ fn a_creature_with_no_template_shows_none() {
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
     state.tab.chosen = Some("General".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     let heading = rows
         .iter()
         .find(|(text, _)| text == "Template Data")
@@ -826,7 +855,11 @@ fn a_flags_field_draws_no_row_label_of_its_own() {
         return;
     };
     state.tab.chosen = Some("General".to_string());
-    let drawn = label_text(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let drawn = label_text(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     for path in ["flags", "template_flags"] {
         assert!(
             !drawn.iter().any(|l| l == path),
@@ -933,7 +966,11 @@ fn a_creature_with_no_template_still_gets_the_picker() {
     state.load_from_session(&session, fid, *b"CREA");
     state.tab.chosen = Some("General".to_string());
 
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     let heading = rows
         .iter()
         .find(|(text, _)| text == "Template Data")
@@ -971,7 +1008,9 @@ fn a_creature_with_no_template_still_gets_the_picker() {
         })
         .map(|(f, _)| *f)
         .expect("a creature that carries a TPLT");
-    session.doc.set_sub(fid, b"TPLT", donor.to_le_bytes().to_vec());
+    session
+        .doc
+        .set_sub(fid, b"TPLT", donor.to_le_bytes().to_vec());
     let written = session
         .resolved_record(fid)
         .expect("the record resolves")
@@ -1013,8 +1052,11 @@ fn the_object_bounds_and_the_model_path_live_on_the_model_list_tab() {
 
     // On the Model List tab, and not on any other.
     state.tab.chosen = Some("ModelList".to_string());
-    let on_model_list =
-        placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let on_model_list = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     for want in [
         "Model FileName",
         "min.x",
@@ -1034,7 +1076,11 @@ fn the_object_bounds_and_the_model_path_live_on_the_model_list_tab() {
     // it. None of them may show the path or the bounds.
     for tab in ["General", "Scripts", "Traits"] {
         state.tab.chosen = Some(tab.to_string());
-        let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+        let rows = placed_widgets(
+            &mut session,
+            &mut state,
+            nvre_editor::egui::vec2(900.0, 2400.0),
+        );
         for gone in ["Model Path (.nif):", "Object Bounds (OBND)", "Min:", "Max:"] {
             assert!(
                 !rows.iter().any(|(t, _)| t == gone),
@@ -1148,7 +1194,11 @@ fn the_animation_tab_carries_the_movement_flags() {
     // ACBS. The heading is checked because a section with no title is the
     // Identity section's privilege, not the default.
     state.tab.chosen = Some("Animation".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         rows.iter().any(|(t, _)| t == "Movement"),
         "no Movement heading on the Animation tab: {rows:?}"
@@ -1233,7 +1283,11 @@ fn the_model_list_tab_carries_the_model_flags() {
 
     // Drawn: the six checkboxes under a "Model Flags" heading.
     state.tab.chosen = Some("ModelList".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         rows.iter().any(|(t, _)| t == "Model Flags"),
         "no Model Flags heading on the Model List tab: {rows:?}"
@@ -1283,7 +1337,12 @@ fn pc_level_mult_sits_on_the_leveling_section() {
     let leveling = stats
         .iter()
         .find(|s| s.title == "Leveling")
-        .unwrap_or_else(|| panic!("the Stats tab has no Leveling section: {:?}", titles(&stats)));
+        .unwrap_or_else(|| {
+            panic!(
+                "the Stats tab has no Leveling section: {:?}",
+                titles(&stats)
+            )
+        });
     assert_eq!(
         leveling.flags_bits.get("ACBS.flags").map(Vec::as_slice),
         Some(&[7u32][..]),
@@ -1310,13 +1369,21 @@ fn pc_level_mult_sits_on_the_leveling_section() {
 
     // Drawn: the checkbox, and it is not on Traits any more.
     state.tab.chosen = Some("Stats".to_string());
-    let stats_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let stats_rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         stats_rows.iter().any(|(t, _)| t == "PC Level Mult"),
         "no PC Level Mult checkbox on the Stats tab: {stats_rows:?}"
     );
     state.tab.chosen = Some("Traits".to_string());
-    let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let traits_rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         !traits_rows.iter().any(|(t, _)| t == "PC Level Mult"),
         "PC Level Mult is still on the Traits tab: {traits_rows:?}"
@@ -1406,7 +1473,11 @@ fn the_blood_tab_is_gecks_two_boxes() {
     // Drawn: both boxes, in GECK's top-to-bottom order, with the material type
     // above the checkboxes and the impact data set in the second box.
     state.tab.chosen = Some("Blood".to_string());
-    let blood_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let blood_rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     let y = |want: &str| {
         blood_rows
             .iter()
@@ -1439,7 +1510,11 @@ fn the_blood_tab_is_gecks_two_boxes() {
 
     // And the flags still do not leak back onto Traits.
     state.tab.chosen = Some("Traits".to_string());
-    let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let traits_rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     for gone in ["No Blood Spray", "No Blood Decal"] {
         assert!(
             !traits_rows.iter().any(|(t, _)| t == gone),
@@ -1491,9 +1566,11 @@ fn the_unverified_bit_stays_marked_unverified() {
     );
     // The note is not loaded into the schema — `note` is a JSON comment for
     // readers, never parsed — so it is checked where it lives, on disk.
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv/gameplay.json");
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/fnv/gameplay.json");
     let json: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&path).expect("the schema file")).expect("valid JSON");
+        serde_json::from_str(&std::fs::read_to_string(&path).expect("the schema file"))
+            .expect("valid JSON");
     let note = json
         .pointer("/records/CREA/subrecords/ACBS/type/struct/0/note")
         .and_then(|v| v.as_str())
@@ -1529,15 +1606,14 @@ fn every_link_dropdown_has_one_clear_label() {
         return;
     };
     state.tab.chosen = Some("Traits".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
 
     // One label each, under the schema's own names.
-    for want in [
-        "Death item",
-        "Voice",
-        "Combat Style",
-        "Weapon List",
-    ] {
+    for want in ["Death item", "Voice", "Combat Style", "Weapon List"] {
         let count = rows.iter().filter(|(t, _)| t == want).count();
         assert_eq!(
             count, 1,
@@ -1559,7 +1635,11 @@ fn every_link_dropdown_has_one_clear_label() {
 
     // And verify Body Part Data is drawn on ModelList.
     state.tab.chosen = Some("ModelList".to_string());
-    let model_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let model_rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         model_rows.iter().any(|(t, _)| t == "Body Part Data"),
         "Body Part Data is not drawn on ModelList: {model_rows:?}"
@@ -1589,13 +1669,8 @@ fn the_template_dropdown_targets_creatures_and_leveled_creatures() {
     let Some((session, _)) = open_creature() else {
         return;
     };
-    let targets = nvre_editor::object_editor::formid_targets_in(
-        &session.schema,
-        b"CREA",
-        b"TPLT",
-        None,
-        "",
-    );
+    let targets =
+        nvre_editor::object_editor::formid_targets_in(&session.schema, b"CREA", b"TPLT", None, "");
     assert_eq!(
         targets,
         vec!["CREA".to_string(), "LVLC".to_string()],
@@ -1613,7 +1688,11 @@ fn the_traits_tab_draws_an_alignment_dropdown_for_acbs_karma() {
         return;
     };
     state.tab.chosen = Some("Traits".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
 
     // The field label is "Alignment", not the raw field name "karma".
     assert!(
@@ -1658,7 +1737,11 @@ fn combat_style_dropdown_shows_the_records_combat_style() {
         return;
     };
     state.tab.chosen = Some("Traits".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
 
     // The Combat Style row shows the record's combat style, and its target type.
     assert!(
@@ -1703,7 +1786,11 @@ fn an_unset_combat_style_shows_default() {
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
     state.tab.chosen = Some("Traits".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         rows.iter().any(|(t, _)| t == "Default"),
         "an unset Combat Style must show 'Default': {rows:?}"
@@ -1719,7 +1806,11 @@ fn the_stats_tab_has_clean_geck_style_labels_and_sections() {
         return;
     };
     state.tab.chosen = Some("Stats".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
 
     // Clean GECK labels:
     for want in [
@@ -1770,19 +1861,25 @@ fn the_stats_tab_has_clean_geck_style_labels_and_sections() {
 
     // No duplicate subrecord headers:
     assert!(
-        !rows.iter().any(|(t, _)| t == "Configuration" || t == "ACBS"),
+        !rows
+            .iter()
+            .any(|(t, _)| t == "Configuration" || t == "ACBS"),
         "redundant Configuration ACBS heading should not be drawn: {rows:?}"
     );
 
     // barter_gold moved to AI Data:
     assert!(
-        !rows.iter().any(|(t, _)| t == "Barter Gold" || t == "barter_gold"),
+        !rows
+            .iter()
+            .any(|(t, _)| t == "Barter Gold" || t == "barter_gold"),
         "barter_gold should not be on Stats: {rows:?}"
     );
 
     // Sound Level moved to Sounds tab, Unarmed Attack Animation to Actor Effect List:
     assert!(
-        !rows.iter().any(|(t, _)| t == "Sound Level" || t == "Unarmed Attack Animation"),
+        !rows
+            .iter()
+            .any(|(t, _)| t == "Sound Level" || t == "Unarmed Attack Animation"),
         "Sound Level and Unarmed Attack Animation should not be on Stats: {rows:?}"
     );
     assert!(
@@ -1813,7 +1910,11 @@ fn pc_level_mult_changes_level_label_and_calc_min_max_editability() {
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid_unticked, *b"CREA");
     state.tab.chosen = Some("Stats".to_string());
-    let rows_unticked = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows_unticked = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         rows_unticked.iter().any(|(t, _)| t == "Level"),
         "Unticked creature should have 'Level' label: {rows_unticked:?}"
@@ -1829,7 +1930,11 @@ fn pc_level_mult_changes_level_label_and_calc_min_max_editability() {
     let mut state_ticked = ObjectEditorState::default();
     state_ticked.load_from_session(&session, fid_ticked, *b"CREA");
     state_ticked.tab.chosen = Some("Stats".to_string());
-    let rows_ticked = placed_widgets(&mut session, &mut state_ticked, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows_ticked = placed_widgets(
+        &mut session,
+        &mut state_ticked,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     assert!(
         rows_ticked.iter().any(|(t, _)| t == "Level Mult"),
         "Ticked creature should have 'Level Mult' label: {rows_ticked:?}"
@@ -1838,7 +1943,6 @@ fn pc_level_mult_changes_level_label_and_calc_min_max_editability() {
         !rows_ticked.iter().any(|(t, _)| t == "Level"),
         "Ticked creature should not have bare 'Level' label: {rows_ticked:?}"
     );
-
 }
 
 #[test]
@@ -1893,7 +1997,10 @@ fn the_skills_and_health_section_aligns_all_its_controls_in_one_grid() {
     );
     out.textures_delta.clear();
 
-    let u = out.platform_output.accesskit_update.expect("accesskit update");
+    let u = out
+        .platform_output
+        .accesskit_update
+        .expect("accesskit update");
     let nodes = u.nodes;
     let mut spinbuttons: Vec<(f32, f32, f32)> = nodes
         .iter()
@@ -1916,10 +2023,28 @@ fn the_skills_and_health_section_aligns_all_its_controls_in_one_grid() {
     );
 
     // And verify Attributes and Skills & Health are side by side at the same Y
-    let attrs = nodes.iter().map(|(_, n)| n).find(|n| n.label() == Some("Attributes") || n.value() == Some("Attributes")).unwrap().bounds().unwrap();
-    let skills = nodes.iter().map(|(_, n)| n).find(|n| n.label() == Some("Skills & Health") || n.value() == Some("Skills & Health")).unwrap().bounds().unwrap();
-    assert_eq!(attrs.y0, skills.y0, "Attributes and Skills & Health must start at the exact same Y position!");
-    assert!(skills.x0 > attrs.x0, "Skills & Health must be to the right of Attributes!");
+    let attrs = nodes
+        .iter()
+        .map(|(_, n)| n)
+        .find(|n| n.label() == Some("Attributes") || n.value() == Some("Attributes"))
+        .unwrap()
+        .bounds()
+        .unwrap();
+    let skills = nodes
+        .iter()
+        .map(|(_, n)| n)
+        .find(|n| n.label() == Some("Skills & Health") || n.value() == Some("Skills & Health"))
+        .unwrap()
+        .bounds()
+        .unwrap();
+    assert_eq!(
+        attrs.y0, skills.y0,
+        "Attributes and Skills & Health must start at the exact same Y position!"
+    );
+    assert!(
+        skills.x0 > attrs.x0,
+        "Skills & Health must be to the right of Attributes!"
+    );
 
     let first_x0 = spinbuttons[0].1;
     let first_w = spinbuttons[0].2;
@@ -1944,7 +2069,11 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
         return;
     };
     state.tab.chosen = Some("Factions".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
 
     // Headers (must appear exactly once, not duplicated per row):
     let faction_headers = rows.iter().filter(|(t, _)| t == "Faction").count();
@@ -1960,14 +2089,28 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
 
     // No compiler padding or raw byte dumps:
     assert!(
-        !rows.iter().any(|(t, _)| t == "unused" || t.contains("[73,70,90]") || t.contains("[73, 70, 90]")),
+        !rows
+            .iter()
+            .any(|(t, _)| t == "unused" || t.contains("[73,70,90]") || t.contains("[73, 70, 90]")),
         "Factions tab still exposes raw compiler padding: {rows:?}"
     );
 
     // Each faction row must be stacked vertically on its own line (not stretched horizontally):
-    let y_animal = rows.iter().find(|(t, _)| t == "AnimalFriendFaction").map(|(_, y)| *y).expect("AnimalFriendFaction");
-    let y_brahmin = rows.iter().find(|(t, _)| t == "BrahminFaction").map(|(_, y)| *y).expect("BrahminFaction");
-    let y_hit = rows.iter().find(|(t, _)| t == "CreatureHitBrahmin").map(|(_, y)| *y).expect("CreatureHitBrahmin");
+    let y_animal = rows
+        .iter()
+        .find(|(t, _)| t == "AnimalFriendFaction")
+        .map(|(_, y)| *y)
+        .expect("AnimalFriendFaction");
+    let y_brahmin = rows
+        .iter()
+        .find(|(t, _)| t == "BrahminFaction")
+        .map(|(_, y)| *y)
+        .expect("BrahminFaction");
+    let y_hit = rows
+        .iter()
+        .find(|(t, _)| t == "CreatureHitBrahmin")
+        .map(|(_, y)| *y)
+        .expect("CreatureHitBrahmin");
     assert!(
         y_animal < y_brahmin && y_brahmin < y_hit,
         "Faction rows must be on separate lines: animal={y_animal}, brahmin={y_brahmin}, hit={y_hit}"
@@ -2007,20 +2150,26 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
     );
     out.textures_delta.clear();
     let u = out.platform_output.accesskit_update.unwrap();
-    let add_buttons = u.nodes.iter().filter(|(_, n)| {
-        n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction")
-    }).count();
+    let add_buttons = u
+        .nodes
+        .iter()
+        .filter(|(_, n)| n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction"))
+        .count();
     assert_eq!(
         add_buttons, 1,
         "Factions tab should have exactly 1 '+ Add Faction' button, not {add_buttons}"
     );
-    let btn_rect = u.nodes.iter().find_map(|(_, n)| {
-        if n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction") {
-            n.bounds()
-        } else {
-            None
-        }
-    }).expect("+ Add Faction button must exist");
+    let btn_rect = u
+        .nodes
+        .iter()
+        .find_map(|(_, n)| {
+            if n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction") {
+                n.bounds()
+            } else {
+                None
+            }
+        })
+        .expect("+ Add Faction button must exist");
     let click_pos = nvre_editor::egui::pos2(btn_rect.x0 as f32 + 5.0, btn_rect.y0 as f32 + 5.0);
 
     let mut out2 = ctx.run_ui(
@@ -2055,8 +2204,16 @@ fn the_factions_tab_renders_as_a_clean_table_with_targeted_dropdowns() {
     out2.textures_delta.clear();
 
     let rec_after = session.resolved_record(BRAHMIN).unwrap();
-    let snams_after = rec_after.subrecords().unwrap().iter().filter(|s| &s.sig == b"SNAM").count();
-    assert_eq!(snams_after, 4, "+ Add Faction must increment SNAM rows from 3 to 4");
+    let snams_after = rec_after
+        .subrecords()
+        .unwrap()
+        .iter()
+        .filter(|s| &s.sig == b"SNAM")
+        .count();
+    assert_eq!(
+        snams_after, 4,
+        "+ Add Faction must increment SNAM rows from 3 to 4"
+    );
 }
 
 #[test]
@@ -2078,7 +2235,11 @@ fn cralien_faction_displays_named_faction_not_none() {
     let mut state = ObjectEditorState::default();
     state.load_from_session(&session, fid, *b"CREA");
     state.tab.chosen = Some("Factions".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
 
     assert!(
         rows.iter().any(|(t, _)| t == "WWAlienFaction"),
@@ -2130,21 +2291,45 @@ fn the_factions_tab_renders_and_adds_when_actor_has_no_factions() {
     );
     out.textures_delta.clear();
 
-    let u = out.platform_output.accesskit_update.expect("accesskit update");
-    let has_faction_hdr = u.nodes.iter().any(|(_, n)| n.label() == Some("Faction") || n.value() == Some("Faction"));
-    let has_rank_hdr = u.nodes.iter().any(|(_, n)| n.label() == Some("Rank") || n.value() == Some("Rank"));
-    let has_empty_notice = u.nodes.iter().any(|(_, n)| n.label() == Some("No factions assigned") || n.value() == Some("No factions assigned"));
-    assert!(has_faction_hdr, "Table must show 'Faction' column header even with 0 factions");
-    assert!(has_rank_hdr, "Table must show 'Rank' column header even with 0 factions");
-    assert!(has_empty_notice, "Table must display 'No factions assigned' notice");
+    let u = out
+        .platform_output
+        .accesskit_update
+        .expect("accesskit update");
+    let has_faction_hdr = u
+        .nodes
+        .iter()
+        .any(|(_, n)| n.label() == Some("Faction") || n.value() == Some("Faction"));
+    let has_rank_hdr = u
+        .nodes
+        .iter()
+        .any(|(_, n)| n.label() == Some("Rank") || n.value() == Some("Rank"));
+    let has_empty_notice = u.nodes.iter().any(|(_, n)| {
+        n.label() == Some("No factions assigned") || n.value() == Some("No factions assigned")
+    });
+    assert!(
+        has_faction_hdr,
+        "Table must show 'Faction' column header even with 0 factions"
+    );
+    assert!(
+        has_rank_hdr,
+        "Table must show 'Rank' column header even with 0 factions"
+    );
+    assert!(
+        has_empty_notice,
+        "Table must display 'No factions assigned' notice"
+    );
 
-    let btn_rect = u.nodes.iter().find_map(|(_, n)| {
-        if n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction") {
-            n.bounds()
-        } else {
-            None
-        }
-    }).expect("+ Add Faction button must be present when actor has 0 factions");
+    let btn_rect = u
+        .nodes
+        .iter()
+        .find_map(|(_, n)| {
+            if n.label() == Some("+ Add Faction") || n.value() == Some("+ Add Faction") {
+                n.bounds()
+            } else {
+                None
+            }
+        })
+        .expect("+ Add Faction button must be present when actor has 0 factions");
 
     let click_pos = nvre_editor::egui::pos2(btn_rect.x0 as f32 + 5.0, btn_rect.y0 as f32 + 5.0);
     let mut out2 = ctx.run_ui(
@@ -2179,8 +2364,16 @@ fn the_factions_tab_renders_and_adds_when_actor_has_no_factions() {
     out2.textures_delta.clear();
 
     let rec_after = session.resolved_record(fid).unwrap();
-    let snams_after = rec_after.subrecords().unwrap().iter().filter(|s| &s.sig == b"SNAM").count();
-    assert_eq!(snams_after, 1, "+ Add Faction must add the first SNAM row to an actor with 0 factions");
+    let snams_after = rec_after
+        .subrecords()
+        .unwrap()
+        .iter()
+        .filter(|s| &s.sig == b"SNAM")
+        .count();
+    assert_eq!(
+        snams_after, 1,
+        "+ Add Faction must add the first SNAM row to an actor with 0 factions"
+    );
 }
 
 #[test]
@@ -2189,30 +2382,87 @@ fn the_ai_data_tab_renders_sections_geck_labels_and_checkbox() {
         return;
     };
     state.tab.chosen = Some("AI Data".to_string());
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
 
     // Section headers:
-    assert!(rows.iter().any(|(t, _)| t == "AI Attributes"), "missing 'AI Attributes' section: {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Aggro Radius"), "missing 'Aggro Radius' section: {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Services"), "missing 'Services' section: {rows:?}");
+    assert!(
+        rows.iter().any(|(t, _)| t == "AI Attributes"),
+        "missing 'AI Attributes' section: {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Aggro Radius"),
+        "missing 'Aggro Radius' section: {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Services"),
+        "missing 'Services' section: {rows:?}"
+    );
 
     // GECK field labels:
-    assert!(rows.iter().any(|(t, _)| t == "Aggression"), "missing 'Aggression': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Confidence"), "missing 'Confidence': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Energy Level"), "missing 'Energy Level': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Responsibility"), "missing 'Responsibility': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Mood"), "missing 'Mood': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Assistance"), "missing 'Assistance': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Aggro Radius Behavior"), "missing 'Aggro Radius Behavior': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Teaches"), "missing 'Teaches': {rows:?}");
-    assert!(rows.iter().any(|(t, _)| t == "Max Training Level"), "missing 'Max Training Level': {rows:?}");
+    assert!(
+        rows.iter().any(|(t, _)| t == "Aggression"),
+        "missing 'Aggression': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Confidence"),
+        "missing 'Confidence': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Energy Level"),
+        "missing 'Energy Level': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Responsibility"),
+        "missing 'Responsibility': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Mood"),
+        "missing 'Mood': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Assistance"),
+        "missing 'Assistance': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Aggro Radius Behavior"),
+        "missing 'Aggro Radius Behavior': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Teaches"),
+        "missing 'Teaches': {rows:?}"
+    );
+    assert!(
+        rows.iter().any(|(t, _)| t == "Max Training Level"),
+        "missing 'Max Training Level': {rows:?}"
+    );
 
     // No raw snake_case or padding:
-    assert!(!rows.iter().any(|(t, _)| t == "unused"), "compiler padding 'unused' must be hidden: {rows:?}");
-    assert!(!rows.iter().any(|(t, _)| t == "Barter Gold" || t == "barter_gold"), "Barter Gold is NPC-only and should not be on Creature AI Data: {rows:?}");
-    assert!(!rows.iter().any(|(t, _)| t == "energy_level"), "snake_case 'energy_level' should be 'Energy Level'");
-    assert!(!rows.iter().any(|(t, _)| t == "maximum_training_level"), "snake_case 'maximum_training_level' should be 'Max Training Level'");
-    assert!(!rows.iter().any(|(t, _)| t == "aggro_radius_behavior"), "snake_case 'aggro_radius_behavior' should be 'Aggro Radius Behavior'");
+    assert!(
+        !rows.iter().any(|(t, _)| t == "unused"),
+        "compiler padding 'unused' must be hidden: {rows:?}"
+    );
+    assert!(
+        !rows
+            .iter()
+            .any(|(t, _)| t == "Barter Gold" || t == "barter_gold"),
+        "Barter Gold is NPC-only and should not be on Creature AI Data: {rows:?}"
+    );
+    assert!(
+        !rows.iter().any(|(t, _)| t == "energy_level"),
+        "snake_case 'energy_level' should be 'Energy Level'"
+    );
+    assert!(
+        !rows.iter().any(|(t, _)| t == "maximum_training_level"),
+        "snake_case 'maximum_training_level' should be 'Max Training Level'"
+    );
+    assert!(
+        !rows.iter().any(|(t, _)| t == "aggro_radius_behavior"),
+        "snake_case 'aggro_radius_behavior' should be 'Aggro Radius Behavior'"
+    );
 }
 
 #[test]
@@ -2243,31 +2493,53 @@ fn the_ai_packages_tab_renders_table_priority_reordering_and_add() {
     out.textures_delta.clear();
 
     let u = out.platform_output.accesskit_update.unwrap();
-    let has_prio = u.nodes.iter().any(|(_, n)| n.label() == Some("Priority") || n.value() == Some("Priority"));
-    let has_pkg = u.nodes.iter().any(|(_, n)| n.label() == Some("Package") || n.value() == Some("Package"));
-    let has_add = u.nodes.iter().any(|(_, n)| n.label() == Some("+ Add Package") || n.value() == Some("+ Add Package"));
+    let has_prio = u
+        .nodes
+        .iter()
+        .any(|(_, n)| n.label() == Some("Priority") || n.value() == Some("Priority"));
+    let has_pkg = u
+        .nodes
+        .iter()
+        .any(|(_, n)| n.label() == Some("Package") || n.value() == Some("Package"));
+    let has_add = u
+        .nodes
+        .iter()
+        .any(|(_, n)| n.label() == Some("+ Add Package") || n.value() == Some("+ Add Package"));
     assert!(has_prio, "Should show Priority column header");
     assert!(has_pkg, "Should show Package column header");
     assert!(has_add, "Button must read '+ Add Package'");
 
     // Check initial order on Brahmin (0x0014D1FF, 0x000200D5)
     let rec0 = session.resolved_record(BRAHMIN).unwrap();
-    let pk0: Vec<u32> = rec0.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").map(|s| {
-        u32::from_le_bytes(s.data.as_slice().try_into().unwrap())
-    }).collect();
+    let pk0: Vec<u32> = rec0
+        .subrecords()
+        .unwrap()
+        .iter()
+        .filter(|s| &s.sig == b"PKID")
+        .map(|s| u32::from_le_bytes(s.data.as_slice().try_into().unwrap()))
+        .collect();
     assert_eq!(pk0, vec![0x0014_D1FF, 0x0002_00D5]);
 
     // Click Up on row 1 to move DefaultStayAtEditorLocation to row 0
-    let up_btns: Vec<_> = u.nodes.iter().filter_map(|(_, n)| {
-        if n.label() == Some("Up") || n.value() == Some("Up") {
-            n.bounds()
-        } else {
-            None
-        }
-    }).collect();
+    let up_btns: Vec<_> = u
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| {
+            if n.label() == Some("Up") || n.value() == Some("Up") {
+                n.bounds()
+            } else {
+                None
+            }
+        })
+        .collect();
     assert_eq!(up_btns.len(), 2, "There should be 2 up buttons for 2 rows");
-    let up_btn_row1 = if up_btns[0].y0 > up_btns[1].y0 { up_btns[0] } else { up_btns[1] };
-    let click_pos = nvre_editor::egui::pos2(up_btn_row1.x0 as f32 + 5.0, up_btn_row1.y0 as f32 + 5.0);
+    let up_btn_row1 = if up_btns[0].y0 > up_btns[1].y0 {
+        up_btns[0]
+    } else {
+        up_btns[1]
+    };
+    let click_pos =
+        nvre_editor::egui::pos2(up_btn_row1.x0 as f32 + 5.0, up_btn_row1.y0 as f32 + 5.0);
 
     let mut out2 = ctx.run_ui(
         nvre_editor::egui::RawInput {
@@ -2301,10 +2573,18 @@ fn the_ai_packages_tab_renders_table_priority_reordering_and_add() {
     out2.textures_delta.clear();
 
     let rec1 = session.resolved_record(BRAHMIN).unwrap();
-    let pk1: Vec<u32> = rec1.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").map(|s| {
-        u32::from_le_bytes(s.data.as_slice().try_into().unwrap())
-    }).collect();
-    assert_eq!(pk1, vec![0x0002_00D5, 0x0014_D1FF], "Clicking Up on row 1 must swap package priority!");
+    let pk1: Vec<u32> = rec1
+        .subrecords()
+        .unwrap()
+        .iter()
+        .filter(|s| &s.sig == b"PKID")
+        .map(|s| u32::from_le_bytes(s.data.as_slice().try_into().unwrap()))
+        .collect();
+    assert_eq!(
+        pk1,
+        vec![0x0002_00D5, 0x0014_D1FF],
+        "Clicking Up on row 1 must swap package priority!"
+    );
 }
 
 #[test]
@@ -2348,20 +2628,32 @@ fn the_ai_packages_tab_renders_empty_state_and_adds_first_package() {
     out.textures_delta.clear();
 
     let u = out.platform_output.accesskit_update.unwrap();
-    let has_prio = u.nodes.iter().any(|(_, n)| n.label() == Some("Priority") || n.value() == Some("Priority"));
-    let has_pkg = u.nodes.iter().any(|(_, n)| n.label() == Some("Package") || n.value() == Some("Package"));
-    let has_notice = u.nodes.iter().any(|(_, n)| n.label() == Some("No AI packages assigned") || n.value() == Some("No AI packages assigned"));
+    let has_prio = u
+        .nodes
+        .iter()
+        .any(|(_, n)| n.label() == Some("Priority") || n.value() == Some("Priority"));
+    let has_pkg = u
+        .nodes
+        .iter()
+        .any(|(_, n)| n.label() == Some("Package") || n.value() == Some("Package"));
+    let has_notice = u.nodes.iter().any(|(_, n)| {
+        n.label() == Some("No AI packages assigned") || n.value() == Some("No AI packages assigned")
+    });
     assert!(has_prio, "Should show Priority header even with 0 packages");
     assert!(has_pkg, "Should show Package header even with 0 packages");
     assert!(has_notice, "Should show 'No AI packages assigned'");
 
-    let btn_rect = u.nodes.iter().find_map(|(_, n)| {
-        if n.label() == Some("+ Add Package") || n.value() == Some("+ Add Package") {
-            n.bounds()
-        } else {
-            None
-        }
-    }).expect("+ Add Package button");
+    let btn_rect = u
+        .nodes
+        .iter()
+        .find_map(|(_, n)| {
+            if n.label() == Some("+ Add Package") || n.value() == Some("+ Add Package") {
+                n.bounds()
+            } else {
+                None
+            }
+        })
+        .expect("+ Add Package button");
 
     let click_pos = nvre_editor::egui::pos2(btn_rect.x0 as f32 + 5.0, btn_rect.y0 as f32 + 5.0);
     let mut out2 = ctx.run_ui(
@@ -2396,7 +2688,12 @@ fn the_ai_packages_tab_renders_empty_state_and_adds_first_package() {
     out2.textures_delta.clear();
 
     let rec1 = session.resolved_record(fid).unwrap();
-    let pk_count = rec1.subrecords().unwrap().iter().filter(|s| &s.sig == b"PKID").count();
+    let pk_count = rec1
+        .subrecords()
+        .unwrap()
+        .iter()
+        .filter(|s| &s.sig == b"PKID")
+        .count();
     assert_eq!(pk_count, 1, "+ Add Package must add the first package row!");
 }
 
@@ -2458,17 +2755,48 @@ fn the_inventory_tab_folds_each_coed_into_its_cnto_row() {
         .filter(|l| !l.is_empty())
         .collect();
     // One row per CNTO: nine remove buttons, nine Up and nine Down.
-    assert_eq!(labels.iter().filter(|l| **l == "✖").count(), 9, "one ✖ per item: {labels:?}");
-    assert_eq!(labels.iter().filter(|l| **l == "Up").count(), 9, "one Up per item");
-    assert_eq!(labels.iter().filter(|l| **l == "Down").count(), 9, "one Down per item");
+    assert_eq!(
+        labels.iter().filter(|l| **l == "✖").count(),
+        9,
+        "one ✖ per item: {labels:?}"
+    );
+    assert_eq!(
+        labels.iter().filter(|l| **l == "Up").count(),
+        9,
+        "one Up per item"
+    );
+    assert_eq!(
+        labels.iter().filter(|l| **l == "Down").count(),
+        9,
+        "one Down per item"
+    );
     // The table's headers, the way the Cell Window's list shows them.
-    for header in ["Item", "Count", "Condition", "Owner (NPC / Faction)", "Rank / Global"] {
-        assert!(labels.contains(&header), "missing the {header:?} column header: {labels:?}");
+    for header in [
+        "Item",
+        "Count",
+        "Condition",
+        "Owner (NPC / Faction)",
+        "Rank / Global",
+    ] {
+        assert!(
+            labels.contains(&header),
+            "missing the {header:?} column header: {labels:?}"
+        );
     }
     // The first row shows the stored 12%, and the rest default to 100%.
-    assert!(labels.iter().any(|l| *l == "12%"), "the row with a COED shows its 12%: {labels:?}");
-    assert_eq!(labels.iter().filter(|l| **l == "100%").count(), 8, "the eight rows without one default to 100%");
-    assert!(labels.contains(&"+ Add Item"), "the add button reads '+ Add Item'");
+    assert!(
+        labels.iter().any(|l| *l == "12%"),
+        "the row with a COED shows its 12%: {labels:?}"
+    );
+    assert_eq!(
+        labels.iter().filter(|l| **l == "100%").count(),
+        8,
+        "the eight rows without one default to 100%"
+    );
+    assert!(
+        labels.contains(&"+ Add Item"),
+        "the add button reads '+ Add Item'"
+    );
 }
 
 /// Reordering a row keeps its `COED` attached: the extras belong to the item, so
@@ -2509,9 +2837,18 @@ fn the_inventory_tab_reorders_without_detaching_its_coed() {
     let downs: Vec<_> = u
         .nodes
         .iter()
-        .filter_map(|(_, n)| if n.label() == Some("Down") { n.bounds() } else { None })
+        .filter_map(|(_, n)| {
+            if n.label() == Some("Down") {
+                n.bounds()
+            } else {
+                None
+            }
+        })
         .collect();
-    let d0 = downs.iter().min_by_key(|b| b.y0 as i64).expect("a Down button");
+    let d0 = downs
+        .iter()
+        .min_by_key(|b| b.y0 as i64)
+        .expect("a Down button");
     let click = nvre_editor::egui::pos2(d0.x0 as f32 + 5.0, d0.y0 as f32 + 5.0);
     let _ = ctx.run_ui(
         nvre_editor::egui::RawInput {
@@ -2551,7 +2888,10 @@ fn the_inventory_tab_reorders_without_detaching_its_coed() {
     // after it — not hoisted above the whole run, which is what two
     // `set_sub_list` calls would have done.
     assert_eq!(run[1].1, first, "the old row 0 is now row 1");
-    assert_eq!(run[2].0, "COED", "the moved row's COED still follows its CNTO");
+    assert_eq!(
+        run[2].0, "COED",
+        "the moved row's COED still follows its CNTO"
+    );
     assert_eq!(run[0].0, "CNTO", "the old row 1 is now row 0");
 }
 
@@ -2569,7 +2909,10 @@ fn the_inventory_tab_adds_the_first_item_to_a_creature_with_none() {
     let mut pages = Pages::default();
     let ctx = nvre_editor::egui::Context::default();
     ctx.enable_accesskit();
-    assert!(inventory_run(&session, fid).is_empty(), "the fixture has no items");
+    assert!(
+        inventory_run(&session, fid).is_empty(),
+        "the fixture has no items"
+    );
 
     let mut out = ctx.run_ui(
         nvre_editor::egui::RawInput {
@@ -2592,10 +2935,22 @@ fn the_inventory_tab_adds_the_first_item_to_a_creature_with_none() {
         .iter()
         .filter_map(|(_, n)| n.label().or_else(|| n.value()))
         .collect();
-    for header in ["Item", "Count", "Condition", "Owner (NPC / Faction)", "Rank / Global"] {
-        assert!(labels.contains(&header), "the empty table still shows its {header:?} header");
+    for header in [
+        "Item",
+        "Count",
+        "Condition",
+        "Owner (NPC / Faction)",
+        "Rank / Global",
+    ] {
+        assert!(
+            labels.contains(&header),
+            "the empty table still shows its {header:?} header"
+        );
     }
-    assert!(labels.contains(&"No items"), "the empty table says 'No items'");
+    assert!(
+        labels.contains(&"No items"),
+        "the empty table says 'No items'"
+    );
 
     let btn = u
         .nodes
@@ -2898,8 +3253,14 @@ fn the_actor_effect_tab_shows_all_three_sections_and_absent_pickers() {
         "the absent EITM offers a picker: {labels:?}"
     );
     // The effect list is a real table with its header and controls.
-    assert!(labels.contains(&"Actor Effect"), "missing the list's header");
-    assert!(labels.contains(&"+ Add Actor Effect"), "missing the add button");
+    assert!(
+        labels.contains(&"Actor Effect"),
+        "missing the list's header"
+    );
+    assert!(
+        labels.contains(&"+ Add Actor Effect"),
+        "missing the add button"
+    );
     assert_eq!(
         labels.iter().filter(|l| **l == "✖").count(),
         1,
@@ -2962,7 +3323,10 @@ fn an_absent_eamt_can_be_set_from_the_actor_effect_tab() {
         labels.contains(&"Unarmed Attack Animation"),
         "the section draws with no EAMT on the record: {labels:?}"
     );
-    assert!(labels.contains(&"NONE"), "its dropdown reads NONE: {labels:?}");
+    assert!(
+        labels.contains(&"NONE"),
+        "its dropdown reads NONE: {labels:?}"
+    );
 
     // Picking a value writes the subrecord: the enum is one u16, and the value
     // the schema calls 25 is the animation the pick offers.
@@ -3030,7 +3394,11 @@ fn the_animation_tab_lists_base_and_specialanims_with_the_records_selection() {
         .filter(|n| !n.is_empty())
         .map(|n| n.to_lowercase())
         .collect();
-    assert_eq!(selected.len(), 15, "15 of the 22 are selected: {selected:?}");
+    assert_eq!(
+        selected.len(),
+        15,
+        "15 of the 22 are selected: {selected:?}"
+    );
     assert!(
         selected.iter().any(|n| n == "1hmaim.kf"),
         "the hand-to-hand animations are selected: {selected:?}"
@@ -3086,7 +3454,10 @@ fn the_object_window_filter_matches_the_editor_id_as_well_as_the_name() {
         crea.len(),
         1,
         "the Editor ID names exactly one creature: {:?}",
-        groups.iter().map(|g| (g.sig, g.objects.len())).collect::<Vec<_>>()
+        groups
+            .iter()
+            .map(|g| (g.sig, g.objects.len()))
+            .collect::<Vec<_>>()
     );
     let row = crea[0]
         .objects
@@ -3185,9 +3556,7 @@ fn the_specialanims_checkboxes_rewrite_kffz_in_both_directions() {
         .nodes
         .iter()
         .filter(|(_, n)| n.role() == egui::accesskit::Role::CheckBox)
-        .filter(|(_, n)| {
-            n.toggled() == Some(egui::accesskit::Toggled::False) && !n.is_disabled()
-        })
+        .filter(|(_, n)| n.toggled() == Some(egui::accesskit::Toggled::False) && !n.is_disabled())
         .filter_map(|(_, n)| {
             let b = n.bounds()?;
             // The table's "In use" column, not the flag checkboxes above it.
@@ -3233,7 +3602,10 @@ fn the_specialanims_checkboxes_rewrite_kffz_in_both_directions() {
     // The write is a whole-`KFFZ` rewrite, not an append: the new selection is
     // the old one plus the one name.
     let expected: Vec<String> = before.iter().cloned().chain([added_name.clone()]).collect();
-    assert_eq!(after, expected, "the selection is the old one plus the ticked name");
+    assert_eq!(
+        after, expected,
+        "the selection is the old one plus the ticked name"
+    );
 
     // And back the other way: click the row that holds the name just added.
     // The row is found by its label — the file name the row draws — so the test
@@ -3247,8 +3619,7 @@ fn the_specialanims_checkboxes_rewrite_kffz_in_both_directions() {
         .nodes
         .iter()
         .find(|(_, n)| {
-            (n.label() == Some(added_name.as_str())
-                || n.value() == Some(added_name.as_str()))
+            (n.label() == Some(added_name.as_str()) || n.value() == Some(added_name.as_str()))
                 && n.role() == egui::accesskit::Role::Label
         })
         .and_then(|(_, n)| n.bounds())
@@ -3343,7 +3714,10 @@ fn the_base_animation_checkboxes_are_disabled() {
     drop(update);
     // 10 base, always disabled; 22 special, selectable. All 32 fit in 2400px.
     assert_eq!(disabled, 10, "10 base animations, all disabled: {disabled}");
-    assert_eq!(enabled, 22, "22 special overrides, all selectable: {enabled}");
+    assert_eq!(
+        enabled, 22,
+        "22 special overrides, all selectable: {enabled}"
+    );
 }
 
 /// The Animation tab has one scrollbar, and it is the table's.
@@ -3536,27 +3910,58 @@ fn the_model_list_tab_has_structured_sections_with_nif_table_and_bounds_calculat
     state.load_from_session(&session, fid, *b"CREA");
     state.tab.chosen = Some("ModelList".to_string());
 
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(900.0, 2400.0),
+    );
     let labels: Vec<&str> = rows.iter().map(|(t, _)| t.as_str()).collect();
 
     // Section headings are drawn
-    assert!(labels.contains(&"Base Model"), "missing Base Model heading: {labels:?}");
-    assert!(labels.contains(&"Model List"), "missing Model List heading: {labels:?}");
-    assert!(labels.contains(&"Object Bounds"), "missing Object Bounds heading: {labels:?}");
-    assert!(labels.contains(&"Model Flags"), "missing Model Flags heading: {labels:?}");
+    assert!(
+        labels.contains(&"Base Model"),
+        "missing Base Model heading: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"Model List"),
+        "missing Model List heading: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"Object Bounds"),
+        "missing Object Bounds heading: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"Model Flags"),
+        "missing Model Flags heading: {labels:?}"
+    );
     assert!(
         labels.contains(&"Model List Textures (NIFT)"),
         "missing Model List Textures (NIFT) heading: {labels:?}"
     );
 
-        // Base Model contents: Model FileName and Body Part Data
-    assert!(labels.contains(&"Model FileName"), "missing Model FileName: {labels:?}");
-    assert!(labels.contains(&"Body Part Data"), "missing Body Part Data: {labels:?}");
+    // Base Model contents: Model FileName and Body Part Data
+    assert!(
+        labels.contains(&"Model FileName"),
+        "missing Model FileName: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"Body Part Data"),
+        "missing Body Part Data: {labels:?}"
+    );
 
     // Table columns
-    assert!(labels.contains(&"Model Mesh (.nif)"), "missing table column Model Mesh: {labels:?}");
-    assert!(labels.contains(&"Status"), "missing table column Status: {labels:?}");
-    assert!(labels.contains(&"Actions"), "missing table column Actions: {labels:?}");
+    assert!(
+        labels.contains(&"Model Mesh (.nif)"),
+        "missing table column Model Mesh: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"Status"),
+        "missing table column Status: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"Actions"),
+        "missing table column Actions: {labels:?}"
+    );
 
     // Object bounds: coordinates
     assert!(labels.contains(&"min.x"), "missing min.x: {labels:?}");
@@ -3662,7 +4067,11 @@ fn the_destruction_tab_is_gecks_checkbox_and_a_stage_list() {
     let Some((mut session, mut state)) = open_destruction(TURRET) else {
         return;
     };
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(1000.0, 3000.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(1000.0, 3000.0),
+    );
     let text: Vec<&str> = rows.iter().map(|(t, _)| t.as_str()).collect();
     let at = |want: &str| -> f32 {
         rows.iter()
@@ -3815,7 +4224,11 @@ fn the_stage_flags_are_fopdocs_three_bits() {
         },
     );
     out.textures_delta.clear();
-    let nodes = out.platform_output.accesskit_update.expect("accesskit").nodes;
+    let nodes = out
+        .platform_output
+        .accesskit_update
+        .expect("accesskit")
+        .nodes;
     let toggled = |name: &str| -> Option<bool> {
         nodes
             .iter()
@@ -3853,16 +4266,13 @@ fn click_topmost(
             },
         );
         out.textures_delta.clear();
-        rect = out
-            .platform_output
-            .accesskit_update
-            .and_then(|u| {
-                u.nodes
-                    .iter()
-                    .filter(|(_, n)| n.label() == Some(label))
-                    .filter_map(|(_, n)| n.bounds())
-                    .min_by_key(|b| b.y0 as i64)
-            });
+        rect = out.platform_output.accesskit_update.and_then(|u| {
+            u.nodes
+                .iter()
+                .filter(|(_, n)| n.label() == Some(label))
+                .filter_map(|(_, n)| n.bounds())
+                .min_by_key(|b| b.y0 as i64)
+        });
     }
     let rect = rect.unwrap_or_else(|| panic!("no {label:?} widget"));
     let click = egui::pos2(rect.x0 as f32 + 5.0, rect.y0 as f32 + 5.0);
@@ -3943,13 +4353,21 @@ fn the_sounds_tab_is_one_table_of_triples() {
     assert_eq!(run.len(), 15, "five entries, three subrecords each");
     for (i, chunk) in run.chunks(3).enumerate() {
         assert_eq!(
-            [chunk[0].0.as_str(), chunk[1].0.as_str(), chunk[2].0.as_str()],
+            [
+                chunk[0].0.as_str(),
+                chunk[1].0.as_str(),
+                chunk[2].0.as_str()
+            ],
             ["CSDT", "CSDI", "CSDC"],
             "entry {i} is a triple"
         );
     }
 
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(1000.0, 3000.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(1000.0, 3000.0),
+    );
     for want in [
         "Sound Level",
         "Inherits Sounds From",
@@ -3966,7 +4384,8 @@ fn the_sounds_tab_is_one_table_of_triples() {
     }
     // The sound's file, not just its Editor ID — GECK shows the filename.
     assert!(
-        rows.iter().any(|(t, _)| t == "fx\\npc\\roach\\foot\\left\\"),
+        rows.iter()
+            .any(|(t, _)| t == "fx\\npc\\roach\\foot\\left\\"),
         "the row does not show the sound's file: {rows:?}"
     );
     // The two defects the old tables had: enum rows as `value`/`name`, and a
@@ -4023,9 +4442,9 @@ fn adding_a_sound_appends_a_whole_triple() {
                 .resolved_record(*f)
                 .and_then(|r| r.subrecords().ok())
                 .map(|subs| {
-                    !subs.iter().any(|s| {
-                        matches!(&s.sig, b"CSDT" | b"CSDI" | b"CSDC" | b"CSCR")
-                    })
+                    !subs
+                        .iter()
+                        .any(|s| matches!(&s.sig, b"CSDT" | b"CSDI" | b"CSDC" | b"CSCR"))
                 })
                 .unwrap_or(false)
         })
@@ -4074,7 +4493,11 @@ fn inheriting_sounds_lists_the_inherited_entries_read_only() {
     state.load_from_session(&session, fid, *b"CREA");
     state.tab.chosen = Some("Sounds".to_string());
 
-    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(1000.0, 3000.0));
+    let rows = placed_widgets(
+        &mut session,
+        &mut state,
+        nvre_editor::egui::vec2(1000.0, 3000.0),
+    );
     assert!(
         rows.iter()
             .any(|(t, _)| t.contains("inherits its sounds from")),
@@ -4154,7 +4577,10 @@ fn the_sound_type_list_is_fopdocs_not_xedits() {
         "CSDI points at SOUN records"
     );
     assert!(
-        matches!(session.schema.resolve_def(&csdi.ty), nvre_esm::TypeDef::FormIdRef { .. }),
+        matches!(
+            session.schema.resolve_def(&csdi.ty),
+            nvre_esm::TypeDef::FormIdRef { .. }
+        ),
         "CSDI is a FormID"
     );
 }

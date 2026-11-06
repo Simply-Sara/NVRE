@@ -343,7 +343,10 @@ fn analyze_if_chain(script: &Script, if_idx: usize) -> Result<IfChain, crate::Er
     let mut branches = Vec::with_capacity(markers.len());
     for n in 0..markers.len() {
         let (at, head, cond) = &markers[n];
-        let end = markers.get(n + 1).map(|(next, _, _)| *next).unwrap_or(after - 1);
+        let end = markers
+            .get(n + 1)
+            .map(|(next, _, _)| *next)
+            .unwrap_or(after - 1);
         branches.push(Branch {
             head: *head,
             cond: cond.clone(),
@@ -477,11 +480,8 @@ fn emit_branch(
         let branch_head = if n == 0 { head } else { branch.head };
         let mut args = Vec::new();
         args.extend_from_slice(&ops.to_le_bytes());
-        let cond_tokens: Option<&[crate::lex::Token]> = if n == 0 {
-            cond
-        } else {
-            branch.cond.as_deref()
-        };
+        let cond_tokens: Option<&[crate::lex::Token]> =
+            if n == 0 { cond } else { branch.cond.as_deref() };
         if let Some(cond) = cond_tokens {
             let cond_bytes = crate::value::encode_expr(cond, script)?;
             args.extend_from_slice(&(cond_bytes.len() as u16).to_le_bytes());
@@ -1286,7 +1286,8 @@ fn emit_call(
             continue;
         }
         // Handle negative number passed as `-` followed by `number`
-        if t.text == "-" && ai + 1 < folded.len() && folded[ai + 1].kind == crate::lex::Kind::Number {
+        if t.text == "-" && ai + 1 < folded.len() && folded[ai + 1].kind == crate::lex::Kind::Number
+        {
             let num_tok = &folded[ai + 1];
             let mut combined = num_tok.clone();
             combined.text = format!("-{}", num_tok.text);
@@ -1313,9 +1314,7 @@ fn emit_call(
         // the corpus, every one argLen 0, dotted and bare alike. One
         // dropped argument is accepted on that evidence; two is a call this
         // emitter does not understand.
-        if encoded.len() == 1
-            && matches!(cmd.opcode, 0x1017 | 0x1098 | 0x1142 | 0x105E | 0x105D)
-        {
+        if encoded.len() == 1 && matches!(cmd.opcode, 0x1017 | 0x1098 | 0x1142 | 0x105E | 0x105D) {
             let mut out = prefix_bytes;
             out.extend(frame(cmd.opcode, &[]));
             return Ok(out);
@@ -1783,9 +1782,7 @@ fn emit_arg(
             let kind = param_kind(exp);
             if is_code_param(exp) {
                 return code_named(&inner, exp).ok_or_else(|| {
-                    crate::Error::Parse(format!(
-                        "`{inner}` is not a {kind} this emitter knows"
-                    ))
+                    crate::Error::Parse(format!("`{inner}` is not a {kind} this emitter knows"))
                 });
             }
             if kind != "string" {
@@ -1898,10 +1895,7 @@ fn emit_arg(
                         "Z" => return Ok(vec![b'Z']),
                         _ => {}
                     }
-                    return Err(crate::Error::Parse(format!(
-                        "`{}` is not an axis",
-                        t.text
-                    )));
+                    return Err(crate::Error::Parse(format!("`{}` is not an axis", t.text)));
                 }
                 if is_code_param(exp) {
                     return code_named(&t.text, exp).ok_or_else(|| {
@@ -2032,7 +2026,8 @@ mod corpus_tests {
         //     → 90 11 | 19 00 | 01 00 | 15 00 | "LooseDoctorHealPlayer"
         // The idle is not in the record's reference list at all, so a compiler
         // that wants an index here cannot emit the call.
-        let got = crate::compile("scn S\nBegin GameMode\n  PlayIdle LooseDoctorHealPlayer\nEnd\n").unwrap();
+        let got = crate::compile("scn S\nBegin GameMode\n  PlayIdle LooseDoctorHealPlayer\nEnd\n")
+            .unwrap();
         let expected: Vec<u8> = [
             &[0x90u8, 0x11, 0x19, 0x00, 0x01, 0x00, 0x15, 0x00][..],
             b"LooseDoctorHealPlayer",
@@ -2085,8 +2080,9 @@ mod corpus_tests {
         )
         .unwrap();
         assert!(
-            got.windows(7).any(|w| w == [0x15, 0x00, 0x05, 0x00, 0x73, 0x01, 0x00]
-                || w == [0x73, 0x01, 0x00, 0x04, 0x00, 0x20, 0x31]),
+            got.windows(7)
+                .any(|w| w == [0x15, 0x00, 0x05, 0x00, 0x73, 0x01, 0x00]
+                    || w == [0x73, 0x01, 0x00, 0x04, 0x00, 0x20, 0x31]),
             "{:02X?}",
             got
         );
@@ -2113,7 +2109,10 @@ mod corpus_tests {
         .unwrap();
         let ins = read_instructions(&got);
         let opcodes: Vec<u16> = ins.iter().map(|i| i.opcode).collect();
-        assert_eq!(opcodes, vec![0x1D, 0x10, 0x16, 0x15, 0x17, 0x15, 0x19, 0x11]);
+        assert_eq!(
+            opcodes,
+            vec![0x1D, 0x10, 0x16, 0x15, 0x17, 0x15, 0x19, 0x11]
+        );
         // The `else`'s jumpOps counts the one statement under it.
         let at = ins.iter().position(|i| i.opcode == 0x0017).unwrap();
         assert_eq!(ins[at].args, 1u16.to_le_bytes().to_vec());

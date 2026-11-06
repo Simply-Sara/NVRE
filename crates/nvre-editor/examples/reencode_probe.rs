@@ -66,58 +66,80 @@ fn main() {
             }
             shown += 1;
             for (oi, sub) in matching.iter().enumerate() {
-            println!("  occurrence {oi} of {}", matching.len());
-            println!(
-                "\n{} {} {} len={}",
-                rec.header.form_id,
-                want_sig,
-                want_sub,
-                sub.data.len()
-            );
-            let Some(def) = schema.lookup(&sig, &sub.sig) else {
-                println!("  no layout");
-                continue;
-            };
-            let ty = schema.resolve_def(&def.ty);
-            match nvre_edit::encode::decoded(&schema, &sig, sub) {
-                Some(v) => {
-                    let keys: Vec<&String> = v
-                        .as_object()
-                        .map(|o| o.keys().collect())
-                        .unwrap_or_default();
-                    println!(
-                        "  decoded {} keys: {:?}",
-                        keys.len(),
-                        &keys[..keys.len().min(8)]
-                    );
-                    walk(&schema, &ty, &v, sub.data.len(), 0);
-                    // Exactly what the matrix does: every number field, +1 then
-                    // -1, re-encoding with the original length.
-                    let block = nvre_esm::decode::block_of(&sig, &subs, &schema, sub.sig);
-                    for row in nvre_edit::encode::rows(&schema, &sig, &sub.sig, block.as_deref(), &v) {
-                        let Some(cur) = nvre_edit::encode::value_at(&v, &row.path) else { continue };
-                        let Some(n) = cur.as_i64() else { continue };
-                        if row.derived { continue }
-                        let mut done = false;
-                        for cand in [n + 1, n - 1] {
-                            let mut edited = v.clone();
-                            if nvre_editor::session::set_path(&mut edited, &row.path, serde_json::json!(cand)).is_err() { continue }
-                            match nvre_edit::encode::encode_sub_len_in_block(
-                                &schema, &sig, &sub.sig, &edited, Some(sub.data.len()), block.as_deref(),
-                            ) {
-                                Ok(_) => { done = true; break }
-                                Err(e) => {
-                                    if cand == n + 1 {
-                                        println!("  FAIL {} = {cand} (was {n}): {e}", row.path);
+                println!("  occurrence {oi} of {}", matching.len());
+                println!(
+                    "\n{} {} {} len={}",
+                    rec.header.form_id,
+                    want_sig,
+                    want_sub,
+                    sub.data.len()
+                );
+                let Some(def) = schema.lookup(&sig, &sub.sig) else {
+                    println!("  no layout");
+                    continue;
+                };
+                let ty = schema.resolve_def(&def.ty);
+                match nvre_edit::encode::decoded(&schema, &sig, sub) {
+                    Some(v) => {
+                        let keys: Vec<&String> = v
+                            .as_object()
+                            .map(|o| o.keys().collect())
+                            .unwrap_or_default();
+                        println!(
+                            "  decoded {} keys: {:?}",
+                            keys.len(),
+                            &keys[..keys.len().min(8)]
+                        );
+                        walk(&schema, &ty, &v, sub.data.len(), 0);
+                        // Exactly what the matrix does: every number field, +1 then
+                        // -1, re-encoding with the original length.
+                        let block = nvre_esm::decode::block_of(&sig, &subs, &schema, sub.sig);
+                        for row in
+                            nvre_edit::encode::rows(&schema, &sig, &sub.sig, block.as_deref(), &v)
+                        {
+                            let Some(cur) = nvre_edit::encode::value_at(&v, &row.path) else {
+                                continue;
+                            };
+                            let Some(n) = cur.as_i64() else { continue };
+                            if row.derived {
+                                continue;
+                            }
+                            let mut done = false;
+                            for cand in [n + 1, n - 1] {
+                                let mut edited = v.clone();
+                                if nvre_editor::session::set_path(
+                                    &mut edited,
+                                    &row.path,
+                                    serde_json::json!(cand),
+                                )
+                                .is_err()
+                                {
+                                    continue;
+                                }
+                                match nvre_edit::encode::encode_sub_len_in_block(
+                                    &schema,
+                                    &sig,
+                                    &sub.sig,
+                                    &edited,
+                                    Some(sub.data.len()),
+                                    block.as_deref(),
+                                ) {
+                                    Ok(_) => {
+                                        done = true;
+                                        break;
+                                    }
+                                    Err(e) => {
+                                        if cand == n + 1 {
+                                            println!("  FAIL {} = {cand} (was {n}): {e}", row.path);
+                                        }
                                     }
                                 }
                             }
+                            let _ = done;
                         }
-                        let _ = done;
                     }
+                    None => println!("  does not decode"),
                 }
-                None => println!("  does not decode"),
-            }
             }
         }
     }

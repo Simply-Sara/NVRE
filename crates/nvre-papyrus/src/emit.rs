@@ -2874,7 +2874,11 @@ impl<'a> Compiler<'a> {
                 let _ = ty;
                 Value::Identifier(tmp)
             }
-            Expr::Call { callee, args, names } => {
+            Expr::Call {
+                callee,
+                args,
+                names,
+            } => {
                 // Three shapes, and which one it is decides the opcode:
                 //   `f(...)`            — callmethod on self
                 //   `a.f(...)`          — callmethod on `a`
@@ -2919,9 +2923,10 @@ impl<'a> Compiler<'a> {
                             // each argument's slot conversion after the list —
                             // see `call_args`. Positions in the vararg list stay
                             // in source order either way.
-                            let va = self.call_args(buf, args, names, line, &own, name, defs, |i| {
-                                crate::signatures::arg_type(&own, name, i)
-                            })?;
+                            let va =
+                                self.call_args(buf, args, names, line, &own, name, defs, |i| {
+                                    crate::signatures::arg_type(&own, name, i)
+                                })?;
                             ins.varargs = self.pad_defaults(va, defs, name);
                             let released: Vec<Value> = ins.varargs.clone();
                             buf.push(ins, line);
@@ -2976,9 +2981,10 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::method_signature(cls, name)
                                     .map(|(_, d)| d)
                                     .or_else(|| crate::signatures::defaults(name));
-                                let va = self.call_args(buf, args, names, line, cls, name, defs, |i| {
-                                    crate::signatures::arg_type(cls, name, i)
-                                })?;
+                                let va =
+                                    self.call_args(buf, args, names, line, cls, name, defs, |i| {
+                                        crate::signatures::arg_type(cls, name, i)
+                                    })?;
                                 // Destination after the arguments — see the
                                 // member-call path.
                                 let tmp = self.temp(buf, ty);
@@ -3027,9 +3033,10 @@ impl<'a> Compiler<'a> {
                         let defs = self
                             .method_defaults_in_chain(name)
                             .or_else(|| crate::signatures::defaults(name));
-                        let dealt = self.call_args(buf, args, names, line, &own, name, defs, |i| {
-                            crate::signatures::arg_type(&own, name, i)
-                        })?;
+                        let dealt =
+                            self.call_args(buf, args, names, line, &own, name, defs, |i| {
+                                crate::signatures::arg_type(&own, name, i)
+                            })?;
                         let dealt = self.pad_defaults(dealt, defs, name);
                         let released: Vec<Value> = dealt.clone();
                         // Destination after the arguments — see the member-call
@@ -3125,9 +3132,16 @@ impl<'a> Compiler<'a> {
                                 let defs = crate::signatures::defaults(method);
                                 let cls = class.to_ascii_lowercase();
                                 let sig = crate::signatures::method_params(&cls, method);
-                                let va = self.call_args(buf, args, names, line, &cls, method, defs, |i| {
-                                    sig.and_then(|s| s.get(i).copied())
-                                })?;
+                                let va = self.call_args(
+                                    buf,
+                                    args,
+                                    names,
+                                    line,
+                                    &cls,
+                                    method,
+                                    defs,
+                                    |i| sig.and_then(|s| s.get(i).copied()),
+                                )?;
                                 // Destination after the arguments — see the
                                 // member-call path.
                                 let tmp = self.temp(buf, ty);
@@ -3217,9 +3231,10 @@ impl<'a> Compiler<'a> {
                         // Converting inline put a bare property's cast before the
                         // next argument's `propget`, shifting every later
                         // temporary: `AnimalTrainerSystemScript::BuyAnimal`.
-                        let va = self.call_args(buf, args, names, line, class, method, defs, |i| {
-                            crate::signatures::arg_type(class, method, i)
-                        })?;
+                        let va =
+                            self.call_args(buf, args, names, line, class, method, defs, |i| {
+                                crate::signatures::arg_type(class, method, i)
+                            })?;
                         // Omitted trailing arguments are written out, not
                         // dropped: the .pex must carry the count the game has.
                         let va = self.pad_defaults(va, defs, method);

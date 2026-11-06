@@ -39,7 +39,11 @@ fn main() {
         let edid = subs
             .iter()
             .find(|x| x.sig == *b"EDID")
-            .map(|x| String::from_utf8_lossy(&x.data).trim_end_matches('\0').to_string())
+            .map(|x| {
+                String::from_utf8_lossy(&x.data)
+                    .trim_end_matches('\0')
+                    .to_string()
+            })
             .unwrap_or_default();
         let Some(compiled) = subs.iter().find(|x| x.sig == *b"SCDA") else {
             return;
@@ -62,7 +66,13 @@ fn main() {
                 let ascii: String = ins[j]
                     .args
                     .iter()
-                    .map(|b| if (0x20..0x7f).contains(b) { *b as char } else { '.' })
+                    .map(|b| {
+                        if (0x20..0x7f).contains(b) {
+                            *b as char
+                        } else {
+                            '.'
+                        }
+                    })
                     .collect();
                 println!(
                     "{edid:<40} [{j:>3}] {:#06X} {name:<22} len={:>2} {:02X?}  |{ascii}|",

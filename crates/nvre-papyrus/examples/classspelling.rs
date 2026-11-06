@@ -60,7 +60,11 @@ fn main() {
         let total: usize = by_spelling.values().sum();
         let mut v: Vec<(&String, &usize)> = by_spelling.iter().collect();
         v.sort_by(|a, b| b.1.cmp(a.1));
-        let shown: Vec<String> = v.iter().take(6).map(|(s, n)| format!("{s:?}×{n}")).collect();
+        let shown: Vec<String> = v
+            .iter()
+            .take(6)
+            .map(|(s, n)| format!("{s:?}×{n}"))
+            .collect();
         println!("{lower:24} {total:5}  {}", shown.join(", "));
     }
 }
