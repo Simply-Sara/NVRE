@@ -2342,6 +2342,79 @@ impl Schema {
     }
 }
 
+/// A four-byte subrecord signature, as the `[u8; 4]` the schema's lookups take.
+///
+/// A name that is not four bytes decodes to zeros, so every lookup below misses
+/// — the correct outcome for a name that should never occur.
+fn sig4(s: &str) -> [u8; 4] {
+    let b = s.as_bytes();
+    [
+        b.first().copied().unwrap_or(0),
+        b.get(1).copied().unwrap_or(0),
+        b.get(2).copied().unwrap_or(0),
+        b.get(3).copied().unwrap_or(0),
+    ]
+}
+
+/// The named bits of the flags field at `path` inside a resolved subrecord type.
+///
+/// `None` when the path does not name a flags field — which is what makes a
+/// `flags_bits` key a typo the schema can report rather than a section that
+/// silently draws nothing. The path is dotted, the same way the grid addresses
+/// a field, and a field name may itself contain a dot, so the **longest**
+/// matching prefix wins at each level.
+fn flags_at_path(resolved: &crate::TypeDef, path: &str) -> Option<Vec<(u32, String)>> {
+    fn at(t: &crate::TypeDef, parts: &[&str]) -> Option<crate::TypeDef> {
+        let Some((part, rest)) = parts.split_first() else {
+            return Some(t.clone());
+        };
+        match t {
+            crate::TypeDef::Struct(fields) => {
+                // The longest prefix that names a field, so a field whose own
+                // name holds a dot is reachable rather than split.
+                let mut best: Option<&crate::typedef::FieldDef> = None;
+                for f in fields {
+                    let n = f.name.len();
+                    if part.len() >= n
+                        && part.starts_with(&f.name)
+                        && best.is_none_or(|b| f.name.len() > b.name.len())
+                    {
+                        best = Some(f);
+                    }
+                }
+                let f = best?;
+                let rest_of_part = &part[f.name.len()..];
+                let next: Vec<&str> = if rest_of_part.is_empty() {
+                    rest.to_vec()
+                } else {
+                    let mut v = vec![rest_of_part.trim_start_matches('.')];
+                    v.extend_from_slice(rest);
+                    v
+                };
+                at(&f.ty, &next)
+            }
+            crate::TypeDef::Union(variants) => {
+                for (_, v) in variants {
+                    if let Some(found) = at(v, parts) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.').collect()
+    };
+    match at(resolved, &parts)? {
+        crate::TypeDef::Flags { bits, .. } => Some(bits),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2447,78 +2520,5 @@ mod tests {
         let r = s.records.get("ACHR").unwrap();
         assert_eq!(r.subrecords.len(), 1);
         assert!(r.subrecords.contains_key("OTHER"));
-    }
-}
-
-/// A four-byte subrecord signature, as the `[u8; 4]` the schema's lookups take.
-///
-/// A name that is not four bytes decodes to zeros, so every lookup below misses
-/// — the correct outcome for a name that should never occur.
-fn sig4(s: &str) -> [u8; 4] {
-    let b = s.as_bytes();
-    [
-        b.first().copied().unwrap_or(0),
-        b.get(1).copied().unwrap_or(0),
-        b.get(2).copied().unwrap_or(0),
-        b.get(3).copied().unwrap_or(0),
-    ]
-}
-
-/// The named bits of the flags field at `path` inside a resolved subrecord type.
-///
-/// `None` when the path does not name a flags field — which is what makes a
-/// `flags_bits` key a typo the schema can report rather than a section that
-/// silently draws nothing. The path is dotted, the same way the grid addresses
-/// a field, and a field name may itself contain a dot, so the **longest**
-/// matching prefix wins at each level.
-fn flags_at_path(resolved: &crate::TypeDef, path: &str) -> Option<Vec<(u32, String)>> {
-    fn at(t: &crate::TypeDef, parts: &[&str]) -> Option<crate::TypeDef> {
-        let Some((part, rest)) = parts.split_first() else {
-            return Some(t.clone());
-        };
-        match t {
-            crate::TypeDef::Struct(fields) => {
-                // The longest prefix that names a field, so a field whose own
-                // name holds a dot is reachable rather than split.
-                let mut best: Option<&crate::typedef::FieldDef> = None;
-                for f in fields {
-                    let n = f.name.len();
-                    if part.len() >= n
-                        && part.starts_with(&f.name)
-                        && best.is_none_or(|b| f.name.len() > b.name.len())
-                    {
-                        best = Some(f);
-                    }
-                }
-                let f = best?;
-                let rest_of_part = &part[f.name.len()..];
-                let next: Vec<&str> = if rest_of_part.is_empty() {
-                    rest.to_vec()
-                } else {
-                    let mut v = vec![rest_of_part.trim_start_matches('.')];
-                    v.extend_from_slice(rest);
-                    v
-                };
-                at(&f.ty, &next)
-            }
-            crate::TypeDef::Union(variants) => {
-                for (_, v) in variants {
-                    if let Some(found) = at(v, parts) {
-                        return Some(found);
-                    }
-                }
-                None
-            }
-            _ => None,
-        }
-    }
-    let parts: Vec<&str> = if path.is_empty() {
-        Vec::new()
-    } else {
-        path.split('.').collect()
-    };
-    match at(resolved, &parts)? {
-        crate::TypeDef::Flags { bits, .. } => Some(bits),
-        _ => None,
     }
 }

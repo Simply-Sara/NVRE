@@ -1493,10 +1493,7 @@ pub fn value_at<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
             if let Some(v) = o.get(&rest[..cut]) {
                 break Some((cut, v));
             }
-            match rest[..cut].rfind('.') {
-                Some(i) => cut = i,
-                None => return None,
-            }
+            cut = rest[..cut].rfind('.')?;
         };
         let (cut, v) = found?;
         if cut == rest.len() {

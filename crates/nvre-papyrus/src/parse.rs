@@ -77,6 +77,11 @@ pub struct Declarator {
 
 /// Kind of a top-level declaration.
 #[derive(Debug, Clone, PartialEq)]
+// A `PropertyDecl` is the largest variant at 416 bytes against the next
+// variant's 152, but a `Decl` is built once per declaration while parsing and
+// dropped with the script — the enum never sits in a hot collection long enough
+// for the indirection to pay for the deref at every match.
+#[allow(clippy::large_enum_variant)]
 pub enum DeclKind {
     /// `Float Property X auto` and its readable/writable forms.
     Property(PropertyDecl),
@@ -1009,39 +1014,37 @@ impl<'a> Parser<'a> {
         // `Function Name(…)` — the name, then the parameters.
         let name = self.word("a function name")?;
         let mut params = Vec::new();
-        if self.eat(&Kind::LParen) {
-            if !self.eat(&Kind::RParen) {
-                loop {
-                    // `int[]` arrives as `Word(int)` `LBracket` `RBracket`
-                    // *before* the name, not after it.
-                    let base = TypeName(self.word("a parameter type")?);
-                    let ty = if self.eat(&Kind::LBracket) {
-                        if !self.eat(&Kind::RBracket) {
-                            return self.err("`[` without `]` in a parameter type");
-                        }
-                        TypeName(format!("{}[]", base.0))
-                    } else {
-                        base
-                    };
-                    let pname = self.word("a parameter name")?;
-                    // `int i = 1` and `int i = None` are both defaults.
-                    let default = if self.eat(&Kind::Assign) || self.eat(&Kind::ColonAssign) {
-                        Some(self.expr()?)
-                    } else {
-                        None
-                    };
-                    params.push(Param {
-                        type_name: ty,
-                        name: pname,
-                        default,
-                    });
-                    if !self.eat(&Kind::Comma) {
-                        break;
+        if self.eat(&Kind::LParen) && !self.eat(&Kind::RParen) {
+            loop {
+                // `int[]` arrives as `Word(int)` `LBracket` `RBracket`
+                // *before* the name, not after it.
+                let base = TypeName(self.word("a parameter type")?);
+                let ty = if self.eat(&Kind::LBracket) {
+                    if !self.eat(&Kind::RBracket) {
+                        return self.err("`[` without `]` in a parameter type");
                     }
+                    TypeName(format!("{}[]", base.0))
+                } else {
+                    base
+                };
+                let pname = self.word("a parameter name")?;
+                // `int i = 1` and `int i = None` are both defaults.
+                let default = if self.eat(&Kind::Assign) || self.eat(&Kind::ColonAssign) {
+                    Some(self.expr()?)
+                } else {
+                    None
+                };
+                params.push(Param {
+                    type_name: ty,
+                    name: pname,
+                    default,
+                });
+                if !self.eat(&Kind::Comma) {
+                    break;
                 }
-                if !self.eat(&Kind::RParen) {
-                    return self.err("`)` after a parameter list");
-                }
+            }
+            if !self.eat(&Kind::RParen) {
+                return self.err("`)` after a parameter list");
             }
         }
         let mut is_native = false;
@@ -1799,7 +1802,7 @@ mod tests {
     }
 
     #[test]
-    fn recovery_works_at_DECLARATION_level_too() {
+    fn recovery_works_at_declaration_level_too() {
         // The statement-level tests above are satisfied by statement recovery
         // alone: a bad *statement* inside a function is recovered there. This
         // case fails at `declaration()`, so only declaration-level recovery saves

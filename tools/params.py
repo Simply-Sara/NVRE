@@ -233,6 +233,13 @@ def main():
         print(f'    ("{key}", &[{types}], &[{defaults}]),')
 
     print(f"  // {len(parents)} extends relationships", file=sys.stderr)
+    # The tables are generated data, not hand-written code: the nested tuple
+    # types below are the shape the emitter wants to read, and the test module
+    # sits between tables so a reader finds the checks next to what they check.
+    # Both are clippy's business to ignore, not the generator's to work around.
+    print("#![allow(clippy::type_complexity)]")
+    print("#![allow(clippy::items_after_test_module)]")
+    print()
     print('/// `(class, parent)`, lowercased, from every `Scriptname X extends Y`.')
     print("pub const PARENTS: &[(&str, &str)] = &[")
     for c, p in sorted(parents.items()):

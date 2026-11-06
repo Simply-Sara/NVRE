@@ -473,7 +473,7 @@ impl Session {
     pub fn ensure_vfs(&mut self) -> Option<&nvre_vfs::Vfs> {
         if self.vfs.is_none() {
             let names: Vec<&str> = self.game.archives.to_vec();
-            let order = nvre_vfs::Vfs::archive_order(&self.data_dir, &self.game.archives, &names);
+            let order = nvre_vfs::Vfs::archive_order(&self.data_dir, self.game.archives, &names);
             self.vfs = nvre_vfs::Vfs::open(&self.data_dir, &order).ok();
         }
         self.vfs.as_ref()

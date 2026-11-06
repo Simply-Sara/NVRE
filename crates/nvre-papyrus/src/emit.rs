@@ -456,7 +456,7 @@ impl<'a> Compiler<'a> {
         let goto_state = self.intern("GotoState");
         let mut own_names: Vec<StrIndex> = Vec::new();
         for (_state, f) in &order {
-            own_names.push(self.intern(&canonical_event_name(&f.name)));
+            own_names.push(self.intern(canonical_event_name(&f.name)));
         }
         let obj_name = self.intern(&script_name);
 
@@ -553,9 +553,8 @@ impl<'a> Compiler<'a> {
         debug.push((obj_name, empty, goto_state, Vec::new()));
 
         let mut states: Vec<(StrIndex, Vec<Function>)> = Vec::new();
-        let mut index = 0usize;
         let mut by_state: Vec<(Option<String>, Vec<Function>)> = Vec::new();
-        for (state, f) in &order {
+        for (index, (state, f)) in order.iter().enumerate() {
             let (cf, lines) = self.function(f)?;
             let _ = own_names[index];
             debug.push((
@@ -564,7 +563,6 @@ impl<'a> Compiler<'a> {
                 own_names[index],
                 lines,
             ));
-            index += 1;
             match by_state.iter_mut().find(|(k, _)| k == state) {
                 Some((_, v)) => v.push(cf),
                 None => by_state.push((state.clone(), vec![cf])),
@@ -774,7 +772,7 @@ impl<'a> Compiler<'a> {
 
     /// Compile one function body.
     fn function(&mut self, f: &FunctionDecl) -> Result<(Function, Vec<u16>), Error> {
-        let name = self.intern(&canonical_event_name(&f.name));
+        let name = self.intern(canonical_event_name(&f.name));
         // A return type slot is NOT spelled like a variable slot: measured over
         // the corpus, a class return type is capitalised in 297 cases and
         // lowercase in 89, the opposite of `::X_var` slots. So the source's
@@ -2252,6 +2250,11 @@ impl<'a> Compiler<'a> {
     /// An explicit `x as T` in the source is part of the expression and stays
     /// where the expression is (`cast ::temp2 ::temp1` above), so this deferral
     /// applies only to the conversions the *parameter's type* asks for.
+    // The eight arguments are all part of one call site — the expression, the
+    // names it was written with, the line, the class and method being called,
+    // their declared defaults, and the per-slot type lookup. Bundling them into
+    // a struct would only move the same list one line up.
+    #[allow(clippy::too_many_arguments)]
     fn call_args(
         &mut self,
         buf: &mut FnBuf,
@@ -2674,8 +2677,8 @@ impl<'a> Compiler<'a> {
                 // variable to Bool first both invented an instruction and took a
                 // slot.
                 let known = self.known_type(buf, &l).zip(self.known_type(buf, &r));
-                if (is_cmp || (is_arith && numeric_pair)) && known.is_some() {
-                    let (lt, rt) = known.unwrap();
+                let convert = is_cmp || (is_arith && numeric_pair);
+                if let Some((lt, rt)) = known.filter(|_| convert) {
                     // Compared case-insensitively: a local's declared type is
                     // interned as the source spelled it (`int`) while a literal
                     // yields the canonical `Int`, and an exact compare made

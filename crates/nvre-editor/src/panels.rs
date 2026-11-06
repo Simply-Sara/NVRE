@@ -1421,6 +1421,7 @@ fn subrecord_rows_on_fields(
 /// The caller built each run from one kind, so the first row is the answer. A
 /// flags word decodes to an object and every other field does not, which is the
 /// same test [`field_editor`] makes to choose its widget.
+#[allow(clippy::too_many_arguments)]
 fn render_single_section(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
@@ -1438,7 +1439,7 @@ fn render_single_section(
             ui.add_space(4.0);
         }
         match section.widget.as_deref() {
-            Some(name) if name == "repeat" => {
+            Some("repeat") => {
                 for tag_str in &section.subs {
                     let block = views
                         .iter()
@@ -1450,14 +1451,14 @@ fn render_single_section(
             // The inventory list is one table per actor, not one per subrecord:
             // a `COED` belongs to the `CNTO` before it, so the two are zipped by
             // position rather than rendered as two unrelated lists.
-            Some(name) if name == "inventory" => {
+            Some("inventory") => {
                 inventory_widget(ui, session, form_id, &rec_sig, edit);
             }
             // The animation list is read-only and is not a subrecord list at
             // all: the base animations come from the model's folder in the
             // game's archives, and only the specialanims selection is read from
             // the record.
-            Some(name) if name == "animations" => {
+            Some("animations") => {
                 // The table owns this tab's scroll. The page already wraps
                 // itself in a scroll area, so a table that sized itself to its
                 // content would nest a second scrollbar inside the first — two
@@ -1474,16 +1475,16 @@ fn render_single_section(
                 let viewport = (ui.available_height() - 28.0).max(100.0);
                 animations_widget(ui, session, form_id, edit, viewport);
             }
-            Some(name) if name == "model_list" => {
+            Some("model_list") => {
                 model_list_widget(ui, session, form_id, &rec_sig, edit);
             }
-            Some(name) if name == "object_bounds" => {
+            Some("object_bounds") => {
                 object_bounds_widget(ui, session, form_id, &rec_sig, edit);
             }
-            Some(name) if name == "sounds" => {
+            Some("sounds") => {
                 sounds_widget(ui, session, form_id, &rec_sig, edit);
             }
-            Some(name) if name == "destruction" => {
+            Some("destruction") => {
                 destruction_widget(ui, session, form_id, &rec_sig, edit);
             }
             Some(name) => {
@@ -1740,6 +1741,7 @@ fn run_is_flags(
 /// Split out of [`subrecord_rows_on_fields`] because a section can switch
 /// between the grid and a free-standing flags block part way through, and the
 /// grid has to be open in both places without duplicating the row.
+#[allow(clippy::too_many_arguments)]
 fn draw_field_row(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
@@ -1967,6 +1969,7 @@ fn formid_from_json(v: &serde_json::Value) -> Option<u32> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn field_editor(
     ui: &mut egui::Ui,
     session: &mut crate::session::Session,
@@ -2223,31 +2226,30 @@ fn field_editor(
                 {
                     changed = Some(serde_json::json!(text));
                 }
-                if is_model {
-                    if ui
+                if is_model
+                    && ui
                         .button("Edit...")
                         .on_hover_text("Browse for a .nif model file")
                         .clicked()
-                    {
-                        let meshes_dir = session.data_dir.join("meshes");
-                        let mut dialog = rfd::FileDialog::new()
-                            .set_title("Select Model File")
-                            .add_filter("NIF Model (*.nif)", &["nif", "NIF"]);
-                        if meshes_dir.is_dir() {
-                            dialog = dialog.set_directory(&meshes_dir);
-                        } else if session.data_dir.is_dir() {
-                            dialog = dialog.set_directory(&session.data_dir);
-                        }
-                        if let Some(chosen) = dialog.pick_file() {
-                            let rel = if let Ok(rel_path) = chosen.strip_prefix(&session.data_dir) {
-                                rel_path.to_string_lossy().to_string()
-                            } else {
-                                chosen.to_string_lossy().to_string()
-                            };
-                            let norm = nvre_vfs::normalize(&rel);
-                            text = norm.clone();
-                            changed = Some(serde_json::json!(norm));
-                        }
+                {
+                    let meshes_dir = session.data_dir.join("meshes");
+                    let mut dialog = rfd::FileDialog::new()
+                        .set_title("Select Model File")
+                        .add_filter("NIF Model (*.nif)", &["nif", "NIF"]);
+                    if meshes_dir.is_dir() {
+                        dialog = dialog.set_directory(&meshes_dir);
+                    } else if session.data_dir.is_dir() {
+                        dialog = dialog.set_directory(&session.data_dir);
+                    }
+                    if let Some(chosen) = dialog.pick_file() {
+                        let rel = if let Ok(rel_path) = chosen.strip_prefix(&session.data_dir) {
+                            rel_path.to_string_lossy().to_string()
+                        } else {
+                            chosen.to_string_lossy().to_string()
+                        };
+                        let norm = nvre_vfs::normalize(&rel);
+                        text = norm.clone();
+                        changed = Some(serde_json::json!(norm));
                     }
                 }
                 if is_model && !text.is_empty() {
@@ -3715,7 +3717,7 @@ pub fn inventory_widget(
                         Some(row.cnto_bytes.len()),
                         None,
                     ) {
-                        let mut list: Vec<([u8; 4], Vec<u8>)> = run.iter().cloned().collect();
+                        let mut list: Vec<([u8; 4], Vec<u8>)> = run.to_vec();
                         let mut seen = 0usize;
                         for (pos, (s, _)) in list.iter_mut().enumerate() {
                             if s == b"CNTO" {
@@ -3848,10 +3850,14 @@ pub fn inventory_widget(
         let Some(&cpos) = cnto_positions.get(i) else {
             return;
         };
-        // Replace the COED right after this CNTO, or insert one.
-        match list.get(cpos + 1) {
-            Some((s, _)) if s == b"COED" => list[cpos + 1].1 = bytes,
-            _ => list.insert(cpos + 1, (*b"COED", bytes)),
+        // Replace the COED right after this CNTO, or insert one. A
+        // `Some((b"COED", _))` pattern cannot be written here: the element is a
+        // `[u8; 4]` by value and a byte-string literal is a `&[u8; 4]`, so the
+        // test is a comparison rather than a pattern.
+        if list.get(cpos + 1).is_some_and(|(s, _)| *s == *b"COED") {
+            list[cpos + 1].1 = bytes;
+        } else {
+            list.insert(cpos + 1, (*b"COED", bytes));
         }
         want = Some(list.clone());
         run = list;
@@ -4336,8 +4342,7 @@ pub fn destruction_widget(
             let mut remove_at: Option<usize> = None;
             let mut add = false;
 
-            for i in 0..stages.len() {
-                let s = &mut stages[i];
+            for (i, s) in stages.iter_mut().enumerate() {
                 ui.push_id(("dest_stage", i), |ui| {
                     ui.horizontal(|ui| {
                         ui.strong(format!("Stage {}", i + 1));
