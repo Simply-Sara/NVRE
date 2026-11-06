@@ -48,8 +48,8 @@ fn main() {
     let lo = session.load_order().expect("a load order");
 
     // (record sig, subrecord sig) -> (max occurrences, records seen, records with >1)
-    let mut tallies: std::collections::BTreeMap<([u8; 4], [u8; 4]), (usize, usize, usize)> =
-        Default::default();
+    type Tally = (usize, usize, usize);
+    let mut tallies: std::collections::BTreeMap<([u8; 4], [u8; 4]), Tally> = Default::default();
     let mut sampled: std::collections::BTreeMap<[u8; 4], usize> = Default::default();
     for (pi, _) in lo.plugins.iter().enumerate() {
         for rec in lo.records[pi].iter().copied() {

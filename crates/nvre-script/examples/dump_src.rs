@@ -51,7 +51,7 @@ fn main() {
         units += 1;
         out.push_str(&format!("#### {:08X} {edid}\n", rec.header.form_id));
         out.push_str(&String::from_utf8_lossy(&source.data));
-        out.push_str("\n");
+        out.push('\n');
     });
     if let Err(e) = std::fs::write(&out_path, &out) {
         eprintln!("cannot write {out_path}: {e}");

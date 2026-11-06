@@ -115,7 +115,7 @@ fn main() {
                 let first = t.split_whitespace().next().unwrap_or("");
                 if first.eq_ignore_ascii_case("if") || first.eq_ignore_ascii_case("elseif") {
                     has_if = true;
-                    let cond = t.splitn(2, char::is_whitespace).nth(1).unwrap_or("");
+                    let cond = t.split_once(char::is_whitespace).map(|x| x.1).unwrap_or("");
                     for w in cond.split(|c: char| !(c.is_alphanumeric() || c == '_')) {
                         if w.is_empty() || KW.iter().any(|k| w.eq_ignore_ascii_case(k)) {
                             continue;

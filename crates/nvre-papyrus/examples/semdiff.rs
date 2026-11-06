@@ -25,7 +25,7 @@ fn main() {
 
     for (si, (sname, funcs)) in c.states.iter().enumerate() {
         println!("=== state {:?}", mys(&c.strings, *sname));
-        let gstate = game.objects.get(0).and_then(|o| o.states.get(si));
+        let gstate = game.objects.first().and_then(|o| o.states.get(si));
         let gfuncs = gstate.map(|s| &s.functions[..]).unwrap_or(&[]);
         for (fi, f) in funcs.iter().enumerate() {
             println!("  FUNCTION {}", mys(&c.strings, f.name));

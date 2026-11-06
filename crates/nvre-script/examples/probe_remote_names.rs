@@ -85,7 +85,7 @@ fn main() {
             if names.len() == slcds.len() && !names.is_empty() {
                 let table: Vec<(String, u16, bool)> = names
                     .into_iter()
-                    .zip(slcds.into_iter())
+                    .zip(slcds)
                     .map(|(n, d)| (n, u16::from_le_bytes([d[0], d[1]]), d[16] == 1))
                     .collect();
                 script_tables.insert(edid, table);

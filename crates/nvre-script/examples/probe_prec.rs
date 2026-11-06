@@ -64,11 +64,6 @@ fn main() {
             .find(|x| x.sig == *b"SCDA")
             .map(|x| x.data.clone())
             .unwrap_or_default();
-        let source = subs
-            .iter()
-            .find(|x| x.sig == *b"SCTX")
-            .map(|x| String::from_utf8_lossy(&x.data).into_owned())
-            .unwrap_or_default();
         let edid = subs
             .iter()
             .find(|x| x.sig == *b"EDID")

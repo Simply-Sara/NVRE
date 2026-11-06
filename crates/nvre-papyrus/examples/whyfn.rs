@@ -207,14 +207,11 @@ fn main() {
                 let g = theirs.instructions.get(i).map(|x| render(&game, x));
                 let mark = if m == g {
                     " "
+                } else if first {
+                    first = false;
+                    ">"
                 } else {
-                    let mark = if first {
-                        first = false;
-                        ">"
-                    } else {
-                        "!"
-                    };
-                    mark
+                    "!"
                 };
                 println!(
                     "{mark} {i:4} {:<48} | {}",

@@ -60,7 +60,7 @@ fn main() {
         .iter()
         .map(|(c, fns)| (c.clone(), fns.values().sum(), fns.len()))
         .collect();
-    rows.sort_by(|a, b| b.1.cmp(&a.1));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.1));
     println!("{} classes appear in callstatic\n", rows.len());
     println!("{:6} {:5}  class", "calls", "fns");
     for (c, calls, fns) in &rows {

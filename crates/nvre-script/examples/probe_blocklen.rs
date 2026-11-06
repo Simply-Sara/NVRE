@@ -75,7 +75,7 @@ fn main() {
             }
         }
         let Some(end) = body_end else { return };
-        let body = (end - (begin.at + 4 + begin.args.len() as usize)) as i64;
+        let body = (end - (begin.at + 4 + begin.args.len())) as i64;
         let d = block_len - body;
         *diffs.entry(d).or_insert(0) += 1;
         if d != 0 && examples.len() < 10 {

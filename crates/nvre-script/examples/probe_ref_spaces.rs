@@ -137,29 +137,27 @@ fn main() {
             }
             // Standalone operand tags inside expressions: 5A/47 followed by
             // u16 — only inside If/ElseIf (op 16/18) args, after a 0x20.
-            if op == 0x0016 || op == 0x0018 {
-                if args.len() >= 4 {
-                    let expr_len = u16::from_le_bytes([args[2], args[3]]) as usize;
-                    let expr = &args[4..(4 + expr_len).min(args.len())];
-                    let mut p = 0usize;
-                    while p + 3 <= expr.len() {
-                        if expr[p] == 0x20 {
-                            let tag = expr[p + 1];
-                            if tag == 0x5A || tag == 0x47 {
-                                let idx = u16::from_le_bytes([expr[p + 2], expr[p + 3]]);
-                                println!("  @{i:<5} expr-standalone {:02X}     refIdx {idx}", tag);
-                                p += 4;
-                                continue;
-                            }
-                            if tag == 0x72 {
-                                let idx = u16::from_le_bytes([expr[p + 2], expr[p + 3]]);
-                                println!("  @{i:<5} expr-operand 72       refIdx {idx}",);
-                                p += 4;
-                                continue;
-                            }
+            if (op == 0x0016 || op == 0x0018) && args.len() >= 4 {
+                let expr_len = u16::from_le_bytes([args[2], args[3]]) as usize;
+                let expr = &args[4..(4 + expr_len).min(args.len())];
+                let mut p = 0usize;
+                while p + 3 <= expr.len() {
+                    if expr[p] == 0x20 {
+                        let tag = expr[p + 1];
+                        if tag == 0x5A || tag == 0x47 {
+                            let idx = u16::from_le_bytes([expr[p + 2], expr[p + 3]]);
+                            println!("  @{i:<5} expr-standalone {:02X}     refIdx {idx}", tag);
+                            p += 4;
+                            continue;
                         }
-                        p += 1;
+                        if tag == 0x72 {
+                            let idx = u16::from_le_bytes([expr[p + 2], expr[p + 3]]);
+                            println!("  @{i:<5} expr-operand 72       refIdx {idx}",);
+                            p += 4;
+                            continue;
+                        }
                     }
+                    p += 1;
                 }
             }
             // Command arguments: count then tagged values.

@@ -11,16 +11,6 @@
 use nvre_papyrus::opcodes;
 use nvre_papyrus::{PexFile, Value};
 
-fn dest_index(opcode: u8) -> Option<usize> {
-    let name = opcodes::name(opcode);
-    match name {
-        "callmethod" | "callparent" | "callstatic" | "propget" => Some(2),
-        n if n.starts_with("cmp_") => Some(0),
-        "assign" | "cast" | "strcat" | "not" | "ineg" | "fneg" | "array_getelement" => Some(0),
-        _ => None,
-    }
-}
-
 fn main() {
     let a: Vec<String> = std::env::args().collect();
     if a.len() < 2 {

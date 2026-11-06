@@ -26,7 +26,6 @@ use nvre_papyrus::emit::Compiler;
 use nvre_papyrus::pex::Function;
 use nvre_papyrus::{lex, opcodes, parse, PexFile, Value};
 use std::collections::BTreeMap;
-use std::io::Read;
 
 /// A `::tempN` operand's index.
 fn temp_index(name: &str) -> Option<i32> {
@@ -194,7 +193,7 @@ fn main() {
     }
 
     let mut rows: Vec<(&String, &(usize, usize, i32))> = culprits.iter().collect();
-    rows.sort_by(|x, y| y.1 .1.cmp(&x.1 .1));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.1 .1));
     println!("scripts with a non-aligning function: {scripts}");
     println!("{} distinct culprits\n", rows.len());
     println!("{:5} {:5} {:6}  function", "files", "after", "delta");

@@ -262,7 +262,7 @@ fn fnv_schema_lists_every_record_type_and_names_a_registered_block() {
     // A category is now **described** rather than named: a page is data, so what
     // a shown category needs is its sections — or a named page this build
     // registers, which is the exception for behaviour sections cannot express.
-    let mut pages = nvre_editor::object_editor::Pages::default();
+    let pages = nvre_editor::object_editor::Pages::default();
     let mut wrong: Vec<String> = schema
         .object_window
         .categories

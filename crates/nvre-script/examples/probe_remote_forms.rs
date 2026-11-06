@@ -704,7 +704,7 @@ fn main() {
     }
     println!("Set destination shapes, corpus census:");
     let mut ds: Vec<(String, usize)> = dest_shapes.into_iter().collect();
-    ds.sort_by(|a, b| b.1.cmp(&a.1));
+    ds.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (k, c) in &ds {
         println!("  {c:>6}  {k}");
     }
@@ -869,7 +869,7 @@ fn main() {
                         steps,
                         compound_sets
                             .iter()
-                            .map(|s| hex_ins(s))
+                            .map(hex_ins)
                             .collect::<Vec<_>>()
                             .join(" | ")
                     );
@@ -892,7 +892,7 @@ fn main() {
                         ve.id,
                         compound_sets
                             .iter()
-                            .map(|s| hex_ins(s))
+                            .map(hex_ins)
                             .collect::<Vec<_>>()
                             .join(" | ")
                     );
@@ -990,7 +990,7 @@ fn main() {
     }
     println!("placed-ref chain outcomes (per source use):");
     let mut q2c: Vec<(String, usize)> = q2_chains.into_iter().collect();
-    q2c.sort_by(|a, b| b.1.cmp(&a.1));
+    q2c.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (k, c) in &q2c {
         println!("  {c:>6}  {k}");
     }
@@ -1042,7 +1042,7 @@ fn main() {
     }
     println!("ATTRIBUTED compounds by position (source use predicted the exact bytes):");
     let mut bo: Vec<(String, usize)> = by_op.into_iter().collect();
-    bo.sort_by(|a, b| b.1.cmp(&a.1));
+    bo.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (k, c) in &bo {
         println!("  {c:>6}  opcode {k}");
     }
@@ -1185,7 +1185,7 @@ fn main() {
     }
     println!("47-destination Sets, what the idx names:");
     let mut q4k: Vec<(String, usize)> = q4_kinds.into_iter().collect();
-    q4k.sort_by(|a, b| b.1.cmp(&a.1));
+    q4k.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (k, c) in &q4k {
         println!("  {c:>6}  {k}");
     }
@@ -1296,7 +1296,7 @@ fn main() {
     println!("units shown: {shown}");
     println!("attributed compounds by position:");
     let mut pc: Vec<(&str, usize)> = pos_counts.into_iter().collect();
-    pc.sort_by(|a, b| b.1.cmp(&a.1));
+    pc.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (p, c) in &pc {
         println!("  {c:>6}  {p}");
     }
@@ -1410,7 +1410,7 @@ fn main() {
     println!("total compounds corpus-wide: {total}");
     println!("by position:");
     let mut pa: Vec<(&str, usize)> = pos_all.into_iter().collect();
-    pa.sort_by(|a, b| b.1.cmp(&a.1));
+    pa.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (p, c) in &pa {
         println!("  {c:>6}  {p}");
     }

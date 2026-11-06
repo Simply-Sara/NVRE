@@ -22,11 +22,14 @@ use nvre_papyrus::emit::{Compiler, Symbols};
 use nvre_papyrus::{lex, parse, PexFile};
 use std::io::Read;
 
+/// `(state, name, count)` for one matched function.
+type Pair = (String, String, usize);
+
 /// Pair every shipped function with the emitted one, by state AND name.
 fn pair(
     compiled: &nvre_papyrus::emit::CompiledScript,
     game: &PexFile,
-) -> (Vec<(String, String, usize)>, Vec<(String, String)>) {
+) -> (Vec<Pair>, Vec<(String, String)>) {
     let mut matched = Vec::new();
     let mut missing = Vec::new();
     for gstate in game.objects.iter().flat_map(|o| o.states.iter()) {

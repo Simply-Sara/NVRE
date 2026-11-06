@@ -414,7 +414,7 @@ fn run_game(
             "sections"
         } else {
             match page {
-                Some(name) if matches!(name, "grid" | "sections") => "page",
+                Some("grid" | "sections") => "page",
                 Some(_) => "typo",
                 None => "grid",
             }

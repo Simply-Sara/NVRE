@@ -230,7 +230,7 @@ fn main() {
     println!();
     println!("scripts where drift starts ({drifted_scripts}), by offset:");
     let mut v: Vec<_> = first_drift.iter().collect();
-    v.sort_by(|a, b| b.1.len().cmp(&a.1.len()));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1.len()));
     for (k, e) in v.iter().take(10) {
         println!("  first offset {k}:");
         for x in e.iter() {

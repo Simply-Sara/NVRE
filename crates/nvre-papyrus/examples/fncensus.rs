@@ -150,7 +150,7 @@ fn main() {
     println!();
     println!("first disagreement per function, most common first:");
     let mut v: Vec<_> = buckets.into_iter().collect();
-    v.sort_by(|a, b| b.1.cmp(&a.1));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (k, n) in v.iter().take(18) {
         println!(
             "{n:6}  {k}   e.g. {}",

@@ -122,7 +122,7 @@ fn main() {
                         if (tag == 0x73 || tag == 0x66) && payload.len() == 2 {
                             let idx = u16::from_le_bytes([payload[0], payload[1]]) as u32;
                             total_pairs += 1;
-                            let id_hit = ids.iter().any(|&id| id == idx);
+                            let id_hit = ids.contains(&idx);
                             let pos_hit =
                                 ids.iter().position(|&id| id == idx).map(|p| p as u32 + 1)
                                     == Some(idx);

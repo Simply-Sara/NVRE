@@ -130,8 +130,8 @@ fn main() {
                     worst.get_or_insert_with(|| format!("missing function {gname}"));
                     continue;
                 };
-                let gt = text_of(&g, None, gf);
-                let mt = text_of(&g, Some(&c.strings), m);
+                let gt = text_of(g, None, gf);
+                let mt = text_of(g, Some(&c.strings), m);
                 let strip = |v: &Vec<String>| {
                     v.iter()
                         .map(|x| x.split_once(": ").unwrap().1.to_string())
@@ -171,7 +171,7 @@ fn main() {
     println!();
     println!("first disagreement, most common first:");
     let mut v: Vec<_> = buckets.into_iter().collect();
-    v.sort_by(|a, b| b.1.cmp(&a.1));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (k, n) in v.iter().take(30) {
         println!("{n:6}  {k}");
         if let Some(e) = examples.get(k) {

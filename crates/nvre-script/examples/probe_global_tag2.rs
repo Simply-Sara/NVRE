@@ -90,6 +90,7 @@ fn main() {
             .collect();
 
         let ins = nvre_script::emit::read_instructions(&compiled);
+        #[allow(clippy::too_many_arguments)]
         fn walk(
             ins: &[nvre_script::emit::Instruction],
             lo: usize,

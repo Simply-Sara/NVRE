@@ -75,7 +75,8 @@ fn main() {
     });
 
     // Group by opcode so the shapes of one command sit together.
-    let mut by_op: BTreeMap<u16, Vec<(&Vec<u8>, &(usize, String))>> = BTreeMap::new();
+    type Hit<'a> = (&'a Vec<u8>, &'a (usize, String));
+    let mut by_op: BTreeMap<u16, Vec<Hit>> = BTreeMap::new();
     for (key, hit) in &census {
         by_op.entry(key.0).or_default().push((&key.1, hit));
     }

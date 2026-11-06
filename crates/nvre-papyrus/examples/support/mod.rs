@@ -2,7 +2,9 @@
 //!
 //! A file under `examples/support/` is not compiled as an example of its own,
 //! which is why the helper lives in a subdirectory rather than beside the
-//! probes.
+//! probes. Each probe includes the whole module and uses the part it needs, so
+//! a helper no probe happens to call is not dead code in the usual sense.
+#![allow(dead_code)]
 
 use nvre_papyrus::parse::Script;
 use nvre_papyrus::symbols::ClassTable;

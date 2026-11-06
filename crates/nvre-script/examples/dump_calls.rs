@@ -314,9 +314,9 @@ fn main() {
         }
         let all_ins = read_instructions(&u.compiled);
         // Instructions carrying a reference argument.
-        let has_ref_arg = all_ins.iter().any(|i| {
-            i.opcode >= 0x1000 && i.args.len() > 2 && i.args[2..].iter().any(|b| *b == 0x72)
-        });
+        let has_ref_arg = all_ins
+            .iter()
+            .any(|i| i.opcode >= 0x1000 && i.args.len() > 2 && i.args[2..].contains(&0x72));
         if !has_ref_arg {
             continue;
         }

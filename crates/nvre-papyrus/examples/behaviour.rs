@@ -16,7 +16,7 @@
 //! cargo run --release --example behaviour -- Scripts.zip "Misc.bsa"
 //! ```
 
-use nvre_papyrus::emit::{Compiler, Symbols};
+use nvre_papyrus::emit::Compiler;
 use nvre_papyrus::pex::Function;
 use nvre_papyrus::{lex, opcodes, parse, PexFile, Value};
 use std::collections::BTreeMap;
@@ -82,7 +82,7 @@ fn normalise(lines: &[String]) -> Vec<String> {
         if let Some(d) = dest_index(&op) {
             if let Some(a) = args.get(d) {
                 if a.starts_with("::temp") {
-                    def_at.entry(a.clone()).or_insert_with(Vec::new).push(i);
+                    def_at.entry(a.clone()).or_default().push(i);
                 }
             }
         }
@@ -351,7 +351,7 @@ fn main() {
     println!();
     println!("what the behavioural differences are:");
     let mut v: Vec<_> = why.into_iter().collect();
-    v.sort_by(|a, b| b.1.cmp(&a.1));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1));
     // Print every bucket, not the top 14: a truncated taxonomy ranks the work by
     // the first fourteen causes the corpus happened to hit, which is exactly the
     // trap of sampling when the question is "what is left".

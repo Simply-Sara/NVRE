@@ -55,15 +55,17 @@ fn main() {
             }
             hits += 1;
             // The instruction alone, and the two around it for context.
-            for j in i.saturating_sub(1)..(i + 2).min(ins.len()) {
-                let name = nvre_script::opcodes::command_at(ins[j].opcode)
+            let lo = i.saturating_sub(1);
+            let hi = (i + 2).min(ins.len());
+            for (j, ins_j) in ins.iter().enumerate().take(hi).skip(lo) {
+                let name = nvre_script::opcodes::command_at(ins_j.opcode)
                     .map(|c| c.name)
                     .or_else(|| {
-                        nvre_script::opcodes::Statement::from_opcode(ins[j].opcode)
+                        nvre_script::opcodes::Statement::from_opcode(ins_j.opcode)
                             .map(|s| s.keyword())
                     })
                     .unwrap_or("");
-                let ascii: String = ins[j]
+                let ascii: String = ins_j
                     .args
                     .iter()
                     .map(|b| {
@@ -76,8 +78,8 @@ fn main() {
                     .collect();
                 println!(
                     "{edid:<40} [{j:>3}] {:#06X} {name:<22} len={:>2} {:02X?}  |{ascii}|",
-                    ins[j].opcode,
-                    ins[j].args.len(),
+                    ins_j.opcode,
+                    ins_j.args.len(),
                     ins[j].args
                 );
             }

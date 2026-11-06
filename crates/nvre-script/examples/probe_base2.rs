@@ -22,10 +22,8 @@ fn main() {
         .nth(1)
         .unwrap_or_else(|| "VFSOrrisThug01REF".into());
     // FormID -> (sig, edid, name-base, scrv, scri)
-    let mut info: std::collections::HashMap<
-        u32,
-        (String, String, Option<u32>, Option<u32>, Option<u32>),
-    > = Default::default();
+    type Info = (String, String, Option<u32>, Option<u32>, Option<u32>);
+    let mut info: std::collections::HashMap<u32, Info> = Default::default();
     visit_nodes(&plugin.nodes, &mut |rec, _| {
         let Ok(subs) = rec.subrecords() else { return };
         let sig = String::from_utf8_lossy(&rec.header.sig).into_owned();

@@ -403,10 +403,12 @@ fn main() {
                 println!("{name} = {fid:08X}");
                 let want = fid.to_le_bytes();
                 let ins = read_instructions(&unit.expected);
-                for i in 0..ins.len() {
-                    if ins[i].args.windows(4).any(|w| w == want) {
-                        for j in i.saturating_sub(2)..(i + 3).min(ins.len()) {
-                            println!("  game [{j}] {}", show(Some(&ins[j])));
+                for (i, ins_i) in ins.iter().enumerate() {
+                    if ins_i.args.windows(4).any(|w| w == want) {
+                        let lo = i.saturating_sub(2);
+                        let hi = (i + 3).min(ins.len());
+                        for (j, ins_j) in ins.iter().enumerate().take(hi).skip(lo) {
+                            println!("  game [{j}] {}", show(Some(ins_j)));
                         }
                         println!("  --");
                     }
@@ -520,7 +522,7 @@ fn main() {
             .push((unit.fid, unit.edid.clone()));
     }
     let mut rows: Vec<(&String, &Vec<(u32, String)>)> = groups.iter().collect();
-    rows.sort_by(|a, b| b.1.len().cmp(&a.1.len()));
+    rows.sort_by_key(|r| std::cmp::Reverse(r.1.len()));
     for (why, members) in rows {
         println!("{:>4}  {why}", members.len());
         for (fid, edid) in members.iter().take(6) {

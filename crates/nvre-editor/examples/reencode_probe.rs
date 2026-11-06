@@ -90,7 +90,7 @@ fn main() {
                             keys.len(),
                             &keys[..keys.len().min(8)]
                         );
-                        walk(&schema, &ty, &v, sub.data.len(), 0);
+                        walk(&schema, &ty, &v, 0);
                         // Exactly what the matrix does: every number field, +1 then
                         // -1, re-encoding with the original length.
                         let block = nvre_esm::decode::block_of(&sig, &subs, &schema, sub.sig);
@@ -145,7 +145,7 @@ fn main() {
     }
 }
 
-fn walk(schema: &nvre_esm::Schema, t: &TypeDef, v: &serde_json::Value, len: usize, depth: usize) {
+fn walk(schema: &nvre_esm::Schema, t: &TypeDef, v: &serde_json::Value, depth: usize) {
     let pad = "  ".repeat(depth + 1);
     match t {
         TypeDef::Union(variants) => {
@@ -165,7 +165,7 @@ fn walk(schema: &nvre_esm::Schema, t: &TypeDef, v: &serde_json::Value, len: usiz
                     }
                 );
                 if r.is_ok() && depth < 3 {
-                    walk(schema, vt, v, len, depth + 1);
+                    walk(schema, vt, v, depth + 1);
                 }
             }
         }

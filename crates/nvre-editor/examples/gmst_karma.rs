@@ -18,11 +18,12 @@ fn main() {
             continue;
         };
         let name = String::from_utf8_lossy(&edid.data);
-        if name.starts_with('i') || name.starts_with('f') {
-            if name.to_lowercase().contains("evil") || name.to_lowercase().contains("good") {
-                let data_sub = subs.iter().find(|s| &s.sig == b"DATA");
-                println!("GMST: {name} data: {data_sub:?}");
-            }
+        let lower = name.to_lowercase();
+        if (name.starts_with('i') || name.starts_with('f'))
+            && (lower.contains("evil") || lower.contains("good"))
+        {
+            let data_sub = subs.iter().find(|s| &s.sig == b"DATA");
+            println!("GMST: {name} data: {data_sub:?}");
         }
     }
 }

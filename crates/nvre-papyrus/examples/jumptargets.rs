@@ -220,7 +220,7 @@ fn main() {
     }
     println!("for the length cases, the first opcode mismatch after the divergence:");
     let mut v: Vec<_> = first_extra.into_iter().collect();
-    v.sort_by(|a, b| b.1.cmp(&a.1));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (k, n) in v.iter().take(12) {
         println!(
             "  {n:5}  mine {} / game {}",

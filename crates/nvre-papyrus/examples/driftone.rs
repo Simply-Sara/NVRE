@@ -153,8 +153,8 @@ fn main() {
     pairs.sort_by_key(|(b, _, _, _)| *b);
 
     println!(
-        "{:>4} {:>4} {:>4}  {:<9} {}",
-        "game", "mine", "k", "aligned", "function"
+        "{:>4} {:>4} {:>4}  {:<9} function",
+        "game", "mine", "k", "aligned"
     );
     for (gb, gf, m, gname) in &pairs {
         let mb = base_of(&g, Some(&c.strings), m);

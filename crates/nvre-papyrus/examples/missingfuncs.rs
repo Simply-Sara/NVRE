@@ -129,7 +129,7 @@ fn main() {
     println!();
     println!("most common names:");
     let mut v: Vec<_> = by_name.into_iter().collect();
-    v.sort_by(|a, b| b.1.cmp(&a.1));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1));
     for (n, c) in v.iter().take(12) {
         println!("  {c:4}  {n}");
     }

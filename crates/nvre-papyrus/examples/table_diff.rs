@@ -14,7 +14,7 @@ fn main() {
     };
     let mine = Compiler::new(&script, symbols).compile().unwrap();
     let game = PexFile::parse(&std::fs::read(&pex_path).unwrap()).unwrap();
-    println!("{:<44} | {}", "mine", "game");
+    println!("{:<44} | game", "mine");
     let n = mine.strings.len().max(game.strings.len());
     let mut diffs = 0;
     for i in 0..n {

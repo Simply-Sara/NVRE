@@ -69,11 +69,10 @@ fn main() {
                 t => format!("tag {t:02X}"),
             };
             // value: after dest (3 or 6 bytes), len:u16, then 20-prefixed tokens
-            let (voff, dest_len) = if a[0] == 0x72 && a.len() > 5 && (a[3] == 0x73 || a[3] == 0x66)
-            {
-                (6, 6)
+            let voff = if a[0] == 0x72 && a.len() > 5 && (a[3] == 0x73 || a[3] == 0x66) {
+                6
             } else {
-                (3, 3)
+                3
             };
             if a.len() < voff + 2 {
                 continue;

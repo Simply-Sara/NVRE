@@ -221,14 +221,14 @@ fn main() {
         println!("  ours    @{lo:>4} {:02X?}", &got[lo..hi]);
         for (n, chunk) in got.chunks(16).enumerate() {
             let at = n * 16;
-            if at >= 380 && at < 560 {
+            if (380..560).contains(&at) {
                 println!("  G @{at:>4} {:02X?}", chunk);
             }
         }
         println!("  game    @{lo:>4} {:02X?}", &compiled[lo..hi]);
         for (n, chunk) in compiled.chunks(16).enumerate() {
             let at = n * 16;
-            if at >= 380 && at < 560 {
+            if (380..560).contains(&at) {
                 println!("  E @{at:>4} {:02X?}", chunk);
             }
         }

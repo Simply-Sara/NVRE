@@ -2785,7 +2785,7 @@ fn the_inventory_tab_folds_each_coed_into_its_cnto_row() {
     }
     // The first row shows the stored 12%, and the rest default to 100%.
     assert!(
-        labels.iter().any(|l| *l == "12%"),
+        labels.contains(&"12%"),
         "the row with a COED shows its 12%: {labels:?}"
     );
     assert_eq!(
@@ -3160,7 +3160,7 @@ fn the_inventory_tab_shows_none_when_the_owner_faction_defines_no_ranks() {
             let b = n.bounds()?;
             Some((l, b.x0 as f32, b.y0 as f32))
         })
-        .find(|(l, x, y)| *x > 1050.0 && (*y - top_y).abs() < 10.0);
+        .find(|(_, x, y)| *x > 1050.0 && (*y - top_y).abs() < 10.0);
     assert!(
         matches!(rank_cell, Some((l, _, _)) if l == "None"),
         "an unranked faction owner reads None: {rank_cell:?}"
@@ -3560,7 +3560,7 @@ fn the_specialanims_checkboxes_rewrite_kffz_in_both_directions() {
         .filter_map(|(_, n)| {
             let b = n.bounds()?;
             // The table's "In use" column, not the flag checkboxes above it.
-            (b.x0 >= 80.0 && b.x1 <= 120.0).then(|| (b.x0 as f32, b.y0 as f32))
+            (b.x0 >= 80.0 && b.x1 <= 120.0).then_some((b.x0 as f32, b.y0 as f32))
         })
         .collect();
     let last = unchecked.last().expect("an unchecked special row exists");
@@ -3780,7 +3780,7 @@ fn the_animation_tab_has_one_scrollbar_and_it_is_the_tables() {
             .filter(|(_, n)| n.role() == egui::accesskit::Role::CheckBox)
             .filter_map(|(_, n)| {
                 let b = n.bounds()?;
-                (b.x0 >= 80.0 && b.x1 <= 120.0).then(|| (b.y0 as f32, b.y1 as f32))
+                (b.x0 >= 80.0 && b.x1 <= 120.0).then_some((b.y0 as f32, b.y1 as f32))
             })
             .collect();
         (rows.len(), scrollbars)

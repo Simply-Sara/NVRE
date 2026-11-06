@@ -34,7 +34,9 @@ fn open(game: &str, master: &str) -> Option<Session> {
 }
 
 /// Every enum field in the first `limit` records of a type, with its values.
-fn enum_fields(s: &Session, sig: [u8; 4], limit: usize) -> Vec<(u32, String, Vec<(i64, String)>)> {
+type EnumField = (u32, String, Vec<(i64, String)>);
+
+fn enum_fields(s: &Session, sig: [u8; 4], limit: usize) -> Vec<EnumField> {
     let Ok(lo) = s.load_order() else {
         return Vec::new();
     };

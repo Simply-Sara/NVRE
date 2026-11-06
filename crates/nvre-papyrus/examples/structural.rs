@@ -211,7 +211,7 @@ fn main() {
     );
     println!();
     let mut v: Vec<_> = buckets.iter().collect();
-    v.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1 .0));
     for (k, (n, ex)) in v.iter().take(20) {
         println!("{n:6}  {k}");
         for e in ex {

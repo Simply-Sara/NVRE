@@ -228,7 +228,7 @@ fn main() {
     println!();
     println!("distinct unknown class.method pairs: {}", unknown.len());
     let mut v: Vec<_> = unknown.iter().collect();
-    v.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+    v.sort_by_key(|r| std::cmp::Reverse(r.1 .0));
     for (k, (n, ex)) in v.iter() {
         println!("  {n:5}  {k}   e.g. {}", ex.join(", "));
     }

@@ -66,18 +66,18 @@ fn main() {
             return;
         }
         // find 20 <digits> 20 7E patterns and 20 2D patterns
-        let mut has_7E = false;
-        let mut has_2D = false;
+        let mut has_7e = false;
+        let mut has_2d = false;
         for w in compiled.windows(6) {
             if w[0] == 0x20 && w[2] == 0x20 && w[3] == 0x7E {
-                has_7E = true;
+                has_7e = true;
             }
             if w[0] == 0x20 && w[1] == 0x2D {
-                has_2D = true;
+                has_2d = true;
             }
         }
-        if has_7E || has_2D {
-            let key = format!("7E:{} 2D:{}", has_7E, has_2D);
+        if has_7e || has_2d {
+            let key = format!("7E:{} 2D:{}", has_7e, has_2d);
             *shapes.entry(key.clone()).or_insert(0) += 1;
             if examples.len() < 10 {
                 examples.push(format!("{edid}: {key}  lines: {neg_lines:?}"));

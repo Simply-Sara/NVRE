@@ -15,7 +15,7 @@ fn main() {
                     .and_then(|x| x.parse().ok())
                     .unwrap_or(0);
                 for (i, l) in src.lines().enumerate() {
-                    if (i as u16) + 1 >= line.saturating_sub(1) && (i as u16) + 1 <= line + 1 {
+                    if (i as u16) >= line.saturating_sub(2) && (i as u16) <= line {
                         println!("   {:4}: {}", i + 1, l);
                     }
                 }

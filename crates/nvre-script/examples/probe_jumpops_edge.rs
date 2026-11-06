@@ -103,6 +103,7 @@ fn main() {
         let ins = read_instructions(&compiled);
 
         // Walk for branches, same target logic as probe_jumpops.
+        #[allow(clippy::too_many_arguments)]
         fn walk(
             ins: &[nvre_script::emit::Instruction],
             lo: usize,

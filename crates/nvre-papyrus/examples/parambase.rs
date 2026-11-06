@@ -129,7 +129,7 @@ fn main() {
                         }
                     }
                     for p in params.iter_mut() {
-                        p.1 = !used.iter().any(|u| *u == p.0);
+                        p.1 = !used.contains(&p.0);
                     }
                     let unread = params.iter().filter(|(_, u)| *u).count();
                     *table
@@ -148,7 +148,8 @@ fn main() {
         "{:>7} {:>7}  {:>6}  base distribution",
         "params", "unread", "n"
     );
-    let mut keys: Vec<(&(usize, usize), &BTreeMap<i32, usize>)> = table.iter().collect();
+    type KeyRow<'a> = (&'a (usize, usize), &'a BTreeMap<i32, usize>);
+    let mut keys: Vec<KeyRow> = table.iter().collect();
     keys.sort_by_key(|(k, _)| **k);
     for ((params, unread), bases) in keys.iter().take(rows) {
         let n: usize = bases.values().sum();
