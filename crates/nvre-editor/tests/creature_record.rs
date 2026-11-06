@@ -3629,6 +3629,205 @@ fn sound_run(session: &Session, fid: u32) -> Vec<(String, Vec<u8>)> {
         .collect()
 }
 
+/// The `DEST`/`DSTD`/`DMDL`/`DMDT`/`DSTF` run of a creature, in file order.
+fn dest_run(session: &Session, fid: u32) -> Vec<(String, Vec<u8>)> {
+    subs(session, fid)
+        .iter()
+        .filter(|s| matches!(&s.sig, b"DEST" | b"DSTD" | b"DMDL" | b"DMDT" | b"DSTF"))
+        .map(|s| (s.sig_str(), s.data.clone()))
+        .collect()
+}
+
+/// A creature the master gives destruction data: a ceiling turret with one
+/// stage that explodes into robot gore.
+const TURRET: u32 = 0x0017_3FD6;
+
+/// Open `fid` on the Destruction tab.
+fn open_destruction(fid: u32) -> Option<(Session, ObjectEditorState)> {
+    let mut session = open_master()?;
+    session.open_object(fid, *b"CREA");
+    let mut state = ObjectEditorState::default();
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Destruction".to_string());
+    Some((session, state))
+}
+
+#[test]
+fn the_destruction_tab_is_gecks_checkbox_and_a_stage_list() {
+    // GECK's creature Destruction page (DIALOGEX 0xc4a24c) is one checkbox,
+    // `Destructible Object`; it never exposes the stages. The record carries
+    // them, so the tab draws the checkbox GECK has and the stage list GECK
+    // does not — instead of the two `repeat` tables (one for `DEST`, one for
+    // the empty `DSTF`) that left `DSTD` in the "Everything else" dump.
+    let Some((mut session, mut state)) = open_destruction(TURRET) else {
+        return;
+    };
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(1000.0, 3000.0));
+    let text: Vec<&str> = rows.iter().map(|(t, _)| t.as_str()).collect();
+    let at = |want: &str| -> f32 {
+        rows.iter()
+            .find(|(t, _)| t == want)
+            .map(|(_, y)| *y)
+            .unwrap_or_else(|| panic!("{want:?} is not drawn on the Destruction tab: {text:?}"))
+    };
+
+    // GECK's control, then the header, then the stage box.
+    at("Destructible Object");
+    assert!(at("Health") < at("Count"), "the header order: {text:?}");
+    assert!(at("Count") < at("Destruction Stage"), "{text:?}");
+    assert!(at("Destruction Stage") < at("Stage 1"), "{text:?}");
+
+    // The stage's fields, with fopdoc's names and the pickers resolving.
+    for want in [
+        "Health %",
+        "Index",
+        "Damage Stage",
+        "Self Damage / sec",
+        "Explosion",
+        "Debris",
+        "Debris Count",
+        "Model",
+        "Flags",
+        "Cap Damage",
+        "Disable",
+        "Destroy",
+    ] {
+        at(want);
+    }
+    for resolved in ["EyebotExplosion", "RobotGoreBits01"] {
+        assert!(
+            text.contains(&resolved),
+            "the {resolved:?} picker does not show its record: {text:?}"
+        );
+    }
+
+    // The two things the old page got wrong: `DSTF` is not a table of its own,
+    // and `DSTD` is not an unclaimed subrecord dumped in the fallback box.
+    assert!(
+        !text.iter().any(|t| t.contains("Everything else")),
+        "the destruction data still falls into the unclaimed-subrecord box: {text:?}"
+    );
+    assert!(
+        !text.iter().any(|t| t.contains("+ Add Row")),
+        "a single header is still drawn as a repeat table: {text:?}"
+    );
+}
+
+#[test]
+fn ticking_destructible_writes_the_header() {
+    // The checkbox is the only way to make a creature destructible, and it is
+    // what GECK writes: a `DEST` with Count 0 and no stages, which is exactly
+    // the state the three `CrTurret02*` records in the master are in.
+    let Some((mut session, mut state)) = open_destruction(BRAHMIN) else {
+        return;
+    };
+    assert!(
+        dest_run(&session, BRAHMIN).is_empty(),
+        "the fixture already has destruction data"
+    );
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    click_topmost(&ctx, &mut session, &mut state, "Destructible Object");
+
+    let run = dest_run(&session, BRAHMIN);
+    assert_eq!(run.len(), 1, "ticking wrote more than a header: {run:?}");
+    assert_eq!(run[0].0, "DEST");
+    assert_eq!(run[0].1.len(), 8, "DEST is 8 bytes: {run:?}");
+    assert_eq!(run[0].1[4], 0, "a new header has no stages");
+}
+
+#[test]
+fn removing_a_stage_drops_its_dstd_and_dstf() {
+    // A stage is `DSTD` + `DSTF`: removing one has to take both, and the
+    // header's Count with it. The old page's `DSTF` table offered a `✖` that
+    // removed the terminator and left the stage data behind.
+    let Some((mut session, mut state)) = open_destruction(TURRET) else {
+        return;
+    };
+    let before = dest_run(&session, TURRET);
+    assert_eq!(
+        before.iter().map(|(s, _)| s.as_str()).collect::<Vec<_>>(),
+        ["DEST", "DSTD", "DSTF"],
+        "the fixture is not the expected one-stage turret: {before:?}"
+    );
+
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    click_topmost(&ctx, &mut session, &mut state, "✖");
+
+    let after = dest_run(&session, TURRET);
+    assert_eq!(
+        after.iter().map(|(s, _)| s.as_str()).collect::<Vec<_>>(),
+        ["DEST"],
+        "removing the stage left part of the run behind: {after:?}"
+    );
+    assert_eq!(after[0].1[4], 0, "Count still says there is a stage");
+}
+
+#[test]
+fn adding_a_stage_writes_dstd_and_its_terminator() {
+    let Some((mut session, mut state)) = open_destruction(BRAHMIN) else {
+        return;
+    };
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    click_topmost(&ctx, &mut session, &mut state, "Destructible Object");
+    click_topmost(&ctx, &mut session, &mut state, "+ Add Stage");
+
+    let run = dest_run(&session, BRAHMIN);
+    assert_eq!(
+        run.iter().map(|(s, _)| s.as_str()).collect::<Vec<_>>(),
+        ["DEST", "DSTD", "DSTF"],
+        "a new stage is DSTD followed by its DSTF: {run:?}"
+    );
+    assert_eq!(run[1].1.len(), 20, "DSTD is 20 bytes: {run:?}");
+    assert!(run[2].1.is_empty(), "DSTF is an empty terminator: {run:?}");
+    assert_eq!(run[0].1[4], 1, "Count does not follow the stage list");
+}
+
+#[test]
+fn the_stage_flags_are_fopdocs_three_bits() {
+    // fopdoc: 0x01 Cap Damage, 0x02 Disable, 0x04 Destroy. The turret's stage
+    // carries 0x02, so `Disable` must be the ticked one — the old page drew the
+    // three bits as naked checkboxes in schema order with no label, which said
+    // nothing about which bit was which.
+    let Some((mut session, mut state)) = open_destruction(TURRET) else {
+        return;
+    };
+    let run = dest_run(&session, TURRET);
+    assert_eq!(run[1].1[3], 0x02, "the fixture's stage flags: {run:?}");
+
+    let mut pages = Pages::default();
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    let mut out = ctx.run_ui(
+        nvre_editor::egui::RawInput {
+            screen_rect: Some(nvre_editor::egui::Rect::from_min_size(
+                nvre_editor::egui::Pos2::ZERO,
+                nvre_editor::egui::vec2(1000.0, 3000.0),
+            )),
+            ..Default::default()
+        },
+        |ui| {
+            nvre_editor::egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, &mut session, &mut state, &mut pages);
+            });
+        },
+    );
+    out.textures_delta.clear();
+    let nodes = out.platform_output.accesskit_update.expect("accesskit").nodes;
+    let toggled = |name: &str| -> Option<bool> {
+        nodes
+            .iter()
+            .find(|(_, n)| n.label() == Some(name))
+            .and_then(|(_, n)| n.toggled())
+            .map(|t| t == nvre_editor::egui::accesskit::Toggled::True)
+    };
+    assert_eq!(toggled("Cap Damage"), Some(false), "0x01 is not set");
+    assert_eq!(toggled("Disable"), Some(true), "0x02 is set");
+    assert_eq!(toggled("Destroy"), Some(false), "0x04 is not set");
+}
+
 /// Click the topmost widget whose accessible label is `label`.
 fn click_topmost(
     ctx: &nvre_editor::egui::Context,
@@ -3667,7 +3866,7 @@ fn click_topmost(
     }
     let rect = rect.unwrap_or_else(|| panic!("no {label:?} widget"));
     let click = egui::pos2(rect.x0 as f32 + 5.0, rect.y0 as f32 + 5.0);
-    let _ = ctx.run_ui(
+    let mut out = ctx.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
             events: vec![
@@ -3693,6 +3892,9 @@ fn click_topmost(
             });
         },
     );
+    // The click can create a texture (a tooltip's font atlas, a new widget's
+    // glyphs), and epaint panics on a dropped delta that was never applied.
+    out.textures_delta.clear();
 }
 
 #[test]

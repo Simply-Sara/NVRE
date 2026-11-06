@@ -1124,6 +1124,10 @@ pub fn sectioned_grid_on_tab(
         let is_model_list = section.widget.as_deref() == Some("model_list");
         let is_object_bounds = section.widget.as_deref() == Some("object_bounds");
         let is_sounds = section.widget.as_deref() == Some("sounds");
+        // The destruction page has to draw on a record with no destruction data
+        // at all: its `Destructible Object` checkbox is the only way to add the
+        // first `DEST`.
+        let is_destruction = section.widget.as_deref() == Some("destruction");
         // A section whose every subrecord is absent still has something to
         // draw: the absent-subrecord picker, which is how a field the record
         // does not carry yet gets set. `EITM` is a FormID and `EAMT` an enum,
@@ -1143,6 +1147,7 @@ pub fn sectioned_grid_on_tab(
             && !is_model_list
             && !is_object_bounds
             && !is_sounds
+            && !is_destruction
             && !all_described
         {
             continue;
@@ -1518,6 +1523,9 @@ fn render_single_section(
             }
             Some(name) if name == "sounds" => {
                 sounds_widget(ui, session, form_id, &rec_sig, edit);
+            }
+            Some(name) if name == "destruction" => {
+                destruction_widget(ui, session, form_id, &rec_sig, edit);
             }
             Some(name) => {
                 ui.colored_label(
@@ -4223,6 +4231,452 @@ fn creature_name(session: &crate::session::Session, fid: u32) -> String {
         .find(|(f, _)| *f == fid)
         .map(|(_, n)| n.clone())
         .unwrap_or_else(|| format!("{fid:08X}"))
+}
+
+/// The creature Destruction tab: GECK's `Destructible Object` checkbox, and the
+/// stage list the record actually carries.
+///
+/// GECK's page (DIALOGEX `0xc4a24c`, 259x249 — the same page size as Blood
+/// `0xc37040` and Sounds `0xc3229c`) holds one control, a `Destructible Object`
+/// checkbox at (54,18), and GECK never exposes the stages. The record does carry
+/// them: 52 of the 1,578 creatures in FalloutNV.esm have one stage each, and the
+/// same master's activators have up to four, so the format is a list and the tab
+/// draws it as one.
+///
+/// fopdoc's Destruction Subrecord Collection is the layout: `DEST` is the header
+/// (Health, Count, Flags, two unknown bytes), a stage is `DSTD` optionally
+/// followed by `DMDL`/`DMDT` and closed by the empty `DSTF`. `DEST.count` is the
+/// number of stages — the master agrees exactly (52 records with Count 1 carry
+/// one `DSTD`, 3 with Count 0 carry none, no mismatches) — so it is written from
+/// the list rather than typed.
+pub fn destruction_widget(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    rec_sig: &[u8; 4],
+    edit: &mut FieldEdit,
+) {
+    let Some(rec) = session.resolved_record(form_id) else {
+        ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
+        return;
+    };
+    let Ok(subs) = rec.subrecords() else {
+        return;
+    };
+
+    let mut header = dest_header(&subs);
+    // A stage with no header is not a stage this tab can show: the checkbox is
+    // what puts the header there, and until it is ticked the run is not
+    // destruction data. No record in the master is in that state.
+    let mut stages = if header.is_some() {
+        dest_stages(&subs)
+    } else {
+        Vec::new()
+    };
+    let stored_count = subs
+        .iter()
+        .find(|s| s.sig == *b"DEST")
+        .filter(|s| s.data.len() >= 8)
+        .map(|s| s.data[4])
+        .unwrap_or(0);
+
+    let explosions = session.records_of(*b"EXPL");
+    let debrises = session.records_of(*b"DEBR");
+
+    let mut changed = false;
+
+    ui.group(|ui| {
+        // GECK's one control. Ticking writes a zeroed header — the state the
+        // three `CrTurret02*` records in the master are in (Count 0, no stages)
+        // — and clearing it removes the stages too, because a stage with no
+        // header is a run with nothing to hang it on.
+        let mut present = header.is_some();
+        if ui
+            .checkbox(&mut present, "Destructible Object")
+            .on_hover_text("adds DEST, the header the destruction stages hang off")
+            .changed()
+        {
+            if present {
+                header = Some(DestHeader::zeroed());
+            } else {
+                header = None;
+                stages.clear();
+            }
+            changed = true;
+        }
+
+        if let Some(h) = header.as_mut() {
+            egui::Grid::new(("dest_header", rec_sig))
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("Health");
+                    if ui
+                        .add_sized(
+                            [80.0, 18.0],
+                            egui::DragValue::new(&mut h.health).range(0..=1_000_000),
+                        )
+                        .changed()
+                    {
+                        changed = true;
+                    }
+                    ui.end_row();
+
+                    // Count is the stage count, not a free number: a header that
+                    // says 5 over one stage is a record xEdit reads as five
+                    // stages and the game reads as one.
+                    ui.label("Count");
+                    let mut text = format!("{}", stages.len());
+                    if stored_count as usize != stages.len() {
+                        text.push_str(&format!(" (was {stored_count})"));
+                    }
+                    ui.weak(text)
+                        .on_hover_text("the number of stages below; written from the list");
+                    ui.end_row();
+
+                    ui.label("Flags");
+                    let mut vats = h.flags & 1 != 0;
+                    if ui.checkbox(&mut vats, "VATS Targetable").changed() {
+                        h.flags = if vats { h.flags | 1 } else { h.flags & !1 };
+                        changed = true;
+                    }
+                    ui.end_row();
+                });
+        }
+    });
+
+    if header.is_some() {
+        ui.add_space(6.0);
+        ui.group(|ui| {
+            ui.strong("Destruction Stage");
+            ui.add_space(4.0);
+
+            let mut remove_at: Option<usize> = None;
+            let mut add = false;
+
+            for i in 0..stages.len() {
+                let s = &mut stages[i];
+                ui.push_id(("dest_stage", i), |ui| {
+                    ui.horizontal(|ui| {
+                        ui.strong(format!("Stage {}", i + 1));
+                        if ui
+                            .small_button("✖")
+                            .on_hover_text("remove this stage")
+                            .clicked()
+                        {
+                            remove_at = Some(i);
+                        }
+                    });
+                    egui::Grid::new(("dest_stage_grid", i))
+                        .num_columns(4)
+                        .show(ui, |ui| {
+                            ui.label("Health %");
+                            if ui
+                                .add_sized(
+                                    [64.0, 18.0],
+                                    egui::DragValue::new(&mut s.health_percent)
+                                        .range(0..=100)
+                                        .suffix("%"),
+                                )
+                                .changed()
+                            {
+                                changed = true;
+                            }
+                            ui.label("Index");
+                            if ui
+                                .add_sized(
+                                    [64.0, 18.0],
+                                    egui::DragValue::new(&mut s.index).range(0..=255),
+                                )
+                                .changed()
+                            {
+                                changed = true;
+                            }
+                            ui.end_row();
+
+                            ui.label("Damage Stage");
+                            if ui
+                                .add_sized(
+                                    [64.0, 18.0],
+                                    egui::DragValue::new(&mut s.damage_stage).range(0..=255),
+                                )
+                                .changed()
+                            {
+                                changed = true;
+                            }
+                            ui.label("Self Damage / sec");
+                            if ui
+                                .add_sized(
+                                    [64.0, 18.0],
+                                    egui::DragValue::new(&mut s.self_damage_per_second)
+                                        .range(0..=100_000),
+                                )
+                                .changed()
+                            {
+                                changed = true;
+                            }
+                            ui.end_row();
+
+                            // fopdoc: Explosion is an EXPL or null, Debris a
+                            // DEBR or null. Untargeted, each picker offered
+                            // every record in the load order.
+                            ui.label("Explosion");
+                            let mut opt = (s.explosion != 0).then_some(s.explosion);
+                            let before = opt;
+                            crate::object_editor::record_dropdown_with_none(
+                                ui,
+                                &format!("dest_expl_{i}"),
+                                &explosions,
+                                &mut opt,
+                                "NONE",
+                            );
+                            if opt != before {
+                                s.explosion = opt.unwrap_or(0);
+                                changed = true;
+                            }
+                            ui.label("Debris");
+                            let mut opt = (s.debris != 0).then_some(s.debris);
+                            let before = opt;
+                            crate::object_editor::record_dropdown_with_none(
+                                ui,
+                                &format!("dest_debr_{i}"),
+                                &debrises,
+                                &mut opt,
+                                "NONE",
+                            );
+                            if opt != before {
+                                s.debris = opt.unwrap_or(0);
+                                changed = true;
+                            }
+                            ui.end_row();
+
+                            ui.label("Debris Count");
+                            if ui
+                                .add_sized(
+                                    [64.0, 18.0],
+                                    egui::DragValue::new(&mut s.debris_count).range(0..=1000),
+                                )
+                                .changed()
+                            {
+                                changed = true;
+                            }
+                            ui.label("Model");
+                            let mut model = s.model.clone().unwrap_or_default();
+                            if ui
+                                .add(
+                                    egui::TextEdit::singleline(&mut model)
+                                        .desired_width(200.0)
+                                        .hint_text("stage model (.nif)"),
+                                )
+                                .changed()
+                            {
+                                s.model = (!model.trim().is_empty()).then(|| model.clone());
+                                changed = true;
+                            }
+                            ui.end_row();
+
+                            // fopdoc's three bits, in fopdoc's order. The old
+                            // page drew them as three naked checkboxes with no
+                            // "Flags" label at all.
+                            ui.label("Flags");
+                            ui.horizontal(|ui| {
+                                for (bit, name) in
+                                    [(1u8, "Cap Damage"), (2, "Disable"), (4, "Destroy")]
+                                {
+                                    let mut on = s.flags & bit != 0;
+                                    if ui.checkbox(&mut on, name).changed() {
+                                        s.flags = if on { s.flags | bit } else { s.flags & !bit };
+                                        changed = true;
+                                    }
+                                }
+                            });
+                            ui.end_row();
+                        });
+
+                    // The stage model's file, checked the way the Model List tab
+                    // checks its meshes, so a missing stage mesh reads the same
+                    // on both tabs.
+                    if let Some(path) = &s.model {
+                        ui.horizontal(|ui| {
+                            if session.vfs_exists(path) {
+                                ui.colored_label(egui::Color32::from_rgb(90, 180, 90), "✔ Found");
+                            } else {
+                                ui.colored_label(
+                                    egui::Color32::from_rgb(220, 100, 100),
+                                    "⚠ Missing",
+                                );
+                            }
+                        });
+                    }
+                });
+            }
+
+            if stages.is_empty() {
+                ui.weak("No destruction stages");
+            }
+
+            ui.add_space(4.0);
+            if ui.button("+ Add Stage").clicked() {
+                add = true;
+            }
+
+            if let Some(i) = remove_at {
+                stages.remove(i);
+                changed = true;
+            }
+            if add {
+                stages.push(DestStage::new(stages.len()));
+                changed = true;
+            }
+        });
+    }
+
+    if changed {
+        let mut list: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        if let Some(h) = &header {
+            let mut bytes = Vec::with_capacity(8);
+            bytes.extend_from_slice(&h.health.to_le_bytes());
+            bytes.push(stages.len().min(255) as u8);
+            bytes.push(h.flags);
+            bytes.extend_from_slice(&h.unknown);
+            list.push((*b"DEST", bytes));
+        }
+        for s in &stages {
+            let mut d = Vec::with_capacity(20);
+            d.push(s.health_percent);
+            d.push(s.index);
+            d.push(s.damage_stage);
+            d.push(s.flags);
+            d.extend_from_slice(&s.self_damage_per_second.to_le_bytes());
+            d.extend_from_slice(&s.explosion.to_le_bytes());
+            d.extend_from_slice(&s.debris.to_le_bytes());
+            d.extend_from_slice(&s.debris_count.to_le_bytes());
+            list.push((*b"DSTD", d));
+            if let Some(model) = &s.model {
+                let mut z = model.as_bytes().to_vec();
+                z.push(0);
+                list.push((*b"DMDL", z));
+            }
+            if let Some(textures) = &s.textures {
+                list.push((*b"DMDT", textures.clone()));
+            }
+            // The stage's terminator, one per stage, always: `DSTF` is what ends
+            // the stage block, and a stage without it runs into the next.
+            list.push((*b"DSTF", Vec::new()));
+        }
+        // One interleaved write at the position the old run started. Three
+        // `set_sub_list` calls would hoist every `DSTD` above every `DSTF`.
+        session.doc.set_sub_sequence(
+            form_id,
+            vec![*b"DEST", *b"DSTD", *b"DMDL", *b"DMDT", *b"DSTF"],
+            list,
+        );
+        session.stale = true;
+        edit.error = None;
+    }
+}
+
+/// `DEST` — the header a creature's destruction stages hang off.
+struct DestHeader {
+    health: i32,
+    flags: u8,
+    /// The two bytes fopdoc calls unknown. Preserved rather than zeroed: the
+    /// master writes non-zero values here (the turrets carry `4F 00`).
+    unknown: [u8; 2],
+}
+
+impl DestHeader {
+    fn zeroed() -> Self {
+        Self {
+            health: 0,
+            flags: 0,
+            unknown: [0, 0],
+        }
+    }
+}
+
+/// One `DSTD` and the optional `DMDL`/`DMDT` that follow it.
+struct DestStage {
+    health_percent: u8,
+    index: u8,
+    damage_stage: u8,
+    flags: u8,
+    self_damage_per_second: i32,
+    explosion: u32,
+    debris: u32,
+    debris_count: i32,
+    model: Option<String>,
+    textures: Option<Vec<u8>>,
+}
+
+impl DestStage {
+    /// A new stage at `index`: no damage threshold, no explosion, no debris —
+    /// the values that do nothing until a modder fills them in.
+    fn new(index: usize) -> Self {
+        Self {
+            health_percent: 0,
+            index: index.min(255) as u8,
+            damage_stage: 0,
+            flags: 0,
+            self_damage_per_second: 0,
+            explosion: 0,
+            debris: 0,
+            debris_count: 0,
+            model: None,
+            textures: None,
+        }
+    }
+}
+
+/// The record's `DEST`, when it has one.
+fn dest_header(subs: &[nvre_esm::Subrecord]) -> Option<DestHeader> {
+    let s = subs.iter().find(|s| s.sig == *b"DEST")?;
+    if s.data.len() < 8 {
+        return None;
+    }
+    Some(DestHeader {
+        health: i32::from_le_bytes(s.data[0..4].try_into().unwrap()),
+        flags: s.data[5],
+        unknown: [s.data[6], s.data[7]],
+    })
+}
+
+/// The `DSTD` stages of a subrecord run, in file order, with the `DMDL`/`DMDT`
+/// that follow each one attached to it. `DSTF` is the terminator and holds
+/// nothing, so it is not read.
+fn dest_stages(subs: &[nvre_esm::Subrecord]) -> Vec<DestStage> {
+    let mut out: Vec<DestStage> = Vec::new();
+    for s in subs {
+        match &s.sig {
+            b"DSTD" if s.data.len() >= 20 => out.push(DestStage {
+                health_percent: s.data[0],
+                index: s.data[1],
+                damage_stage: s.data[2],
+                flags: s.data[3],
+                self_damage_per_second: i32::from_le_bytes(s.data[4..8].try_into().unwrap()),
+                explosion: u32::from_le_bytes(s.data[8..12].try_into().unwrap()),
+                debris: u32::from_le_bytes(s.data[12..16].try_into().unwrap()),
+                debris_count: i32::from_le_bytes(s.data[16..20].try_into().unwrap()),
+                model: None,
+                textures: None,
+            }),
+            b"DMDL" => {
+                if let Some(last) = out.last_mut() {
+                    last.model = Some(
+                        String::from_utf8_lossy(&s.data)
+                            .trim_end_matches('\0')
+                            .to_string(),
+                    );
+                }
+            }
+            b"DMDT" => {
+                if let Some(last) = out.last_mut() {
+                    last.textures = Some(s.data.to_vec());
+                }
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 /// The `.wav` a `SOUN` record names, from its `FNAM`.

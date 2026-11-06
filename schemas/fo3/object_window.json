@@ -999,11 +999,15 @@
      {
       "subs": [
        "DEST",
+       "DSTD",
+       "DMDL",
+       "DMDT",
        "DSTF"
       ],
       "tab": "Destruction",
-      "title": "Destruction",
-      "widget": "repeat"
+      "title": "Destructible Object",
+      "untitled": true,
+      "widget": "destruction"
      },
      {
       "subs": [

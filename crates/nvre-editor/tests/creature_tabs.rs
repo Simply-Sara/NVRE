@@ -138,6 +138,48 @@ fn the_blood_tab_is_gecks_two_boxes_in_both_games() {
 }
 
 #[test]
+fn the_destruction_tab_is_gecks_checkbox_and_the_stage_list_in_both_games() {
+    // GECK's creature Destruction page (DIALOGEX 0xc4a24c) is one
+    // `Destructible Object` checkbox. The record carries a header and a stage
+    // list, and Fallout 3 and New Vegas share the creature layout, so both
+    // pages must name all five subrecords and hand them to the destruction
+    // widget — otherwise `DSTD` falls into the unclaimed-subrecord box.
+    for id in ["fnv", "fo3"] {
+        let schema = GameProfile::by_id(id)
+            .unwrap_or_else(|| panic!("{id}"))
+            .load_schema()
+            .expect("the schema loads");
+        let sections = schema.page_sections("CREA");
+        let destruction = sections_on_tab(&sections, Some("Destruction"));
+        assert_eq!(destruction.len(), 1, "{id}: the Destruction tab's page");
+        let page = destruction[0];
+        assert_eq!(
+            page.subs,
+            ["DEST", "DSTD", "DMDL", "DMDT", "DSTF"],
+            "{id}: the page names the header, the stage and its terminator"
+        );
+        assert_eq!(
+            page.widget.as_deref(),
+            Some("destruction"),
+            "{id}: the page is drawn by the destruction widget"
+        );
+        assert!(
+            page.untitled,
+            "{id}: the widget draws GECK's own two captions"
+        );
+        // The header and the stage data resolve for the record, which is what
+        // lets the widget read them without a record-specific definition.
+        for sub in ["DEST", "DSTD", "DSTF"] {
+            let sig: [u8; 4] = sub.as_bytes().try_into().expect("four bytes");
+            assert!(
+                schema.lookup(b"CREA", &sig).is_some(),
+                "{id}: {sub} does not resolve on CREA"
+            );
+        }
+    }
+}
+
+#[test]
 fn the_sounds_tab_is_one_list_in_both_games() {
     // GECK's Sounds tab is two bare combos over a "Creature Sound Data" box, and
     // the box holds one row per sound. Fallout 3 and New Vegas share the

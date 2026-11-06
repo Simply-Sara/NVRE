@@ -81,7 +81,7 @@
   "DEST": {
    "confidence": "documented",
    "name": "Destructible Header",
-   "note": "xEdit wbDefinitionsFNV.pas wbDEST helper record",
+   "note": "fopdoc FalloutNV Records/Subrecords/Destruction: DEST holds Health, Count, Flags and two unknown bytes; Count is the number of Destruction Stages that follow, and the editor writes it from the stage list rather than letting it be typed (FalloutNV.esm agrees exactly: 52 creatures with Count 1 carry one DSTD, 3 with Count 0 carry none)",
    "type": {
     "struct": [
      {
@@ -191,7 +191,7 @@
   "DSTD": {
    "confidence": "documented",
    "name": "Destruction Stage Data",
-   "note": "xEdit wbDefinitionsFNV.pas wbDEST helper record",
+   "note": "fopdoc FalloutNV Records/Subrecords/Destruction: Health Percentage, Index, Damage Stage, Flags (0x01 Cap Damage, 0x02 Disable, 0x04 Destroy), Self Damage per Second, Explosion (EXPL or null), Debris (DEBR or null), Debris Count",
    "type": {
     "struct": [
      {
@@ -223,11 +223,23 @@
      },
      {
       "name": "explosion",
-      "type": "formid"
+      "type": {
+       "formid": {
+        "of": [
+         "EXPL"
+        ]
+       }
+      }
      },
      {
       "name": "debris",
-      "type": "formid"
+      "type": {
+       "formid": {
+        "of": [
+         "DEBR"
+        ]
+       }
+      }
      },
      {
       "name": "debris_count",
