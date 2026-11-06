@@ -964,12 +964,18 @@
        ]
       },
       "subs": [
-       "ACBS",
        "NAM4",
+       "ACBS"
+      ],
+      "tab": "Blood",
+      "title": "When we are hit"
+     },
+     {
+      "subs": [
        "CNAM"
       ],
       "tab": "Blood",
-      "title": "Blood"
+      "title": "When we hit something else (melee)"
      },
      {
       "subs": [

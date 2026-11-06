@@ -99,6 +99,45 @@ fn every_tab_on_the_strip_carries_at_least_one_section() {
 }
 
 #[test]
+fn the_blood_tab_is_gecks_two_boxes_in_both_games() {
+    // GECK's creature Blood tab is two group boxes — "When we are hit" (the
+    // material the engine reports when this creature is struck, plus the two
+    // blood flags) and "When we hit something else (melee)" (the impact data its
+    // own attacks apply). Fallout 3 and New Vegas share the creature layout, so
+    // both pages must say the same thing; a change applied to one directory and
+    // not the other is the drift this test exists for.
+    for id in ["fnv", "fo3"] {
+        let schema = GameProfile::by_id(id)
+            .unwrap_or_else(|| panic!("{id}"))
+            .load_schema()
+            .expect("the schema loads");
+        let sections = schema.page_sections("CREA");
+        let blood = sections_on_tab(&sections, Some("Blood"));
+        let titles: Vec<&str> = blood.iter().map(|s| s.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            ["When we are hit", "When we hit something else (melee)"],
+            "{id}: the Blood tab's two boxes"
+        );
+        assert_eq!(
+            blood[0].subs,
+            ["NAM4", "ACBS"],
+            "{id}: the hit box shows the material type and the flags"
+        );
+        assert_eq!(
+            blood[0].flags_bits.get("ACBS.flags").map(Vec::as_slice),
+            Some(&[11u32, 12][..]),
+            "{id}: the hit box shows the two blood flags"
+        );
+        assert_eq!(
+            blood[1].subs,
+            ["CNAM"],
+            "{id}: the melee box is the impact data set alone"
+        );
+    }
+}
+
+#[test]
 fn a_section_on_another_tab_is_not_drawn() {
     // The mechanism. A section filed on Stats must not appear while Traits is
     // chosen, or the tabs are decorative and every tab shows the whole record.

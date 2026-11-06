@@ -1324,14 +1324,19 @@ fn pc_level_mult_sits_on_the_leveling_section() {
 }
 
 #[test]
-fn the_blood_flags_sit_on_the_blood_section() {
-    // Bits 11 and 12 — No Blood Spray, No Blood Decal — were the last two on
-    // Traits' Flags section, which is about the actor. They are about blood, and
-    // there is a Blood tab.
+fn the_blood_tab_is_gecks_two_boxes() {
+    // GECK's creature Blood tab is two group boxes, and the record divides along
+    // exactly that line:
     //
-    // The Blood section already carried `NAM4` and `CNAM`, the impact dataset and
-    // the blood colour, so it had to start naming `ACBS` as well. A section that
-    // lists a bit for a subrecord it does not name draws nothing at all.
+    //   "When we are hit"                     NAM4 Impact Material Type, plus the
+    //                                         ACBS bits 11/12 (No Blood Spray,
+    //                                         No Blood Decal)
+    //   "When we hit something else (melee)"  CNAM Impact Data Set
+    //
+    // The split is semantic, not cosmetic: NAM4 is the material the engine
+    // reports when this creature is struck, while CNAM is the impact data its own
+    // melee attacks apply to whatever they hit. One "Blood" heading over both
+    // invited a modder to read CNAM as the blood of the thing being hit.
     let Some((mut session, mut state)) = open_creature() else {
         return;
     };
@@ -1340,43 +1345,99 @@ fn the_blood_flags_sit_on_the_blood_section() {
     };
     let sections = session.schema.page_sections("CREA");
     let blood_tab = sections_on_tab(&sections, Some("Blood"));
-    let blood = blood_tab
-        .iter()
-        .find(|s| s.title == "Blood")
-        .unwrap_or_else(|| panic!("the Blood tab has no Blood section: {:?}", titles(&blood_tab)));
     assert_eq!(
-        blood.flags_bits.get("ACBS.flags").map(Vec::as_slice),
+        titles(&blood_tab),
+        vec![
+            "When we are hit".to_string(),
+            "When we hit something else (melee)".to_string(),
+        ],
+        "the Blood tab is GECK's two group boxes, in GECK's order"
+    );
+    let (hit, melee) = (blood_tab[0], blood_tab[1]);
+
+    // "When we are hit" owns the material type and the two blood flags.
+    assert_eq!(
+        hit.flags_bits.get("ACBS.flags").map(Vec::as_slice),
         Some(&[11u32, 12][..]),
-        "the Blood section shows the two blood flags: {:?}",
-        blood.flags_bits.get("ACBS.flags")
+        "the hit box shows the two blood flags: {:?}",
+        hit.flags_bits.get("ACBS.flags")
     );
     assert!(
-        blood.subs.iter().any(|t| t == "ACBS"),
-        "the Blood section does not name ACBS, so the flags would not draw: {:?}",
-        blood.subs
+        hit.subs.iter().any(|t| t == "ACBS"),
+        "the hit box does not name ACBS, so the flags would not draw: {:?}",
+        hit.subs
     );
     assert_eq!(
-        blood.fields.get("ACBS").map(Vec::as_slice),
+        hit.fields.get("ACBS").map(Vec::as_slice),
         Some(&["flags".to_string()][..]),
-        "the Blood section shows the whole ACBS rather than its flags: {:?}",
-        blood.fields
+        "the hit box shows the whole ACBS rather than its flags: {:?}",
+        hit.fields
+    );
+    assert!(
+        hit.subs.iter().any(|t| t == "NAM4"),
+        "the hit box does not name NAM4 (Impact Material Type): {:?}",
+        hit.subs
+    );
+    assert!(
+        !hit.subs.iter().any(|t| t == "CNAM"),
+        "the impact data set is in the hit box; it belongs to the melee box: {:?}",
+        hit.subs
     );
 
-    // Drawn: both checkboxes on the Blood tab, and neither on Traits.
+    // "When we hit something else (melee)" is the impact data set and nothing
+    // else — GECK's second box holds one control.
+    assert_eq!(
+        melee.subs,
+        vec!["CNAM".to_string()],
+        "the melee box is CNAM alone: {:?}",
+        melee.subs
+    );
+    assert!(
+        melee.flags_bits.is_empty(),
+        "the melee box owns no ACBS bits: {:?}",
+        melee.flags_bits
+    );
+    assert!(
+        melee.fields.is_empty(),
+        "the melee box narrows no subrecord: {:?}",
+        melee.fields
+    );
+
+    // Drawn: both boxes, in GECK's top-to-bottom order, with the material type
+    // above the checkboxes and the impact data set in the second box.
     state.tab.chosen = Some("Blood".to_string());
     let blood_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
-    for want in ["No Blood Spray", "No Blood Decal"] {
-        assert!(
-            blood_rows.iter().any(|(t, _)| t == want),
-            "no {want:?} checkbox on the Blood tab: {blood_rows:?}"
-        );
-    }
-    // And the section still shows what it showed before — the impact dataset and
-    // the blood colour are the rest of the Blood tab's reason to exist.
+    let y = |want: &str| {
+        blood_rows
+            .iter()
+            .find(|(t, _)| t == want)
+            .map(|(_, y)| *y)
+            .unwrap_or_else(|| panic!("no {want:?} on the Blood tab: {blood_rows:?}"))
+    };
+    let hit_title = y("When we are hit");
+    let material = y("Impact Material Type");
+    let spray = y("No Blood Spray");
+    let decal = y("No Blood Decal");
+    let melee_title = y("When we hit something else (melee)");
+    let impact = y("Impact Data Set");
     assert!(
-        blood_rows.iter().any(|(t, _)| t == "Impact Dataset"),
-        "the Blood section lost its other subrecords: {blood_rows:?}"
+        hit_title < material,
+        "Impact Material Type is drawn above its box heading"
     );
+    assert!(
+        material < spray,
+        "the material type should sit above the blood checkboxes"
+    );
+    assert!(
+        spray < melee_title && decal < melee_title,
+        "a blood checkbox is drawn outside the hit box"
+    );
+    assert!(
+        melee_title < impact,
+        "Impact Data Set is drawn above its box heading"
+    );
+
+    // And the flags still do not leak back onto Traits.
     state.tab.chosen = Some("Traits".to_string());
     let traits_rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(900.0, 2400.0));
     for gone in ["No Blood Spray", "No Blood Decal"] {

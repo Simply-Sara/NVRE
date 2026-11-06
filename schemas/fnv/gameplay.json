@@ -204,8 +204,8 @@
     },
     "CNAM": {
      "confidence": "documented",
-     "name": "Impact Dataset",
-     "note": "xEdit wbDefinitionsFNV.pas CREA record",
+     "name": "Impact Data Set",
+     "note": "xEdit wbDefinitionsFNV.pas CREA record; GECK's Blood tab labels it 'Impact Data Set' under 'When we hit something else (melee)'",
      "type": {
       "formid": {
        "of": [
