@@ -1113,7 +1113,10 @@ pub fn sectioned_grid_on_tab(
     }
     let mut chunks: Vec<SecChunk> = Vec::new();
     for (si, section) in shown.iter().enumerate() {
-        let has_subs = section.subs.iter().any(|tag| views.iter().any(|v| &v.sig == tag));
+        let has_subs = section
+            .subs
+            .iter()
+            .any(|tag| views.iter().any(|v| &v.sig == tag));
         // A widget that owns its own list has to draw even when the list is
         // empty: `repeat` shows its "+ Add Faction" button on a record with no
         // factions, and `inventory` shows "+ Add Item" on a record with no
@@ -1169,16 +1172,7 @@ pub fn sectioned_grid_on_tab(
         match chunk {
             SecChunk::Single((si, section)) => {
                 render_single_section(
-                    ui,
-                    session,
-                    form_id,
-                    rec_sig,
-                    &views,
-                    &edited,
-                    edit,
-                    *si,
-                    section,
-                    bounds_out,
+                    ui, session, form_id, rec_sig, &views, edit, *si, section, bounds_out,
                 );
             }
             SecChunk::SideBySide(list) => {
@@ -1189,15 +1183,7 @@ pub fn sectioned_grid_on_tab(
                         }
                         ui.vertical(|ui| {
                             render_single_section(
-                                ui,
-                                session,
-                                form_id,
-                                rec_sig,
-                                &views,
-                                &edited,
-                                edit,
-                                *si,
-                                section,
+                                ui, session, form_id, rec_sig, &views, edit, *si, section,
                                 bounds_out,
                             );
                         });
@@ -1219,9 +1205,7 @@ pub fn sectioned_grid_on_tab(
     // has no such tab and names neither, so hiding them would leave them
     // uneditable with nothing saying so, which is the one failure this editor
     // exists not to have.
-    let rest: Vec<usize> = (0..views.len())
-        .filter(|i| !claimed.contains(i))
-        .collect();
+    let rest: Vec<usize> = (0..views.len()).filter(|i| !claimed.contains(i)).collect();
     if !rest.is_empty() {
         ui.add_space(6.0);
         ui.group(|ui| {
@@ -1423,15 +1407,7 @@ fn subrecord_rows_on_fields(
                             continue;
                         };
                         draw_field_row(
-                            ui,
-                            session,
-                            edit,
-                            form_id,
-                            view,
-                            rec_sig,
-                            row,
-                            current,
-                            flags_bits,
+                            ui, session, edit, form_id, view, rec_sig, row, current, flags_bits,
                         );
                     }
                 });
@@ -1451,20 +1427,11 @@ fn render_single_section(
     form_id: u32,
     rec_sig: [u8; 4],
     views: &[nvre_edit::encode::SubView],
-    edited: &[[u8; 4]],
     edit: &mut FieldEdit,
     si: usize,
     section: &nvre_esm::schema::SectionDef,
     bounds_out: Option<&std::sync::Mutex<Option<egui::Rect>>>,
 ) {
-    let mut named: Vec<usize> = Vec::new();
-    for tag in &section.subs {
-        for (i, v) in views.iter().enumerate() {
-            if &v.sig == tag && !named.contains(&i) {
-                named.push(i);
-            }
-        }
-    }
     let group = ui.group(|ui| {
         if !section.untitled {
             ui.strong(&section.title);
@@ -1477,15 +1444,7 @@ fn render_single_section(
                         .iter()
                         .find(|v| v.sig == *tag_str)
                         .and_then(|v| v.block.as_deref());
-                    repeat_widget(
-                        ui,
-                        session,
-                        form_id,
-                        &rec_sig,
-                        &sig4(tag_str),
-                        block,
-                        edit,
-                    );
+                    repeat_widget(ui, session, form_id, &rec_sig, &sig4(tag_str), block, edit);
                 }
             }
             // The inventory list is one table per actor, not one per subrecord:
@@ -1553,32 +1512,35 @@ fn render_single_section(
                             views[i].block.as_deref(),
                             &views[i].value,
                         );
-                        let shown: Vec<nvre_edit::encode::Row> = match section.fields.get(&views[i].sig) {
-                            None => rows
-                                .into_iter()
-                                .filter(|r| r.path != "unused" && !r.path.ends_with(".unused"))
-                                .collect(),
-                            Some(paths) => {
-                                let mut out = Vec::new();
-                                for path in paths {
-                                    if let Some(row) = rows.iter().find(|r| &r.path == path) {
-                                        out.push(row.clone());
+                        let shown: Vec<nvre_edit::encode::Row> =
+                            match section.fields.get(&views[i].sig) {
+                                None => rows
+                                    .into_iter()
+                                    .filter(|r| r.path != "unused" && !r.path.ends_with(".unused"))
+                                    .collect(),
+                                Some(paths) => {
+                                    let mut out = Vec::new();
+                                    for path in paths {
+                                        if let Some(row) = rows.iter().find(|r| &r.path == path) {
+                                            out.push(row.clone());
+                                        }
                                     }
+                                    out
                                 }
-                                out
-                            }
-                        };
+                            };
                         for row in shown {
-                            let is_flags = get_path(&views[i].value, &row.path).is_some_and(|current| {
-                                let flags = flag_bits(
-                                    &session.schema,
-                                    &rec_sig,
-                                    &views[i].sig,
-                                    views[i].block.as_deref(),
-                                    &row.path,
-                                );
-                                matches!(current, serde_json::Value::Object(_)) && !flags.is_empty()
-                            });
+                            let is_flags =
+                                get_path(&views[i].value, &row.path).is_some_and(|current| {
+                                    let flags = flag_bits(
+                                        &session.schema,
+                                        &rec_sig,
+                                        &views[i].sig,
+                                        views[i].block.as_deref(),
+                                        &row.path,
+                                    );
+                                    matches!(current, serde_json::Value::Object(_))
+                                        && !flags.is_empty()
+                                });
                             items.push(SecItem::Row {
                                 view_idx: i,
                                 row,
@@ -1624,7 +1586,9 @@ fn render_single_section(
                         for item in run {
                             if let SecItem::Row { view_idx, row, .. } = item {
                                 let view = &views[*view_idx];
-                                let Some(current) = get_path(&view.value, &row.path) else { continue };
+                                let Some(current) = get_path(&view.value, &row.path) else {
+                                    continue;
+                                };
                                 if row.path == "services" {
                                     ui.label("Buys / Sells and Services:");
                                 }
@@ -1637,7 +1601,8 @@ fn render_single_section(
                                     &rec_sig,
                                     &row.path,
                                     current,
-                                    section.flags_bits
+                                    section
+                                        .flags_bits
                                         .get(&format!("{}.{}", view.sig, row.path))
                                         .map(Vec::as_slice),
                                 );
@@ -1652,7 +1617,10 @@ fn render_single_section(
                                     match item {
                                         SecItem::Row { view_idx, row, .. } => {
                                             let view = &views[*view_idx];
-                                            let Some(current) = get_path(&view.value, &row.path) else { continue };
+                                            let Some(current) = get_path(&view.value, &row.path)
+                                            else {
+                                                continue;
+                                            };
                                             draw_field_row(
                                                 ui,
                                                 session,
@@ -1696,17 +1664,12 @@ fn render_single_section(
                                                 .width(200.0)
                                                 .show_ui(ui, |ui| {
                                                     for (v, n) in &variants {
-                                                        ui.selectable_value(
-                                                            &mut picked,
-                                                            *v,
-                                                            n,
-                                                        );
+                                                        ui.selectable_value(&mut picked, *v, n);
                                                     }
                                                 });
                                                 if picked >= 0 {
-                                                    let bytes = (picked as u16)
-                                                        .to_le_bytes()
-                                                        .to_vec();
+                                                    let bytes =
+                                                        (picked as u16).to_le_bytes().to_vec();
                                                     session.doc.set_sub(form_id, tag, bytes);
                                                 }
                                                 ui.end_row();
@@ -1721,7 +1684,8 @@ fn render_single_section(
                                             );
                                             let items = session.records_of_any(&targets);
                                             let mut chosen: Option<u32> = None;
-                                            let none_label = if *tag == *b"ZNAM" { "Default" } else { "NONE" };
+                                            let none_label =
+                                                if *tag == *b"ZNAM" { "Default" } else { "NONE" };
                                             crate::object_editor::record_dropdown_with_none(
                                                 ui,
                                                 &format!("absent_{}", nvre_util::tag_str(tag)),
@@ -1730,7 +1694,11 @@ fn render_single_section(
                                                 none_label,
                                             );
                                             if let Some(fid) = chosen {
-                                                session.doc.set_sub(form_id, tag, fid.to_le_bytes().to_vec());
+                                                session.doc.set_sub(
+                                                    form_id,
+                                                    tag,
+                                                    fid.to_le_bytes().to_vec(),
+                                                );
                                             }
                                             ui.end_row();
                                         }
@@ -2046,7 +2014,11 @@ fn field_editor(
         let mut opt = formid_from_json(current);
         let items = session.records_of_any(&targets);
         ui.horizontal(|ui| {
-            let none_label = if view.sig == "ZNAM" { "Default" } else { "NONE" };
+            let none_label = if view.sig == "ZNAM" {
+                "Default"
+            } else {
+                "NONE"
+            };
             crate::object_editor::record_dropdown_with_none(
                 ui,
                 &format!("{}_{}", view.sig, path),
@@ -2590,12 +2562,8 @@ pub fn repeat_widget(
             });
         let visible_keys: Option<Vec<String>> = schema_keys.or_else(|| {
             rows.first().and_then(|(_, v)| {
-                v.as_object().map(|obj| {
-                    obj.keys()
-                        .filter(|k| *k != "unused")
-                        .cloned()
-                        .collect()
-                })
+                v.as_object()
+                    .map(|obj| obj.keys().filter(|k| *k != "unused").cloned().collect())
             })
         });
 
@@ -2650,7 +2618,8 @@ pub fn repeat_widget(
                                         name.clone()
                                     };
                                     if inline_value(
-                                        ui, session, rec_sig, sub_sig, block, i, &path, fv, &mut next,
+                                        ui, session, rec_sig, sub_sig, block, i, &path, fv,
+                                        &mut next,
                                     ) {
                                         touched = true;
                                     }
@@ -2702,19 +2671,28 @@ pub fn repeat_widget(
                                     {
                                         remove_at = Some(i);
                                     }
-                                    let up_btn = ui.add_enabled(i > 0, egui::Button::new("Up").small());
+                                    let up_btn =
+                                        ui.add_enabled(i > 0, egui::Button::new("Up").small());
                                     if up_btn.on_hover_text("move up (higher priority)").clicked() {
                                         move_up = Some(i);
                                     }
-                                    let down_btn = ui.add_enabled(i + 1 < len, egui::Button::new("Down").small());
-                                    if down_btn.on_hover_text("move down (lower priority)").clicked() {
+                                    let down_btn = ui.add_enabled(
+                                        i + 1 < len,
+                                        egui::Button::new("Down").small(),
+                                    );
+                                    if down_btn
+                                        .on_hover_text("move down (lower priority)")
+                                        .clicked()
+                                    {
                                         move_down = Some(i);
                                     }
                                 });
                             });
                             ui.monospace(format!("[{i}]"));
                             let mut next = value.clone();
-                            if inline_value(ui, session, rec_sig, sub_sig, block, i, "", value, &mut next) {
+                            if inline_value(
+                                ui, session, rec_sig, sub_sig, block, i, "", value, &mut next,
+                            ) {
                                 if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
                                     &session.schema,
                                     rec_sig,
@@ -2792,15 +2770,7 @@ pub fn repeat_widget(
                         row_ui.col(|ui| {
                             let mut next = value.clone();
                             if inline_value(
-                                ui,
-                                session,
-                                rec_sig,
-                                sub_sig,
-                                block,
-                                i,
-                                "",
-                                value,
-                                &mut next,
+                                ui, session, rec_sig, sub_sig, block, i, "", value, &mut next,
                             ) {
                                 if let Ok(bytes) = nvre_edit::encode::encode_sub_len_in_block(
                                     &session.schema,
@@ -2948,7 +2918,10 @@ pub fn animations_widget(
 
     let anims = session.animation_set_for(form_id);
     let base = anims.as_ref().map(|a| a.base.clone()).unwrap_or_default();
-    let special = anims.as_ref().map(|a| a.special.clone()).unwrap_or_default();
+    let special = anims
+        .as_ref()
+        .map(|a| a.special.clone())
+        .unwrap_or_default();
 
     if inherits {
         ui.label(
@@ -3050,12 +3023,8 @@ pub fn animations_widget(
         if !selected.iter().any(|s| s == &name) {
             names.push(name);
         }
-        let arr = serde_json::Value::Array(
-            names
-                .into_iter()
-                .map(serde_json::Value::String)
-                .collect(),
-        );
+        let arr =
+            serde_json::Value::Array(names.into_iter().map(serde_json::Value::String).collect());
         match nvre_edit::encode::encode_sub(&session.schema, &rec_sig, b"KFFZ", &arr) {
             // An empty selection is not an empty `KFFZ`: the subrecord is
             // dropped, which is the state the record would have had if it had
@@ -3168,7 +3137,11 @@ pub fn model_list_widget(
                         {
                             swap_idx = Some((i, i + 1));
                         }
-                        if ui.small_button("✖").on_hover_text("Remove this mesh").clicked() {
+                        if ui
+                            .small_button("✖")
+                            .on_hover_text("Remove this mesh")
+                            .clicked()
+                        {
                             remove_idx = Some(i);
                         }
                     });
@@ -3335,7 +3308,6 @@ pub fn object_bounds_widget(
     }
 }
 
-
 /// The inventory table: one row per `CNTO`, with the `COED` that follows it
 /// folded into the same row.
 ///
@@ -3412,7 +3384,10 @@ pub fn inventory_widget(
                     cnto_bytes: data.clone(),
                     coed_bytes: None,
                     item: decoded.get("item").cloned().unwrap_or(serde_json::json!(0)),
-                    count: decoded.get("count").cloned().unwrap_or(serde_json::json!(1)),
+                    count: decoded
+                        .get("count")
+                        .cloned()
+                        .unwrap_or(serde_json::json!(1)),
                     condition: None,
                     owner: None,
                     rank_or_global: None,
@@ -3447,7 +3422,8 @@ pub fn inventory_widget(
     // drawn, and the COED is re-encoded from them once the row is complete —
     // reading the values back out of `rows` instead would write the *pre-edit*
     // bytes and silently discard the change.
-    let mut pending_owner: Vec<Option<u32>> = rows.iter().map(|r| r.owner.filter(|o| *o != 0)).collect();
+    let mut pending_owner: Vec<Option<u32>> =
+        rows.iter().map(|r| r.owner.filter(|o| *o != 0)).collect();
     let mut pending_rank: Vec<u32> = rows.iter().map(|r| r.rank_or_global.unwrap_or(0)).collect();
     let mut pending_cond: Vec<i64> = rows
         .iter()
@@ -3479,7 +3455,9 @@ pub fn inventory_widget(
                     b"MNAM" if last_rank.is_some() => {
                         ranks.push((
                             last_rank.take().unwrap(),
-                            String::from_utf8_lossy(&s.data).trim_end_matches('\0').to_string(),
+                            String::from_utf8_lossy(&s.data)
+                                .trim_end_matches('\0')
+                                .to_string(),
                         ));
                     }
                     _ => {}
@@ -3823,7 +3801,7 @@ pub fn inventory_widget(
         want = Some(list);
     }
 
-// The extras that changed: re-encode each of those rows' COED in place,
+    // The extras that changed: re-encode each of those rows' COED in place,
     // creating the subrecord when the row had none.
     //
     // One write per changed row, from `pending_*` — the values the table's
@@ -3988,8 +3966,16 @@ pub fn sounds_widget(
             .striped(true)
             .id_salt(("sounds_table", rec_sig))
             .column(egui_extras::Column::initial(28.0).at_least(28.0))
-            .column(egui_extras::Column::initial(150.0).at_least(120.0).clip(true))
-            .column(egui_extras::Column::initial(220.0).at_least(160.0).clip(true))
+            .column(
+                egui_extras::Column::initial(150.0)
+                    .at_least(120.0)
+                    .clip(true),
+            )
+            .column(
+                egui_extras::Column::initial(220.0)
+                    .at_least(160.0)
+                    .clip(true),
+            )
             .column(egui_extras::Column::remainder().at_least(140.0).clip(true))
             .column(egui_extras::Column::initial(76.0).at_least(64.0))
             .header(18.0, |mut header| {
@@ -4076,10 +4062,7 @@ pub fn sounds_widget(
                             ui.weak(path.as_str())
                                 .on_hover_text(format!("{:08X}", pending_sound[i]));
                         } else {
-                            ui.colored_label(
-                                egui::Color32::from_rgb(220, 100, 100),
-                                "⚠ Missing",
-                            );
+                            ui.colored_label(egui::Color32::from_rgb(220, 100, 100), "⚠ Missing");
                         }
                     });
                     // Chance — a percentage, not the raw 0-255 byte.
