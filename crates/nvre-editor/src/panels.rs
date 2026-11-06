@@ -2493,8 +2493,21 @@ fn field_editor(
 /// what lets the schema's own tests assert that every name a game's table uses is
 /// one this build has — a typo in a JSON file would otherwise render as the
 /// default and look like it worked.
+///
+/// The list is the dispatcher in [`render_single_section`] and nothing else: a
+/// name added there without being added here is a schema that cannot reach it,
+/// and a name here that the dispatcher does not match reports itself as missing
+/// on the page.
 pub fn widget_names() -> Vec<&'static str> {
-    vec!["repeat"]
+    vec![
+        "repeat",
+        "inventory",
+        "animations",
+        "model_list",
+        "object_bounds",
+        "sounds",
+        "destruction",
+    ]
 }
 
 /// A section of repeated subrecords: one row per occurrence, with add and remove.
