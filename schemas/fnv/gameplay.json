@@ -216,8 +216,8 @@
     },
     "CSCR": {
      "confidence": "documented",
-     "name": "Inherits Sounds from",
-     "note": "xEdit wbDefinitionsFNV.pas CREA record",
+     "name": "Inherits Sounds From",
+     "note": "xEdit wbDefinitionsFNV.pas CREA record; GECK's Sounds tab caption. When set the game reads the other creature's sound data and the local CSDT list is unused — no creature in FalloutNV.esm carries both (999 CSCR-only, 86 local-only)",
      "type": {
       "formid": {
        "of": [
@@ -229,19 +229,25 @@
     "CSDC": {
      "confidence": "documented",
      "name": "Sound Chance",
-     "note": "xEdit wbDefinitionsCommon.pas wbSoundTypeSounds",
+     "note": "xEdit wbDefinitionsCommon.pas wbSoundTypeSounds; stored as a u8 but read as a percentage — every value in FalloutNV.esm is 5-100 and 565 of 704 are exactly 100, so the editor clamps it to 0-100",
      "type": "u8"
     },
     "CSDI": {
      "confidence": "documented",
      "name": "Sound",
-     "note": "xEdit wbDefinitionsCommon.pas wbSoundTypeSounds",
-     "type": "formid"
+     "note": "fopdoc FalloutNV Records/CREA, Sound Type collection: 'FormID of a SOUN record, or null' — 704 of the 735 entries in FalloutNV.esm point at a SOUN and 31 are null",
+     "type": {
+      "formid": {
+       "of": [
+        "SOUN"
+       ]
+      }
+     }
     },
     "CSDT": {
      "confidence": "documented",
      "name": "Sound Type",
-     "note": "xEdit wbDefinitionsFNV.pas wbCSDT helper record; xEdit's positional enum lists 'Auxiliary 8' twice (comment says {19} both times), shifting Jump to 21 and PlayRandom/Loop to 22; kept as xEdit decodes it",
+     "note": "fopdoc FalloutNV Records/CREA, Sound Type collection: 0-21, with 20 Jump and 21 Play Random / Loop. xEdit's wbCSDT positional list repeats 'Auxiliary 8' (its own comment says {19} twice), which shifts Jump to 21 and PlayRandom/Loop to 22; the data sides with fopdoc — the only type-21 entries in FalloutNV.esm are the three AudioTemplateSecuritron* records pointing at NPCSecuritronSiren, a loop, and nothing uses 20 or 22",
      "type": {
       "enum": "u32",
       "values": {
@@ -258,9 +264,8 @@
        "18": "Auxiliary 7",
        "19": "Auxiliary 8",
        "2": "Left Back Foot",
-       "20": "Auxiliary 8 (duplicate entry in xEdit)",
-       "21": "Jump",
-       "22": "PlayRandom/Loop",
+       "20": "Jump",
+       "21": "Play Random / Loop",
        "3": "Right Back Foot",
        "4": "Idle",
        "5": "Aware",

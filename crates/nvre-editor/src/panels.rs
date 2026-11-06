@@ -1123,6 +1123,7 @@ pub fn sectioned_grid_on_tab(
         let is_animations = section.widget.as_deref() == Some("animations");
         let is_model_list = section.widget.as_deref() == Some("model_list");
         let is_object_bounds = section.widget.as_deref() == Some("object_bounds");
+        let is_sounds = section.widget.as_deref() == Some("sounds");
         // A section whose every subrecord is absent still has something to
         // draw: the absent-subrecord picker, which is how a field the record
         // does not carry yet gets set. `EITM` is a FormID and `EAMT` an enum,
@@ -1141,6 +1142,7 @@ pub fn sectioned_grid_on_tab(
             && !is_animations
             && !is_model_list
             && !is_object_bounds
+            && !is_sounds
             && !all_described
         {
             continue;
@@ -1514,6 +1516,9 @@ fn render_single_section(
             Some(name) if name == "object_bounds" => {
                 object_bounds_widget(ui, session, form_id, &rec_sig, edit);
             }
+            Some(name) if name == "sounds" => {
+                sounds_widget(ui, session, form_id, &rec_sig, edit);
+            }
             Some(name) => {
                 ui.colored_label(
                     egui::Color32::RED,
@@ -1833,7 +1838,15 @@ fn draw_field_row(
             other => other,
         }
     };
-    ui.label(label);
+    let label_resp = ui.label(label);
+    // The one field on the Sounds tab whose name promises more than it does:
+    // GECK's own documentation is explicit that the level feeds the detection
+    // formula and does not change the volume of anything.
+    if view.sig == "NAM5" {
+        label_resp.on_hover_text(
+            "Sound Level feeds the detection formula only — it does not change the volume of any sound.",
+        );
+    }
     let is_calc_min_max = view.sig == "ACBS" && (row.path == "calc_min" || row.path == "calc_max");
     let enabled = !is_calc_min_max || is_pc_level_mult;
     ui.add_enabled_ui(enabled, |ui| {
@@ -3865,6 +3878,369 @@ pub fn inventory_widget(
         session.stale = true;
         edit.error = None;
     }
+}
+
+/// The creature's sound list: one row per `CSDT`/`CSDI`/`CSDC` entry.
+///
+/// The three subrecords are one entry, not three lists. fopdoc's CREA page calls
+/// them a repeated block ("CSDI and CSDC are in a repeated block"), and every
+/// creature in FalloutNV.esm that carries them carries strict
+/// `CSDT,CSDI,CSDC` triples — 86 creatures, no mismatched counts. Three
+/// `repeat` tables put a type, its sound and its chance on unrelated rows and
+/// let one be removed without the others, which is a run the engine cannot read
+/// as sounds at all.
+///
+/// GECK's tab is a list of these entries in a "Creature Sound Data" box;
+/// double-clicking one opens a small "Creature Sound" dialog with Type, Chance
+/// and the sound's filename. This is that list with the dialog's fields inline,
+/// so a modder does not open a modal per row.
+///
+/// `CSCR` changes what the table shows, not whether it shows: when "Inherits
+/// Sounds From" is filled the game reads the other creature's sounds, so the
+/// table lists *those* entries read-only. A modder looking at a creature whose
+/// sounds come from an AudioTemplate needs to see what the template carries —
+/// an empty list would say the creature has no sounds, which is the opposite of
+/// what the link means.
+pub fn sounds_widget(
+    ui: &mut egui::Ui,
+    session: &mut crate::session::Session,
+    form_id: u32,
+    rec_sig: &[u8; 4],
+    edit: &mut FieldEdit,
+) {
+    let Some(rec) = session.resolved_record(form_id) else {
+        ui.colored_label(egui::Color32::RED, format!("{form_id:08X} not found"));
+        return;
+    };
+    let Ok(subs) = rec.subrecords() else {
+        return;
+    };
+
+    // The record's own entries, in file order: a `CSDT` opens an entry and the
+    // `CSDI` and `CSDC` after it fill it.
+    let local_rows = sound_rows(subs.iter());
+
+    // `CSCR` — Inherits Sounds From. When it is set the game reads the other
+    // creature's sounds, so the table shows *those* entries, read-only: a modder
+    // looking at a creature whose sounds come from an AudioTemplate needs to see
+    // what the template carries, not an empty list.
+    let inherits = cscr_source(subs.iter());
+    let (mut rows, inherited) = match inherits {
+        Some(source) => (inherited_sound_rows(session, source), Some(source)),
+        None => (local_rows.clone(), None),
+    };
+
+    // A run whose three signatures do not have the same count is not a list this
+    // widget can rebuild without guessing, so it is shown read-only rather than
+    // rewritten: the write below replaces every `CSDT`/`CSDI`/`CSDC` in the
+    // record, and a stray one would be dropped. The check is on the record's own
+    // run, not on an inherited list the record does not store.
+    let count = |sig: &[u8; 4]| subs.iter().filter(|s| &s.sig == sig).count();
+    let well_formed = count(b"CSDT") == local_rows.len()
+        && count(b"CSDI") == local_rows.len()
+        && count(b"CSDC") == local_rows.len();
+
+    if let Some(source) = inherited {
+        let name = creature_name(session, source);
+        ui.label(
+            egui::RichText::new(format!(
+                "This creature inherits its sounds from {name}. The list below is that \
+                 creature's and cannot be edited here; clear \"Inherits Sounds From\" above \
+                 to give this one its own sounds."
+            ))
+            .color(egui::Color32::YELLOW),
+        );
+        ui.add_space(4.0);
+    } else if !well_formed {
+        ui.label(
+            egui::RichText::new(
+                "The sound data is malformed — CSDT, CSDI and CSDC do not have the same count — \
+                 so it is shown read-only rather than rewritten.",
+            )
+            .color(egui::Color32::YELLOW),
+        );
+        ui.add_space(4.0);
+    }
+
+    // The type list from the schema, once per frame; the sound list is the
+    // session's cached `SOUN` table, so the picker is filtered without a walk.
+    let kinds = nvre_edit::encode::enum_values_at(&session.schema, rec_sig, b"CSDT", None, "");
+    let sounds = session.records_of(*b"SOUN");
+
+    let mut pending_kind: Vec<u32> = rows.iter().map(|r| r.kind).collect();
+    let mut pending_sound: Vec<u32> = rows.iter().map(|r| r.sound).collect();
+    let mut pending_chance: Vec<u8> = rows.iter().map(|r| r.chance).collect();
+    let mut touched: Vec<bool> = vec![false; rows.len()];
+    let mut remove_at: Option<usize> = None;
+    let mut add = false;
+
+    let editable = inherited.is_none() && well_formed;
+    ui.add_enabled_ui(editable, |ui| {
+        egui_extras::TableBuilder::new(ui)
+            .striped(true)
+            .id_salt(("sounds_table", rec_sig))
+            .column(egui_extras::Column::initial(28.0).at_least(28.0))
+            .column(egui_extras::Column::initial(150.0).at_least(120.0).clip(true))
+            .column(egui_extras::Column::initial(220.0).at_least(160.0).clip(true))
+            .column(egui_extras::Column::remainder().at_least(140.0).clip(true))
+            .column(egui_extras::Column::initial(76.0).at_least(64.0))
+            .header(18.0, |mut header| {
+                header.col(|ui| {
+                    ui.strong("");
+                });
+                header.col(|ui| {
+                    ui.strong("Type");
+                });
+                header.col(|ui| {
+                    ui.strong("Sound");
+                });
+                header.col(|ui| {
+                    ui.strong("Sound File");
+                });
+                header.col(|ui| {
+                    ui.strong("Chance");
+                });
+            })
+            .body(|body| {
+                body.rows(20.0, rows.len(), |mut row_ui| {
+                    let i = row_ui.index();
+                    if i >= rows.len() {
+                        return;
+                    }
+                    row_ui.col(|ui| {
+                        ui.push_id(i, |ui| {
+                            if ui
+                                .small_button("✖")
+                                .on_hover_text("remove this sound")
+                                .clicked()
+                            {
+                                remove_at = Some(i);
+                            }
+                        });
+                    });
+                    // Type — the schema's own names for `CSDT`, so a modder
+                    // picks "Death" rather than 8.
+                    row_ui.col(|ui| {
+                        let mut picked = pending_kind[i] as i64;
+                        let cur = kinds
+                            .iter()
+                            .find(|(v, _)| *v == picked)
+                            .map(|(_, n)| n.clone())
+                            .unwrap_or_else(|| picked.to_string());
+                        egui::ComboBox::from_id_salt(format!("snd_{i}_type"))
+                            .selected_text(cur)
+                            .width(140.0)
+                            .show_ui(ui, |ui| {
+                                for (v, n) in &kinds {
+                                    ui.selectable_value(&mut picked, *v, n);
+                                }
+                            });
+                        if picked != pending_kind[i] as i64 {
+                            pending_kind[i] = picked.max(0) as u32;
+                            touched[i] = true;
+                        }
+                    });
+                    // Sound — `CSDI`, filtered to `SOUN` by the schema.
+                    row_ui.col(|ui| {
+                        let mut opt = (pending_sound[i] != 0).then_some(pending_sound[i]);
+                        let before = opt;
+                        crate::object_editor::record_dropdown_with_none(
+                            ui,
+                            &format!("snd_{i}_sound"),
+                            &sounds,
+                            &mut opt,
+                            "NONE",
+                        );
+                        if opt != before {
+                            pending_sound[i] = opt.unwrap_or(0);
+                            touched[i] = true;
+                        }
+                    });
+                    // Sound File — the `.wav` the chosen `SOUN` names, which is
+                    // what GECK's "Sound Filename" button shows. The EDID is the
+                    // hover text: it is what the picker lists, so the two
+                    // together say both what the record is called and what the
+                    // game plays.
+                    row_ui.col(|ui| {
+                        if pending_sound[i] == 0 {
+                            ui.weak("—");
+                        } else if let Some(path) = sound_file_path(session, pending_sound[i]) {
+                            ui.weak(path.as_str())
+                                .on_hover_text(format!("{:08X}", pending_sound[i]));
+                        } else {
+                            ui.colored_label(
+                                egui::Color32::from_rgb(220, 100, 100),
+                                "⚠ Missing",
+                            );
+                        }
+                    });
+                    // Chance — a percentage, not the raw 0-255 byte.
+                    row_ui.col(|ui| {
+                        let mut pct = pending_chance[i] as i64;
+                        if ui
+                            .add_sized(
+                                [64.0, 18.0],
+                                egui::DragValue::new(&mut pct).range(0..=100).suffix("%"),
+                            )
+                            .changed()
+                        {
+                            pending_chance[i] = pct.clamp(0, 100) as u8;
+                            touched[i] = true;
+                        }
+                    });
+                });
+            });
+
+        if rows.is_empty() {
+            ui.add_space(4.0);
+            ui.weak("No creature sounds");
+        }
+
+        ui.add_space(4.0);
+        if ui.button("+ Add Sound").clicked() {
+            add = true;
+        }
+    });
+
+    // The cells' values, applied to the rows the write is rebuilt from. Reading
+    // them back out of `rows` instead would write the pre-edit bytes.
+    for i in 0..rows.len() {
+        if touched[i] {
+            rows[i].kind = pending_kind[i];
+            rows[i].sound = pending_sound[i];
+            rows[i].chance = pending_chance[i];
+        }
+    }
+    if editable && (remove_at.is_some() || add || touched.iter().any(|t| *t)) {
+        let mut list: Vec<([u8; 4], Vec<u8>)> = Vec::new();
+        for (i, row) in rows.iter().enumerate() {
+            if remove_at == Some(i) {
+                continue;
+            }
+            list.push((*b"CSDT", row.kind.to_le_bytes().to_vec()));
+            list.push((*b"CSDI", row.sound.to_le_bytes().to_vec()));
+            list.push((*b"CSDC", vec![row.chance]));
+        }
+        if add {
+            // A new entry: Idle, no sound yet, always plays once one is picked.
+            list.push((*b"CSDT", 4u32.to_le_bytes().to_vec()));
+            list.push((*b"CSDI", 0u32.to_le_bytes().to_vec()));
+            list.push((*b"CSDC", vec![100]));
+        }
+        // One interleaved write. Three `set_sub_list` calls would hoist every
+        // `CSDT` above every `CSDI` and reassign every sound.
+        session
+            .doc
+            .set_sub_sequence(form_id, vec![*b"CSDT", *b"CSDI", *b"CSDC"], list);
+        session.stale = true;
+        edit.error = None;
+    }
+}
+
+/// One entry of a creature's sound list: the `CSDT` type, the `CSDI` sound and
+/// the `CSDC` chance.
+#[derive(Clone)]
+struct SoundRow {
+    kind: u32,
+    sound: u32,
+    chance: u8,
+}
+
+/// The `CSDT`/`CSDI`/`CSDC` triples of a subrecord run, in file order.
+///
+/// A `CSDT` opens an entry and the `CSDI` and `CSDC` after it fill it. A stray
+/// `CSDI`/`CSDC` with no `CSDT` before it is not an entry: the caller's
+/// count check sees the mismatch and refuses to rewrite the run.
+fn sound_rows<'a>(subs: impl Iterator<Item = &'a nvre_esm::Subrecord>) -> Vec<SoundRow> {
+    let mut rows: Vec<SoundRow> = Vec::new();
+    for s in subs {
+        match &s.sig {
+            b"CSDT" if s.data.len() >= 4 => rows.push(SoundRow {
+                kind: u32::from_le_bytes(s.data[..4].try_into().unwrap()),
+                sound: 0,
+                chance: 100,
+            }),
+            b"CSDI" if s.data.len() >= 4 => {
+                if let Some(r) = rows.last_mut() {
+                    r.sound = u32::from_le_bytes(s.data[..4].try_into().unwrap());
+                }
+            }
+            b"CSDC" if !s.data.is_empty() => {
+                if let Some(r) = rows.last_mut() {
+                    r.chance = s.data[0];
+                }
+            }
+            _ => {}
+        }
+    }
+    rows
+}
+
+/// The creature a record's `CSCR` names, when it names one.
+fn cscr_source<'a>(subs: impl Iterator<Item = &'a nvre_esm::Subrecord>) -> Option<u32> {
+    subs.into_iter()
+        .find(|s| &s.sig == b"CSCR")
+        .filter(|s| s.data.len() >= 4)
+        .map(|s| u32::from_le_bytes(s.data[..4].try_into().unwrap()))
+        .filter(|f| *f != 0)
+}
+
+/// The sound entries a creature ultimately inherits.
+///
+/// `CSCR` can point at a creature that inherits again — the shipped AudioTemplate
+/// records carry their own lists, but nothing in the format forbids a chain — so
+/// the link is followed until a creature with entries (or a cycle) is reached.
+fn inherited_sound_rows(session: &crate::session::Session, source: u32) -> Vec<SoundRow> {
+    let mut seen = std::collections::HashSet::new();
+    let mut fid = source;
+    for _ in 0..8 {
+        if !seen.insert(fid) {
+            break;
+        }
+        let Some(rec) = session.resolved_record(fid) else {
+            break;
+        };
+        let Ok(subs) = rec.subrecords() else {
+            break;
+        };
+        let rows = sound_rows(subs.iter());
+        if !rows.is_empty() {
+            return rows;
+        }
+        match cscr_source(subs.iter()) {
+            Some(next) => fid = next,
+            None => break,
+        }
+    }
+    Vec::new()
+}
+
+/// A creature's Editor ID, for the inherits banner.
+fn creature_name(session: &crate::session::Session, fid: u32) -> String {
+    session
+        .records_of(*b"CREA")
+        .iter()
+        .find(|(f, _)| *f == fid)
+        .map(|(_, n)| n.clone())
+        .unwrap_or_else(|| format!("{fid:08X}"))
+}
+
+/// The `.wav` a `SOUN` record names, from its `FNAM`.
+///
+/// GECK shows this path, not the Editor ID: a modder choosing a footstep sound
+/// is looking for `fx\npc\roach\foot\`, and `NPCRoachFootLeft` does not say
+/// whether it is the left foot or the right.
+fn sound_file_path(session: &crate::session::Session, fid: u32) -> Option<String> {
+    let rec = session.resolved_record(fid)?;
+    if rec.header.sig != *b"SOUN" {
+        return None;
+    }
+    let subs = rec.subrecords().ok()?;
+    let s = subs.iter().find(|s| &s.sig == b"FNAM")?;
+    let path = String::from_utf8_lossy(&s.data)
+        .trim_end_matches('\0')
+        .to_string();
+    (!path.is_empty()).then_some(path)
 }
 
 /// One value's widget, for a row inside a list.

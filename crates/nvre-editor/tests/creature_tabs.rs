@@ -138,6 +138,42 @@ fn the_blood_tab_is_gecks_two_boxes_in_both_games() {
 }
 
 #[test]
+fn the_sounds_tab_is_one_list_in_both_games() {
+    // GECK's Sounds tab is two bare combos over a "Creature Sound Data" box, and
+    // the box holds one row per sound. Fallout 3 and New Vegas share the
+    // creature layout, so both pages must say the same thing.
+    for id in ["fnv", "fo3"] {
+        let schema = GameProfile::by_id(id)
+            .unwrap_or_else(|| panic!("{id}"))
+            .load_schema()
+            .expect("the schema loads");
+        let sections = schema.page_sections("CREA");
+        let sounds = sections_on_tab(&sections, Some("Sounds"));
+        let titles: Vec<&str> = sounds.iter().map(|s| s.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            ["Sounds", "Creature Sound Data"],
+            "{id}: the Sounds tab's two parts"
+        );
+        assert!(
+            sounds[0].untitled,
+            "{id}: Sound Level and Inherits Sounds From sit bare"
+        );
+        assert_eq!(sounds[0].subs, ["NAM5", "CSCR"], "{id}: the two combos");
+        assert_eq!(
+            sounds[1].subs,
+            ["CSDT", "CSDI", "CSDC"],
+            "{id}: the sound box names the whole triple"
+        );
+        assert_eq!(
+            sounds[1].widget.as_deref(),
+            Some("sounds"),
+            "{id}: the box is drawn by the sounds widget"
+        );
+    }
+}
+
+#[test]
 fn a_section_on_another_tab_is_not_drawn() {
     // The mechanism. A section filed on Stats must not appear while Traits is
     // chosen, or the tabs are decorative and every tab shows the whole record.

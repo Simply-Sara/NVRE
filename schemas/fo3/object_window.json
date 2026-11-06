@@ -980,14 +980,21 @@
      {
       "subs": [
        "NAM5",
-       "CSCR",
+       "CSCR"
+      ],
+      "tab": "Sounds",
+      "title": "Sounds",
+      "untitled": true
+     },
+     {
+      "subs": [
        "CSDT",
        "CSDI",
        "CSDC"
       ],
       "tab": "Sounds",
-      "title": "Sounds",
-      "widget": "repeat"
+      "title": "Creature Sound Data",
+      "widget": "sounds"
      },
      {
       "subs": [

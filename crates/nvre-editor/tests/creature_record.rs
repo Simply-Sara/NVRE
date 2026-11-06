@@ -3619,3 +3619,340 @@ fn the_model_list_tab_has_structured_sections_with_nif_table_and_bounds_calculat
         "min Z must be less than max Z: {bounds:?}"
     );
 }
+
+/// The `CSDT`/`CSDI`/`CSDC` run of a creature, as (signature, bytes) pairs.
+fn sound_run(session: &Session, fid: u32) -> Vec<(String, Vec<u8>)> {
+    subs(session, fid)
+        .iter()
+        .filter(|s| matches!(&s.sig, b"CSDT" | b"CSDI" | b"CSDC"))
+        .map(|s| (s.sig_str(), s.data.clone()))
+        .collect()
+}
+
+/// Click the topmost widget whose accessible label is `label`.
+fn click_topmost(
+    ctx: &nvre_editor::egui::Context,
+    session: &mut Session,
+    state: &mut ObjectEditorState,
+    label: &str,
+) {
+    use nvre_editor::egui;
+    let size = egui::vec2(1000.0, 3000.0);
+    let mut pages = Pages::default();
+    let mut rect = None;
+    // Two frames: the first lays the page out, the second reports the bounds.
+    for _ in 0..2 {
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                ..Default::default()
+            },
+            |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
+                    object_editor::body(ui, session, state, &mut pages);
+                });
+            },
+        );
+        out.textures_delta.clear();
+        rect = out
+            .platform_output
+            .accesskit_update
+            .and_then(|u| {
+                u.nodes
+                    .iter()
+                    .filter(|(_, n)| n.label() == Some(label))
+                    .filter_map(|(_, n)| n.bounds())
+                    .min_by_key(|b| b.y0 as i64)
+            });
+    }
+    let rect = rect.unwrap_or_else(|| panic!("no {label:?} widget"));
+    let click = egui::pos2(rect.x0 as f32 + 5.0, rect.y0 as f32 + 5.0);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+            events: vec![
+                egui::Event::PointerMoved(click),
+                egui::Event::PointerButton {
+                    pos: click,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                egui::Event::PointerButton {
+                    pos: click,
+                    button: egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            ..Default::default()
+        },
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                object_editor::body(ui, session, state, &mut pages);
+            });
+        },
+    );
+}
+
+#[test]
+fn the_sounds_tab_is_one_table_of_triples() {
+    // GECK's Sounds tab is two bare combos over a "Creature Sound Data" box, and
+    // the box holds one row per sound. The record agrees: `CSDT`, `CSDI` and
+    // `CSDC` are one entry (fopdoc calls them a repeated block), and every
+    // creature in the master carries them as strict triples.
+    //
+    // The tab used to draw five `repeat` tables — one per signature — which put
+    // a sound's type, its sound and its chance on three unrelated rows, and
+    // rendered the two enums as editable `value`/`name` columns.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let sections = session.schema.page_sections("CREA");
+    let sounds = sections_on_tab(&sections, Some("Sounds"));
+    let titles: Vec<&str> = sounds.iter().map(|s| s.title.as_str()).collect();
+    assert_eq!(
+        titles,
+        ["Sounds", "Creature Sound Data"],
+        "the Sounds tab is the two combos and the sound box"
+    );
+    assert!(
+        sounds[0].untitled,
+        "Sound Level and Inherits Sounds From sit bare, with no heading"
+    );
+    assert_eq!(sounds[0].subs, ["NAM5", "CSCR"], "the two combos");
+    assert_eq!(
+        sounds[1].subs,
+        ["CSDT", "CSDI", "CSDC"],
+        "the sound box names the whole triple"
+    );
+    assert_eq!(
+        sounds[1].widget.as_deref(),
+        Some("sounds"),
+        "the box is drawn by the sounds widget"
+    );
+
+    // A creature with real sound data: five entries, all triples.
+    let fid = 0x0003_0D89u32; // adamsMorganRoach
+    session.open_object(fid, *b"CREA");
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Sounds".to_string());
+    let run = sound_run(&session, fid);
+    assert_eq!(run.len(), 15, "five entries, three subrecords each");
+    for (i, chunk) in run.chunks(3).enumerate() {
+        assert_eq!(
+            [chunk[0].0.as_str(), chunk[1].0.as_str(), chunk[2].0.as_str()],
+            ["CSDT", "CSDI", "CSDC"],
+            "entry {i} is a triple"
+        );
+    }
+
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(1000.0, 3000.0));
+    for want in [
+        "Sound Level",
+        "Inherits Sounds From",
+        "Creature Sound Data",
+        "Type",
+        "Sound",
+        "Sound File",
+        "Chance",
+    ] {
+        assert!(
+            rows.iter().any(|(t, _)| t == want),
+            "no {want:?} on the Sounds tab: {rows:?}"
+        );
+    }
+    // The sound's file, not just its Editor ID — GECK shows the filename.
+    assert!(
+        rows.iter().any(|(t, _)| t == "fx\\npc\\roach\\foot\\left\\"),
+        "the row does not show the sound's file: {rows:?}"
+    );
+    // The two defects the old tables had: enum rows as `value`/`name`, and a
+    // per-signature "+ Add Row".
+    for gone in ["value", "name", "+ Add Row"] {
+        assert!(
+            !rows.iter().any(|(t, _)| t == gone),
+            "{gone:?} is still on the Sounds tab: {rows:?}"
+        );
+    }
+}
+
+#[test]
+fn removing_a_sound_removes_its_whole_triple() {
+    // The ✖ on a row has to take the type, the sound and the chance together.
+    // Removing only the `CSDT` leaves a sound with no type, which the engine
+    // cannot read — and is exactly what the old three-table layout allowed.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let fid = 0x0003_0D89u32; // adamsMorganRoach
+    session.open_object(fid, *b"CREA");
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Sounds".to_string());
+    let before = sound_run(&session, fid);
+    assert_eq!(before.len(), 15);
+
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    click_topmost(&ctx, &mut session, &mut state, "✖");
+
+    let after = sound_run(&session, fid);
+    assert_eq!(after.len(), 12, "one entry (three subrecords) removed");
+    assert_eq!(
+        after,
+        before[3..].to_vec(),
+        "the removed entry is the first one, and the rest keep their pairing"
+    );
+}
+
+#[test]
+fn adding_a_sound_appends_a_whole_triple() {
+    // A creature with no sounds gets one complete entry, not a lone `CSDT`.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    // No `CSCR` either: an inheriting creature's table is disabled, which is a
+    // different case (see `inheriting_sounds_disables_the_sound_table`).
+    let fid = session
+        .records_of(*b"CREA")
+        .iter()
+        .find(|(f, _)| {
+            session
+                .resolved_record(*f)
+                .and_then(|r| r.subrecords().ok())
+                .map(|subs| {
+                    !subs.iter().any(|s| {
+                        matches!(&s.sig, b"CSDT" | b"CSDI" | b"CSDC" | b"CSCR")
+                    })
+                })
+                .unwrap_or(false)
+        })
+        .map(|(f, _)| *f)
+        .expect("a creature with neither sounds nor an inherits link");
+    session.open_object(fid, *b"CREA");
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Sounds".to_string());
+    assert!(sound_run(&session, fid).is_empty());
+
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    click_topmost(&ctx, &mut session, &mut state, "+ Add Sound");
+
+    let run = sound_run(&session, fid);
+    let sigs: Vec<&str> = run.iter().map(|(s, _)| s.as_str()).collect();
+    assert_eq!(sigs, ["CSDT", "CSDI", "CSDC"], "one whole entry");
+    assert_eq!(run[0].1, 4u32.to_le_bytes().to_vec(), "type Idle");
+    assert_eq!(run[1].1, 0u32.to_le_bytes().to_vec(), "no sound yet");
+    assert_eq!(run[2].1, vec![100u8], "chance 100%");
+}
+
+#[test]
+fn inheriting_sounds_lists_the_inherited_entries_read_only() {
+    // GECK: when "Inherits Sounds From" is filled the table cannot be edited,
+    // because the game reads the other creature's sounds. But the list still
+    // has to *show* something: the sounds the creature actually uses are the
+    // source's, and hiding them behind an empty table would tell a modder the
+    // creature has no sounds at all.
+    let Some((mut session, mut state)) = open_creature() else {
+        return;
+    };
+    let fid = session
+        .records_of(*b"CREA")
+        .iter()
+        .find(|(f, _)| {
+            session
+                .resolved_record(*f)
+                .and_then(|r| r.subrecords().ok())
+                .map(|subs| subs.iter().any(|s| s.sig == *b"CSCR"))
+                .unwrap_or(false)
+        })
+        .map(|(f, _)| *f)
+        .expect("a creature that inherits its sounds");
+    session.open_object(fid, *b"CREA");
+    state.load_from_session(&session, fid, *b"CREA");
+    state.tab.chosen = Some("Sounds".to_string());
+
+    let rows = placed_widgets(&mut session, &mut state, nvre_editor::egui::vec2(1000.0, 3000.0));
+    assert!(
+        rows.iter()
+            .any(|(t, _)| t.contains("inherits its sounds from")),
+        "no inherits banner on the Sounds tab: {rows:?}"
+    );
+    // The inherited entries are listed: the table's headers and at least one
+    // sound file from the source creature.
+    for want in ["Type", "Sound", "Sound File", "Chance"] {
+        assert!(
+            rows.iter().any(|(t, _)| t == want),
+            "the inherited list is not drawn ({want:?} missing): {rows:?}"
+        );
+    }
+    assert!(
+        rows.iter().any(|(t, _)| t.contains('\\')),
+        "no inherited sound file is listed: {rows:?}"
+    );
+
+    // And it is read-only: the ✖ and the add button write nothing into this
+    // record, which carries no sound data of its own.
+    let before = sound_run(&session, fid);
+    let ctx = nvre_editor::egui::Context::default();
+    ctx.enable_accesskit();
+    click_topmost(&ctx, &mut session, &mut state, "✖");
+    click_topmost(&ctx, &mut session, &mut state, "+ Add Sound");
+    assert_eq!(
+        sound_run(&session, fid),
+        before,
+        "an inherited list accepted an edit"
+    );
+    assert!(
+        sound_run(&session, fid).is_empty(),
+        "editing the inherited list wrote a local run"
+    );
+}
+
+#[test]
+fn the_sound_type_list_is_fopdocs_not_xedits() {
+    // xEdit's positional `wbCSDT` list repeats 'Auxiliary 8', which shifts Jump
+    // to 21 and PlayRandom/Loop to 22. fopdoc's list is 0-21, and the master
+    // sides with fopdoc: the only type-21 entries are the three
+    // AudioTemplateSecuritron* records pointing at NPCSecuritronSiren — a loop,
+    // not a jump — and nothing uses 20 or 22.
+    let Some((session, _)) = open_creature() else {
+        return;
+    };
+    let csdt = session
+        .schema
+        .records
+        .get("CREA")
+        .and_then(|r| r.subrecords.get("CSDT"))
+        .expect("CSDT is a subrecord of CREA");
+    let nvre_esm::TypeDef::Enum { values, .. } = session.schema.resolve_def(&csdt.ty) else {
+        panic!("CSDT is an enum");
+    };
+    let by_value: std::collections::BTreeMap<i64, String> =
+        values.iter().map(|(v, n)| (*v, n.clone())).collect();
+    assert_eq!(by_value.get(&19).map(String::as_str), Some("Auxiliary 8"));
+    assert_eq!(by_value.get(&20).map(String::as_str), Some("Jump"));
+    assert_eq!(
+        by_value.get(&21).map(String::as_str),
+        Some("Play Random / Loop")
+    );
+    assert!(!by_value.contains_key(&22), "22 is not a sound type");
+    assert_eq!(by_value.len(), 22, "0-21, no duplicate");
+
+    // And `CSDI` is filtered to SOUN, not offered the whole load order.
+    let csdi = session
+        .schema
+        .records
+        .get("CREA")
+        .and_then(|r| r.subrecords.get("CSDI"))
+        .expect("CSDI is a subrecord of CREA");
+    assert_eq!(
+        nvre_editor::object_editor::formid_targets_in(&session.schema, b"CREA", b"CSDI", None, ""),
+        vec!["SOUN".to_string()],
+        "CSDI points at SOUN records"
+    );
+    assert!(
+        matches!(session.schema.resolve_def(&csdi.ty), nvre_esm::TypeDef::FormIdRef { .. }),
+        "CSDI is a FormID"
+    );
+}
